@@ -1,6 +1,6 @@
 # 🔁 XII-3c: the state-machine scaffold
 
-Status: **designed.** Written 2026-10-30 against `main` at `4857f1a`,
+Status: **built.** Written 2026-10-30 against `main` at `4857f1a`,
 from a brainstorming session on issue
 [#1062](https://github.com/prasadtalasila/chitragupta/issues/1062). It
 ships in the same PR as the code, as #1053, #1056 and #1057 did. The
@@ -53,6 +53,25 @@ and the routing that sends those figures to it.
 | Routing | **Split by return** (*user*). "a lifecycle with a start and an end" stays with the pipeline, its tell now "nothing goes back". New rows to the state machine: "a lifecycle where a state recurs, stays put or is sent back" and "an automaton, a protocol's states, a Markov chain", tell "it is in one state at a time, and events move it". "Two that look alike" gains *Loop or state machine?* (a loop's nodes are stages that all run each cycle; a state machine's are conditions, one at a time) and *Pipeline or state machine?* (anything goes back or stays put) |
 | Version | MINOR: a new scaffold, a new block version and a widened rule. Read from `main` at PR time; parallel sessions land v3 items concurrently |
 | Issue | The PR body says `Closes #1062`. A lessons comment is posted on the closed issue after merge, once the person says so |
+
+## Changed in the build
+
+- **`cgstate` is 18mm.** Measured at the probe's 12pt: `draft`, `Off`
+  and `On` need 35pt, `merged` and `Faulted` 49pt, so 18mm (51pt) keeps
+  every name up to seven letters at one size.
+- **The two confusable pairs live in `patterns.md` only** ("Two that
+  look alike"), not also in `figures.md` §1, so they have one home.
+- **The twin rule went to `assets/tikz/README.md`**, which owns the
+  twin paragraph and wins over `figures.md`, with a clause in each
+  `SKILL.md`'s twin step and a section in the layout file.
+- **A loop's tag is not checked.** Drawn with `swap`, the exemplar's
+  `0.9` sat inside Faulted's loop, on the line, and `figure check`
+  reported nothing: `c2-tag-clearance` and `c6-tag-covered` do not
+  measure a tag on a self-loop. The drawing is fixed and its comment
+  says why; the rule gap is outside this item.
+- **The exemplar's twin opens with a title line** ("A pump as a Markov
+  chain. One step is one hour.") instead of the initial and accepting
+  line, since a Markov chain has neither.
 
 ## Components
 
@@ -152,20 +171,20 @@ tests pick up by directory. Everything else is prose.
 **Files:** Modify `chitragupta/figure/_focal.py`, `chitragupta/figure/_check.py`;
 test `tests/test_figure_check.py` (`TestFocalCount`).
 
-- [ ] **Step 1: Failing tests.** In `TestFocalCount`: the existing
+- [x] **Step 1: Failing tests.** In `TestFocalCount`: the existing
   measurement becomes `f"2 accented nodes: {named}"`; new parametrized
   cases `\node[cgkeystate] (a) {A}; \node[cgkeystate] (b) {B};` and
   `\node[cgkey] (a) {A}; \node[cgkeystate] (b) {B};` each fire with
   `a, b`; `\node[cgkeystateish] (a) {A}; \node[cgkey] (b) {B};` and
   `my-cgkeystate` do not fire.
-- [ ] **Step 2: Run** `pytest tests/test_figure_check.py -k Focal`; expect
+- [x] **Step 2: Run** `pytest tests/test_figure_check.py -k Focal`; expect
   the new cases to fail.
-- [ ] **Step 3: Implement.** `_CGKEY_RE` becomes
+- [x] **Step 3: Implement.** `_CGKEY_RE` becomes
   `(?<![\w-])cgkey(?:state)?(?![\w-])`; docstrings say "an accent
   (`cgkey` or `cgkeystate`)"; `_check.py`'s message is
   `f"{len(keyed)} accented nodes: ..."`.
-- [ ] **Step 4: Run** again; pass, `_focal.py` at 100%.
-- [ ] **Step 5: Commit** `Count an accented state in focal-count (#1062)`.
+- [x] **Step 4: Run** again; pass, `_focal.py` at 100%.
+- [x] **Step 5: Commit** `Count an accented state in focal-count (#1062)`.
 
 ### Task 2: House block v6
 
@@ -173,7 +192,7 @@ test `tests/test_figure_check.py` (`TestFocalCount`).
 the 10 carriers, `docs/TIKZ-STYLE.md` (vocabulary table and
 `focal-count` row), `docs/CLI.md` only if it quotes the block version.
 
-- [ ] **Step 1:** Add the `--- States ---` group after the zone card:
+- [x] **Step 1:** Add the `--- States ---` group after the zone card:
   `cgstate` (circle, `draw=cgFlowLine`, `fill=cgFlow!7`, `align=center`,
   `inner sep=1.5pt`, `minimum size=` the measured value,
   `font=\normalsize\bfseries`, `cgsoft`), `cgaccept` (`cgstate`,
@@ -181,15 +200,15 @@ the 10 carriers, `docs/TIKZ-STYLE.md` (vocabulary table and
   `draw=cgAccentLine`, `fill=cgAccent!11`, `line width=1.15pt`) and
   `cgstart` (`cgedge`, `shorten <=0pt`). Comment why circles, why no
   `automata`, and why `cgkeystate` is not `cgkey`.
-- [ ] **Step 2:** Marker to v6; append `v6 = "<digest>"` computed by
+- [x] **Step 2:** Marker to v6; append `v6 = "<digest>"` computed by
   `chitragupta.figure.digest` over the region.
-- [ ] **Step 3:** `python -m chitragupta.figure sync assets/tikz/*.tex
+- [x] **Step 3:** `python -m chitragupta.figure sync assets/tikz/*.tex
   assets/tikz/exemplars/*.tex`; then `sync --check` reports all current.
-- [ ] **Step 4:** TIKZ-STYLE.md: a "States" row in the vocabulary table;
+- [x] **Step 4:** TIKZ-STYLE.md: a "States" row in the vocabulary table;
   the `focal-count` row says "more than one `cgkey` or `cgkeystate` node".
-- [ ] **Step 5: Run** `tests/test_figure_block.py tests/test_figure_contrast.py
+- [x] **Step 5: Run** `tests/test_figure_block.py tests/test_figure_contrast.py
   tests/test_tikz_scaffolds.py`; pass.
-- [ ] **Step 6: Commit** `Add state styles to the house figure block, v6 (#1062)`.
+- [x] **Step 6: Commit** `Add state styles to the house figure block, v6 (#1062)`.
 
 ### Task 3: The scaffold, its twin, its reference and its routing
 
@@ -200,23 +219,23 @@ modify `patterns.md`, `figures.md`, `assets/tikz/README.md`,
 the SKILL.md copies where they list layouts, and the two layout lists in
 `tests/test_figure_check.py`.
 
-- [ ] **Step 1: Failing test.** Add the TIKZ-STYLE.md metaphor row;
+- [x] **Step 1: Failing test.** Add the TIKZ-STYLE.md metaphor row;
   `test_every_metaphor_has_a_scaffold` and
   `test_every_metaphor_has_a_reference_file` fail.
-- [ ] **Step 2:** Draw the scaffold: states `draft` (initial), `review`,
+- [x] **Step 2:** Draw the scaffold: states `draft` (initial), `review`,
   `revise`, `merged` (`cgaccept`); `submit` draft to review, `approve`
   review to merged, `changes` review to revise and `resubmit` back as a
   pair bent apart, `comment` as review's self-loop above. Header comment
   in control-loop's voice. Twin: `initial: draft    accepting: merged`
   over a `from | on | to` table.
-- [ ] **Step 3:** The reference file, sections as `hub-and-spoke-network.md`;
+- [x] **Step 3:** The reference file, sections as `hub-and-spoke-network.md`;
   its range row pasted from the test's failure message.
-- [ ] **Step 4:** Routing and doc rows as the Decisions table says.
-- [ ] **Step 5:** `figure check assets/tikz/state-machine.tex`: no
+- [x] **Step 4:** Routing and doc rows as the Decisions table says.
+- [x] **Step 5:** `figure check assets/tikz/state-machine.tex`: no
   objective finding; fix in the drawing.
-- [ ] **Step 6: Run** `tests/test_tikz_scaffolds.py tests/test_figure_new.py
+- [x] **Step 6: Run** `tests/test_tikz_scaffolds.py tests/test_figure_new.py
   tests/test_figure_check.py tests/test_skill_figure_router.py`; pass.
-- [ ] **Step 7: Commit** `Add the state-machine scaffold and route lifecycles that go back to it (#1062)`.
+- [x] **Step 7: Commit** `Add the state-machine scaffold and route lifecycles that go back to it (#1062)`.
 
 ### Task 4: The pump exemplar
 
@@ -224,21 +243,21 @@ the SKILL.md copies where they list layouts, and the two layout lists in
 modify `layouts/state-machine.md` (second range row), `figures.md` if it
 lists exemplars.
 
-- [ ] **Step 1:** Redraw from the book's figure: Off, On, Faulted
+- [x] **Step 1:** Redraw from the book's figure: Off, On, Faulted
   (`cgkeystate`); Off to On 0.3, On to Off 0.4, On to Faulted 0.02,
   Faulted to Off 0.1 (`cgback`, tag "0.1 repaired"); self-loops 0.7, 0.58,
   0.9. Twin: the table, then the sum-to-one sentence.
-- [ ] **Step 2:** `figure check` clean; range row from the test.
-- [ ] **Step 3: Run** `tests/test_tikz_scaffolds.py`; pass.
-- [ ] **Step 4: Commit** `Add the pump Markov chain as the state-machine exemplar (#1062)`.
+- [x] **Step 2:** `figure check` clean; range row from the test.
+- [x] **Step 3: Run** `tests/test_tikz_scaffolds.py`; pass.
+- [x] **Step 4: Commit** `Add the pump Markov chain as the state-machine exemplar (#1062)`.
 
 ### Task 5: Release prep
 
-- [ ] **Step 1:** `figure look` on both new carriers; inspect the PNGs.
-- [ ] **Step 2:** v3 plan: 3c built, exemplar chapter corrected, block v6.
+- [x] **Step 1:** `figure look` on both new carriers; inspect the PNGs.
+- [x] **Step 2:** v3 plan: 3c built, exemplar chapter corrected, block v6.
   This plan's Status to **built**, ticks set.
-- [ ] **Step 3:** Fetch `main`; MINOR bump in `pyproject.toml` from its version.
-- [ ] **Step 4:** Full suite; coverage 100%; `ocr delegate preview`; a
+- [x] **Step 3:** Fetch `main`; MINOR bump in `pyproject.toml` from its version.
+- [x] **Step 4:** Full suite; coverage 100%; `ocr delegate preview`; a
   fresh agent review of the `.tex`/`.md` the OCR skips.
-- [ ] **Step 5:** Push, open the PR (`Closes #1062`), wait for CI, merge
+- [x] **Step 5:** Push, open the PR (`Closes #1062`), wait for CI, merge
   with `scripts/merge_pr.py`, tag, release, patch the release body.
