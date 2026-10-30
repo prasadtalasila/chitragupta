@@ -1,0 +1,29 @@
+% figure check fixture (#1016): clean. The band's ends on every hue, as
+% xcolor rounds them: `cgWarm!6` once read as off the palette.
+% >>> chitragupta figure style v6 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
+% ===========================================================================
+% chitragupta house figure style -- the "presentation tier" prelude block.
+%
+% WHAT THIS IS. The five \definecolor lines of docs/TIKZ-STYLE.md, grown
+% into the rest of the vocabulary a figure needs to look drawn rather
+% than assembled: zone cards, two-tier node labels, step badges, edge
+% tags, and five domain `pic`s. Same travel rule as the palette -- this
+% block lives *inside* the figure file, not in a shared .sty and not in a
+% preamble, because the renderer injects only \usepackage{tikz} and a
+% thesis-chapter fragment is \input into a document that has never heard
+% of this project.
+%
+% WHY IT IS SAFE TO REPEAT. Every definition below is \providecommand or
+% a \tikzset key. \tikzset is idempotent -- re-running it re-defines the
+% same keys to the same values -- so N figures in one document carrying N
+% copies of this block cost N key definitions and change nothing. That is
+% the same property \usetikzlibrary has under #781, for the same reason.
+% It is NOT the property \tikzset{every node/.style=...} has, which is
+% why nothing here touches `every node`.
+%
+% LIBRARIES. Load these at the top of the figure, above \begin{tikzpicture}[cg, node distance=6mm]
+  \node[cgbox, draw=cgWarmLine, fill=cgWarm!6] (warm) {Warm};
+  \node[cgbox, draw=cgAuxLine, fill=cgAux!12, right=of warm] (aux) {Aux};
+  \node[cgbox, draw=cgAltLine, fill=cgAlt!6, below=of warm] (alt) {Alt};
+  \node[cgbox, draw=cgRoseLine, fill=cgRose!12, right=of alt] (rose) {Rose};
+\end{tikzpicture}%

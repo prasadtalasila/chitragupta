@@ -291,11 +291,12 @@ class TestColours:
         assert drawn.nodes["a"].fill is None and drawn.nodes["a"].framed
 
     def test_text_runs_and_the_text_key_reach_their_node(self):
-        """A name with a space survives: it comes last."""
+        """A name with a space survives: it comes last. A run from a math
+        font says so (#1016)."""
         drawn = parse_drawn(
             _log(
-                "CGTEXT 0.1,0.1,0.1 12.00 1 12 data store",
-                "CGTEXT 0.4,0.4,0.4 12.00 0 9 data store",
+                "CGTEXT 0.1,0.1,0.1 12.00 1 0 12 data store",
+                "CGTEXT 0.4,0.4,0.4 8.40 0 1 9 data store",
                 "CGTEXTCOLOR cgInk|data store",
                 "CGNODE 0.0pt 0.0pt 0.0pt rectangle/data store",
                 "CGNB 0 0 10 10 - - 0 0 data store",
@@ -305,7 +306,7 @@ class TestColours:
         node = drawn.nodes["data store"]
         assert node.runs == (
             TextRun((0.1, 0.1, 0.1), 12.0, True, 12),
-            TextRun((0.4, 0.4, 0.4), 12.0, False, 9),
+            TextRun((0.4, 0.4, 0.4), 8.4, False, 9, math=True),
         )
         assert node.text_written == "cgInk"
 

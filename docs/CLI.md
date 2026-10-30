@@ -3139,7 +3139,10 @@ size reports (#1057), each beside the reference range of the layout the
 figure's `% cg-layout:` line names, and the wording reports `w1` to `w3`
 (#1055); they never count as findings. The contrast rules `k1` and `k2`
 name both colours and the ratio, as in
-`text cgAccent on fill cgAccent!10: 3.42:1, needs 4.5:1`. Over
+`text cgAccent on fill cgAccent!10: 3.42:1, needs 4.5:1`. The
+house-vocabulary rules (#1016) name what left the house style:
+`8.0pt, floor 12pt`, `border blue`, `cgFlow!45, band 6 to 12`, and a
+pic by its type and place, `cgstore at (0,1.5)`. Over
 `assets/tikz/exemplars/rag-stages.tex`, which fits the render's 453pt
 but not the article class's 345pt, with `--width 345`:
 

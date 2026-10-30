@@ -59,6 +59,10 @@ class TestRules:
                 "w2-tag",
                 "w3-gloss",
                 "w4-pictograph",
+                "type-below-floor",
+                "colour-off-palette",
+                "tint-outside-band",
+                "unnamed-pic",
                 "t1-labels",
                 "t2-tags",
             }

@@ -25,8 +25,10 @@
 \def\cgexpr#1{\pgfutil@ifundefined{tikz@#1color}{}%
   {\detokenize\expandafter\expandafter\expandafter{\csname tikz@#1color\endcsname}}}
 % The colours of a node's typeset text (#1055), read from its box: runs of
-% glyphs that share a fill colour, a size and a weight, as
-% `CGTEXT <r,g,b> <size> <bold> <glyphs> <name>`. A colour change inside
+% glyphs that share a fill colour, a size, a weight and whether the font
+% is a math font (#1016: one with math constants, so a subscript is told
+% from a shrunk label), as
+% `CGTEXT <r,g,b> <size> <bold> <math> <glyphs> <name>`. A colour change inside
 % the box is a colorstack whatsit (xcolor's \color, push/pop/set) or a
 % literal `rg` (pgf's own); the box starts in the colour current at the
 % node. Inlined with `%` and `#` as other characters, which Lua's
@@ -54,15 +56,16 @@ local function weight(id)
   local name = string.lower(f.fullname or f.name or '')
   local heavy = name:find('bold') or name:find('black') or name:find('heavy')
   local light = name:find('semibold') or name:find('demibold')
-  return (heavy and not light) and 1 or 0, (f.size or 0) / 65536
+  return (heavy and not light) and 1 or 0, (f.size or 0) / 65536,
+    (f.mathconstants or f.MathConstants) and 1 or 0
 end
 function cgprobe.runs(box, start, name)
   local counts, order, stack, current = {}, {}, {}, start
   local function visit(head)
     for n in node.traverse(head) do
       if n.id == GLYPH then
-        local bold, size = weight(n.font)
-        local key = current .. ' ' .. string.format('%.2f', size) .. ' ' .. bold
+        local bold, size, math = weight(n.font)
+        local key = current .. ' ' .. string.format('%.2f', size) .. ' ' .. bold .. ' ' .. math
         if not counts[key] then counts[key] = 0; order[#order + 1] = key end
         counts[key] = counts[key] + 1
       elseif n.id == HLIST or n.id == VLIST then visit(n.head)

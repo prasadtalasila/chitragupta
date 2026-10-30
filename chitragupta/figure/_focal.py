@@ -34,13 +34,20 @@ _AT_RE = re.compile(r"at\b")
 def cgkey_nodes(source: str) -> list[str]:
     """The name of every node whose options include an accent, in source
     order; `(unnamed)` for one with no name."""
+    return styled_nodes(source, _CGKEY_RE)
+
+
+def styled_nodes(source: str, style: re.Pattern[str]) -> list[str]:
+    """The name of every node whose options match `style`, in source
+    order; `(unnamed)` for one with no name. `unnamed-pic` (#1016) reads
+    the `cgwell`s through it."""
     text = strip_comments(source)
-    keyed = []
+    found = []
     for match in _NODE_START_RE.finditer(text):
         options, name, _ = declaration(text, match.end())
-        if _CGKEY_RE.search(options):
-            keyed.append(name or "(unnamed)")
-    return keyed
+        if style.search(options):
+            found.append(name or "(unnamed)")
+    return found
 
 
 def declaration(text: str, start: int) -> tuple[str, str, int]:
