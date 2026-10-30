@@ -7,6 +7,7 @@ are checked against a real compile in tests/test_figure_drawn.py.
 """
 
 from chitragupta.figure._colour import mix
+from chitragupta.figure._connectors import MM
 from chitragupta.figure._contrast import colour_names, contrast_rules
 from chitragupta.review.figure_layout._paint import Paint, TextRun
 from tests.figure_drawn_fixtures import drawn, line, node
@@ -114,6 +115,13 @@ class TestGround:
         found = _findings(outer, inner, _box("a", runs=[_run(ACCENT_TEXT)]))
 
         assert found == []
+
+    def test_a_holder_tikz_named_itself_is_named_by_its_centre(self):
+        """An unnamed `fit` behind a box is `tikz@f@1` inside TikZ (#1087)."""
+        zone = _box("tikz@f@1", box=(-10, -10, 100, 50), fill=Paint(ACCENT_TINT, "cgAccent!10"))
+        ((_, _, measurement),) = _findings(zone, _box("a", runs=[_run(ACCENT)]))
+
+        assert measurement.startswith(f"text cgAccent on ({45 / MM:.1f},{20 / MM:.1f})'s fill")
 
     def test_a_tag_holds_no_ground(self):
         """An unnamed node is a label, never a card behind anything."""

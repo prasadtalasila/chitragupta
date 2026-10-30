@@ -878,6 +878,14 @@ class TestOverlapOfEveryDrawnNode:
             f"({50 / MM:.1f},{7 / MM:.1f})+({110 / MM:.1f},{7 / MM:.1f})"
         ]
 
+    def test_a_node_tikz_named_itself_is_reported_by_position(self):
+        """A pin is `tikz@f@<n>` inside TikZ, which no source says (#1087)."""
+        pin = node("tikz@f@1", (30, 5, 70, 25))
+
+        shown = f"({50 / MM:.1f},{15 / MM:.1f})"
+
+        assert self._overlaps(node("a", (0, 0, 40, 20)), pin) == [f"{shown}+a"]
+
     def test_a_named_pair_is_reported_by_name(self):
         assert self._overlaps(node("a", (0, 0, 40, 20)), node("b", (30, 5, 70, 25))) == ["a+b"]
 
@@ -937,3 +945,25 @@ def test_colliding_unnamed_titles_are_found_in_a_real_figure(tmp_path):
     result = _check.check(path, _check.DEFAULT_WIDTH_PT)
 
     assert [f.rule for f in result.findings if f.rule == "node-overlap"] == ["node-overlap"]
+
+
+@needs_tikz
+def test_a_node_tikz_named_itself_is_never_shown_by_that_name(tmp_path):
+    """An unnamed node followed by `edge` is `tikz@f@1` inside TikZ. The
+    line through `c` is still reported, with that end named by its
+    centre (#1087)."""
+    path = tmp_path / "fig.tex"
+    path.write_text(
+        "\\begin{tikzpicture}\n"
+        "\\node[draw] (b) at (3,0) {B};\n"
+        "\\node[draw] at (0,0) {A} edge[->] (b);\n"
+        "\\node[draw] (c) at (1.5,0) {C};\n"
+        "\\end{tikzpicture}%\n",
+        encoding="utf-8",
+    )
+
+    findings = _check.check(path, _check.DEFAULT_WIDTH_PT).findings
+
+    (transit,) = [f for f in findings if f.rule == "c5-transit"]
+    assert transit.target.startswith("(") and transit.target.endswith(")->b")
+    assert not [f for f in findings if "@" in f.target + f.measurement]

@@ -7,6 +7,7 @@ TeX. `tests/figure_drawn_fixtures.py` builds them.
 import pytest
 
 from chitragupta.figure._connectors import (
+    MM,
     attach,
     connectors,
     segment_box_gap,
@@ -25,6 +26,21 @@ def test_a_line_between_two_boxes_is_a_connector():
 
     assert (connector.start, connector.end, connector.name) == ("a", "b", "a->b")
     assert loose == []
+
+
+def test_a_node_tikz_named_itself_still_connects_and_is_shown_by_position():
+    """`\\node {A} edge (b);` makes TikZ name `A` `tikz@f@1`. It is still
+    the line's end, but no source says that name, so a finding names it
+    by its centre, as an unnamed node is (#1087)."""
+    figure = drawn(
+        [node("tikz@f@1", (0, 0, 20, 10)), node("b", (60, 0, 80, 10))],
+        [line((20, 5), (60, 5))],
+    )
+
+    (connector,), _ = connectors(figure)
+
+    assert (connector.start, connector.end) == ("tikz@f@1", "b")
+    assert connector.name == f"({10 / MM:.1f},{5 / MM:.1f})->b"
 
 
 def test_an_end_inside_a_zone_attaches_to_the_member_not_the_zone():

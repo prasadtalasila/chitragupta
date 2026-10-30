@@ -102,6 +102,14 @@ class TestTransit:
 
         assert transit(cons, figure) == []
 
+    def test_c5_names_a_crossed_node_tikz_named_itself_by_position(self):
+        """A pin or an `alias` makes TikZ name a node `tikz@f@<n>` (#1087)."""
+        figure, cons = _figure(node("tikz@f@1", (60, 0, 80, 20)), tags=())
+
+        (finding,) = transit(cons, figure)
+
+        assert finding.measurement == f"crosses ({70 / MM:.1f},{10 / MM:.1f})"
+
 
 class TestTagCovered:
     def test_c6_fires_on_a_tag_over_a_node(self):
@@ -114,6 +122,13 @@ class TestTagCovered:
             "a->b",
             "tag under c",
         )
+
+    def test_c6_names_a_node_tikz_named_itself_by_position(self):
+        figure, cons = _figure(node("tikz@f@1", (70, 12, 90, 30)), _tag("cgu-1", (60, 13, 80, 18)))
+
+        (finding,) = tag_covered(cons, figure)
+
+        assert finding.measurement == f"tag under ({80 / MM:.1f},{21 / MM:.1f})"
 
     def test_c6_holds_on_a_tag_inside_its_zone(self):
         figure, cons = _figure(node("zone", (-10, -10, 150, 40)), _tag("cgu-1", (60, 13, 80, 18)))
