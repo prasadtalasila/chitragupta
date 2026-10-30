@@ -22,10 +22,12 @@ plotted path never reaches `max_print_line`):
 - `CGSEG <index> <op> <x> <y>`: one point of that path. `M`ove, `L`ine,
   `C` (three per Bézier: two supports, then the end), `Z` (close), and
   `R`/`S` (a rectangle's corner and size).
-- `CGNB <w> <s> <e> <n> <tx> <ty> <b> <c> <name>`: a node's box from its
-  four sides, its `text` anchor (`- -` where the shape has none), and the
-  two rotation entries of its transform, printed at the end of the
-  picture.
+- `CGNB <w> <s> <e> <n> <tx> <ty> <b> <c> <name>`: a node's box, the min
+  and max over the points of its four side anchors (#1064), its `text`
+  anchor (`- -` where the shape has none), and the two rotation entries
+  of its transform, printed at the end of the picture. A quarter turn
+  (`rotate=90` or `-90`) is measured: its box is exact, and its text box
+  is turned about the `text` anchor. Any other turn is set aside.
 - `CGPAINT`, `CGTEXT` and `CGTEXTCOLOR`: the colours paths and text were
   set in (#1055), whose grammar `_paint.py` documents and reads.
 
@@ -72,8 +74,9 @@ class DrawnNode:
     # contains others (an undrawn `fit` group) hides nothing; its text
     # box is no help, since `fit` sizes it to the whole group.
     framed: bool = True
-    # Turned by its transform (`sloped`, `rotate=`), so its box and text
-    # box, read square to the page, are not where it was set.
+    # Turned by its transform other than a quarter turn (`sloped`, a
+    # slanted `rotate=`), so its box and text box, read square to the
+    # page, are not where it was set.
     rotated: bool = False
     # Its frame's colours (#1055), `None` where it was not filled or not
     # drawn; its text's runs, and the `text=` it was given.
@@ -211,13 +214,27 @@ def _node(
 ) -> DrawnNode:
     w, s, e, n, tx, ty, *turn = fields
     shape, wd, ht, dp = texts.get(name, ("", 0.0, 0.0, 0.0))
+    b, c = (float(entry) for entry in turn)
+    quarter = _quarter_turn(b, c)
     text_box = None
     if tx != "-":
         x, y = float(tx), float(ty)
         text_box = (x, y - dp, x + wd, y + ht)
-    rotated = any(abs(float(entry)) > 1e-4 for entry in turn)
+        if quarter:
+            # pgf maps (x, y) to (a x + c y, b x + d y); a quarter turn has
+            # a = d = 0, so the text's corners land at (c y, b x).
+            xs = (c * -dp, c * ht)
+            ys = (b * 0.0, b * wd)
+            text_box = (x + min(xs), y + min(ys), x + max(xs), y + max(ys))
+    rotated = (abs(b) > 1e-4 or abs(c) > 1e-4) and not quarter
     box = (float(w), float(s), float(e), float(n))
     return DrawnNode(name, shape, box, text_box, framed, rotated)
+
+
+def _quarter_turn(b: float, c: float) -> bool:
+    """`rotate=90` or `rotate=-90`, unscaled: the turns whose box the
+    probe's four side anchors give exactly (#1064)."""
+    return abs(abs(b) - 1.0) < 1e-4 and abs(b + c) < 1e-4
 
 
 def _lines(index: int, path: _Path) -> list[DrawnLine]:

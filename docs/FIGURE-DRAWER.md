@@ -189,20 +189,22 @@ A rule that *applies* is measured on every figure of that layout.
 breaks it on purpose. *Rare* means the rule is measured, but the
 layout seldom gives it anything to find.
 
-| Rule | Pipeline | Map | Layered stack | Control loop | Branching tree | Hub-and-spoke | Zoned spine | Comparison | State machine | Sequence |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| c1-orthogonal | applies | rare | applies | applies | applies | exempt | applies | applies | exempt | applies |
-| c2-tag-clearance | applies | rare | applies | applies | applies | applies | applies | applies | applies | applies |
-| c3-coincident | applies | rare | applies | applies | applies | applies | applies | applies | applies | rare |
-| c4-attach | applies | rare | applies | applies | applies | exempt | applies | applies | exempt | exempt |
-| c5-transit | applies | rare | applies | applies | applies | applies | applies | applies | applies | exempt |
-| c6-tag-covered | applies | rare | applies | applies | applies | applies | applies | applies | applies | applies |
-| c7-dangling-tip | applies | rare | applies | applies | applies | applies | applies | applies | applies | applies |
-| k1-stroke | applies | applies | applies | applies | applies | applies | applies | applies | applies | applies |
-| k2-text | applies | applies | applies | applies | applies | applies | applies | applies | applies | applies |
+| Rule | Pipeline | Map | Layered stack | Control loop | Branching tree | Hub-and-spoke | Zoned spine | Comparison | State machine | Sequence | Timeline |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| c1-orthogonal | applies | rare | applies | applies | applies | exempt | applies | applies | exempt | applies | applies |
+| c2-tag-clearance | applies | rare | applies | applies | applies | applies | applies | applies | applies | applies | rare |
+| c3-coincident | applies | rare | applies | applies | applies | applies | applies | applies | applies | rare | rare |
+| c4-attach | applies | rare | applies | applies | applies | exempt | applies | applies | exempt | exempt | applies |
+| c5-transit | applies | rare | applies | applies | applies | applies | applies | applies | applies | exempt | applies |
+| c6-tag-covered | applies | rare | applies | applies | applies | applies | applies | applies | applies | applies | rare |
+| c7-dangling-tip | applies | rare | applies | applies | applies | applies | applies | applies | applies | applies | applies |
+| k1-stroke | applies | applies | applies | applies | applies | applies | applies | applies | applies | applies | applies |
+| k2-text | applies | applies | applies | applies | applies | applies | applies | applies | applies | applies | applies |
 
 A map argues by where things sit, so its scaffold draws no line, and
-c1 to c7 seldom have anything to measure. A comparison's lines run
+c1 to c7 seldom have anything to measure. A timeline's lines are the pieces of
+its axis, which carry no tag and never run side by side, so c2, c3
+and c6 seldom fire on it; the rest hold every piece. A comparison's lines run
 inside each panel, never between them, and are held to every rule. A
 state machine is exempt from c1 and c4 like the hub, because an
 automaton's transitions curve and loop back on their own state.

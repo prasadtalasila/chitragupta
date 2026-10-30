@@ -45,6 +45,7 @@ maps onto a TikZ idiom to use:
 | State machine | circles (`cgstate`) with `bend` and `loop` |
 | Comparison | two `fit` panels, matched parts on shared rows |
 | Sequence | thin lifeline nodes, with level messages between them |
+| Timeline | ticks placed by fraction along one chained axis, eras as banded cards |
 
 (The first six are PaperBanana's planner supplement, read and not
 copied; [INSPIRATION.md](INSPIRATION.md) carries the credit.)
@@ -78,6 +79,18 @@ message is level, drawn at a named moment (`(a-l.east |- t1) --
 (b-l.west |- t1)`), and a reply is dashed. `c4-attach` and `c5-transit`
 are not evaluated for it (see below). If each party only hands work on
 to the next and nothing comes back, it is a pipeline.
+
+**The timeline** is one time axis with each event a thin tick at its
+own fraction of it, `($(t0)!<f>!(tend.west)$)`, so a gap on the page is
+a gap in time. Reach for it when when things happen, and how far apart,
+is the claim: an incident, a simulation clock, a release history. The
+axis is drawn tick to tick, so each piece is a connector and no rule is
+waived; a single line under the ticks would cross every one. Labels
+hang below their ticks turned to read bottom to top (`rotate=90,
+anchor=east`), and an era is a card fitted between two times in a band
+below, its title level and inside it. The one event the figure is
+about takes `cgfocus`, an accented tick, since a tick cannot take the
+`cgkey` card. If only the order matters, it is a pipeline.
 
 **There is a starting file for every row of that table, in
 `assets/tikz/`.** One per metaphor, named for it, each compiling on its
@@ -519,7 +532,7 @@ the worst of the two orders to fail in.
 
 This is the same discipline the `\usetikzlibrary` line already follows,
 for the same reason, and it means the definitions are duplicated across
-figures on purpose. The ten scaffolds in `assets/tikz/` all carry the
+figures on purpose. The eleven scaffolds in `assets/tikz/` all carry the
 block, so copying one gets it for free.
 
 ### 🧱 The house figure style
@@ -727,7 +740,7 @@ emits a bare `\begin{figure}` around the marker with no scale knob, so a
 pipeline-rendered figure is drawn at natural size. The defect is what a
 *hand-written* document does, which is exactly `thesis-chapter-writer`'s
 case: its fragment is `\input` into a thesis this project never sees.
-The ten scaffolds are each laid out to the `article` class's 345pt
+The eleven scaffolds are each laid out to the `article` class's 345pt
 text width, and a test compiles each one there and fails on an
 `Overfull \hbox`.
 
@@ -784,7 +797,7 @@ ones authors get wrong:
   fix for a finding is to change what you asked TikZ for (a
   `sibling distance`, a `row sep`, a different library), and never to
   nudge a coordinate until the number moves. `assets/tikz/` is the
-  starting point for that, and none of its ten scaffolds places
+  starting point for that, and none of its eleven scaffolds places
   a node at a coordinate.
 - **Its thresholds are the checker's, not this document's.** "An empty
   band worth more than a third of the height" is a number chosen so
@@ -833,10 +846,10 @@ left unnamed, and one TikZ names itself, `tikz@f@<n>` (a pin, an
 | `nothing-measurable` | figure | objective | The figure names no node, so the geometry rules had nothing to measure. Name the nodes you draw |
 | `size-width` | figure | objective | The picture is wider than the target text width: 453pt by default, the render's A4 at 1in margins, or `--width`. Several pictures in one file are measured together, as they print side by side |
 | `size-stray` | figure | objective | The figure, set as one box, is wider than its picture by more than 0.5pt: a line outside the picture that ends without `%` sets a space when the figure is `\input` inline or measured with `\sbox` (the float the renderer uses drops it). Not measured for a file with several pictures, whose spacing is deliberate |
-| `focal-count` | figure | objective | More than one accented node, `cgkey` or `cgkeystate`: if two things are accented, neither is. Read from the source, so an accent reached only through a style the figure defines itself is not seen |
+| `focal-count` | figure | objective | More than one accented node, `cgkey`, `cgkeystate` or a timeline's `cgfocus` tick: if two things are accented, neither is. Read from the source, so an accent reached only through a style the figure defines itself is not seen |
 | `content-protrusion` | figure | objective | An empty horizontal band taller than a third of the figure ("Check the drawn figure against this list" above) |
 | `loads-library-by-hand` | figure | objective | A library loaded through its internal macro instead of `\usetikzlibrary` (#781) |
-| `node-overlap` | element | objective | Two nodes' boxes intersect; the target is the pair, `a+b`. A zone containing its nodes is not an overlap. Every node TikZ drew is measured, an unnamed one (a zone title, a note) named by its centre, `(x,y)` in mm; a tag on a line is `c6`'s, and a round node under 7mm (a step badge) is left out |
+| `node-overlap` | element | objective | Two nodes' boxes intersect; the target is the pair, `a+b`. A zone containing its nodes is not an overlap. Every node TikZ drew is measured, an unnamed one (a zone title, a note) named by its centre, `(x,y)` in mm; a label turned a quarter (`rotate=90` or `-90`) is measured where it was set, and one at any other angle is left out. A zone is a node that contains another; a `\coordinate` inside a box does not make it one. A tag on a line is `c6`'s, and a round node under 7mm (a step badge) is left out |
 | `node-text-overload` | element | objective | A node's text runs past 15 words; the target is the node |
 | `stranded-arrowhead` | element | objective | An arrowhead lands mid-line where another path continues; the target is the point, `(x,y)` |
 | `c1-orthogonal` | element | objective | A connector between nodes whose ends differ by more than 1mm in both x and y is drawn straight or bent instead of as an elbow (`-\|`, `\|-`); the target is the edge, `a->b`. Not evaluated for the `hub-and-spoke-network` and `state-machine` layouts; a tree is held to it |

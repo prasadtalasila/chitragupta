@@ -1,0 +1,17 @@
+% cg-layout: pipeline
+% figure check fixture (#1064): the must-not-fire case for turned labels.
+% The same labels as turned-collide.tex, on ticks 40mm apart, with the
+% card below their feet: no overlap, and nothing protrudes.
+\usetikzlibrary{positioning}%
+\begin{tikzpicture}[
+    tick/.style={fill, inner sep=0pt, outer sep=0pt, minimum width=0.9mm,
+      minimum height=3mm},
+    lab/.style={rotate=90, anchor=east, inner sep=1pt}]
+  \node[tick] (e1) {};
+  \node[tick, right=40mm of e1] (e2) {};
+  \node[lab] (e1-n) at ([yshift=-1mm]e1.south) {departure};
+  \node[lab] (e2-n) at ([yshift=-1mm]e2.south) {arrival};
+  \draw (e1) -- (e2);
+  \node[draw, minimum width=50mm, minimum height=8mm, anchor=north,
+    below=28mm of e1.south east] (band-card) {};
+\end{tikzpicture}%

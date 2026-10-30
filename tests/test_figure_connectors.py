@@ -12,6 +12,7 @@ from chitragupta.figure._connectors import (
     connectors,
     segment_box_gap,
     solid,
+    zones,
 )
 from tests.figure_drawn_fixtures import drawn, line, node
 
@@ -114,3 +115,26 @@ def test_the_gap_past_a_corner_is_the_corner_distance():
 def test_the_gap_from_a_zero_length_segment_is_its_point_distance():
     """A path can repeat a point; pgf logs it as a segment of length 0."""
     assert segment_box_gap((23, 14), (23, 14), (0, 0, 20, 10)) == pytest.approx(5.0)
+
+
+def test_a_title_covering_a_coordinate_is_not_a_zone():
+    """A point inside a box does not make the box a group: a title that
+    happened to cover the `band` coordinate was taken for a zone card,
+    and `node-overlap` then skipped it (#1064)."""
+    title = node(
+        "busy-t",
+        (-18.7, -37.1, 55.7, -23.2),
+        framed=False,
+        text_box=(-18.7, -37.1, 55.7, -23.2),
+    )
+    band = node("band", (0, -30.2, 0, -30.2), shape="coordinate")
+
+    assert zones({n.name: n for n in (title, band)}) == set()
+
+
+def test_a_card_holding_a_title_and_a_coordinate_is_still_a_zone():
+    card = node("quiet", (39.7, -42.0, 302.8, -18.3))
+    title = node("quiet-t", (156.9, -36.9, 185.6, -23.4), framed=False)
+    band = node("band", (100, -30.2, 100, -30.2), shape="coordinate")
+
+    assert zones({n.name: n for n in (card, title, band)}) == {"quiet"}

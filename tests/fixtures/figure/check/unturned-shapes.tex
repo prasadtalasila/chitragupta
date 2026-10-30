@@ -1,0 +1,12 @@
+% cg-layout: pipeline
+% figure check fixture (#1064): unturned shapes whose boxes must not move
+% when the probe reads a box as the min and max of four side anchors
+% instead of one coordinate from each.
+\usetikzlibrary{positioning,shapes.multipart,shapes.geometric}%
+\begin{tikzpicture}[every node/.style={draw, inner sep=0pt, outer sep=0pt},
+    node distance=6mm]
+  \node[circle, minimum size=10mm] (round) {};
+  \node[rectangle, minimum width=20mm, minimum height=10mm, right=of round] (box) {};
+  \node[circle split, right=of box] (split) {top \nodepart{lower} bottom};
+  \node[cylinder, minimum height=12mm, right=of split] (drum) {drum};
+\end{tikzpicture}%

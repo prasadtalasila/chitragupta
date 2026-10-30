@@ -12,7 +12,9 @@ it sets off, who waits on whom.
 - **Not when** each party only hands work on to the next and nothing
   comes back (use [the pipeline](pipeline.md)), or what matters is the
   state a system is in rather than who talks to it (use [the state
-  machine](state-machine.md)).
+  machine](state-machine.md)), or when things happen and how far apart
+  is the claim, with no one talking to anyone (use [the
+  timeline](timeline.md)).
 
 ## Anti-patterns
 

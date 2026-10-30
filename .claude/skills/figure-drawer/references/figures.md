@@ -33,6 +33,7 @@ wins if the two disagree):
 | `state-machine.tex` | State machine | it is in one state at a time, and a state can recur, stay put or be sent back |
 | `comparison.tex` | Comparison | two things made of the same parts, and the point is the part that differs |
 | `sequence.tex` | Sequence | parties exchange messages and the order of the exchanges is the claim |
+| `timeline.tex` | Timeline | when things happen, and how far apart, is the claim |
 
 The choices people get wrong:
 
@@ -50,6 +51,9 @@ The choices people get wrong:
   passes through stages and never returns is a pipeline. If parties
   answer each other and the order of the exchanges is the point, it is
   a sequence.
+- **Pipeline or timeline?** Do the gaps matter? If the stages only
+  follow one another, it is a pipeline. If when each one happens, and
+  how long passes between them, is the point, it is a timeline.
 - **Layered stack or zoned spine?** A stack answers "what may depend on
   what" and reads top to bottom. A spine answers "what happens, in
   order" and reads left to right.

@@ -39,10 +39,10 @@ own heading, never count as findings and cannot be allowed.
 | `nothing-measurable` | figure | Name the nodes you draw (`\node (a)`, `child { node (a) ... }`) |
 | `size-width` | figure | Wrap a row, cut a gloss, stack panels; see section 3 of `.claude/skills/figure-drawer/references/figures.md` |
 | `size-stray` | figure | End every line outside the picture with `%` |
-| `focal-count` | figure | Keep `cgkey` on the one node the figure is about |
+| `focal-count` | figure | Keep `cgkey` (`cgkeystate` on a state, `cgfocus` on a timeline tick) on the one node the figure is about |
 | `content-protrusion` | figure | Pull the stranded element back into the main block |
 | `loads-library-by-hand` | figure | Delete the internal macro; keep the plain `\usetikzlibrary` line |
-| `node-overlap` | element | More room between the pair (`node distance`, a gap). A pair named `(x,y)` is a node the source does not name (a zone title, a note, a pin, a `child`), at that point in mm |
+| `node-overlap` | element | More room between the pair (`node distance`, a gap). A pair named `(x,y)` is a node the source does not name (a zone title, a note, a pin, a `child`), at that point in mm. A label turned a quarter is measured as set; text at any other angle is not |
 | `node-text-overload` | element | Cut the label to 15 words or split the node |
 | `stranded-arrowhead` | element | Put the `->` on the last piece of the line only |
 | `c1-orthogonal` | element | Route the edge as an elbow, `-\|` or `\|-`, or line the two nodes up |
