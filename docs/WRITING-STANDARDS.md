@@ -771,7 +771,10 @@ it fits depends on the math font as much as on the matrix: the hint
 in #1076 set without overflow under Computer Modern and ran 58pt into
 the margin under STIX Two Math. Flagging every inline matrix instead would
 have been mostly noise: the same book has seven others, and none of them
-overflows. The rule above is the guard.
+overflows. The rule above is the guard, and it is stricter than the
+overflow on purpose: the appendix's inline `A = [2, 1; 0, 3]` fits today
+and breaks the rule, because a different font or a narrower page is all
+it takes to push it past the margin.
 
 A long aligned array in an *unmarked* fence is past the four-line bar and
 goes unreported too, deliberately, since that is the shape whose marker
