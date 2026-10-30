@@ -51,6 +51,7 @@ def _run(size=12.0, colour=INK, math=False):
 
 def _card(name="a", box=(0, 0, 60, 30), **kw):
     kw.setdefault("stroke", Paint(FLOW, "cgFlowLine"))
+    kw.setdefault("runs", [_run()])
     return node(name, box, **kw)
 
 
@@ -90,7 +91,7 @@ class TestTypeFloor:
         ]
 
     def test_a_node_with_no_text_is_not_measured(self):
-        assert _house.type_floor(drawn([_card()], [])) == []
+        assert _house.type_floor(drawn([_card(runs=[])], [])) == []
 
     def test_an_unnamed_node_is_named_by_its_centre(self):
         node_ = _card("tikz@f@3", box=(0, 0, 20 * MM, 10 * MM), runs=[_run(6.0)])
@@ -225,8 +226,16 @@ class TestTintBand:
 
         assert [f[0] for f in _found(state)] == ["tint-outside-band"]
 
-    def test_an_unframed_node_is_not_a_card(self):
-        assert _found(node("t", (0, 0, 10, 10), framed=False, fill=_tint(45))) == []
+    def test_a_node_with_no_text_has_no_label_to_drown(self):
+        """A timeline's accented tick is a solid `cgAccentLine` bar."""
+        tick = _card("e2", box=(0, 0, 2.6, 9), fill=Paint(FLOW, "cgFlowLine"), runs=[])
+
+        assert _found(tick) == []
+
+    def test_an_unframed_label_on_a_solid_fill_is_held_to_it(self):
+        label = node("t", (0, 0, 10, 10), framed=False, fill=_tint(45), runs=[_run()])
+
+        assert [f[0] for f in _found(label)] == ["tint-outside-band"]
 
     def test_white_paper_and_ink_tints_are_not_hues(self):
         ink_tint = Paint(mix(INK, WHITE, 0.30), "cgInk!30")

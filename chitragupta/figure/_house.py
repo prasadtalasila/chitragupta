@@ -10,9 +10,11 @@ block and then writes past it.
   block does not define, a white tint of one excepted. A framed node
   with no `draw=` colour strokes in the current one, and is the half-
   styled node #1016 called `raw-node-in-styled-figure`.
-- `tint-outside-band`: a card filled with a house hue mixed with white
-  outside 6 to 12, or solid: the hue itself, or its `Line` or `Text`
-  shade. A step badge is a `Text`-shade disc on purpose.
+- `tint-outside-band`: a node with text filled with a house hue mixed
+  with white outside 6 to 12, or solid: the hue itself, or its `Line` or
+  `Text` shade, which the label drowns in. A step badge is a `Text`-shade
+  disc on purpose, and a node with no text (a timeline's tick, a bar)
+  has no label to drown.
 - `unnamed-pic`, from source: a `\\pic` not placed in a named `cgwell`,
   which no rule measures (`node-overlap` sees nodes, not a pic's paths).
 - `focal-count` lives here too: the accent is house vocabulary.
@@ -159,7 +161,7 @@ def paint_rules(source: str, drawn: Drawn) -> list[Finding]:
     for name, node in drawn.nodes.items():
         target = shown_as(name, node)
         found += _node_paint(target, node, palette)
-        if node.fill is not None and node.framed and not is_badge(node):
+        if node.fill is not None and node.runs and not is_badge(node):
             found += _tint(target, node.fill, palette)
     found += _line_paint(drawn, palette)
     return list(dict.fromkeys(found))

@@ -97,12 +97,13 @@ other names, and this item builds the four that had not.
   so a raw `\fill[red]` is not seen: a stated limit.
 - **A figure without the house block** has both colour rules listed as
   not measured ("no house block"), not a finding on every colour it uses.
-- **`tint-outside-band` reads framed node fills only.** A fill that is a
-  house hue (a name with `Line` and `Text` shades) mixed with white
-  outside 6 to 12, the bare hue, or its `Line` or `Text` shade, fires,
-  read from the fill's colour as the palette rule reads it.
-  A `pic`'s inner fills are texture, and a round node under 7mm (the
-  step badge, a `Text`-shade disc) is exempt, as in `node-overlap`.
+- **`tint-outside-band` reads the fills of nodes with text.** A fill
+  that is a house hue (a name with `Line` and `Text` shades) mixed with
+  white outside 6 to 12, the bare hue, or its `Line` or `Text` shade,
+  fires, read from the fill's colour as the palette rule reads it. A
+  `pic`'s inner fills are texture, a round node under 7mm (the step
+  badge, a `Text`-shade disc) is exempt, as in `node-overlap`, and so is
+  a node with no text, which has no label to drown.
 - **`unnamed-pic` reads the source.** A `\pic` fires unless it is placed
   `at` a node the figure declares with `cgwell`. Its target is the pic
   and where it was put, `"cgstore at (0,1.5)"`, quoted in an allow.
@@ -175,6 +176,10 @@ figures, reading the probe's log directly:
 - **Text inside a subscript fires.** `$k_{\text{in}}$` sets `in` from
   the text font at script size; `\mathrm` is the fix, and the rule's row
   says so rather than guessing which small text runs are subscripts.
+- **A node with no text is not held to the band.** #1103's timeline
+  landed while this was in review: its accented tick is a 0.9mm bar
+  filled `cgAccentLine`, a mark rather than a card, and the first rule
+  (framed nodes) fired on it in the scaffold and its exemplar.
 - **`focal-count` moved with `FIGURE`.** `FIGURE` now lives in
   `_rules.py` beside `Finding`, so `_house.py` can name a figure-scope
   target without importing `_check.py`, which imports it.
