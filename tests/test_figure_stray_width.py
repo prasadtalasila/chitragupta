@@ -36,6 +36,7 @@ SCAFFOLDS = [
     "map",
     "control-loop",
     "layered-stack",
+    "comparison",
 ]
 # Well under the 135pt the house line measured on 2026-10-30, and well
 # over anything a stray `%`-less line in a figure sets (about 4pt).

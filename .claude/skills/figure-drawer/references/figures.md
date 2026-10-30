@@ -30,6 +30,7 @@ wins if the two disagree):
 | `branching-tree.tex` | Branching tree | one thing divides into cases and no case rejoins another |
 | `hub-and-spoke-network.tex` | Hub-and-spoke network | everything going through one place *is* the claim |
 | `zoned-spine.tex` | Zoned spine | one storyline, with parallel commentaries on points along it |
+| `comparison.tex` | Comparison | two things made of the same parts, and the point is the part that differs |
 
 The choices people get wrong:
 
