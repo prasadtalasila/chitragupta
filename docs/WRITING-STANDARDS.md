@@ -689,6 +689,14 @@ govern the mapping's LaTeX column, which is the only place LaTeX appears.
   inside a blockquote is still a fence**, which is where the occurrence
   that prompted this was hiding: one relation, set three ways in
   one chapter, and the fenced one was the odd one out.
+- **A matrix with two or more columns is displayed, not set inline.** TeX
+  cannot break a line inside `\begin{bmatrix}`, so an inline matrix is
+  one box the paragraph has to fit around, and two in a sentence leave
+  it nowhere to break. Write the marker and fence above, with both
+  matrices on one line if the sentence names two. Set inline,
+  `F = [1, 0; 0, 0.7]` and `G = [1.0e-4, 0; 0, 3.0e-4]` ran 58pt into
+  the margin of this repository's own book (#1076). A short column
+  vector such as `x = [1.70; 48.0]` is narrow enough to stay inline.
 - **A text subscript is upright.** `$k_\mathrm{day}$`, not `$k_{day}$`;
   the latter sets *d*, *a*, *y* as three italic variables multiplied
   together.
@@ -757,6 +765,13 @@ the *inline* form has no mapping to close the world against, so it gets
 the operator heuristic only. All three happened in this
 repository's own book; `plans/math-typesetting-convention.md` records
 what each cost.
+
+An inline matrix wide enough to overflow is not checked either. Whether
+it fits depends on the math font as much as on the matrix: the hint
+in #1076 set without overflow under Computer Modern and ran 58pt into
+the margin under STIX Two Math. Flagging every inline matrix instead would
+have been mostly noise: the same book has seven others, and none of them
+overflows. The rule above is the guard.
 
 A long aligned array in an *unmarked* fence is past the four-line bar and
 goes unreported too, deliberately, since that is the shape whose marker
