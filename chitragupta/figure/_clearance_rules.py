@@ -20,7 +20,7 @@ from chitragupta.figure._connectors import (
     solid,
     zones,
 )
-from chitragupta.figure._rules import Finding
+from chitragupta.figure._rules import RULES, Finding
 from chitragupta.review.figure_layout import Box, Drawn, DrawnNode, contains, intersects
 
 # c2: a tag's text this close to its line reads as on it, and this far
@@ -54,9 +54,12 @@ def tag_clearance(cons: list[Connector], drawn: Drawn) -> list[Finding]:
     return found
 
 
-def transit(cons: list[Connector], drawn: Drawn) -> list[Finding]:
+def transit(cons: list[Connector], drawn: Drawn, layout: str | None = None) -> list[Finding]:
     """`c5-transit`: a connector crossing a node that is neither of its
-    ends. A zone containing either end is not counted, nor is a tag."""
+    ends. A zone containing either end is not counted, nor is a tag. A
+    layout the rule exempts is not evaluated."""
+    if layout in RULES["c5-transit"].exempt:
+        return []
     nodes = solid(drawn)
     hidden = _unframed_zones(nodes)
     found = []

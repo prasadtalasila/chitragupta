@@ -9,8 +9,11 @@ path through a system.
 - **Reach for it when** the reader follows one path from left to right
   and each stage hands something to the next.
 - **Not when** the last stage feeds the first (use [the control
-  loop](control-loop.md)), or something comments on points along the
-  path (use [the zoned spine](zoned-spine.md)).
+  loop](control-loop.md)); something comments on points along the
+  path (use [the zoned spine](zoned-spine.md)); a stage can stay put or
+  be sent back by more than one event (use [the state
+  machine](state-machine.md)); the stages answer each other (use [the
+  sequence](sequence.md)).
 
 ## Anti-patterns
 

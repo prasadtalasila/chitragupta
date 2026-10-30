@@ -16,7 +16,9 @@ figure is warranted at all.
 
 | Pattern: the figure argues... | Layout | Tell |
 | --- | --- | --- |
-| a lifecycle with a start and an end | [Pipeline](layouts/pipeline.md) | each stage hands something to the next |
+| a lifecycle with a start and an end | [Pipeline](layouts/pipeline.md) | each stage hands something to the next; at most one retry goes back |
+| a lifecycle where a state stays put, or is sent back by more than one event | [State machine](layouts/state-machine.md) | it is in one state at a time, and events move it |
+| an automaton, a protocol's states, a Markov chain | [State machine](layouts/state-machine.md) | every arrow is an event or a probability |
 | a bottleneck in a sequence | [Pipeline](layouts/pipeline.md) | one stage is the narrow one, marked `cgkey` |
 | a request's or a build's path | [Pipeline](layouts/pipeline.md) | the reader asks "what happens next" |
 | a cycle that closes, a feedback | [Control loop](layouts/control-loop.md) | the last step feeds the first |
@@ -26,6 +28,7 @@ figure is warranted at all.
 | levels of abstraction | [Layered stack](layouts/layered-stack.md) | reads top to bottom |
 | a taxonomy, a decision, cases | [Branching tree](layouts/branching-tree.md) | one thing divides and no case rejoins another |
 | a single point everything crosses | [Hub-and-spoke network](layouts/hub-and-spoke-network.md) | removing the centre disconnects the rest |
+| a protocol, a handshake, an exchange in order | [Sequence](layouts/sequence.md) | a reply comes back to the party that asked |
 | a trade-off on two axes | [Map](layouts/map.md) | where things sit matters, not how they connect |
 | two alternatives compared on shared axes | [Map](layouts/map.md) | one pair of named axes places both |
 | a before and an after, or two approaches part by part | [Comparison](layouts/comparison.md) | each part has a match on the other side, and one differs |
@@ -35,9 +38,19 @@ figure is warranted at all.
 - **Bottleneck or hub?** A bottleneck is one narrow stage in a sequence
   (a pipeline). A hub is a place every path crosses with no sequence
   (a hub-and-spoke).
+- **Loop or state machine?** A loop's nodes are stages that all run on
+  every pass. A state machine's nodes are conditions, and only one holds
+  at a time.
+- **Pipeline or state machine?** One retry arrow drawn back is still a
+  pipeline (`figures.md` §1). A state that stays put, or several ways
+  back, make it a state machine: the moves are the claim, not the path.
+- **Request path or exchange?** A request's path through stages that
+  never answer is a pipeline. Parties that answer each other, where who
+  asked first matters, are a sequence.
 
 The layout pairs people confuse (pipeline or loop, pipeline or spine,
-tree or hub, stack or spine) are in `figures.md` §1.
+pipeline or sequence, tree or hub, stack or spine) are in `figures.md`
+§1.
 
 ## When no row fits
 

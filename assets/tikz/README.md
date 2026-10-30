@@ -15,7 +15,9 @@ empty `tikzpicture`.
 | `branching-tree.tex` | Branching tree | one thing divides into cases and no case rejoins another |
 | `hub-and-spoke-network.tex` | Hub-and-spoke network | everything going through one place *is* the claim |
 | `zoned-spine.tex` | Zoned spine | one storyline, with parallel commentaries on points along it |
+| `state-machine.tex` | State machine | it is in one state at a time, and a state can recur, stay put or be sent back |
 | `comparison.tex` | Comparison | two things made of the same parts, and the point is the part that differs |
+| `sequence.tex` | Sequence | parties exchange messages and the order of the exchanges is the claim |
 
 Two more things live here that are not scaffolds:
 
@@ -23,11 +25,15 @@ Two more things live here that are not scaffolds:
   roles, zone cards, edges, tags, badges, a legend swatch and a two-step
   label ramp. Every scaffold carries a verbatim copy of it, so you never
   copy it by hand; see below.
-- **`exemplars/`** holds three figures from one paper redrawn with that
-  block, and one comparison drawn for this project, at a wider page (the render's
-  453pt) than the scaffolds. They show what the vocabulary is for: zone
-  cards, step badges, a legend, the house `pic`s and lettered panels.
-  Read them; start from a scaffold.
+- **`exemplars/`** holds six figures drawn with that block, at a wider
+  page (the render's 453pt) than the scaffolds: three from one paper
+  redrawn, and a comparison, a Markov chain and a sequence drawn for
+  this project. They show what the vocabulary is for: zone cards, step
+  badges, a legend, the house `pic`s, lettered panels, an accented
+  state and lifelines. `pump-markov-chain.tex` is the reference book's
+  pump as a Markov chain, the state-machine layout with an accented
+  state and no initial or accepting one. Read them; start from a
+  scaffold.
 
 ## 🚀 Using one
 
@@ -90,7 +96,10 @@ as such a pair: copy its `.txt` beside the `.tex` and edit both.
 `chitragupta figure check` reports a twin that is missing or that lacks a
 name, tag or panel letter the TikZ has (`twin-missing`, `t1-labels`,
 `t2-tags`, `t3-panels`), and `tests/test_tikz_scaffolds.py` holds every
-pair here clean under those rules.
+pair here clean under those rules. A twin is the clearest 7-bit form
+of what the figure says, not necessarily a tracing of it:
+`state-machine.txt` is a transition table, because a self-loop and a
+curved pair draw badly in characters and the table is more precise.
 
 **A panelled figure is still one file.** Copy the same scaffold once per
 panel into a single `tikzpicture` -- or two different ones, if the panels

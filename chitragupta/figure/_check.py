@@ -261,11 +261,11 @@ def _size(
 
 
 def _focal(source: str) -> list[Finding]:
-    """`focal-count`: at most one `cgkey` node (`_focal.py`)."""
+    """`focal-count`: at most one accented node (`_focal.py`)."""
     keyed = cgkey_nodes(source)
     if len(keyed) < 2:
         return []
-    return [Finding("focal-count", FIGURE, f"{len(keyed)} cgkey nodes: {', '.join(keyed)}")]
+    return [Finding("focal-count", FIGURE, f"{len(keyed)} accented nodes: {', '.join(keyed)}")]
 
 
 def _geometry(figure: FigureResult) -> list[Finding]:

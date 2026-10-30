@@ -144,6 +144,9 @@ class TestFocalCount:
             ("\\draw (0,0) node[cgkey] (a) {A} -- (1,0) node[cgkey] (b) {B};\n", "a, b"),
             ("\\node[label={[red]above:x}, cgkey] (a) {A};\n\\node[cgkey] (b) {B};\n", "a, b"),
             ("\\node at (0,0) [cgkey] (a) {A};\n\\node (b) at (1,0) [cgkey] {B};\n", "a, b"),
+            # An accented state is an accent too (#1062).
+            ("\\node[cgkeystate] (a) {A};\n\\node[cgkeystate] (b) {B};\n", "a, b"),
+            ("\\node[cgkey] (a) {A};\n\\node[cgkeystate] (b) {B};\n", "a, b"),
         ],
     )
     def test_two_accented_nodes_fire(self, body, named):
@@ -151,7 +154,7 @@ class TestFocalCount:
 
         [finding] = findings
         assert finding.rule == "focal-count"
-        assert finding.measurement == f"2 cgkey nodes: {named}"
+        assert finding.measurement == f"2 accented nodes: {named}"
 
     @pytest.mark.parametrize(
         "body",
@@ -159,6 +162,8 @@ class TestFocalCount:
             "\\node[cgkey] (a) {A};\n\\node[cgbox] (b) {B};\n",
             "\\node[cgkey] (a) {A};\n% \\node[cgkey] (b) {B};\n",
             "\\node[cgkey] (a) {A};\n\\node[cgkeyish] (b) {B};\n",
+            "\\node[cgkey] (a) {A};\n\\node[cgkeystateish] (b) {B};\n",
+            "\\node[cgkeystate] (a) {A};\n\\node[my-cgkeystate] (b) {B};\n",
             "\\node[cgbox] (a) {a cgkey in the label};\n\\node[cgkey] (b) {B};\n",
             "\\node[cgkey] at (cgkey) {A};\n\\node (b) [cgbox] {B};\n",
         ],
@@ -412,7 +417,9 @@ class TestAgainstRealLualatex:
             "map",
             "control-loop",
             "layered-stack",
+            "state-machine",
             "comparison",
+            "sequence",
         ],
     )
     def test_every_scaffold_compiles_boxed_with_one_focal_node_and_no_stray(self, name):
@@ -728,7 +735,9 @@ class TestAdvisoryAgainstRealLualatex:
             "map",
             "control-loop",
             "layered-stack",
+            "state-machine",
             "comparison",
+            "sequence",
         ],
     )
     def test_every_scaffold_reads_its_own_reference_and_squashes_nothing(self, name):
@@ -832,6 +841,16 @@ class TestConnectorRulesAgainstRealLualatex:
 
         rules = _rules(result.findings)
         assert "c7-dangling-tip" in rules and "c2-tag-clearance" in rules
+
+    def test_lifelines_fire_no_connector_rule_in_a_sequence(self):
+        """Many messages meeting one lifeline, and one skipping a lifeline,
+        are a sequence's grammar (#1063). The same figure read as a
+        pipeline fires both, so the exemption is what holds it clean."""
+        path = FIXTURES / "lifelines.tex"
+
+        assert not set(_check.CONNECTOR) & set(_rules(_check.check(path, 453.0).findings))
+        as_pipeline = _rules(_check.check(path, 453.0, "pipeline").findings)
+        assert {"c4-attach", "c5-transit"} <= set(as_pipeline)
 
     def test_a_clean_two_node_figure_fires_no_connector_rule(self):
         result = _check.check(FIXTURES / "narrow.tex", _check.DEFAULT_WIDTH_PT)

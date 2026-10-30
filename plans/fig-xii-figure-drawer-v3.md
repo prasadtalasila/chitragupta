@@ -208,6 +208,14 @@ preview (which boxes its content), a width measured with `\sbox` or
 `\hbox`, and an `\input` inline in running text. The renderer and
 `review figure` are unaffected.
 
+**Remeasured 2026-10-30 (#1046)** on `figure check`'s boxed probe, the
+render's page (12pt, LuaLaTeX, the render's fonts): the house line adds
+135pt, and 147pt with `matrix` (`map`) or `trees` (`branching-tree`)
+added. The table above was measured on a different page. Preloaded,
+every scaffold adds 0.00pt. `tests/test_figure_stray_width.py` pins
+the in-box half; `test_figure_check.py`'s scaffold test already pinned
+the preloaded one.
+
 **Palette contrast**, WCAG 2 relative luminance, against white, `cgPaper`
 and every zone tint the house block defines:
 
@@ -418,7 +426,10 @@ loses its link, as diagram-design's `verify-docs-sync.py` does.
 
 ### Phase 1: foundations
 
-- **1a (bug).** Stray width, narrowed (see the correction above):
+- **1a (bug).** Shipped 2026-10-30, closing #1046. The probe and
+  `figure look` already preloaded (#1053, #1052), so what landed is the
+  test and the note in TIKZ-STYLE.md, `figures.md` and the thesis skill.
+  Stray width, narrowed (see the correction above):
   TIKZ-STYLE.md says a preview or a box measurement must preload the
   libraries, and a characterization test pins both halves (a body load
   inside a box adds width; a preloaded one adds none), so `figure look`
@@ -554,6 +565,26 @@ cross-check covers them.
   `assets/tikz/exemplars/grounding.tex`. Left open: `cgnone` and `cgopt`
   on a tinted card show a pale offset box where `cgflat` fails to cancel
   the shadow; `retrieval.tex` shows it too.
+- **3d, `sequence`.** Built by #1063 (`plans/1063-sequence-scaffold.md`).
+  Lifelines are thin, undrawn nodes, so every message is a connector
+  that c1, c2, c3 and c7 measure; drawn as bare lines with messages
+  between coordinates, nothing was measured at all. `sequence` joins
+  c4's exempt set and is the first layout c5 exempts: many messages meet
+  one lifeline at heights time sets, and a message may pass over the
+  lifelines between its ends. Each message sits at a named moment
+  (`t1`, `t2`, ...), so the source parser lists it as an edge. The
+  exemplar is `assets/tikz/exemplars/figure-check.tex`. The same PR
+  explains c1 to c7, k1 and k2 in `docs/FIGURE-DRAWER.md`, beside two
+  pictures a test re-checks. Left open: self-messages and activation
+  bars, neither of which a connector rule could measure as drawn.
+
+- **3c, `state-machine`** (#1062, built; see
+  `plans/1062-state-machine-scaffold.md`). States are circles from
+  house block v6 (`cgstate`, `cgaccept`, `cgkeystate`, `cgstart`), in
+  core TikZ with no `automata` library, and `focal-count` counts
+  `cgkeystate`. Its twin is a transition table, the first twin that is
+  not a drawing. The exemplar is the reference book's pump chain, which
+  is in appendix A1, not Ch. 6 as the ranking below says.
 
 ## Dependencies and value
 

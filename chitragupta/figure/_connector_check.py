@@ -41,7 +41,7 @@ def connector_rules(
         + tag_clearance(cons, drawn)
         + coincident(cons)
         + attached
-        + transit(cons, drawn)
+        + transit(cons, drawn, layout)
         + tag_covered(cons, drawn)
         + dangling(drawn)
     )

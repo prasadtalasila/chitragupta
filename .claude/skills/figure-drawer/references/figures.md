@@ -30,7 +30,9 @@ wins if the two disagree):
 | `branching-tree.tex` | Branching tree | one thing divides into cases and no case rejoins another |
 | `hub-and-spoke-network.tex` | Hub-and-spoke network | everything going through one place *is* the claim |
 | `zoned-spine.tex` | Zoned spine | one storyline, with parallel commentaries on points along it |
+| `state-machine.tex` | State machine | it is in one state at a time, and a state can recur, stay put or be sent back |
 | `comparison.tex` | Comparison | two things made of the same parts, and the point is the part that differs |
+| `sequence.tex` | Sequence | parties exchange messages and the order of the exchanges is the claim |
 
 The choices people get wrong:
 
@@ -44,6 +46,10 @@ The choices people get wrong:
 - **Branching tree or hub-and-spoke?** A tree divides and never rejoins.
   If the branches all route back through one centre, the centre is the
   claim and it is a hub.
+- **Pipeline or sequence?** Does anything come back? A request that
+  passes through stages and never returns is a pipeline. If parties
+  answer each other and the order of the exchanges is the point, it is
+  a sequence.
 - **Layered stack or zoned spine?** A stack answers "what may depend on
   what" and reads top to bottom. A spine answers "what happens, in
   order" and reads left to right.
@@ -247,7 +253,11 @@ in the figure file and write nothing else about loading: no clearing of
 `\tikz@library@...@loaded`, and no saving or restoring of
 `\tikz@node@reset@hook`. The renderer collects those lines and loads the
 union in its own preamble (#781). A load *inside* the figure float is
-the bug that multiplied node spacing in this project's own book.
+the bug that multiplied node spacing in this project's own book. A
+load while TeX is setting a line (the figure inside `\sbox`, inline in
+text, or in a `standalone` preview) also prints the library files' line
+ends as 135pt to 147pt of blank width before the picture (#1046), so any
+preview you build loads the libraries in its preamble.
 `docs/TIKZ-STYLE.md` has the detail.
 
 Before keeping the figure, read it against that document's pre-flight

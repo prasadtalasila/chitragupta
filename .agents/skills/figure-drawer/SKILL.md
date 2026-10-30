@@ -53,8 +53,10 @@ fragment: `.claude/skills/figure-drawer/references/placement.md` §1,
    `.claude/skills/figure-drawer/references/layouts/control-loop.md`,
    `.claude/skills/figure-drawer/references/layouts/branching-tree.md`,
    `.claude/skills/figure-drawer/references/layouts/hub-and-spoke-network.md`,
-   `.claude/skills/figure-drawer/references/layouts/zoned-spine.md`
-   or `.claude/skills/figure-drawer/references/layouts/comparison.md`.
+   `.claude/skills/figure-drawer/references/layouts/state-machine.md`,
+   `.claude/skills/figure-drawer/references/layouts/zoned-spine.md`,
+   `.claude/skills/figure-drawer/references/layouts/comparison.md`
+   or `.claude/skills/figure-drawer/references/layouts/sequence.md`.
    Metaphors, panels, fit and the exemplar:
    `.claude/skills/figure-drawer/references/figures.md` §1, §2, §3 and §4.
 
@@ -94,7 +96,9 @@ fragment: `.claude/skills/figure-drawer/references/placement.md` §1,
 
 6. **Redraw the ASCII twin** at `figures/<name>.txt`, in
    `docs/WRITING-STANDARDS.md` §10's 7-bit alphabet: the same boxes,
-   arrows and panel letters, named in the TikZ's own words. `figure check`
+   arrows and panel letters, named in the TikZ's own words (a state
+   machine's twin is its transition table instead: its layout file says
+   how). `figure check`
    reports `twin-missing`, `t1-labels`, `t2-tags` and `t3-panels`;
    whether the arrows join the same boxes is yours to see.
 

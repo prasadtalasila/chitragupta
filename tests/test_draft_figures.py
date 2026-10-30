@@ -112,8 +112,9 @@ class TestFigures:
             draft_figures.figures("a2024")
 
     def test_an_image_name_in_a_symlink_loop_is_refused_rather_than_crashing(self, seeded):
-        """A loop resolves with `RuntimeError` on Python 3.12, which is
-        neither of the two exceptions a bad name usually raises."""
+        """A loop raises `RuntimeError` out of `Path.resolve()` on Python
+        3.12 and 3.13 and resolves silently on 3.14; it must be refused
+        on all three."""
         (config.DOCLING_DIR / "loop_a.png").symlink_to(config.DOCLING_DIR / "loop_b.png")
         (config.DOCLING_DIR / "loop_b.png").symlink_to(config.DOCLING_DIR / "loop_a.png")
         _write_index([{**RECORDS[0], "image": "loop_a.png"}])
