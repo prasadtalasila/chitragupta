@@ -78,14 +78,14 @@ def _image_path(name: str, citekey: str) -> str:
     Where it *lands* is the rule, not its shape: the enrichment layer
     writes `<stem>_artifacts/picture_N.png`, two components, so "one
     path component" would refuse every real index. Resolving can raise
-    rather than answer -- a NUL byte gives `ValueError`, a name the
-    platform will not accept gives `OSError`, and a symlink loop gives
-    `RuntimeError` on Python 3.12 -- and all three are refusals.
+    rather than answer -- a NUL byte gives `ValueError`, and a name the
+    platform will not accept gives `OSError` -- and both are refusals. A
+    symlink loop is one too, answered by `resolves_inside` itself.
     """
     path = config.DOCLING_DIR / name
     try:
         inside = config.resolves_inside(path, config.DOCLING_DIR)
-    except (OSError, RuntimeError, ValueError):
+    except (OSError, ValueError):
         inside = False
     if not inside:
         raise FigureIndexError(

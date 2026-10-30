@@ -84,7 +84,10 @@ def test_the_font_block_names_the_whole_chain():
 )
 def test_every_character_the_sty_prints_under_pdflatex_prints_under_lualatex(isolated_config):
     chars = sorted(_unicode.mapped_characters())
-    assert len(chars) == 1873  # the table #948 shipped; a new entry needs a glyph too
+    # #948's 1873, plus the 36 outlined Latin letters and digits Unicode 16
+    # added (U+1CCD6 to U+1CCF9), mapped once the .sty moved to Python 3.14's
+    # tables. A new entry needs a glyph too, which the render below proves.
+    assert len(chars) == 1909
     lines = [" ".join(chars[i : i + _PER_LINE]) for i in range(0, len(chars), _PER_LINE)]
     isolated_config.BIB_FILE_PATH.write_text("")
     draft = content_draft(isolated_config, "draft.md")

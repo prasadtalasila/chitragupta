@@ -1,0 +1,9 @@
+  initial: draft          accepting: merged
+
+  from      | on        | to
+  ----------+-----------+---------
+  draft     | submit    | review
+  review    | comment   | review
+  review    | approve   | merged
+  review    | changes   | revise
+  revise    | resubmit  | review

@@ -93,12 +93,12 @@ class TestTheV2Release:
         assert figure.digest(v2) == register["v2"]
 
     def test_a_v2_figure_is_upgraded_and_nothing_else_moves(self, house, v2):
-        assert house.version == 5
+        assert house.version == 6
         assert figure.stamp(HEAD + v2 + LIBS + PICTURE, house) == HEAD + house.text + LIBS + PICTURE
 
     def test_a_v2_figure_is_reported_as_stale(self, house, v2):
         message = figure.finding(v2 + PICTURE, house)
-        assert "is v2, current is v5" in message
+        assert "is v2, current is v6" in message
 
     def test_a_hand_edited_v2_figure_is_left_alone(self, house, v2):
         edited = v2.replace("0.95pt", "0.9pt", 1) + PICTURE

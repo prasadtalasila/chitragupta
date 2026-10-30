@@ -210,6 +210,21 @@ class TestConfinedPath:
             pytest.skip("this host cannot create a symlink")
         assert config.confined_path(link, root) is None
 
+    def test_a_symlink_loop_lands_nowhere_on_every_python(self, tmp_path):
+        """Python 3.12 and 3.13 raise `RuntimeError` resolving a loop,
+        which nothing here caught; 3.14 resolves it silently to the link
+        itself, which is inside the root. A loop names no file, so the
+        answer is a refusal on all three, not a crash on two and an
+        acceptance on the third."""
+        first, second = tmp_path / "loop_a.txt", tmp_path / "loop_b.txt"
+        try:
+            first.symlink_to(second)
+            second.symlink_to(first)
+        except OSError:  # Windows without developer mode
+            pytest.skip("this host cannot create a symlink")
+        assert config.resolves_inside(first, tmp_path) is False
+        assert config.confined_path(first, tmp_path) is None
+
     def test_a_value_the_platform_cannot_resolve_is_refused_not_raised(self, tmp_path):
         """A NUL byte raises `ValueError` out of `resolve()` rather than
         answering False, and a name Windows rejects raises `OSError`.

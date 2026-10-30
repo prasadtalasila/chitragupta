@@ -42,6 +42,7 @@ maps onto a TikZ idiom to use:
 | Branching tree | `tree` |
 | Hub-and-spoke network | a star |
 | Zoned spine | `fit` plus `backgrounds` |
+| State machine | circles (`cgstate`) with `bend` and `loop` |
 | Comparison | two `fit` panels, matched parts on shared rows |
 
 (The first six are PaperBanana's planner supplement, read and not
@@ -523,6 +524,7 @@ arrowhead and label structure from nothing each time:
 | Node roles | `cgbox` `cgalt` `cgaux` `cgwarm` `cgrose` `cgplain` `cgkey` `cgnone` `cgopt` |
 | Shadow | `cgsoft` (on in every filled role) and `cgflat` (cancels it; `cgnone` and `cgopt` use it) |
 | Zone card | `cgzone=<colour>` (3mm inner sep) and `\cgzonelabel{<fit node>}{<colour>}{<text>}` (1.5mm above the card) |
+| States | `cgstate` (a circle, 18mm, bold name), `cgaccept` (double ring), `cgkeystate` (the accented state), `cgstart` (the initial arrow); pure TikZ, no `automata` library |
 | Edges | `cgedge` `cgweak` `cgback` `cglead=<colour>` |
 | Annotation | `cgtag` (a word beside an arrow, never on it), `cgnote` |
 | Badges | `cgbadge=<colour>` and `\cgstep{<n>}{<node>}{<colour>}` |
@@ -814,7 +816,7 @@ or point.
 | `nothing-measurable` | figure | objective | The figure names no node, so the geometry rules had nothing to measure. Name the nodes you draw |
 | `size-width` | figure | objective | The picture is wider than the target text width: 453pt by default, the render's A4 at 1in margins, or `--width`. Several pictures in one file are measured together, as they print side by side |
 | `size-stray` | figure | objective | The figure, set as one box, is wider than its picture by more than 0.5pt: a line outside the picture that ends without `%` sets a space when the figure is `\input` inline or measured with `\sbox` (the float the renderer uses drops it). Not measured for a file with several pictures, whose spacing is deliberate |
-| `focal-count` | figure | objective | More than one `cgkey` node: if two things are accented, neither is. Read from the source, so a `cgkey` reached only through a style the figure defines itself is not seen |
+| `focal-count` | figure | objective | More than one accented node, `cgkey` or `cgkeystate`: if two things are accented, neither is. Read from the source, so an accent reached only through a style the figure defines itself is not seen |
 | `content-protrusion` | figure | objective | An empty horizontal band taller than a third of the figure ("Check the drawn figure against this list" above) |
 | `loads-library-by-hand` | figure | objective | A library loaded through its internal macro instead of `\usetikzlibrary` (#781) |
 | `node-overlap` | element | objective | Two nodes' boxes intersect; the target is the pair, `a+b`. A zone containing its nodes is not an overlap. Every node TikZ drew is measured, an unnamed one (a zone title, a note) named by its centre, `(x,y)` in mm; a tag on a line is `c6`'s, and a round node under 7mm (a step badge) is left out |

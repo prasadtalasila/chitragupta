@@ -37,6 +37,7 @@ SCAFFOLDS = [
     "control-loop",
     "layered-stack",
     "comparison",
+    "state-machine",
 ]
 # Well under the 135pt the house line measured on 2026-10-30, and well
 # over anything a stray `%`-less line in a figure sets (about 4pt).
