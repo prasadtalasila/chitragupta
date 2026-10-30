@@ -147,6 +147,22 @@ single-chapter PDF spilled off the page of this project's own assembled
 book. `python -m chitragupta.review figure` reports one as
 `loads-library-by-hand`.
 
+**A load while TeX is setting a line prints as blank width (#1046).**
+A library file's own line ends are spaces. Load it where the figure is
+set in a box (`\sbox`, `\hbox`, `\resizebox`), inline in running text,
+or as the body of a `standalone` preview, which boxes its content, and
+those spaces become glue ahead of the picture: 135pt for the house
+line on the render's page (12pt, LuaLaTeX), about 30% of its 453pt text
+width, and 147pt with `matrix` or `trees` added. Loaded in the
+preamble, the same spaces fall in vertical mode and are dropped. So is
+a load at the top of a `figure` float, which is why the renderer's
+figures and `review figure` never show it. Ending the figure's line
+with `%` or `\ignorespaces` does not help, since the spaces come from
+inside the library files. The fix is the same hoist: a document that
+sets a figure in a box loads the figure's libraries in its preamble,
+as the documents `figure check` and `figure look` compile do.
+`tests/test_figure_stray_width.py` pins both halves on every scaffold.
+
 Before you reach for a library:
 
 - **A missing name takes the whole call down.** `\usetikzlibrary{}` fails

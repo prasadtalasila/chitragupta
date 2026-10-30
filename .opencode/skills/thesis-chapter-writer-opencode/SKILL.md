@@ -360,7 +360,11 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
      working around it inside a figure file: clearing the loaded flag
      makes `positioning` append its placement transform to a global hook
      once per figure, so the Nth figure shifts every node N times, with
-     the engine exiting 0 and nothing in the log.
+     the engine exiting 0 and nothing in the log. The preamble load
+     also saves the width of a figure they set in `\resizebox`, `\sbox`
+     or inline: a library loaded there prints its own line ends as up to
+     147pt of blank space before the picture, and `\resizebox` shrinks
+     the figure to make room for it (#1046).
    - **The same goes for Unicode characters** the fragment carries
      (`H₂O`, `𝑡`, `≤`, `Ⅳ`), which pdflatex's default fonts cannot print
      (#948). When the render prints

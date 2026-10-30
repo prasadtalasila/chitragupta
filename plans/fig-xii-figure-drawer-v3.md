@@ -208,6 +208,13 @@ preview (which boxes its content), a width measured with `\sbox` or
 `\hbox`, and an `\input` inline in running text. The renderer and
 `review figure` are unaffected.
 
+**Remeasured 2026-10-30 (#1046)** on `figure check`'s boxed probe, the
+render's page (12pt, LuaLaTeX, the render's fonts): the house line adds
+135pt, and 147pt with `matrix` (`map`) or `trees` (`branching-tree`)
+added. The table above was measured on a different page. Preloaded,
+every scaffold adds 0.00pt. `tests/test_figure_stray_width.py` pins
+both halves.
+
 **Palette contrast**, WCAG 2 relative luminance, against white, `cgPaper`
 and every zone tint the house block defines:
 
@@ -418,7 +425,10 @@ loses its link, as diagram-design's `verify-docs-sync.py` does.
 
 ### Phase 1: foundations
 
-- **1a (bug).** Stray width, narrowed (see the correction above):
+- **1a (bug).** Shipped 2026-10-30, closing #1046. The probe and
+  `figure look` already preloaded (#1053, #1052), so what landed is the
+  test and the note in TIKZ-STYLE.md, `figures.md` and the thesis skill.
+  Stray width, narrowed (see the correction above):
   TIKZ-STYLE.md says a preview or a box measurement must preload the
   libraries, and a characterization test pins both halves (a body load
   inside a box adds width; a preloaded one adds none), so `figure look`
