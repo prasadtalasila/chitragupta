@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from chitragupta.figure import __main__ as cli
-from chitragupta.figure import _advisory, _check, _check_report, _connector_check
+from chitragupta.figure import _advisory, _check, _check_report, _connector_check, _house
 from chitragupta.figure._focal import cgkey_nodes
 from chitragupta.render_output import render
 from chitragupta.render_output import MissingBinary
@@ -242,7 +242,8 @@ class TestTwinAgreement:
         assert [(f.rule, f.measurement) for f in result.findings] == [
             ("twin-missing", "no flow.txt beside the figure")
         ]
-        assert [why for rule, why in result.not_measured if rule.startswith("t")] == ["no twin"] * 3
+        twin_rules = ("t1-labels", "t2-tags", "t3-panels")
+        assert [why for rule, why in result.not_measured if rule in twin_rules] == ["no twin"] * 3
 
     def test_a_missing_twin_cannot_be_allowed(self):
         source = "% cg-allow: twin-missing -- the PDF is all anyone reads\n" + ONE_PICTURE
@@ -412,6 +413,8 @@ class TestAgainstRealLualatex:
             "size-stray",
             *_check.CONNECTOR,
             *_check.CONTRAST,
+            # A fixture without the house block has no palette (#1016).
+            *_house.HOUSE[1:],
             *_advisory.GEOMETRY,
         ]
         assert _rules(result.advisory) == ["budget-nodes", "budget-edges"]
@@ -840,7 +843,8 @@ class TestConnectorRules:
         _, not_measured = _evaluate(figure=_measured(drawn=None))
 
         assert [(rule, why) for rule, why in not_measured] == [
-            (rule, _connector_check.NO_DRAWN) for rule in (*_check.CONNECTOR, *_check.CONTRAST)
+            (rule, _connector_check.NO_DRAWN)
+            for rule in (*_check.CONNECTOR, *_check.CONTRAST, *_house.HOUSE)
         ]
 
     def test_they_are_not_measured_for_several_pictures(self):
@@ -862,7 +866,9 @@ class TestConnectorRules:
 
         _, not_measured = _evaluate(figure=figure)
 
-        assert not_measured == [("c4-attach", "round nodes, which have no sides: b")]
+        assert [entry for entry in not_measured if entry[0] == "c4-attach"] == [
+            ("c4-attach", "round nodes, which have no sides: b")
+        ]
 
     def test_every_connector_rule_is_a_geometry_rule(self):
         assert set(_check.CONNECTOR) <= set(_check.GEOMETRY)
@@ -913,7 +919,8 @@ class TestConnectorRulesAgainstRealLualatex:
         result = _check.check(FIXTURES / "narrow.tex", _check.DEFAULT_WIDTH_PT)
 
         assert not set(_check.CONNECTOR) & set(_rules(result.findings))
-        assert result.not_measured == []
+        # Only the palette rules, which need a house block it lacks.
+        assert [rule for rule, _ in result.not_measured] == list(_house.HOUSE[1:])
 
 
 @needs_tikz

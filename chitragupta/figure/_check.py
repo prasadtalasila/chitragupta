@@ -28,10 +28,10 @@ from chitragupta.figure._allow import Allow, Malformed, parse_allows, settle
 from chitragupta.figure._connector_check import CONNECTOR, connector_rules
 from chitragupta.figure._connectors import connectors
 from chitragupta.figure._contrast import CONTRAST, contrast_check
-from chitragupta.figure._focal import cgkey_nodes
+from chitragupta.figure._house import HOUSE, house_check, source_rules
 from chitragupta.figure._layout import declared_layout, reference
 from chitragupta.figure._overlap import drawn_overlaps
-from chitragupta.figure._rules import RULES, Finding
+from chitragupta.figure._rules import FIGURE, RULES, Finding
 from chitragupta.figure._wording import wording_rules
 from chitragupta.figure._twin import agree
 from chitragupta.review.figure_layout import (
@@ -46,9 +46,6 @@ from chitragupta.review.figure_layout import (
 # test pins it to those defaults. Part X (output targets) replaces it.
 DEFAULT_WIDTH_PT = 453.0
 
-# A figure-scope finding's target: the rule is about the whole picture.
-FIGURE = "figure"
-
 _HFUZZ_PT = 0.1
 _STRAY_PT = 0.5
 
@@ -62,6 +59,7 @@ GEOMETRY = (
     "node-overlap",
     *CONNECTOR,
     *CONTRAST,
+    *HOUSE,
 )
 
 # Why the geometry is missing. The probe sits inside the figure's last
@@ -185,9 +183,10 @@ def evaluate(
         findings += connected
         not_measured += unmeasured
         contrasted, unmeasured = contrast_check(source, figure, _pictures(source))
-        findings += contrasted
-        not_measured += unmeasured
-    findings += _focal(source) + _static(figure) + wording_rules(source)[0]
+        housed, more = house_check(source, figure)
+        findings += contrasted + housed
+        not_measured += unmeasured + more
+    findings += source_rules(source) + _static(figure) + wording_rules(source)[0]
     return _in_rule_order(findings), not_measured
 
 
@@ -265,14 +264,6 @@ def _size(
             )
         )
     return found, not_measured
-
-
-def _focal(source: str) -> list[Finding]:
-    """`focal-count`: at most one accented node (`_focal.py`)."""
-    keyed = cgkey_nodes(source)
-    if len(keyed) < 2:
-        return []
-    return [Finding("focal-count", FIGURE, f"{len(keyed)} accented nodes: {', '.join(keyed)}")]
 
 
 def _geometry(figure: FigureResult) -> list[Finding]:

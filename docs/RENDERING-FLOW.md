@@ -360,6 +360,21 @@ inline, the same carve-out the table section below states for a
 `\renewcommand{\thefigure}{N.M}` is no longer written, so the user's own
 thesis-wide `figure` counter numbers it instead.
 
+**The renderer never scales a figure, and is not to gain a way to.** It
+`\input`s a figure bare, at its natural size, and has no `\resizebox`,
+`\scalebox` or width option. A scaled figure prints its type at whatever
+the factor happens to be: six hand-written figures wrapped in
+`\resizebox{\textwidth}{!}{...}` printed their smallest type between
+5.5pt and 7.1pt against a 9pt body, with `pdflatex` exiting 0
+([TIKZ-STYLE.md](TIKZ-STYLE.md#-draw-for-the-width-it-will-be-printed-at)).
+An overflowing figure is answered by its layout, which
+`figure check`'s `size-width` reports, never by a scale knob, however
+reasonable the request looks when one figure is a few points too wide.
+This is written down as a decision because an absence gets filled
+(#1016). A scale in a document the pipeline does not write, such as a
+thesis that `\input`s `thesis-chapter-writer`'s fragment, is outside
+every check here; the drafting skills tell the author not to add one.
+
 ## 🔢 Table numbering: four cases, and pandoc numbers in only one
 
 `_tables.substitute` (`chitragupta/render_output/_tables.py`) resolves

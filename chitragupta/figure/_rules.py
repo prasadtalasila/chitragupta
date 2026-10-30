@@ -41,6 +41,10 @@ class Rule:
     exempt: frozenset[str] = frozenset()
 
 
+# A figure-scope finding's target: the rule is about the whole picture.
+FIGURE = "figure"
+
+
 @dataclass(frozen=True)
 class Finding:
     """One rule's report on one target. Here rather than in `_check.py`
@@ -89,6 +93,12 @@ RULES: dict[str, Rule] = {
         Rule("k1-stroke", "element", "objective"),
         Rule("k2-text", "element", "objective"),
         Rule("w4-pictograph", "element", "objective"),
+        # The house vocabulary (#1016): type, palette, tint from the
+        # probe, an unplaced pic from the source.
+        Rule("type-below-floor", "element", "objective"),
+        Rule("colour-off-palette", "element", "objective"),
+        Rule("tint-outside-band", "element", "objective"),
+        Rule("unnamed-pic", "element", "objective"),
         # A figure without its twin is fixed, never excused (#1056).
         Rule("twin-missing", "figure", "objective", allowable=False),
         Rule("t1-labels", "element", "objective"),

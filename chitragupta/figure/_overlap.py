@@ -38,7 +38,7 @@ def drawn_overlaps(drawn: Drawn) -> list[tuple[str, str]]:
 
 
 def _is_ink(name: str, node: DrawnNode, groups: set[str]) -> bool:
-    if node.shape == "coordinate" or node.rotated or _is_badge(node):
+    if node.shape == "coordinate" or node.rotated or is_badge(node):
         return False
     if node.framed:
         return True
@@ -46,6 +46,7 @@ def _is_ink(name: str, node: DrawnNode, groups: set[str]) -> bool:
     return has_text and name not in groups
 
 
-def _is_badge(node: DrawnNode) -> bool:
+def is_badge(node: DrawnNode) -> bool:
+    """A round node under 7mm: a step badge, or a dot on a line."""
     width, height = node.box[2] - node.box[0], node.box[3] - node.box[1]
     return node.shape in ROUND and max(width, height) < _BADGE_MM * MM

@@ -447,7 +447,9 @@ document rather than something pasted in:
 **Figures here are in colour, and they use one palette.** Five named
 colours with a role each, and four more that a zoned figure needs. A
 figure that invents its own hues reads as imported from somewhere else,
-which a house palette exists to prevent.
+which a house palette exists to prevent. `figure check` reports one as
+`colour-off-palette`, and a card filled outside the band below as
+`tint-outside-band` (#1016).
 
 ```latex
 \definecolor{cgInk}{HTML}{1A1A1A}     % borders, labels, default strokes
@@ -862,6 +864,10 @@ left unnamed, and one TikZ names itself, `tikz@f@<n>` (a pin, an
 | `k1-stroke` | element | objective | A box's border, or a connector, under WCAG's 3:1 against its ground; the target is the node or the edge, `a->b`, and the measurement names both colours and the ratio. The ground is the box's own fill, else the innermost filled box that contains it, else white; a connector's, the innermost filled box that holds both its ends. Colours are what pgf drew with, so a style or `#1` argument is resolved. The fix is the hue's `Line` shade. A translucent fill is read as opaque, a shadow is not a ground, and a connector crossing a third zone is measured against its ends' ground |
 | `k2-text` | element | objective | A run of a node's text under 4.5:1 against the same ground, or under 3:1 where it is WCAG's large text (14pt bold, 18pt), measured from the typeset size; the target is the node, or `tag on a->b`. Read from the glyphs, so `text=`, `\textcolor`, `\color` and a macro are all seen. The fix is the hue's `Text` shade |
 | `w4-pictograph` | element | objective | An emoji or pictograph (U+1F000 to U+1FAFF, U+2600 to U+27BF, U+2B00 to U+2BFF, U+FE0F) in a label; the target is the node, or `figure` for one outside any label. The render prints it from a fallback font unlike the rest, and a thesis without that font chain drops it. Arrows, `©`, `™`, math and icon commands are not read |
+| `type-below-floor` | element | objective | Text set smaller than the body, 12pt, the probe's and the render's default; the measurement is the node's smallest text, `8.0pt, floor 12pt`. Read from the glyphs, so `\scriptsize`, a size inherited from a group and a macro are all seen. A math run is left alone, since a subscript sets at script size on purpose, unless the node has nothing larger. Text inside a subscript (`$k_{\text{in}}$`) is text and fires; write `\mathrm` there (#1016) |
+| `colour-off-palette` | element | objective | A border, fill, text run or line in a colour the figure's house block does not define, nor a white tint of one: `draw=blue`, `fill=red!10`, `black` (the house black is `cgInk`), or a hue darkened by hand. A framed node with no `draw=` colour is reported as `border (current colour)`: a node half in the house style. Decided by the colour pgf used, so a `\foreach` variable is read; a line is named `a->b`, or by its first point. Not measured without the house block. A path's fill outside a node is not read (#1016) |
+| `tint-outside-band` | element | objective | A framed node filled with a house hue mixed with white outside 6 to 12, the band above, or solid: the hue itself, or its `Line` or `Text` shade, which the label drowns in. A round node under 7mm (a step badge, a `Text`-shade disc) is left out (#1016) |
+| `unnamed-pic` | element | objective | A `\pic` not placed `at` a node the figure declares with `cgwell`; the target is the pic and its place, `"cgstore at (0,1.5)"`. No rule measures a pic's paths, so a pic outside a well can sit over a node unreported (#1016) |
 | `twin-missing` | figure | objective | No `<name>.txt` beside the figure: the `md`, `docx` and `html` renders have nothing to show. `t1` to `t3` are then listed as not measured. Cannot be allowed: write the twin |
 | `t1-labels` | element | objective | A name in the TikZ is not in the twin: a node label's first line (`\cglab`'s name), a zone title or a legend entry. Every word of it must appear in the twin, as a whole word and in any order, case aside; markup is stripped and maths dropped first. A gloss is not compared. The target is the node, or the name's text for an unnamed node |
 | `t2-tags` | element | objective | A line of a node placed on a `\draw` or `\path` (a tag, whatever its style) is not in the twin, word for word as `t1`; the target is the edge, `a->b`, or the tag's text where it joins no two names |
@@ -876,12 +882,14 @@ left unnamed, and one TikZ names itself, `tikz@f@<n>` (a pin, an
 | `w3-gloss` | element | advisory | A `\cglab` gloss over six words; the target is its name. A formula counts as one word |
 
 Of the objective rules, all but `size-width`, `size-stray`,
-`focal-count`, the connector rules `c1` to `c7`, `k1`, `k2`, `w4` and
-the twin rules (`twin-missing`, `t1` to `t3`) are `review figure`'s
-findings, under the ids its `--json` has always used. The
-edge list, the declared names that were not measured, the emptiness
-proportion and the count of lines not between two nodes are printed
-beside the findings as diagnostics, never as findings.
+`focal-count`, the connector rules `c1` to `c7`, `k1`, `k2`, `w4`, the
+house-vocabulary rules (`type-below-floor`, `colour-off-palette`,
+`tint-outside-band`, `unnamed-pic`) and the twin rules (`twin-missing`,
+`t1` to `t3`) are `review figure`'s findings, under the ids its
+`--json` has always used. The edge list, the declared names that were
+not measured, the emptiness proportion and the count of lines not
+between two nodes are printed beside the findings as diagnostics, never
+as findings.
 
 **The eight advisory rules are reports, not findings** (#1057, #1055).
 They print under their own heading, never change the "No findings"
