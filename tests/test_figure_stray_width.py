@@ -10,11 +10,14 @@ own `\\usetikzlibrary` line cannot help, because the spaces come from
 inside the library files.
 
 The documents `figure check` and `figure look` compile load the
-figure's libraries in the preamble for this reason. These tests pin both halves
-through the real boxed probe: preloaded, every scaffold's box is its
-picture; loaded inside the box, it is far wider. Without the second
-half, the preload is a line nobody could tell was load-bearing. Both
-compile with LuaLaTeX and self-skip where TeX is missing.
+figure's libraries in the preamble for this reason. With the preload,
+every scaffold's box is its picture: that half is
+`tests/test_figure_check.py`'s scaffold test (no `size-stray`), and
+`tests/test_figure_look.py` pins the look's preload. This file pins the
+other half through `figure check`'s real boxed probe: without the
+preload, the box is far wider, so the preload is a line anyone can tell
+is load-bearing. It compiles with LuaLaTeX and self-skips where TeX is
+missing.
 """
 
 from pathlib import Path
@@ -34,8 +37,6 @@ SCAFFOLDS = [
     "control-loop",
     "layered-stack",
 ]
-# `figure check`'s own threshold: half a point is rounding, not a space.
-_STRAY_PT = 0.5
 # Well under the 135pt the house line measured on 2026-10-30, and well
 # over anything a stray `%`-less line in a figure sets (about 4pt).
 _BODY_LOAD_PT = 100.0
@@ -56,14 +57,10 @@ def test_the_scaffold_list_is_every_scaffold():
 
 @needs_tikz
 @pytest.mark.parametrize("name", SCAFFOLDS)
-class TestStrayWidth:
-    def test_preloaded_the_box_is_the_picture(self, name):
-        assert _stray(name) <= _STRAY_PT
+def test_a_library_loaded_inside_the_box_adds_a_blank_band(name, monkeypatch):
+    # The probe's preload is the one line this removes: the figure's own
+    # `\usetikzlibrary` line then loads in the box, as it does in a
+    # thesis that sets the figure in `\resizebox` or `\sbox`.
+    monkeypatch.setattr(_probe, "libraries_in", lambda source: [])
 
-    def test_loaded_inside_the_box_it_adds_a_blank_band(self, name, monkeypatch):
-        # The probe's preload is the one line this removes: the figure's
-        # own `\usetikzlibrary` line then loads in the box, as it does in
-        # a thesis that sets the figure in `\resizebox` or `\sbox`.
-        monkeypatch.setattr(_probe, "libraries_in", lambda source: [])
-
-        assert _stray(name) > _BODY_LOAD_PT
+    assert _stray(name) > _BODY_LOAD_PT

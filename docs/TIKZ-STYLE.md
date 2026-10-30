@@ -161,7 +161,8 @@ with `%` or `\ignorespaces` does not help, since the spaces come from
 inside the library files. The fix is the same hoist: a document that
 sets a figure in a box loads the figure's libraries in its preamble,
 as the documents `figure check` and `figure look` compile do.
-`tests/test_figure_stray_width.py` pins both halves on every scaffold.
+`tests/test_figure_stray_width.py` pins the in-box half on every
+scaffold, and `figure check`'s `size-stray` the preloaded one.
 
 Before you reach for a library:
 

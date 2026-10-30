@@ -249,7 +249,7 @@ union in its own preamble (#781). A load *inside* the figure float is
 the bug that multiplied node spacing in this project's own book. A
 load while TeX is setting a line (the figure inside `\sbox`, inline in
 text, or in a `standalone` preview) also prints the library files' line
-ends as up to 147pt of blank width before the picture (#1046), so any
+ends as 135pt to 147pt of blank width before the picture (#1046), so any
 preview you build loads the libraries in its preamble.
 `docs/TIKZ-STYLE.md` has the detail.
 

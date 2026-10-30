@@ -213,7 +213,8 @@ render's page (12pt, LuaLaTeX, the render's fonts): the house line adds
 135pt, and 147pt with `matrix` (`map`) or `trees` (`branching-tree`)
 added. The table above was measured on a different page. Preloaded,
 every scaffold adds 0.00pt. `tests/test_figure_stray_width.py` pins
-both halves.
+the in-box half; `test_figure_check.py`'s scaffold test already pinned
+the preloaded one.
 
 **Palette contrast**, WCAG 2 relative luminance, against white, `cgPaper`
 and every zone tint the house block defines:

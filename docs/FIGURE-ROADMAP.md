@@ -1190,9 +1190,10 @@ Three phases under one epic:
 1. **Foundations.** LuaLaTeX everywhere (#1037), starting with a
    TeX Live 2025 regression that fails every render under `openin_any=p`;
    a guard on stray width (a `\usetikzlibrary` line run in horizontal
-   mode adds 135pt to 175pt of blank space in front of the picture,
-   depending on the page, which matters for previews and box
-   measurements, not for figure floats);
+   mode adds 135pt of blank space in front of the picture on the
+   render's 12pt LuaLaTeX page, and about 175pt on the page the issue
+   first measured, which matters for previews and box measurements,
+   not for figure floats);
    house block v3, which keeps every palette hex as a fill and adds
    derived `Line` and `Text` shades that clear 3:1 and 4.5:1; compact
    spacing defaults; `SKILL.md` as a router with a pre-drawing taste
