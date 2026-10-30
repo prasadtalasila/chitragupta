@@ -15,6 +15,7 @@ empty `tikzpicture`.
 | `branching-tree.tex` | Branching tree | one thing divides into cases and no case rejoins another |
 | `hub-and-spoke-network.tex` | Hub-and-spoke network | everything going through one place *is* the claim |
 | `zoned-spine.tex` | Zoned spine | one storyline, with parallel commentaries on points along it |
+| `comparison.tex` | Comparison | two things made of the same parts, and the point is the part that differs |
 
 Two more things live here that are not scaffolds:
 
@@ -23,9 +24,10 @@ Two more things live here that are not scaffolds:
   label ramp. Every scaffold carries a verbatim copy of it, so you never
   copy it by hand; see below.
 - **`exemplars/`** holds three figures from one paper redrawn with that
-  block, at a wider page (the render's 453pt) than the scaffolds. They show
-  what the vocabulary is for: zone cards, step badges, a legend and the
-  house `pic`s together. Read them; start from a scaffold.
+  block, and one comparison drawn for this project, at a wider page (the render's
+  453pt) than the scaffolds. They show what the vocabulary is for: zone
+  cards, step badges, a legend, the house `pic`s and lettered panels.
+  Read them; start from a scaffold.
 
 ## 🚀 Using one
 
