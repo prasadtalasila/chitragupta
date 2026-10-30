@@ -54,3 +54,4 @@ fractions are the ones that print.
 | Source | Nodes | Edges | Width | Height | Slack |
 | --- | --- | --- | --- | --- | --- |
 | `assets/tikz/state-machine.tex` | 4 | 6 | 0.68 | 0.27 | 0.82 |
+| `assets/tikz/exemplars/pump-markov-chain.tex` | 3 | 7 | 0.47 | 0.31 | 0.83 |

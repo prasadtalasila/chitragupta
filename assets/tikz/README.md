@@ -26,7 +26,10 @@ Two more things live here that are not scaffolds:
 - **`exemplars/`** holds three figures from one paper redrawn with that
   block, at a wider page (the render's 453pt) than the scaffolds. They show
   what the vocabulary is for: zone cards, step badges, a legend and the
-  house `pic`s together. Read them; start from a scaffold.
+  house `pic`s together. A fourth, `pump-markov-chain.tex`, is the
+  reference book's pump as a Markov chain, the state-machine layout with
+  an accented state and no initial or accepting one. Read them; start
+  from a scaffold.
 
 ## 🚀 Using one
 

@@ -1,0 +1,14 @@
+  A pump as a Markov chain. One step is one hour.
+
+  from      | on            | to
+  ----------+---------------+---------
+  Off       | 0.7           | Off
+  Off       | 0.3           | On
+  On        | 0.4           | Off
+  On        | 0.58          | On
+  On        | 0.02          | Faulted
+  Faulted   | 0.1 repaired  | Off
+  Faulted   | 0.9           | Faulted
+
+  The numbers leaving each state sum to one: Off 0.7 + 0.3,
+  On 0.4 + 0.58 + 0.02, Faulted 0.1 + 0.9.
