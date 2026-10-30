@@ -90,6 +90,13 @@ class TestTransit:
 
         assert transit(cons, figure) == []
 
+    def test_c5_holds_across_a_lifeline_in_a_sequence(self):
+        """A message that skips the middle lifeline is the diagram's
+        grammar, not a line through a box."""
+        figure, cons = _figure(node("c", (68, 0, 74, 20)), tags=())
+
+        assert transit(cons, figure, "sequence") == []
+
     def test_c5_holds_grazing_a_box_within_1pt(self):
         figure, cons = _figure(node("c", (60, 10.5, 80, 30)), tags=())
 

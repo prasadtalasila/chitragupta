@@ -12,7 +12,8 @@ path through a system.
   loop](control-loop.md)); something comments on points along the
   path (use [the zoned spine](zoned-spine.md)); a stage can stay put or
   be sent back by more than one event (use [the state
-  machine](state-machine.md)).
+  machine](state-machine.md)); the stages answer each other (use [the
+  sequence](sequence.md)).
 
 ## Anti-patterns
 

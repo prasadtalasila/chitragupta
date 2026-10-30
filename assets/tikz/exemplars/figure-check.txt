@@ -1,0 +1,12 @@
++---------------+    +==============+     +----------+   +------------+
+| Skill         |    # Figure check #     | Probe    |   | Twin       |
+| figure-drawer |    # measures     #     | LuaLaTeX |   | ASCII text |
++---------------+    +==============+     +----------+   +------------+
+        :                    :                  :               :
+        :-- check a figure ->:                  :               :
+        :                    :-- compile once ->:               :
+        :                    :<. boxes, lines ..:               :
+        :                    :-- read ------------------------->:
+        :                    :<. names, tags ...................:
+        :<. findings ........:                  :               :
+        :                    :                  :               :

@@ -1,0 +1,24 @@
+% cg-layout: sequence
+% figure check fixture (#1063): the must-not-fire case for a sequence.
+% Three messages end on one side of `cache-l` at heights time sets, not
+% at even spacing (c4), and `fetch` skips `cache-l` on its way to the
+% server (c5). The lifelines are drawn with no tip, so none dangles (c7).
+\usetikzlibrary{arrows.meta,positioning}%
+\begin{tikzpicture}[node distance=20mm,
+    life/.style={inner sep=0pt, minimum width=2mm, minimum height=40mm,
+      anchor=north, outer sep=0pt},
+    lifeline/.style={dashed, arrows=-}]
+  \node[draw] (client) {client};
+  \node[draw, right=of client] (cache) {cache};
+  \node[draw, right=of cache] (server) {server};
+  \node[life] (client-l) at (client.south) {};
+  \node[life] (cache-l) at (cache.south) {};
+  \node[life] (server-l) at (server.south) {};
+  \draw[lifeline] (client-l.north) -- (client-l.south);
+  \draw[lifeline] (cache-l.north) -- (cache-l.south);
+  \draw[lifeline] (server-l.north) -- (server-l.south);
+  \draw[-Stealth] (client-l.east |- 0,-8mm) -- (cache-l.west |- 0,-8mm);
+  \draw[-Stealth] (cache-l.west |- 0,-12mm) -- (client-l.east |- 0,-12mm);
+  \draw[-Stealth] (client-l.east |- 0,-20mm) -- (server-l.west |- 0,-20mm);
+  \draw[-Stealth] (client-l.east |- 0,-34mm) -- (cache-l.west |- 0,-34mm);
+\end{tikzpicture}%

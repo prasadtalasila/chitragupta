@@ -44,6 +44,7 @@ maps onto a TikZ idiom to use:
 | Zoned spine | `fit` plus `backgrounds` |
 | State machine | circles (`cgstate`) with `bend` and `loop` |
 | Comparison | two `fit` panels, matched parts on shared rows |
+| Sequence | thin lifeline nodes, with level messages between them |
 
 (The first six are PaperBanana's planner supplement, read and not
 copied; [INSPIRATION.md](INSPIRATION.md) carries the credit.)
@@ -66,6 +67,17 @@ rather than beside or below a neighbour, so re-wording a part cannot
 move it off its match's row. Nothing is drawn
 between the panels; if the two sides share a pair of named axes instead,
 it is a map.
+
+**The sequence** is parties side by side with time running down the
+page, and messages passing between them. Reach for it for a protocol, a
+handshake or a request and its replies, where the order of the
+exchanges is the claim. Each party hangs a lifeline: a thin, undrawn
+node with a dotted line down its middle, so every message is a
+connector between two lifelines that `figure check` measures. Each
+message is level, drawn at a named moment (`(a-l.east |- t1) --
+(b-l.west |- t1)`), and a reply is dashed. `c4-attach` and `c5-transit`
+are not evaluated for it (see below). If each party only hands work on
+to the next and nothing comes back, it is a pipeline.
 
 **There is a starting file for every row of that table, in
 `assets/tikz/`.** One per metaphor, named for it, each compiling on its
@@ -507,7 +519,7 @@ the worst of the two orders to fail in.
 
 This is the same discipline the `\usetikzlibrary` line already follows,
 for the same reason, and it means the definitions are duplicated across
-figures on purpose. The eight scaffolds in `assets/tikz/` all carry the
+figures on purpose. The ten scaffolds in `assets/tikz/` all carry the
 block, so copying one gets it for free.
 
 ### 🧱 The house figure style
@@ -715,7 +727,7 @@ emits a bare `\begin{figure}` around the marker with no scale knob, so a
 pipeline-rendered figure is drawn at natural size. The defect is what a
 *hand-written* document does, which is exactly `thesis-chapter-writer`'s
 case: its fragment is `\input` into a thesis this project never sees.
-The eight scaffolds are each laid out to the `article` class's 345pt
+The ten scaffolds are each laid out to the `article` class's 345pt
 text width, and a test compiles each one there and fails on an
 `Overfull \hbox`.
 
@@ -772,7 +784,7 @@ ones authors get wrong:
   fix for a finding is to change what you asked TikZ for (a
   `sibling distance`, a `row sep`, a different library), and never to
   nudge a coordinate until the number moves. `assets/tikz/` is the
-  starting point for that, and none of its eight scaffolds places
+  starting point for that, and none of its ten scaffolds places
   a node at a coordinate.
 - **Its thresholds are the checker's, not this document's.** "An empty
   band worth more than a third of the height" is a number chosen so
@@ -825,8 +837,8 @@ or point.
 | `c1-orthogonal` | element | objective | A connector between nodes whose ends differ by more than 1mm in both x and y is drawn straight or bent instead of as an elbow (`-\|`, `\|-`); the target is the edge, `a->b`. Not evaluated for the `hub-and-spoke-network` and `state-machine` layouts; a tree is held to it |
 | `c2-tag-clearance` | element | objective | A tag's text is under 0.8mm or over 3mm from its own line. Measured from the text, not the node box, which `above` and the rest put on the line; the house `cgtag` sits 1mm clear. A `sloped` tag is not measured |
 | `c3-coincident` | element | objective | Two connectors run together for more than 2mm, so one hides the other; the target is the pair, `a->b+c->d`. Two that share an end point are a fork, and are not counted |
-| `c4-attach` | element | objective | One end on a side over 1mm off its midpoint, several over 1mm off even spacing (`L*k/(N+1)`) or under 2mm apart; the target is the side, `a.north`. Measured only where a straight connector meets the side square on, so an angled or bent end is left to `c1`. Round nodes and zones are not measured, and the layouts `c1` exempts are exempt |
-| `c5-transit` | element | objective | A connector crosses a node that is neither of its ends. A zone containing an end, a marker under 2mm and an unframed group (an undrawn `fit`) are not counted |
+| `c4-attach` | element | objective | One end on a side over 1mm off its midpoint, several over 1mm off even spacing (`L*k/(N+1)`) or under 2mm apart; the target is the side, `a.north`. Measured only where a straight connector meets the side square on, so an angled or bent end is left to `c1`. Round nodes and zones are not measured. Not evaluated for the layouts `c1` exempts, nor for `sequence`, whose messages meet a lifeline wherever time puts them |
+| `c5-transit` | element | objective | A connector crosses a node that is neither of its ends. A zone containing an end, a marker under 2mm and an unframed group (an undrawn `fit`) are not counted. Not evaluated for `sequence`, where a message passes over the lifelines between its ends |
 | `c6-tag-covered` | element | objective | A tag overlaps a node. A zone containing the tag and an unframed group are not counted |
 | `c7-dangling-tip` | element | objective | An arrow leaving a node has its tip land more than 1mm from any node or other line; the target is the point, `(x,y)` in mm. An axis or a two-headed dimension line, which leaves no node, is not read |
 | `k1-stroke` | element | objective | A box's border, or a connector, under WCAG's 3:1 against its ground; the target is the node or the edge, `a->b`, and the measurement names both colours and the ratio. The ground is the box's own fill, else the innermost filled box that contains it, else white; a connector's, the innermost filled box that holds both its ends. Colours are what pgf drew with, so a style or `#1` argument is resolved. The fix is the hue's `Line` shade. A translucent fill is read as opaque, a shadow is not a ground, and a connector crossing a third zone is measured against its ends' ground |
@@ -899,7 +911,11 @@ layout exempts is not evaluated for a figure that declares it (or is
 given it with `--layout`): a hub's spokes are diagonal by design and an
 automaton's transitions curve, so `c1-orthogonal` and `c4-attach` are
 exempt for `hub-and-spoke-network` and `state-machine`. A tree is not:
-the house tree fans its edges out orthogonally.
+the house tree fans its edges out orthogonally. A `sequence` keeps
+`c1-orthogonal`, since its messages are level, but is exempt from
+`c4-attach` and `c5-transit`: many messages meet one lifeline at the
+heights time sets, and a message may pass over the lifelines between
+its ends.
 
 ### ✍ Recording a deliberate exception: `cg-allow`
 

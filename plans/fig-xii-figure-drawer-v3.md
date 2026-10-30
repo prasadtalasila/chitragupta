@@ -565,6 +565,18 @@ cross-check covers them.
   `assets/tikz/exemplars/grounding.tex`. Left open: `cgnone` and `cgopt`
   on a tinted card show a pale offset box where `cgflat` fails to cancel
   the shadow; `retrieval.tex` shows it too.
+- **3d, `sequence`.** Built by #1063 (`plans/1063-sequence-scaffold.md`).
+  Lifelines are thin, undrawn nodes, so every message is a connector
+  that c1, c2, c3 and c7 measure; drawn as bare lines with messages
+  between coordinates, nothing was measured at all. `sequence` joins
+  c4's exempt set and is the first layout c5 exempts: many messages meet
+  one lifeline at heights time sets, and a message may pass over the
+  lifelines between its ends. Each message sits at a named moment
+  (`t1`, `t2`, ...), so the source parser lists it as an edge. The
+  exemplar is `assets/tikz/exemplars/figure-check.tex`. The same PR
+  explains c1 to c7, k1 and k2 in `docs/FIGURE-DRAWER.md`, beside two
+  pictures a test re-checks. Left open: self-messages and activation
+  bars, neither of which a connector rule could measure as drawn.
 
 - **3c, `state-machine`** (#1062, built; see
   `plans/1062-state-machine-scaffold.md`). States are circles from

@@ -28,17 +28,9 @@ from chitragupta.review.figure_layout import BBOX_NAME, _probe
 from tests.conftest import needs_tikz
 
 TIKZ = Path(__file__).resolve().parent.parent / "assets" / "tikz"
-SCAFFOLDS = [
-    "pipeline",
-    "zoned-spine",
-    "branching-tree",
-    "hub-and-spoke-network",
-    "map",
-    "control-loop",
-    "layered-stack",
-    "comparison",
-    "state-machine",
-]
+# Read from disk: a scaffold added later is measured from the commit
+# that adds it, with no list to forget.
+SCAFFOLDS = sorted(path.stem for path in TIKZ.glob("*.tex") if path.stem != "cg-figstyle")
 # Well under the 135pt the house line measured on 2026-10-30, and well
 # over anything a stray `%`-less line in a figure sets (about 4pt).
 _BODY_LOAD_PT = 100.0
@@ -51,10 +43,8 @@ def _stray(name: str) -> float:
     return measured.input_width - (x2 - x1)
 
 
-def test_the_scaffold_list_is_every_scaffold():
-    on_disk = {path.stem for path in TIKZ.glob("*.tex")} - {"cg-figstyle"}
-
-    assert set(SCAFFOLDS) == on_disk
+def test_the_scaffolds_are_found():
+    assert "pipeline" in SCAFFOLDS
 
 
 @needs_tikz
