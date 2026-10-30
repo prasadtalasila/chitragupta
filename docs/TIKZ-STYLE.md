@@ -822,6 +822,11 @@ resolved. **Scope** is what an allow has to name: a figure-scope rule
 is about the whole picture, an element-scope rule about one node, pair
 or point.
 
+A node the figure's source does not name is shown by its centre,
+`(x,y)` in mm, wherever a target or a measurement names a node: one
+left unnamed, and one TikZ names itself, `tikz@f@<n>` (a pin, an
+`alias`, an unnamed node followed by `edge` or `child`) (#1087).
+
 | Id | Scope | Class | What it reports |
 | --- | --- | --- | --- |
 | `does-not-compile` | figure | objective | The figure's own TikZ fails, with TeX's first error line. The geometry rules are then listed as not measured. Cannot be allowed |

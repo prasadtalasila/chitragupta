@@ -15,7 +15,7 @@ purpose, or a dot on a line), and an unframed node with no text or that
 only groups others (a placeholder, an undrawn `fit`).
 """
 
-from chitragupta.figure._connectors import LABEL_PREFIX, MM, zones
+from chitragupta.figure._connectors import MM, shown_as, zones
 from chitragupta.figure._route_rules import ROUND
 from chitragupta.review.figure_layout import Drawn, DrawnNode, overlaps
 
@@ -43,16 +43,6 @@ def _is_ink(name: str, node: DrawnNode, groups: set[str]) -> bool:
         return True
     has_text = node.text_box is not None and node.text_box[2] > node.text_box[0]
     return has_text and name not in groups
-
-
-def shown_as(name: str, node: DrawnNode) -> str:
-    """A node's name in a finding: its own, or an unnamed one's centre.
-    Shared with k1 and k2 (#1055)."""
-    if not name.startswith(LABEL_PREFIX):
-        return name
-    x = (node.box[0] + node.box[2]) / 2
-    y = (node.box[1] + node.box[3]) / 2
-    return f"({x / MM:.1f},{y / MM:.1f})"
 
 
 def _is_badge(node: DrawnNode) -> bool:

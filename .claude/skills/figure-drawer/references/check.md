@@ -42,7 +42,7 @@ own heading, never count as findings and cannot be allowed.
 | `focal-count` | figure | Keep `cgkey` on the one node the figure is about |
 | `content-protrusion` | figure | Pull the stranded element back into the main block |
 | `loads-library-by-hand` | figure | Delete the internal macro; keep the plain `\usetikzlibrary` line |
-| `node-overlap` | element | More room between the pair (`node distance`, a gap). A pair named `(x,y)` is unnamed text, such as a zone title or a note, at that point in mm |
+| `node-overlap` | element | More room between the pair (`node distance`, a gap). A pair named `(x,y)` is a node the source does not name (a zone title, a note, a pin, a `child`), at that point in mm |
 | `node-text-overload` | element | Cut the label to 15 words or split the node |
 | `stranded-arrowhead` | element | Put the `->` on the last piece of the line only |
 | `c1-orthogonal` | element | Route the edge as an elbow, `-\|` or `\|-`, or line the two nodes up |

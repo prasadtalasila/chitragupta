@@ -40,13 +40,12 @@ LABEL_PREFIX = "cgu-"
 
 @dataclass(frozen=True)
 class Connector:
+    """`name` is how a finding shows it: its ends `shown_as`."""
+
     line: DrawnLine
     start: str
     end: str
-
-    @property
-    def name(self) -> str:
-        return f"{self.start}->{self.end}"
+    name: str
 
 
 def solid(drawn: Drawn) -> dict[str, DrawnNode]:
@@ -79,10 +78,23 @@ def connectors(drawn: Drawn) -> tuple[list[Connector], list[DrawnLine]]:
     for line in drawn.lines:
         start, end = attach(line.points[0], nodes), attach(line.points[-1], nodes)
         if start and end and start != end:
-            found.append(Connector(line, start, end))
+            name = f"{shown_as(start, nodes[start])}->{shown_as(end, nodes[end])}"
+            found.append(Connector(line, start, end, name))
         else:
             loose.append(line)
     return found, loose
+
+
+def shown_as(name: str, node: DrawnNode) -> str:
+    """A node's name in a finding: its own, or its centre where no source
+    says it. That is an unnamed node, and one TikZ named itself,
+    `tikz@f@<n>`: a pin, an `alias`, an unnamed node before `edge` or
+    `child`, an unnamed `fit` (#1087)."""
+    if not name.startswith(LABEL_PREFIX) and "@" not in name:
+        return name
+    x = (node.box[0] + node.box[2]) / 2
+    y = (node.box[1] + node.box[3]) / 2
+    return f"({x / MM:.1f},{y / MM:.1f})"
 
 
 def zones(nodes: dict[str, DrawnNode]) -> set[str]:

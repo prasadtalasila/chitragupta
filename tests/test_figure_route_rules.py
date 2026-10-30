@@ -160,6 +160,24 @@ class TestAttach:
 
         assert findings == [] and round_nodes == ["b"]
 
+    def test_c4_names_a_node_tikz_named_itself_by_position(self):
+        """A `child` of an unnamed tree root is `tikz@f@<n>` (#1087)."""
+        b = node("tikz@f@1", (100, 0, 140, 20))
+        cons = _cons([A, b], [line((40, 10), (70, 10), (70, 10 + 2 * MM), (100, 10 + 2 * MM))])
+
+        (finding,), _ = attach_points(cons, drawn([A, b], []).nodes)
+
+        assert finding.target == f"({120 / MM:.1f},{10 / MM:.1f}).west"
+        assert cons[0].name == f"a->({120 / MM:.1f},{10 / MM:.1f})"
+
+    def test_a_round_node_tikz_named_itself_is_listed_by_position(self):
+        circle = node("tikz@f@1", (100, -10, 140, 30), shape="circle")
+        cons = _cons([A, circle], [line((40, 10), (102, 15))])
+
+        _, round_nodes = attach_points(cons, drawn([A, circle], []).nodes)
+
+        assert round_nodes == [f"({120 / MM:.1f},{10 / MM:.1f})"]
+
 
 class TestDangling:
     def test_c7_fires_on_a_tip_ending_in_empty_space(self):

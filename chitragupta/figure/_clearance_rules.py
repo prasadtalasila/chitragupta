@@ -16,6 +16,7 @@ from chitragupta.figure._connectors import (
     Connector,
     segment_box_gap,
     segments,
+    shown_as,
     shrink,
     solid,
     zones,
@@ -75,7 +76,7 @@ def transit(cons: list[Connector], drawn: Drawn, layout: str | None = None) -> l
                 continue
             inner = shrink(node.box, _TRANSIT_PT)
             if any(segment_box_gap(p, q, inner) == 0 for p, q in segments(con.line.points)):
-                found.append(Finding("c5-transit", con.name, f"crosses {name}"))
+                found.append(Finding("c5-transit", con.name, f"crosses {shown_as(name, node)}"))
     return found
 
 
@@ -89,7 +90,8 @@ def tag_covered(cons: list[Connector], drawn: Drawn) -> list[Finding]:
         for box, _ in _tags(con, drawn):
             for name, node in nodes.items():
                 if name not in hidden and not contains(node.box, box) and intersects(box, node.box):
-                    found.append(Finding("c6-tag-covered", con.name, f"tag under {name}"))
+                    under = f"tag under {shown_as(name, node)}"
+                    found.append(Finding("c6-tag-covered", con.name, under))
     return found
 
 

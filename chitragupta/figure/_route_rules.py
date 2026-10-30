@@ -18,6 +18,7 @@ from chitragupta.figure._connectors import (
     point_box,
     point_segment,
     segments,
+    shown_as,
     solid,
     zones,
 )
@@ -137,7 +138,8 @@ def attach_points(
             if name in groups:
                 continue
             if nodes[name].shape in ROUND:
-                round_nodes += [] if name in round_nodes else [name]
+                shown = shown_as(name, nodes[name])
+                round_nodes += [] if shown in round_nodes else [shown]
                 continue
             measured = _square_end(nodes[name].box, at, near)
             if measured:
@@ -147,7 +149,7 @@ def attach_points(
     for (name, side), (length, positions) in sides.items():
         problem = _spacing(_distinct(sorted(positions)), length)
         if problem:
-            found.append(Finding("c4-attach", f"{name}.{side}", problem))
+            found.append(Finding("c4-attach", f"{shown_as(name, nodes[name])}.{side}", problem))
     return found, round_nodes
 
 
