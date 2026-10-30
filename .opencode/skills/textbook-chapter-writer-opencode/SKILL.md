@@ -354,8 +354,10 @@ candidate for the chapter.
    mostly quantities. Write each as ASCII in a code span -- `` `k = 4` ``,
    `` `m = a * W + b` `` -- and give it a row in the dossier's `math.md`;
    a displayed equation is an untagged fence under a `<!-- math -->`
-   marker. `render` turns those into real mathematics for the pdf a
-   student reads, and leaves the `.md` legible. A quantity in a bare code
+   marker, and so is any matrix with two or more columns, which TeX
+   cannot break across a line. `render` turns those into real
+   mathematics for the pdf a student reads, and leaves the `.md`
+   legible. A quantity in a bare code
    span with no row renders as typewriter text beside the equation that
    defines it, which is the exact thing §12 exists to stop.
 
