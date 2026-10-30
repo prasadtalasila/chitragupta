@@ -98,4 +98,147 @@ and the routing that sends those figures to it.
 
 ## Implementation plan
 
-To be written from this design once it is reviewed.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use
+> superpowers:subagent-driven-development (recommended) or
+> superpowers:executing-plans to implement this plan task-by-task. Steps
+> use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** `figure new --layout state-machine` copies a scaffold that
+draws an automaton in the house style, routed to by `patterns.md`, with
+a v6 block every carrier shares and a `focal-count` that sees an
+accented state.
+
+**Architecture:** No new module. One regex in `_focal.py`, four styles
+in the house block, and two new carriers that the existing scaffold
+tests pick up by directory. Everything else is prose.
+
+**Tech Stack:** TikZ (core only), Python 3.12+, pytest, LuaLaTeX.
+
+**Spec:** the Decisions table above.
+
+## Global Constraints
+
+- No rule becomes a gate; `figure check` still exits 0 on findings.
+- No citekey anywhere: not in a figure, a twin, a fixture or a doc.
+- Line and branch coverage stays at 100%.
+- Twins are 7-bit ASCII, at most 72 columns (WRITING-STANDARDS §10).
+- All figure text `\normalsize`; no `\resizebox`; libraries line stays
+  `arrows.meta,positioning,fit,backgrounds,calc,shadows.blur`.
+- PR body says `Closes #1062`. MINOR bump read from `main` at PR time.
+- Tests: `/home/prasad/git/chitragupta-freja/.venv-full/bin/python -m pytest`
+  with an absolute `PYTHONPATH=<worktree>` and `config.toml` copied
+  from the example.
+
+## Review Focus
+
+1. `[cgkeystate]` plus `[cgkey]` in one figure: two accents, one
+   finding. Test in Task 1.
+2. A state style used in a figure that also carries an older v5 block:
+   `figure sync` refreshes it to v6 and nothing else moves. Covered by
+   the existing stale-block tests once v6 is registered; checked in
+   Task 2 by running `figure sync --check` on all carriers.
+3. A state name longer than the fixed size: the circle grows and
+   `figure check` still reports no overlap. Checked in Task 3 by the
+   scaffold's longest name, "review", fitting the chosen size.
+4. A loop's tag at the apex too close to the curve (`c2-tag-clearance`).
+   Checked in Tasks 3 and 4 by `figure check` on the compiled carrier.
+5. A table twin that misses a transition's tag: `t2-tags` fires. The
+   existing twin tests cover it; Tasks 3 and 4 run them on the new pair.
+
+---
+
+### Task 1: `focal-count` counts an accented state
+
+**Files:** Modify `chitragupta/figure/_focal.py`, `chitragupta/figure/_check.py`;
+test `tests/test_figure_check.py` (`TestFocalCount`).
+
+- [ ] **Step 1: Failing tests.** In `TestFocalCount`: the existing
+  measurement becomes `f"2 accented nodes: {named}"`; new parametrized
+  cases `\node[cgkeystate] (a) {A}; \node[cgkeystate] (b) {B};` and
+  `\node[cgkey] (a) {A}; \node[cgkeystate] (b) {B};` each fire with
+  `a, b`; `\node[cgkeystateish] (a) {A}; \node[cgkey] (b) {B};` and
+  `my-cgkeystate` do not fire.
+- [ ] **Step 2: Run** `pytest tests/test_figure_check.py -k Focal`; expect
+  the new cases to fail.
+- [ ] **Step 3: Implement.** `_CGKEY_RE` becomes
+  `(?<![\w-])cgkey(?:state)?(?![\w-])`; docstrings say "an accent
+  (`cgkey` or `cgkeystate`)"; `_check.py`'s message is
+  `f"{len(keyed)} accented nodes: ..."`.
+- [ ] **Step 4: Run** again; pass, `_focal.py` at 100%.
+- [ ] **Step 5: Commit** `Count an accented state in focal-count (#1062)`.
+
+### Task 2: House block v6
+
+**Files:** `assets/tikz/cg-figstyle.tex`, `cg-figstyle.versions.toml`,
+the 10 carriers, `docs/TIKZ-STYLE.md` (vocabulary table and
+`focal-count` row), `docs/CLI.md` only if it quotes the block version.
+
+- [ ] **Step 1:** Add the `--- States ---` group after the zone card:
+  `cgstate` (circle, `draw=cgFlowLine`, `fill=cgFlow!7`, `align=center`,
+  `inner sep=1.5pt`, `minimum size=` the measured value,
+  `font=\normalsize\bfseries`, `cgsoft`), `cgaccept` (`cgstate`,
+  `double=cgFlow!7`, `double distance=1.2pt`), `cgkeystate` (`cgstate`,
+  `draw=cgAccentLine`, `fill=cgAccent!11`, `line width=1.15pt`) and
+  `cgstart` (`cgedge`, `shorten <=0pt`). Comment why circles, why no
+  `automata`, and why `cgkeystate` is not `cgkey`.
+- [ ] **Step 2:** Marker to v6; append `v6 = "<digest>"` computed by
+  `chitragupta.figure.digest` over the region.
+- [ ] **Step 3:** `python -m chitragupta.figure sync assets/tikz/*.tex
+  assets/tikz/exemplars/*.tex`; then `sync --check` reports all current.
+- [ ] **Step 4:** TIKZ-STYLE.md: a "States" row in the vocabulary table;
+  the `focal-count` row says "more than one `cgkey` or `cgkeystate` node".
+- [ ] **Step 5: Run** `tests/test_figure_block.py tests/test_figure_contrast.py
+  tests/test_tikz_scaffolds.py`; pass.
+- [ ] **Step 6: Commit** `Add state styles to the house figure block, v6 (#1062)`.
+
+### Task 3: The scaffold, its twin, its reference and its routing
+
+**Files:** create `assets/tikz/state-machine.tex`, `.txt`,
+`.claude/skills/figure-drawer/references/layouts/state-machine.md`;
+modify `patterns.md`, `figures.md`, `assets/tikz/README.md`,
+`docs/TIKZ-STYLE.md` (metaphor table), `docs/CLI.md` (`--layout` ids),
+the SKILL.md copies where they list layouts, and the two layout lists in
+`tests/test_figure_check.py`.
+
+- [ ] **Step 1: Failing test.** Add the TIKZ-STYLE.md metaphor row;
+  `test_every_metaphor_has_a_scaffold` and
+  `test_every_metaphor_has_a_reference_file` fail.
+- [ ] **Step 2:** Draw the scaffold: states `draft` (initial), `review`,
+  `revise`, `merged` (`cgaccept`); `submit` draft to review, `approve`
+  review to merged, `changes` review to revise and `resubmit` back as a
+  pair bent apart, `comment` as review's self-loop above. Header comment
+  in control-loop's voice. Twin: `initial: draft    accepting: merged`
+  over a `from | on | to` table.
+- [ ] **Step 3:** The reference file, sections as `hub-and-spoke-network.md`;
+  its range row pasted from the test's failure message.
+- [ ] **Step 4:** Routing and doc rows as the Decisions table says.
+- [ ] **Step 5:** `figure check assets/tikz/state-machine.tex`: no
+  objective finding; fix in the drawing.
+- [ ] **Step 6: Run** `tests/test_tikz_scaffolds.py tests/test_figure_new.py
+  tests/test_figure_check.py tests/test_skill_figure_router.py`; pass.
+- [ ] **Step 7: Commit** `Add the state-machine scaffold and route lifecycles that go back to it (#1062)`.
+
+### Task 4: The pump exemplar
+
+**Files:** create `assets/tikz/exemplars/pump-markov-chain.tex`, `.txt`;
+modify `layouts/state-machine.md` (second range row), `figures.md` if it
+lists exemplars.
+
+- [ ] **Step 1:** Redraw from the book's figure: Off, On, Faulted
+  (`cgkeystate`); Off to On 0.3, On to Off 0.4, On to Faulted 0.02,
+  Faulted to Off 0.1 (`cgback`, tag "0.1 repaired"); self-loops 0.7, 0.58,
+  0.9. Twin: the table, then the sum-to-one sentence.
+- [ ] **Step 2:** `figure check` clean; range row from the test.
+- [ ] **Step 3: Run** `tests/test_tikz_scaffolds.py`; pass.
+- [ ] **Step 4: Commit** `Add the pump Markov chain as the state-machine exemplar (#1062)`.
+
+### Task 5: Release prep
+
+- [ ] **Step 1:** `figure look` on both new carriers; inspect the PNGs.
+- [ ] **Step 2:** v3 plan: 3c built, exemplar chapter corrected, block v6.
+  This plan's Status to **built**, ticks set.
+- [ ] **Step 3:** Fetch `main`; MINOR bump in `pyproject.toml` from its version.
+- [ ] **Step 4:** Full suite; coverage 100%; `ocr delegate preview`; a
+  fresh agent review of the `.tex`/`.md` the OCR skips.
+- [ ] **Step 5:** Push, open the PR (`Closes #1062`), wait for CI, merge
+  with `scripts/merge_pr.py`, tag, release, patch the release body.
