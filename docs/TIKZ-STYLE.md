@@ -42,6 +42,7 @@ maps onto a TikZ idiom to use:
 | Branching tree | `tree` |
 | Hub-and-spoke network | a star |
 | Zoned spine | `fit` plus `backgrounds` |
+| State machine | circles (`cgstate`) with `bend` and `loop` |
 
 (The first six are PaperBanana's planner supplement, read and not
 copied; [INSPIRATION.md](INSPIRATION.md) carries the credit.)

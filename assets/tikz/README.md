@@ -15,6 +15,7 @@ empty `tikzpicture`.
 | `branching-tree.tex` | Branching tree | one thing divides into cases and no case rejoins another |
 | `hub-and-spoke-network.tex` | Hub-and-spoke network | everything going through one place *is* the claim |
 | `zoned-spine.tex` | Zoned spine | one storyline, with parallel commentaries on points along it |
+| `state-machine.tex` | State machine | it is in one state at a time, and a state can recur, stay put or be sent back |
 
 Two more things live here that are not scaffolds:
 
@@ -88,7 +89,10 @@ as such a pair: copy its `.txt` beside the `.tex` and edit both.
 `chitragupta figure check` reports a twin that is missing or that lacks a
 name, tag or panel letter the TikZ has (`twin-missing`, `t1-labels`,
 `t2-tags`, `t3-panels`), and `tests/test_tikz_scaffolds.py` holds every
-pair here clean under those rules.
+pair here clean under those rules. A twin is the clearest 7-bit form
+of what the figure says, not necessarily a tracing of it:
+`state-machine.txt` is a transition table, because a self-loop and a
+curved pair draw badly in characters and the table is more precise.
 
 **A panelled figure is still one file.** Copy the same scaffold once per
 panel into a single `tikzpicture` -- or two different ones, if the panels

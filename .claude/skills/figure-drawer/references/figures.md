@@ -30,6 +30,7 @@ wins if the two disagree):
 | `branching-tree.tex` | Branching tree | one thing divides into cases and no case rejoins another |
 | `hub-and-spoke-network.tex` | Hub-and-spoke network | everything going through one place *is* the claim |
 | `zoned-spine.tex` | Zoned spine | one storyline, with parallel commentaries on points along it |
+| `state-machine.tex` | State machine | it is in one state at a time, and a state can recur, stay put or be sent back |
 
 The choices people get wrong:
 
