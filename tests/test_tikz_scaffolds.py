@@ -557,6 +557,20 @@ def _lualatex(directory: Path, body: str) -> subprocess.CompletedProcess:
 
 
 @needs_tikz
+class TestALoopKeepsTheHouseArrow:
+    """pgf's `topaths` sets `every loop/.style={->,shorten >=1pt}`, and a
+    `loop` applies it after the edge's own options, so a self-loop drawn
+    `cgedge` ends in pgf's default tip beside every other transition's
+    `Latex` one (#1062). The picture style empties it."""
+
+    def test_the_picture_style_empties_every_loop(self):
+        text = BLOCK.read_text(encoding="utf-8")
+        start = text.index("  cg/.style={")
+        cg = text[start : text.index("\n  },", start)]
+
+        assert "every loop/.style={}" in cg
+
+
 class TestTheBlockTypesetsNothing:
     """`\\input` of the block adds no material to the page, and `\\input`
     of a figure adds nothing beyond its picture.

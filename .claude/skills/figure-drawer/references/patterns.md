@@ -16,8 +16,8 @@ figure is warranted at all.
 
 | Pattern: the figure argues... | Layout | Tell |
 | --- | --- | --- |
-| a lifecycle with a start and an end | [Pipeline](layouts/pipeline.md) | each stage hands something to the next, and nothing goes back |
-| a lifecycle where a state recurs, stays put or is sent back | [State machine](layouts/state-machine.md) | it is in one state at a time, and events move it |
+| a lifecycle with a start and an end | [Pipeline](layouts/pipeline.md) | each stage hands something to the next; at most one retry goes back |
+| a lifecycle where a state stays put, or is sent back by more than one event | [State machine](layouts/state-machine.md) | it is in one state at a time, and events move it |
 | an automaton, a protocol's states, a Markov chain | [State machine](layouts/state-machine.md) | every arrow is an event or a probability |
 | a bottleneck in a sequence | [Pipeline](layouts/pipeline.md) | one stage is the narrow one, marked `cgkey` |
 | a request's or a build's path | [Pipeline](layouts/pipeline.md) | the reader asks "what happens next" |
@@ -39,8 +39,9 @@ figure is warranted at all.
 - **Loop or state machine?** A loop's nodes are stages that all run on
   every pass. A state machine's nodes are conditions, and only one holds
   at a time.
-- **Pipeline or state machine?** If anything goes back or stays put, it
-  is a state machine; a pipeline only goes forward.
+- **Pipeline or state machine?** One retry arrow drawn back is still a
+  pipeline (`figures.md` §1). A state that stays put, or several ways
+  back, make it a state machine: the moves are the claim, not the path.
 
 The layout pairs people confuse (pipeline or loop, pipeline or spine,
 tree or hub, stack or spine) are in `figures.md` §1.

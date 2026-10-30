@@ -69,6 +69,19 @@ and the routing that sends those figures to it.
   reported nothing: `c2-tag-clearance` and `c6-tag-covered` do not
   measure a tag on a self-loop. The drawing is fixed and its comment
   says why; the rule gap is outside this item.
+- **A self-loop keeps the house arrowhead.** pgf sets `every loop` to
+  `{->, shorten >=1pt}` and applies it after an edge's own options, so
+  the first v6 drew every loop with pgf's default tip. The `cg` picture
+  style now empties `every loop`; v6 had not been released, so its
+  digest was replaced rather than a v7 added. Found by the final review.
+- **One retry stays a pipeline.** `figures.md` §1, `pipeline.md` and
+  `control-loop.md` already said a pipeline with one retry arrow is a
+  pipeline, so the routing keeps that: a state machine is a state that
+  stays put or is sent back by more than one event, and `pipeline.md`'s
+  "Not when" now points here. Found by the final review.
+- **The SKILL.md copies list `state-machine.md`** among the layout
+  files in step 2, which `tests/test_skill_references.py` requires of
+  every reference.
 - **The exemplar's twin opens with a title line** ("A pump as a Markov
   chain. One step is one hour.") instead of the initial and accepting
   line, since a Markov chain has neither.

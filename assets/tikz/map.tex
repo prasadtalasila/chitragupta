@@ -124,10 +124,14 @@
   % `node distance=6mm` is the gap between two members of one zone. Two
   % zones sit 8mm apart card to card, which with `cgzone`'s 3mm inner sep
   % is 14mm member to member: say that distance where you place across.
+  % `every loop` is emptied because pgf sets it to `->` and applies it
+  % after an edge's own options, so a self-loop would end in pgf's default
+  % tip beside every other edge's house arrowhead.
   cg/.style={
     thick, line cap=round, line join=round,
     font=\normalsize, node distance=6mm,
     every node/.append style={text=cgInk},
+    every loop/.style={},
   },
   % --- Soft shadow --------------------------------------------------------
   % The single largest contributor to "drawn, not assembled". Kept very

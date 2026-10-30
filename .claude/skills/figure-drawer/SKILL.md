@@ -52,7 +52,8 @@ fragment: `.claude/skills/figure-drawer/references/placement.md` §1,
    `.claude/skills/figure-drawer/references/layouts/layered-stack.md`,
    `.claude/skills/figure-drawer/references/layouts/control-loop.md`,
    `.claude/skills/figure-drawer/references/layouts/branching-tree.md`,
-   `.claude/skills/figure-drawer/references/layouts/hub-and-spoke-network.md`
+   `.claude/skills/figure-drawer/references/layouts/hub-and-spoke-network.md`,
+   `.claude/skills/figure-drawer/references/layouts/state-machine.md`
    or `.claude/skills/figure-drawer/references/layouts/zoned-spine.md`.
    Metaphors, panels, fit and the exemplar:
    `.claude/skills/figure-drawer/references/figures.md` §1, §2, §3 and §4.

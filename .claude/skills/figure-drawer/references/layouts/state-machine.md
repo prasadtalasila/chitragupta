@@ -8,7 +8,8 @@ Markov chain.
 
 - **Reach for it when** a state can recur, stay put, or be sent back,
   and each move has an event or a probability that names it.
-- **Not when** nothing ever goes back (use [the pipeline](pipeline.md));
+- **Not when** nothing goes back but one retry (use [the
+  pipeline](pipeline.md));
   every node runs on every pass (use [the control loop](control-loop.md):
   its nodes are stages, a state machine's are conditions).
 
