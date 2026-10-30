@@ -248,7 +248,8 @@ the SKILL.md copies where they list layouts, and the two layout lists in
   objective finding; fix in the drawing.
 - [x] **Step 6: Run** `tests/test_tikz_scaffolds.py tests/test_figure_new.py
   tests/test_figure_check.py tests/test_skill_figure_router.py`; pass.
-- [x] **Step 7: Commit** `Add the state-machine scaffold and route lifecycles that go back to it (#1062)`.
+- [x] **Step 7: Commit** `Add the state-machine scaffold and route
+  lifecycles that go back to it (#1062)`.
 
 ### Task 4: The pump exemplar
 
@@ -262,7 +263,8 @@ lists exemplars.
   0.9. Twin: the table, then the sum-to-one sentence.
 - [x] **Step 2:** `figure check` clean; range row from the test.
 - [x] **Step 3: Run** `tests/test_tikz_scaffolds.py`; pass.
-- [x] **Step 4: Commit** `Add the pump Markov chain as the state-machine exemplar (#1062)`.
+- [x] **Step 4: Commit** `Add the pump Markov chain as the
+  state-machine exemplar (#1062)`.
 
 ### Task 5: Release prep
 
