@@ -90,14 +90,14 @@ def _inside_book(path: Path, book: Path) -> Path:
     """`path`, once it is certain it lands under `book`.
 
     A path that cannot be resolved at all is refused too: a NUL byte
-    gives `ValueError`, a name the platform rejects `OSError`, and a
-    symlink loop `RuntimeError` on Python 3.12. None of them is a
-    chapter anyone can read, and a traceback would name nothing.
+    gives `ValueError` and a name the platform rejects `OSError`, and
+    `resolves_inside` answers False for a symlink loop. None of them is
+    a chapter anyone can read, and a traceback would name nothing.
     """
     try:
         if config.resolves_inside(path, book):
             return path
-    except (OSError, RuntimeError, ValueError):
+    except (OSError, ValueError):
         pass
     raise SpecError(
         f"{path} does not resolve inside {book}: a chapter id is one path "
