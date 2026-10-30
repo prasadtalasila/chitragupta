@@ -456,11 +456,13 @@ class TestScaffold:
     def test_a_box_is_read_from_its_four_sides(self):
         """#1054: `south west` and `north east` are corners only on a
         rectangle. On a circle they lie on the curve, so the box came
-        back about 30% too small."""
+        back about 30% too small. #1064: `\\cgsides` keeps the min and max
+        of all four points, so a node turned a quarter is not a point."""
         scaffold = figure_layout.scaffold("\\node (a) {A};", ["a"])
 
+        assert "\\cgsides{a}" in scaffold
         for side in ("west", "east", "south", "north"):
-            assert f"\\pgfpointanchor{{a}}{{{side}}}" in scaffold
+            assert f"{{#1}}{{{side}}}" in scaffold
         assert "{south west}" not in scaffold
 
     def test_a_name_spelled_with_a_macro_is_declared_but_not_probed(self):
@@ -475,8 +477,8 @@ class TestScaffold:
         scaffold = figure_layout.scaffold(source, names)
 
         assert names == ["s\\i", "a"]
-        assert "\\pgfpointanchor{a}" in scaffold
-        assert "\\pgfpointanchor{s\\i}" not in scaffold
+        assert "\\cgsides{a}" in scaffold
+        assert "\\cgsides{s\\i}" not in scaffold
 
 
 class TestProbePlacement:

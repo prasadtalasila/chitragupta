@@ -141,14 +141,18 @@ end
 }
 % At the end of the picture: every node's box from its four sides, in
 % canvas coordinates, its text anchor where its shape has one, and the
-% rotation entries (b, c) of the transform it was set with.
+% rotation entries (b, c) of the transform it was set with. The box is
+% `\cgsides`'s, which the probe document defines: the min and max over
+% the four side anchors' points, so a node turned a quarter is measured
+% where it was set, not as a point (#1064).
 \def\cgdumpnodes{%
   \begingroup\pgftransformreset
   \def\cgdo##1{%
-    \pgfpointanchor{##1}{west}\edef\cgw{\strip@pt\pgf@x}%
-    \pgfpointanchor{##1}{south}\edef\cgs{\strip@pt\pgf@y}%
-    \pgfpointanchor{##1}{east}\edef\cge{\strip@pt\pgf@x}%
-    \pgfpointanchor{##1}{north}\edef\cgn{\strip@pt\pgf@y}%
+    \cgsides{##1}%
+    \dimen@=\cgx\relax\edef\cgw{\strip@pt\dimen@}%
+    \dimen@=\cgy\relax\edef\cgs{\strip@pt\dimen@}%
+    \dimen@=\cgxx\relax\edef\cge{\strip@pt\dimen@}%
+    \dimen@=\cgyy\relax\edef\cgn{\strip@pt\dimen@}%
     \pgfutil@ifundefined{pgf@anchor@\csname pgf@sh@ns@##1\endcsname @text}%
       {\def\cgt{- -}}%
       {\pgfpointanchor{##1}{text}\edef\cgt{\strip@pt\pgf@x\space\strip@pt\pgf@y}}%
