@@ -144,6 +144,9 @@ class TestFocalCount:
             ("\\draw (0,0) node[cgkey] (a) {A} -- (1,0) node[cgkey] (b) {B};\n", "a, b"),
             ("\\node[label={[red]above:x}, cgkey] (a) {A};\n\\node[cgkey] (b) {B};\n", "a, b"),
             ("\\node at (0,0) [cgkey] (a) {A};\n\\node (b) at (1,0) [cgkey] {B};\n", "a, b"),
+            # An accented state is an accent too (#1062).
+            ("\\node[cgkeystate] (a) {A};\n\\node[cgkeystate] (b) {B};\n", "a, b"),
+            ("\\node[cgkey] (a) {A};\n\\node[cgkeystate] (b) {B};\n", "a, b"),
         ],
     )
     def test_two_accented_nodes_fire(self, body, named):
@@ -151,7 +154,7 @@ class TestFocalCount:
 
         [finding] = findings
         assert finding.rule == "focal-count"
-        assert finding.measurement == f"2 cgkey nodes: {named}"
+        assert finding.measurement == f"2 accented nodes: {named}"
 
     @pytest.mark.parametrize(
         "body",
@@ -159,6 +162,8 @@ class TestFocalCount:
             "\\node[cgkey] (a) {A};\n\\node[cgbox] (b) {B};\n",
             "\\node[cgkey] (a) {A};\n% \\node[cgkey] (b) {B};\n",
             "\\node[cgkey] (a) {A};\n\\node[cgkeyish] (b) {B};\n",
+            "\\node[cgkey] (a) {A};\n\\node[cgkeystateish] (b) {B};\n",
+            "\\node[cgkeystate] (a) {A};\n\\node[my-cgkeystate] (b) {B};\n",
             "\\node[cgbox] (a) {a cgkey in the label};\n\\node[cgkey] (b) {B};\n",
             "\\node[cgkey] at (cgkey) {A};\n\\node (b) [cgbox] {B};\n",
         ],

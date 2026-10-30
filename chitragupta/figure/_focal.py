@@ -1,6 +1,6 @@
-"""`focal-count`'s reading of a figure's source: which nodes carry the
-`cgkey` style (#1053). docs/TIKZ-STYLE.md: "if two things are accented,
-neither is".
+"""`focal-count`'s reading of a figure's source: which nodes carry an
+accent, the `cgkey` style or the accented state `cgkeystate` (#1053,
+#1062). docs/TIKZ-STYLE.md: "if two things are accented, neither is".
 
 A scanner rather than one regex, because a node's options are not a
 regular language. They nest (`label={[red]above:x}`), so a `[^\\]]*`
@@ -20,14 +20,16 @@ from chitragupta._tex_comments import strip_comments
 from chitragupta.review.figure_layout._source import _NODE_KEYWORD
 
 _NODE_START_RE = re.compile(_NODE_KEYWORD)
-# `cgkey` as a whole style name: not `cgkeyish`, not `my-cgkey`.
-_CGKEY_RE = re.compile(r"(?<![\w-])cgkey(?![\w-])")
+# `cgkey` or `cgkeystate` as a whole style name: not `cgkeyish`, not
+# `my-cgkey`. A state cannot take `cgkey` itself, which is built on the
+# card, so the state has its own accent and both count (#1062).
+_CGKEY_RE = re.compile(r"(?<![\w-])cgkey(?:state)?(?![\w-])")
 # `at` as a word, which makes the next parenthesised group a position.
 _AT_RE = re.compile(r"at\b")
 
 
 def cgkey_nodes(source: str) -> list[str]:
-    """The name of every node whose options include `cgkey`, in source
+    """The name of every node whose options include an accent, in source
     order; `(unnamed)` for one with no name."""
     text = strip_comments(source)
     keyed = []
