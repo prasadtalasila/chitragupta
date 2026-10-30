@@ -19,10 +19,11 @@ def _ledger_connect_ro() -> sqlite3.Connection | None:
     answer both readers below turn into "nothing fingerprintable"."""
     # A ledger needing a sync is raised, not folded into `None`: this feeds
     # the verbatim check, and "no overlap found" against a corpus that was
-    # never read would be a silent pass on a copying check.
+    # never read would be a silent pass on a copying check. A ledger SQLite
+    # will not read is raised for the same reason (#1066).
     try:
         return ledger.read_connection()
-    except ledger.StaleLedger:
+    except (ledger.StaleLedger, ledger.UnreadableLedger):
         raise
     except ledger.NoLedger:
         return None

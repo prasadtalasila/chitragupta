@@ -20,7 +20,9 @@ and only the first two are faults:
    arrives either. `chitragupta/hook_launchers.py` holds both checks for
    that reason, and `python -m chitragupta.draft gate` makes them too.
 2. **Does `python -m chitragupta.draft gate` still refuse a fabricated citekey?**
-3. **Has the corpus been synced?** -- reported as a *stage*, not a fault.
+   Refused, accepted, or could not run: three answers (#1066).
+3. **Has the corpus been synced?** -- reported as a *stage*, not a fault,
+   unless the ledger is there and cannot be read.
 
 That third distinction is the design. The normal sequence is clone ->
 config.toml -> `python -m chitragupta.corpus sync` -> drafting, and a user who has
@@ -89,6 +91,12 @@ except ModuleNotFoundError as exc:
 
 FABRICATED = "preflight_probe_not_a_real_citekey"
 
+# `corpus ledger`'s exit for a ledger that is there but cannot be read
+# (#1066), `chitragupta.ledger_refusals.EXIT_UNREADABLE`. Spelled here
+# because `chitragupta` may not be importable at all (above), and pinned
+# to it by a test.
+LEDGER_UNREADABLE = 3
+
 
 def launcher_faults() -> list[str]:
     """Registered hook commands that cannot start, from every harness's config.
@@ -115,8 +123,9 @@ def launcher_faults() -> list[str]:
     return launcher_configs.faults(REPO)
 
 
-def gate_is_live() -> bool:
-    """Does `python -m chitragupta.draft gate` still refuse a fabricated citekey?
+def gate_fault() -> str | None:
+    """Why `python -m chitragupta.draft gate` cannot be trusted to refuse a
+    fabricated citekey, or None when it refused one.
 
     Probed in a throwaway tree, so nothing is written under the user's
     content/ and no draft of theirs is read. The probe insists on the
@@ -124,6 +133,11 @@ def gate_is_live() -> bool:
     a gate that rejected the probe for its *location* would also exit
     non-zero, and counting that as a working gate is the false reassurance
     this check exists to prevent.
+
+    Three answers, not two (#1066): refused, accepted, and could not run.
+    Only an exit 0 is a gate that let the key through; a crash, or the
+    gate's own exit 3 for a ledger it could not read, said nothing about
+    the key either way, and is reported with what it printed.
     """
     with tempfile.TemporaryDirectory() as tmp:
         content = Path(tmp) / "content"
@@ -139,12 +153,33 @@ def gate_is_live() -> bool:
             CONFIG_PATH=str(config),
             CONTENT_DIR=str(content),
         )
-    return result.returncode != 0 and FABRICATED in result.stdout + result.stderr
+    said = result.stdout + result.stderr
+    if result.returncode != 0 and FABRICATED in said:
+        return None
+    if result.returncode == 0:
+        return (
+            "`python -m chitragupta.draft gate` did not refuse a fabricated "
+            "citekey. CLAUDE.md's one invariant is unenforced until that is "
+            "fixed -- do not trust a draft written in this state."
+        )
+    return (
+        "`python -m chitragupta.draft gate` could not run its self-test "
+        f"(exit {result.returncode}), so whether it refuses a fabricated citekey "
+        "is unknown -- do not trust a draft written in this state until it "
+        f"runs. It said:\n\n{said.strip()[-400:]}"
+    )
 
 
 def corpus_stage() -> str | None:
     """Where the user is in clone -> config -> sync -> draft, or None if ready."""
     result = _run("chitragupta.corpus", "ledger")
+    # A ledger that is there but cannot be read (#1066) is a fault, and
+    # names its own cause; the fresh-clone advice below would be wrong.
+    if result.returncode == LEDGER_UNREADABLE:
+        return (
+            "The ledger cannot be read, so no draft can be grounded or gated:\n\n"
+            f"{result.stderr.strip()}"
+        )
     if result.returncode != 0:
         return (
             "The corpus layer will not start, so no draft can be grounded. The\n"
@@ -182,12 +217,9 @@ def _run(module: str, *args: str, **overrides: str):
 
 def main() -> int:
     notes = [f"BROKEN: {fault}" for fault in launcher_faults()]
-    if not gate_is_live():
-        notes.append(
-            "BROKEN: `python -m chitragupta.draft gate` did not refuse a fabricated "
-            "citekey. CLAUDE.md's one invariant is unenforced until that is "
-            "fixed -- do not trust a draft written in this state."
-        )
+    gate = gate_fault()
+    if gate:
+        notes.append(f"BROKEN: {gate}")
     stage = corpus_stage()
     if stage:
         notes.append(stage)

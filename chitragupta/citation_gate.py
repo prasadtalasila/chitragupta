@@ -24,16 +24,18 @@ pandoc does not read as prose -- code, HTML comments, link targets,
 reference definitions (`chitragupta/_markdown_inert.py`), and in LaTeX
 verbatim/lstlisting/minted environments, `%` comments and \\verb -- is
 excluded from scanning first (see _blank_code).
-
-Known gaps, investigated and left as over-reporting (#834): a brace
-group adjacent to a citation's own reads as a multicite group, so
-`\\citep{k}{\\bfseries x}` offers `\\bfseries x` as a key; a macro
-*defining* a citation, `\\newcommand{\\mc}[1]{\\citep{#1}}`, offers
-`#1`. Both fail a sound draft rather than passing a fabricated key, so
-the fix is to write the citation differently.
 """
 
+# Known gaps, investigated and left as over-reporting (#834): a brace
+# group adjacent to a citation's own reads as a multicite group, so
+# `\citep{k}{\bfseries x}` offers `\bfseries x` as a key; a macro
+# *defining* a citation, `\newcommand{\mc}[1]{\citep{#1}}`, offers
+# `#1`. Both fail a sound draft rather than passing a fabricated key, so
+# the fix is to write the citation differently. (A comment rather than
+# part of the docstring above only for the C2 line limit, #1066.)
+
 import re
+import sqlite3
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -383,10 +385,19 @@ def run(paths: list[str]) -> int:
     # citation-free draft still passes -- which the session-start hook's
     # gate probe relies on before a first sync. Read-only (#843), so the
     # gate never creates the ledger it is checking against.
+    #
+    # A ledger that is there but cannot be read is the opposite case
+    # (#1066): exit 3 before any draft is looked at, citation-free ones
+    # included, so "I could not check" never shares the verdict's code 1.
+    # A stale ledger is one of those: read as empty, it reported every key
+    # it may well hold as "not sourced from bib sync". A raw sqlite3.Error
+    # is the same answer, from a page the first read did not reach.
     try:
         with ledger.reading() as con:
             known = ledger.known_citekeys(con)
         problem = "ledger is empty -- run `python -m chitragupta.corpus sync` first."
+    except (ledger.StaleLedger, ledger.UnreadableLedger, sqlite3.Error) as exc:
+        return _could_not_read(exc)
     except ledger.NoLedger as exc:
         known = set()
         problem = " ".join(str(exc).split("\n"))
@@ -418,10 +429,24 @@ def run(paths: list[str]) -> int:
     return 0 if all_ok else 1
 
 
+def _could_not_read(exc: Exception) -> int:
+    # stderr only: nothing on stdout, where an OK or FAIL line could be
+    # taken for a verdict.
+    if isinstance(exc, sqlite3.Error):
+        exc = ledger.UnreadableLedger(config.LEDGER_PATH, exc)
+    print(
+        "ERROR: the citation gate could not read the ledger, so no citekey was checked.\n"
+        f"This is not a verdict on any draft (exit {ledger.EXIT_UNREADABLE}).\n{exc}",
+        file=sys.stderr,
+    )
+    return ledger.EXIT_UNREADABLE
+
+
 USAGE = """usage: python -m chitragupta.draft gate <file> [<file> ...]
 
 Fail if a draft cites a citekey the ledger doesn't hold. Exit 0 = every
-citation verified, 1 = at least one unresolved citekey, 2 = bad usage.
+citation verified, 1 = at least one unresolved citekey, 2 = bad usage,
+3 = the ledger could not be read, so nothing was checked.
 
 Takes no options: every argument is a file to check. Reads only
 content/ledger.sqlite via stdlib sqlite3, so it runs under a bare

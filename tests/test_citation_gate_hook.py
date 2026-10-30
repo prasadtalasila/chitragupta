@@ -33,6 +33,7 @@ the temp root.
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -44,6 +45,7 @@ import pytest
 from chitragupta import ledger
 
 from tests.conftest import _IS_COVERAGE_BOOTSTRAP, make_reference
+from tests.ledger_faults import leave_hot_journal
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HOOK_PATH = REPO_ROOT / ".claude" / "hooks" / "citation_gate_hook.py"
@@ -333,6 +335,34 @@ class TestGateEnforcement:
         response = json.loads(result.stdout)
         assert response["decision"] == "block"
         assert "totally_fabricated_key_2026" in response["reason"]
+
+
+class TestALedgerTheGateCannotRead:
+    """#1066: exit 3 still blocks -- nothing was checked, so nothing
+    passed -- but it is not reported as a citekey to fix."""
+
+    def test_it_blocks_without_blaming_a_citekey(self, hook_repo, ledger_con, isolated_config):
+        ledger_con.close()
+        journal = leave_hot_journal(isolated_config.LEDGER_PATH)
+        path = hook_repo.draft()
+        path.write_text("This claim cites [@totally_fabricated_key_2026].\n")
+        result = hook_repo.run(path)
+
+        assert result.returncode == 0
+        response = json.loads(result.stdout)
+        assert response["decision"] == "block"
+        reason = response["reason"]
+        assert reason.startswith("The citation gate could not read the ledger")
+        assert "not a bad citekey" in reason
+        assert journal.name in reason  # the gate's own diagnosis, passed through
+        assert "Fix the offending citekey" not in reason
+
+    def test_its_exit_code_is_the_package_s(self):
+        # The hook runs on bare python and does not import chitragupta,
+        # so it spells the code itself; this keeps the two from parting.
+        assert re.search(r"^GATE_COULD_NOT_RUN = (\d+)$", HOOK_PATH.read_text(), re.M).group(
+            1
+        ) == str(ledger.EXIT_UNREADABLE)
 
 
 class TestEnvironmentFaultDistinctFromCitekeyFault:

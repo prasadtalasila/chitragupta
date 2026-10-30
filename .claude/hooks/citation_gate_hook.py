@@ -70,6 +70,11 @@ IMPORT_PROBE_TIMEOUT = 5.0
 # pins that the two agree.
 GATE_CALLER_ENV = "CHITRAGUPTA_GATE_CALLER"
 
+# The gate's "could not read the ledger, so checked nothing" exit (#1066),
+# `chitragupta.ledger_refusals.EXIT_UNREADABLE`; spelled here for the same
+# no-import reason, and pinned to it by a test.
+GATE_COULD_NOT_RUN = 3
+
 # Chosen from the gate's measured runtime, not guessed (#824). The whole
 # `python -m chitragupta.draft gate` subprocess, on this project's real
 # ledger, is linear in draft length since the code-region scans stopped
@@ -199,7 +204,18 @@ def main() -> int:
         )
         return 0
 
-    if result.returncode != 0 and _environment_is_broken(env):
+    # First, because the gate ran and said so itself: the environment is
+    # fine, the ledger is not. Still a block -- nothing was checked, so
+    # nothing passed -- but not one that sends anyone after a citekey.
+    if result.returncode == GATE_COULD_NOT_RUN:
+        _block(
+            "The citation gate could not read the ledger, so nothing in this "
+            "draft was checked -- this is not a bad citekey. It is blocked "
+            "until the gate can run; fix what the gate reports below, and "
+            "this file will be re-checked automatically on your next write "
+            f"to it.\n\n{result.stdout}{result.stderr}"
+        )
+    elif result.returncode != 0 and _environment_is_broken(env):
         reason = (
             "The citation gate could not run -- this is an environment fault, "
             "not a bad citekey (nothing was actually checked). "

@@ -35,6 +35,7 @@ import pytest
 from chitragupta import ledger
 
 from tests.conftest import make_reference
+from tests.ledger_faults import leave_hot_journal
 from tests.test_citation_gate_hook import _IS_COVERAGE_BOOTSTRAP, plant_package
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -215,6 +216,36 @@ class TestGateLiveness:
         synced.stub("draft", "import sys\nsys.exit(1)\n")
         context = PreflightRepo.context(synced.run())
         assert "fabricated citekey" in context
+
+    @pytest.mark.parametrize(
+        ("code", "said"),
+        [
+            (1, "Traceback (most recent call last):\nsqlite3.OperationalError: boom"),
+            (3, "ERROR: the citation gate could not read the ledger"),
+        ],
+    )
+    def test_a_gate_that_could_not_run_is_not_said_to_accept(self, synced, code, said):
+        """#1066: three answers, not two. A crash, or the gate's own "could
+        not read the ledger", is reported as that, with what it printed --
+        not as a gate that let a fabricated citekey through."""
+        synced.stub("draft", f"import sys\nsys.stderr.write({said!r})\nsys.exit({code})\n")
+        context = PreflightRepo.context(synced.run())
+        assert f"could not run its self-test (exit {code})" in context
+        assert said.splitlines()[-1] in context
+        assert "did not refuse" not in context
+
+
+class TestAnUnreadableLedger:
+    def test_is_reported_as_that_not_as_a_missing_config(self, synced, ledger_con, isolated_config):
+        """#1066: `corpus ledger` exits 3 on a hot journal, and the stage
+        report carries its diagnosis rather than the fresh-clone advice
+        every other non-zero exit gets."""
+        ledger_con.close()
+        journal = leave_hot_journal(isolated_config.LEDGER_PATH)
+        context = PreflightRepo.context(synced.run())
+        assert "The ledger cannot be read" in context
+        assert journal.name in context
+        assert "cp config.toml.example" not in context
 
 
 class TestLauncherFaults:

@@ -2,6 +2,7 @@
 only be used if it's actually in the ledger. This is the single most
 important module in the repo to test thoroughly."""
 
+import sqlite3
 import time
 
 import pytest
@@ -9,6 +10,7 @@ import pytest
 from chitragupta import citation_gate, ledger
 
 from tests.conftest import content_draft, make_reference, run_python
+from tests.ledger_faults import damage_past_the_header, leave_hot_journal
 
 
 class TestExtractLatexCitations:
@@ -641,6 +643,63 @@ class TestRun:
         assert rc == 1
         assert f"OK    {good}" in out
         assert f"FAIL  {bad}" in out
+
+
+class TestLedgerItCannotRead:
+    """#1066: "I could not check" is exit 3, never the verdict's exit 1,
+    and checks no draft at all -- not even a citation-free one."""
+
+    @staticmethod
+    def _gate(cfg, text, capsys):
+        path = content_draft(cfg, "drafts/draft.md")
+        path.write_text(text)
+        rc = citation_gate.run([str(path)])
+        return rc, capsys.readouterr()
+
+    @staticmethod
+    def _assert_no_verdict(captured):
+        assert captured.out == ""  # no OK or FAIL line to mistake for one
+        assert captured.err.startswith(
+            "ERROR: the citation gate could not read the ledger, so no citekey was checked."
+        )
+        assert "not a verdict on any draft (exit 3)" in captured.err
+
+    def test_a_hot_journal_exits_3_with_its_cause(self, isolated_config, capsys):
+        con = ledger.connect()
+        ledger.upsert_reference(con, make_reference(citekey="smith2024"))
+        con.close()
+        journal = leave_hot_journal(isolated_config.LEDGER_PATH)
+        rc, captured = self._gate(isolated_config, "[@someFabricatedKey2099]\n", capsys)
+        assert rc == 3
+        self._assert_no_verdict(captured)
+        assert journal.name in captured.err
+        assert "chitragupta.corpus sync" in captured.err
+
+    def test_a_ledger_needing_a_sync_exits_3_even_for_a_citation_free_draft(
+        self, isolated_config, capsys
+    ):
+        isolated_config.CONTENT_DIR.mkdir(parents=True, exist_ok=True)
+        raw = sqlite3.connect(isolated_config.LEDGER_PATH)
+        raw.execute("CREATE TABLE items (citekey TEXT PRIMARY KEY)")
+        raw.close()
+        rc, captured = self._gate(isolated_config, "No citations here.\n", capsys)
+        assert rc == 3
+        self._assert_no_verdict(captured)
+        assert "predates this version's schema" in captured.err
+
+    def test_a_ledger_damaged_past_its_header_exits_3(self, isolated_config, capsys):
+        # The schema version reads; the citekey query is what fails.
+        con = ledger.connect()
+        ledger.upsert_reference(con, make_reference(citekey="smith2024"))
+        con.close()
+        damage_past_the_header(isolated_config.LEDGER_PATH)
+        rc, captured = self._gate(isolated_config, "[@smith2024]\n", capsys)
+        assert rc == 3
+        self._assert_no_verdict(captured)
+        assert "damaged" in captured.err
+
+    def test_the_usage_documents_exit_3(self):
+        assert "3 = the ledger could not be read" in citation_gate.USAGE
 
 
 class TestDeadLauncherWarning:
