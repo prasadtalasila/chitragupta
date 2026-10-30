@@ -418,6 +418,7 @@ class TestAgainstRealLualatex:
             "control-loop",
             "layered-stack",
             "state-machine",
+            "comparison",
         ],
     )
     def test_every_scaffold_compiles_boxed_with_one_focal_node_and_no_stray(self, name):
@@ -734,6 +735,7 @@ class TestAdvisoryAgainstRealLualatex:
             "control-loop",
             "layered-stack",
             "state-machine",
+            "comparison",
         ],
     )
     def test_every_scaffold_reads_its_own_reference_and_squashes_nothing(self, name):

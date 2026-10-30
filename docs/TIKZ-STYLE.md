@@ -43,6 +43,7 @@ maps onto a TikZ idiom to use:
 | Hub-and-spoke network | a star |
 | Zoned spine | `fit` plus `backgrounds` |
 | State machine | circles (`cgstate`) with `bend` and `loop` |
+| Comparison | two `fit` panels, matched parts on shared rows |
 
 (The first six are PaperBanana's planner supplement, read and not
 copied; [INSPIRATION.md](INSPIRATION.md) carries the credit.)
@@ -54,6 +55,17 @@ has one storyline and several parallel commentaries on points along it.
 The card is a `fit` node drawn `on background layer`, so it never paints
 over a member and re-wording a member widens the card instead of
 escaping it. If nothing comments on the path, it is a pipeline.
+
+**The comparison** is two lettered panels side by side, made of the
+same parts, with each part on the same row as its match. Reach for it
+for a before and an after, or two approaches to one job, where the point
+is the part that differs: that part is the `cgkey`, and a part one side
+lacks keeps its row as `cgnone`. Panel (b)'s first part sets its
+column, and every other part is placed `at (<column> |- <match>)`
+rather than beside or below a neighbour, so re-wording a part cannot
+move it off its match's row. Nothing is drawn
+between the panels; if the two sides share a pair of named axes instead,
+it is a map.
 
 **There is a starting file for every row of that table, in
 `assets/tikz/`.** One per metaphor, named for it, each compiling on its
@@ -478,7 +490,7 @@ the worst of the two orders to fail in.
 
 This is the same discipline the `\usetikzlibrary` line already follows,
 for the same reason, and it means the definitions are duplicated across
-figures on purpose. The seven scaffolds in `assets/tikz/` all carry the
+figures on purpose. The eight scaffolds in `assets/tikz/` all carry the
 block, so copying one gets it for free.
 
 ### 🧱 The house figure style
@@ -686,7 +698,7 @@ emits a bare `\begin{figure}` around the marker with no scale knob, so a
 pipeline-rendered figure is drawn at natural size. The defect is what a
 *hand-written* document does, which is exactly `thesis-chapter-writer`'s
 case: its fragment is `\input` into a thesis this project never sees.
-The seven scaffolds are each laid out to the `article` class's 345pt
+The eight scaffolds are each laid out to the `article` class's 345pt
 text width, and a test compiles each one there and fails on an
 `Overfull \hbox`.
 
@@ -743,7 +755,7 @@ ones authors get wrong:
   fix for a finding is to change what you asked TikZ for (a
   `sibling distance`, a `row sep`, a different library), and never to
   nudge a coordinate until the number moves. `assets/tikz/` is the
-  starting point for that, and none of its seven scaffolds places
+  starting point for that, and none of its eight scaffolds places
   a node at a coordinate.
 - **Its thresholds are the checker's, not this document's.** "An empty
   band worth more than a third of the height" is a number chosen so

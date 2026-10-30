@@ -31,6 +31,7 @@ wins if the two disagree):
 | `hub-and-spoke-network.tex` | Hub-and-spoke network | everything going through one place *is* the claim |
 | `zoned-spine.tex` | Zoned spine | one storyline, with parallel commentaries on points along it |
 | `state-machine.tex` | State machine | it is in one state at a time, and a state can recur, stay put or be sent back |
+| `comparison.tex` | Comparison | two things made of the same parts, and the point is the part that differs |
 
 The choices people get wrong:
 
