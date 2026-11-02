@@ -23,19 +23,45 @@ this pins only that the skill still tells anyone to run them.
 
 from pathlib import Path
 
-from tests.skill_text import skill_text
+from tests.skill_text import collapsed, skill_text
 
 SKILL = (
     Path(__file__).resolve().parent.parent / ".claude" / "skills" / "book-assembler" / "SKILL.md"
 )
 
 
+CONVENTIONS = SKILL.parent / "references" / "latex-conventions.md"
+SKELETON = SKILL.parent / "assets" / "book-skeleton.tex"
+
+
 def _body() -> str:
     """The skill, whitespace collapsed -- these files are hand-wrapped, so
     a command can sit across a line break without being a different
     command -- with its references spliced in where it names them (#997):
-    the LaTeX conventions live in `references/latex-conventions.md`."""
-    return skill_text(SKILL)
+    the LaTeX conventions live in `references/latex-conventions.md`, and
+    the document skeleton that reference copies from is
+    `assets/book-skeleton.tex` (#1067), appended here the way a model
+    reads it, one file further on."""
+    return skill_text(SKILL) + " " + collapsed(SKELETON.read_text(encoding="utf-8"))
+
+
+def test_the_skeleton_is_an_asset_the_conventions_name():
+    """The skeleton is a template file, not a code block inside prose, so
+    it is copied rather than retyped (#1067). The reference names it and
+    no longer carries a second copy."""
+    conventions = CONVENTIONS.read_text(encoding="utf-8")
+    assert "`.claude/skills/book-assembler/assets/book-skeleton.tex`" in conventions
+    assert r"\documentclass" not in conventions
+    skeleton = SKELETON.read_text(encoding="utf-8")
+    assert skeleton.startswith("%"), "it opens by saying it is a template"
+    assert r"\documentclass[11pt,a4paper]{book}" in skeleton
+    assert r"\end{document}" in skeleton
+
+
+def test_the_skeleton_keeps_its_placeholders_for_the_model_to_fill():
+    skeleton = SKELETON.read_text(encoding="utf-8")
+    assert "<the outline's own title>" in skeleton
+    assert "<ask the user; never invent one>" in skeleton
 
 
 def test_the_assembler_runs_the_consistency_check():

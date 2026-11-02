@@ -1,11 +1,13 @@
 """`figure-drawer` is a router with a taste gate before drawing (#1048).
 
 Each copy of its `SKILL.md` is a short list of steps, each a command or
-a check, under a byte cap. The detail lives once, in
+a check. The detail lives once, in
 `.claude/skills/figure-drawer/references/`, and a section that moved
 there is text no model reads unless every copy still cites it. This
-scan pins the cap, the citations both ways, and the gate's place and
-questions. It exercises no behaviour.
+scan pins the citations both ways, more strictly than
+tests/test_skill_references.py does for every skill (here every copy
+cites every section), and the gate's place and questions. The byte cap
+is tests/test_skill_size.py's (#1091). It exercises no behaviour.
 """
 
 import re
@@ -13,22 +15,14 @@ from pathlib import Path
 
 import pytest
 
+from tests.skill_text import cited, numbered_sections
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REFERENCES = REPO_ROOT / ".claude" / "skills" / "figure-drawer" / "references"
 COPIES = (
     REPO_ROOT / ".claude" / "skills" / "figure-drawer" / "SKILL.md",
     REPO_ROOT / ".agents" / "skills" / "figure-drawer" / "SKILL.md",
     REPO_ROOT / ".opencode" / "skills" / "figure-drawer-opencode" / "SKILL.md",
-)
-# The issue's cap. The skill was 13,658 bytes before #1048; the other
-# skills' budgets are #1091.
-CAP_BYTES = 8_000
-
-_SECTION_RE = re.compile(r"^## (\d+)\. ", re.MULTILINE)
-# A citation is a backticked reference path followed by one or more
-# sections: "`<path>` §2" or "`<path>` §1, §3 and §4".
-_CITED_RE = re.compile(
-    r"`(\.claude/skills/figure-drawer/references/[^`\s]+\.md)` (§\d+(?:(?:, | and )§\d+)*)"
 )
 
 
@@ -40,22 +34,9 @@ def _text(path: Path) -> str:
     return re.sub(r"\s+", " ", path.read_text(encoding="utf-8"))
 
 
-def _cited(text: str) -> set[tuple[str, str]]:
-    """Every (path, N) a text cites."""
-    return {
-        (path, number)
-        for path, sections in _CITED_RE.findall(text)
-        for number in re.findall(r"§(\d+)", sections)
-    }
-
-
 def _numbered_sections() -> list[tuple[str, str]]:
     """Every `## N.` section of a figure-drawer reference, as (path, N)."""
-    return [
-        (path.relative_to(REPO_ROOT).as_posix(), number)
-        for path in sorted(REFERENCES.rglob("*.md"))
-        for number in _SECTION_RE.findall(path.read_text(encoding="utf-8"))
-    ]
+    return [s for path in sorted(REFERENCES.rglob("*.md")) for s in numbered_sections(path)]
 
 
 def test_some_reference_has_numbered_sections():
@@ -64,29 +45,24 @@ def test_some_reference_has_numbered_sections():
 
 
 @pytest.mark.parametrize("copy", COPIES, ids=_ids)
-def test_each_copy_is_under_the_cap(copy):
-    size = len(copy.read_bytes())
-    assert size <= CAP_BYTES, f"{size} bytes; move prose to references/, keep the commands"
-
-
-@pytest.mark.parametrize("copy", COPIES, ids=_ids)
 def test_every_numbered_section_is_cited(copy):
     """A section moved out of `SKILL.md` keeps its link (#1048)."""
-    cited = _cited(_text(copy))
-    lost = [f"{path} §{n}" for path, n in _numbered_sections() if (path, n) not in cited]
+    found = cited(_text(copy))
+    lost = [f"{path} §{n}" for path, n in _numbered_sections() if (path, n) not in found]
     assert not lost, lost
 
 
 @pytest.mark.parametrize("copy", COPIES, ids=_ids)
 def test_every_cited_section_exists(copy):
     sections = set(_numbered_sections())
-    dangling = sorted(_cited(_text(copy)) - sections)
+    own = {c for c in cited(_text(copy)) if c[0].startswith(".claude/skills/figure-drawer/")}
+    dangling = sorted(own - sections)
     assert not dangling, dangling
 
 
 def test_a_citation_lists_its_sections():
     text = "`.claude/skills/figure-drawer/references/a.md` §1, §3 and §4; `x` §9"
-    assert _cited(text) == {
+    assert cited(text) == {
         (".claude/skills/figure-drawer/references/a.md", n) for n in ("1", "3", "4")
     }
 

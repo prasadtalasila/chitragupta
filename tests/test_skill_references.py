@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.skill_text import cited, numbered_sections
 from tests.test_skill_harness_copies import FOREIGN, ROOTS, SKILLS, folder
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -101,6 +102,7 @@ _CONDITIONAL = (
     ("draft-reviser", "## Copy-edit mode", "copy-edit.md"),
     ("draft-reviser", "## Acronym-realignment mode", "acronyms.md"),
     ("draft-reviser", "## Re-grounding after the corpus moves", "re-grounding.md"),
+    ("draft-reviser", "## When there is no dossier", "no-dossier.md"),
     ("agenda-reviser", "### 4. Repair one item", "repair-missing-citekey.md"),
     ("agenda-reviser", "### 4. Repair one item", "repair-prose.md"),
     ("agenda-reviser", "### 4. Repair one item", "repair-verbatim-run.md"),
@@ -125,3 +127,42 @@ def test_the_first_named_path_says_it_is_from_the_project_root(skill_md):
     if first is None:
         return
     assert "from the project root" in text[: first.end() + 250]
+
+
+# A `## N.` section moved out of `SKILL.md` is read only through a
+# citation, "`<path>` §N" (#1048). #1091 holds every skill to that, not
+# only figure-drawer: no numbered section is left uncited by every skill,
+# and the three harness copies of one skill cite the same sections, so a
+# copy cannot lose one silently. A skill may cite only some sections of a
+# shared reference (thesis-chapter-writer builds no References section),
+# which is why the rule is not "every skill cites every section".
+def _numbered() -> set:
+    return {s for p in neutral_files() if p.suffix == ".md" for s in numbered_sections(p)}
+
+
+def _cited_by(harness: str, name: str) -> set:
+    return cited((folder(harness, name) / "SKILL.md").read_text(encoding="utf-8"))
+
+
+def test_every_numbered_section_is_cited_by_some_skill():
+    found = {c for h in ROOTS for name in SKILLS for c in _cited_by(h, name)}
+    lost = sorted(f"{path} §{n}" for path, n in _numbered() - found)
+    assert not lost, lost
+
+
+@pytest.mark.parametrize("name", SKILLS)
+def test_the_copies_of_a_skill_cite_the_same_sections(name):
+    claude = _cited_by("claude", name)
+    for harness in ("codex", "opencode"):
+        assert _cited_by(harness, name) == claude, harness
+
+
+@pytest.mark.parametrize("skill_md", every_skill_md(), ids=lambda p: str(p.relative_to(REPO_ROOT)))
+def test_every_cited_section_exists(skill_md):
+    dangling = sorted(cited(skill_md.read_text(encoding="utf-8")) - _numbered())
+    assert not dangling, dangling
+
+
+def test_the_link_tests_have_sections_to_check():
+    # Guards the three tests above against passing on an empty set.
+    assert len(_numbered()) >= 20

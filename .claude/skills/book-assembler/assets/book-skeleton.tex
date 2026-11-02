@@ -1,0 +1,46 @@
+% The document skeleton for an assembled book, in order. A template, not
+% a file that compiles: copy it into content/rendered/<book>/book.tex,
+% replace each <...> placeholder, keep the \input{preamble} line only if
+% the book has a content/specs/<book>/preamble.tex, and put the parts and
+% chapters where the \mainmatter comment says. Each "latex-conventions.md"
+% comment names the section of
+% .claude/skills/book-assembler/references/latex-conventions.md that
+% explains the line.
+\documentclass[11pt,a4paper]{book}
+\usepackage{amsmath}                         % before unicode-math and cleveref
+\usepackage{fontspec}\usepackage{unicode-math}
+\input{chitragupta-lualatex}                 % latex-conventions.md, "Unicode characters"
+\usepackage[a4paper,margin=80pt]{geometry}   % latex-conventions.md, "Margins"
+\usepackage{longtable,booktabs,array,calc}   % what the converted units use
+\setlength{\LTcapwidth}{\textwidth}          % latex-conventions.md, "Table captions"
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,fit}             % latex-conventions.md, "TikZ libraries"
+\input{chitragupta-floats}                    % latex-conventions.md, "Figure placement"
+\usepackage[hidelinks]{hyperref}
+\usepackage{cleveref}
+\usepackage{fvextra}                         % latex-conventions.md, "Wide code lines"
+\DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines}
+\usepackage[numbers,sort&compress]{natbib}   % latex-conventions.md, "The bibliography"
+\setcounter{secnumdepth}{2}                  % latex-conventions.md, "Numbering"
+\setcounter{tocdepth}{1}                     % chapters and sections only
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\title{<the outline's own title>}
+\author{<ask the user; never invent one>}
+\date{}
+\input{preamble}                             % only if the book has one
+
+\begin{document}
+\frontmatter
+\maketitle
+\tableofcontents
+
+\mainmatter
+% \part / \input, in outline order
+
+\backmatter
+\bibliographystyle{IEEEtran}
+\addcontentsline{toc}{chapter}{Bibliography}
+\bibliography{bibliography}                  % the .bib render wrote here
+\end{document}

@@ -41,3 +41,26 @@ def expanded(text: str) -> str:
 def skill_text(path: Path) -> str:
     """`expanded()` over one `SKILL.md`."""
     return expanded(path.read_text(encoding="utf-8"))
+
+
+# A citation is a backticked reference path followed by one or more
+# sections: "`<path>` §2" or "`<path>` §1, §3 and §4" (#1048, #1091).
+_CITED = re.compile(
+    r"`(\.claude/skills(?:-common|/[^`\s/]+)/references/[^`\s]+\.md)` (§\d+(?:(?:, | and )§\d+)*)"
+)
+_NUMBERED = re.compile(r"^## (\d+)\. ", re.MULTILINE)
+
+
+def cited(text: str) -> set:
+    """Every (path, N) a text cites, whitespace collapsed first."""
+    return {
+        (path, number)
+        for path, sections in _CITED.findall(collapsed(text))
+        for number in re.findall(r"§(\d+)", sections)
+    }
+
+
+def numbered_sections(reference: Path) -> list:
+    """Every `## N.` section of one reference, as (project-root path, N)."""
+    path = reference.relative_to(REPO_ROOT).as_posix()
+    return [(path, n) for n in _NUMBERED.findall(reference.read_text(encoding="utf-8"))]

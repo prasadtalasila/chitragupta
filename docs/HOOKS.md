@@ -447,9 +447,9 @@ scaffolds no `scripts/`, so one found in an installed project was planted
 and would run with the user's privileges on the next `.py` write under
 `chitragupta/` or `scripts/`. There it starts no process at all; only the
 checkout runs its scanner. The rule is about that one root-level folder:
-a skill's `references/` under `.claude/skills/<name>/`, or the shared
-ones in `.claude/skills-common/`, are scaffolded on purpose and
-are nothing the hook looks at.
+a skill's `references/` or `assets/` under `.claude/skills/<name>/`, or
+the shared references in `.claude/skills-common/`, are scaffolded
+on purpose and are nothing the hook looks at.
 `hook_launchers.py`'s import probe (`import_probe.py`) makes the same
 call from its own side, by whether it is itself running from inside the
 project whose settings it reads. `session_start_hook.py`'s own

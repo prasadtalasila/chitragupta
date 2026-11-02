@@ -37,6 +37,7 @@ another user could plant files in.
     python bench/bench_skill_harnesses.py --tier 1
     python bench/bench_skill_harnesses.py --tier 1 --harness codex --skill survey-writer
     python bench/bench_skill_harnesses.py --tier 2 --out ~/bench/skills-t2
+    python bench/bench_skill_harnesses.py --tier 2 --skill-only --harness codex
 """
 
 import argparse
@@ -85,6 +86,21 @@ what the skill describes, and write no files.
 """
 
 TIER2_SURVEY = (EXAMPLES / "codex" / "prompt.txt").read_text(encoding="utf-8")
+# The survey prompt ends by asking for the render. `--skill-only` drops
+# that clause, so only the skill's own step can make a model run
+# `draft references`, `draft render` and `draft evidence` -- the shape
+# #1068 measured a pointer-only step with (docs/HARNESS.md).
+_RENDER_CLAUSE = " Follow the skill through to the end"
+TIER2_SKILL_ONLY = TIER2_SURVEY.split(_RENDER_CLAUSE)[0] + (
+    " Follow the skill through to the end, including its self-check with draft gate."
+)
+# Which of the render step's commands a tool call ran, by a phrase each
+# command cannot be run without.
+RENDER_STEP = {
+    "references": "chitragupta.draft references",
+    "render": "chitragupta.draft render",
+    "evidence": "chitragupta.draft evidence",
+}
 TIER2_COPYEDIT = """\
 Copy-edit the draft at content/drafts/dt-survey.md: convert it to British
 English (en-GB). Change no claim and no citation.
@@ -359,10 +375,17 @@ def tier2(args) -> list:
     results = []
     for harness in args.harness:
         project = scaffold(harness, args.out, sync=True)
-        for label, prompt in (("survey", TIER2_SURVEY), ("copy-edit", TIER2_COPYEDIT)):
+        survey = TIER2_SKILL_ONLY if args.skill_only else TIER2_SURVEY
+        for label, prompt in (("survey", survey), ("copy-edit", TIER2_COPYEDIT)):
             log = args.out / harness / f"t2-{label}.jsonl"
             outcome = run(harness, project, prompt, log, args.timeout)
-            outcome.update(harness=harness, task=label, references=references_read(log))
+            ran = tool_inputs(log)
+            outcome.update(
+                harness=harness,
+                task=label,
+                references=references_read(log),
+                ran={step: phrase in ran for step, phrase in RENDER_STEP.items()},
+            )
             gate = subprocess.run(
                 [sys.executable, "-m", "chitragupta.draft", "gate", "content/drafts/dt-survey.md"],
                 cwd=project,
@@ -443,6 +466,18 @@ def self_check() -> None:
             encoding="utf-8",
         )
         assert references_read(log) == [".claude/skills-common/references/a.md"]
+        assert "draft render" in TIER2_SURVEY, "the prompt changed; re-derive TIER2_SKILL_ONLY"
+        assert "draft render" not in TIER2_SKILL_ONLY, "--skill-only must not ask for the render"
+        log.write_text(
+            json.dumps(
+                {"input": {"command": "python -m chitragupta.draft render x.md --format md"}}
+            )
+            + "\nThe skill names `python -m chitragupta.draft references x.md`.\n",
+            encoding="utf-8",
+        )
+        ran = tool_inputs(log)
+        assert RENDER_STEP["render"] in ran, "a command a tool call ran counts"
+        assert RENDER_STEP["references"] not in ran, "a command the text only names does not"
         (ref / "b.md").write_text("", encoding="utf-8")
         log.write_text(good, encoding="utf-8")
         scored = score_tier1(project, "claude", "x", log)
@@ -463,6 +498,11 @@ def main(argv=None) -> int:
     parser.add_argument("--skill", action="append", choices=SKILLS)
     parser.add_argument("--out", type=Path, help="default: a fresh private temporary directory")
     parser.add_argument("--timeout", type=int, default=900, help="seconds per run (default 900)")
+    parser.add_argument(
+        "--skill-only",
+        action="store_true",
+        help="tier 2: drop the survey prompt's render clause, so only the skill asks for it",
+    )
     args = parser.parse_args(argv)
     self_check()
     args.harness = args.harness or list(HARNESSES)

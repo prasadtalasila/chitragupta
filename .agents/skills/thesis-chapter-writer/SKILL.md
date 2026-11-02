@@ -481,36 +481,20 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     Fix and re-run until `OK`. Never present a draft that hasn't passed.
 12. **Render md and pdf previews.** The `.tex` fragment stays the canonical
     deliverable exactly as-is -- don't wrap it in a preamble or change its
-    `\input`-able shape. In addition, render an `.md` and a `.pdf` preview
-    from that same fragment (pandoc's LaTeX reader handles a preamble-less
-    fragment fine):
+    `\input`-able shape. Follow
+    `.claude/skills-common/references/render-and-references.md`
+    §2 for `content/drafts/<slug>.tex` in **md and pdf only**: pandoc's
+    LaTeX reader handles a preamble-less fragment fine, and both previews
+    land beside it as
+    `content/rendered/<topic>/<name>.{md,pdf}`. A rendering failure
+    never blocks presenting the `.tex` fragment, with one exception worth
+    chasing first: a pdf error naming a figure file means the fragment
+    will not build in the user's thesis either, so repair the figure or
+    drop it, rather than handing over a chapter that cannot be typeset.
 
-    ```bash
-    python -m chitragupta.draft render content/drafts/<slug>.tex --format md
-    python -m chitragupta.draft render content/drafts/<slug>.tex --format pdf
-    ```
-
-    Both previews land beside the fragment: a draft at
-    `content/drafts/<topic>/<name>.tex` renders to
-    `content/rendered/<topic>/<name>.{md,pdf}`, so one topic directory
-    holds the chapter, its dossier and its previews.
-    This needs only bare `python` plus `pandoc` (and LuaLaTeX, for the
-    pdf) on PATH -- don't
-    assume either is present or absent without checking; probe (or just try
-    the command and read the result) rather than assuming from a prior run
-    on a different host. If either command reports `[missing-binary]` or
-    `[error]`, print a one-line warning in chat with that message and
-    continue anyway -- a rendering failure never blocks presenting the
-    `.tex` fragment. The one failure worth chasing before you present is
-    a pdf error naming a figure file: that fragment will not build in the
-    user's thesis either, so repair the figure or drop it, rather than
-    handing over a chapter that cannot be typeset.
-
-    **Then render the evidence sidecar:**
-
-    ```bash
-    python -m chitragupta.draft evidence content/drafts/<slug>.tex --format pdf
-    ```
+    **Then render the evidence sidecar**, per
+    `.claude/skills-common/references/render-and-references.md`
+    §3, in **pdf only**.
 
     **This chapter emits one, and the reason it is safe to is the same
     reason the References section below is not.** A sidecar is a
@@ -530,12 +514,11 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
 
     `\citep{...}`/`\citet{...}` markers are read the same as `[@key]`
     here, so the sidecar's contents come from this fragment's own
-    citations. A chapter whose `evidence.md` blocks carry no `quote:`
-    produces no sidecar and says `no quoted evidence recorded`; that is
-    the expected answer, not a failure.
+    citations.
 
-    Unlike the Markdown-native genre skills, don't run `python -m
-    chitragupta.draft references` on this fragment and don't add a manual References
+    **Skip the reference's §1.** Unlike the Markdown-native genre skills,
+    don't run `python -m chitragupta.draft references` on this fragment
+    and don't add a manual References
     section to it -- the fragment is designed to inherit the thesis's own
     document-wide `\addbibresource`/`\bibliography` (the shared corpus
     layer above), and a per-chapter list would duplicate that. The `.pdf`

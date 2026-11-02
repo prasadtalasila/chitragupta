@@ -505,68 +505,16 @@ collapse them for the sake of a cleaner narrative.
     If it reports `FAIL`, fix the offending line(s) — either correct the citekey
     or remove the claim — and re-run until it reports `OK`. Never show the user
     a draft that hasn't passed.
-12. **Build the References section.** Once the gate passes, generate it from
-    exactly the gated citekeys rather than writing it by hand:
-
-    ```bash
-    python -m chitragupta.draft references content/drafts/<slug>.md
-    ```
-
-    Stdlib-only, like the citation gate — bare `python`, no venv. Writes
-    numbered IEEE-style entries (`[1] J. Doe and R. Roe, "A Paper," *IEEE
-    Trans. Testing*, vol. 3, pp. 1–9, 2024. \`doe_paper_2024\``) from
-    `content/ledger.sqlite`, ordered by first appearance so the numbers
-    match the rendered PDF's. Each entry keeps its citekey in a trailing
-    code span, so a reader can trace every`[@citekey]` marker in the body
-    back to an entry by that same key.
-
-    Leave the body's inline citations as `[@citekey]` — do **not**
-    hand-number them to `[1]`. The literal key is what the gate and the
-    hook verify; pandoc assigns the numbers at render time.
-13. **Render tex and pdf.** Once the gate passes and the references section
-    is built, also render the other three formats:
-
-    ```bash
-    python -m chitragupta.draft render content/drafts/<slug>.md --format tex
-    python -m chitragupta.draft render content/drafts/<slug>.md --format pdf
-    python -m chitragupta.draft render content/drafts/<slug>.md --format md
-    ```
-
-    All three land beside the draft: a draft at
-    `content/drafts/<topic>/<name>.md` renders to
-    `content/rendered/<topic>/<name>.{tex,pdf,md}`, so one topic
-    directory holds the draft, its dossier and its renders. The `md`
-    output is a numbered copy -- the same IEEE numbers as the PDF, for a
-    reader who won't open one. The draft itself keeps its `[@citekey]`
-    markers.
-
-    This needs only bare `python` plus `pandoc` (and, for pdf, LuaLaTeX) on PATH
-    — no enrich group required. If either command reports `[missing-binary]` or
-    `[error]`, print a one-line warning in chat with that message and continue
-    anyway — a rendering failure never blocks presenting the `.md` draft.
-
-    **Then render the evidence sidecar**, in the same formats:
-
-    ```bash
-    python -m chitragupta.draft evidence content/drafts/<slug>.md --format pdf
-    python -m chitragupta.draft evidence content/drafts/<slug>.md --format md
-    ```
-
-    **A survey emits one.** This genre is the natural fit: it is
-    citation-dense, and its reader is mapping a field and wants to see
-    what the sources actually said. The sidecar lands as
-    `content/rendered/<topic>/<name>.evidence.{pdf,md}`, beside the
-    render, and lists each cited source with the verbatim spans your
-    step-2 `quote:` fields recorded, grouped by the section that leans on
-    them.
-
-    You do not write it and you cannot add to it: it is built from
-    `evidence.md`, and it can only name citekeys the draft already cites.
-    A draft whose blocks carry no `quote:` produces no sidecar and prints
-    `no quoted evidence recorded` — that is the expected answer, not a
-    failure, and it means you captured no quotation you meant to use.
-    Never add a `quote:` after the fact to populate it; a quote is
-    captured when the evidence is judged or not at all.
+12. **Build the References section.** Once the gate passes, follow
+    `.claude/skills-common/references/render-and-references.md`
+    §1 for `content/drafts/<slug>.md`. The step is not done until
+    `draft references` has run.
+13. **Render tex, pdf and md, then the evidence sidecar.** Follow
+    `.claude/skills-common/references/render-and-references.md`
+    §2 and §3 for the same draft: render tex, pdf and md, then the
+    sidecar in pdf and md. **A survey emits one.** This genre is the
+    natural fit: it is citation-dense, and its reader is mapping a field
+    and wants to see what the sources actually said.
 14. **Read it once as the reader** (`docs/WRITING-STANDARDS.md` §6). Check
     specifically for: terms used before they're defined, a theme heading that
     doesn't match what the subsection actually argues, a comparison-table row
