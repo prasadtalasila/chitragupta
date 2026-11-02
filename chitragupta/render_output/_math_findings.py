@@ -24,6 +24,7 @@ from chitragupta.render_output._math import (
     _FENCE_RE,
     _MATH_SHAPED_RE,
     _MAX_EQUATION_LINES,
+    _PATH_LIKE_RE,
     _SNAKE_CASE_RE,
     _SPAN_RE,
     _body_of,
@@ -116,6 +117,8 @@ def findings(text: str, mapping: "dict[str, str]", found_file: bool) -> "list[Ma
         if _CITEKEY_RE.match(span):
             continue
         if _MATH_SHAPED_RE.search(span):
+            if _PATH_LIKE_RE.search(span) and not any(c in span for c in "=<>"):
+                continue
             gap = f"`{span}` looks like a quantity but has no row in {MAPPING_FILENAME}"
             found.append(MathFinding("gap", gap))
         elif span in symbols:

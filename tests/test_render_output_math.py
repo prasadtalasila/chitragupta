@@ -223,6 +223,22 @@ class TestWarnings:
         text = "```markdown\nThe gain is `tau` here.\n```\n"
         assert _math_findings.warnings(text, {"x": "\\tau + 1"}, False) == []
 
+    def test_a_file_name_with_hyphenated_digits_is_not_a_gap(self, isolated_config):
+        # #1115: the hyphen in a unit-numbered file name (`02-02-...`)
+        # reads as subtraction, so a bare file name quoted in backticks
+        # must not be flagged as an unmapped quantity.
+        found = _math_findings.warnings(
+            "The solution is in `02-02-math-model-solution.md`.", {}, False
+        )
+        assert found == []
+
+    def test_a_directory_name_with_hyphenated_digits_is_not_a_gap(self, isolated_config):
+        # #1115: same as above, for a path rather than a bare file name.
+        found = _math_findings.warnings(
+            "The code is in `code/02-01-create-mock-physical-twin/`.", {}, False
+        )
+        assert found == []
+
 
 class TestAnUnmarkedFenceHoldingAnEquation:
     """#406: the shape all three of §12's checks agreed was clean.
@@ -358,6 +374,21 @@ class TestCheckedMathMapping:
         draft = _draft(mapping=None)
         with pytest.raises(_math.MathMappingError):
             render_output._checked_math_mapping(draft.read_text(encoding="utf-8"), draft)
+
+    def test_a_review_report_s_own_header_is_not_scanned(self, isolated_config, capsys):
+        # #1115: `mapping_path` answers None for a review report because it
+        # is not a draft, not because its math.md is missing -- so the
+        # report's own header, quoting the draft's path and the command
+        # line in backticks, must not be scanned for math gaps at all.
+        report = config.REVIEW_DIR / "dt" / "survey.provenance.md"
+        report.parent.mkdir(parents=True, exist_ok=True)
+        text = (
+            "Draft: `/drafts/dt/02-01-s.md`\n\n"
+            "Command: `python -m chitragupta.review uncited "
+            "/drafts/dt/02-01-s.md --write`\n"
+        )
+        render_output._checked_math_mapping(text, report)
+        assert "[math]" not in capsys.readouterr().err
 
 
 class TestTheMarkdownPathLeavesTheAsciiAlone:

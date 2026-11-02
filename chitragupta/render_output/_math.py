@@ -120,6 +120,14 @@ _MATH_SHAPED_RE = re.compile(r"[=<>]|\d\s*[-+*/^]\s*\d")
 # heuristic runs.
 _CITEKEY_RE = re.compile(r"^[a-z][a-z0-9-]*(_[a-z0-9-]+)+_\d{4}(-\d+)?$")
 
+# A path or file name: a directory separator, a letter-led file
+# extension, or this project's own unit numbering (`02-01-...`) -- digit
+# groups joined by hyphens, then a word. #1115: that last shape is what
+# `_MATH_SHAPED_RE`'s digit-hyphen-digit branch misreads as subtraction.
+# `findings()` still trusts an unambiguous operator over this -- a path
+# never contains `=`, `<` or `>`.
+_PATH_LIKE_RE = re.compile(r"/|\.[A-Za-z][A-Za-z0-9]{0,5}$|^\d+(?:-\d+)+-[A-Za-z]")
+
 # A symbol inside a mapped LaTeX value: a single letter, optionally
 # subscripted, or a Greek control word. This is what closes the world --
 # see `_symbols_of`.

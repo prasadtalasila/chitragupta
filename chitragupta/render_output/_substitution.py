@@ -45,10 +45,12 @@ def _checked_math_mapping(draft_text: str, input_path: Path) -> "dict[str, str]"
     mapping = _math.load_mapping(input_path)
     path = _math.mapping_path(input_path)
     _math.check(draft_text, input_path, mapping)
-    for warning in _math_findings.warnings(
-        draft_text, mapping, path is not None and path.is_file()
-    ):
-        print(f"[math] {warning}", file=sys.stderr)
+    # `path` is None for a review report, not only for a draft whose
+    # math.md is missing -- a report is not a draft at all, so it has no
+    # ASCII-vs-quantity convention to enforce and the scan must not run.
+    if path is not None:
+        for warning in _math_findings.warnings(draft_text, mapping, path.is_file()):
+            print(f"[math] {warning}", file=sys.stderr)
     return mapping
 
 
