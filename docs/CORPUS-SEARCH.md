@@ -1,6 +1,6 @@
 # 🔭 Corpus search: how a query becomes passages
 
-Status: **reference.** Written 2026-08-26. Updated 2026-09-18.
+Status: **reference.**
 
 [RETRIEVAL.md](RETRIEVAL.md) answers *which* search to build (BM25,
 embeddings, or the topic model) and stops there. This document answers
@@ -60,14 +60,15 @@ they carry high IDF and compete for the ranking against the terms you
 meant.
 
 **Fixed query-side, in `_query_terms()` (`chitragupta/retrieval.py`).**
-`_tokenize` above is unchanged: a symmetric fix would re-rank every
-query in the corpus for no further gain, so `_INDEX_SCHEMA_VERSION` and
-every document's term frequencies stay exactly as they were. `search()`,
-`evidence()`, and `dossier/_drift.py`'s replay of a recorded query all
-call `_query_terms()` instead: `_tokenize()` plus a small, hand-maintained
-set of wh-words and question auxiliaries. The illustration above still
-describes `_tokenize()` exactly, but a real query is scored against
-`_query_terms()`.
+The document tokenizer `_tokenize` does not strip them: a symmetric fix
+would re-rank every query in the corpus for no further gain. `search()`,
+`evidence()`, the passage unit and `dossier/_drift.py`'s replay of a
+recorded query all score through `query_terms()`, which is
+`_query_terms()` (`_tokenize()` minus a small, hand-maintained set of
+wh-words and question auxiliaries) plus [acronym
+expansion](RETRIEVAL.md#-an-acronym-in-the-query-can-reach-the-words-it-stands-for).
+The illustration above describes `_tokenize()`; a real query is scored
+without the interrogatives.
 
 **Measured against real ground truth, question phrasing costs recall.**
 The overlap figure above says two phrasings disagree; it does not say
@@ -107,21 +108,13 @@ the whole string, so an interrogative shifts the vector slightly rather
 than competing as a high-IDF term. That is still noise, but not this
 failure.
 
-One related defect used to be recorded here and is **fixed**, in #790:
-`co-simulation` tokenized to `simulation` alone, because `co` fell under
-the old `len(w) > 2` floor. The same floor dropped a whole-word query
-term like `AI`, `ML`, `5G` or `QA` (real content words in an
-engineering corpus), so a search for one of them returned
-empty, and `python -m chitragupta.draft retrieve` could only warn that it
-would.
-
-The floor is **2** now, set by measurement:
+The token-length floor is **2**, so `co` in `co-simulation`, and whole-word
+terms like `AI`, `ML`, `5G` or `QA`, are indexed and scored.
 [RETRIEVAL.md](RETRIEVAL.md#-where-the-token-length-floor-came-from) has the
-sweep, including why it stopped at 2 rather than going to 1. What survives of
-the warning is narrower, but still worth having. A single-character query
-word cannot rank at any floor this project would ship, so `retrieve` still
-names one on stderr rather than letting a query built entirely from them
-return empty unexplained.
+sweep, including why it stops at 2 rather than going to 1. A
+single-character query word cannot rank, so `retrieve` names one on stderr
+rather than letting a query built entirely from them return empty
+unexplained.
 
 ## 🪜 The four stages
 
@@ -161,7 +154,7 @@ single thoroughly-matched paper can otherwise occupy every one of the
 `k` slots. Fetching `k × 4` gives the cap something to promote *from*
 (see the next section). At a multiplier of `1` the cap can only ever
 shorten the result, never improve it, which is the failure the
-over-fetch existed to fix.
+over-fetch exists to prevent.
 
 **Why the cap is keyed on citekey, not title.** Two untitled or
 same-titled documents are still different papers, and bucketing them
@@ -172,13 +165,13 @@ cross-encoder scores the *truncated snippet*, not the whole 200-word
 chunk, so shrinking `snippet_chars` narrows what the reranker may judge
 on as well as what you see. This is deliberate: the passage you are
 shown is then exactly the evidence the ranking was based on. It is not a
-`config.toml` key (callers pass it), but it is worth knowing before
-tuning it alongside the four above.
+`config.toml` key (callers pass it), but it interacts with the four
+above.
 
 ## ⚖ Why the rerank sits where it does
 
-This is the one ordering decision in the file. It is stated here
-because the wrong order looks identical in a code review.
+This is the one ordering decision in the file, and the wrong order looks
+identical in a code review.
 
 ```mermaid
 flowchart LR
@@ -225,7 +218,7 @@ method chose. The full method and caveats are in `bench/RESULTS.md`,
 *"2026-08-26: where a cross-encoder rerank sits, relative to the
 per-citekey cap"*.
 
-| | off (today) | on (`ms-marco-MiniLM-L6-v2`) | change |
+| | off (shipped) | on (`ms-marco-MiniLM-L6-v2`) | change |
 | --- | --- | --- | --- |
 | recall@3 | 129 / 256 | **139 / 256** | **+10 queries** |
 | recall@5 | 156 / 256 | 156 / 256 | **none** |
@@ -420,13 +413,14 @@ Work down this list instead:
 
 ## 🆚 What BM25 does instead
 
-`chitragupta/retrieval.py::search()` has the same
-`search(query, k, snippet_chars)` shape and none of these four stages.
+`chitragupta/retrieval.py::search()` takes the same `query`, `k` and
+`snippet_chars` (plus a `collection` filter), returns `SearchResult`s
+rather than dicts, and has none of these four stages.
 It is **one result per citekey by construction**: it scores
 whole documents, so no cap is needed and none exists.
 
 Its passage-unit sibling, `retrieval_passages.py::search_passages()`
-(`retrieve search --unit passage`, #769), scores paragraphs and therefore
+(`retrieve search --unit passage`), scores paragraphs and therefore
 *does* need the cap, `[retrieval].max_passages_per_source`. It needs no
 over-fetch multiplier beside it, unlike stage 1 above, because nothing
 truncates its candidate list: BM25 scores every passage in memory, so the
@@ -443,14 +437,14 @@ did not help: nDCG@5 fell from 0.7321 to 0.6886. See
 twin" does not by itself reach a paper that only ever says "digital twins";
 re-phrasing to the form the corpus uses is the remedy, the second row of the
 table above. Porter stemming both sides was measured on both ground truths
-(#787) and declined. On 96 real drafting-session queries it is a wash, moving in
+and declined. On 96 real drafting-session queries it is a wash, moving in
 no consistent direction: recall@5 down one query, recall@1 up two, nDCG@5 down
 1.91pp, 17 queries better against 15 worse. On 256 author-keyword queries it
 loses at every query width, including the one-, two- and three-term widths the
 case for it rested on. The mechanism is in one number: it takes the index from
 68,477 terms to 54,705 and raises the mean document frequency of a query's own
 terms by ~17%, so each surviving term carries less IDF. `bench/RESULTS.md`'s
-2026-09-15 (#787) entry has both tables and the stem classes that do the damage.
+2026-09-15 entry has both tables and the stem classes that do the damage.
 
 On this project's corpus BM25 outscores the dense path on every ground
 truth tried so far. [RETRIEVAL.md](RETRIEVAL.md#-which-should-i-build)

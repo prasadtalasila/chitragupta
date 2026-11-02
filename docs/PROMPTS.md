@@ -30,7 +30,7 @@ yourself; you do not need to have read that file first.
   call; it is more text added to the same prompt. Detail a step needs
   only sometimes lives beside it in `references/` (or, when several
   skills share it, in `.claude/skills-common/references/`) and enters
-  the context only when the model reads the file a step names (#997).
+  the context only when the model reads the file a step names.
 - **A subagent**: a *separate* model context, dispatched by the running
   skill (via an `Agent`-style tool call), with its own system prompt
   (usually a file under `.claude/agents/<name>.md`) and only the
@@ -233,12 +233,14 @@ are built, used once, and thrown away, for `deep-research`.
 
 ## 🧼 4. What was in the context before the skill was invoked
 
-Everything above describes what a skill *adds*. Layer 7 is whatever was
-already there. On a session that has been working for an hour, that is
-the largest layer and the only one nobody designed.
+Everything above describes what a skill *adds*. Underneath it sits
+whatever the session already held before the skill was invoked: earlier
+turns, tool output and files read for other tasks. On a session that has
+been working for an hour, that is the largest part of the prompt and the
+only part nobody designed.
 
-It matters more than it looks, because of an asymmetry the gate cannot
-close. A **fabricated** citekey is caught mechanically, every time: the ledger is
+This prior context carries a risk the gate cannot close. A **fabricated**
+citekey is caught mechanically, every time: the ledger is
 ground truth and an absent key is absent. A **real** citekey carried in
 from an earlier task in the same session is not caught by anything. It
 resolves, it renders, `python -m chitragupta.draft gate` exits 0, and

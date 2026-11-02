@@ -1,6 +1,6 @@
 # 🏗 Architecture
 
-Status: **reference.** Written 2026-08-06. Updated 2026-09-08.
+Status: **reference.**
 
 What runs, what each part writes, and which parts are optional.
 
@@ -53,21 +53,23 @@ corpus (sync) ──ledger, parsed/──▶ drafting (skills + gate chain) ─�
                         └───────────────── passages ────────────────────────────┘
 ```
 
-Until 4.0.0 that was not quite true in code: the enrichment layer hosted
-a `provenance` and a `render` stage, each a three-line wrapper around a
-tier-1 command, so the enrichment layer imported the review and drafting
-layers. Both stages are gone. Run `python -m chitragupta.review provenance
-<draft>` and `python -m chitragupta.draft render <draft> --format pdf`
-directly; they need no venv and take no lock.
+The enrichment layer imports neither the review nor the drafting
+layer, which is why a review report and a render are not enrichment
+stages ([layer 3](#-layer-3-the-enrichment-layer) has the reason).
 
 ```mermaid
 flowchart TB
 
   subgraph J1["<b>LAYER 1 · CORPUS</b> — deterministic, no LLM, safe unattended"]
     direction TB
-    SYNC["<code>chitragupta corpus sync</code><br/><small><b>needs the venv</b> — bibtexparser<br/>holds the write lock · exit 0 / 1 / 2</small>"]
+    SYNC["<code>chitragupta corpus sync</code><br/><small><b>needs the venv</b> — bibtexparser<br/>holds the write lock · exit 0 / 1 / 2 / 3</small>"]
     OUT1[/"<b>content/ledger.sqlite</b> · <b>content/parsed/&lt;citekey&gt;.txt</b>"/]
     SYNC --> OUT1
+  end
+
+  subgraph PKG["<b>PACKAGE COMMANDS</b> — beside the layers, not one of them"]
+    direction TB
+    P["<code>chitragupta init</code> · <code>doctor</code> · <code>install &lt;stage&gt;</code><br/><code>chitragupta figure sync | check | new | look</code><br/><small>bare python · take no lock · never write the ledger</small>"]
   end
 
   subgraph J2["<b>LAYER 2 · DRAFTING</b> — generative, on demand, you review it"]
@@ -108,6 +110,7 @@ flowchart TB
   class FULL heavy
   class OUT1,OUT3,OUT4 store
   class A aid
+  class P aid
 ```
 
 Every module, every file it writes, and the exact edges between them are in
@@ -123,12 +126,26 @@ Two properties carry the safety argument, and both are visible above:
   `content/ledger.sqlite` and nothing else, so a citekey no `sync` ever put
   there cannot survive into a rendered draft.
 
+### 📦 Package commands beside the layers
+
+Four commands sit on the package rather than in a layer
+(`chitragupta/__main__.py`'s `COMMANDS`). None of them reads or writes
+the ledger, and none takes the write lock:
+
+| Command | What it does |
+| --- | --- |
+| `chitragupta init [DIR]` | scaffolds a project directory: `config.toml`, `.claude/`, `papers/`, `content/` and the prose docs |
+| `chitragupta doctor` | probes the OS binaries, the `enrich` extra and torch against the GPU driver, and reports; it installs nothing |
+| `chitragupta install <stage>` | runs the two `install_full_pipeline.sh` stages pip cannot: `os-deps` and `gpu-torch` |
+| `chitragupta figure sync\|check\|new\|look` | `chitragupta/figure/`: starts a figure from a scaffold, checks it against the figure rules, renders how it will print, and keeps the house style block current. The `figure-drawer` skill drives it ([docs/figure-checks/README.md](figure-checks/README.md)) |
+
+`figure` is drafting-layer tooling in practice, but it works on one
+figure file rather than on a draft, so it is not a `draft` verb.
+
 ## 📚 Layer 1: the corpus layer
 
 One entry point, `python -m chitragupta.corpus`, with four verbs: `sync` does
-the work, and `ledger`, `topics` and `discover` read what it recorded. Until
-5.2.0 this section said "one command" and meant it: `chitragupta.ledger` sat
-outside as a second bare command, a gap that release closed.
+the work, and `ledger`, `topics` and `discover` read what it recorded.
 
 `sync` reads `papers/bibliography.bib`, updates one ledger row per
 citekey, resolves each PDF from the entry's `file` field, and extracts
@@ -143,10 +160,10 @@ none of them. Deletion of a stale row happens only under
 
 It is idempotent and incremental: a PDF whose bytes haven't changed is
 not re-parsed, so the second run is nearly free. Exit codes: `0` clean,
-`1` the corpus has a hole in it, `2` another writer holds the lock.
-[CLI.md](CLI.md#-chitragupta-corpus-sync) enumerates what counts as a
-hole. There are five conditions, and the last time this line named a
-couple of them here, it went stale.
+`1` at least one document failed to parse, `2` another writer holds the
+lock, `3` everything parsed but the bibliography has a hole in it.
+[CLI.md](CLI.md#-running-sync-on-a-schedule) enumerates what counts as
+each.
 
 `ledger` is the other half, and deliberately unlike the first: read-only,
 taking no lock, on the bare-`python` tier, so it answers "what does the
@@ -155,8 +172,8 @@ successful read, `1` for a citekey the ledger doesn't hold.
 
 ## ✍ Layer 2: the drafting layer
 
-Ten Claude Code skills in `.claude/skills/`, one set of grounding rules
-between them: five that write a new draft, three that revise one that
+Eleven Claude Code skills in `.claude/skills/`, one set of grounding rules
+between them: six that write a new draft, three that revise one that
 already exists, `book-assembler`, which writes no prose and composes an
 already-drafted book from its accepted units, and `figure-drawer`, which
 draws the figures the others hand it and presents no draft of its own.
@@ -168,6 +185,7 @@ draws the figures the others hand it and presents no draft of its own.
 | `textbook-chapter-writer` | an undergraduate chapter of worked examples and exercises, for a reader who is studying |
 | `tutorial-writer` | a Diataxis lesson the reader follows at a keyboard to a working result, verified to run |
 | `deep-research` | a multi-perspective, corpus-grounded report, heavier and slower than the others by design |
+| `review-digest` | a verbatim digest: private study notes copied from the sources in their own words, never a deliverable, checked by `review digest` |
 | `draft-reviser` | a scoped edit to a draft that already exists, made from its dossier rather than the corpus; this includes repairing citations after a sync moved the corpus |
 | `corpus-reviser` | the same edit discipline over a full retrieval pass, when you ask for the whole corpus to be re-searched |
 | `agenda-reviser` | a repaired draft after a review agenda found unattended findings, one item at a time |
@@ -180,10 +198,9 @@ explains, a tutorial is verified to run. `draft-reviser` and
 contains no instructions for a wide search, so the cheap path cannot
 drift into the expensive one (see
 [GENRE.md](GENRE.md#-revising-widely-corpus-reviser)).
-[WRITING-STANDARDS.md](WRITING-STANDARDS.md) has the prose standards that
-all eight prose-writing skills share (every one but `book-assembler`,
-which writes no prose of its own), and where in the
-technical-communication literature they come from.
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md) has the prose standards the
+prose-writing skills share, and where in the technical-communication
+literature they come from.
 
 Each skill retrieves from the corpus layer, drafts into
 `content/drafts/`, then runs the same three commands on its own output:
@@ -201,7 +218,7 @@ Each skill retrieves from the corpus layer, drafts into
    `[3]-[6]` for a consecutive run, over a numbered bibliography built
    from the citekeys cited.
 
-Grounding is enforced in code, not just requested. The gate runs on the
+Code enforces grounding as well as the skills' instructions. The gate runs on the
 same draft at three points, and only one of them depends on the skill's
 own good intentions. A hook runs it on every write under
 `content/drafts/` (a PostToolUse hook on Claude Code and Codex, a plugin
@@ -238,10 +255,10 @@ migrates it. The gate is the one exception to refusing: with
 no ledger it still runs, failing every citekey closed and passing a
 draft that cites nothing.
 
-On an empty ledger, the three citation-grounded genres
-(`survey-writer`, `thesis-chapter-writer`, `deep-research`) say so and
-stop. The two teaching genres, where citations are optional, say so and
-ask whether to continue uncited.
+On an empty ledger, the four citation-grounded genres
+(`survey-writer`, `thesis-chapter-writer`, `deep-research`,
+`review-digest`) say so and stop. The two teaching genres, where
+citations are optional, say so and ask whether to continue uncited.
 
 No skill runs the enrichment layer, though skills consume its output
 when a human has already built it. `deep-research` checks for `content/chroma/`
@@ -255,12 +272,11 @@ layer](#-layer-3-the-enrichment-layer) below.
 
 ## 🧠 Layer 3: the enrichment layer
 
-This layer extends the corpus layer, not the drafting one. That needs
-saying plainly, because a layer this expensive sitting next to the
-generative one invites the opposite assumption. Nothing in it is
-generative and no skill runs it;
-every artefact it writes is a deeper reading of the same corpus, which is
-also why it takes the *same write lock* as `sync`. The drafting layer only
+This layer extends the corpus layer, not the drafting one, despite its
+cost and its place beside the generative layer. Nothing in it is
+generative and no skill runs it. Every artefact it writes is a deeper
+reading of the same corpus, which is also why it takes the *same write
+lock* as `sync`. The drafting layer only
 ever reads what it produced.
 
 `chitragupta/enrich/__main__.py` is the entry point, and it is the only one:
@@ -306,10 +322,8 @@ instead of a crash. Here `skipped` is the status that carries it (docling
 not installed, or a topic stage with nothing to work from); no stage in
 this layer shells out to a binary, so none of them reports
 `missing-binary`. No stage needs an LLM API key, and this repository
-intentionally has none. (An earlier revision had PaperQA2 and
-STORM stages that required `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`; they
-were removed to keep it key-free. LLM-backed synthesis happens only in the
-drafting layer, through a Claude Code session.)
+intentionally has none. LLM-backed synthesis happens only in the
+drafting layer, through the harness session.
 
 What the three build stages are *for*, and which one to build first, is in
 [RETRIEVAL.md](RETRIEVAL.md).
@@ -324,9 +338,9 @@ is why it lives in `chitragupta/` and not in the package.
 
 A skill must not run this layer. A skill runs inline with the same Bash
 access as the session that invoked it, so it *can* shell out to
-`chitragupta/enrich/__main__.py`; AGENTS.md and eight of the ten
-`SKILL.md` files say it must not (the other two, `book-assembler` and
-`figure-drawer`, never touch the corpus).
+`chitragupta/enrich/__main__.py`; AGENTS.md and the `SKILL.md` of every
+skill that reads the corpus say it must not (`book-assembler` and
+`figure-drawer` never touch the corpus).
 
 There are two reasons. This layer takes the same write lock as `sync`, so a skill
 invoking it can block or be blocked by the user's own run. And a first
@@ -349,14 +363,15 @@ boundary: where it sits, and what it may not do.
 
 Three facts set that boundary:
 
-- **Nothing invokes them as part of producing a draft**, with one
-  amended exception: a genre skill runs `verbatim scan` on its own
-  output before presenting. The rest are yours to run.
+- **A skill runs one only where its `SKILL.md` says so.** A genre skill
+  runs `verbatim scan` on its own output before presenting
+  (`review-digest` runs `review digest` in its place), and
+  `agenda-reviser` reads `review agenda` when you ask it to. The rest
+  are yours to run.
 - **They take no lock.** Read-only over the corpus, so they keep working
-  during a `sync`, like `chitragupta corpus ledger` and retrieval. That
-  is also why no enrichment stage wraps one: a `--stages provenance`
-  would run a review aid while holding sync's write lock, making an
-  advisory read-only report wait on a corpus rebuild for no reason.
+  during a `sync`, like `chitragupta corpus ledger` and retrieval, which
+  is also why no enrichment stage wraps one
+  ([layer 3](#-layer-3-the-enrichment-layer)).
 - **None of them gates anything, and none may be promoted to one.**
 
 The layer is advisory, never a gate, and is named accordingly. It is
@@ -373,7 +388,7 @@ Output lands in `content/review/`, mirroring the draft's path exactly as
 refused, the same tier-1 rule the gate chain follows.
 
 The gate answers a question with one correct answer (is this citekey in the
-ledger?), and can therefore be automatic and absolute. Eight of the eleven aids
+ledger?), and can therefore be automatic and absolute. Seven of the eleven aids
 answer questions of judgement (the original six, plus `support`, which scores
 a claim against its cited source's passage but never calls the verdict
 itself), where a machine verdict would be either wrong often enough to be
@@ -383,9 +398,8 @@ leave the call to you.
 `quotation` is the eighth, and it is not one of those. Its question
 (does this quoted span appear in the source it is attributed to?) is
 binary, deterministic, and about as close to ground truth as anything
-outside the gate. It is the sharpest test this section has, so it is
-worked through immediately below instead of being set aside as an
-exception.
+outside the gate. It is the hardest case for the rule below, so it is
+worked through there.
 
 `agenda` is the ninth, and it asks no question of its own. It merges
 what eight of the others already found into one ranked list, so each item it
@@ -405,8 +419,8 @@ nothing for any other genre, so it is the one aid the agenda never
 reads ([REVIEW.md](REVIEW.md)).
 
 **Which side a check falls on is decided by what it is measured against,
-not by how decidable its answer is.** The two are easy to conflate, and
-conflating them would erode the gate.
+not by how decidable its answer is.** Conflating the two would erode
+the gate.
 
 The gate compares a citekey to the ledger: ground truth, built from the
 human's own `.bib` export and a real parse of a real PDF. No state of the
@@ -424,15 +438,13 @@ nothing about it is fuzzy. It is measured against the *parse*:
 enrichment run that has not happened, a backend switched back to
 `pdftotext`, a re-parse of an edited PDF: each changes the answer while
 nothing changes about the paper. So "this span is absent" is a statement
-about the parse as much as about the source, which is exactly why the
+about the parse as much as about the source, which is why the
 aid has a *third* outcome, `unverifiable`, for a source only `pdftotext -layout`
 could read. There, column splicing means a perfectly correct quotation is
 not contiguous in the text, and calling it absent would assert a
 fabrication that is not there. A check that needs a third outcome is not
-a two-valued gate, however binary its first two look. Being
-deterministic did not make it gateable. What it is measured against
-decided that, and would have decided it the same way had the answer
-been fuzzy.
+a two-valued gate, however binary its first two look. What it is
+measured against keeps it out of the gate, deterministic or not.
 
 Such a check reports and never blocks, whichever layer it lives in. What
 is enforced is *invocation* rather than conformance: a harness may
@@ -442,15 +454,14 @@ were obeyed. Decidable is not the same as gateable, which is why
 `chitragupta/citation_gate.py` outright, rather than leaving it to a
 judgement about how precise the check is.
 
-`scan` is worth comparing with the gate, because the two are complements
-and both are deterministic. The gate proves every citekey is *real*; the
-scan reports what *wording* came along with them. Both work over the same
-corpus and answer opposite halves of one question.
+`scan` and the gate are deterministic complements. The gate proves every
+citekey is *real*; the scan reports what *wording* came along with them.
+Both work over the same corpus and answer opposite halves of one
+question.
 
-The scan is a review aid anyway, and fuzziness is not the reason. "This
-sentence resembles its source" has no single right answer the way ledger
-membership does. Its findings are what a later severity policy would be
-tuned against, not a verdict waiting to be switched on:
+The scan is still a review aid, because "this sentence resembles its
+source" has no single right answer the way ledger membership does. Its
+findings are what a later severity policy would be tuned against:
 [SOUL.md](../SOUL.md) commits to verbatim checks *staying* review aids.
 `scan` runs three detection tiers, but the third needs an optional stack
 a checkout may not have, so a clean run can be incomplete rather than
@@ -480,21 +491,20 @@ invisible in a spot check but silently wrecks keyword retrieval.
 
 Run the pipeline twice over an unchanged bibliography and some artifacts
 come back byte-identical, some come back equivalent-but-not-identical,
-and one comes back genuinely different. This section is the contract, artifact by
-artifact, so that "is this stable?" is answered in one place instead of
-inferred from four documents that each describe one corner of it.
+and one comes back genuinely different. This section is the contract,
+artifact by artifact.
 
-The distinction matters most for quotation. A pipeline whose purpose
+Quotation is where the difference counts. A pipeline whose purpose
 is grounded citation cannot treat "the same words, arranged differently"
 as equivalent to "the same": a passage shown to a reviewer as evidence is
 a specific span of a specific source.
 
 | Artifact | Stable across a re-run on unchanged input? |
 | --- | --- |
-| `content/ledger.sqlite` rows | **Yes, except `last_synced`**, which is wall-clock and changes every run. `pdf_hash`, `status`, `parsed_path`, `pdf_path`, `failure_kind` and the bib columns are byte-stable, and `parsed_path` and `pdf_path` stay so across hosts too: they are stored relative to the `parsed/` directory under `[content].dir` and to the bib file's resolved directory, never host-absolute, so moving the project or reading the ledger from a container and then the host re-parses nothing (#966) |
+| `content/ledger.sqlite` rows | **Yes, except `last_synced`**, which is wall-clock and changes every run. `pdf_hash`, `status`, `parsed_path`, `pdf_path`, `failure_kind` and the bib columns are byte-stable, and `parsed_path` and `pdf_path` stay so across hosts too: they are stored relative to the `parsed/` directory under `[content].dir` and to the bib file's resolved directory, never host-absolute, so moving the project or reading the ledger from a container and then the host re-parses nothing |
 | `pdf_size`, `pdf_mtime_ns` | Stable only while the file is untouched. A re-export producing byte-identical PDFs with fresh mtimes changes `pdf_mtime_ns`, which the stat-before-hash skip reads, so those documents are re-hashed (not re-parsed: the hash still matches) |
 | `content/parsed/<citekey>.txt`, `pdftotext` | **Yes**: byte-identical, measured |
-| `content/parsed/<citekey>.txt`, `docling` | **No**, at any GPU count: 1 of 300 differed even on a single card, so confining the pool lowers the rate without removing it. **Treat the percentages below as orders of magnitude, not figures.** Every rate this document has ever carried came from a *single* pair of runs, and eight pairs at one fixed configuration have since ranged from 0 to 6 documents. All of them were measured at `[parser].ocr = false` and `[parser].formulas = false`; turn either on and none applies |
+| `content/parsed/<citekey>.txt`, `docling` | **No**, at any GPU count: 1 of 300 differed even on a single card, so confining the pool lowers the rate without removing it. **Treat the percentages below as orders of magnitude, not figures.** Each rate below comes from a *single* pair of runs, and eight pairs at one fixed configuration range from 0 to 6 differing documents. All of them were measured at `[parser].ocr = false` and `[parser].formulas = false`; turn either on and none applies |
 | `content/parsed/<citekey>.passages.json` | **No**, and this is the one that matters (see below) |
 | `content/rendered/*.md`, `*.tex` | **Yes**: byte-identical, measured |
 | `content/rendered/*.pdf`, `content/review/*.pdf` | **No.** The TeX engine embeds a creation timestamp and a trailer `/ID`; two renders of identical input differ. `SOURCE_DATE_EPOCH`/`FORCE_SOURCE_DATE` does *not* make them identical |
@@ -521,8 +531,8 @@ two, leaving a reference truncated before its publisher and pages; or two
 entries merge into one. Same-configuration runs are not exempt either:
 2 of 572 comparisons (0.3%) changed a passage's text.
 
-Neither mechanism is new, and the single-GPU case below is the first of
-them, not a third. The clearest instance on record: two
+The single-GPU case below is the first of these two mechanisms, not a
+third. The clearest instance on record: two
 parses of `qi_enabling_2021` hold the same characters bar one, because a
 reference to Zaccaria et al. is one `list_item` in the first run and two
 in the second, split after "Proceedings of ASME" and before "Turbo Expo
@@ -539,11 +549,9 @@ What follows from this:
   difference required a worker pool, and `[parser].workers = 1` (the
   default) has not been observed to vary.
 - **A pool confined to one GPU is not exact either, but what moves is
-  bytes and labels rather than quotations.** This table used to claim
-  exactness, on the strength of three single-GPU arms that were each a
-  *single* pair. Re-run at `--repeat 5` on an idle host (four pairs,
-  1,200 document comparisons, default parse settings), it separates
-  cleanly by level:
+  bytes and labels rather than quotations.** Measured at `--repeat 5` on
+  an idle host (four pairs, 1,200 document comparisons, default parse
+  settings), it separates cleanly by level:
 
   | level | result |
   | --- | --- |
@@ -569,8 +577,7 @@ What follows from this:
   `qi_enabling_2021` at 215 passages against 216: a real quotation
   change, from the bibliography-splitting mechanism above. Two runs is
   not enough to state a rate or to prove contention is the mechanism,
-  but the contrast is the wrong way round to ignore: quiet gave 0 of
-  1,200, contended gave 1.
+  but quiet gave 0 of 1,200 and contended gave 1.
 
 This is Docling's behaviour under load, not something this repository's
 parallelism introduced, and it cannot be switched off. Docling exposes no
@@ -602,16 +609,16 @@ a post-mortem on a parse configuration that was not held fixed.
 - **It takes an outline from you only if you write one.** The book
   track has `spec.md`. A single draft can have an `outline.md` in its
   dossier, with a `brief:` or `claim:` per section and the queries you
-  want run (#455, [DOSSIER.md](DOSSIER.md)); without one, the genre
+  want run ([DOSSIER.md](DOSSIER.md)); without one, the genre
   skills manufacture their own queries from the topic.
 - **It notices a hand edit, but does not adapt to it on its own.**
   `dossier stamp` fingerprints the draft, and `dossier status` reports
-  `CHANGED since last stamp` with what the edit put out of step (#462,
-  [USER-EDITS.md](USER-EDITS.md)). Bringing the dossier back in line is
+  `CHANGED since last stamp` with what the edit put out of step
+  ([USER-EDITS.md](USER-EDITS.md)). Bringing the dossier back in line is
   `draft-reviser`'s job when you hand the draft back.
 - **It does not record who wrote a sentence, and will not.** Prose you
   write into a draft yourself is measured by every review aid as though a
-  skill produced it. That is deliberate, not an omission: a draft gets
+  skill produced it. That is deliberate: a draft gets
   revised, the drafting layer legitimately rewrites what is in it, and an
   authorship marker would go stale while still looking authoritative. That is the
   failure mode this pipeline already guards against by regenerating
@@ -619,9 +626,7 @@ a post-mortem on a parse configuration that was not held fixed.
   [DESIGN.md](DESIGN.md#-what-happens-to-prose-a-person-supplies) has the
   argument and what is declared instead.
 
-The outline and hand-edit work was planned in
-`plans/outline-driven-drafting-and-manual-edits.md` and has shipped. Not
-recording authorship is a settled decision.
+Not recording authorship is a settled decision.
 
 [SECURITY.md](SECURITY.md) is the same list read from the security side,
 and it is longer: this pipeline does not sandbox a PDF, a TeX run or
@@ -646,7 +651,7 @@ unavailable.
 | BM25-ranked retrieval | stdlib only |
 | Citation gate, References section, tex/pdf render | stdlib only, no venv (see [below](#-which-interpreter-and-why)) |
 | Prose conformance report (`chitragupta.draft style`) | stdlib only, plus `vale` on PATH (`os-deps` stage); absent, it reports missing-binary |
-| Docling layout-aware parsing, embeddings/Chroma, BERTopic | venv, `enrich` Poetry group |
+| Docling layout-aware parsing, embeddings/Chroma, BERTopic; `review support`'s NLI model and `verbatim scan`'s embedding tier | venv, `enrich` Poetry group |
 | Compiling generated `.tex` to PDF | `pandoc`, LuaLaTeX (`texlive-luatex`) and the fonts in `chitragupta/pdf_fonts.py`, `latexmk`; the same LuaLaTeX for the figure-layout aid (`os-deps` stage) |
 
 ## 🐍 Which interpreter, and why
@@ -674,25 +679,23 @@ Tier 2 is one package. `chitragupta.corpus sync` needs `bibtexparser` because pa
 BibTeX correctly (nested braces, LaTeX escapes, multi-line values) is
 not worth hand-rolling.
 
-Directory membership is not the same axis, and has twice disagreed with
-it. `render_output.py` once sat in the enrichment layer's own directory
-while needing no package from that dependency group at all. It is the
-drafting layer's publish step, and it now lives in `chitragupta/` beside the rest
-of that layer.
+Directory membership is not the same axis. `chitragupta/render_output/`
+is the drafting layer's publish step and needs no package from the
+`enrich` group, so it lives in `chitragupta/` beside the rest of that
+layer. `chitragupta/review/verbatim_check/` runs on bare `python` like
+the other aids. `scripts/` holds no layer entry point, only dev tooling.
 
-The last residue of the same confusion was `verbatim_check.py`, a
-review-layer command living in `scripts/`, the directory that then held
-the enrichment layer's entry point. It ran on bare `python` like the
-other two aids and was in no way heavier; only its path suggested
-otherwise. It is `chitragupta/review/verbatim_check/` now, and `scripts/`
-holds no layer entry point at all, only genuine dev tooling. Both moves
-corrected a label; neither changed a cost.
-
-What the aid needs is `pandoc` and a TeX engine (LuaLaTeX, for a `pdf`
+What a render needs is `pandoc` and a TeX engine (LuaLaTeX, for a `pdf`
 render and for the figure-layout probe), which are operating-system
 packages, probed at runtime and reported as `missing-binary` when absent.
 That axis (which binaries a command shells out to) is independent of
-which directory it lives in, and always was.
+which directory it lives in.
+
+Two review aids reach past tier 1 for one optional part. `review support`
+loads an NLI cross-encoder from the `enrich` group's
+`sentence-transformers` (`chitragupta/entailment.py`), and `verbatim
+scan`'s embedding tier reads `content/chroma/`. Without them the aid
+still runs on bare `python` and reports that part as not run.
 
 **One entry point per layer, one level deep.** The command surface is
 `chitragupta <layer> <verb>` (`chitragupta corpus sync`, `chitragupta
@@ -717,42 +720,37 @@ The drafting layer's twelve commands carry the same trap without moving
 into a package. `citation_gate.py`, `dossier/`, `references.py`,
 `evidence_appendix.py`, `render_output/`, `retrieval.py`,
 `style_check.py`, `spec/`, `unit/`, `registry/`, `tldr.py` and
-`draft_figures.py` stayed in `chitragupta/` itself. Each is a top-level
-module or package there, never gathered into a shared drafting
-subpackage the way `enrich/`'s stages are. `chitragupta/draft.py` beside
-them is what dropped their `__main__` blocks and gave the layer its one front door.
+`draft_figures.py` sit in `chitragupta/` itself, each a top-level
+module or package, never gathered into a shared drafting subpackage the
+way `enrich/`'s stages are. `chitragupta/draft.py` beside them is the
+layer's one front door, and none of them carries a `__main__` block.
 So `python -m chitragupta.dossier`, or any of the other eleven, is the same
 silent no-op as the nested form above.
 
-One module refuses instead: `chitragupta/sync.py`. Silence is the right price
-everywhere above because nobody schedules those commands. A no-op is seen
-by the person who typed it, in the second after they typed it.
-
-Running `chitragupta/sync.py` as a module is the exception. It was the corpus
-layer's entry point until 5.2.0, and it is the one spelling here that
+One module refuses instead: `chitragupta/sync.py`. Silence is an
+acceptable price everywhere above because nobody schedules those
+commands, so a no-op is seen by the person who typed it. Running
+`chitragupta/sync.py` as a module is the one spelling here that
 plausibly sits in a crontab or a systemd unit, where "exited 0" is all
-anyone ever reads. It ran that way for a release, until a recorded
-issue found the cost in this repository's own `bench/`, where two
-measurement harnesses timed a sync that never happened and recorded the
-result: wrong data, not missing data.
+anyone ever reads, and a silent no-op there records a sync that never
+happened: wrong data, not missing data.
 
 So that module carries a `__main__` block that prints
 `python -m chitragupta.corpus sync` and exits **64**. That is deliberately none
 of the four codes [CLI.md](CLI.md#-running-sync-on-a-schedule) publishes
 as `sync`'s API, since a scheduler reads `2` there as "expected, do
-nothing". A follow-up change removed the old spelling from the
-documentation.
+nothing".
 
 It is not a second way in: it parses no arguments, offers no `--help`,
 takes no lock and syncs nothing. There is still exactly one `--help` per
 layer, which is what this invariant is about.
 
 `tests/test_removed_command_scan.py` keeps the old spelling out of the
-tree. It matches the *invocation*: the `-m` flag and the module together,
-in prose and in the quoted argument-list form that got past the
-original removal's hand sweep. It deliberately does not match the module
-path, which is legitimate and common: `chitragupta.sync` is also the
-pinned logger name in every `logs/pipeline.log` line.
+tree. It matches the *invocation*: the `-m` flag and the module
+together, in prose and in the quoted argument-list form. It deliberately
+does not match the module path, which is legitimate and common:
+`chitragupta.sync` is also the pinned logger name in every
+`logs/pipeline.log` line.
 
 Why those two layers are flat while the other two are packages is a
 question about code cohesion, independent of the rule above:
@@ -762,19 +760,19 @@ satisfy it.
 What makes `chitragupta/enrich/` and `chitragupta/review/` packages is that their
 submodules form clusters. `topic_model` imports `embed_index` imports
 `corpus`, and all eleven review aids share `chitragupta/review/__init__.py`'s
-output contract. The five drafting modules share little beyond
+output contract. The twelve drafting modules share little beyond
 `chitragupta/config.py`, so there is no cluster to name a package after.
 
 The dependencies also run the wrong way for one. `chitragupta/review/` imports
-four of the five, and `chitragupta/enrich/_scope.py` imports `citation_gate`.
+most of them (`citation_gate`, `dossier`, `render_output` and `retrieval`
+among them), and `chitragupta/enrich/_scope.py` imports `citation_gate`.
 A `chitragupta/draft/` package would therefore have the review and
 enrichment layers importing the drafting layer by name, the shape of the
 cycle that keeping `provenance` and `render` out of the stage list prevents.
 
 `chitragupta.retrieval` is also a documented *Python API* across the
 skills. Such a move would rename it for no gain, to a command surface
-that is already one level deep. The issue tracker has that argument in
-full.
+that is already one level deep.
 
 The corpus layer is flat for the same reason: `chitragupta/corpus.py`
 sits beside `sync.py` and `ledger.py`, rather than in a
@@ -804,10 +802,8 @@ code that only `sync` touches. All four layers import it as a library
 `review/citation_provenance`), so it is closer to shared infrastructure
 than to a command `sync` owns. What sits under `chitragupta.corpus` is its
 *command*, which is a claim about where a reader should look for it, not
-about who owns the module. The issue tracker holds the full argument.
+about who owns the module.
 
-The two-level form was tried once, as `chitragupta.heavy.render_output`, and was
-reverted with the directory that held it.
 `tests/test_review_entrypoint.py`, `tests/test_draft_entrypoint.py` and
 `tests/test_corpus_entrypoint.py` pin the rule in the code;
 `tests/test_command_depth_scan.py` pins it across these docs and the
@@ -829,7 +825,7 @@ the first rung, and falls to the next when that one can't answer. A
 | Ladder | Rungs, best first | Where |
 | --- | --- | --- |
 | Evidence passages | the enrichment layer's `.passages.json` -> the corpus layer's `.passages.json` -> parsed text split on page breaks -> a fresh `pdftotext` run | `chitragupta/passages.py` |
-| Enrichment text source | `content/docling/<id>.md` -> the ledger's parsed `.txt` -> a fresh `pdftotext` run | `embed_index.get_text` |
+| Enrichment text source | `content/docling/<id>.md` -> the ledger's parsed `.txt` -> a fresh `pdftotext` run | `enrich/embed_text.get_text` |
 | Accelerator | one CUDA device per worker -> that worker falls back to the CPU on an out-of-memory error | `chitragupta/pdf_text/` |
 
 A **tier** is a menu you choose from, with no automatic descent. Naming

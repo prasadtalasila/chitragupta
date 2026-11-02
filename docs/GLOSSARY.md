@@ -1,6 +1,6 @@
 # 📖 Glossary: the working vocabulary
 
-Status: **reference.** Written 2026-09-02.
+Status: **reference.**
 
 **Written for** you, the person writing a draft with this pipeline.
 Every term below appears throughout the documentation. Each entry says
@@ -12,8 +12,8 @@ documentation gets easier.
 ## 📚 Your library, inside the pipeline
 
 - **Citekey**: the identifier your reference manager assigns each
-  entry (`kritzinger_digital_2018`), which a draft cites as
-  `[@kritzinger_digital_2018]`. The one hard rule of this project: a
+  entry (`sample_dt_sync_2023`), which a draft cites as
+  `[@sample_dt_sync_2023]`. The one hard rule of this project: a
   citekey may be used only if it came from your own `.bib` export and
   a real PDF was really parsed ([SOUL.md](../SOUL.md)).
 - **Corpus**: your papers as the pipeline sees them, meaning the `.bib`
@@ -52,7 +52,26 @@ documentation gets easier.
   *blocking* check in the pipeline, and a failure sends the draft back
   to be rewritten, so you normally never see one.
 - **Render**: turning a finished draft into PDF/LaTeX/Word with its
-  bibliography resolved.
+  bibliography resolved. `chitragupta draft render` runs the gate again
+  on the text it is about to render.
+- **Stamp** (the draft fingerprint): a digest of the draft's text that
+  `chitragupta draft dossier stamp` records in the dossier's `scope.md`
+  once the gate passes. `dossier status` compares against it to tell you
+  whether the draft changed since, for example after a hand edit
+  ([USER-EDITS.md](USER-EDITS.md)).
+- **Evidence sidecar**: a separate document rendered beside a draft,
+  listing each cited source and the exact spans its dossier marked
+  quotable. Four of the six genres produce one
+  ([DOSSIER.md](DOSSIER.md#-the-evidence-sidecar-decided-per-genre)).
+- **Verbatim digest**: the sixth genre. Private study notes written
+  mostly in the papers' own words, each copied run closed by its
+  citation. Never a deliverable and never a source for another draft
+  ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)).
+- **Spec, unit, registry**: the book track. The **spec** is the book's
+  outline, which you sign off; a **unit** is one chapter, generated
+  from its own contract and accepted on its own; the **registries**
+  collect terminology, claims and cross-references across accepted
+  units ([WRITE-A-BOOK.md](WRITE-A-BOOK.md)).
 
 ## 🔭 Exploring
 
@@ -81,15 +100,24 @@ documentation gets easier.
   ([CITATION-PROVENANCE.md](CITATION-PROVENANCE.md)).
 - **Verbatim scan**: the aid answering "how much of this wording came
   from my sources?" ([PLAGIARISM.md](PLAGIARISM.md)).
+- **Agenda**: `chitragupta review agenda`, which merges the other aids'
+  reports into one ranked, deduplicated worklist
+  ([AGENDA.md](AGENDA.md)).
+- **Unattended** and **surfaced**: the two kinds of agenda item. An
+  unattended item is one `agenda-reviser` may repair without asking (a
+  short verbatim run, a prose finding, a citation to a paper the corpus
+  no longer has). A surfaced item waits for you to decide.
 
 ## ⚙ How the machinery talks about itself
 
 Five structural words the other documents lean on. You can write a whole
 book without needing them; they matter when you read the deeper pages.
 
-- **Layer**: one of the four groups of commands: corpus (deterministic),
-  drafting (generative, reviewed by you), enrichment (optional depth),
-  review (advisory reports). [FEATURES.md](FEATURES.md#-the-four-layers)
+- **Layer**: one of the four parts of the pipeline, each with its own
+  command: corpus (deterministic), drafting (generative, reviewed by
+  you), enrichment (optional depth), review (advisory reports). The
+  remaining commands (`init`, `install`, `doctor`, `figure`) set up a
+  project or work on one figure, and sit outside the layers. [FEATURES.md](FEATURES.md#-the-four-layers)
   draws them.
 - **Stage**: one step of the enrichment layer (`docling`, `embed`,
   `bertopic`, `extract-keywords`, `seed-topics`, `converge`,

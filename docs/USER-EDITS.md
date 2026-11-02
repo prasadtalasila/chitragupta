@@ -1,6 +1,6 @@
 # ✏ Hand-editing a draft, and handing it back
 
-Status: **reference.** Written 2026-09-22.
+Status: **reference.**
 
 **Written for** an author who wants to open `content/drafts/<slug>.md`
 in their own editor (to fix a sentence, tighten a paragraph, or
@@ -48,16 +48,15 @@ Nothing about this pipeline requires you to route every change through
 a skill. Asking `draft-reviser` for "shorten the third paragraph" costs
 a model turn and, if the change opens new ground, a retrieval call. If
 you already know the three words you want changed, opening the file and
-changing them is strictly cheaper. No drafting-layer step on plain
+changing them is cheaper. No drafting-layer step on plain
 prose needs a skill to perform it.
 
 What you give up by doing it yourself is the bookkeeping a skill does as
 it edits: nothing updates `sections.md`, `evidence.md` or `steering.md`
 for you, and nothing tells the citation gate your edit happened until
 you ask for something next. The rest of this page is about that
-bookkeeping. You do not have to restore it by hand; the page covers it
-because knowing what is now out of sync is what makes the *next*
-revision cheap again instead of confused.
+bookkeeping. You do not have to restore it by hand, but knowing what is
+out of sync keeps the *next* revision cheap.
 
 ## ✅ Step 1: edit the file, at the same path
 
@@ -110,10 +109,10 @@ You don't need a special phrase. Ask for whatever you actually want
 next, the same way you would for a change you hadn't already started by
 hand:
 
-- "I tightened the intro -- can you check the rest reads consistently
+- "I tightened the intro. Can you check the rest reads consistently
   with it?"
 - "I fixed a typo in section 3, no other changes."
-- "I reworded the claim about latency in section 2 -- can you find a
+- "I reworded the claim about latency in section 2. Can you find a
   source for the new number?"
 
 Or run the status check yourself first, if you want to see what the
@@ -146,7 +145,7 @@ has the full format):
 | You moved a section or subsection without renaming it | nothing: the check compares the set of heading titles, not their order | nothing is needed; the same command puts the `sections.md` rows back in draft order, and each citekey follows the lines it moved with |
 | You reworded or deleted text `math.md` maps to LaTeX | a `math.md` row appearing nowhere in the draft | update the row's key to the new span text, or drop the row if the quantity was cut |
 
-Two things about how these are offered:
+Three things about how these are offered:
 
 - **One at a time, in the reviser's own words**, and it acts only on
   what you agree to. It never applies a repair unasked, and it never
@@ -178,7 +177,7 @@ five findings above are settled, never folded into the same prompt as
 those:
 
 > *"Since you hand-edited `<heading>`, I can also re-run that section's
-> own declared query -- currently `<query, shown to you verbatim>` --
+> own declared query (currently `<query, shown to you verbatim>`)
 > with your new wording appended: ITER-RETGEN with you in the generation
 > slot, not a model. Want me to?"*
 
@@ -282,17 +281,18 @@ while you type:
 
 ## 🧪 Worked example
 
-You open `content/drafts/dt/survey.md`, reword the topic sentence of
-section 2 so it leads with the claim more directly, and delete a
-citation to a paper you decided doesn't actually support that sentence.
+You open `content/drafts/dt-overview/survey.md`, reword the topic sentence of
+section 2 so it leads with the claim more directly, and delete every
+citation to a paper you decided doesn't actually support the draft.
 You save the file and nothing else.
 
-Later, you ask: *"I tightened section 2 and cut the Doe 2024 citation --
-can you check the rest of the draft still reads consistently?"*
+Later, you ask: *"I tightened section 2 and cut the factory paper's citations.
+Can you check the rest of the draft still reads consistently?"*
 
 `draft-reviser` runs `dossier status`, sees `CHANGED since last stamp`,
-and reports one finding: `doe_x_2024` has an `evidence.md` block with no
-matching citation in the draft. It offers to prune the block. You agree.
+and reports one finding: `sample_dt_factory_2022` has an `evidence.md`
+block with no matching citation in the draft. It offers to prune the
+block. You agree.
 If section 2 has a declared query in `outline.md`, it then offers, once,
 to re-run that query with your new topic sentence as `--y-prev`. You
 decline, because you're confident the paragraph is fine as reworded. It reads

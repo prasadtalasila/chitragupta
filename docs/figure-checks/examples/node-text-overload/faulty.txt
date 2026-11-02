@@ -1,0 +1,5 @@
++-------+   +--------------------------------------------+
+| Parse |-->| Index: split every parsed paper into        |
++-------+   | passages, embed each one, and store them   |
+            | all in the ledger                          |
+            +--------------------------------------------+

@@ -1,10 +1,6 @@
 # 🔐 Security architecture
 
-Status: **reference.** Written 2026-09-01. Updated 2026-09-02, adding
-the SonarQube scan action (a credential-bearing third-party action the
-first version of that section did not name) and its token to the release
-controls. Updated 2026-10-01: every action is now SHA-pinned, and
-the release workflow installs Poetry wheels-only (#829).
+Status: **reference.**
 
 How chitragupta protects the locally managed research corpus and its
 derived artefacts, where its trust boundaries are, and what remains the
@@ -70,7 +66,7 @@ and, ultimately, the author remain responsible for those judgements; see
 | Drafts, dossiers, renders, and review reports | Research drafts and their supporting records | User-reviewed work product; generated prose is not automatically authoritative |
 | Local executables and libraries | `pdftotext`, Pandoc, LuaLaTeX, Docling, Python packages, and GPU tooling process corpus data | Trusted local toolchain chosen and maintained by the operator |
 | GitHub Actions and PyPI release artefacts | Build, documentation, release archives, wheels, and packages | Repository-maintainer and CI trust boundary |
-| Claude Code or another external AI session | A drafting session can receive corpus-derived context or user instructions | Optional external-service boundary; not required by the corpus pipeline |
+| An agent harness session (Claude Code, Codex, OpenCode) or another external AI session | A drafting session can receive corpus-derived context or user instructions | Optional external-service boundary; not required by the corpus pipeline |
 
 The deterministic corpus layer does not fetch papers or call an LLM API.
 It processes the bibliography and attachment paths you provide. The
@@ -168,9 +164,9 @@ sections of [CLI.md](CLI.md) identify which commands require local tools.
 
 Every program that `chitragupta/` and `.claude/hooks/` launch is run by
 absolute path, resolved by `chitragupta/programs.py` from the absolute
-entries of `PATH` and nothing else (#974). OpenCode's adapter,
+entries of `PATH` and nothing else. OpenCode's adapter,
 `.opencode/chitragupta/gate.js`, applies the same rule in Node before it
-spawns `python` (#1025). A bare name handed to
+spawns `python`. A bare name handed to
 `subprocess.run` would leave the lookup to the OS, and on Windows
 `CreateProcess` searches the current directory before `PATH`, as
 `shutil.which` does there too. On any host a relative or empty `PATH`
@@ -208,14 +204,13 @@ installation) is still allowed. A refusal is written to the log as
 file instead of printing it. Underneath it, kpathsea's `openin_any=r`
 refuses dot files too.
 
-**Why a callback and not kpathsea's `openin_any=p` (#1037).** Until
-then the fence was `openin_any=p`. TeX Live 2024 changed `p` to restrict
-absolute paths to `TEXMFOUTPUT`, and `luaotfload` opens
-`ScriptExtensions.txt` by absolute path from texmf-dist on every LuaLaTeX
-run, so under `p` every render failed on a current distribution before
-TeX printed a line; pandoc sets `TEXMFOUTPUT` itself, so no variable
-could widen it. TeX Live 2026's kpathsea drops the read check entirely,
-so `p` would then fence nothing while appearing set. The callback is in
+**Why a callback and not kpathsea's `openin_any=p`.** Since TeX Live
+2024, `p` restricts absolute paths to `TEXMFOUTPUT`, and `luaotfload`
+opens `ScriptExtensions.txt` by absolute path from texmf-dist on every
+LuaLaTeX run, so under `p` every render fails on a current distribution
+before TeX prints a line; pandoc sets `TEXMFOUTPUT` itself, so no variable
+can widen it. TeX Live 2026's kpathsea drops the read check entirely,
+so there `p` would fence nothing while appearing set. The callback is in
 the engine, so it behaves the same on every TeX Live, and Lua's own
 `io.open`, which the font loader uses, does not pass through it. Pandoc's own
 `--sandbox` is deliberately not used: it confines Pandoc's reads, not
@@ -247,7 +242,7 @@ plain mathematics such as `$\alpha \leq \beta$` are left exactly as the
 reader produced them.
 
 **Accepted residual: Lua in the author's own TeX.** A `pdf` render runs
-LuaLaTeX (#996), which embeds a Lua interpreter, and the read fence and
+LuaLaTeX, which embeds a Lua interpreter, and the read fence and
 `-no-shell-escape` fence TeX's own file access, not Lua's. (That Lua
 could also unregister the fence's callback.) TeX in a
 draft body or in a `figures/*.tex` file can run Lua with `\directlua`,
@@ -277,7 +272,7 @@ is why the render refuses a draft's own symlinked references itself
 - A `tex` output and a `--fragment` unit carry the same raw LaTeX to
   whoever compiles them later, with their own engine and their own
   settings, which this project does not control.
-- An `.eps` figure no longer converts, because graphicx converts one
+- An `.eps` figure does not convert, because graphicx converts one
   through `repstopdf` over shell escape; use a PDF or PNG figure instead.
 - Pandoc compiles in the system temp directory, so a `pdf` render needs
   a `TMPDIR` with no dot-directory in its path (not `~/.cache/tmp`). One
@@ -349,9 +344,9 @@ third-party actions that publish releases, publish to PyPI, or upload
 external analysis: `softprops/action-gh-release`,
 `pypa/gh-action-pypi-publish`, `codecov/codecov-action`, and
 `SonarSource/sonarqube-scan-action`. The rest are GitHub's own
-`actions/*`. These were left on major tags such as `@v4` until #829,
-because Sonar's S7637 did not flag them. But a tag can be moved to point
-at different code whoever owns the action, and
+`actions/*`, pinned the same way although Sonar's S7637 does not flag a
+major tag on them: a tag can be moved to point at different code
+whoever owns the action, and
 `actions/download-artifact` is the one step between the built wheel and
 the PyPI publish. So `.github/dependabot.yml` proposes the pin bumps as
 one grouped weekly PR, and DEVELOPER-AGENTS.md's "Issues and pull
@@ -459,8 +454,8 @@ a draft.
 ### Optional external AI sessions may create egress
 
 The corpus, gate, rendering, and review commands do not require an LLM
-API key. If you use the shipped Claude Code skills or another AI-assisted
-workflow, the session itself may send prompts, excerpts, paths, or other
+API key. If you use the shipped skills in an agent harness, or another
+AI-assisted workflow, the session itself may send prompts, excerpts, paths, or other
 context to an external service depending on your client and settings.
 
 Before using AI assistance with confidential, licensed, personal, or

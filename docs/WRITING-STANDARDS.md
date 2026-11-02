@@ -1,7 +1,6 @@
 # ✍ Writing standards for the drafting layer
 
-Status: **reference.** Written 2026-08-03. Updated 2026-09-17, adding
-§15's "a heading does not number itself".
+Status: **reference.**
 
 **Written for** anyone drafting with this pipeline, and for the skills
 that draft on their behalf. **Assumed:** [GENRE.md](GENRE.md) for which
@@ -90,7 +89,7 @@ its source's style.
   should still get the argument.
 - Cut hedging that carries no information. "It may be argued that X is
   possibly a factor" says less than "X is a factor", and the difference is
-  not caution -- it's noise. Real uncertainty gets stated, once, precisely.
+  noise, not caution. Real uncertainty gets stated, once, precisely.
 
 ## ✂ 5. Don't let a document do two jobs
 
@@ -170,52 +169,60 @@ Mechanising §4's "short sentences" builds a machine that splits sentences
 past the point the argument survives. Leaving §2's literals to memory
 means they are checked only when someone remembers to.
 
-| Rule | Section | Decidable? | May a machine act on it unattended? |
+| Rule | Section | Decidable? | Checked by, and may a machine repair it unattended? |
 | --- | --- | --- | --- |
-| Dialect matches `scope.md`'s `language:` | §8 | yes | yes |
-| No defect markers: "obviously", "simply", "of course", "clearly", "easy" | §2 | yes | yes |
-| "just", specifically | §2 | no | no: the adverb ("just add the flag") and the adjective ("a just outcome") are not separable by string match, so it is reported for a human eye |
-| Each term defined once, then used consistently | §2 | yes, given the dossier's glossary | yes |
-| Acronym expanded at first use, then not re-expanded | §2 | yes: first occurrence is computable | yes |
-| A glossary's acronym expansion still matches the current acronym vocabulary | §2 | yes, given the dossier's glossary and `[style].acronyms`, but only the glossary is compared, not the draft's own prose | yes |
-| Active voice with a named actor | §4 | detectable | no: the fix is a judgement |
-| Each paragraph leads with its point | §4 | heuristic only | no: surfaced, never applied |
-| Hedging that carries no information | §4 | detectable | no: the fix is a judgement |
-| Short sentences, one idea each | §4 | **no: this is a score** | no |
-| Citekeys per unit, and how many units rest on one source | §11 | yes | no: it is a **proportion**, and a thin corpus legitimately produces single-source units. Counted and read, never acted on |
-| Whether a sentence carries a citation at all | §11 | yes, per sentence, but *whether it needs one* is not, which is why the genre decides if it is a finding | no: surfaced. The fix for an uncited claim is evidence, not wording, and a machine rewording one would make it look supported without making it supported |
-| A table has a caption and an id, and every reference resolves | §13 | yes | no: the fix is a caption someone has to write |
-| Some sentence refers to each table | §13 | yes | no; and **whether that sentence explains the table is not decidable at all**, which is the half that matters most. A machine can see that a reference exists; only a reader can see that the arrangement was worth making |
-| A captioned figure's id is unique and kebab-case, and every `figureref` resolves | §10 | yes | no: the fix is an author decision, same as a table's |
-| Some sentence refers to each captioned figure | §10 | yes | no; and **whether that sentence explains the figure is not decidable**, same split as a table's. An uncaptioned figure raises `chitragupta.FigureNoCaption` instead, so it is not exempt from §10, only from *this* row: there is nothing yet for a sentence to refer to |
-| A numbered equation's id is unique and kebab-case, and every `equationref` resolves | §12 | yes | no: the fix is an author decision, same as a table's or figure's |
-| Some sentence refers to each numbered equation | §12 | yes | no; and **whether that sentence explains the equation is not decidable**, same split as a table's or figure's |
-| Whether an equation should have been numbered at all (standalone, final-of-derivation, reused) | §12 | **no** | no: unlike every other row in this table, there is no mechanical proxy for this one at all; only the reference half above is checked |
-| A matrix with two or more columns is displayed, not set inline | §12 | yes: a `math.md` row whose LaTeX holds a matrix, keyed on an inline span | **no, and it is not checked at all**: the proxy is easy, but it would fire on seven inline matrices in the sample book that all fit, and whether one overflows depends on the math font. The rule is the guard |
-| A URL is written as a `[text](https://…)` link rather than printed raw | §14 | yes | yes: the repair is the link, which is wording, and there is no evidential claim for it to misrepresent |
-| A code line fits the page's column limit | §14 | yes | no: reported with `repair: "review"` since #836, so a person decides: a wide line may be deliberate, a URL or a literal in a block verified to run. The class it used to inherit from `prose` was the wrong one, because the repair edits a code sample rather than prose, and dropping an argument to fit the width leaves a command that still reads plausibly and no longer works. In a Markdown draft the stake is only the `,→` a wrap leaves behind; in a `.tex` fragment, whose preamble this pipeline may not touch, it is a real overflow |
-| A heading does not state its own chapter number | §15 | yes | yes: but only in a `.tex` unit, and only because nothing else can reach it: the repair is deleting a prefix the enclosing document supplies, which changes no claim. A Markdown unit is never reported, because the `--fragment` render already drops the prefix from what it emits and the authored heading is still what titles the standalone pdf |
-| A very long token has a breakable form | §14 | yes | **no, and it is not checked at all**: unlike every other row, the mechanical proxy was built and then rejected: TeX hyphenates long English words correctly, so the rule raised 36 candidates on this project's own book and none of them had a repair that was not a worse word. §14 has the measurement |
+| Dialect matches `scope.md`'s `language:` | §8 | yes | `DialectGB`/`DialectUS`/`DialectIN`: yes when the dialect came from `scope.md` or `--language`; no (`review`) when it came from `config.toml` |
+| No defect markers: "obviously", "simply", "of course", "clearly", "easy" | §2 | yes | `DefectMarkers`: yes |
+| "just", specifically | §2 | no: the adverb ("just add the flag") and the adjective ("a just outcome") are not separable by string match | `Just`: yes, by its `repair` value. The finding asks which one it is; only the adverb is a defect |
+| Each term defined once, then used consistently | §2 | yes, given the dossier's glossary | not checked for a plain term; only acronyms are (next two rows) |
+| Acronym expanded at first use, then not re-expanded | §2 | yes: first occurrence is computable | `Acronyms`: yes |
+| A glossary's acronym expansion still matches the current acronym vocabulary | §2 | yes, given the dossier's glossary and `[style].acronyms`; only the glossary is compared, not the draft's prose | `AcronymDrift`: yes |
+| Active voice with a named actor | §4 | detectable | not checked: the fix is a judgement |
+| Each paragraph leads with its point | §4 | heuristic only | not checked |
+| Hedging that carries no information | §4 | detectable | not checked: the fix is a judgement |
+| Short sentences, one idea each | §4 | **no: this is a score** | not checked |
+| Citekeys per unit, and how many units rest on one source | §11 | yes | `review synthesis` counts it; never acted on, because a thin corpus legitimately produces single-source units |
+| Whether a sentence carries a citation at all | §11 | yes, per sentence; *whether it needs one* is not | `review uncited` surfaces it; never acted on, because the fix is evidence, not wording |
+| A table has a caption and an id, and every reference resolves | §13 | yes | `TableNoCaption`, `TableNoId`, `TableMalformedId`, `TableDuplicateId`, `TableUnknownRef`, `TableRefOutsideSection`: yes |
+| Some sentence refers to each table | §13 | yes; **whether that sentence explains the table is not** | `TableUnreferenced`: yes, for the reference only |
+| A captioned figure's id is unique and kebab-case, and every `figureref` resolves | §10 | yes | `FigureNoCaption`, `FigureMalformedId`, `FigureDuplicateId`, `FigureUnknownRef`, `FigureRefOutsideSection`: yes |
+| Some sentence refers to each captioned figure | §10 | yes; whether that sentence explains the figure is not | `FigureUnreferenced`: yes, for the reference only |
+| A numbered equation's id is unique and kebab-case, and every `equationref` resolves | §12 | yes | `EquationMalformedId`, `EquationDuplicateId`, `EquationUnknownRef`, `EquationRefOutsideSection`, `EquationOrphanMarker`: yes |
+| Some sentence refers to each numbered equation | §12 | yes; whether that sentence explains the equation is not | `EquationUnreferenced`: yes, for the reference only |
+| Whether an equation should have been numbered at all | §12 | **no** | not checked: there is no mechanical proxy |
+| A matrix with two or more columns is displayed, not set inline | §12 | yes | not checked: whether one overflows depends on the math font ([§12](#-what-is-checked-and-what-you-still-have-to-look-for)) |
+| A URL is written as a `[text](https://…)` link rather than printed raw | §14 | yes | `BareUrl`: yes |
+| A code line fits the page's column limit | §14 | yes | `WideCodeLine`: no (`review`): a wide line may be deliberate ([§14](#-keep-a-code-block-inside-the-page)) |
+| A heading does not state its own chapter number | §15 | yes | `ChapterSelfNumbered`, `.tex` units only: yes ([§15](#-15-a-heading-does-not-number-itself)) |
+| A very long token has a breakable form | §14 | yes | not checked: the proxy found no repair that was not a worse word ([§14](#-prefer-a-breakable-form-for-a-very-long-token)) |
 | The reread as the reader | §6 | no | never |
 
+**How to read the last column.** A named rule is a `python -m
+chitragupta.draft style` finding, reported as `chitragupta.<name>`. Each
+finding carries a `repair` value. `edit`, the default,
+lets the review agenda mark it `unattended`, so `agenda-reviser` may
+repair it without asking; `review` puts it in front of a person. Only
+two cases are `review`: `WideCodeLine`, and a dialect finding whose
+dialect came from `config.toml`. `review synthesis` and `review uncited`
+are review aids: they report, and no unattended repair acts on them.
+
 **Nothing in the last column is a continuous score, deliberately.** A
-readability index is the tempting exception, and the instructive one. A
-loop minimising grade level splits sentences past the point the argument
+readability index is the obvious candidate to add. A loop minimising
+grade level splits sentences past the point the argument
 survives, and replaces precise technical vocabulary with shorter, vaguer
 words, because a polysyllabic term is indistinguishable to the metric
 from bad writing.
 
-It may be reported. It may never be optimised.
+An index may be reported but never optimised;
 [HOUSE-STYLE.md](HOUSE-STYLE.md) has that argument in full.
 
-**Quoted spans are exempt from every row, and this is the one place that
-needs saying.** Drafts produced by this pipeline contain source text by
-construction, so "simply" inside a quoted abstract and an `-ize` inside a
-cited title are correct rather than findings. No rule here has a
-zero-exception form, which is also why none of them may become a gate;
-see [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" for the axis that
-decides which checks may block, and [SOUL.md](../SOUL.md) for why there is
-exactly one that does.
+**Quoted spans are exempt from every row.** Drafts produced by this
+pipeline contain source text by construction, so "simply" inside a
+quoted abstract and an `-ize` inside a cited title are correct rather
+than findings. No rule here has a zero-exception form, which is also why
+none of them may become a gate; see [ARCHITECTURE.md](ARCHITECTURE.md)'s
+"Layer 4" for the axis that decides which checks may block, and
+[SOUL.md](../SOUL.md) for why there is exactly one that does.
 
 **Every verdict in the table is scoped to English**, for the reason §8
 gives.
@@ -225,9 +232,9 @@ gives.
 A draft may include a figure only if it is wholly original. A figure
 extracted from a source paper carries that paper's own copyright, and
 citing the paper grants no right to reproduce it. Inserting one into a
-draft, or closely redrawing one from memory, is the same violation in
-different pixels. Reading a source figure for understanding is fine; the
-boundary is what ends up in the draft.
+draft, or closely redrawing one from memory, is the same violation.
+Reading a source figure for understanding is fine; the boundary is
+what ends up in the draft.
 
 A figure's ASCII form is a diagram in a code block: box characters,
 arrows and labels built from `+ - | / \ > < ^ v`, 7-bit characters only.
@@ -242,15 +249,14 @@ expect rather than a defect: every line is shifted by the same four
 spaces, so the diagram's alignment is intact and `^ \ < >` come through
 literally.
 
-Unicode box-drawing (`┌─┐│└─┘`) is excluded, not merely discouraged.
-chitragupta's own pdf render runs LuaLaTeX and prints them (#996), but a
+Unicode box-drawing (`┌─┐│└─┘`) is excluded.
+chitragupta's own pdf render runs LuaLaTeX and prints them, but a
 `.tex` output or a `--fragment` is compiled later by the author's own
 document, and a `pdflatex` build has no such glyphs set up: it fails the
 whole build with `Unicode character ┌ (U+250C) not set up for use with
-LaTeX`. That was verified against this project's own `render_output`
-call when it still ran `pdflatex`, and is not a general pandoc claim. A
-diagram that renders one figure and breaks every other one downstream
-in the same draft is worse than no diagram.
+LaTeX`. That is verified against a `pdflatex` build of this project's
+own render output, and is not a general pandoc claim. One such diagram
+breaks the build for every other figure in the same draft.
 
 ### 🎨 TikZ layout and style
 
@@ -258,8 +264,10 @@ in the same draft is worse than no diagram.
 figure: which layout metaphor to commit to before placing a node, the
 pre-flight defect checklist to check the result against, and the type
 and line-weight conventions that keep a figure consistent with the
-surrounding document. It is a checklist an author checks a figure
-against, not a gate: nothing in it is enforced mechanically today.
+surrounding document. Much of it is checked by `chitragupta figure
+check`, which reports and is never gated; the rules it applies, and how
+to read its report, are in
+[figure-checks/README.md](figure-checks/README.md).
 
 ### 🖼 Every figure has two forms
 
@@ -375,8 +383,8 @@ pipeline.
   labels, which the twin can express, and let colour make the picture
   quick to read rather than possible to read.
 - **Originality binds the TikZ identically.** A TikZ picture redrawn
-  from a source paper's figure is the same violation in different
-  pixels, and that a vector redraw is easier to produce than a traced
+  from a source paper's figure is the same violation, and that a vector
+  redraw is easier to produce than a traced
   bitmap changes nothing about whose figure it is. Reading a source
   figure for understanding is fine; the boundary is the same one as
   above.
@@ -402,20 +410,15 @@ pipeline.
   chat. Do this at drafting time: a marker written on a host without `tikz.sty`
   makes every later `tex`/`pdf` render of that draft fail with
   `[missing-binary]`, because the renderer refuses rather than silently falling
-  back: the same draft has to produce the same output on every host. If
-  it is present, wrap the figure in a minimal
-  `\documentclass[12pt]{article}` + `\usepackage{fontspec}` +
-  `\usepackage{tikz}` document, run `lualatex` on it (the pdf render's
-  engine, #1037), and never keep one that fails. **Copy the figure's
-  own `\usetikzlibrary` line into that probe**, or the check fails for a
-  reason the figure does not have: a bare
-  `\usepackage{tikz}` preamble loads no library, so anything using
-  `positioning`, `matrix`, `fit` or `tree` errors there whether or not it is
-  sound. The renderer loads the union of a draft's `\usetikzlibrary` lines in
-  its own preamble (#781), and your probe is standing in for that preamble,
-  which is why the line has to be copied rather than assumed.
-  [TIKZ-STYLE.md](TIKZ-STYLE.md) says where the line goes in the figure file,
-  and why nothing else about loading belongs there.
+  back: the same draft has to produce the same output on every host. If it is
+  present, run `chitragupta figure check figures/<name>.tex`. It compiles the
+  figure under LuaLaTeX, the pdf render's engine, with the figure's own
+  `\usetikzlibrary` libraries loaded in the preamble as the renderer loads
+  them, and reports `does-not-compile` along with every other rule it
+  measures. Never keep a figure that fails. `chitragupta figure look
+  figures/<name>.tex` writes the figure cropped as it will print, for what no
+  rule measures. [TIKZ-STYLE.md](TIKZ-STYLE.md) says where the
+  `\usetikzlibrary` line goes in the figure file.
 - **Plain 7-bit ASCII in the ASCII form**, wherever it lives, same
   alphabet and same reasoning as the Unicode exclusion above. It is
   what every non-LaTeX render emits, and a draft with no TikZ figure at
@@ -431,16 +434,16 @@ pipeline.
   in the ASCII form too, and not
   as a decoration: every format except `tex`/`pdf` renders the `.txt`
   and never sees the picture, so a figure lettered only in its TikZ
-  ships a `docx` and an `html` whose panels are unlabelled, with nothing
-  anywhere reporting it. [TIKZ-STYLE.md](TIKZ-STYLE.md) has the worked
+  ships a `docx` and an `html` whose panels are unlabelled. `figure
+  check` reports that as `t3-panels`. [TIKZ-STYLE.md](TIKZ-STYLE.md) has the worked
   example, how to letter an ASCII diagram without sliding every title
   off its panel, and why `subcaption` is not the answer.
 - **A figure is captioned in the draft, not in the figure file**;
   "A caption, and no number you write yourself" below has the contract.
-  A marker with no caption below it still renders unnumbered and
-  uncaptioned (the renderer is unchanged), but `draft style` now
-  reports it (`chitragupta.FigureNoCaption`), because "captioned in the
-  draft" is the contract and a marker without one has not met it.
+  A marker with no caption below it renders unnumbered and uncaptioned,
+  and `draft style` reports it (`chitragupta.FigureNoCaption`), because
+  "captioned in the draft" is the contract and a marker without one has
+  not met it.
   Which lettering a venue wants for panels (`(a)`,
   `(i)`, `A`, or titles with no letters) is a §8 house-style decision:
   record it in the dossier's `scope.md` beside the dialect, where
@@ -449,8 +452,8 @@ pipeline.
 
 ### 🔖 A caption, and no number you write yourself
 
-Issue 411 gives a figure the number-and-reference contract §13 gives a
-table. A Markdown draft writes the `figure:` marker, then its caption
+A figure has the number-and-reference contract §13 gives a table. A
+Markdown draft writes the `figure:` marker, then its caption
 directly below it with no blank line between, the same adjacency §11's
 `<!-- single-source: -->` and §13's own caption-then-marker pair both
 use:
@@ -471,16 +474,14 @@ number:
 **The id is derived, not written.** The marker's own value already names
 the figure's base name, so the id is that name with no `figures/` prefix:
 `delivery-modes` from `figures/delivery-modes`, the same base name
-`\label{fig:delivery-modes}` already had to agree with before this
-contract existed. There is no second field to keep in sync with the file
-name.
+`\label{fig:delivery-modes}` agrees with. There is no second field to
+keep in sync with the file name.
 
 **A figure with no caption line below it renders unchanged**: a bare
 `\input` or a bare ASCII fence, no float, no number, and invisible to
-`figureref` resolution. What changed in issue 421 is that this is no
-longer an *accepted* case: the render is the same, and `draft style`
-now reports it. Nothing about the rendering path moved; the amendment
-is to the standard, not to the renderer.
+`figureref` resolution. It is not an *accepted* case: `draft style`
+reports it as `chitragupta.FigureNoCaption`. The rule is in the
+standard, not in the renderer.
 
 **Never write the number.** [RENDERING-FLOW.md](RENDERING-FLOW.md)'s
 "Figure numbering" has the per-format cases: LaTeX-bound output wraps
@@ -503,14 +504,12 @@ refers to, a `figureref` naming a figure that does not exist or is not
 captioned, two figures sharing one id, and a reference sitting outside
 the figure's own section.
 
-`chitragupta.FigureNoCaption` arrived with issue 421 and reversed what
-this paragraph used to say. There is still no `FigureNoId`, and that
-half is unchanged rather than merely surviving: a figure marker always
-carries an id by construction, since the id *is* the base name the
-marker names, so there is no state for it to catch.
+There is no `FigureNoId`: a figure marker always carries an id by
+construction, since the id *is* the base name the marker names, so
+there is no state for it to catch.
 
 Where `tikz.sty` is absent, the fallback is the same in every genre and
-is what this section required before the pair existed: the ASCII goes
+is the ASCII form alone: the ASCII goes
 inline, in whatever form the draft's own language carries natively (a
 fenced code block in a Markdown draft, a `verbatim` environment in a
 `.tex` fragment), with no marker and no `figures/` files at all. Both
@@ -520,15 +519,21 @@ too; a `verbatim` block survives pandoc's LaTeX reader into both
 `--format pdf` and `--format md`. Both were verified into both formats
 through this pipeline's own render path.
 
-This is not gated mechanically: there is no equivalent of
-`citation_gate` for a figure's originality. Whether a diagram is
-original, and whether a source figure's own licence would
-even permit reproducing it, stays a judgement call. Nor is there one for
-agreement between the two forms: nothing can check that a TikZ picture
-and an ASCII diagram depict the same thing, so a revision that edits one
-and not the other leaves the pdf and the Markdown preview disagreeing,
-silently and indefinitely. `draft-reviser` carries the only defence
-there is: touch a figure, touch both forms, panel letters included.
+There is no equivalent of `citation_gate` for a figure's originality.
+Whether a diagram is original, and whether a source figure's own
+licence would even permit reproducing it, stays a judgement call.
+
+Agreement between the two forms is checked in part by `chitragupta
+figure check`, which reports and is never gated. It reports a figure
+with no `.txt` beside it (`twin-missing`), a name in the TikZ that the
+twin does not carry (`t1-labels`), an edge tag missing from the twin
+(`t2-tags`), and panel letters that differ between the two
+(`t3-panels`). Arrow topology is not checked: nothing compares which
+box an arrow joins in one form against the other, so a rewired arrow
+leaves the pdf and the Markdown preview disagreeing until someone looks.
+[figure-checks/README.md](figure-checks/README.md) has the rules.
+`draft-reviser` carries the rest of the defence: touch a figure, touch
+both forms, panel letters included.
 
 ## 🧩 11. Multi-source synthesis, at your genre's unit
 
@@ -696,7 +701,7 @@ govern the mapping's LaTeX column, which is the only place LaTeX appears.
   it nowhere to break. Write the marker and fence above, with both
   matrices on one line if the sentence names two. Set inline,
   `F = [1, 0; 0, 0.7]` and `G = [1.0e-4, 0; 0, 3.0e-4]` ran 58pt into
-  the margin of this repository's own book (#1076). A short column
+  the margin of this repository's own book. A short column
   vector such as `x = [1.70; 48.0]` is narrow enough to stay inline.
 - **A text subscript is upright.** `$k_\mathrm{day}$`, not `$k_{day}$`;
   the latter sets *d*, *a*, *y* as three italic variables multiplied
@@ -714,9 +719,8 @@ govern the mapping's LaTeX column, which is the only place LaTeX appears.
 ### ⚖ Which form to choose
 
 **A new draft should use the mapped form**, unless nobody will ever read
-its `.md`. The inline form is not deprecated and needs no migration: a
-draft already written with `$…$` keeps rendering exactly as it did, and
-`_math.py` only ever touches a span that has a row.
+its `.md`. Both forms are supported: a draft written with `$…$` renders
+as written, and `_math.py` only ever touches a span that has a row.
 
 Pick the inline form when the draft is a step on the way to a pdf and
 the equation count is small: one `$k$` is cheaper than a dossier file.
@@ -769,7 +773,7 @@ what each cost.
 
 An inline matrix wide enough to overflow is not checked either. Whether
 it fits depends on the math font as much as on the matrix: the hint
-in #1076 set without overflow under Computer Modern and ran 58pt into
+in that book set without overflow under Computer Modern and ran 58pt into
 the margin under STIX Two Math. Flagging every inline matrix instead would
 have been mostly noise: the same book has seven others, and none of them
 overflows. The rule above is the guard, and it is stricter than the
@@ -863,10 +867,8 @@ section is about: a **caption**, so the rendered document can number it,
 and a **sentence that reads it**, so the reader is not left to work out
 what the arrangement was for.
 
-Neither was true of any draft this pipeline had produced before this
-section existed. A survey's comparison table rendered as an unnumbered
-`longtable`, and the string "Table" followed by a number appeared in no
-draft's prose at all.
+Without a caption, a survey's comparison table renders as an unnumbered
+`longtable` that no sentence can name.
 
 ### 🏷 A caption, an id, and no number you write yourself
 
@@ -950,7 +952,8 @@ work handed to the reader.
   the point of the arrangement is that it does not need narrating.
 
 `python -m chitragupta.draft style` reports the decidable part of this:
-a table with no caption, no id, a duplicate id, a reference to a table
+a table with no caption, no id, an id that is not kebab-case, a
+duplicate id, a reference to a table
 that does not exist, a table no sentence refers to, and a table
 referenced only from another section. Whether the sentence that refers
 to it *explains* it is a judgement, and stays one; §9's table
@@ -995,7 +998,7 @@ measured through pandoc's own template, which loads `lmodern`;
 measuring against a bare `\documentclass` gives 76/73, three columns
 tight, because Computer Modern's typewriter face is wider.
 
-**A Markdown draft's blocks now wrap rather than overflow**, so this is
+**A Markdown draft's blocks wrap rather than overflow**, so this is
 a quality rule rather than a defect one. `draft render` loads `fvextra`
 and redefines `verbatim`/`Highlighting` with `breaklines` for any draft
 that has a fenced block, so an over-wide line breaks at a space and
@@ -1003,17 +1006,24 @@ marks the continuation with `,→`. Keeping the line short avoids that
 marker, which a reader copying the command out of the pdf would
 otherwise pick up.
 
-**A `.tex` fragment is the case that still cannot be repaired**, and is
-why the check exists at all. `thesis-chapter-writer` emits a fragment
+**A `.tex` fragment is the case that cannot be repaired at render
+time**, and is why the check exists at all. `thesis-chapter-writer` emits a fragment
 `\input` into the user's own thesis, whose preamble this pipeline may
 not touch (§13's carve-out), so nothing can load `fvextra` on its
-behalf, and a wide `verbatim` line there runs into the margin exactly as
-before. Shorten it: break the pipeline, drop the aligned comment column,
+behalf, and a wide `verbatim` line there runs into the margin. Shorten
+it: break the pipeline, drop the aligned comment column,
 abbreviate the path.
 
 A book is the third case: its units are rendered `--fragment`, which
 emits no preamble, so its `book.tex` carries the `fvextra` load itself
 (see `.claude/skills/book-assembler/references/latex-conventions.md`).
+
+`chitragupta.WideCodeLine` reports a line over the limit with `repair:
+"review"`, so a person decides rather than an unattended pass. A wide
+line may be deliberate: a URL, or a literal in a block verified to run.
+The repair edits a code sample rather than prose, and dropping an
+argument to fit the width leaves a command that still reads plausibly
+and does not work.
 
 ### 🔤 Prefer a breakable form for a very long token
 

@@ -8,7 +8,7 @@
    nothing in common" from "these share a paper and the gate judged it
    unsurprising".
 
-   `docs/TOPIC-DISCOVERY-GRAPH.md` §7.7 solves it by storing an
+   `docs/TOPIC-DISCOVERY-GRAPH.md` §2 solves it by storing an
    `edges_withheld` list. Under #670's decision that field is out of
    scope -- and unnecessary, because the payload already carries every
    input the test needs: each topic's `members`, and `n_docs`.

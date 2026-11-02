@@ -1,17 +1,13 @@
-# 🖼 Figure quality: where it stands, and where it should go
+# 🖼 Figure quality: what has shipped, and what is still open
 
-Status: **discussion notes, partly implemented** (see the 2026-10-05/06
-updates in Part V). Part XII added 2026-10-24. Written 2026-09-04
-against `c4ee19a`; revised 2026-09-05 to fold in material borrowed from
-`cathrynlavery/diagram-design` (see
-[Borrowed, with attribution](#-borrowed-with-attribution)). Nothing here
-has been measured on the corpus unless a section says so explicitly and
-names the artefact that holds the number.
+Status: **proposal.**
 
 **Written for** someone deciding what to build next in the figure system,
 or deciding whether a proposal already considered here is worth
-re-opening. Every subsection below is sized to become one feature request
-on its own.
+re-opening. The first section lists what exists. Every open subsection
+after it is sized to become one feature request on its own. Nothing here
+has been measured on the corpus unless a section says so explicitly and
+names the artefact that holds the number.
 
 **Scope decision that shapes everything.** This project will mostly be
 used to write technical books in **engineering, computer science and
@@ -24,6 +20,7 @@ deleted, so nobody has to re-derive the argument.
 
 ## 🧭 Table of contents
 
+- [What has shipped](#-what-has-shipped)
 - [Where figures stand today](#-where-figures-stand-today)
 - [The gap, stated precisely](#-the-gap-stated-precisely)
 - [Part I: Two missing artefact classes](#-part-i-two-missing-artefact-classes)
@@ -37,64 +34,66 @@ deleted, so nobody has to re-derive the argument.
 - [Part IX: Figure-similarity provenance](#-part-ix-figure-similarity-provenance)
 - [Part X: Output targets](#-part-x-output-targets)
 - [Part XI: Rendered figure images in md, html and docx](#-part-xi-rendered-figure-images-in-md-html-and-docx)
-- [Part XII: figure-drawer v3](#-part-xii-figure-drawer-v3)
-- [Rules that will have to bend](#-rules-that-will-have-to-bend)
+- [A rule that may have to bend](#-a-rule-that-may-have-to-bend)
 - [Borrowed, with attribution](#-borrowed-with-attribution)
 - [Considered and set aside](#-considered-and-set-aside)
 - [Build order](#-build-order)
 - [What needs measuring first](#-what-needs-measuring-first)
 
+## ✅ What has shipped
+
+Each row was once a proposal on this page, or the reason for one. The
+page that documents it now is in the last column. A proposal that
+duplicates one of these is not worth filing.
+
+| Item | What exists | Documented in |
+| --- | --- | --- |
+| Scaffolds | Eleven known-good scaffolds in `assets/tikz/`, one per layout, each with its ASCII twin and a `% cg-layout:` line: pipeline, map, layered stack, control loop, branching tree, hub-and-spoke network, zoned spine, state machine, comparison, sequence and timeline | [assets/tikz/README.md](../assets/tikz/README.md) |
+| Sequence diagram (was II.2) | The `sequence` layout: lifelines, level messages, dashed replies | [TIKZ-STYLE.md](TIKZ-STYLE.md#-commit-to-a-layout-metaphor-before-you-draw) |
+| State machine (was II.4) | The `state-machine` layout in pure TikZ (`cgstate`, `cgaccept`, `cgstart`), with a transition table as its twin | [TIKZ-STYLE.md](TIKZ-STYLE.md#-the-house-figure-style) |
+| Comparison and timeline | Two more layouts: matched parts in two panels, and events placed by fraction along a time axis | [TIKZ-STYLE.md](TIKZ-STYLE.md#-commit-to-a-layout-metaphor-before-you-draw) |
+| Exemplars (part of VI.4) | Seven finished figures in `assets/tikz/exemplars/`, laid out to the render's 453pt | [assets/tikz/README.md](../assets/tikz/README.md) |
+| House style block | `assets/tikz/cg-figstyle.tex`: the Okabe-Ito palette, a `Line` and a `Text` shade per hue that clear WCAG 3:1 and 4.5:1, node roles, zone cards, edges, tags and compact spacing. Every figure carries it | [TIKZ-STYLE.md](TIKZ-STYLE.md#-the-house-figure-style) |
+| Domain shapes (was V.2) | Five house `pic`s (store, docs, funnel, chip, shield), each drawn into a named `cgwell`. They travel inside the house block, so a figure stays one self-contained file | [TIKZ-STYLE.md](TIKZ-STYLE.md#-house-shapes-and-the-well-they-sit-in) |
+| `figure sync` | Stamps and refreshes the house block in figure files, and refuses to touch a block edited by hand | [CLI.md](CLI.md#-chitragupta-figure-sync) |
+| `figure new` and `figure look` | Start a figure from a scaffold; see it alone on the render's page, or on the draft's own page | [CLI.md](CLI.md#-chitragupta-figure-new) |
+| `figure check` | 36 numbered rules (28 objective, 8 advisory) with reasoned `% cg-allow:` exceptions. It covers routing (was VI.5: `c1` to `c7`), contrast, the type floor, off-palette colours and tints, wording, and agreement between a figure and its twin | [figure-checks/README.md](figure-checks/README.md) |
+| Element counts (most of VI.3) | Node and edge counts, height and slack, reported beside each layout's reference range and never as a cap | [figure-checks/size.md](figure-checks/size.md) |
+| Per-layout reference files (was II.0) | One file per layout with its anti-patterns and reference ranges, and a pattern-to-layout router, under `.claude/skills/figure-drawer/references/` rather than `docs/figures/` | [FIGURE-DRAWER.md](FIGURE-DRAWER.md#-what-the-skill-reads) |
+| Taste gate and anti-patterns (was VI.6) | Questions the skill answers before drawing anything, and a named anti-pattern list per layout | [FIGURE-DRAWER.md](FIGURE-DRAWER.md#-what-it-does-step-by-step) |
+| The `figure-drawer` skill | One skill that every genre hands a figure to | [FIGURE-DRAWER.md](FIGURE-DRAWER.md) |
+| Panels, numbering and captions | Panel letters in both forms; the renderer numbers figures; prose points via `<!-- figureref: name -->`; a figure with no caption is reported | [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10 |
+| Millimetres inside a `pic` | Relative placement governs composition; explicit coordinates are allowed inside a `pic` definition | [TIKZ-STYLE.md](TIKZ-STYLE.md#-commit-to-a-layout-metaphor-before-you-draw) |
+| The twin as a representation | A twin is the clearest 7-bit form of the information, not a tracing: `state-machine.txt` is a transition table | [assets/tikz/README.md](../assets/tikz/README.md) |
+| Source-figure crops | Source-PDF figure crops, and `draft figures <citekey>` to look at them while drafting | [CLI.md](CLI.md#-chitragupta-draft-figures) |
+
 ## 📐 Where figures stand today
 
-The figure system got a lot of attention between 2026-08-25 and
-2026-09-04. It is recorded here because the roadmap below builds
-directly on it, and because a proposal that duplicates one of these is
-not worth filing.
-
-| Shipped change | What it added |
-| --- | --- |
-| The scaffolds | Six known-good TikZ scaffolds in `assets/tikz/`, one per layout metaphor. `tests/test_tikz_scaffolds.py` keeps them passing the layout aid and cross-checks the metaphor table in `docs/TIKZ-STYLE.md`, so a table row with no file fails |
-| The measured-nothing rule | The layout aid reports when it measured **nothing**. A picture with no explicitly named nodes previously reported zero findings, indistinguishable from a clean figure. Also caught the stranded arrowhead (two colinear `->` draws meeting at a bare coordinate) |
-| Panel lettering | Panel lettering `(a)`, `(b)`… in both the TikZ and ASCII forms, any panel count, with a row-wrapping rule |
-| The figure numbering contract | Figures got the numbering contract tables already had: the renderer assigns the number, prose points via `<!-- figureref: name -->`, authors never write "Figure 3" |
-| The caption-presence check | A figure with no caption is reported |
-| The house palette | Five Okabe-Ito colours (`cgInk`, `cgFlow`, `cgAccent`, `cgAlt`, `cgAux`) whose `\definecolor` block travels **inside** the figure file, so a fragment `\input` into a foreign thesis still compiles |
-| Equation numbering | Equations numbered like figures and tables, with a reference-in-prose check; nine skills taught the marker vocabulary |
-| Caption visibility and aid repairs | Captions kept pandoc-visible instead of raw-interpolated into `\caption{}`; swallowed pandoc diagnostics fixed; five review aids stopped crashing or silently under-reporting, the figure layout aid among them |
-| Source-figure crops | Source-PDF figure crops extracted and, later, rendered one at a time instead of held in memory |
-
-**What that leaves in place.** The roadmap has to preserve three
-properties:
+The open parts below have to preserve three properties:
 
 - **Every figure has two forms.** A TikZ form and a 7-bit ASCII twin.
   `md`, `docx` and `html` output render only the twin
-  (`docs/WRITING-STANDARDS.md`, "A figure's ASCII form is a diagram in a
-  code block").
-- **The aid measures, never places.** `review/figure_layout/_probe.py`
-  compiles the figure under a minimal preamble and reads node boxes back
-  out of the pdflatex log in millimetres. It only sees nodes the source
-  gave an explicit `(name)`.
-- **Nothing is a gate.** `docs/TIKZ-STYLE.md` closes on this
-  deliberately, and the feature-request template carries a standing
-  checkbox against promoting a new check into one.
+  ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10).
+- **The checker measures, never places.** `figure check` compiles the
+  figure with LuaLaTeX and reads back where every node and line landed.
+  It never moves anything.
+- **Nothing is a gate.** `figure check` exits 0 whatever it finds, and
+  the feature-request template carries a standing checkbox against
+  promoting a new check into one.
 
-**And these facts, each verified against the tree at `c4ee19a`:**
+And these facts about the tree:
 
-- Numbered artefact classes are exactly three: `figureref` (21 uses),
-  `equationref` (11), `tableref` (9). There is no listing or algorithm
-  class.
+- Numbered artefact classes are exactly three: `figureref`,
+  `equationref` and `tableref`. There is no listing or algorithm class.
 - The renderer adds `\usepackage{tikz}` plus the union of the
   `\usetikzlibrary` names its figure files ask for (#781),
   conditionally, via `header-includes` in `render_output/_pandoc.py`.
   `fvextra` is added by the same mechanism for a draft with a code block.
-- `\usetikzlibrary` is legal in the document body, so figure files still
+- `\usetikzlibrary` is legal in the document body, so figure files
   *name* the libraries they need and the renderer hoists them into the
   preamble; loading one inside the `figure` float is #781's bug, since
   a float is a group. `\usepackage` is not body-legal at all, which makes
   any new package a renderer change and not a figure-file change.
-- There is **no** `\tikzset{pics/...}` and no `tikzset` of any kind in
-  `assets/tikz/`. Every scaffold is standalone and every figure is drawn
-  from nothing.
 - There is no `pgfplots`, no `matplotlib`, no data file and no axis
   anywhere in the figure path.
 - Raster images already survive the renderer: `_pandoc.py` sets
@@ -105,21 +104,18 @@ properties:
 
 ## 🕳 The gap, stated precisely
 
-The six metaphors (pipeline, map, layered stack, control loop,
-branching tree, hub-and-spoke) are all **topological**. (#1012 added a
-seventh, the zoned spine, on 2026-10-05; it is topological too.) Each one
-answers "how do these things connect". That is one figure form among
-several, and in a CS or SE textbook it is not the most common one.
-
-Three forms carry most of the load in the target literature and none of
-them is expressible today:
+The eleven layouts cover connection (pipeline, stack, loop, tree, hub,
+spine, state machine), comparison (map, comparison) and order in time
+(sequence, timeline). Three forms that carry much of the load in a CS or
+SE textbook are still not expressible:
 
 - **The same structure drawn at N successive moments**, with the
   differences marked. Heap sift-down, red-black rotations, a DP table
   filling in. This is the dominant figure form in the algorithms
   literature.
-- **Time as an axis.** Lifelines with messages between them; instructions
-  against cycles. Protocols, concurrency, distributed systems, pipelines.
+- **A resource against time.** Instructions against cycles, a scheduler
+  trace, Gantt-shaped occupancy. A sequence diagram puts parties against
+  time; this puts a grid of resources against it.
 - **Layout drawn to scale.** A packet header, a struct, a stack frame, a
   page-table entry. Widths carry meaning.
 
@@ -140,13 +136,6 @@ diagrams, layered stacks, bit-field layouts and state machines all render
 faithfully in 7-bit. The rule that would cap a biology pipeline is nearly
 free here, and the roadmap below should be read as *endorsing* it, not
 working around it.
-
-**A third observation, added in revision.** Several defects this roadmap
-originally routed to human judgement or to a vision model (Part VIII) are
-plain geometry once you write the rule down precisely. That realisation
-came from reading another project's connector rules, and it moves the
-single most expensive item on this roadmap into the cheapest part. See
-[VI.5](#vi5-routing-findings).
 
 ---
 
@@ -210,48 +199,22 @@ vocabulary underneath them.
 
 Each subsection below is one new row in `TIKZ-STYLE.md`'s metaphor table
 plus one scaffold in `assets/tikz/`, and each is independently
-fileable. `tests/test_tikz_scaffolds.py` already enforces that the table
-and the directory agree, so a row cannot ship without a file.
+fileable. `tests/test_tikz_scaffolds.py` already enforces that the table,
+the directory and the per-layout reference files agree, so a row cannot
+ship without a scaffold and a reference file.
 
 Common requirements for all of them:
 
-- The scaffold compiles standalone and reports no binary finding from
-  `python -m chitragupta.review figure`.
+- The scaffold compiles standalone, ships with its ASCII twin and a
+  `% cg-layout:` line, and reports no finding from `figure check`.
 - Nodes are placed relative to one another. No hand-computed millimetre
-  coordinates (see [Rules that will have to bend](#-rules-that-will-have-to-bend)
-  for the one exception this roadmap proposes).
-- Every node carries an explicit `(name)`, or the aid measures nothing
-  and says so (the measured-nothing rule).
+  coordinates outside a `pic` definition.
+- Every node carries an explicit `(name)`, so a finding can name it.
 - The `\usetikzlibrary` load sits at the top of the figure file, above
   the `tikzpicture`, which is where the renderer reads it from (#781)
   and what makes the scaffold compile standalone.
-- The scaffold ships with its ASCII twin, and the twin is part of what
-  makes the metaphor acceptable.
-
-### II.0 Split the style doc before adding seven metaphors
-
-**Filed first within Part II, and cheap.** `TIKZ-STYLE.md` currently
-holds the whole metaphor table plus the conventions for six metaphors.
-Part II proposes seven more. Thirteen sets of layout convention,
-anti-patterns, twin strategy and worked example will not sit in one
-document, and a skill that has to read all thirteen to draw one figure
-wastes most of its context on metaphors it is not using.
-
-**Proposal.** One `docs/figures/metaphor-<name>.md` per metaphor,
-holding that metaphor's conventions, its anti-patterns, its twin strategy
-and a pointer to its scaffold and exemplar. `TIKZ-STYLE.md` keeps the
-selection table, the palette, the shared rules and nothing else. Skills
-load the selection table plus exactly one metaphor file.
-
-**Enforcement is already built.** `tests/test_tikz_scaffolds.py` enforces
-that a table row has a scaffold file. Extend it to a third column: a row
-must have a scaffold, a doc, and (after VI.4) an exemplar. That keeps the
-routing surface honest as the count grows, which is exactly the failure
-mode a thirteen-row table invites.
-
-**Why now.** This is a small change against six
-metaphors and an expensive one against thirteen. Doing it after Part II
-ships means rewriting every metaphor's prose out of a merged document.
+- A new layout that exempts a connector rule says so in
+  `chitragupta/figure/_rules.py`, with the reason.
 
 ### II.1 State sequence (algorithm trace)
 
@@ -276,8 +239,8 @@ it.
 ordinal, and the changed elements marked with a character instead of a
 colour. This works, and is arguably clearer than the TikZ form.
 
-**Element counts do not apply here.** Whatever reference range VI.3
-establishes for a pipeline, a DP-table trace legitimately has forty
+**Element counts do not apply here.** Whatever reference range a
+pipeline's scaffold sets, a DP-table trace legitimately has forty
 cells. The per-metaphor range is the point; a single global budget would
 be wrong for exactly this metaphor.
 
@@ -285,29 +248,6 @@ be wrong for exactly this metaphor.
 instead of hand-specified. Given frames as data (Part III), the delta is
 a set difference, so a derived trace could mark its own changes. That is
 the strongest single argument for Part III.
-
-### II.2 Sequence / message diagram
-
-**The form.** Vertical lifelines, time flowing down, messages as
-arrows between them. Protocols, concurrency, distributed systems.
-
-**Mechanism.** Achievable with `positioning` and `calc` on a plain
-`tikzpicture`; lifelines are long thin nodes or `\draw` verticals with
-named coordinates at each message height. There are third-party TikZ
-packages for UML sequence diagrams; prefer the hand-rolled scaffold
-unless one is already in `texlive-pictures`, because
-`scripts/install_full_pipeline.sh` should not grow a dependency for one
-metaphor.
-
-**Twin strategy.** Native. A sequence diagram in ASCII is a standard,
-readable form and appears in RFCs constantly.
-
-**Interaction with the aid.** Message arrows are `\draw` statements, so
-the edge list the aid reports will be populated, unlike the `tree` case.
-Worth confirming that near-parallel horizontal arrows at close vertical
-spacing are caught by the existing overlap check, and that VI.5's
-label-gap and shared-attach-point findings behave sensibly on a lifeline,
-where many arrows legitimately meet the same vertical line.
 
 ### II.3 Bit-field / memory layout
 
@@ -329,7 +269,7 @@ ASCII diagrams do best.
 **A geometric check this metaphor uniquely permits.** A bit-field figure
 makes a claim no other metaphor makes: *width is the encoding*. That
 claim is checkable. Given the declared bit width in each field's label,
-the aid can compare each field's drawn width against its share of the
+`figure check` could compare each field's drawn width against its share of the
 total and report the discrepancy. Two details decide whether it is
 useful:
 
@@ -346,25 +286,6 @@ figure against itself and not against prose.
 **Correspondence opportunity.** A bit-field figure usually depicts a
 struct or a spec table that also appears in the chapter as code. Field
 names and widths are checkable against it. See Part IV.
-
-### II.4 State machine / automaton
-
-**The form.** States, labelled transitions, an initial marker, accepting
-states, self-loops.
-
-**Mechanism.** TikZ's `automata` library exists for precisely this and
-ships in `texlive-pictures`, so no new dependency. The current tree and
-hub-and-spoke scaffolds approximate this badly: neither can express a
-self-loop or an accepting state.
-
-**Twin strategy.** A transition table is the right twin, not an ASCII
-drawing. A table is more precise than the picture and is what a screen
-reader wants. This is a general principle worth adopting: the twin
-should be the clearest 7-bit representation of the same information, not
-a character-art tracing of the same picture.
-
-**Derivation opportunity.** Strongest case on the roadmap. Given a
-transition table, the figure is fully determined. See Part III.
 
 ### II.5 Timing / occupancy diagram
 
@@ -402,13 +323,13 @@ connecting lines to its source.
 **Why it is here even though it came from the biology discussion.** It
 generalises. A datapath schematic with labelled buses, a screenshot with
 callouts, a code listing with leader lines pointing at specific tokens
-are all the same form, and none of the six current metaphors can express
+are all the same form, and none of the eleven layouts can express
 it because text lives *inside* boxes.
 
-**It is a primitive, not a metaphor.** Noted in revision: annotation
+**It is a primitive, not a metaphor.** Annotation
 composes with every other metaphor instead of competing with them. A
 sequence diagram can carry a callout; so can a bit-field. Filing it as a
-thirteenth row in the selection table would be a category error and would
+new row in the selection table would be a category error and would
 push authors to choose it *instead of* the right metaphor. It belongs in
 Part V's library as an annotation `pic`, with a line in the shared rules
 instead of a metaphor row of its own.
@@ -423,6 +344,19 @@ Not character art.
 **Budget.** Two callouts per figure is a reasonable starting reference
 range; past that the labels are competing with the drawing. Report,
 never gate.
+
+---
+
+### II.8 Quadrant
+
+**The form.** Items placed in four cells formed by two named axes. The
+`map` layout covers two axes already; a quadrant names the four cells
+and gives each a meaning of its own.
+
+**Status.** Planned with the comparison, state-machine, sequence and
+timeline scaffolds, and deferred because no figure in the reference book
+needs it yet
+([#1060](https://github.com/prasadtalasila/chitragupta/issues/1060)).
 
 ---
 
@@ -451,18 +385,17 @@ roadmap over "draw prettier boxes".
 
 | Source of truth | Derived figure | Notes |
 | --- | --- | --- |
-| Transition table | State machine (II.4) | Fully determined. The obvious first one |
+| Transition table | State machine (the `state-machine` layout) | Fully determined. The obvious first one |
 | Struct / spec table | Bit-field layout (II.3) | Widths and names both come from the source, and II.3's width check then verifies the derivation against its own source |
 | Frame list or algorithm run | State sequence (II.1) | Also derives the per-frame delta highlight, which is otherwise hand-specified and error-prone |
 | Grammar (BNF) | Parse tree / railroad diagram | Well-trodden ground; many existing generators to read first |
-| Message log or protocol spec | Sequence diagram (II.2) | Ordering is the whole content and is machine-readable |
+| Message log or protocol spec | Sequence diagram (the `sequence` layout) | Ordering is the whole content and is machine-readable |
 | Real source imports | Dependency graph | Needs the reduction ladder below before it is worth filing |
 
 ### The reduction ladder and the fidelity ledger
 
-The dependency-graph row was previously parked on the grounds that a real
-import graph is too dense to be a teaching figure and "needs a filtering
-story". Here is the filtering story, borrowed wholesale in shape from
+A real import graph is too dense to be a teaching figure without a
+filtering story. Here is one, borrowed wholesale in shape from
 `diagram-design`'s import path.
 
 **A fixed reduction ladder, applied in a fixed order** until the figure
@@ -508,8 +441,8 @@ this before the first derivation ships.
   author's hands, not in a model. This is the same argument the
   parse-time captioning rejection made one layer down.
 - **Output is a real figure file.** The derivation writes
-  `figures/<n>.tex` and its twin, which then go through the existing
-  layout aid, caption check and numbering unchanged. It must not become a
+  `figures/<n>.tex` and its twin, which then go through `figure check`,
+  the caption check and numbering unchanged. It must not become a
   parallel figure path with its own rules.
 - **The source of truth stays in the draft.** The transition table is
   a table the reader sees, not a hidden sidecar. That is what makes the
@@ -529,10 +462,11 @@ this before the first derivation ships.
 Figure–text divergence is the characteristic defect of technical books.
 The figure shows five pipeline stages and the prose says four. The state
 machine has a transition the table lacks. The struct diagram is one field
-out of date. All three are invisible to every check this project has: the
-layout aid measures geometry, the verbatim tiers scan prose and never see
-inside a figure file, and the caption check only asks whether a caption
-exists.
+out of date. All three are invisible to every check this project has:
+`figure check` measures geometry and compares the figure with its own
+ASCII twin, never with the prose; the verbatim tiers scan prose and never
+see inside a figure file; and the caption check only asks whether a
+caption exists.
 
 No other domain offers this affordance. Nobody can validate a
 life-sciences illustration against ground truth. Here you frequently can,
@@ -564,7 +498,7 @@ second catches a figure that has fallen behind the text.
   to copy.
 - **Measures nothing, says so.** A figure with no named nodes, or a
   section with no code, yields no comparison and must report that instead
-  of reporting clean (the measured-nothing lesson).
+  of reporting clean, as `figure check`'s `nothing-measurable` does.
 - **Not a gate.**
 
 ### Details to settle before filing
@@ -573,48 +507,35 @@ second catches a figure that has fallen behind the text.
   inline code spans, table cells, defined terms. Starting narrow
   (fenced-code and inline-code tokens only) keeps the false-positive rate
   measurable.
-- **What counts as a figure label**: the aid already extracts explicitly
-  named nodes; label *text* is a separate extraction from the source.
+- **What counts as a figure label**: `figure check`'s twin rules already
+  extract a node label's first line, zone titles and legend entries
+  from the source; the same extraction is the starting point here.
 - **Scope of "the enclosing section"**: the section containing the
   `figureref` marker, or the whole chapter. The first is tighter and
   probably right, but a figure referenced from two sections breaks the
   assumption.
 - **Case and separator normalisation**: `page_table`, `pageTable` and
   "page table" are the same identifier to a reader. Deciding this wrong
-  makes the aid useless in either direction.
+  makes the check useless in either direction.
 
 ---
 
 ## 🧩 Part V: A shared object vocabulary
 
-### The vocabulary gap
-
-**Update 2026-10-05:** #1012 shipped `assets/tikz/cg-figstyle.tex`, a
-house `\tikzset` block every scaffold carries verbatim, with five house
-`pic`s in it, documented in
-[TIKZ-STYLE.md](TIKZ-STYLE.md#-house-shapes-and-the-well-they-sit-in)
-(#1014). What follows is the gap
-as it stood when this was written.
-
-**Update 2026-10-06:** #1013 (F2) shipped `chitragupta figure sync`,
-which stamps the block into a figure file that lacks it and refreshes a
-stale one, and refuses to touch a block edited by hand. The renderer and
-`git-hooks/pre-commit` report a stale or missing block without blocking
-anything ([TIKZ-STYLE.md](TIKZ-STYLE.md#-the-house-figure-style)).
-
-There is no `\tikzset{pics/...}` and no `tikzset` at all in
-`assets/tikz/`. Every scaffold stands alone; every figure is drawn from
-nothing. Consistency across a whole book is therefore an act of authorial
-discipline repeated once per figure, which is exactly the kind of thing
-that does not survive fifteen chapters.
+The house block already carries five `pic`s, each standing for a
+conventional shape whose node label says the same thing
+([TIKZ-STYLE.md](TIKZ-STYLE.md#-house-shapes-and-the-well-they-sit-in)).
+They travel inside the block, so every figure stays one self-contained
+file. What is still missing is the structural vocabulary a CS book draws
+over and over.
 
 ### V.1 The `pic` library
 
-A `assets/tikz/lib/` of reusable TikZ `pic`s, `\input` by a figure that
-needs them. Candidate vocabulary for this domain: a memory cell with
-named compartments, a queue, a stack frame, a node-with-pointer-slots, a
-clock tick, a lifeline, a labelled bus, a register, and the annotation
-callout promoted out of II.7.
+A set of reusable TikZ `pic`s for structures, not icons. Candidate
+vocabulary for this domain: a memory cell with named compartments, a
+queue, a stack frame, a node-with-pointer-slots, a clock tick, a
+lifeline, a labelled bus, a register, and the annotation callout
+promoted out of II.7.
 
 ### Why this is the highest-leverage structural item
 
@@ -623,8 +544,7 @@ callout promoted out of II.7.
    roadmap has that property.
 2. **It matches what a language model is good at.** Writing
    `\pic{cell} at (head.east)` correctly is easy. Placing forty control
-   points blind is not. The current setup asks for the second and the
-   figures show it.
+   points blind is not.
 3. **Part II.1 depends on it.** A state-sequence figure without object
    reuse means redrawing the structure N times by hand, and the frames
    drift.
@@ -640,45 +560,28 @@ But a figure lifted out of the project and dropped into someone else's
 document now needs two files instead of one, and the fragment-portability
 property is real and deliberate. Options, in rough order of preference:
 
-1. Ship the library as one file; document that a portable fragment needs
-   it alongside, the way the palette's `\definecolor` block travels
-   inside the figure.
+1. Grow the house block, which every figure already carries whole.
+   This is how the five house `pic`s travel today, at the cost of a
+   larger block in every figure.
 2. Inline the used `pic` definitions into the figure at authoring time,
    trading duplication for portability.
 3. Accept two files and adjust the portability claim in the skills.
 
-This decision should be made before any `pic` ships, because reversing it
-means rewriting every figure that used the library.
+This decision should be made before any structural `pic` ships,
+because reversing it means rewriting every figure that used it.
 
-### V.2 A few domain shapes, not an icon set
-
-An icon library was reconsidered during this revision and set aside
-again; the argument is in
-[Considered and set aside](#-considered-and-set-aside) and should not be
-re-opened without new information.
-
-What survives from that discussion is much smaller and belongs in V.1,
-not in an issue of its own. If a metaphor wants a conventional
-shape (a drum for a store, a cylinder for a queue, a boundary marker for
-a trust or process edge), draw two or three of them as `pic`s in the
-house line weight, sized against Part X's output target. That is the
-`pic` library doing the job it exists for. It carries no licence notice,
-no conversion script, no Part IX whitelist and no exclusion rules in
-VI.3 or Part IV, because a shape drawn in the house vocabulary is not
-third-party art recurring verbatim across a corpus.
-
-The test for adding one is whether the twin can say the same thing in
-words. A drum labelled `page table` and the twin's `[page table]` carry
-the same proposition, so the shape is a rendering choice. A shape
-carrying meaning the label does not is a twin violation, whatever it is
-drawn with.
+The test for adding a `pic` is the one the house shapes already pass:
+the twin must be able to say the same thing in words. A drum labelled
+`page table` and the twin's `[page table]` carry the same proposition,
+so the shape is a rendering choice. A shape carrying meaning the label
+does not is a twin violation, whatever it is drawn with.
 
 ---
 
 ## 🎯 Part VI: Quality levers that need no new drawing
 
-Six cheap items. Together they probably raise the perceived quality of
-existing figures more than any single new metaphor.
+Cheap items that raise the quality of existing figures without a new
+layout.
 
 ### VI.1 Make the caption carry the load
 
@@ -702,150 +605,46 @@ predicate.
 ### VI.2 Report effective type size at final scale
 
 `TIKZ-STYLE.md` names the defect precisely (`\footnotesize` inside a
-picture scaled to 0.8), and there is no check for it. The probe already
-has the bounding box in millimetres and the source has the scale factor,
-so the smallest type's printed size is arithmetic.
+picture scaled to 0.8). `figure check`'s `type-below-floor` reports text
+set below the 12pt body size, read from the glyphs, but it measures the
+figure at its natural size. The scale a draft applies, and the column it
+lands in, are not measured.
 
 **Proposal.** Report it as a number: "smallest label prints at 4.2 pt at
 an 84 mm column". That turns a documented defect into a measurement,
 with no threshold and no verdict.
 
-**Previously blocked; now unblocked.** The open question was where the
-target column width comes from, since it is a property of the output and
-the figure file does not know it. Part X answers it with a small set of
-named output targets declared once per project. This item moves well up
-the build order as a result.
+**It depends on Part X.** The target column width is a property of the
+output, and the figure file does not know it. Part X's named output
+targets supply it.
 
-### VI.3 Report element counts, against a per-metaphor reference range
+### VI.3 Count colours and words too
 
-Nodes, edges, distinct colours used, words of text. A schematic with six
-nodes and one with forty are different problems, and right now neither
-the author nor the aid can see which one it is looking at. Fits the
-measure-never-place contract exactly.
-
-**A bare count means little.** "14 nodes" tells an author nothing.
-"14 nodes; the pipeline exemplar has 6" tells them something immediately.
-So the aid should report the count **alongside the same count taken from
-that metaphor's exemplar** (VI.4), so VI.3 and VI.4 reinforce each
-other, beyond sitting next to each other in the build order.
-
-**Ranges are per metaphor and are not budgets.** A general-purpose
-diagram tool can say "max 9 nodes" because its figures are editorial. A
-textbook DP-table trace has forty cells and is correct. The reference
-range describes what the exemplar does; it does not authorise a finding
-when a figure exceeds it, and it must never become a gate.
+`figure check` reports node and edge counts, height and slack beside the
+range each layout's scaffold and exemplars measure, as advisory reports
+that never cap a figure
+([figure-checks/size.md](figure-checks/size.md)). Distinct colours and
+words of text are not counted.
 
 **To settle:** whether "distinct colours used" should count palette
 members only or every colour expression appearing in the source. The
 second is easier and noisier.
 
-**Built for nodes and edges (#1057).** `figure check` prints
-`budget-nodes` and `budget-edges`, with `size-height` and `size-slack`,
-beside the range the layout's scaffold and exemplars measure, as
-advisory reports that are never findings and never caps
-([TIKZ-STYLE.md](TIKZ-STYLE.md#-the-rules-figure-check-reports)). The
-range is per layout rather than per exemplar, and the figure names its
-layout in a `% cg-layout:` line. Colours and words are not counted yet.
+### VI.4 One exemplar per layout
 
-### VI.4 Replace the skeletons with exemplars
+`assets/tikz/exemplars/` holds seven finished figures for eleven layouts.
+Skeletons produce skeletal figures: an author who copies a three-node
+pipeline tends to ship a three-node pipeline.
 
-`assets/tikz/` ships seven structurally-correct, deliberately minimal
-scaffolds, and since #1026 three finished figures in `exemplars/` (not yet one
-per metaphor). Skeletons produce skeletal figures: an author who copies a
-three-node pipeline tends to ship a three-node pipeline.
+**Proposal.** One **finished** figure per layout: fully labelled, real
+content from this domain, at final column width, with a caption that
+states a takeaway. The scaffold stays the starting point; the exemplar
+becomes the target. The reference ranges VI.3 reports are measured from
+the scaffold and its exemplars, so each new exemplar also widens its
+layout's range.
 
-**Proposal.** Alongside each scaffold, one **finished** figure per
-metaphor: fully labelled, real content from this domain, at final column
-width, with a caption that states a takeaway. The scaffold stays the
-starting point; the exemplar becomes the target.
-
-**Why it may be the cheapest quality lever here.** It needs no new code
-at all, and `tests/test_tikz_scaffolds.py` already provides the machinery
-to keep the new files compiling and finding-free.
-
-**Second use.** The exemplar is where VI.3's reference range comes from,
-so the two should be filed together or in immediate succession.
-
-### VI.5 Routing findings
-
-**The gap this closes.** `TIKZ-STYLE.md` leaves three defects to human
-judgement (chaotic routing, illegible or inconsistent type, and literal
-copying), and Part VIII proposes a vision model to reach the first two.
-That framing was too pessimistic. Once the routing rules are stated
-precisely, most of "chaotic routing" is plain geometry, measurable from
-the same probe output the aid already reads.
-
-**Findings this aid can report, none of which needs vision:**
-
-| Finding | What it measures |
-| --- | --- |
-| Label sitting on its connector | Gap between the label's bounding box and the nearest point of the edge it annotates, in millimetres. A label with zero clearance hides the line it describes |
-| Shared attach point | Two or more edges meeting a node's boundary within some small distance of each other, so the reader cannot tell them apart |
-| Transit over a non-endpoint node | An edge whose path crosses the bounding box of a node that is neither its source nor its destination |
-| Coincident edges | Two edges running along substantially the same path, so one hides the other |
-| Off-axis straight connectors | Edges between nodes sharing neither an x nor a y coordinate, drawn as a single straight segment instead of an orthogonal path. Relevant to the metaphors where orthogonal routing is the convention, not to all of them |
-
-**Report the measurement, not a verdict.** "Label `WRITE` sits 0.0 mm
-from its edge" is a finding. "Bad routing" is not. Each of the above is a
-number or a pair of node names, in the style the layout aid already uses.
-
-**The false-positive floor this inherits is a real one.** The probe reads node
-boxes from the pdflatex log. A TikZ node's recorded box does not account for
-stroke width, arrowheads, or decoration bleed. The same class of error is
-documented in `diagram-design`'s renderer linter, which found that a geometric
-bounding box both misses real clipping and invents clipping that is not there,
-and moved to a paint-based comparison. Chitragupta will hit this in the opposite
-direction: a label that clears the node box by 0.1 mm may still be overprinted
-by the arrowhead. Expect it, write it into the bench, and consider whether the
-rasterisation route (`pypdfium2`, already declared) is the accurate measure for
-the clearance findings specifically. If Part XI ships, it already produces a
-rendered form per figure, and the two should share one path instead of compiling
-the same figure twice.
-
-**Where the convention varies by metaphor.** Orthogonal routing is right
-for a pipeline and wrong for an automaton, where curved transitions and
-self-loops are the convention. The off-axis finding must therefore be
-metaphor-aware, which is another reason II.0's per-metaphor doc split
-should land early.
-
-**Effect on Part VIII.** It removes two of the three things Part VIII
-exists to reach, which shrinks the most expensive and
-least deterministic item on the roadmap to roughly one thing:
-informativeness.
-
-### VI.6 A pre-output checklist, and a named anti-pattern table
-
-**The gap.** The project has scaffolds (before drawing) and review aids
-(after drawing) and nothing in between. Nothing tells the author or the
-model what to verify at the moment of emitting a figure. Every existing
-check is post-hoc, which means every defect it catches has already been
-written.
-
-**Proposal, in two halves, neither of which needs code:**
-
-- **A pre-output checklist** in the skills: the questions to answer
-  before emitting a figure. Does this need to be a figure at all, or
-  would a paragraph or a table do the job better? Is this the right
-  metaphor? Does every node carry an explicit `(name)`? Does the twin
-  carry the same information, not the same picture? Does the caption
-  state a takeaway? Is the accent colour doing one job or five? The
-  delivery mechanism already exists: the equation-numbering change taught
-  nine skills the equation markers.
-- **A named anti-pattern table** in `TIKZ-STYLE.md` and, after II.0, in
-  each metaphor's own doc. Failure mode in one column, why it fails in
-  the other. A table of named failures teaches a model considerably
-  better than the same content as prose, and it gives review findings
-  something to name.
-
-**Why this is near the top of the build order.** It is the second-cheapest
-item on the roadmap after VI.4, it needs no new code, and unlike every
-aid here it acts before the defect exists instead of after.
-
-**A caution.** A checklist is close to being a gate, and the standing checkbox
-in the feature-request template exists because that drift is easy. The checklist
-is guidance to an author, not a predicate anything evaluates. If someone later
-wants to mechanise a line of it, that is a new aid with its own issue and its
-own bench, not a promotion of the checklist.
+**It needs no new code.** `tests/test_tikz_scaffolds.py` already keeps
+the exemplars compiling and fitting the render's width.
 
 ---
 
@@ -879,7 +678,8 @@ which is enough to keep it on the roadmap but not enough to put it first.
 - **The twin is the data table**, not an ASCII scatter. A table in the
   `.txt` output is more informative than the plot and is what a screen
   reader wants. Here the twin requirement helps instead of limiting.
-  This is the same principle as II.4's transition table.
+  This is the same principle as the state-machine layout's
+  transition-table twin.
 - **The encoding claim is checkable here too.** A bar chart claims length
   encodes value, the same way II.3 claims width encodes bit count. The
   same relative-error check applies, and if II.3 ships first the
@@ -892,16 +692,18 @@ which is enough to keep it on the roadmap but not enough to put it first.
 
 ## 👁 Part VIII: Where a vision model earns its place
 
-### The one place it belongs — now smaller than it was
+### The one place it belongs
 
-`TIKZ-STYLE.md` leaves three defects to human judgement: chaotic routing,
-illegible or inconsistent type, and literal copying. This part originally
-claimed a vision model was the only mechanism that reached the first two.
-That is no longer true:
+`TIKZ-STYLE.md` names three defects that are hard to measure: chaotic
+routing, illegible or inconsistent type, and literal copying. A vision
+model is not needed for the first two:
 
-- **Chaotic routing** is largely geometry. See VI.5.
-- **Illegible type** is arithmetic once the output target is known. See
-  VI.2 and Part X.
+- **Chaotic routing** is largely geometry. `figure check`'s connector
+  rules `c1` to `c7` measure it
+  ([figure-checks/connectors.md](figure-checks/connectors.md)).
+- **Illegible type** is measured against the body size by
+  `type-below-floor`, and becomes arithmetic at final scale once the
+  output target is known. See VI.2 and Part X.
 - **Literal copying** has its own deterministic-ish path. See Part IX.
 
 What remains, and is beyond geometry, is **informativeness**:
@@ -914,9 +716,9 @@ way.
 ### Vision-critique mechanism
 
 - `pypdfium2` is already a declared dependency of the `enrich` extra
-  (added for the crop work), so rasterising the probe's
-  compiled PDF needs no new package. VI.5 may want the same rasterisation
-  for its clearance findings, so the two should agree on one path.
+  (added for the crop work), so rasterising a compiled figure needs no
+  new package. `figure look` already writes a 300 dpi PNG of each
+  figure, which is the obvious input.
 - Serve the model **out of process** (a local vLLM endpoint or an API)
   instead of importing it. `adapters` pins `transformers` to
   `>=4.57.6,<4.58.0`, a single-patch window, and most current
@@ -939,12 +741,11 @@ makes derivation worth building.
 
 ### Adjacent: the unconsumed crops
 
-`plans/651-multimodal-drafting-access.md` measured 8,769 figure crops and
-497 `figures.json` indices on the real 497-PDF corpus, then with **zero
-consumers**. That plan has since shipped `draft figures <citekey>`, which
-surfaces a source's crops to a drafting skill; page-image retrieval is
-the route still open. Two routes that respect the
-layer boundary:
+`plans/651-multimodal-drafting-access.md` measured 8,769 figure crops
+and 497 `figures.json` indices on the real 497-PDF corpus, then with
+**zero consumers**. `draft figures <citekey>` now surfaces a source's
+crops to a drafting skill; page-image retrieval is the route still open.
+Two routes that respect the layer boundary:
 
 - Surface the crops at the **drafting** layer, where a model is already
   in the loop, as "the figure anchored at this passage" alongside
@@ -960,7 +761,7 @@ filed against the multimodal-drafting-access issue, not here.
 
 ## 🔍 Part IX: Figure-similarity provenance
 
-Benchmarked since (#659): `bench/bench_figure_similarity.py` ran, and
+`bench/bench_figure_similarity.py` has run, and
 `plans/659-figure-similarity-tier.md` records the recommendation.
 Summarised here so the roadmap is complete.
 
@@ -985,7 +786,7 @@ words, inside that range. No threshold separated them, and the declined
 overlap-gate decision forbids
 guessing one. There is no reason image similarity behaves better.
 
-**Domain-specific warning (new).** In CS and SE the canonical
+**Domain-specific warning.** In CS and SE the canonical
 figures are common property. Everyone draws the OSI stack, the five-stage
 pipeline and the standard red-black rotation the same way, legitimately.
 The false-positive floor will be **worse** in this domain than the
@@ -996,8 +797,8 @@ valid result and should close the issue, the way `bench_overlap_gate.py`
 killed a proposed gate on its own numbers and the way C4 and C6 left the
 roadmap.
 
-**A self-inflicted floor this roadmap now creates.** The `pic` library
-(V.1) means every figure using the shared memory-cell `pic` shares
+**A self-inflicted floor this roadmap creates.** A structural `pic`
+library (V.1) means every figure using the shared memory-cell `pic` shares
 pixel-identical regions with every other one. That is the library working
 as intended and it is indistinguishable from copying at the pixel level.
 It needs handling by construction, not by threshold: the screen
@@ -1013,14 +814,15 @@ inherits the rasterisation path instead of building its own.
 
 ## 📐 Part X: Output targets
 
-**New in revision. Small, and it unblocks two other items.**
+**Small, and it unblocks two other items.**
 
 ### The gap in output targets
 
 Several checks want to know the size at which a figure will be
 printed, and no artefact holds that number. VI.2 cannot report an
-effective type size without a column width. VI.5's clearance findings are
-in millimetres on the page, not in TikZ units. Part XI's PNG branch needs
+effective type size without a column width. `figure check`'s width
+finding takes its target from `--width`, defaulting to the render's
+453pt. Part XI's PNG branch needs
 a width and a resolution before it can rasterise anything. Each of those
 items has independently parked on "where does the target width come
 from", which is a sign the answer belongs in one place, not three.
@@ -1046,7 +848,7 @@ down to fit is a different figure from one authored for that width.
   but a book with one full-bleed foldout needs a per-figure override, and
   an override mechanism is where this gets complicated.
 - **Whether a figure can declare its own target.** Probably yes, probably
-  rarely, and probably as an explicit exception that the aid reports so
+  rarely, and probably as an explicit exception that `figure check` reports so
   it does not go unnoticed.
 - **Interaction with fragment portability.** A figure `\input` into a
   foreign thesis lands in a column of unknown width. The target is a
@@ -1056,23 +858,22 @@ down to fit is a different figure from one authored for that width.
 ### Why it is worth its own part
 
 It is a handful of constants and a config key, and it is a prerequisite
-for VI.2 and part of VI.5. Filing it as a shared dependency avoids three
+for VI.2 and for Part XI's PNG branch. Filing it as a shared dependency avoids three
 issues each inventing their own answer.
 
 ---
 
 ## 🖨 Part XI: Rendered figure images in md, html and docx
 
-**New in revision.** Today `md`, `docx` and `html` output render only the
+Today `md`, `docx` and `html` output render only the
 ASCII twin. The TikZ form reaches the PDF and nowhere else. This part
 proposes rendering each figure to SVG or PNG and shipping that image
 alongside the twin in the non-PDF outputs.
 
 ### Most of the plumbing already exists
 
-- The probe already compiles each figure under a minimal preamble to read
-  node boxes out of the pdflatex log, so a compiled PDF per figure is a
-  by-product of a path that already runs.
+- `figure look` already compiles each figure on the render's own page
+  and writes it as a cropped PDF and a 300 dpi PNG.
 - `pypdfium2` is already declared in the `enrich` extra.
 - `_pandoc.py` already sets `--resource-path` so the PDF and DOCX writers
   resolve Markdown image syntax pointed at a file on disk.
@@ -1087,14 +888,14 @@ but weak. The stronger one is that this **removes a conflict the twin
 currently has to absorb**.
 
 The twin is asked to do two incompatible jobs: be the clearest 7-bit
-representation of the information, and be visually adequate as the *sole*
-figure in md, html and docx. Those pull opposite ways. II.4 argues an
-automaton's twin should be a transition table because a table is more
-precise than the picture, and a transition table standing alone in an
-html export, where the reader's browser could have shown the diagram, is
-a worse export. Ship both and each form does one job: the twin is the
-precise representation, the image is the picture. The II.4 and VII
-principle stops being a compromise.
+representation of the information, and be visually adequate as the
+*sole* figure in md, html and docx. Those pull opposite ways. The
+state-machine layout's twin is a transition table because a table is
+more precise than the picture, and a transition table standing alone in
+an html export, where the reader's browser could have shown the diagram,
+is a worse export. Ship both and each form does one job: the twin is the
+precise representation, the image is the picture. The principle behind
+that twin and VII's data-table twin stops being a compromise.
 
 ### The erosion risk, and the structural fix
 
@@ -1112,9 +913,9 @@ itself checkable.
 ### Tradeoffs, in rough order of seriousness
 
 - **A LaTeX toolchain becomes a dependency of every output path.** Today
-  a person can render Markdown with no TeX installed, because the figure
-  probe lives in the review layer and review is optional. Rendering
-  images makes pdflatex plus a converter a prerequisite for producing any
+  a person can render Markdown with no TeX installed, because
+  `figure check` and `figure look` are optional. Rendering
+  images makes LuaLaTeX plus a converter a prerequisite for producing any
   output at all. This is an architecture decision, not a feature
   decision, and it is the largest single question in this part. The
   answer is a documented fallback: **with no TeX available, emit
@@ -1122,7 +923,7 @@ itself checkable.
   a failure.
 - **Generated binaries versus diffs.** Committed renders are generated
   artefacts that drift from source; built renders require the toolchain
-  everywhere. Worse, pdflatex output is not byte-reproducible across TeX
+  everywhere. Worse, TeX output is not byte-reproducible across TeX
   distributions and font versions, so a committed SVG shows spurious
   diffs on a colleague's machine. Cache keyed on a content hash of the
   `.tex`, and treat the cache as build output, not source. The
@@ -1153,8 +954,8 @@ itself checkable.
 ### One thing it gives away free
 
 A rendered raster per figure is exactly what Part IX's similarity
-screen needs, and what VI.5 may need for its clearance findings. If this
-lands first, both inherit the path instead of building one.
+screen needs. If this lands first, Part IX inherits the path instead
+of building one.
 
 ### Shape of the proposal
 
@@ -1168,101 +969,9 @@ target width. The SVG branch does not.
 
 ---
 
-## 🖍 Part XII: figure-drawer v3
+## ⚖ A rule that may have to bend
 
-Added 2026-10-24. The design, its measurements and every threshold are in
-`plans/fig-xii-figure-drawer-v3.md`;
-this part says what it is, what it changes here, and where it sits.
-
-### The reported gap
-
-The person using the pipeline reported three things, and the skill's own
-documentation figure (`docs/images/figure-drawer/twin-loop.png`) shows
-all three: figures that take half a page for what fits in a quarter;
-layout defects that reach the PDF (slanted connectors, an edge tag on its
-own line, a lone arrow leaving its box near a corner); and figures that
-carry too much or too little.
-
-### What it is
-
-Three phases under one epic:
-
-1. **Foundations.** LuaLaTeX everywhere (#1037), starting with a
-   TeX Live 2025 regression that fails every render under `openin_any=p`;
-   a guard on stray width (a `\usetikzlibrary` line run in horizontal
-   mode adds 135pt of blank space in front of the picture on the
-   render's 12pt LuaLaTeX page, and about 175pt on the page the issue
-   first measured, which matters for previews and box measurements,
-   not for figure floats);
-   house block v3, which keeps every palette hex as a fill and adds
-   derived `Line` and `Text` shades that clear 3:1 and 4.5:1; compact
-   spacing defaults; `SKILL.md` as a router with a pre-drawing taste
-   gate; and the pattern-to-layout routing with one reference file per
-   layout. This is II.0 and VI.6.
-2. **`chitragupta figure new`, `check` and `look`.** One command per step,
-   in the shape of DTaaS's diagram skill. `check` reports numbered rules:
-   seven connector rules, contrast, focal count, wording, twin agreement
-   and size. It also honours `% cg-allow:` lines that carry a reason,
-   figure-scope first and element-scope second. This is VI.5, VI.3 and
-   most of #1016.
-3. **Five scaffolds:** quadrant, comparison, state machine (II.4),
-   sequence (II.2) and timeline.
-
-### What it does not change here
-
-- **Nothing becomes a gate.** `figure check` exits 0, like every aid.
-  The skill's procedure asks the agent to resolve or allow each
-  objective finding. A person can overrule that; no flag blocks a draft.
-- **No numeric cap.** Node and edge counts and height are reported
-  against a per-layout reference range, as VI.3 says, never against a
-  maximum.
-- **Relative placement and the `cgsoft` shadow stay.** The 4px grid and
-  "shadows are out" were considered and declined again.
-- **The palette's hex values stay.** The derived shades are mixes of a
-  palette hue with `cgInk`, named in the block, so the greyscale and
-  Okabe-Ito arguments in "The house palette" still hold.
-
-### Tracking
-
-Epic
-[#1044](https://github.com/prasadtalasila/chitragupta/issues/1044);
-phases
-[#1045](https://github.com/prasadtalasila/chitragupta/issues/1045),
-[#1051](https://github.com/prasadtalasila/chitragupta/issues/1051) and
-[#1059](https://github.com/prasadtalasila/chitragupta/issues/1059).
-The items under each are listed in the "Tracking" section of
-`plans/fig-xii-figure-drawer-v3.md`.
-
----
-
-## ⚖ Rules that will have to bend
-
-Three existing rules collide with proposals above. Each needs a decision
-made deliberately instead of discovered mid-implementation.
-
-### "No coordinate in millimetres" versus fixed objects
-
-**Resolved 2026-10-06 (#1014):** the carve-out below is now a rule in
-[TIKZ-STYLE.md](TIKZ-STYLE.md#-commit-to-a-layout-metaphor-before-you-draw).
-
-The rule exists because a figure laid out in hand-computed absolute
-millimetres cannot express "do not collide": re-wording one label
-re-opens every adjacency at once. That argument is exactly right for
-**composition** and does not apply **inside a `pic`**. A `pic` is a
-fixed object drawn once, whose internal geometry does not reflow when a
-sibling's label changes.
-
-**Proposed carve-out.** Relative placement governs composition;
-explicit coordinates are permitted inside a `pic` definition. Document
-the reason alongside the rule, or the next reader will take the carve-out
-as licence to hand-place a whole figure.
-
-**The carve-out is about objects, not about origin.** Any fixed shape,
-hand-drawn or generated by a derivation, may use explicit coordinates
-inside its own definition. The boundary is the `pic`, not the authoring
-method.
-
-### The five-colour palette versus depiction
+### The palette versus depiction
 
 Less pressing in this domain than in biology, because CS figures are line
 art and the Okabe-Ito palette suits them well. The distinction is
@@ -1272,26 +981,6 @@ where a thing simply looks like something, encodes nothing and the
 greyscale test does not apply to it. Almost nothing in this domain is
 depictive, so the practical answer is to keep the rule as it stands and
 note the distinction only if a real case appears.
-
-### The ASCII twin as tracing versus as representation
-
-Several proposals above (II.4's transition table, VII's data table,
-II.7's label list) share one principle worth promoting to a rule: **the
-twin is the clearest 7-bit representation of the same information, not
-character art tracing the same picture.** For most of this domain the
-clearest representation happens to *be* a diagram, which is why the twin
-requirement is nearly free here. Where it is not, a table beats
-character art and should be allowed to.
-
-**The corollary is sharper than it looks: it decided two proposals in this
-revision.** If the twin must carry the same *information*, then anything the
-TikZ form conveys and the twin cannot is a rule violation, not a stylistic loss.
-That is what ruled out an icon set, since an icon must then be strictly
-redundant with its label and therefore adds nothing. And it is what Part XI has
-to respect from the other direction: shipping a rendered image into `md` and
-`html` is only acceptable while the twin remains a complete representation,
-which is why the twin becomes the image's alt text instead of an alternative to
-it.
 
 ---
 
@@ -1309,9 +998,9 @@ tokens.
 
 **Relationship: ideas, not a dependency.** Nothing from it is vendored,
 imported or installed, and there is no reason to. The output substrate is
-wrong (HTML/SVG on a 4-pixel grid versus TikZ compiled by pdflatex and
+wrong (HTML/SVG on a 4-pixel grid versus TikZ compiled by LuaLaTeX and
 measured in millimetres); the palette model is wrong (brand-matched
-tokens versus a fixed five-colour Okabe-Ito palette that must travel
+tokens versus a fixed Okabe-Ito palette that must travel
 inside the figure file); and the generation model is wrong for Part III
 (an LLM picks the type and the cuts, where a derivation must be
 deterministic). What transfers is design reasoning, a few hundred words of
@@ -1322,29 +1011,30 @@ medium.
 
 | Idea | Landed in |
 | --- | --- |
-| Connector rules stated precisely enough to check: label-to-line clearance, fanned attach points, no transit over non-endpoint boxes, no coincident strokes, orthogonal elbows | VI.5, and the consequent narrowing of Part VIII |
+| Connector rules stated precisely enough to check: label-to-line clearance, fanned attach points, no transit over non-endpoint boxes, no coincident strokes, orthogonal elbows | `figure check`'s `c1` to `c7`, and the consequent narrowing of Part VIII |
 | Named output sizes that fix both frame and type ramp | Part X, unblocking VI.2 |
-| A complexity budget expressed per diagram type | VI.3's per-metaphor reference range, deliberately as a report and not a budget |
+| A complexity budget expressed per diagram type | `figure check`'s per-layout reference ranges, deliberately as a report and not a budget |
 | A fixed degrade ladder and a fidelity ledger for reductions | Part III, answering the dependency-graph filtering question |
-| A pre-output taste gate distinct from post-hoc linting | VI.6 |
-| Anti-patterns as a named table with a "why it fails" column | VI.6 |
-| One reference document per type, loaded only when chosen, with a sync check | II.0 |
+| A pre-output taste gate distinct from post-hoc linting | the `figure-drawer` skill's taste gate |
+| Anti-patterns as a named table with a "why it fails" column | each layout's reference file |
+| One reference document per type, loaded only when chosen, with a sync check | the skill's `references/layouts/` |
 | A geometric check that verifies an encoding's own claim, measured as relative error | II.3's field-width check, and VII's bar lengths |
-| Bounding-box geometry is an unreliable oracle for clipping and clearance | VI.5's false-positive warning |
+| Bounding-box geometry is an unreliable oracle for clipping and clearance | the connector rules' bench, which set their thresholds over this repository's own figures |
 | Behaviour patterns kept separate from layout types so the type count does not inflate | II.7 demoted from a metaphor to a primitive |
 | No golden images in the repository, so there is nothing to re-record and nothing to go stale | Part XI's hash-keyed render cache, treated as build output, not source |
-| The six connector rules as numbered rules, with the lone edge attached at the side's midpoint (2026-10-24) | Part XII, `c1` to `c6` |
-| Every geometric rule ships with a checker and fixtures in both polarities (its ADR 0005, 2026-10-24) | Part XII, phase 2 |
-| SKILL.md as a router under a byte cap, with a check that moved sections keep their links (its ADR 0004, 2026-10-24) | Part XII, phase 1 |
+| The six connector rules as numbered rules, with the lone edge attached at the side's midpoint | `figure check`'s `c1` to `c6` |
+| Every geometric rule ships with a checker and fixtures in both polarities (its ADR 0005) | `figure check`'s tests and rule examples |
+| SKILL.md as a router under a byte cap, with a check that moved sections keep their links (its ADR 0004) | the `figure-drawer` skill |
 
-**A second source, 2026-10-24.**
+**A second source.**
 [`INTO-CPS-Association/DTaaS`](https://github.com/INTO-CPS-Association/DTaaS),
 the `update-docs-diagrams` agent skill on its `feature/distributed-demo`
 branch. It restyles and exports drawio diagrams. Taken, as ideas only:
 one idempotent command per step with the skill reduced to running them;
 exceptions recorded with a reason instead of a rule silently skipped;
 WCAG contrast thresholds of 4.5:1 for text and 3:1 for lines; and a last
-look at every changed image. All four landed in Part XII. Its dark
+look at every changed image. All four landed in `figure new`, `figure
+check`'s `cg-allow` and contrast rules, and `figure look`. Its dark
 variant has no counterpart in print and was not taken.
 
 **What was rejected, and why**, so nobody re-derives it: brand-token
@@ -1363,8 +1053,8 @@ Its taste rules were never designed to survive a twin requirement, which
 is the main reason its aesthetic guidance transfers so much less well
 than its mechanical guidance.
 
-**Third-party art.** None is proposed. Heroicons was evaluated in this
-revision and set aside; the argument is in the table below, and it is
+**Third-party art.** None is proposed. Heroicons was evaluated and set
+aside; the argument is in the table below, and it is
 worth reading before anyone proposes an icon set again, because the
 technical fit is good enough to be tempting.
 
@@ -1377,7 +1067,7 @@ Recorded with the argument, so nobody re-derives it.
 | Proposal | Why not |
 | --- | --- |
 | **Licensed vector art libraries for life-sciences** (Bioicons ~3,000 CC0/CC-BY icons, Servier Medical Art CC BY 4.0, NIH BioArt public domain, PhyloPic) | Correct answer for a life-sciences pipeline, irrelevant here. The attribution machinery would have been a good fit for this project's provenance spine, which is the only reason it was considered at all |
-| **A general icon library for CS figures**, e.g. Heroicons (MIT, ~300 icons) | Re-opened in this revision and set aside again, with a better argument than the first time. The technical fit is real: Heroicons' 24px outline set is `M`/`L`/`C`/`A`/`Z` path data, which is the subset TikZ's `\path svg {...}` parses natively, so an icon converts to a `pic` with no new package, no raster and a diffable source. But feasibility is not a reason. Because the ASCII twin cannot render an icon, an icon must be strictly redundant with its node's text label, and a mark that adds no proposition is a mark the TikZ form also loses nothing by deleting. Set against that: a Part IX false-positive source needing whitelisting by construction, exclusions in VI.3's counts and Part IV's label extraction, stroke rescaling tied to Part X, a silent axis flip (SVG's y-axis points down), and a vendored subset with a licence notice to carry. Five ongoing obligations across four other parts, bought for pre-attentive scanning in one metaphor family. Worse, it would be the first proposal to make the twin strictly poorer by design, which is a precedent later proposals would argue from. Coverage is also UI-shaped (no page table, no pipeline hazard, no red-black node), and upstream declines new-icon contributions, so there is no route to a domain icon. What survives is [V.2](#v2-a-few-domain-shapes-not-an-icon-set): two or three house-drawn shapes in the `pic` library |
+| **A general icon library for CS figures**, e.g. Heroicons (MIT, ~300 icons) | Set aside twice. The technical fit is real: Heroicons' 24px outline set is `M`/`L`/`C`/`A`/`Z` path data, which is the subset TikZ's `\path svg {...}` parses natively, so an icon converts to a `pic` with no new package, no raster and a diffable source. But feasibility is not a reason. Because the ASCII twin cannot render an icon, an icon must be strictly redundant with its node's text label, and a mark that adds no proposition is a mark the TikZ form also loses nothing by deleting. Set against that: a Part IX false-positive source needing whitelisting by construction, exclusions in VI.3's counts and Part IV's label extraction, stroke rescaling tied to Part X, a silent axis flip (SVG's y-axis points down), and a vendored subset with a licence notice to carry. Five ongoing obligations across four other parts, bought for pre-attentive scanning in one metaphor family. Worse, it would be the first proposal to make the twin strictly poorer by design, which is a precedent later proposals would argue from. Coverage is also UI-shaped (no page table, no pipeline hazard, no red-black node), and upstream declines new-icon contributions, so there is no route to a domain icon. What survives is the five house-drawn shapes in the house block ([TIKZ-STYLE.md](TIKZ-STYLE.md#-house-shapes-and-the-well-they-sit-in)) |
 | **Generated raster illustration** | Non-deterministic, non-diffable, non-editable, and factually unreliable in exactly the domain where a mislabelled figure is worse than no figure. Fails the properties `SOUL.md` is built on. The narrower "generate a base plate and trace it" version reintroduces the originality problem of Part IX and still needs an illustrator |
 | **Bezier organic form, gradients, translucency** | Illustrator craft. Reachable in TikZ in principle, but a cell membrane's curve requires hand-placed control points and this domain has no organic objects to draw. Dropped entirely |
 | **`detikzify` or image-to-TikZ synthesis** | The inverse of Part IX: it automates producing the artefact that check exists to catch |
@@ -1385,70 +1075,51 @@ Recorded with the argument, so nobody re-derives it.
 | **Nature-style data density as the benchmark** | Wrong target for tutorials and textbook chapters. A teaching figure is explanatory, not evidential. Tufte and the algorithms literature are the better references. Part VII keeps the quantitative capability for the thesis genre without making density the goal |
 | **A figure-similarity gate** | See Part IX. Advisory and ranked only. The declined overlap-gate decision forbids guessing a threshold and the measured evidence says none exists |
 | **Adopting `diagram-design` as a dependency or an invoked skill** | See [Borrowed, with attribution](#-borrowed-with-attribution). Wrong output substrate, wrong palette model, and an LLM in a path Part III needs to be deterministic. The design reasoning was worth taking; nothing else was |
-| **A hard complexity budget with numeric caps** | Correct for editorial diagrams, wrong for a textbook. A forty-cell DP trace is not over budget, it is a DP trace. VI.3 reports the count against a per-metaphor reference range instead, and nothing gates on it |
+| **A hard complexity budget with numeric caps** | Correct for editorial diagrams, wrong for a textbook. A forty-cell DP trace is not over budget, it is a DP trace. `figure check` reports the count against a per-layout reference range instead, and nothing gates on it |
 
 ---
 
 ## 🗺 Build order
 
-Ordered by a mix of certainty, size and what unblocks what. Revised: the
-cheap non-drawing items moved up, and Part VIII moved down as VI.5 took
-most of its scope.
+Ordered by a mix of certainty, size and what unblocks what.
 
 1. **Part I: listing and algorithm classes.** Smallest, most certain, a
    correctness gap, not a quality one. Parts III and IV both want
    the marker vocabulary stable underneath them.
-2. **Part VI.4 and VI.3: exemplar figures, then element counts against
-   them.** Nearly free. VI.4 needs no new code and is plausibly the
-   largest single perceived-quality jump available; VI.3 is what gives
-   its counts meaning. File them in that order or together.
-3. **Part VI.6: pre-output checklist and anti-pattern table.** No code
-   at all, and the only item on the roadmap that acts before the defect
-   exists instead of after.
-4. **Part II.0: split the metaphor docs.** Cheap now, expensive after
-   Part II ships, and every later metaphor depends on the shape.
-5. **Part X: output targets.** A handful of constants and a config key.
-   Unblocks 6 and part of 7.
-6. **Part VI.1 and VI.2: caption shape, then type size at final scale.**
+2. **Part VI.4: one exemplar per layout.** No new code, and each one
+   also sharpens its layout's reference range.
+3. **Part X: output targets.** A handful of constants and a config key.
+   Unblocks 4 and Part XI's PNG branch.
+4. **Part VI.1 and VI.2: caption shape, then type size at final scale.**
    VI.1 is the best ratio of informativeness to code on the roadmap;
-   VI.2 is arithmetic once 5 lands.
-7. **Part VI.5: routing findings.** Deterministic, reuses the existing
-   probe, and removes most of Part VIII's scope. Bench the
-   bounding-box floor first.
-8. **Part V.1: the `pic` library.** Structural, compounding, and a
-   prerequisite for II.1. Settle the portability question first.
-9. **Part II.1: state sequence.** Highest-value metaphor. Depends on 8.
-10. **Part II.2, II.3, II.4: sequence diagram, bit-field, automaton.**
-    Mostly a scaffold plus the right library load. II.3 may carry a
-    renderer change (`bytefield`) and carries the width-encoding check;
-    II.4 is the best derivation target. II.7 ships as a primitive inside
-    8, not as a metaphor.
-11. **Part IV: correspondence.** Wants 1 done, and wants II.3/II.4
-    figures existing to check against.
-12. **Part III: derived figures.** The distinctive feature, but it
-    compounds on everything above. The ledger and the ladder ship with
-    the first derivation, not after it.
-13. **Part XI: rendered figure images.** Sits anywhere after 5, since
-    the PNG branch needs Part X and the SVG branch does not. Placed here
-    because it hands a rasterisation path to both 14 and VI.5, so
-    building it earlier saves work in two places. The architecture
-    question (whether a LaTeX toolchain may become a dependency of every
-    output path) should be settled before the issue is written, not
-    inside it.
-14. **Part IX: figure similarity.** Independent of everything else, and
+   VI.2 is arithmetic once 3 lands.
+5. **Part V.1: structural `pic`s.** Compounding, and a prerequisite for
+   II.1. Settle the portability question first.
+6. **Part II.1: state sequence.** Highest-value layout. Depends on 5.
+7. **Part II.3, II.5, II.6: bit-field, timing, box-and-pointer.** Mostly
+   a scaffold plus the right library load. II.3 may carry a renderer
+   change (`bytefield`) and carries the width-encoding check. II.7 ships
+   as a primitive inside 5, not as a layout. II.8 waits for a figure
+   that needs it.
+8. **Part IV: correspondence.** Wants 1 done, and wants II.3 figures
+   existing to check against.
+9. **Part III: derived figures.** The distinctive feature, but it
+   compounds on everything above. The state-machine layout is the best
+   first target. The ledger and the ladder ship with the first
+   derivation, not after it.
+10. **Part XI: rendered figure images.** Sits anywhere after 3, since
+    the PNG branch needs Part X and the SVG branch does not. The
+    architecture question (whether a LaTeX toolchain may become a
+    dependency of every output path) should be settled before the issue
+    is written, not inside it.
+11. **Part IX: figure similarity.** Independent of everything else, and
     may close on its own bench numbers. **Bench it before V.1 ships**,
-    since the shared `pic` library plants a known false-positive source.
-15. **Part VII: quantitative panels.** Real, lower priority for this
+    since a shared `pic` library plants a known false-positive source.
+12. **Part VII: quantitative panels.** Real, lower priority for this
     genre mix. Reuses II.3's encoding check.
-16. **Part XII: figure-drawer v3**, added 2026-10-24 on a user report
-    and placed here only for numbering: its phase 1 is cheap and
-    should go first, since it absorbs II.0 and VI.6 (steps 3 and 4)
-    and fixes a probe defect. Phase 2 absorbs VI.3 and VI.5 (steps 2
-    and 7) and should keep VI.5's bench-first order. Phase 3 carries
-    II.2 and II.4 (step 10).
-17. **Part VIII: the informativeness critique.** Now much smaller than
-    it was. It judges quality instead of creating it, so it lands
-    better once there is more quality to judge.
+13. **Part VIII: the informativeness critique.** It judges quality
+    instead of creating it, so it lands better once there is more
+    quality to judge.
 
 ## 📏 What needs measuring first
 
@@ -1459,23 +1130,10 @@ own numbers:
 
 - **Figure inventory of a real book.** Count the figures in this
   project's own 15-chapter book by form, and check the claim this
-  roadmap rests on: that state sequences, sequence diagrams, bit-fields
-  and automata are frequent in the target literature and the six current
-  metaphors do not cover them. If that count comes back saying the six
-  metaphors cover 90% of the book's figures, Part II shrinks a great
-  deal.
-- **Routing-finding false-positive floor (VI.5).** Run each proposed
-  finding over the existing figures and the six scaffolds, which are
-  known-good. Any finding that fires on a scaffold is either a real
-  defect in the scaffold or a broken check, and both outcomes are
-  informative. Include cases that must **not** fire (a legitimate
-  crossing, a lifeline with many arrows at one x-coordinate, an automaton
-  self-loop), and make them the majority of the bench, the way a checker
-  that only tests positives learns nothing about its own noise.
-- **Bounding box versus paint (VI.5).** Measure how far a node's recorded
-  box diverges from its inked extent once stroke width and arrowheads are
-  counted, on real figures. That number decides whether the clearance
-  findings can use the log or need rasterisation.
+  roadmap rests on: that state sequences, bit-fields and timing
+  diagrams are frequent in the target literature and the eleven layouts
+  do not cover them. If that count comes back saying the eleven layouts
+  cover 90% of the book's figures, Part II shrinks a great deal.
 - **Correspondence false-positive floor (Part IV).** Run the two-way set
   difference over existing figures and their sections. Legitimate
   mismatches will dominate; the question is whether the signal is visible
@@ -1483,8 +1141,8 @@ own numbers:
 - **Figure-similarity floor and recall (Part IX).** Rank the 8,769 crops
   against each other to establish the noise level, plus a planted TikZ
   redraw of a known corpus figure to confirm it ranks above it. Add a
-  figure built from shared `pic`s as a known negative, since V.1 creates
-  that floor deliberately.
+  figure built from shared `pic`s as a known negative, since V.1 would
+  create that floor deliberately.
 - **Render cost and cache hit rate (Part XI).** Time a full render of the
   15-chapter book with a cold cache and with a warm one. The cold number
   decides whether a TeX-absent fallback is a nicety or the common case;
@@ -1499,10 +1157,5 @@ own numbers:
   `bench_embed_model_compare.py`. A CLIP-class model trained on natural
   images may be weak on line art, which is an empirical question, not a
   guess.
-- **Element-count spread (VI.3).** Before deciding what a reference range
-  even means, count nodes, edges and colours across the existing figures
-  per metaphor. If the spread within one metaphor is as wide as the
-  spread between metaphors, the per-metaphor range is not carrying
-  information and VI.3 should report bare counts after all.
 - **Review-pass cost** for anything added, per
   `PERFORMANCE.md`'s "What a review pass costs".

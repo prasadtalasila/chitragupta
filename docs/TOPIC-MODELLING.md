@@ -1,7 +1,8 @@
 # 🧠 Topic modelling: what the literature said, and what this corpus said back
 
-Status: **discussion, not a specification.** Written 2026-08-21. Updated
-2026-08-23. It records where the topic stage's current shape came from:
+Status: **reasoning document.**
+
+It records where the topic stage's current shape came from:
 which published findings argued for it, which measurements on this
 project's own corpus confirmed or contradicted them, and which decisions
 are still open. `docs/CONFIG.md` is the reference for the settings
@@ -23,16 +24,48 @@ reference list therefore stays what it was: the evidence behind the
 > deliberate, and it is the rule from [AGENTS.md](../AGENTS.md): a
 > citekey exists only when the human's own `.bib` export and a real
 > parse of a real PDF put it in the ledger. Inventing one here, in a
-> document that ships, for sources that are genuinely real, is exactly
-> the habit this project exists to make impossible. If these
-> papers are later added to a library and synced, this document should
-> be updated to cite them properly instead of being left as prose.
+> document that ships, for sources that are real, is the habit this
+> project exists to make impossible. If these papers are later added
+> to a library and synced, this document should be updated to cite them
+> properly instead of being left as prose.
 
 ## ❗ The problem, in one sentence
 
-`content/topics.json` existed for several releases with no consumer, and
-the topic model had no way to know that the corpus's owner had already
-grouped the same papers by hand in Zotero.
+A topic model run on its own cannot know that the corpus's owner has
+already grouped the same papers by hand, or that the papers themselves
+declare their keywords.
+
+## 🔀 How the topic stages fit together
+
+Five of the seven enrichment stages build the topics, in this order
+(`STAGE_ORDER` in `chitragupta/enrich/__main__.py`):
+
+1. **`bertopic`** clusters the document vectors into emergent topics and
+   writes `content/topics.json`.
+2. **`extract-keywords`** reads each parsed paper's own declared
+   keywords (an `Index Terms` or `Keywords:` line near the top) and
+   writes them to `content/keywords.toml`. The file is regenerated on
+   every run. A paper with no detectable declaration contributes
+   nothing; it is skipped, not estimated. No model is involved.
+3. **`seed-topics`** matches seed phrases against the same document
+   vectors. The phrases are the union of `content/seed_topics.toml`
+   (yours) and `content/keywords.toml` (extracted). Your file loads
+   first, so your spelling wins when both name a phrase. The result is
+   `content/topic_seeds.json`.
+4. **`converge`** joins the two halves into `content/topic_set.json`.
+   An emergent topic whose descriptor sits within
+   `[enrich].topic_converge_similarity` (default 0.45) of a seed phrase
+   takes that phrase as its name. When several topics match one phrase,
+   only the closest takes the name; the rest stay emergent. A seed phrase
+   that matches no emergent topic still appears, with the papers it
+   matched. The citekeys of papers that no topic of either kind holds
+   are listed as `uncovered`. The stage re-runs no clustering.
+5. **`topic-graph`** relates the converged topics;
+   [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) covers it.
+
+A topic in `topic_set.json` has provenance `seed` or `emergent`.
+`corpus discover --origins` splits `seed` by which file named the
+phrase: `seed`, `keyword` or `corroborated` (both).
 
 ## 📚 What the sources argued, and what happened when it was tried
 
@@ -47,10 +80,9 @@ prior knowledge and still want the model to discover unknown topics
 rather than only match a fixed taxonomy". It notes in passing that keyATM
 "allows each document to belong to multiple keyword topics".
 
-This stage now has that design, but the *first* implementation got it
-wrong in a way the survey's phrasing predicts. Routing seed phrases
-through BERTopic's `zeroshot_topic_list` makes seeding and discovery
-compete for the same documents: measured on this corpus, nine seed
+Routing seed phrases through BERTopic's `zeroshot_topic_list` gets it
+wrong in a way the survey's phrasing predicts. It makes seeding and
+discovery compete for the same documents: measured on this corpus, nine seed
 phrases took the emergent topic count from **81 to 53**, roughly three
 discovered topics traded away per named one. Pushed further it stops
 trading and breaks: enough zero-shot assignment leaves HDBSCAN fewer
@@ -87,7 +119,7 @@ document. Two artefact clusters left the top twenty:
 `werner kritzinger, fraunhofer austria` was still a top-three topic
 afterwards, because the name is in the *body*, not the bibliography:
 `kritzinger` appears in 101 documents and **55 still contain it after
-the reference list is removed**. Those papers genuinely are a topic (they survey
+the reference list is removed**. Those papers are a real topic (they survey
 the digital-twin/shadow/model taxonomy), so the clustering is right and
 only the *label* is wrong. No amount of further preprocessing fixes that
 without deleting content that belongs to the topic. It is a labelling
@@ -122,9 +154,10 @@ performance degradation" there.
 This corpus is squarely long-document. Measured, two representative
 papers run to 22,048 and 24,132 tokens against a 512 word-piece model
 limit, so
-`model.encode(text)` was embedding **about 2%** of each paper: its
-chapter heading, author list and abstract opening. Documents are now
-chunked with `embed_index.chunk_text()` and the chunk vectors mean-pooled.
+`model.encode(text)` on the whole text embeds **about 2%** of each
+paper: its chapter heading, author list and abstract opening. Documents
+are therefore chunked with `embed_index.chunk_text()` and the chunk
+vectors mean-pooled.
 
 The measured effect, at identical clustering settings, is 75 topics with
 median size 5 (prefix) against 81 with median 4 (pooled), and labels that
@@ -168,8 +201,8 @@ regex* and not by label. Adopting DocBank-grade structure means a
 LayoutLM-class model and Detectron2: a real dependency and its own piece
 of work, not a configuration change.
 
-This was filed as an issue of its own and is now closed as not planned,
-because §3 removed the evidence for it. The artefact clusters that
+It is not planned, because §3 removed the evidence for it. The artefact
+clusters that
 motivated it (an author block, a publisher's front matter, a run of
 clause numbers) all left the top twenty once topic *labels* stopped
 being drawn from author names and citation scaffolding, and that cost no
@@ -203,30 +236,30 @@ abstracts).
 
 This is built: `bench/bench_topic_depth.py --repeats` refits each setting
 on 90% bootstrap resamples and scores agreement with the full fit by
-adjusted Rand index. The old hardcoded defaults (`n_neighbors=15`,
-`min_cluster_size=10`) scored **0.14**, barely more stable than chance;
+adjusted Rand index. The setting `n_neighbors=15`,
+`min_cluster_size=10` scored **0.14**, barely more stable than chance;
 the shipped defaults (`5`/`3`/`2`) score **0.80**.
 
 **Both of those figures hold UMAP fixed, which the shipped stage does
 not** (a recorded issue). They refit HDBSCAN on each resample over a
 reduction fitted once, so they measure the stability of the clustering
-given a reduction, and not of the whole pipeline. `bench_topic_depth.py` now
+given a reduction, and not of the whole pipeline. `bench_topic_depth.py`
 reports both arms as separate columns, and the gap is large: measured
 2026-09-07 over the full grid, the UMAP-fixed arm spans 0.56--0.82 and
 the full-refit arm spans **0.35--0.51**. Roughly half the apparent
 stability belongs to the dimensionality reduction.
 
 **Read the 0.14 -> 0.80 improvement with that in mind.** On the
-full-refit arm the old settings score 0.35 and the shipped defaults
+full-refit arm the 15/10 settings score 0.35 and the shipped defaults
 0.37, which with ten resamples and no error bars is no measured
 difference. What the parameter change demonstrably bought was
 granularity (6 topics against 79) and a lower outlier share, not
-stability. The 0.14 itself is also not comparable to anything measured
-today: the corpus has changed since, and the same settings now score
-0.68 on the UMAP-fixed arm. `bench/RESULTS.md`'s 2026-09-07 (B4b) entry
-has the grid. `chitragupta/enrich/topic_model.py`'s own docstring still
-admits topic ids are not stable *between* runs (membership has to be
-read by label or citekey, not id), but which *settings* reproduce is now
+stability. The 0.14 itself was measured on an earlier state of the
+corpus; on the 2026-09-07 corpus the same settings score 0.68 on the
+UMAP-fixed arm. `bench/RESULTS.md`'s 2026-09-07 (B4b) entry has the
+grid. `chitragupta/enrich/topic_model.py`'s own docstring admits topic
+ids are not stable *between* runs (membership has to be
+read by label or citekey, not id), but which *settings* reproduce is
 measured instead of assumed.
 
 ## 📊 Where the numbers come from

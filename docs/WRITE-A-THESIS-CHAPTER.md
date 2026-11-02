@@ -1,6 +1,6 @@
 # 🎓 Write a thesis chapter, start to finish
 
-Status: **tutorial.** Written 2026-09-15.
+Status: **tutorial.**
 
 **Written for** a doctoral or master's student who wants a chapter of
 their own thesis drafted from their own library, and who has not used
@@ -46,7 +46,9 @@ This has three deliberate consequences:
   compete with it.
 - **Figures are inline `\input`s inside a hand-written `figure` float**,
   because the fragment has to stay self-contained once it leaves this
-  pipeline.
+  pipeline. The skill hands each figure it decides on to `figure-drawer`,
+  which draws the TikZ file and its ASCII twin
+  ([FIGURE-DRAWER.md](FIGURE-DRAWER.md)).
 
 ## 🎯 What you will have at the end
 
@@ -199,8 +201,8 @@ notions of error entirely.
 ```
 
 The two glossary entries that say "pinned here because the sources use
-it differently" are doing the real work: they are how a chapter keeps
-its own vocabulary while citing papers that do not share it.
+it differently" let a chapter keep its own vocabulary while citing
+papers that do not share it.
 
 ## 🗺 Step 3: write an outline (optional, recommended)
 
@@ -234,8 +236,8 @@ or three families to treat separately.
 
 This genre gets the most out of `claim:`. A thesis chapter argues, and
 writing your intended argument as `claim:` blocks means the skill either
-grounds each one or tells you it cannot. You want that conversation
-before the examiner has it with you.
+grounds each one or tells you it cannot, before an examiner finds the
+gap.
 
 A worked example follows; the whole file is at
 [`examples/dossiers/thesis-chapter/outline.md`](examples/dossiers/thesis-chapter/outline.md):
@@ -358,23 +360,25 @@ carries no preamble of its own:
   `\usetikzlibrary` line at the top; put those names in your preamble
   too.
 
-The chapter deliberately writes no `\renewcommand{\thefigure}` and no
-hand-typed figure numbers, so your thesis numbers everything
-consistently.
+The chapter writes no `\renewcommand{\thefigure}` and no hand-typed
+figure numbers, so your thesis numbers everything consistently.
 
 ## 🔍 Step 7: read the review aids
 
-None of these can block anything; all exit 0.
+None of these can block anything; all exit 0. `--write` files a report
+under `content/review/thesis/` for the agenda below to read;
+`provenance` files its report on every run and has no `--write`.
 
 ```bash
 chitragupta draft style content/drafts/thesis/methods.tex
-chitragupta review verbatim scan content/drafts/thesis/methods.tex
-chitragupta review uncited content/drafts/thesis/methods.tex
+chitragupta review verbatim scan content/drafts/thesis/methods.tex --write
+chitragupta review uncited content/drafts/thesis/methods.tex --write
 chitragupta review provenance content/drafts/thesis/methods.tex
-chitragupta review support content/drafts/thesis/methods.tex
+chitragupta review quotation content/drafts/thesis/methods.tex --write
+chitragupta review support content/drafts/thesis/methods.tex --write
 ```
 
-For a thesis chapter, two are worth more than the rest:
+For a thesis chapter, three are worth more than the rest:
 
 - **`review verbatim`.** Reuse of a source's wording is the failure with
   consequences at a viva. It reports wording shared with any parsed
@@ -383,56 +387,57 @@ For a thesis chapter, two are worth more than the rest:
 - **`review support`.** It checks whether each citation entails the
   claim it is attached to, which mechanises the examiner's own reading
   habit.
+- **`review quotation`.** It checks that each quoted span matches the
+  source it cites, word for word.
 
 If the chapter has TikZ figures, also:
 
 ```bash
-chitragupta review figure content/drafts/thesis/methods.tex
+chitragupta review figure content/drafts/thesis/methods.tex --write
 ```
 
 ### The agenda: all of them as one worklist
-
-[AGENDA.md](AGENDA.md) explains every section of an agenda file in
-full; what follows is the short version for this genre.
 
 ```bash
 chitragupta review agenda content/drafts/thesis/methods.tex
 ```
 
-It **reads the aids' filed JSON and never runs an aid**, so run the aids
-first, with `--write` where an aid offers it (`provenance` always files
-its report), and then the agenda. Any aid whose report is absent is
-named as absent instead of quietly skipped.
+The agenda merges the reports the aids above filed into one ranked
+worklist. It never runs an aid itself, and it names any aid whose report
+is absent. [AGENDA.md](AGENDA.md) explains every section of the file;
+[WRITE-A-SURVEY.md's step 7](WRITE-A-SURVEY.md#the-agenda-all-of-them-as-one-worklist)
+covers the `[unattended]`/`[surfaced]` classes, `--baseline` and
+`--accept`. What follows is the part specific to a thesis chapter.
 
-Each item carries a class, a section anchor, and whether it is
-`[unattended]`, meaning safe for an automated pass to repair without
-asking (`prose`, short verbatim runs, `missing-citekey`), or
-`[surfaced]`, a judgement only you can make (`unsupported-claim`,
-`claim-support`, `uncited-claim`, `recorded-but-uncited`, `misquoted`).
-
-For the methods chapter we have been building:
+For the methods chapter we have been building, the report reads like
+this (the fixed "How to read this" paragraph is left out):
 
 ```markdown
 # Agenda: content/drafts/thesis/methods.tex
 
 > **Review aid, not a gate.** This report is evidence for a human
-> judgement, never a verdict. No draft is blocked by what it says.
+> judgement, never a verdict. A driver may read it back; no draft is
+> blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's
+> "Layer 4: the review layer".
 
 - Draft: `content/drafts/thesis/methods.tex`
 - Command: `chitragupta review agenda content/drafts/thesis/methods.tex`
+- chitragupta 6.155.0
 
 ## Sources
 
 - Citation provenance: read
 - Verbatim scan: read
 - Citation coverage: not run
-- Multi-source synthesis: read, no item class defined
-- TikZ layout check: read
+- Multi-source synthesis: not run
+- TikZ layout check: read, no item class defined
 - Uncited prose: read
 - Quotation integrity: read
 - Claim support: read
 - Prose (style_check): read
 - Dossier drift: read
+- Recorded-but-uncited citekeys: read
+- Accepted items: none recorded for this draft
 
 ## Summary
 
@@ -484,28 +489,6 @@ The `[unattended]` verbatim runs can be handed off: ask to "work the
 review agenda" and `agenda-reviser` repairs them one at a time, re-running
 the gate after each and logging every attempt in `revisions.md`.
 
-To check that a round of edits helped:
-
-```bash
-chitragupta review agenda content/drafts/thesis/methods.tex \
-    --baseline content/review/thesis/methods.agenda.json
-```
-
-That re-runs the aids and reports each finding as `resolved`,
-`persisting`, `new` or `accepted`. Read the `new` list, not just the
-count: a repair that resolves one finding and introduces another leaves
-the total unchanged.
-
-If you have considered a surfaced item and decided it stands as written:
-
-```bash
-chitragupta review agenda content/drafts/thesis/methods.tex \
-    --accept b7c2109af441
-```
-
-Only `claim-support`, `uncited-claim` and `unsupported-claim` may be
-accepted; anything else is refused with exit code 2.
-
 ## 📝 Step 8: change something
 
 **Never re-run the genre skill to make a change.** Ask for a revision:
@@ -535,8 +518,8 @@ chitragupta draft dossier export thesis/methods
 | --- | --- | --- |
 | The skill refuses, saying the ledger is empty | no corpus | `chitragupta corpus sync` |
 | `gate` says `FAIL` | a `\citep` key is not in the corpus | correct it or drop the claim; never add it by hand |
-| The preview PDF fails on a figure | the figure's TikZ does not compile | fix the figure file; a broken figure fails the whole render |
+| The preview PDF fails on a figure | the figure's TikZ does not compile | ask to fix the figure, which `figure-drawer` handles; a broken figure fails the whole render |
 | Your thesis build fails on `\citep` | no `natbib` in your preamble | add it; the fragment cannot |
 | Your thesis build fails on `of` in a node position | the TikZ library is not loaded in *your* preamble | add `\usetikzlibrary{...}` with the names the figure file lists |
 | The chapter reads like a summary, not an argument | the RQ was never stated | give the RQ and ask `draft-reviser` to re-frame around it |
-| A cited paper left your library | the corpus moved | `chitragupta draft dossier status --all`, then ask for a re-grounding pass |
+| A cited paper left your library | the corpus moved | `chitragupta draft dossier status --all`, then ask for a re-grounding pass, which `draft-reviser` runs |

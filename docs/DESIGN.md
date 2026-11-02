@@ -1,6 +1,6 @@
 # 🏗 Design
 
-Status: **reasoning document.** Written 2026-08-02. Updated 2026-08-28.
+Status: **reasoning document.**
 
 Why this pipeline refuses what it refuses.
 
@@ -54,28 +54,17 @@ architecture:
      silent success.
 
 4. **Incremental processing is a load-bearing design goal**
-   - `ledger.py` uses stat-before-hash skipping.
+   - `ledger_upsert.py` uses stat-before-hash skipping.
    - `retrieval_cache.py` caches term-frequency stats.
-   - `embed_index.py` and `topic_model.py` cache embeddings.
+   - `embed_index.py` skips unchanged chunks, and `doc_vectors.py` caches
+     the topic model's document embeddings.
    - `docling_parse.py` fingerprints each PDF by (size, mtime).
    - The intent is to avoid reprocessing unchanged material.
 
 5. **Parallelism is opt-in, and bounded by the host rather than by the
    request**
-   - `[parser].workers` defaults to `1`, so the default run is strictly
-     serial, with no pool and no subprocesses. Incremental skipping means a
-     routine run has almost nothing to do, and pool setup would cost more
-     than it saves.
-   - The resolved count is `min(requested, host ceiling, work available)`.
-     The host ceiling counts CPUs *this process* may run on, not the
-     machine's, and divides by the CPUs one worker actually occupies.
-   - Only the parse call is dispatched. Every ledger and cache write
-     stays on the parent process, because sqlite has a single writer and
-     because the parent is the only place that can order results
-     deterministically.
-   - Backends get the kind of parallelism they can use: threads for
-     `pdftotext` (external subprocess, releases the GIL), processes for
-     `docling` (in-process, holds it), with one CUDA device per worker.
+   - [Parallelism and resource design](#-parallelism-and-resource-design)
+     below has the rules.
 
 ## 🚦 Concurrency and conflict policy
 
@@ -101,8 +90,9 @@ this order of precedence:
    progress or be subject to a watchdog, and anything that kills work
    must warn before it acts.
 5. **Exit codes are the API for unattended callers**: `0` corpus in sync;
-   `1` corpus not in sync, human attention needed; `2` cycle skipped, no
-   work lost. Exit 2 must not be able to persist indefinitely without
+   `1` a document failed to parse, human attention needed; `2` cycle
+   skipped, no work lost; `3` everything parsed but the bibliography
+   needs fixing. Exit 2 must not be able to persist indefinitely without
    escalation.
 6. **The serial, default-configuration path does not change behaviour in
    a minor release.** Opt-in features may carry protective sub-defaults;
@@ -202,8 +192,8 @@ Five distinct failure modes, each handled where it can be:
   **rebuilds the pool and hands the unfinished documents back to it**, up
   to twice, narrower each time and smallest-document-first. A dead
   worker costs the document it was holding and not the rest of the
-  corpus (one death used to fail 460 of 642 documents, most of
-  which had never been opened). Only what no pool landed is reported a
+  corpus; without the rebuild, one death failed 460 of 642 documents,
+  most of which had never been opened. Only what no pool landed is reported a
   failure. `chitragupta/sync_pool.py` does not rebuild: there an
   unfinished document is marked *transient* and retried on the next run,
   which costs seconds rather than the minutes a docling parse costs.
@@ -231,8 +221,8 @@ Five distinct failure modes, each handled where it can be:
   `TimeoutExpired` and `docling`'s `FailureCategory.TIMEOUT` both set a
   `timed_out` mark on the exception, the same idiom the `transient` mark
   already uses.
-- **A document the backend cannot read.** Distinguished from the four
-  below by *cause*, recorded as such, and deliberately not retried: the
+- **A document the backend cannot read.** Distinguished from the other
+  four by *cause*, recorded as such, and deliberately not retried: the
   backend already read this PDF and could not parse it, so re-reading it
   every run would spend the same minutes to reach the same answer, and a
   run that exits nonzero forever trains its reader to ignore that. It
@@ -245,7 +235,7 @@ Five distinct failure modes, each handled where it can be:
   skipping the atexit hook that would *join* those workers. This is safe
   only because the ledger commits incrementally, so finished work is
   already on disk: each document's row is written the moment its result
-  lands, on the pool path as on the serial one (#961).
+  lands, on the pool path as on the serial one.
 
 ### ⚖ Partial success is a failure
 
@@ -256,9 +246,12 @@ page k of n. Both call sites therefore check the status explicitly and
 raise *before* anything is written, so a partial parse leaves no output
 and never enters the incremental cache.
 
-Correspondingly, a `parse_failed` document is retried on the next run
-instead of skipped until its bytes change; otherwise one dead worker
-would remove documents from the corpus permanently.
+Correspondingly, a `parse_failed` document whose failure was not
+deterministic (it is marked transient, as after a dead worker) is
+retried on the next run instead of skipped until its bytes change;
+otherwise one dead worker would remove documents from the corpus
+permanently. A deterministic failure is not retried, as the failure list
+above states.
 
 ### 🔒 One writer at a time
 
@@ -279,17 +272,17 @@ immediately, so staleness needs no PID liveness check and no
 platform-specific branch.
 
 Two rejected alternatives: an `O_EXCL` lock file needs exactly that
-staleness heuristic, and locking the ledger itself would force a run into
-one transaction, discarding the incremental commit points on a crash.
-There are six of those: three in `chitragupta/ledger.py`, one in
+staleness heuristic, and locking the ledger itself would force a run
+into one transaction, discarding the incremental commit points on a
+crash. There are six of those: three in `chitragupta/ledger.py`, one in
 `chitragupta/ledger_paths.py` (`mark_parsed`), one in
 `chitragupta/ledger_upsert.py`, and one in `chitragupta/sync_decide.py`
-that closes the whole bibliography-upsert loop in a single transaction
-(the change that stopped a no-op sync being 646 fsync'd
-writes). That last one is a *batch*, not a run, and it commits in a
-`finally`, so the guarantee this paragraph turns on still holds: what
-finished is on disk. A row is written whole or not at all, and the parse
-phase that follows still commits per document.
+that closes the whole bibliography-upsert loop in a single transaction,
+so a no-op sync commits once rather than once per bib entry. That last
+one is a *batch*, not a run, and it commits in a `finally`, so the
+guarantee this paragraph turns on still holds: what finished is on disk.
+A row is written whole or not at all, and the parse phase that follows
+still commits per document.
 
 Contention is detected by `sqlite_errorcode ==
 SQLITE_BUSY` and not by message, since `OperationalError` also covers a
@@ -305,7 +298,7 @@ Nor does serialising writers make output reproducible: Docling groups dense
 reference blocks differently under load, so parsed text and the passage sidecar
 both vary at high worker counts. What that costs, artifact by artifact, is
 [ARCHITECTURE.md's reproducibility contract](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
-That is the single statement of it, and it is measured, not asserted.
+That is the single, measured statement of it.
 
 ## ✍ What happens to prose a person supplies
 
@@ -313,25 +306,25 @@ The concrete case: you hand the pipeline an outline and one of its
 sections contains two paragraphs of your own prose. Are they a *brief*
 (steering, to be read and written from) or text you want to appear? The
 two are indistinguishable as prose, so a skill must guess, and either
-guess is wrong half the time. The defect is that ambiguity, not the
-presence of prose: intent has to be declared, not inferred.
+guess is wrong half the time. The fix for that ambiguity is to have
+intent declared rather than inferred.
 
 ### 🚫 Why the answer is not "record who wrote it"
 
 The obvious fix is to mark your paragraphs as yours, with a provenance
-span the review aids skip. It is the wrong fix, and the reason
-generalises past this feature.
+span the review aids skip. It is the wrong fix, for a reason that
+applies beyond this feature.
 
 A draft is revised. The drafting layer rewrites, shortens, re-scopes and
 copy-edits the prose inside those markers, and it does so legitimately:
 that is what `draft-reviser` is *for*. After one revision the span is
 part your wording and part the model's, after two nobody can say which
-part, and the marker still asserts a single author. The record does not
-decay gracefully. It becomes false while continuing to look
-authoritative, and a review aid instructed to skip it would then be
-skipping the model's prose on the strength of a stale claim.
+part, and the marker still asserts a single author. The record becomes
+false while still looking authoritative, and a review aid instructed to
+skip it would then be skipping the model's prose on the strength of a
+stale claim.
 
-This repository already treats that failure as the serious one.
+This repository already treats that failure as serious.
 `sections.md` is regenerated immediately before a scan instead of being
 trusted, and `math.md` desyncing on a reworded span is called out as a
 hazard, both for the same reason: **recorded state that a later edit can
@@ -342,9 +335,9 @@ re-derived from the draft and a section map rebuilt from its headings,
 but nothing can recompute who wrote a sentence after the fact.
 
 So there is **no author provenance, and no aid exemption built on
-one.** Every
-sentence in a draft is measured the same way regardless of who typed it
-first, which is also the honest position after any revision at all.
+one.** Every sentence in a draft is measured the same way regardless of
+who typed it first, which is the only accurate position after any
+revision.
 
 ### ✅ What is declared instead: a brief, or a claim
 
@@ -360,23 +353,22 @@ survive every later edit:
 Neither leaves a marker behind, because neither needs to: a brief has
 been consumed by the time the draft exists, and a claim's grounding is
 **re-checkable at any point** against the ledger. Authorship lacks that
-property, and that property is why this split survives revision.
+property, which is why this split survives revision.
 
-`claim` is the one worth building deliberately. It turns your paragraphs
-into an obligation the pipeline can discharge honestly, and *"I could not
-ground your third sentence in this corpus"* is the output this project
-exists to produce. That output is unavailable if the same two paragraphs
-are copied through as text to be preserved.
+`claim` turns your paragraphs into an obligation the pipeline can
+discharge honestly: *"I could not ground your third sentence in this
+corpus"* is the output this project exists to produce, and it is
+unavailable if the same paragraphs are copied through as text to
+preserve.
 
 **If you want your exact words in the draft, put them in the draft.**
 They are then draft prose like any other: the gate checks any citekey in
-them, and the advisory aids measure them alongside everything else.
-That is not a gap to close; it is true of every sentence in a revised
-document.
+them, and the advisory aids measure them alongside everything else,
+as they do every sentence in a revised document.
 
 Both are built: a `brief:` or `claim:` block per section of the
-dossier's optional `outline.md` (#455; [DOSSIER.md](DOSSIER.md) has the
-format). The plan was `plans/outline-driven-drafting-and-manual-edits.md`.
+dossier's optional `outline.md` ([DOSSIER.md](DOSSIER.md) has the
+format).
 
 ## 🗺 Where proposed work lives
 
@@ -385,15 +377,8 @@ what it should do next are tracked in
 [a standing issue](https://github.com/prasadtalasila/chitragupta/issues/54)**,
 not here. A design document that also carries a wish list stops being
 readable as a statement of current behaviour, and the wish list goes
-stale faster than the design does.
-
-An earlier revision of this file ended with five unowned improvement
-recommendations. Four became sequenced items in that issue (splitting
-`retrieval.py`, section-aware chunking over hierarchical document
-representations, reranking, and platform portability), and the fifth,
-preserving richer per-document metadata, is partly delivered by
-`chitragupta/passages.py` and the Docling sidecar. The parse path's own
-roadmap, which is narrower and measured, is in
+stale faster than the design does. The parse path's own roadmap, which
+is narrower and measured, is in
 [PARALLELISM.md](PARALLELISM.md#-roadmap).
 
 ## 📄 Parser backends

@@ -1,6 +1,6 @@
 # 🛰️ Development environment: the Remote Control daemon
 
-Status: **reference.** Written 2026-10-09.
+Status: **reference.**
 
 **Written for** a developer who wants a long-lived `claude remote-control`
 session on a development host, so they can drive this checkout from
@@ -36,11 +36,11 @@ cp scripts/rc-daemon.env.example scripts/rc-daemon.env
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `RC_DIR` | `/workspace` | Directory the session runs in. It must be a trusted workspace |
-| `RC_NAME` | `chitragupta-dtl1` | Remote Control session name, as claude.ai shows it |
-| `RC_PREFIX` | `chitragupta-dtl1` | Name prefix for sessions spawned from it |
+| `RC_NAME` | `chitragupta-dev` | Remote Control session name, as claude.ai shows it |
+| `RC_PREFIX` | `chitragupta-dev` | Name prefix for sessions spawned from it |
 | `RC_PERMISSION_MODE` | `bypassPermissions` | Permission mode for those sessions |
-| `TMUX_SESSION` | `rc-chitragupta-dtl1` | `tmux` session the loop runs in |
-| `RC_LOG` | `~/claude-daemon/rc-chitragupta-dtl1.log` | The loop's log; the pane output goes to `<name>.pane.log` beside it |
+| `TMUX_SESSION` | `chitragupta-dev` | `tmux` session the loop runs in |
+| `RC_LOG` | `~/claude-daemon/chitragupta-dev.log` | The loop's log; the pane output goes to `<name>.pane.log` beside it |
 
 Every line in the file is written as `VAR="${VAR:-default}"`, so a
 variable already set in the environment wins. That gives you a one-off
@@ -84,7 +84,7 @@ Run `restart` after editing `rc-daemon.env`. A running loop does not
 re-read the file.
 
 When something goes wrong, read the pane log
-(`~/claude-daemon/rc-chitragupta-dtl1.pane.log` by default) first. It
+(`~/claude-daemon/chitragupta-dev.pane.log` by default) first. It
 captures claude's own output, such as "Workspace not trusted", which the
 loop's log does not.
 

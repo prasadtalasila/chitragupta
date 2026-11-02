@@ -1,0 +1,8 @@
+                       one row per passage
+
+
+
++--------------+     +----------------+
+|    Parse     |---->|     Index      |
+| read the PDF |     | store passages |
++--------------+     +----------------+

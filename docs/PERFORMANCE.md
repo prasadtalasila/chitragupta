@@ -1,7 +1,6 @@
 # ⚡ Performance
 
-Status: **measurements.** Written 2026-08-03. Updated 2026-08-27 with
-the review layer's per-aid costs.
+Status: **measurements.**
 
 **Written for** anyone choosing settings on their own hardware and
 wanting the measured cost rather than a guess. **Assumed:**
@@ -95,7 +94,7 @@ which skips PDFs whose bytes have not changed).
 | Backend | Total, 5 PDFs | Words extracted | Ratio |
 | --- | --- | --- | --- |
 | `pdftotext` | 1.43s | 68,888 | 1x |
-| `docling` (OCR on, i.e. before OCR defaulted off) | 60.77s | 69,565 | ~42x |
+| `docling` (OCR on) | 60.77s | 69,565 | ~42x |
 
 Per document the ratio ranged **~18x-102x**, tracking document length
 loosely at best, so budget against the total, not the best case.
@@ -144,9 +143,8 @@ At 24 workers with OCR on, 93% of the available CPU is busy, the one
 configuration measured where this machine is full. docling's
 OCR runs on the CPU (RapidOCR on onnxruntime), which is why.
 
-**And it cannot be moved to the GPU by configuration alone.** That is
-worth knowing before you go looking for the setting. Two things are in
-the way, either of which is enough on its own:
+**And it cannot be moved to the GPU by configuration alone.** Two things
+are in the way, either of which is enough on its own:
 
 - The `onnxruntime` wheel this project installs is the CPU build.
   `onnxruntime.get_available_providers()` returns
@@ -165,22 +163,17 @@ That 79% is also the size of the possible gain, and it is not small.
 Getting OCR onto a card would mean `RapidOcrOptions(backend="torch")`
 (the one backend docling wires `use_cuda` into), plus a config key to
 select it.
-Do not size that work against the 1.79x above: that figure is what the
+Do not size that work against the 1.79x below: that figure is what the
 GPU is worth *while OCR stays on the CPU*, not a ceiling on moving OCR
 itself. The stages that already run on a GPU go 4.70x faster there
-(above), and OCR is the larger share of an OCR-enabled run, so the
+(below), and OCR is the larger share of an OCR-enabled run, so the
 plausible gain is a good deal more than 1.79x. Measure it before
 believing any particular number, including this reasoning.
 
-An earlier figure of **2.46x** appears in older documents and in
-`bench/RESULTS.md`. It came from a 16-PDF serial sample and is a
-reasonable estimate of the *serial* cost (measured: 2.08x); it is not the
-cost you will pay on a parallel run.
-
-**It is not free, and this is the part to read twice.** OCR only runs
+**Turning OCR off loses some content.** OCR only runs
 on *bitmap* regions, so what it recovers is text stored in the PDF as an
 image rather than as characters. Turning it off changed the extracted
-text of **8 of those 16 documents**:
+text of **8 of 16 sampled documents**:
 
 - Mostly publisher furniture (`IEEEAccess`, `DTU Library`) and figure
   sub-captions. Losing that is an improvement.
@@ -270,7 +263,7 @@ one run from an empty ledger; all reported 501 parsed, 0 failed:
 > [bench/RESULTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/RESULTS.md).
 > Treat the two as different machine configurations, not as a correction.
 
-- **Scaling holds far better than previously documented.** 97% at 8
+- **Scaling holds well.** 97% at 8
   workers, 89% at 12. The 104% at 4 is not an error: one worker does not
   saturate the threads it is given, so serial is a slightly unfair
   denominator.
@@ -279,9 +272,9 @@ one run from an empty ledger; all reported 501 parsed, 0 failed:
   faster**, available today only by changing that constant.
 - **The curve plateaus from 32 to 48; it does not reverse.** Medians of
   three runs put them 0.9% apart (223.4s vs 221.4s), while the spread
-  *within* the 32-worker configuration alone was 86.8s. An earlier
-  single-run pass had 32 beating 48 and read that as a knee; with repeats
-  the ordering flips. **Anything past ~32 is flat, and single runs cannot
+  *within* the 32-worker configuration alone was 86.8s. A single
+  run can put 32 ahead of 48 and look like a knee; with repeats the
+  ordering flips. **Anything past ~32 is flat, and single runs cannot
   resolve it.**
 - So the useful statement is "the divisor should be much smaller than 4",
   not "it should be 1.5". Any specific value here is arithmetic from
@@ -426,8 +419,8 @@ everywhere, and it is the *same* effect everywhere: a roughly constant
 9.6% of an 8-document run, 2.5% of a 60-document one, well under 1% of
 the full corpus.
 
-**So this does not make a bulk parse meaningfully faster, and was never
-going to.** It helps the case where startup *is* the run: a handful of
+**So this does not make a bulk parse meaningfully faster.** It helps the
+case where startup *is* the run: a handful of
 documents.
 
 ## ⏱ `[parser].document_timeout` -- what a safe value looks like
@@ -453,14 +446,14 @@ Turning it on has two costs:
   `docling_image_scale = 2.0` is roughly 144 DPI, enough to read a figure
   back without storing print-resolution files.
 
-### 🧠 What it no longer costs: memory
+### 🧠 Memory: bounded per document
 
-It also used to cost memory in proportion to *how many figures a
-document has*, because docling retains every crop it produces (as a PIL
-bitmap **and** as a base64 `data:` URI, so roughly 2.3x the PNG bytes per
-picture) and writes them only when `save_as_markdown` runs on the last
-line of the parse. The pipeline no longer asks docling for the bitmaps at
-all: it takes the bounding boxes docling reports anyway, and
+Letting docling produce the figure crops costs memory in proportion to
+*how many figures a document has*, because docling retains every crop
+(as a PIL bitmap **and** as a base64 `data:` URI, so roughly 2.3x the PNG
+bytes per picture) and writes them only when `save_as_markdown` runs at
+the end of the parse. The pipeline does not ask docling for the bitmaps:
+it takes the bounding boxes docling reports anyway, and
 `chitragupta/enrich/_docling_crops.py` renders each one from the PDF with
 pypdfium2, writes it, and releases it before the next.
 
@@ -472,11 +465,11 @@ SysML specification. Peak RSS, one document per process, polled from
 | Document | `docling_images` | Peak RSS | Figure term | Wall |
 | --- | --- | --- | --- | --- |
 | 99-page deck | `false` | 4.12 GiB | -- | 104.6 s |
-| 99-page deck | `true`, **before** | 13.07 GiB | **+8.95 GiB** | 270.0 s |
-| 99-page deck | `true`, **now** | 4.14 GiB | **+0.02 GiB** | **158.9 s** |
+| 99-page deck | `true`, docling crops | 13.07 GiB | **+8.95 GiB** | 270.0 s |
+| 99-page deck | `true`, **pypdfium2 crops** | 4.14 GiB | **+0.02 GiB** | **158.9 s** |
 | 675-page spec | `false` | 4.20 GiB | -- | 82.6 s |
-| 675-page spec | `true`, **before** | 9.13 GiB | +4.93 GiB | 114.1 s |
-| 675-page spec | `true`, **now** | 4.24 GiB | +0.04 GiB | 93.8 s |
+| 675-page spec | `true`, docling crops | 9.13 GiB | +4.93 GiB | 114.1 s |
+| 675-page spec | `true`, **pypdfium2 crops** | 4.24 GiB | +0.04 GiB | 93.8 s |
 
 So **450x less memory for figure extraction on the deck, at 1.70x the
 speed**, for the same 280 files (160.1 MiB of PNG against docling's
@@ -484,16 +477,15 @@ speed**, for the same 280 files (160.1 MiB of PNG against docling's
 `images_scale` in order to crop from it, and rendering only the box skips
 that.
 
-Two consequences follow:
-
-- **`docling_image_scale` stopped being dangerous.** At 6.0 the old path
-  reached **74.31 GiB over 17 minutes and then failed** on docling_core's
+- **`docling_image_scale` is safe to raise.** At 6.0 the docling-crop
+  path reached **74.31 GiB over 17 minutes and then failed** on docling_core's
   own `max_image_decoded_size` guard (exactly 20 MiB per *decoded*
   image), so the document could not be produced at all. The same document
-  at the same scale now costs 4.18 GiB and completes in 439 s. High
+  at the same scale costs 4.18 GiB with pypdfium2 crops and completes in
+  439 s. High
   scales cost CPU, not RAM: 2.0 -> 6.0 moves the figure term from
   +0.02 GiB to +0.06 GiB and the wall clock from 159 s to 439 s.
-- **The figure term no longer depends on the corpus.** It is independent
+- **The figure term does not depend on the corpus.** It is independent
   of document length (99 vs 675 pages), page geometry (4.67 vs
   0.48 Mpt²), scale, and accelerator (4.14 GiB on CPU, 4.08 GiB on
   `cuda:0`). That is what lets `[parser].workers` be sized from CPUs
@@ -504,7 +496,7 @@ including the page-windowed alternative that was measured and rejected.
 
 ## 🗑 `[source_pdfs] dir` -- retired
 
-Nothing left to measure: the enrichment corpus is now the bibliography
+Nothing left to measure: the enrichment corpus is the bibliography
 alone, so there is no second source to deduplicate against. A config file
 still naming the key is ignored. `chitragupta/enrich/corpus.py` has the reasoning,
 and the retired duplicate-check timings stand in `bench/RESULTS.md`.
@@ -520,16 +512,11 @@ Measured end to end on 2026-08-04, rather than extrapolated:
 | 12 workers, 4 GPUs (today's cap) | CPU + GPU | 5m 10s |
 | 32 workers, 4 GPUs (needs the clamp raised) | CPU | **3m 43s** |
 
-**22x with the shipped defaults, 31x with the clamp raised.** Earlier
-editions of this table read `~1.6 h -> ~39 min -> 8.8 min -> 5m26s`; the
-first two were extrapolations that ran low, so the improvement was
-understated.
-
-**22x with the shipped defaults, and the GPU work is the smallest
-contribution.** The largest is a boolean.
+That is **22x with the shipped defaults and 31x with the clamp raised**.
+The GPU work is the smallest contribution; the largest is turning OCR
+off.
 [PARALLELISM.md](PARALLELISM.md) describes the machinery that produces
-these numbers; `bench/RESULTS.md` carries the measurements themselves,
-including the conclusions later ones overturned.
+these numbers; `bench/RESULTS.md` carries the measurements themselves.
 
 ## 🔍 What a review pass costs
 
@@ -578,24 +565,24 @@ parsed words, a 547 MB overlap index.
 
 ### 📐 Two aids set the floor, for different reasons
 
-**A factor of 23 used to separate the cheapest run from the dearest,
-and draft length was not what moved it.** `verbatim`'s tier 3 needs the
+**`verbatim` alone spans a factor of 23, and draft length is not what
+moves it.** `verbatim`'s tier 3 needs the
 `enrich` group, `content/chroma/`, the Docling sidecars, the draft's own
 dossier and a synced ledger, all five
 ([PLAGIARISM.md](PLAGIARISM.md)). Where any is
 missing the scan is **447 ms**; where all are present it is
-**19.7--41.0 s**. That 23x (1,859 ms to 43,793 ms) was the whole
-story before `support` existed.
+**19.7--41.0 s**. Without `support`, that is a 23x spread across the
+rows (1,859 ms to 43,793 ms).
 
 **`support` has no such off switch.** It
 always loads the entailment model and scores every citation, so it
 costs **21.2--62.3 s on every draft measured**, dossier or not. Where
 `verbatim`'s tier 3 cannot run, `support` alone is ~95% of the row
 total; where both run, they split it: 39%/59% on the 10,003-word
-draft. The layer's cheapest-to-dearest spread is now a factor of
+draft. The layer's cheapest-to-dearest spread is a factor of
 **3** (35,323 ms to 106,085 ms), not 23: `support`'s floor is higher
-than `verbatim`'s used to be, so the on/off swing of tier 3 matters
-less than it did.
+than `verbatim`'s off-tier cost, so the on/off swing of tier 3 matters
+less.
 
 **Each of the two tracks a different count.** `verbatim` and
 `provenance` fetch each source once, so their cost tracks *distinct
@@ -670,7 +657,7 @@ to 14.6% at k = 8. Claims scoring 0.995 uncapped came back at 0.138,
 which is a well-supported citation promoted to the top of the review
 agenda as the draft's worst finding.
 
-That rules out #693's proposed fix, lexical pre-ranking, at every k
+That rules out lexical pre-ranking at every k
 measured. It does not rule out a cap in principle: the ranker is what
 failed, and a semantic pre-rank is the candidate it points at. Precision is
 still unmeasured either way, which needs the human ratings issue #757
@@ -693,8 +680,8 @@ invocation pays. `figure` is ~88 ms on a draft with no figures and
 | `provenance` | 32 MB |
 | `synthesis`, `uncited`, `quotation` | 23 MB |
 
-Running the nine concurrently saves little and costs a lot, and now for
-two reasons instead of one: `verbatim` and `support` are each roughly
+Running the nine concurrently saves little and costs a lot, for two
+reasons: `verbatim` and `support` are each roughly
 **1.5 GB** peak RSS, and together they account for nearly all of both
 the wall-clock (on the worst-measured row, 97% between them) and the
 memory, against 20--73 MB for each of the other seven. Eight aids in
@@ -713,10 +700,12 @@ only to a caller running the whole layer repeatedly.
 
 ### ⚠ Three figures to read carefully
 
-- **`quotation`'s ~90 ms is unmeasured, not cheap.** No dossier on this
-  host carries a `quote:` line, so its input universe is empty on every
-  real draft. That row is the cost of finding no work. Re-measure it if
-  the claim/quote contract is adopted.
+- **`quotation`'s ~90 ms is unmeasured, not cheap.** When these rows
+  were taken, no dossier on this host carried a `quote:` line, so its
+  input universe was empty on every draft. That row is the cost of
+  finding no work. The skills write `quote:` lines when a quotation is
+  warranted, so this figure needs re-measuring on a draft that has
+  them.
 - **Tier 3 is not cached, and that is deliberate.**
   [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) explains why: the
   enrichment layer's chunk cache does not cover this tier's ~20-word
@@ -800,27 +789,19 @@ neither configuration has a measured rate.
 artifact by artifact, and `bench/RESULTS.md`'s 2026-08-07 section has the
 measurement. Both are stated once, there.
 
-Two corrections to figures that once stood in this document, kept
-because the retracted versions were quoted elsewhere. The earlier "6
-files differ, under 0.06%" understated the effect by counting bytes
-rather than passages. And "repeating a run at the same worker count
-reproduces exactly" is **false**: 5 of 572 same-configuration
-comparisons differ in bytes, and 2 in passage text.
+Repeating a run at the same worker count does **not** reproduce
+exactly: 5 of 572 same-configuration comparisons differ in bytes, and 2
+in passage text. Count differing passages, not bytes, when comparing
+runs.
 
 ### 🎲 Why there is no reproducibility *rate* here, only an order of magnitude
 
-This was reported as a defect and is not one. #695 recorded that
-multi-GPU non-determinism had risen roughly five-fold (0.33% to 1.67%
-same-configuration, 0.67% to 2.33% across configurations) and asked
-which of two changes on the host caused it.
-
-**Neither, as far as anyone can tell: the comparison was one pair of
-runs against one pair of runs.** Every reproducibility record before
-2026-09-08 was taken at `--repeat 2`, which yields exactly **one**
-same-configuration pair per GPU count. Run at `--repeat 5` instead,
+A single pair of runs cannot tell two rates apart. `--repeat 2` yields
+exactly **one** same-configuration pair per GPU count. At `--repeat 5`,
 eight pairs at a *single fixed* configuration returned **0, 1, 3, 4, 4,
-4, 5 and 6** differing documents of 300. Both of #695's figures sit
-inside that spread, so the difference between them is consistent with
+4, 5 and 6** differing documents of 300 (2026-09-08). An apparent
+five-fold rise between two single-pair records (0.33% to 1.67%
+same-configuration) sits inside that spread, so it is consistent with
 nothing having changed at all.
 
 That is a fact about the measurement rather than about docling, and it
@@ -828,6 +809,6 @@ generalises to every percentage on this page's reproducibility rows:
 read them as orders of magnitude ("about one document in a hundred,
 more with more GPUs"), not as figures to compare against each
 other. Establishing that a rate has moved needs several pairs
-per arm on both sides of the change, which no record before 2026-09-08
-has. `bench/RESULTS.md`'s "2026-09-08b (B2d)" section has the pair
-counts, and its "Power, stated plainly" section now carries the rule.
+per arm on both sides of the change. `bench/RESULTS.md`'s
+"2026-09-08b (B2d)" section has the pair counts, and its "Power, stated
+plainly" section carries the rule.

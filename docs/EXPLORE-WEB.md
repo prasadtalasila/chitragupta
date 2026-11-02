@@ -1,6 +1,7 @@
 # 🕸 Explore the Graph — Web
 
-Status: **guide.** Written 2026-09-07.
+Status: **how-to.**
+
 [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) is the reference for how every
 number here is computed; [EXPLORE-CLI.md](EXPLORE-CLI.md) is this
 page's terminal twin, and every view below names the command that
@@ -29,9 +30,9 @@ moved on. Nothing you do in the app writes anything back.
 
 ## ⚖ What the pipeline computes, and what the app computes
 
-The app used to derive its analytics in the browser; today almost all
-of them are computed once, in Python, by the `topic-graph` enrichment
-stage (networkx and scipy over data the stage already holds) and stored
+Almost all of the app's analytics are computed once, in Python, by the
+`topic-graph` enrichment stage (networkx and scipy over data the stage
+already holds) and stored
 in `content/topic_graph.json`, which both the app and the terminal
 read. This is why the two surfaces agree to the digit. Any number
 either one shows is in the artefact, and shared case files under
@@ -77,10 +78,10 @@ live view and not of the corpus:**
   cytoscape's `cose`), which was weighed for precomputation and
   deliberately left in the app because coordinates are presentation,
   not a corpus claim;
-- fallbacks: an exported app from an artefact that predates a stored
-  field computes that field in the browser exactly as it always did,
-  pinned to the pipeline by the same case files, and its panel captions
-  say which of the two it is showing.
+- fallbacks: an app exported from an artefact that lacks a stored
+  field computes that field in the browser, pinned to the pipeline by
+  the same case files, and its panel captions say which of the two it
+  is showing.
 
 ## 🗺 The grouped opening view
 
@@ -94,9 +95,9 @@ boxes are bundles, one per group pair per family: solid for shared
 papers, dashed for semantic nearness, and never fused. Click a box to
 list what is in it; double-click to open just that one in place.
 
-The sidebar's collapsed "Uncovered seeds" panel lists the seed phrases
-no topic covers (the same `uncovered` list the terminal's topic map
-reports) and hides itself when every seed found a home.
+The sidebar's collapsed "Uncovered seeds" panel lists the `uncovered`
+list the terminal's topic map reports: the citekeys of papers that no
+topic holds. It hides itself when every paper is in some topic.
 
 **Terminal:** `chitragupta corpus discover`, and `--groups 8` prints
 this very cut.
@@ -177,13 +178,11 @@ papers and reports that the overlap is what chance predicts, so no
 edge was drawn](images/discovery/absence.png)
 
 *Real corpus, "model-driven engineering" and "physical twin" pinned.*
-This is the most instructive answer the app gives. These two topics
-share twelve papers and still have no overlap edge, because sharing
+These two topics share twelve papers and still have no overlap edge, because sharing
 twelve papers between topics of size 58 and 56 in a 497-paper corpus is
 what chance predicts (p = 0.02), and the hypergeometric gate refuses
 edges chance explains. The app reads the refusal the pipeline stored
 (`edges_withheld`, beside the edges it drew) and says it in words.
-Nothing else in any view shows the gate's reasoning.
 
 **Terminal:** `chitragupta corpus discover --why "A" "B"`, which also
 prints the one number the app cannot show, the gate's stored threshold.
@@ -269,9 +268,7 @@ hop walk, which is the part that matters. The rings are hop distance
 from what you pinned, so with semantic nearness off the second ring
 means "two shared papers out" instead of "two hops over whichever family
 got there first", and a topic reached by one shared paper followed by
-one cosine hop is not on it at all. The terminal has always answered
-that question per family; the app could not ask it before this control,
-which exists for that comparison.
+one cosine hop is not on it at all.
 
 Ring 1 is still split by which family reached each neighbour, over the
 families you have on rather than over the payload's. Past one hop
@@ -282,7 +279,7 @@ the last origin class.
 
 The path buttons follow the picker: the button for a family you have
 switched off is hidden, and a path already on screen over that family is
-withdrawn instead of left describing lines no longer drawn. The
+withdrawn instead of left describing lines that are not drawn. The
 corpus's own arithmetic does not move: the panel's per-family brokerage
 figures, the absence verdict and the withheld-edge counts stay
 corpus-wide, because they are statements about the corpus and not about
@@ -291,11 +288,8 @@ your view of it, and the caption in the header says so.
 **Terminal:** `chitragupta corpus discover TOPIC --hops N --family
 overlap|semantic` asks the same question of the same walk, printing the
 rings as text over one family. `--path A B --family F` walks a chain
-over one
-family and `--clusters` reports the two partitions separately; both
-predate this control, while `--family` on `--hops` landed with it,
-because until then the terminal measured hop distance over the union
-too.
+over one family, and `--clusters` reports the two partitions
+separately.
 
 ## 📷 How the screenshots were made
 

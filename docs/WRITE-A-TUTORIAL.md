@@ -1,6 +1,6 @@
 # 🧪 Write a tutorial, start to finish
 
-Status: **tutorial.** Written 2026-09-15.
+Status: **tutorial.**
 
 **Written for** anyone who wants a hands-on lesson (a lab exercise, a
 getting-started walkthrough, a "build X to learn Y") that a learner
@@ -92,9 +92,8 @@ One sentence, naming a thing that visibly works:
 > "A running digital twin of a water tank that prints the estimated level
 > once a second and reacts when you change the inflow."
 
-Not "an understanding of digital twins". If you cannot name it in a
-sentence, the lesson is not scoped yet, and everything downstream will
-wander.
+"An understanding of digital twins" does not count. If you cannot name
+the thing in a sentence, the lesson is not scoped yet.
 
 Then decide the slug:
 
@@ -104,8 +103,8 @@ Then decide the slug:
 | a lesson beside other genres on one topic | `dt/tutorial` |
 | a standalone walkthrough | `first-twin` |
 
-And be honest about how long it takes. A tutorial should be completable
-in one sitting; if your path is three hours, cut it into two lessons now,
+Estimate how long it takes. A tutorial should be completable in one
+sitting; if your path is three hours, cut it into two lessons now,
 before a class has failed to finish it.
 
 ## 🗂 Step 2: open the dossier
@@ -280,7 +279,9 @@ What it does: a task analysis (walking the whole path first, writing down
 every command and decision, including the ones an expert does without
 noticing, which are the ones a lesson omits and a learner fails on), the
 front matter, the steps, the ending, and a "Where to go next"
-that is the only place it may cite.
+that is the only place it may cite. Where a step reads more clearly as a
+diagram, it hands the drawing to `figure-drawer`, which writes the TikZ
+file and its ASCII twin ([FIGURE-DRAWER.md](FIGURE-DRAWER.md)).
 
 ## 🏃 Step 5: the run-it step, which is not optional
 
@@ -328,14 +329,17 @@ chitragupta draft dossier stamp content/drafts/labs/first-twin.md
 
 ## 🔍 Step 7: read the review aids
 
+`--write` files the scan's report under `content/review/labs/` for the
+agenda below to read.
+
 ```bash
 chitragupta draft style content/drafts/labs/first-twin.md
-chitragupta review verbatim scan content/drafts/labs/first-twin.md
+chitragupta review verbatim scan content/drafts/labs/first-twin.md --write
 ```
 
 | Aid | Reads for | Why it matters in a lesson |
 | --- | --- | --- |
-| `draft style` | defect markers, an acronym never expanded at first use, dialect | **the most useful one here.** An unexpanded acronym mid-task stops a learner who cannot look it up without losing their place |
+| `draft style` | defect markers, an acronym never expanded at first use, dialect, wide code lines, and table, figure and equation ids and references | **the most useful one here.** An unexpanded acronym mid-task stops a learner who cannot look it up without losing their place |
 | `review verbatim` | wording shared with any parsed source | a lesson quoting a source's prose reads as borrowed rather than taught |
 
 A long code block can also be reported as a wide line by the typesetting
@@ -345,41 +349,47 @@ is still worth shortening.
 
 ### The agenda: all of them as one worklist
 
-[AGENDA.md](AGENDA.md) explains every section of an agenda file in
-full; what follows is the short version for this genre.
-
 ```bash
 chitragupta review agenda content/drafts/labs/first-twin.md
 ```
 
-It **reads the aids' filed JSON and never runs an aid**, so run them
-first with `--write`. Items are `[unattended]` (safe to repair
-automatically) or `[surfaced]` (yours to judge).
+The agenda merges the reports the aids above filed into one ranked
+worklist. It never runs an aid itself, and it names any aid whose report
+is absent. [AGENDA.md](AGENDA.md) explains every section of the file;
+[WRITE-A-SURVEY.md's step 7](WRITE-A-SURVEY.md#the-agenda-all-of-them-as-one-worklist)
+covers the `[unattended]`/`[surfaced]` classes, `--baseline` and
+`--accept`. What follows is the part specific to a tutorial.
 
 A tutorial that cites only in its closing section produces the shortest
-agenda of any genre:
+agenda of any genre (the fixed "How to read this" paragraph is left
+out):
 
 ```markdown
 # Agenda: content/drafts/labs/first-twin.md
 
 > **Review aid, not a gate.** This report is evidence for a human
-> judgement, never a verdict. No draft is blocked by what it says.
+> judgement, never a verdict. A driver may read it back; no draft is
+> blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's
+> "Layer 4: the review layer".
 
 - Draft: `content/drafts/labs/first-twin.md`
 - Command: `chitragupta review agenda content/drafts/labs/first-twin.md`
+- chitragupta 6.155.0
 
 ## Sources
 
-- Citation provenance: read
+- Citation provenance: not run
 - Verbatim scan: read
 - Citation coverage: not run
 - Multi-source synthesis: not run
 - TikZ layout check: not run
-- Uncited prose: read
+- Uncited prose: not run
 - Quotation integrity: not run
 - Claim support: not run
 - Prose (style_check): read
 - Dossier drift: read
+- Recorded-but-uncited citekeys: read
+- Accepted items: none recorded for this draft
 
 ## Summary
 
@@ -389,23 +399,25 @@ agenda of any genre:
 
 ### prose
 
-- `5a8bf91ec244` [surfaced] (Step 1 -- Get the simulator running):
-  chitragupta.WideCodeLine: 'python -m tanksim --seed 42 --rate 1 --noise'
-- `c14d0b7e9a33` [unattended] (Step 3 -- Add the estimate):
-  chitragupta.AcronymNotExpanded: 'RMS' used before first expansion
+- `5a8bf91ec244` [surfaced] (Step 1 -- Install and check):
+  chitragupta.WideCodeLine: 'python -m tanksim --seed 42 --rate 1 --noise' (1x)
+- `c14d0b7e9a33` [unattended] (Step 4 -- Watch it correct itself):
+  chitragupta.Acronyms: 'RMS' (1x)
 ```
 
 The wide line is `[surfaced]`: its rule leaves the call to you, because a long
 line may be deliberate in a block verified to run. It is one a learner has to
 type, so shortening it is worth doing even though the render would wrap it.
-The acronym is `[unattended]`. The unexpanded acronym is the finding this
+The acronym is `[unattended]`: ask to "work the review agenda" and
+`agenda-reviser` repairs it, re-running the gate afterwards and logging
+the attempt in `revisions.md`. The unexpanded acronym is the finding this
 genre should take most seriously, because a learner three steps into a lesson
 cannot pause to look one up.
 
-Several aids read `not run` here, and that is correct rather than a gap:
-a lesson with no claims has nothing for claim support to score, and one
-with no figures has nothing for the TikZ check to measure. The agenda
-names them as absent rather than pretending they passed.
+Most aids read `not run` here, which is expected: a lesson with no
+claims has nothing for claim support to score, and one with no figures
+has nothing for the TikZ check to measure. The agenda names them as
+absent, so none of them reads as passed.
 
 ## 📝 Step 8: change something
 
@@ -415,7 +427,8 @@ Never re-run the genre skill. Ask for a revision:
 > step 2 and re-check that the lesson runs from a clean container.
 
 That selects `draft-reviser`, which reads the dossier, including the
-rejected paths, and edits only what is affected.
+rejected paths, and edits only what is affected. A request to redraw or
+fix a figure goes to `figure-drawer` the same way.
 
 After a hand edit:
 

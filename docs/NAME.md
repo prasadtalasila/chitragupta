@@ -1,6 +1,6 @@
 # 🏷 Chitragupta
 
-Status: **reference.** Written 2026-08-05. Updated 2026-08-23.
+Status: **reference.**
 
 A divine record keeper who keeps the ledger of deeds and audits souls against it.
 
@@ -18,8 +18,9 @@ whom all the records reside, kept safe."
 
 ## 💡 Why the name fits this project
 
-This pipeline turns a curated BibTeX bibliography into grounded survey
-papers, thesis chapters, and tutorial chapters, with every citation
+This pipeline turns a curated BibTeX bibliography into grounded surveys,
+thesis chapters, textbook chapters, tutorials, deep-research reports
+and books, with every citation
 mechanically verified against a ledger of real, parsed PDFs. Its one
 hard invariant is that a citekey is never fabricated. The
 correspondence with Chitragupta holds point for point:
@@ -40,9 +41,8 @@ correspondence with Chitragupta holds point for point:
 
 3. **Judgment happens against the record.** In Yama's court, claims
    about a life are checked against the book, and the book wins. That
-   is `citation gate` exactly: a draft's claims are checked against
-   the ledger at the moment of reckoning, and a `FAIL` is final. It is a
-   gate, not a suggestion.
+   is `draft gate` exactly: a draft's claims are checked against
+   the ledger at the moment of reckoning, and a `FAIL` is final.
 
 4. **The audit is incorruptible, not well-intentioned.** Chitragupta
    is characterized as impartial: the record cannot be argued with or

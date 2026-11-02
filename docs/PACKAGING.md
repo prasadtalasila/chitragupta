@@ -1,6 +1,6 @@
 # 📦 Packaging: the installable distribution and its command surface
 
-Status: **reference.** Written 2026-08-19. Updated 2026-10-01.
+Status: **reference.**
 
 What `chitragupta-cli` installs, what you type once it is installed, and
 which of the three names that look identical is registered anywhere.
@@ -12,18 +12,11 @@ about to change a command name.
 exhaustive per-flag reference and stays so; this file covers the surface
 and the naming.
 
-> **Status of this document.** The distribution is real as of 6.0.0, and
-> the packaging series has now landed in full: the import package is
-> `chitragupta`, `pyproject.toml` declares a `[build-system]`, and
-> `poetry build` produces `chitragupta_cli-<version>-py3-none-any.whl`,
-> which installs the `chitragupta` and `cg` commands. Every row in the
-> table below is live, the four layers and `init`/`doctor`/`install`/`figure`
-> alike. `chitragupta-cli` is published to PyPI via Trusted Publishing on
-> every major or minor release. A PATCH release still gets a GitHub
-> Release with the wheel attached but does not reach PyPI, since a
-> published version can never be reused if one had to be spent again for
-> a documentation or CI-only fix. [CLI.md](CLI.md) carries the exhaustive
-> per-flag reference; this table is the surface.
+The import package is `chitragupta`, `pyproject.toml` declares a
+`[build-system]`, and `poetry build` produces
+`chitragupta_cli-<version>-py3-none-any.whl`, which installs the
+`chitragupta` and `cg` commands. A major or minor release is published
+to PyPI; a PATCH release gets a GitHub Release only (see below).
 
 ## 🧭 Table of contents
 
@@ -67,9 +60,7 @@ for a tag ending `.0` (X.0.0 or X.Y.0); a PATCH tag still gets a GitHub
 Release with the wheel attached, just not a PyPI upload. The publish job
 runs *after* the GitHub Release is created, so a PyPI failure would
 leave a complete, downloadable release behind rather than a tag with
-nothing attached. That ordering mattered on the first tag, `v6.7.0`,
-before the publisher was registered on PyPI against this repository;
-every major or minor tag since has published cleanly.
+nothing attached.
 
 `cg` is likewise **not** a second PyPI project. One distribution declares
 both executables against one entry point:
@@ -91,7 +82,7 @@ name is the failure class
 
 ## ⌨ The command surface
 
-Four layers, unchanged from what `python -m chitragupta.<layer>` already
+Four layers, the same ones `python -m chitragupta.<layer>`
 exposes, plus commands that only make sense once the code is
 installed rather than cloned. Every flag, exit code and subcommand name is
 the one that command already has; the console script adds a front door
@@ -105,7 +96,7 @@ and redesigns nothing.
 | `chitragupta doctor` | Probe and report: OS binaries, the `enrich` extra, torch against the GPU driver, a competing `chitragupta` distribution, a hook launcher on any harness that cannot start. Exits 0 on findings; an aid, never a gate |
 | `chitragupta install os-deps\|gpu-torch\|enrich` | Run the shipped `install_full_pipeline.sh` for the stages pip cannot do, or install the `enrich` extra at the running version. `all`, `dev-deps` and `python-deps` are refused by name with the pip equivalent |
 | `chitragupta figure sync [PATH ...] [--check]` | Stamp the house figure-style block into each figure file that lacks it and refresh a stale one, never touching a block edited by hand ([TIKZ-STYLE.md](TIKZ-STYLE.md#-the-house-figure-style)). Exits 0 on findings; `--check` writes nothing and exits 1 if any file is not current; 2 if the installed block cannot be read |
-| `chitragupta figure check <figure.tex> [--width PT] [--layout NAME] [--json]` | Report every rule one figure file breaks, by rule id, the deliberate exceptions it records as `% cg-allow:` lines, and its size beside its layout's reference ranges ([TIKZ-STYLE.md](TIKZ-STYLE.md#-the-rules-figure-check-reports)). Exits 0 whatever it finds; 2 on a usage error or with no `lualatex` or `tikz.sty` |
+| `chitragupta figure check <figure.tex> [--width PT] [--layout NAME] [--json]` | Report every rule one figure file breaks, by rule id, the deliberate exceptions it records as `% cg-allow:` lines, and its size beside its layout's reference ranges ([figure-checks/README.md](figure-checks/README.md)). Exits 0 whatever it finds; 2 on a usage error or with no `lualatex` or `tikz.sty` |
 | `chitragupta figure new <figures-dir> <name> --layout ID` | Start a figure from a layout's scaffold in `assets/tikz/`, its `% cg-layout:` line kept and its house block synced, never overwriting a figure ([CLI.md](CLI.md#-chitragupta-figure-new)). Exits 0 once written; 2 on a refusal or an unreadable install |
 | `chitragupta figure look <figure.tex> [--draft DRAFT]` | Set one figure on the render's own page, cropped to it, as a PDF and a 300 dpi PNG under `content/rendered/`; with `--draft`, also render the draft and picture the page that holds the figure ([CLI.md](CLI.md#-chitragupta-figure-look)). Exits 0 whatever it finds; 2 on an unreadable figure or with no `lualatex`, `tikz.sty` or `pdftoppm` (or `pandoc`, with `--draft`) |
 | `chitragupta --version` | The installed distribution's version, from `importlib.metadata` |
@@ -164,14 +155,13 @@ package-level commands, giving **62 invocable leaf commands**: 7 + 4 +
 extend and easy to forget to extend; a test pins them by walking the
 live parsers, so a verb added without a row here fails the suite.
 
-One thing is deliberately absent. `chitragupta/sync.py` still carries a
+One thing is deliberately absent. `chitragupta/sync.py` carries a
 `__main__` block, which makes it look like a fifth entry point; it is a
-**tombstone**, refusing with exit 64 because the corpus layer's old
-direct invocation was removed in 5.2.0. After the rename it must keep
-refusing, with its message updated to name the current command. This
-paragraph deliberately does not spell that old invocation out:
+**tombstone** that refuses with exit 64 and names the current command
+(`chitragupta corpus sync`). This paragraph deliberately does not spell
+the refused invocation out:
 `tests/test_removed_command_scan.py` fails any document that hands a
-reader a command which no longer works, and it decides by path rather
+reader a command that does not work, and it decides by path rather
 than by reading the surrounding sentence.
 
 ---
@@ -222,20 +212,14 @@ interpreter runs it, so nothing above changes.
 
 ## ⚖ What the decision answers
 
-`pyproject.toml` used to say packaging was "a separate, larger decision
-this project explicitly isn't making", and pointed at a **packaging
-pros/cons write-up that never existed**. Searched before this file was
-written: every tracked `.md`, git history including deleted paths, all
-6,537 issue comments and every PR review comment, and
-[TECHNICAL-DEBT.md](TECHNICAL-DEBT.md)'s "What is not debt" table. The
-reasoning only ever existed as a conversation. This section is the
-artefact it should have been, written as the objections rather than as a
-conclusion because three of them survive.
+Making this a published package answered a set of objections. They are
+written down as objections rather than as a conclusion because three of
+them survive.
 
 | The objection | Where it was written | What happened to it |
 | --- | --- | --- |
 | Needs renaming the `src` layout | `pyproject.toml` header | **Retired by doing it.** A top-level `src` in `site-packages` claims the most generic name on the index; it is unshippable at any price |
-| "Don't add a second install path" | `DEVELOPER-AGENTS.md` (git checkout only) | **Survives as an invariant, not as a mechanism.** The goal was one place a dependency fact can be written. There are now two front doors to one `install_full_pipeline.sh` and one `pyproject.toml` |
+| "Don't add a second install path" | `DEVELOPER-AGENTS.md` (git checkout only) | **Survives as an invariant, not as a mechanism.** The goal is one place a dependency fact can be written; `DEVELOPER-AGENTS.md` describes the two front doors onto it |
 | Tier 1 must not be blockable by a broken venv | [CLI.md](CLI.md#-which-interpreter) | **Retired by keeping the module form** (see above). The hooks never move to the console script |
 | pip cannot pick a wheel index from the GPU driver | `pyproject.toml`'s torch note | **Survives, reduced.** `pip install …[enrich]` still lands CPU-only torch on a CUDA host. `chitragupta doctor` detects it and `chitragupta install gpu-torch` fixes it, but neither is automatic |
 | Command names can be renamed freely because nothing external holds them | the PR that shipped an early rename | **Survives, sharpened**: see [the last section](#-what-a-shipped-command-name-costs) |
@@ -250,27 +234,23 @@ a new root-level file ships unless someone excludes it. `chitragupta
 init` is an **allowlist**: a new root-level file is *not* scaffolded
 unless someone adds it.
 
-Two lists that must agree drift, and this repository has already had that
-bug once (a root-level CI file entered the archive silently and was caught
-by review rather than by a check). So the two are pinned against each
-other by a test. The deliberate differences (`bench/`, `tests/`,
+Two lists that must agree drift: a new root-level CI file would enter
+the archive silently. So the two are pinned against each other by a
+test. The deliberate differences (`bench/`, `tests/`,
 `.github/`, and the CI config that is actively wrong outside this
 repository) are held in one named set that both sides read.
 
 ## ⚡ What a shipped command name costs
 
-Until this package ships, renaming a command is nearly free: the strings
-live only in this repository's own docs, skills and tests, so a rename is
-a sweep plus a migration-table row. That freedom has been spent twice:
-`chitragupta.heavy.*` abandoned in 3.0.0, and the flat provenance/coverage
-paths folded into `chitragupta.review` in 5.0.0.
-
-An installed console script ends that freedom. After `chitragupta` exists in users'
-`bin/`, the name also lives in shell scripts, Makefiles, CI configs, cron
+Before a package ships, renaming a command is nearly free: the strings
+live only in the repository's own docs, skills and tests, so a rename is
+a sweep. A published console script ends that freedom. Once
+`chitragupta` exists in users' `bin/`, the name also lives in shell
+scripts, Makefiles, CI configs, cron
 jobs and muscle memory, places `git grep` cannot reach. A verb rename
 becomes a MAJOR bump with a deprecation window, and breaks somebody's
 setup anyway.
 
-The verb vocabulary was chosen once and argued for at the time
+The verb vocabulary was chosen once and argued for
 (`chitragupta/draft.py`'s own docstring sets out why `retrieve` rather
-than `retrieval`). From the first published release it is permanent.
+than `retrieval`), and it is permanent.

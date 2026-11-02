@@ -12,13 +12,14 @@
 
 <p align="center">
 <b>Turns a BibTeX bibliography into grounded survey papers, thesis chapters,
-undergraduate textbook chapters and hands-on tutorials</b>, with every citation
+undergraduate textbook chapters, hands-on tutorials, deep-research reports
+and books</b>, with every citation
 traceable back to a paper the bibliography actually holds.
 </p>
 
 <p align="center">
 Named for the Hindu god who keeps the ledger of every deed and audits souls
-against it -- which is what this does to citations.
+against it. This does the same to citations.
 <!-- Absolute on purpose. This is a raw HTML anchor inside a centred block,
      and MkDocs only rewrites Markdown links, so a relative `docs/NAME.md`
      here resolves on GitHub and 404s on the docs site. Making it a Markdown
@@ -32,7 +33,7 @@ against it -- which is what this does to citations.
 <p align="center">
 <img src="docs/images/demo.svg" alt="Animated terminal recording: syncing
 the corpus, discovering its topics, reading a gate-passed draft and its
-dossier, and running the review agenda -- against the committed sample
+dossier, and running the review agenda, against the committed sample
 project." width="760">
 </p>
 
@@ -44,8 +45,8 @@ and neighbours" width="380"></a>
 <br>
 <sub>The recording above is the terminal half only; <a
 href="https://github.com/prasadtalasila/chitragupta/blob/main/docs/DEMO.md"
->docs/DEMO.md</a> has the full recording -- including
-the browser segment pictured here -- as video and GIF.</sub>
+>docs/DEMO.md</a> has the full recording, including
+the browser segment pictured here, as video and GIF.</sub>
 </p>
 
 ---
@@ -149,11 +150,11 @@ its advisory checks:
   instead of a re-run, and is why "shorten section 3" three weeks
   later costs an edit instead of a rebuild
   ([docs/DOSSIER.md](docs/DOSSIER.md)).
-- **The review layer** is ten advisory aids for a finished draft:
+- **The review layer** is eleven advisory aids for a finished draft:
   does the cited paper say this (provenance), how much wording came
   from the sources (verbatim), what did retrieval surface that you
-  never cited (coverage), and seven more, merged into one ranked
-  worklist (agenda). None of them is a gate, and none may be promoted
+  never cited (coverage), and seven more, with `agenda` merging their
+  findings into one ranked worklist. None of them is a gate, and none may be promoted
   to one. Each is measured against something that can itself be
   imperfect (a parse, a retrieval ranking), and a check like that must
   inform you instead of blocking you ([docs/REVIEW.md](docs/REVIEW.md)).
@@ -372,6 +373,7 @@ one-screen router for that.
 | [docs/ZOTERO.md](docs/ZOTERO.md) | How do I get my library and its PDFs into the shape this expects? Includes the attachment-path trap that silently leaves every entry without a PDF |
 | [docs/GENRE.md](docs/GENRE.md) | Which of the eleven skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
 | [docs/FIGURE-DRAWER.md](docs/FIGURE-DRAWER.md) | How do I get a figure into a draft? What to ask for, what the `figure-drawer` skill writes, a worked example, and what to do when a figure breaks the PDF |
+| [docs/figure-checks/README.md](docs/figure-checks/README.md) | What does a `figure check` finding mean, and how do I fix it? Every rule in one sentence, then a page per family with a faulty and a fixed figure for each |
 | [docs/VERBATIM-DIGEST.md](docs/VERBATIM-DIGEST.md) | How do I get the papers' own words on a topic into one private study file, and how do I know which sentences in it are not the papers'? The `review-digest` skill and the `review digest` aid |
 | [docs/WRITING-PROCESS.md](docs/WRITING-PROCESS.md) | How do I go from a bare corpus to a finished draft, or a whole book, in order? The step-by-step walkthrough tying the rest of this table together |
 | [docs/CLI.md](docs/CLI.md) | What commands are there, what flags does each take, and which interpreter does it need? |
@@ -387,7 +389,7 @@ one-screen router for that.
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | What runs, what does each part write, which parts are optional, and why do some commands need the venv? |
 | [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | The workflow drawn thirteen ways: six by depth, three by genre, two in an appendix, two for topic discovery. Pick the one that matches what you already know |
 | [docs/LADDERS.md](docs/LADDERS.md) | Where does the pipeline choose between two ways of doing one job? Every ladder it walks for you and every tier you pick yourself, and what the bottom rung costs |
-| [docs/RETRIEVAL.md](docs/RETRIEVAL.md) | BM25, embeddings, topic models -- which one answers my question, and which is worth building? |
+| [docs/RETRIEVAL.md](docs/RETRIEVAL.md) | BM25, embeddings, topic models: which one answers my question, and which is worth building? |
 | [docs/DRAFT-ITERATION.md](docs/DRAFT-ITERATION.md) | What does a draft's dossier hold, and how do I change a draft weeks later without re-running the pipeline that produced it? |
 | [docs/USER-EDITS.md](docs/USER-EDITS.md) | I edited a draft myself, by hand. How do I hand it back so the pipeline picks the edit up cleanly, and what does it check for when I do? |
 | [docs/PROMPTS.md](docs/PROMPTS.md) | What does the prompt sent to the model contain, layer by layer, for a single-context genre skill and for the multi-agent `deep-research` skill, and why don't the two look the same? |
@@ -421,7 +423,7 @@ one-screen router for that.
 | [docs/TLDR.md](docs/TLDR.md) | What does `chitragupta draft tldr` cache today, and (**parked, not built**) what would it take to generate it unattended: the two-path design, what was measured on the real corpus, and why it's waiting on an acceptance workflow that doesn't exist yet? |
 | [docs/AUTO-IMPROVEMENT.md](docs/AUTO-IMPROVEMENT.md) | **Built, one step declined.** The pipeline assembles its own worklist (`review agenda`) and `agenda-reviser` attempts the mechanical repairs: what was built, and what it has to satisfy. Normative, and carries no argument |
 | [docs/AUTO-IMPROVEMENT-RATIONALE.md](docs/AUTO-IMPROVEMENT-RATIONALE.md) | Why that loop, and where its line falls: why every quality signal here currently ends in prose a human must act on, what a machine may never repair, and the one documented rule this cannot satisfy without the user's approval |
-| [docs/FIGURE-ROADMAP.md](docs/FIGURE-ROADMAP.md) | **Discussion notes, partly implemented** (the house style block, `figure sync`, `figure check`, exemplars). Where figure quality stands today, the gap between the current layout metaphors and what a CS/SE textbook needs, figure-drawer v3 (Part XII), and a build order for closing it |
+| [docs/FIGURE-ROADMAP.md](docs/FIGURE-ROADMAP.md) | **Proposal.** What has shipped for figures, the figure work still open, and the order to build it in |
 | [docs/HOUSE-STYLE.md](docs/HOUSE-STYLE.md) | Why prose is the axis a machine improves *best*, why a readability score is the wrong target, and which of your preferences should outlive the draft that prompted them |
 | `DEVELOPER.md` (git checkout only; `chitragupta init` deliberately does not scaffold it) | How do I run the tests, where does everything live, and what is unbuilt? |
 | `DOCKER-DEVELOPER.md` (git checkout only) | How are the Docker images themselves built and verified before a release? |
@@ -431,8 +433,9 @@ one-screen router for that.
 | [docs/EXPORT-ZOTERO-GROUPS.md](docs/EXPORT-ZOTERO-GROUPS.md) | **Discouraged, and says so.** How the one script that reads `zotero.sqlite` directly recovers collection labels when Better BibTeX cannot, which two project rules it bends to do it, and why you should use Better BibTeX instead |
 
 Every prose document ships in the release archive (everything under
-`docs/`, plus `SOUL.md`, `CLAUDE.md`, `AGENTS.md`, `DEVELOPER-AGENTS.md`
-and `DEVELOPER.md`), as do the genre skills in `.claude/`, `.agents/` and
+`docs/`, plus `README.md`, `SOUL.md`, `CLAUDE.md`, `AGENTS.md`,
+`DEVELOPER-AGENTS.md`, `DEVELOPER.md`, `DOCKER.md` and
+`DOCKER-DEVELOPER.md`), as do the genre skills in `.claude/`, `.agents/` and
 `.opencode/`. Only this repo's own machinery stays behind: `tests/`,
 `bench/` (the measurement harness and its raw timings), `plans/`,
 `.github/`, `.gitignore` and a few root-level CI and tooling files.

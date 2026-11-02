@@ -1,7 +1,6 @@
 # ✨ Features
 
-Status: **reference.** Written 2026-08-22. Updated 2026-10-09,
-describing the pipeline as it stands at 6.139.
+Status: **reference.**
 
 **Written for** you: someone who writes technical documents (a
 survey, a thesis chapter, a textbook, a report) and is deciding whether
@@ -46,8 +45,8 @@ Every feature in this document exists to support one sentence:
 > *and* was picked up into the ledger by a real parse of a real PDF.**
 
 Fabricated placeholder references have reached real published papers.
-This pipeline is built to make that impossible, not merely unlikely, and
-the guarantee rests on its shape:
+This pipeline is built so that it cannot happen here, and the guarantee
+rests on its shape:
 
 ```mermaid
 flowchart LR
@@ -68,8 +67,7 @@ flowchart LR
   style OUT fill:#dcfce7,stroke:#15803d
 ```
 
-Two properties do all the work, and both are built into the structure
-rather than left to care:
+Two structural properties carry the guarantee:
 
 - **One entrance.** Citekeys come from your reference manager's export,
   read by exactly one module (`chitragupta/bib_reader.py`). Nothing in
@@ -98,10 +96,10 @@ it.
 flowchart TB
   L1["<b>Layer 1 · Corpus</b> — deterministic, safe unattended<br/><small>sync · ledger · topics · discover</small>"]:::f
   L3["<b>Layer 3 · Enrichment</b> — optional, extends the corpus<br/><small>docling · embeddings · topic model · seed topics · topic graph</small>"]:::o
-  L2["<b>Layer 2 · Drafting</b> — generative, you review it<br/><small>10 skills · dossier · retrieval · references · evidence · render · style · book pipeline</small>"]:::f
+  L2["<b>Layer 2 · Drafting</b> — generative, you review it<br/><small>11 skills · dossier · retrieval · references · evidence · render · style · book pipeline</small>"]:::f
   GATE{{"<b>chitragupta draft gate</b><br/><small>this layer's only exit</small>"}}:::g
   OUT["rendered document"]:::out
-  L4["<b>Layer 4 · Review</b> — advisory, never a gate<br/><small>10 aids, each exits 0 whatever it finds</small>"]:::f
+  L4["<b>Layer 4 · Review</b> — advisory, never a gate<br/><small>11 aids, each exits 0 whatever it finds</small>"]:::f
 
   L1 -->|"a ledger to draft from"| L2
   L1 -.->|"optional, never run for you"| L3
@@ -123,9 +121,9 @@ flowchart TB
 | 3 · Enrichment | No | No | **Yes**, same lock as `sync` |
 | 4 · Review | No | **Never** | No; keeps working during a `sync` |
 
-That last column is a deliberate feature, not an implementation detail:
-a review aid runs while a corpus rebuild is in progress, because an
-advisory read-only report has no reason to wait on one.
+The last column is deliberate: a review aid runs while a corpus rebuild
+is in progress, because an advisory read-only report has no reason to
+wait on one.
 
 ## 📚 Corpus layer: turning a library into a ledger
 
@@ -257,7 +255,7 @@ flowchart LR
 
   DO --- N["<b>seven dossier files</b><br/>scope · evidence · rejected<br/>sections · steering · revisions · retrieval"]
   RE --- M["<b>plus the evidence sidecar</b><br/>survey.evidence.{md,tex,pdf}<br/><small>never committed</small>"]
-  RV --- P["<b>nine review reports</b><br/>provenance · verbatim · coverage<br/>synthesis · figure · uncited · quotation · agenda · support<br/><small>each + .tex/.pdf, some + .json</small>"]
+  RV --- P["<b>nine review reports</b><br/>provenance · verbatim · coverage<br/>synthesis · figure · uncited · quotation · agenda · support<br/><small>each + .tex/.pdf, some + .json; union and digest report on a book and a digest</small>"]
 
   style DO fill:#eef2ff,stroke:#4338ca
   style RE fill:#eef2ff,stroke:#4338ca
@@ -299,7 +297,7 @@ hand edit has moved the draft itself since `stamp` last ran (see
 
 A human can declare the structure before drafting, instead of a genre
 skill inventing sub-themes from the topic. `dossier init
---outline` creates an eighth, opt-in file, `outline.md`: per section, a
+--outline` creates the opt-in `outline.md`: per section, a
 `brief:` and/or `claim:` block plus optional declared `queries:`, which
 the genre skill then runs verbatim. `dossier status` reports whether the
 draft ran what was declared, from `retrieval.md`'s `origin` column, so
@@ -326,7 +324,7 @@ draft exists cannot be a lightly-edited copy of the source.
 **evidence sidecar** beside the render (attributed, in quotation marks,
 grouped by the section that leans on them), so verbatim material has one
 legitimate home and the body prose has none. Four of the six genres emit
-one; `tutorial-writer` does not, and
+one; `tutorial-writer` and `review-digest` do not, and
 [DOSSIER.md](DOSSIER.md#-the-evidence-sidecar-decided-per-genre) records
 why for each. A sidecar is never committed: it carries wording from
 copyrighted sources.
@@ -380,8 +378,8 @@ exact string to cite each by, and the path to the crop of it), so a
 drafting session can look at a figure while grounding a claim about
 what a paper shows, or while drawing a diagram of its own.
 
-It is the only route figures have to the drafting stage, and it had to be
-a route rather than a widening: prose, table cell text and decoded
+It is the only route figures have to the drafting stage, and it is a
+separate route because prose, table cell text and decoded
 equations all arrive through `content/parsed/<citekey>.txt`, which is the
 one artefact retrieval indexes, and a bitmap cannot live in a text file.
 
@@ -395,8 +393,7 @@ source's figure beside the words it belongs to
 an ordinary drafting run pulls in none of its optional dependencies.
 It also distinguishes a paper with no figures from one the docling stage
 has not reached, because only the second is something you can act on.
-[docs/TLDR.md](TLDR.md) has the design, and the unattended-generation
-proposal parked in the issue tracker.
+[CLI.md](CLI.md#-chitragupta-draft-figures) has the command.
 
 ## 🔍 Review layer: eleven advisory aids
 
@@ -419,19 +416,18 @@ produces evidence for a human judgement, never a verdict, and each exits
 | `review union` | does an assembled book still cite every citekey its accepted units stand on? The one aid that reads a book rather than a draft |
 | `review digest` | how much of a verbatim digest is not the sources' own words, and what each such sentence is. The one aid over a genre of its own, and the one the agenda never reads |
 
-Why they are not gates, stated once because it is the design and not an
-omission: the gate answers a question with one correct answer (is this
-citekey in the ledger?), so it can be automatic and absolute. Eight of
-the eleven answer questions of judgement, where a machine verdict would
-be either wrong often enough to be ignored, or trusted more than it
-deserves. `quotation` is binary and deterministic and still not a gate,
-because what it is measured against is the parse rather than the ledger
-([ARCHITECTURE.md](ARCHITECTURE.md) has it). `union` is the second such
-case and is no more a gate for it: set arithmetic over what a unit
-recorded, which decides nothing about whether the assembly is right to
-have dropped a source. `agenda` asks no question of its own; it inherits
-whichever answer, judgement or binary, produced each item it
-surfaces.
+Why they are not gates: the gate answers a question with one correct
+answer (is this citekey in the ledger?), so it can be automatic and
+absolute. Eight of the eleven answer questions of judgement, where a
+machine verdict would be either wrong often enough to be ignored, or
+trusted more than it deserves. `quotation` is binary and deterministic
+and still not a gate, because what it is measured against is the parse
+rather than the ledger ([ARCHITECTURE.md](ARCHITECTURE.md) has it).
+`union` is the second such case and is no more a gate for it: set
+arithmetic over what a unit recorded, which decides nothing about
+whether the assembly is right to have dropped a source. `agenda` asks no
+question of its own; it inherits whichever answer, judgement or binary,
+produced each item it surfaces.
 
 [REVIEW.md](REVIEW.md) explains each aid: what it answers, and the
 distinctions that are easy to get wrong, such as `coverage` and
@@ -460,7 +456,7 @@ unasked.
 
 [TOPIC-MODELLING.md](TOPIC-MODELLING.md) carries the evidence for the
 topic stages; [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) covers the graph
-the last stage derives and the discovery feature being built on it;
+the last stage derives and the `corpus discover` reader built on it;
 [PERFORMANCE.md](PERFORMANCE.md) covers what they cost.
 
 ## 🧩 Cross-cutting features
@@ -487,17 +483,15 @@ be worse than one that refused.
 
 ## 🚫 What this deliberately does not do
 
-Stated because each is a question people ask, and each answer is a
-decision rather than a gap:
+People ask about each of these, and each answer is a decision:
 
 - **It does not fetch papers.** Curation is yours, in your reference
   manager. There is no auto-download and no auto-sync.
 - **It does not rewrite a citekey**, ever, whether to sanitise it or
   to deduplicate it.
 - **It does not promote a review aid to a gate.** Eleven advisory aids
-  and one gate is the design, and `review quotation` is the case that
-  proves it, not an exception: binary, deterministic, and still
-  advisory. See [SOUL.md](../SOUL.md).
+  and one gate is the design. `review quotation` is binary and
+  deterministic, and it is still advisory. See [SOUL.md](../SOUL.md).
 - **It does not have a genre for everything.**
   [GENRE.md](GENRE.md#-genres-this-project-does-not-have) lists the ones
   it declines and why.
@@ -516,9 +510,6 @@ decision rather than a gap:
 ## 🧷 How this document stays true
 
 For the maintainers rather than for you: a features catalogue is where
-doc drift happens first, and this repository has repaired exactly that
-twice: a review-layer section that still claimed three aids when
-there were six, and a command-count sentence whose arithmetic
-nothing checked. So every list and count here is pinned to the
-code by `tests/test_features_doc.py`: add a review aid or a genre skill
-without updating this file, and that test fails.
+doc drift happens first. So the lists and the prose counts here are
+pinned to the code by `tests/test_features_doc.py`: add a review aid or
+a genre skill without updating this file, and that test fails.

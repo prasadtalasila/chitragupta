@@ -1,6 +1,6 @@
 # 📘 Write a textbook chapter, start to finish
 
-Status: **tutorial.** Written 2026-09-15.
+Status: **tutorial.**
 
 **Written for** a lecturer or course author who wants a chapter of
 teaching material (learning objectives, motivation, worked examples,
@@ -43,7 +43,7 @@ If your reader is a researcher mapping a field, you want
 This genre is not citation-dense. Most of the content is your own
 worked examples and exercises; the corpus is there for motivation and
 background. Citations are still gated, so any that appear must be real,
-but a chapter with three citations is normal and is not a thin one.
+but a chapter with three citations is normal.
 
 ## 🎯 What you will have at the end
 
@@ -194,7 +194,7 @@ build one are pointed at the lab, which is a tutorial.
 
 Putting the objectives in `## Covers` is the convention for this genre:
 they are scope, the exercises test them, and a later revision that
-quietly drops one is then visible.
+drops one is then visible.
 
 ## 🗺 Step 3: write an outline (optional, recommended)
 
@@ -219,7 +219,7 @@ fields per section:
 A section needs at least a `brief:` or a `claim:`. In this genre most
 sections have only a `brief:` and no `queries:` at all, because a worked
 example and a set of exercises are yours to design, not the corpus'. An
-outline here that is almost all briefs is correct, and is not thin.
+outline of almost all briefs is normal here.
 
 A worked example (the whole file is at
 [`examples/dossiers/textbook-chapter/outline.md`](examples/dossiers/textbook-chapter/outline.md)):
@@ -286,8 +286,10 @@ What it does: establishes the objectives, states scope and
 prerequisites, motivates the need before the mechanism, writes worked
 then faded examples, writes exercises with hints or solutions, closes the
 loop with a summary, and reads the whole thing back as the student before
-handing it over. Where it cites, it cites real citekeys from your corpus
-only.
+handing it over. Where a diagram would teach better than prose, it hands
+the drawing to `figure-drawer`, which writes the TikZ file and its ASCII
+twin ([FIGURE-DRAWER.md](FIGURE-DRAWER.md)). Where it cites, it cites
+real citekeys from your corpus only.
 
 ## ✅ Step 5: gate, references, render
 
@@ -295,8 +297,8 @@ only.
 chitragupta draft gate content/drafts/course/ch3-state-estimation.md
 ```
 
-If the chapter cites nothing, the gate passes trivially. That is
-expected for this genre and is no warning sign.
+If the chapter cites nothing, the gate passes trivially, which is
+expected for this genre.
 
 If it does cite, build the references section from exactly the gated
 keys:
@@ -325,13 +327,14 @@ chitragupta draft dossier stamp \
 
 ## 🔍 Step 6: read the review aids
 
-All advisory, all exit 0.
+All advisory, all exit 0. `--write` files a report under
+`content/review/course/` for the agenda below to read.
 
 ```bash
 chitragupta draft style content/drafts/course/ch3-state-estimation.md
 chitragupta review verbatim scan \
-    content/drafts/course/ch3-state-estimation.md
-chitragupta review figure content/drafts/course/ch3-state-estimation.md
+    content/drafts/course/ch3-state-estimation.md --write
+chitragupta review figure content/drafts/course/ch3-state-estimation.md --write
 ```
 
 What each is for here:
@@ -339,7 +342,7 @@ What each is for here:
 | Aid | Reads for | Why it matters in teaching material |
 | --- | --- | --- |
 | `review verbatim` | wording shared with any parsed source, cited or not | the one that matters most. A chapter that reuses a source's wording is a copyright problem in a way a private research note is not |
-| `draft style` | defect markers, an acronym never expanded at first use, dialect | a student meets every acronym for the first time; an unexpanded one costs them the paragraph |
+| `draft style` | defect markers, an acronym never expanded at first use, dialect, and table, figure and equation ids and references | a student meets every acronym for the first time; an unexpanded one costs them the paragraph |
 | `review figure` | overlapping nodes, overlong labels, and the edge list | confirm the edge list against your own prose: a diagram that wires the concepts up wrongly teaches the wrong thing convincingly |
 
 `review uncited` is deliberately gentler on this genre, since prose
@@ -348,42 +351,47 @@ finding.
 
 ### The agenda: all of them as one worklist
 
-[AGENDA.md](AGENDA.md) explains every section of an agenda file in
-full; what follows is the short version for this genre.
-
 ```bash
 chitragupta review agenda content/drafts/course/ch3-state-estimation.md
 ```
 
-It **reads the aids' filed JSON and never runs an aid**, so run them
-first with `--write`. Items are `[unattended]` (safe to repair
-automatically: `prose`, short verbatim runs, `missing-citekey`) or
-`[surfaced]` (yours to judge).
+The agenda merges the reports the aids above filed into one ranked
+worklist. It never runs an aid itself, and it names any aid whose report
+is absent. [AGENDA.md](AGENDA.md) explains every section of the file;
+[WRITE-A-SURVEY.md's step 7](WRITE-A-SURVEY.md#the-agenda-all-of-them-as-one-worklist)
+covers the `[unattended]`/`[surfaced]` classes, `--baseline` and
+`--accept`. What follows is the part specific to a textbook chapter.
 
 A chapter that cites lightly produces a short agenda, and that is the
-expected shape here:
+expected shape here (the fixed "How to read this" paragraph is left
+out):
 
 ```markdown
 # Agenda: content/drafts/course/ch3-state-estimation.md
 
 > **Review aid, not a gate.** This report is evidence for a human
-> judgement, never a verdict. No draft is blocked by what it says.
+> judgement, never a verdict. A driver may read it back; no draft is
+> blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's
+> "Layer 4: the review layer".
 
 - Draft: `content/drafts/course/ch3-state-estimation.md`
 - Command: `chitragupta review agenda content/drafts/course/ch3-state-estimation.md`
+- chitragupta 6.155.0
 
 ## Sources
 
-- Citation provenance: read
+- Citation provenance: not run
 - Verbatim scan: read
 - Citation coverage: not run
-- Multi-source synthesis: read, no item class defined
-- TikZ layout check: read
-- Uncited prose: read
+- Multi-source synthesis: not run
+- TikZ layout check: read, no item class defined
+- Uncited prose: not run
 - Quotation integrity: not run
-- Claim support: read
+- Claim support: not run
 - Prose (style_check): read
 - Dossier drift: read
+- Recorded-but-uncited citekeys: read
+- Accepted items: none recorded for this draft
 
 ## Summary
 
@@ -395,11 +403,11 @@ expected shape here:
 ### prose
 
 - `5a8bf91ec244` [unattended] (2. Why a raw measurement is not enough):
-  chitragupta.AcronymNotExpanded: 'RMS' used before first expansion
+  chitragupta.Acronyms: 'RMS' (1x)
 - `c14d0b7e9a33` [unattended] (5. When the assumptions fail):
-  chitragupta.DefectMarker: 'obviously' (1x)
-- `7e2a55c1b09d` [unattended] (6. Exercises): chitragupta.DialectDrift:
-  'analyze' -- scope.md records en-GB
+  chitragupta.DefectMarkers: 'obviously' (1x)
+- `7e2a55c1b09d` [unattended] (6. Exercises): chitragupta.DialectGB:
+  'analyze' (1x)
 
 ### verbatim-run
 
@@ -415,20 +423,9 @@ cited. Hand them off: ask to "work the review agenda" and
 `agenda-reviser` repairs them one at a time, re-running the gate after
 each and logging every attempt in `revisions.md`.
 
-The `DialectDrift` finding is only possible because `scope.md` records
+The `DialectGB` finding is only possible because `scope.md` records
 `language: en-GB`. Leave that line unset and this whole class of finding
-silently does not exist.
-
-To check a round of edits helped:
-
-```bash
-chitragupta review agenda content/drafts/course/ch3-state-estimation.md \
-    --baseline content/review/course/ch3-state-estimation.agenda.json
-```
-
-That re-runs the aids and reports each finding as `resolved`,
-`persisting`, `new` or `accepted`. Read the `new` list as well as the
-count.
+does not exist.
 
 ## 📝 Step 7: change something
 
@@ -439,7 +436,8 @@ Never re-run the genre skill. Ask for a revision:
 > the current one to the end as a challenge.
 
 That selects `draft-reviser`, which edits only what is affected and logs
-it in `revisions.md`.
+it in `revisions.md`. A request to redraw or fix a figure goes to
+`figure-drawer` the same way.
 
 After a hand edit:
 
@@ -460,10 +458,10 @@ chitragupta draft dossier export course/ch3-state-estimation
 If this chapter is one of many, the book track keeps them consistent: a
 signed outline (`chitragupta draft spec`), per-chapter acceptance records
 (`chitragupta draft unit`), a cross-reference check
-(`chitragupta draft registry check`) and an assembly step that produces
-one LaTeX book. Start at [WRITE-A-BOOK.md](WRITE-A-BOOK.md) before drafting chapter
-two: retrofitting the outline afterwards costs more than declaring it
-now.
+(`chitragupta draft registry check`), and the `book-assembler` skill,
+which composes the accepted chapters into one LaTeX book. Start at
+[WRITE-A-BOOK.md](WRITE-A-BOOK.md) before drafting chapter two:
+retrofitting the outline afterwards costs more than declaring it now.
 
 ## 🚑 When something goes wrong
 

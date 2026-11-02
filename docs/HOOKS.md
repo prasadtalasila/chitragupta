@@ -1,20 +1,20 @@
 # 🪝 Hooks: what runs automatically, and what is allowed to block
 
-Status: **built, as of 5.20.0.** Written 2026-08-15. Updated 2026-10-04. Four
-hooks exist: `citation_gate_hook.py`, `style_check_hook.py`,
-`session_start_hook.py` and `code_standards_hook.py`. The first two share
-one `draft_target.py` (and through it `patch_paths.py`), all four share
-one `safe_path.py`, and all launch as `python` in exec form from
-`.claude/settings.json`, and from Codex's `.codex/hooks.json` and
-OpenCode's plugin too since 6.126.0 ([HARNESS.md](HARNESS.md)). The launcher
-hazards are closed: the placeholder is braced, the interpreter name is
-settled below, and a launcher that cannot start is now reported from two
-sides instead of one.
+Status: **implemented.**
 
-The fourth hook is the first that is not about a draft (issue 431).
-Every row of the registry was keyed on a write under `content/drafts/`
-until it landed, and nothing hooked a change to this repository's own
-code. Nobody had decided that asymmetry; it was inherited.
+Four hooks exist: `citation_gate_hook.py`, `style_check_hook.py`,
+`session_start_hook.py` and `code_standards_hook.py`. The first two share
+one `draft_target.py` (and through it `patch_paths.py`), and all four
+share one `safe_path.py`. All four launch as `python` in exec form from
+`.claude/settings.json`. Codex's `.codex/hooks.json` launches the gate,
+style and session-start hooks through a `python -P -c` one-liner, and
+OpenCode's plugin runs the gate and style hooks
+([HARNESS.md](HARNESS.md)). The placeholder is braced, the interpreter
+name is settled below, and a launcher that cannot start is reported from
+two sides.
+
+`code_standards_hook.py` is the one hook that is not about a draft: it
+watches a change to this repository's own code.
 
 Hooks are how a check stops depending on somebody remembering to run it.
 [ARCHITECTURE.md](ARCHITECTURE.md) states the reason under "Grounding is
@@ -124,9 +124,9 @@ Only the gate guarantees anything about what the agent then does.
 ## 🪢 A second mechanism: git's own hooks
 
 This document's registry is not everything that runs automatically,
-and it says so here so the next reader does not assume it is. Since
-issue 431's successor, `git-hooks/pre-commit` runs `actionlint` over
-`.github/workflows/` when a commit stages one. Since #1013 it also runs
+and it says so here so the next reader does not assume it is.
+`git-hooks/pre-commit` runs `actionlint` over `.github/workflows/` when a
+commit stages one, and runs
 `python -m chitragupta figure sync --check` over any staged figure file
 (`assets/tikz/*.tex`, `content/drafts/**/figures/*.tex`).
 
@@ -206,8 +206,8 @@ launcher is a line in a config file the harness consumes, not code the
 suite imports), so the detector has to be something that looks from
 outside.
 
-One such detector is not enough, which took a second attempt to see.
-The preflight is launched by the same interpreter name it vets. If
+One such detector is not enough. The preflight is launched by the same
+interpreter name it vets. If
 `python` is missing, the preflight is missing too, and the report that was
 supposed to arrive never does, on precisely the host where the gate is
 dead. The check therefore lives in `chitragupta/hook_launchers.py`, and
@@ -225,7 +225,7 @@ It makes three checks, of which **only the first two are faults**:
 | all three fine | -- | says nothing at all |
 
 Note the inversion in the second: the alarm is the bad probe *passing*.
-It has three answers, not two (#1066). Refused is healthy. Accepted
+It has three answers, not two. Refused is healthy. Accepted
 (exit 0) is the alarm that the invariant is unenforced. Anything else,
 a crash or the gate's own exit 3, is reported as a gate that could not
 run its self-test, with the exit code and what it printed, because it
@@ -242,8 +242,8 @@ session in every clone, and would teach people to ignore the one channel
 reserved for real faults. So it is reported as a position in that sequence,
 with the command that advances it, and never as `BROKEN`.
 
-That distinction is what lets the hook run this early at all. Both fault
-checks are corpus-independent by construction:
+That is why the hook can run before a first sync. Both fault checks are
+corpus-independent by construction:
 
 - The launcher check reads a config file, looks each launcher up, and, for
   each distinct launcher that resolves *and is a bare, Python-shaped
@@ -274,14 +274,13 @@ checks are corpus-independent by construction:
   `shutil.which` and `CreateProcess` both search the current directory
   before `PATH`, and on any host a relative or empty `PATH` entry is the
   current directory by another name, so a cloned project holding
-  `python.exe` was what the probe ran (#974). The probe therefore
+  `python.exe` would be what the probe ran. The probe therefore
   resolves the name with `chitragupta/programs.py`, which searches only
   `PATH`'s absolute entries, and launches the absolute path it returns.
-  The existence check looks a bare name up the same way (#1025). It used
-  `shutil.which`, which follows a relative entry, so with
-  `PATH=.venv/bin:$PATH` a launcher passed the existence check, was
-  skipped by the probe, and was reported neither missing nor dead. It is
-  now reported as not on an absolute `PATH` entry.
+  The existence check looks a bare name up the same way, so with
+  `PATH=.venv/bin:$PATH` a launcher found only through the relative entry
+  is reported as not on an absolute `PATH` entry, rather than passing the
+  existence check and then being skipped by the probe.
   A path-qualified launcher keeps the existence check and silently forgoes
   the import probe: reporting less is the accepted price of never
   executing a file merely because a directory this process walked into
@@ -369,8 +368,8 @@ defined by handling the harness's stdin/stdout contract, and this module
 handles neither; it reads `settings.json` and returns English
 sentences. It has to be here, because the preflight cannot report its own
 interpreter missing and [the gate can](#-the-session-preflight). Its
-import probe, `import_probe.py`, is split out of it (#1025) and falls
-under the same exception.
+import probe, `import_probe.py`, is split out of it and falls under the
+same exception.
 
 **Layer 2, `.claude/hooks/`, holds adapters.** An adapter reads a
 `PostToolUse` payload on stdin, decides whether it is interested, shells
@@ -387,10 +386,8 @@ dependency](#-a-skill-that-runs-the-hook).
 
 ### 🔒 What the shared helper holds, and why sharing it is safe
 
-`draft_target.py` answers *was this write a draft?* and nothing else. It
-was described here before it existed, and extracted when the second hook
-arrived, before there were two copies to drift apart. Both hooks need
-the identical answer, and the question is subtler than it looks;
+`draft_target.py` answers *was this write a draft?* and nothing else.
+Both hooks need the identical answer, and the question is subtler than it looks;
 `citation_gate_hook.py`'s docstring records each part as learned from a
 real near-miss:
 
@@ -430,8 +427,8 @@ Every hook that shells out runs `python -m chitragupta.draft ...` (or
 project root, and `-m` and `-c` put that directory first on `sys.path`.
 In a git checkout that is the point: it is how the checkout finds its own
 `chitragupta/` with no install. In a project `chitragupta init`
-scaffolded, it was a hole (issue 822): a `chitragupta/` or
-`chitragupta.py` someone committed to a shared project would shadow the
+scaffolded, it is a hole: a `chitragupta/` or `chitragupta.py` someone
+committed to a shared project would shadow the
 installed package and run with the user's privileges, on
 `SessionStart` before anything is typed, and again on every draft write.
 
@@ -444,14 +441,14 @@ hook process itself sees: it runs as `python <path>`, so its
 `chitragupta` outside the root, it is installed, and every child gets
 `PYTHONSAFEPATH=1`. Inside the root (an editable install) or nowhere (a
 checkout run from its own tree) leaves the launch as it was.
-`code_standards_hook.py` needs the same answer for a different launch
-(issue 890): it runs `scripts/code_standards.py` by path, and `init`
+`code_standards_hook.py` needs the same answer for a different launch: it
+runs `scripts/code_standards.py` by path, and `init`
 scaffolds no `scripts/`, so one found in an installed project was planted
 and would run with the user's privileges on the next `.py` write under
 `chitragupta/` or `scripts/`. There it starts no process at all; only the
 checkout runs its scanner. The rule is about that one root-level folder:
 a skill's `references/` under `.claude/skills/<name>/`, or the shared
-ones in `.claude/skills-common/` (#997), are scaffolded on purpose and
+ones in `.claude/skills-common/`, are scaffolded on purpose and
 are nothing the hook looks at.
 `hook_launchers.py`'s import probe (`import_probe.py`) makes the same
 call from its own side, by whether it is itself running from inside the
@@ -465,7 +462,7 @@ project root would search that root first. In a scaffolded project the
 prose therefore does not say that. `chitragupta init` writes its copies
 of every skill, subagent definition, `AGENTS.md` and `docs/` page with
 `python -P` in front of each `-m chitragupta...` and each `-c` snippet
-(issue 891; `MODULE_FORM` in `chitragupta/init.py`). `-P` leaves the
+(`MODULE_FORM` in `chitragupta/init.py`). `-P` leaves the
 working directory off `sys.path` altogether, so a `chitragupta/`
 committed to the project after `init` is not what those commands
 import, however old the plant or whatever it contains. The protection
@@ -479,37 +476,22 @@ own `chitragupta/` is the real one and need not be installed.
 It covers the commands the prose spells out, not every way to start
 Python: a command an agent improvises, or one typed by hand, gets no
 `-P`, and a `PYTHONPATH` naming the project directory puts it back on
-`sys.path` regardless. A project scaffolded before this has plain `-m`
-in its copies. Update them by scaffolding afresh somewhere else, for
-example `chitragupta init /tmp/fresh`, and copying its `.claude/skills/`,
-`.claude/agents/`, `AGENTS.md` and `docs/` over the project's own (plus
-`.agents/` or `.opencode/skills/` for those harnesses). Avoid `chitragupta
-init --force` in the project itself, which also resets `config.toml` and
+`sys.path` regardless. To refresh a project's copies, scaffold afresh
+somewhere else (`chitragupta init /tmp/fresh --agent <yours>`) and copy
+its `.claude/skills/`, `.claude/skills-common/`, `.claude/agents/`,
+`AGENTS.md` and `docs/` over the project's own (plus `.agents/` or
+`.opencode/skills/` for those harnesses). Avoid `chitragupta init
+--force` in the project itself, which also resets `config.toml` and
 `content/acronyms.toml`.
 
-Since #997 a skill keeps its reference material in `references/`
-folders under `.claude/` rather than in a `reference.md` beside each
-copy of `SKILL.md`, so the same update also copies
-`.claude/skills-common/` and then deletes the files the old layout left
-behind, which no skill reads any more:
-
-```bash
-chitragupta init /tmp/fresh --agent <yours>
-cp -r /tmp/fresh/.claude/skills /tmp/fresh/.claude/skills-common .claude/
-find .claude/skills .agents/skills .opencode/skills -name reference.md -delete 2>/dev/null
-```
-
-Copy the per-harness `SKILL.md` files as above. Copying never deletes
-anything, which is why the last line is spelled out.
-
 **What this cannot close**, recorded so nobody assumes it does: an
-interpreter that finds no installed `chitragupta` at all (the unactivated
-venv of issue 563) looks exactly like a checkout, and no marker a
+interpreter that finds no installed `chitragupta` at all (an unactivated
+venv, say) looks exactly like a checkout, and no marker a
 checkout carries could not also be committed to a shared directory. The
 hooks still launch normally there, and the gate still fails closed, but
-the SessionStart preflight now says so by name: "no installed chitragupta
-visible to `<python>`" (issue 891), through the same advisory channel as
-its other faults, where it used to crash with a bare traceback. A
+the SessionStart preflight says so by name: "no installed chitragupta
+visible to `<python>`", through the same advisory channel as its other
+faults. A
 scaffolded skill's `python -P -m` fails with `No module named
 chitragupta` in that state rather than running a plant.
 And a checkout whose venv also holds a non-editable `chitragupta-cli`
@@ -542,8 +524,8 @@ argument with no quoting, and ignores the shell entirely:
 }
 ```
 
-This is not an example: it is what `.claude/settings.json` now
-contains for all four hooks,
+This is not an example: it is what `.claude/settings.json` contains for
+all four hooks,
 and `tests/test_settings_launchers.py` asserts it of every entry in that
 file instead of any named one. Exec form and the braced placeholder were
 confirmed working before being adopted: the harness substituted the
@@ -561,8 +543,8 @@ blocking `windows-latest` leg in CI, so that host is a real one.
 **The interpreter name is `python`.** It has no *portable* answer:
 `python3` is standard on Linux and generally absent on Windows, and
 `python` is present on Windows and often absent on Debian-family Linux.
-So it was the second launcher hazard, and it was decided, not inherited,
-on three findings:
+So it is a launcher hazard, and it is decided, not inherited, on three
+findings:
 
 - **A venv guarantees `python` everywhere and `python3` only on POSIX.**
   Read out of CPython 3.13's `venv/__init__.py`: the POSIX branch creates
@@ -585,11 +567,10 @@ The launcher does not have to be the venv's interpreter, which is what
 makes the choice this narrow: the gate is [tier 1](CLI.md#-which-interpreter)
 and runs under a bare interpreter with no venv, measured.
 
-The losing host is now also a fixed host. `install_full_pipeline.sh`'s
-`os-deps` stage installs `python-is-python3`, which puts the name
-`python` on `PATH` on a Debian-family machine, so the case this paragraph
-accepts as a tolerable loss is one the documented install no longer
-leaves behind. `os-deps` needs apt and root and is opt-in, so
+The documented install fixes the losing host too.
+`install_full_pipeline.sh`'s `os-deps` stage installs `python-is-python3`,
+which puts the name `python` on `PATH` on a Debian-family machine. `os-deps`
+needs apt and root and is opt-in, so
 `python-deps` also *reports* what `chitragupta/hook_launchers.py` finds
 when it finishes, instead of leaving a host that skipped `os-deps` with a
 silent fault and no way to hear about it. [WINDOWS.md](WINDOWS.md) has
@@ -609,8 +590,8 @@ with a polyglot `run-hook.cmd`. That file is simultaneously a valid batch
 file and a valid shell script, so `cmd.exe` runs the batch half and finds
 Git Bash, while `bash` reads the batch half as a no-op heredoc.
 
-It is a good trick, and it is **incompatible with exec form**, which is
-what this repository needs: a shebang-less polyglot invoked through
+It is **incompatible with exec form**, which this repository needs: a
+shebang-less polyglot invoked through
 `execve` fails outright. The two fixes are alternatives; they cannot be
 layered.
 
@@ -663,7 +644,7 @@ harness. Resolve by name once, at the outermost edge, and never again.
 The decision is about *which* name, not how it is looked up: where the
 lookup is this repository's own code, as in OpenCode's
 `.opencode/chitragupta/gate.js`, it resolves `python` on `PATH`'s
-absolute entries and spawns the absolute path (#1025), the rule
+absolute entries and spawns the absolute path, the rule
 [SECURITY.md](SECURITY.md) gives for every launch.
 
 **Finish inside the harness's timeout, or block.** Every hook gets
@@ -675,11 +656,10 @@ its block reason since neither checked a citekey. A draft over
 gate starts, and a gate still running at `GATE_TIMEOUT` (20 s, leaving
 the import probe's 5 s) is stopped and blocked. The line limit was
 measured: the gate is linear in draft length, well under a
-second at 100k lines, and the largest real draft here is under 3k
-(#824).
+second at 100k lines, and the largest real draft here is under 3k.
 
 **Tell "could not check" from "checked and failed".** The gate exits 3
-when the ledger is there but cannot be read (#1066), and checks nothing.
+when the ledger is there but cannot be read, and checks nothing.
 `citation_gate_hook.py` still blocks on it, because nothing passed, but
 says the gate could not read the ledger and passes on the gate's
 diagnosis, never "fix the offending citekey(s)". The hook does not import
@@ -694,8 +674,8 @@ harnesses has to branch: Claude Code reads
 deduplicating, so emitting several delivers the payload twice. This
 repository's hooks still do not branch. Codex documents the same
 `{"decision": "block"}` shape and the same `hookSpecificOutput` field,
-and OpenCode's plugin reads the Claude Code shape and hands it on itself
-(#812, #900), so one envelope serves all three. Measured on Codex
+and OpenCode's plugin reads the Claude Code shape and hands it on itself,
+so one envelope serves all three. Measured on Codex
 0.159.0: the block's `reason` replaces the tool output the model reads,
 and the session-start `additionalContext` arrives as a developer
 message ([HARNESS.md](HARNESS.md), "Measured, and what is still not").
@@ -703,7 +683,7 @@ If a later Codex reads another field, the branch goes here, keyed on
 the harness, and emits only that one. The branch point is recorded
 because it is not guessable from the field names.
 
-**Codex and OpenCode launch the same scripts** (#812, #900).
+**Codex and OpenCode launch the same scripts.**
 `.codex/hooks.json` registers the gate, style and session-start hooks on
 `apply_patch|Edit|Write`, and `.opencode/plugins/chitragupta-gate.js` pipes
 each file tool's arguments to `citation_gate_hook.py`, then
@@ -718,12 +698,12 @@ what each harness enforces.
 
 **Codex's launcher cannot be a relative path.** Codex runs a hook in the
 session's working directory (wherever the user started it) and sets
-no project-directory placeholder, so `python .claude/hooks/<x>.py` failed
-to start from any subfolder and the draft landed ungated (measured).
+no project-directory placeholder, so `python .claude/hooks/<x>.py` fails
+to start from any subfolder and the draft lands ungated (measured).
 Each `.codex/hooks.json` line is instead a `python -P -c` one-liner that
 walks up to the folder holding `.codex/hooks.json` and runs the hook from
-there; `-P` keeps the working directory off `sys.path`, for the #822
-reason `safe_path.py` exists. `tests/test_settings_launchers.py` runs the
+there; `-P` keeps the working directory off `sys.path`, for the reason
+`safe_path.py` exists. `tests/test_settings_launchers.py` runs the
 real line from two levels down.
 
 ## 📊 What is measured, and what is merely documented
@@ -786,7 +766,7 @@ preflight, each before it was relied on:
 - **`python -m chitragupta.corpus ledger` exits 0 whether the corpus is
   synced or not**, and prints a different sentence for each of the two
   pre-sync states. Only a ledger that is there but cannot be read makes
-  it exit non-zero, with 3 (#1066). It is read-only and takes no lock, so the preflight
+  it exit non-zero, with 3. It is read-only and takes no lock, so the preflight
   can call it at every session start without contending with anything.
 
 ### 💬 How much an advisory hook would actually say
@@ -814,7 +794,8 @@ third-party survey and not the official documentation, list top-level
 favour of `hookSpecificOutput.permissionDecision`. Trial 2 proves it works
 today. `tests/test_citation_gate_hook.py` asserts only that the shape is
 *emitted*; no test in this repository can assert that the harness *honours*
-it. That is precisely what the session preflight would check live.
+it, and the session preflight does not check it either: its gate probe
+runs `draft gate` directly, not through the harness.
 
 ## 🧪 Testing a hook
 
@@ -830,18 +811,17 @@ no coverage**:
 
 | | subprocess tests | module tests |
 | --- | --- | --- |
-| Files | `test_citation_gate_hook.py`, `test_session_start_hook.py` | `test_hook_modules.py` |
+| Files | `test_citation_gate_hook.py`, `test_session_start_hook.py`, `test_style_check_hook.py`, `test_code_standards_hook.py` | `test_hook_modules.py`, `test_code_standards_hook_modules.py` |
 | Run the hook as | the harness does | an imported module |
 | Prove | the stdin/stdout contract | every branch |
 | Contribute coverage | no | yes |
 
 Neither half is redundant: a refactor that broke the stdin envelope would
-pass the module tests and fail the subprocess ones. The numbers behind
-this, measured before the split existed: 22 passing subprocess tests left
+pass the module tests and fail the subprocess ones. Subprocess tests
+alone measure nothing reliable: 22 passing subprocess tests left
 `session_start_hook.py` at **0.00%**, while `citation_gate_hook.py` sat at
-an accidental 76.74%. It was accidental because it depended on which
-tests happened to inherit pytest-cov's subprocess bootstrap instead of
-stripping it, so it measured the test harness and not the hook.
+an accidental 76.74%, depending on which tests happened to inherit
+pytest-cov's subprocess bootstrap instead of stripping it.
 
 **Instrumenting the children instead is ruled out, on the record.**
 `tests/test_citation_gate_hook.py`'s `_IS_COVERAGE_BOOTSTRAP` documents
@@ -869,10 +849,10 @@ The tests worth having are the negative ones:
   raise anywhere in reading that file reaches the catch-all that keeps a
   broken preflight from breaking a session, so the *whole* report goes
   silent (the corpus stage and the gate check with it) over a settings
-  file it merely found odd. Five shapes did exactly that before they were
-  fixed: a `hooks` key that was a string, an event holding a mapping
-  instead of a list, an entry or hook that was a bare string, a
-  whitespace-only `command`, and an `args` element that was not a string.
+  file it merely found odd. Five shapes are tested for that reason: a
+  `hooks` key that is a string, an event holding a mapping instead of a
+  list, an entry or hook that is a bare string, a whitespace-only
+  `command`, and an `args` element that is not a string.
 
 Two limits remain. First, **no test can start a hook the way the harness
 does**, so a hook that never spawns still passes every test in the
@@ -985,15 +965,16 @@ whoever is changing a hook and wants the sources.
 ## ❓ Open questions
 
 1. **Whether `python` really starts a hook on a bare Windows clone.**
-   The name is [settled](#-the-launcher-contract) and the launcher issue
-   is closed, but the Windows half of the reasoning is read off CPython's
+   The name is [settled](#-the-launcher-contract), but the Windows half of the
+   reasoning is read off CPython's
    `venv` module and the harness documentation, because no Windows host
    without Git Bash was available to try it on. The Linux half is
    measured. If the answer there
-   is ever *no*, the failure is at least audible now: `python -m chitragupta.draft
+   is ever *no*, the failure is audible: `python -m chitragupta.draft
    gate` says so.
 2. **Whether `{"decision": "block"}` on `PostToolUse` stays supported.**
-   Measured working, documented nowhere. The preflight is the tripwire.
+   Measured working, documented nowhere, and nothing re-checks it
+   automatically.
 3. **Whether `async` output reaches the model.** One probe would settle it
    and none has been run.
 4. **What an older harness does with an unrecognised `if` key.** Decides

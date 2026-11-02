@@ -1,6 +1,6 @@
 # 💡 Inspiration: what this project borrowed, and from where
 
-Status: **reference.** Written 2026-08-13. Updated 2026-09-13.
+Status: **reference.**
 
 Every external idea this project took, what was taken, and, where it
 matters, what was deliberately *not* taken. Credit is the first purpose;
@@ -79,7 +79,8 @@ came from.
 - **ITER-RETGEN**: Shao, Gong, Shen, Huang, Duan and Chen, *"Enhancing
   Retrieval-Augmented Large Language Models with Iterative
   Retrieval-Generation Synergy"*, Findings of EMNLP 2023, pp. 9248-9274.
-  The idea behind [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s E4: form the
+  The idea behind `draft-reviser`'s hand-edit re-grounding round
+  (`chitragupta/retrieval_iterative.py`; [RAG.md](RAG.md)): form the
   next retrieval query by concatenating the previous generation with the
   question, so **no model call is needed to write a query**. Credited as
   a published method rather than a codebase; the adaptation (a person's
@@ -88,8 +89,8 @@ came from.
 - **[RUC-NLPIR/FlashRAG](https://github.com/RUC-NLPIR/FlashRAG)** (MIT):
   read as a reproduction surface rather than for code. Two mechanisms
   credited: its `IRCoT` pipeline's cross-round document merge (dedupe by
-  id, `max(old, new)` on the score, re-sort) which E4 adopts **with the
-  cap that implementation is missing**, and its habit of writing every
+  id, `max(old, new)` on the score, re-sort), which that round adopts
+  **with the cap that implementation is missing**, and its habit of writing every
   round's retrieval, prompt and prediction into the record as a
   per-iteration trace. Its evidence on *determinism* is cited in
   [RAG.md](RAG.md) against itself: seeded runs still varied, because
@@ -97,7 +98,8 @@ came from.
   inference backend changed the result.
 - **[run-llama/llama_index](https://github.com/run-llama/llama_index)**
   (MIT core, read at v0.14.24): read only for its response-synthesis
-  shapes. [C5](FEATURE-ROADMAP.md)'s citekey-union invariant comes from
+  shapes. `review union`'s citekey-union invariant ([REVIEW.md](REVIEW.md))
+  comes from
   the observation that four of its five modes can drop a source with no
   error and no log, and that only the mode keeping one output slot per
   input can say *which* source went missing. The invariant itself is not
@@ -122,7 +124,8 @@ came from.
   comments, source structure, tests, code smells) is the checklist that
   document is written against, and the rule-by-rule table there records
   which rules are enforced, which are left to review, and which do not
-  apply to a stdlib-heavy, classless Python codebase.
+  apply to a stdlib-heavy Python codebase whose classes are mostly
+  dataclasses and exceptions.
 
   Two of its rules are load-bearing here:
 
@@ -182,11 +185,12 @@ came from.
 
 - **[jcode](https://jcode.sh/docs)**: hooks as shell commands fired at
   turn, session and tool boundaries, alongside skills and memory, rather
-  than as an add-on. Read against this repository's own hook layer in
-  2026-08, which is what surfaced the asymmetry issue 431 fixes: every
-  registry row was keyed on a write under `content/drafts/`, and nothing
-  hooked a change to `chitragupta/`. Nothing of jcode's own architecture
-  is adopted: its daemon/client split, its semantic skill matching and
+  than as an add-on. Read against this repository's own hook layer, it
+  surfaced an asymmetry: every registry row was keyed on a write under
+  `content/drafts/`, and nothing hooked a change to `chitragupta/`.
+  `.claude/hooks/code_standards_hook.py` is the hook that closes it.
+  Nothing of jcode's own architecture is adopted: its daemon/client
+  split, its semantic skill matching and
   its lane-aware queue all answer questions this project does not have.
 - **OpenClaw**: the same observation from the other direction, with hooks on
   gateway events and a four-tier memory stack. Its **heartbeat**, a
@@ -195,8 +199,9 @@ came from.
   project's own terms**:
   [R3](AUTO-IMPROVEMENT.md#-the-requirements) rules out a mechanism
   aimed at minimising a count, and a timed turn whose job is to find debt
-  to pay is a ranked worklist with a clock on it. Recorded in
-  `plans/f-auto-improvement-adoption.md`, which retires that loop.
+  to pay is a ranked worklist with a clock on it.
+  `plans/f-auto-improvement-adoption.md` records why that loop is
+  retired.
 
 Both were read as secondary sources (jcode's published documentation,
 and third-party write-ups of OpenClaw rather than its own docs), so what
@@ -205,14 +210,12 @@ either implementation's detail.
 
 ## 🗺 The feature roadmap
 
-Two upstreams behind [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md). Both are
-Apache-2.0, and **copying from both was offered and declined**; the
-cost of declining was measured at roughly one PR, and that document's
-"borrowing posture" section has the working. Nothing is copied from
-either; where the roadmap quotes them it quotes them as evidence for a
-design claim, and every implementation is written here from scratch.
-That makes this the ordinary case for this file, not an exception to
-it.
+Two upstreams behind the synthesis and figure work that
+[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md) planned, and two more behind the
+figure checks. The first two are Apache-2.0, and **copying from both was
+offered and declined**, at a measured cost of roughly one PR. Nothing is
+copied from any of them, and every implementation is written here from
+scratch.
 
 - **[AkariAsai/OpenScholar](https://github.com/AkariAsai/OpenScholar)**
   (Apache-2.0): "OpenScholar: Synthesizing Scientific Literature with
@@ -228,8 +231,8 @@ it.
     that its safety guard has to be something other than a length ratio.
   - **Post-hoc citation attribution as a repair pass**: taken chiefly
     as a *negative* result: it is a prompt, not a verifier, which is why
-    the roadmap plans a real entailment check as new work rather than a
-    port.
+    `review support` is a real entailment check written here rather
+    than a port.
 
   *Not taken:* its positional `[n]` citation numbering, which reorders
   meaning whenever the passage list changes and is the opposite of a
@@ -260,6 +263,13 @@ it.
   fabricating data, which is the failure this project exists to prevent.
   Its style guide's content is also raster-oriented and does not survive
   translation to TikZ.
+
+- **[cathrynlavery/diagram-design](https://github.com/cathrynlavery/diagram-design)**
+  (MIT) and the `update-docs-diagrams` skill in
+  [INTO-CPS-Association/DTaaS](https://github.com/INTO-CPS-Association/DTaaS):
+  ideas behind the figure checks and the `figure-drawer` skill. What was
+  taken from each, and where it landed, is listed in
+  [FIGURE-ROADMAP.md](FIGURE-ROADMAP.md#-borrowed-with-attribution).
 
 ## 🕸 Topic discovery
 
@@ -362,13 +372,13 @@ is that a default is measured on this corpus or it is not a default.
 
 Mechanisms taken **as concept only**:
 
-| Upstream mechanism | Taken here as | Issue |
+| Upstream mechanism | Taken here as | Where it is |
 | --- | --- | --- |
-| A flat title-match bonus added on top of the lexical score | Field-weighted BM25, scoring title and abstract above body | [#762](https://github.com/prasadtalasila/chitragupta/issues/762) |
-| Cascade delete: prune a removed source from surviving pages, clean the index, drop dead links | A residue **report** before `sync --remove-stale`'s confirmation prompt: report, never repair. Shipped; see [CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove) | [#763](https://github.com/prasadtalasila/chitragupta/issues/763) |
-| A pure function dividing the context window into named per-section budgets | A deterministic allocator the genre skills call in place of prose budgets | [#765](https://github.com/prasadtalasila/chitragupta/issues/765) |
-| Merging a regenerated page with the existing one | Its *problem*, not its answer: `agenda-reviser` refuses a stale span outright rather than merging into it | [#766](https://github.com/prasadtalasila/chitragupta/issues/766) |
-| Per-item resolved state, with reopening and a bulk resolve | An acceptance record keyed by an item's existing stable identity, so reopening needs no mechanism of its own | [#767](https://github.com/prasadtalasila/chitragupta/issues/767) |
+| A flat title-match bonus added on top of the lexical score | Field-weighted BM25, scoring title and abstract above body | Built; [CONFIG.md](CONFIG.md#-retrieval----bm25s-field-weights-cap-and-floor) |
+| Cascade delete: prune a removed source from surviving pages, clean the index, drop dead links | A residue **report** before `sync --remove-stale`'s confirmation prompt: report, never repair | Built; [CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove) |
+| A pure function dividing the context window into named per-section budgets | A deterministic allocator the genre skills call in place of prose budgets | Not built; [#765](https://github.com/prasadtalasila/chitragupta/issues/765) |
+| Merging a regenerated page with the existing one | Its *problem*, not its answer: `agenda-reviser` refuses a stale span outright rather than merging into it | Built; R12 in [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#-the-requirements) |
+| Per-item resolved state, with reopening and a bulk resolve | An acceptance record keyed by an item's existing stable identity, so reopening needs no mechanism of its own | Built; `review agenda --accept` ([CLI.md](CLI.md)) |
 
 Three of those five are adaptations that **invert** what upstream does,
 and the inversions are the load-bearing part. Upstream's title bonus is

@@ -1,6 +1,6 @@
 # 📄 PDF parser tradeoffs for chitragupta
 
-Status: **reasoning document.** Written 2026-08-02. Updated 2026-08-24.
+Status: **reasoning document.**
 
 **Written for** someone choosing `[parser].backend`, or revisiting that
 choice. **Assumed:** [CONFIG.md](CONFIG.md) for how to set it. **Not
@@ -9,176 +9,76 @@ covered here:** the measured cost of each backend, which is
 
 ## 🔭 Short summary
 
-This repository needs PDF processing that balances speed, text quality,
-structure preservation, and portability.
+Two backends ship: `pdftotext` (the default) and `docling`. Two more were
+evaluated on this corpus and removed: `markitdown`, which fuses adjacent
+words (see ["Why markitdown was removed"](#-why-markitdown-was-removed)),
+and `grobid`, whose header metadata the bib file already supplies (see
+["Why GROBID was removed"](#-why-grobid-was-removed)). A proposal to bring
+GROBID back in a *different* role, beside docling, for a citation graph,
+is in [GROBID-CITATION-GRAPH.md](GROBID-CITATION-GRAPH.md).
 
-The main candidates are:
-
-- `pdftotext`
-- `markitdown`, **removed 2026-08-01** (see ["Why markitdown was removed"](#-why-markitdown-was-removed))
-- `docling`
-
-`grobid` was evaluated as a fourth candidate and **removed from the repo on
-2026-08-01**. It stays in the comparison below as a record of that decision,
-not as an available backend; see ["Why GROBID was
-removed"](#-why-grobid-was-removed). A separate proposal to bring it back in a
-*different* role, alongside docling instead of replacing it, for a citation
-graph, is in [GROBID-CITATION-GRAPH.md](GROBID-CITATION-GRAPH.md).
-
-Four newer parsers (**marker**, **surya**, **xberg**, **unstructured**) were
-surveyed in 2026-08 and none adopted; the analysis is in ["Four newer backends,
+Four newer parsers (**marker**, **surya**, **xberg**, **unstructured**)
+were surveyed and none adopted; the analysis is in ["Four newer backends,
 evaluated and not adopted"](#-four-newer-backends-evaluated-and-not-adopted).
 
 ## ⚖ Comparison table
 
-| Tool | Best at | Strengths | Weaknesses | Relative speed vs `pdftotext` | Fit for this repo |
+| Tool | Best at | Strengths | Weaknesses | Relative speed vs `pdftotext` | Status |
 | --- | --- | --- | --- | --- | --- |
-| `pdftotext` | Plain text extraction | Very fast, simple, stable, low dependency footprint | Weak on layout, tables, headings, and reading order | 1x | Best lightweight baseline |
-| `markitdown` | General file-to-Markdown conversion | Flexible normalization, multi-format support | Fuses adjacent words on this corpus (4.17% of tokens), which silently breaks BM25 ranking | ~17x slower (measured, 5 real bib PDFs) | **Removed 2026-08-01**; see below |
-| `docling` | Layout-aware PDF parsing | Better reading order, sections, tables, and structured Markdown; the only backend whose reading order is *kept*, as the passage sidecar a claim can be quoted from | Heavy, slower, model/runtime complexity | ~42x slower (measured, 5 real bib PDFs, OCR on; see note below) | Best quality parser for either layer; required if you want quotable passages |
-| `grobid` | Scholarly structure and references | Excellent for title, abstract, sections, and references | Not a general-purpose plain-text extractor; needs a JDK 21 build and a long-running service | Separate from the main speed scale | **Removed 2026-08-01**; see below |
+| `pdftotext` | Plain text extraction | Very fast, simple, byte-identical output across runs, no `enrich` group needed | Weak on layout, tables, headings and reading order; writes no passage sidecar | 1x | **Default** |
+| `docling` | Layout-aware PDF parsing | Reading order, sections, tables and structured Markdown; the only backend that writes the passage sidecar a claim can be quoted from | Heavy, slower, model/runtime complexity; not reproducible under concurrency | ~42x slower with OCR on (5 real bib PDFs; see below) | Opt-in |
+| `markitdown` | General file-to-Markdown conversion | Flexible normalization, multi-format support | Fuses adjacent words on this corpus (4.17% of tokens), which silently breaks BM25 ranking | ~17x slower (5 real bib PDFs) | Removed |
+| `grobid` | Scholarly structure and references | Title, abstract, sections and references | Not a general-purpose plain-text extractor; needs a JDK 21 build and a long-running service | Separate from the main speed scale | Removed |
 
-## 🔬 Likely behavior in practice
+## 🧭 Which backend to choose
 
-### ⌨ `pdftotext`
+`[parser].backend` is a tier, not a ladder: you pick one, and if it is
+unavailable `sync` warns and skips parsing rather than substituting the
+other ([ARCHITECTURE.md](ARCHITECTURE.md#-ladders-and-tiers)). The
+enrichment layer's `docling` stage is separate: it always uses docling,
+whatever `[parser].backend` says, and writes `content/docling/`, which
+BM25 never reads.
 
-This is the fastest option and the easiest to operate. It is well suited to the
-repo's lightweight corpus layer when the goal is to get searchable text into the
-ledger and retrieval index.
+| If you need | Set | Because |
+| --- | --- | --- |
+| The fastest parse and the smallest install | `backend = "pdftotext"` (the default) | It needs only poppler-utils, and its output is byte-identical across runs |
+| A quotable paragraph with its page from a search (`retrieve search --unit passage`), `weight_abstract`, or the reference-list cut in BM25 | `backend = "docling"` | All three read the corpus layer's passage sidecar, which only docling writes ([RETRIEVAL.md](RETRIEVAL.md#-the-passage-unit)) |
+| Better chunks for embeddings and topics, without changing what BM25 ranks | `pdftotext`, plus `python -m chitragupta.enrich --stages docling` | The embedding stage prefers `content/docling/<doc>.md` when it exists |
+| Title, authors, year and DOI | either | `papers/bibliography.bib` is the source of truth for metadata ([CONFIG.md](CONFIG.md)); no parser re-derives it |
 
-### 📝 `markitdown`
+### 🧱 What `docling` costs
 
-A general conversion tool, not a scholarly parser, and much slower than
-`pdftotext` (~17x measured). Measurement on this repo's own corpus later
-showed it loses word boundaries here, which is why it is no longer a
-backend (see below).
-
-### 🧱 `docling`
-
-This is the best fit when the PDF's structure matters: headings, tables, reading
-order, and section boundaries. It is much slower and heavier (~42x measured),
-but the output is more useful for later chunking, retrieval, and topic modeling.
-
-**The ~42x figure predates the OCR default.** It was measured with
-Docling's OCR stage on, which is Docling's default but has not been this
-project's (`config.toml`'s `[parser].ocr = false`). Measured
-over the whole corpus instead of a sample, turning OCR off is **2.08x**
-faster serially and up to **4.79x** at 24 workers, so the current default
-sits well below 42x. Treat 42x as the OCR-on ceiling from a 5-PDF sample,
-and [PERFORMANCE.md](PERFORMANCE.md) as the figure to plan against: a
-full 501-PDF serial parse takes 55m 30s with OCR off against 1h 56m with
-it on. (An older **2.46x**, from a 16-PDF serial sample, is still quoted
-in some places; it estimated the serial case only.)
-
-**Its output is not reproducible under concurrency.** With a worker pool,
-dense reference blocks are grouped into elements slightly differently
-between runs: ~1.4% of documents come back with different text and ~1.0%
-with a different *quotable passage*. Two runs of the same configuration
-are not exempt, and neither is a pool confined to a single GPU (1
-document of 300, measured, though on one card what moved was bytes and
-an element label, not a quotable passage). Treat both rates as orders of
-magnitude: each came from a single pair of runs, and eight pairs at one
-fixed configuration have since ranged from 0 to 6 differing documents.
-Both are for the default parse, with `ocr` and `formulas` off; with
-either on there is no measured rate.
-Ranking is unaffected, because `chitragupta/retrieval.py` tokenises on
-runs of `[a-z0-9]`, so where an element boundary falls between two words
-changes nothing about the terms extracted. The exact span quoted from a
-source can change, though, and that matters for a citation-grounded
-pipeline. This is Docling's own behaviour under load, not something this
-repo's parallelism introduced, and it cannot be switched off: Docling
-exposes no determinism setting. `pdftotext` does not have this property;
-its output is byte-identical across runs.
-
-The artifact-by-artifact contract is in
-[ARCHITECTURE.md](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not),
-with the measurement in `bench/RESULTS.md` (developer-only, in the
-repository).
+**The ~42x figure is the OCR-on ceiling.** It was measured with
+Docling's OCR stage on, which is Docling's default but not this
+project's (`[parser].ocr = false`). Measured over the whole corpus,
+turning OCR off is **2.08x** faster serially and up to **4.79x** at 24
+workers. [PERFORMANCE.md](PERFORMANCE.md) is the figure to plan against:
+a full 501-PDF serial parse takes 55m 30s with OCR off against 1h 56m
+with it on.
 
 Turning OCR off has a cost: it drops text that the PDF stores as a
-bitmap instead of as characters, which on this sample
-was mostly publisher furniture and figure sub-captions but on one
-document included two whole tables. See
+bitmap instead of as characters, which on this sample was mostly
+publisher furniture and figure sub-captions but on one document included
+two whole tables. See
 [PERFORMANCE.md](PERFORMANCE.md#-parserocr----the-largest-single-lever-and-a-trade).
+
+**Its output is not reproducible under concurrency.** With a worker
+pool, dense reference blocks are grouped into elements slightly
+differently between runs, so a quoted span can change across a re-parse.
+Ranking is unaffected, because `chitragupta/retrieval.py` tokenises on
+runs of `[a-z0-9]`. Docling exposes no determinism setting. `pdftotext`
+does not have this property. The measured rates and the
+artifact-by-artifact contract are in
+[ARCHITECTURE.md](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
 
 It also carries a system dependency nothing else in this repository has,
 and a missing one produces a thoroughly misleading error; see
 ["docling fails every document with an OpenCV recursion error"](#-docling-fails-every-document-with-an-opencv-recursion-error).
 
-### 📖 `grobid`
-
-GROBID is most useful for reference extraction and scholarly structure. It was
-never a drop-in replacement for the other tools, and is no longer part of this
-repo (see below).
-
-## 📌 Recommended use in this repository
-
-A practical tiered strategy:
-
-1. **`pdftotext`** for the fast baseline path
-2. **`docling`** for high-quality structured parsing
-
-That tiering matches the repository's design philosophy:
-
-- probe first
-- degrade gracefully
-- keep the corpus layer usable even when the enrich group is absent
-
-## ⚖ Quality tradeoff for this repo
-
-### ⚡ If speed is the priority
-
-Use `pdftotext`.
-
-### 🏗 If PDF structure is the priority
-
-Use `docling`.
-
-### 📖 If references and scholarly metadata are the priority
-
-`papers/bibliography.bib` already supplies these. It is the source of truth
-for title, authors, year, and DOI (see [CONFIG.md](CONFIG.md)), so no parser
-needs to re-derive them.
-
-## 🖥 Notes on cross-platform support
-
-- `pdftotext` depends on an external system package, so it is not the most
-  portable option.
-- `docling` is the heaviest option and may be the hardest to support
-  consistently across operating systems.
-
-If cross-platform support is important, the best approach is to treat these
-as optional backends and keep a fallback ladder instead of relying on a
-single tool.
-
-## 🏗 Suggested architecture
-
-A robust design for this repo would be:
-
-- corpus layer: `pdftotext`
-- enrichment (structured) path: `docling`
-
-That gives a good balance of:
-
-- speed
-- fidelity
-- portability
-- downstream retrieval quality
-
-## 🏁 Conclusion
-
-For this repository:
-
-- `pdftotext` is the fastest and simplest
-- `docling` is the best structured PDF parser
-
-The best overall outcome comes from combining them in a layered backend
-strategy instead of choosing one tool.
-
 ## 🧪 Four newer backends, evaluated and not adopted
 
-Surveyed 2026-08-05 (originally on the issue tracker) from
-each project's own documentation, without a trial run: **marker**,
+Surveyed 2026-08-05 from each project's own documentation, without a
+trial run: **marker**,
 **surya**, **xberg** and **unstructured**, all against docling as the
 incumbent. Nothing was adopted. This is recorded so the next person asking
 "should we switch parsers?" starts from the analysis instead of repeating
@@ -263,8 +163,8 @@ marker, xberg and unstructured share one blocker:
 `_figure_records` depends on it.
 
 If this is revisited, marker with OCR off is the one to pilot, and the
-pilot must measure against the real 501-PDF corpus, as was done before
-markitdown and GROBID were removed.
+pilot must measure against the real 501-PDF corpus, the measurement that
+removed markitdown and GROBID.
 
 ## 🗑 Why GROBID was removed
 
@@ -298,8 +198,8 @@ header endpoint that was here.
 
 ## 🗑 Why markitdown was removed
 
-Removed 2026-08-01, after it was measured on this repository's own
-corpus instead of judged by its stated feature set.
+Removed after it was measured on this repository's own corpus instead
+of judged by its stated feature set.
 
 **The symptom.** Over the same 10 CPS papers, `markitdown` produced
 **3,647 alphabetic tokens longer than 20 characters (4.17% of all
@@ -335,24 +235,22 @@ them, so the tolerance is unreachable through its public API. Its own
 source comments that the heuristic is "not for multi-column text layouts
 in scientific documents", which describes this entire corpus.
 
-**What replaced it.** Nothing: `markitdown` sat in the middle of a
-three-way ladder while being worse than `pdftotext` on text and worse
-than `docling` on structure, so the ladder is now two rungs. Using
-`pdfplumber` directly with a tuned tolerance was considered and
-deferred: it would no longer be "markitdown", and no current use case
-needs a tier between the two remaining backends.
+**What replaced it.** Nothing: `markitdown` was worse than `pdftotext`
+on text and worse than `docling` on structure. Using `pdfplumber`
+directly with a tuned tolerance was considered and deferred: no current
+use case needs a backend between the two that ship.
 
 **What was added instead.** A parse-quality guard
 (`chitragupta/pdf_text.quality_warning`, wired into `sync`) that warns when more
 than 1% of a document's words exceed 20 characters. The two backends sit
 three orders of magnitude apart on that measure, so the threshold does
-not need precise tuning. Had it existed earlier, this would have been
-reported by `sync` on the first run instead of being noticed by eye in a
-retrieval snippet.
+not need precise tuning. A backend that starts fusing words is reported
+by `sync` on its first run rather than noticed by eye in a retrieval
+snippet.
 
 ## 🐛 docling fails every document with an OpenCV recursion error
 
-Diagnosed 2026-08-09. Fixed in the `os-deps` stage; recorded here because
+The `os-deps` stage prevents this; it is recorded here because
 the error message points at nothing useful, and because a host provisioned
 some other way will hit it again.
 
@@ -432,8 +330,8 @@ two apt packages.
 
 ## 🐛 docling silently empties every formula on a GPU host
 
-Diagnosed 2026-09-05. Fixed in the `os-deps` stage, like the OpenCV entry
-above, but recorded at more length, because this one does not fail the
+The `os-deps` stage prevents this, like the OpenCV entry above. It is
+recorded at more length, because this one does not fail the
 run, does not fail the document, and produces output that is
 byte-for-byte what you would get from the setting you did not choose. It
 only happens with `[parser].formulas` (or `[enrich].docling_formulas`)
@@ -527,9 +425,9 @@ python -m chitragupta.enrich --stages docling
 
 **The fix.** `python3-dev` and `gcc` are in the `os-deps` package list, so
 `bash scripts/install_full_pipeline.sh os-deps` (equivalently `chitragupta
-install os-deps`) covers it. Hosts provisioned before 2026-09-05, including
-any long-running container built from `docker/Dockerfile.claude`, need the
-apt line above by hand.
+install os-deps`) covers it. A host provisioned another way, or a
+long-running container that has not re-run `os-deps`, needs the apt line
+above by hand.
 
 **If you do not want formula recognition,** the cheaper answer is to leave
 `[parser].formulas = false`. docling then writes

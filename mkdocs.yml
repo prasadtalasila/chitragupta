@@ -167,11 +167,13 @@ nav:
       - Glossary: docs/GLOSSARY.md
       - Installing and the CLI surface: docs/PACKAGING.md
       - LLMs and coding agents: docs/LLM-AGENTS.md
+      - How the prompts are layered: docs/PROMPTS.md
       - Docker install: DOCKER.md
       - Windows and WSL2: docs/WINDOWS.md
       - Import library: docs/ZOTERO.md
       - Backing up and moving a project: docs/MIGRATION.md
       - Commands: docs/CLI.md
+      - Example artefacts: docs/examples/README.md
       - Configuration: docs/CONFIG.md
   - Writing:
       - Which genre skill: docs/GENRE.md
@@ -195,11 +197,20 @@ nav:
       - Plagiarism / verbatim reuse: docs/PLAGIARISM.md
       - Writing standards: docs/WRITING-STANDARDS.md
       - TikZ figure style: docs/TIKZ-STYLE.md
+  - Figure checks:
+      - Reading a report: docs/figure-checks/README.md
+      - Build and coverage: docs/figure-checks/build.md
+      - Size: docs/figure-checks/size.md
+      - Nodes: docs/figure-checks/nodes.md
+      - Connectors: docs/figure-checks/connectors.md
+      - Colour and type: docs/figure-checks/colour-and-type.md
+      - Wording: docs/figure-checks/wording.md
+      - The ASCII twin: docs/figure-checks/twin.md
   - Discovery:
       - Topic discovery: docs/TOPIC-DISCOVERY.md
       - Explore the graph, CLI: docs/EXPLORE-CLI.md
       - Explore the graph, Web: docs/EXPLORE-WEB.md
-      - Topic graph, improving it: docs/TOPIC-DISCOVERY-GRAPH.md
+      - Topic graph, design notes: docs/TOPIC-DISCOVERY-GRAPH.md
   - Understanding the system:
       - Why this exists: SOUL.md
       - Which guide applies: CLAUDE.md
@@ -216,6 +227,7 @@ nav:
       - Performance: docs/PERFORMANCE.md
       - PDF parser: docs/PDF-PARSER.md
   - Working on it:
+      - Requirements: docs/REQUIREMENTS.md
       - Feature roadmap: docs/FEATURE-ROADMAP.md
       - Figure roadmap: docs/FIGURE-ROADMAP.md
       - Design constraints: docs/DESIGN.md
@@ -226,7 +238,7 @@ nav:
       - Parallelism: docs/PARALLELISM.md
       - GROBID citation graph: docs/GROBID-CITATION-GRAPH.md
       - Per-citekey TL;DR and the abstract behind it: docs/TLDR.md
-      - Auto-improvement, what would be built: docs/AUTO-IMPROVEMENT.md
+      - Auto-improvement: docs/AUTO-IMPROVEMENT.md
       - Auto-improvement, why: docs/AUTO-IMPROVEMENT-RATIONALE.md
       - House style: docs/HOUSE-STYLE.md
       - Zotero groups without Better BibTeX: docs/EXPORT-ZOTERO-GROUPS.md
@@ -238,6 +250,7 @@ nav:
       - Hooks: docs/HOOKS.md
       - Harnesses: docs/HARNESS.md
       - Technical debt: docs/TECHNICAL-DEBT.md
-      - Poetry, uv and the lockfile: docs/UV-MIGRATION.md
       - Inspiration and credits: docs/INSPIRATION.md
+  - Decisions:
+      - Poetry, uv and the lockfile: docs/UV-MIGRATION.md
   - The name: docs/NAME.md

@@ -1,0 +1,5 @@
++----------------------+   +=================================+
+|        Draft         |-->#              Gate               #
+| cite from the ledger |   # check every citekey against the #
++----------------------+   #          parsed ledger          #
+                           +=================================+

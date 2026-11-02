@@ -1,9 +1,11 @@
 # 📦 Poetry, uv, and the lockfile that would not regenerate
 
-A decision record. It exists because `poetry lock --regenerate` stopped
-finishing on this project, the investigation that followed produced
-numbers worth keeping, and "should we move to uv?" is a question that
-will be asked again by someone who does not have those numbers.
+Status: **reasoning document.**
+
+A decision record. `poetry lock --regenerate` does not finish on this
+project, the investigation produced numbers worth keeping, and "should
+we move to uv?" is a question that will be asked again by someone who
+does not have those numbers.
 
 In short: the resolver problem is real and measured, the cheap fix is a
 script and not a migration, and uv's advantage is almost entirely in
@@ -56,13 +58,13 @@ Both were tested, because both look guilty:
   Removing it entirely and regenerating still ran **581 seconds** before
   being killed. It *does* cap `sentence-transformers` at 5.x, which is a
   real and separate problem, but it is not the resolution cost.
-- **The Python range is not it either.** Narrowing from `^3.12` to
-  `>=3.12,<3.14.1 || >3.14.1,<3.15` was a *correctness* fix: `<4.0`
-  forced the resolver to reject any `triton` (which declares
-  `requires_python <3.15`), so it silently selected a torch with no
-  wheels for Python 3.14 and produced a lock that could not install in
-  this project's own container. It reduced the pathology; it did not
-  remove it.
+- **The Python range is not it either.** The range is
+  `>=3.12,<3.14.1 || >3.14.1,<3.15` for *correctness*: an open `<4.0`
+  upper bound forces the resolver to reject any `triton` (which declares
+  `requires_python <3.15`), so it selects a torch with no wheels for
+  Python 3.14 and produces a lock that cannot install in this project's
+  own container. The bound reduces the pathology; it does not remove
+  it.
 
 ### What still works
 
@@ -138,8 +140,9 @@ fits that established pattern exactly.
 move a verdict, that matters.
 
 **The Windows CI leg needs revalidation.** uv supports Windows, but that
-leg carries a lower coverage floor and platform-specific skips that were
-tuned against the current toolchain.
+leg's platform-specific skips and its `coveragerc-windows.toml`
+exclusions (it holds the same 100% bar as Linux) were tuned against the
+current toolchain.
 
 **Documentation debt.** `DEVELOPER-AGENTS.md`, `DEVELOPER.md`,
 `DOCKER.md`, `PACKAGING.md`, `README.md`, nine skill documents under
@@ -196,8 +199,9 @@ What it does, and why each step is there:
 Measured on a full run: **uv 1.4s, pinned lock 63s, restoring lock 40s,
 103 seconds in total**, against a `poetry lock --regenerate` that does
 not finish. It changes nothing about how the project is built or
-installed, and keeps `pip install 'chitragupta-cli[enrich]'` working
-exactly as it does now. On any failure, including `Ctrl-C`, it puts
+installed, and leaves `pip install 'chitragupta-cli[enrich]'`
+unchanged. The lock this project ships was produced by it. On any
+failure, including `Ctrl-C`, it puts
 `pyproject.toml` and `poetry.lock` back as it found them, because a
 half-pinned `pyproject.toml` left behind looks like a hand edit later.
 
@@ -225,9 +229,6 @@ the documentation.
 
 Stated so nobody mistakes this document for a completed evaluation:
 
-- ~~The relock procedure has not been run end to end.~~ It has:
-  `scripts/relock.py` regenerated this repository's own lock in 103
-  seconds, and the lock it produced is the one this project ships.
 - uv's torch index handling has **not** been tried on a GPU host, so
   whether it could replace `ensure_gpu_torch` is unknown.
 - Whether the built wheel is **metadata-equivalent** after a PEP 621

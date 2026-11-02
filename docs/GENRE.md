@@ -1,7 +1,6 @@
 # 🎭 Genres
 
-Status: **reference.** Written 2026-08-08. Updated 2026-10-09, describing `.claude/skills/`
-as it stands.
+Status: **reference.**
 
 **Written for** anyone choosing which skill to ask for, and anyone
 wondering why a skill refused something. **Assumed:**
@@ -31,13 +30,16 @@ to a gated, rendered draft, and an example outline:
 [thesis chapter](WRITE-A-THESIS-CHAPTER.md),
 [textbook chapter](WRITE-A-TEXTBOOK-CHAPTER.md),
 [tutorial](WRITE-A-TUTORIAL.md),
-[deep-research report](WRITE-A-DEEP-RESEARCH-REPORT.md). This page is
-the chooser; those are the walkthroughs.
+[deep-research report](WRITE-A-DEEP-RESEARCH-REPORT.md). The verbatim
+digest has its own page, [VERBATIM-DIGEST.md](VERBATIM-DIGEST.md), and
+the book track, which assembles chapters into one book, is walked
+through in [WRITE-A-BOOK.md](WRITE-A-BOOK.md). This page is the
+chooser; those are the walkthroughs.
 
 Related reading:
 
 - [WRITING-STANDARDS.md](WRITING-STANDARDS.md) has the prose rules the
-  eight prose-writing skills share, and where in the
+  nine prose-writing skills (six genres, three revisers) share, and where in the
   technical-communication literature they come from.
 - [DRAFT-ITERATION.md](DRAFT-ITERATION.md) covers the dossier every skill
   writes, and why `draft-reviser` exists.
@@ -68,7 +70,8 @@ Two questions settle it almost always.
 `draft-reviser`, whatever the genre. Never re-run the skill that wrote
 it. The one exception is when you want the whole corpus re-searched and
 have said so. That is `corpus-reviser`, and it is still not the genre
-skill.
+skill. If what you want is the review agenda's findings repaired ("work
+the review agenda"), that is `agenda-reviser`.
 
 **Otherwise: what is the reader doing while they read?**
 
@@ -263,8 +266,8 @@ including the one prohibition: never run `agenda-reviser` on a digest.
 
 ## ✏ Revising: `draft-reviser`
 
-Not a genre. The skill that changes a draft one of the six already
-wrote, including in a session that has never seen it.
+Not a genre. It changes a draft one of the six already wrote, including
+in a session that has never seen it.
 
 It reads the dossier instead of the corpus. `scope.md` and `steering.md`
 bound what the revision may change. `sections.md` maps the change onto
@@ -286,14 +289,12 @@ fingerprint. What that promises is no *missing* citations, not an empty
 candidate list; see
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md#-re-grounding-after-the-corpus-moves).
 
-Drafts written before `chitragupta/dossier/` existed have no dossier, and
-neither do hand-written ones. It bootstraps instead of refusing:
-`dossier init`, then fill in what the draft itself can tell you.
-
-It says in chat that `evidence.md` and `rejected.md` are empty, so the
-first revision may have to re-retrieve for a sub-theme a real dossier
-would have answered from disk. It gets cheaper from the second revision
-on.
+A draft with no dossier, such as one written by hand, is still
+revisable: the skill runs `dossier init` and fills in what the draft
+itself can tell it. It says in chat that `evidence.md` and
+`rejected.md` are empty, so the first revision may have to re-retrieve
+for a sub-theme a full dossier would have answered from disk. Later
+revisions cost less.
 
 It does not invent evidence entries to fill the file. An empty
 `evidence.md` is honest; a fabricated one is the same failure class as a
@@ -321,14 +322,12 @@ that already exists) with one thing different: it re-searches every
 sub-theme in `sections.md` and reads the whole draft, instead of the one
 sub-theme a change touches.
 
-It is a separate skill so that the choice is yours, and structural.
-`draft-reviser` contains no instructions for a wide search, so following
-it cannot drift into one. Asking for `corpus-reviser` is how you say the
-cost is worth it.
-
-A rule that lived as a paragraph inside one skill would depend on the
-model noticing it, which is exactly the kind of enforcement this project
-does not trust.
+It is a separate skill so that the choice is yours and is made by
+structure. `draft-reviser` contains no instructions for a wide search,
+so following it cannot drift into one. Asking for `corpus-reviser` is
+how you say the cost is worth it. A rule kept as a paragraph inside one
+skill would depend on the model noticing it, and this project does not
+rely on that kind of enforcement.
 
 Invoke it when you ask for a whole-corpus pass in as many words, when a
 scope change you agreed to has invalidated the recorded queries, or when
@@ -338,15 +337,13 @@ including repairing citations after a sync moved the corpus, is
 pick `draft-reviser` and say so: being wrongly narrow costs a clarifying
 sentence, being wrongly wide costs the tokens.
 
-It does *not* relax the point of doing it here instead of re-running the
-genre skill. It still consults and honours `rejected.md`.
-It still logs every call to `retrieval.md`. It still edits section by
-section instead of rewriting the file, because a wide *search* does not
-imply a wide *rewrite*. It still writes the dossier back, and still exits
-through the gate.
-
-So it keeps the rejections and their reasons, the reader, the glossary
-and the steering, and spends tokens only on what is still unknown.
+It keeps what makes it cheaper than re-running the genre skill. It
+consults and honours `rejected.md`, logs every call to `retrieval.md`,
+and edits section by section instead of rewriting the file, because a
+wide *search* does not imply a wide *rewrite*. It writes the dossier
+back and exits through the gate. So it keeps the rejections and their
+reasons, the reader, the glossary and the steering, and spends tokens
+only on what is still unknown.
 
 Neither skill ever re-runs the genre skill: that discards all of that
 state and pays to rediscover a worse version of it.
@@ -358,17 +355,19 @@ one worklist instead of a request in prose. `python -m chitragupta.review
 agenda <draft>` merges every review aid's report into one ranked,
 deduplicated list, and each item's own `unattended` field (read, never
 re-derived) says whether this skill may act on it without asking. Three
-classes currently qualify: `verbatim-run` at severity `short`, `prose`,
-and `missing-citekey`. Everything else is surfaced for a person.
+classes can qualify: `verbatim-run` at severity `short` (found by a
+wording tier, not the embedding tier), `prose` (a style finding whose
+rule marks it editable), and `missing-citekey`. Everything else is
+surfaced for a person.
 
 **A genuine restatement is only detected where the embedding tier can
 run**, so finishing the list is not a clean bill of health. See
 [PLAGIARISM.md](PLAGIARISM.md).
 
-What it may do without asking is decided by the report, not by the
-model. The scan's severity buckets are the line. A `short` run is
-reworded unattended. A `long` one stops and asks the human whether to paraphrase
-or to quote. A run that is both quoted and cited is reported as already
+The report decides what it may do without asking, and the scan's
+severity buckets draw the line. A `short` run is reworded unattended. A
+`long` one stops and asks the human whether to paraphrase or to quote.
+A run that is both quoted and cited is reported as already
 correct and left alone.
 
 The paraphrase-or-quote choice on a long run is an authorial one, since
@@ -396,7 +395,7 @@ cannot repair is escalated, not worked around.
 
 ## 📕 Assembling a book
 
-`book-assembler` is the ninth skill, and it writes no prose. It
+`book-assembler` writes no prose. It
 composes units that are already accepted and gate-passed into
 one LaTeX book (front matter, `\part`, `\chapter`, one `\input` per
 unit, back matter) from the outline `python -m chitragupta.draft spec` holds
@@ -414,7 +413,7 @@ instead of blocking.
 
 ## 🖍 Drawing a figure: `figure-drawer`
 
-`figure-drawer` is the tenth skill. It owns *how* a figure is drawn:
+`figure-drawer` owns *how* a figure is drawn:
 the layout metaphor, the scaffold from `assets/tikz/`, panel letters,
 the ASCII twin, the compile probe and the geometry review. It never
 decides *whether* a draft gets a figure, and it never presents a draft.
@@ -441,7 +440,7 @@ if that handoff is skipped: its when-to-draw threshold, its output shape
 thesis fragment), and **no citekey inside either figure file**, because
 the gate reads the draft and does not follow `\input`.
 `tests/test_skill_figure_step.py` pins that stub in each genre and
-fails if a rule that moved to `figure-drawer` reappears in one (#1027).
+fails if a rule that belongs to `figure-drawer` reappears in one.
 
 [FIGURE-DRAWER.md](FIGURE-DRAWER.md) is the skill's own page: example
 requests, what it writes, a worked figure, and what to do when one goes
@@ -449,11 +448,11 @@ wrong.
 
 ## 🔑 What all eleven have in common
 
-These are not per-skill choices. They are the same rules, stated in each
+These rules are the same in every skill, stated in each
 of the eleven `SKILL.md` files or, where several skills share the wording
 (the critique loop, the prose check, the verbatim scan, collection
 scoping), once in a reference under `.claude/skills-common/references/`
-that each skill's step names (#997). A skill that broke one would be the
+that each skill's step names. A skill that broke one would be the
 bug.
 
 Each `SKILL.md` exists once per harness (`.claude/skills/`,
@@ -467,15 +466,14 @@ exists once, under `.claude/`, and names no skill and no harness tool.
 Two of the eleven are not drafting skills. `book-assembler` composes units
 other skills already wrote, so where a rule below is about *writing*
 (the dossier, the acronym vocabulary), it says how that skill differs and
-why instead of leaving it silently exempt. `figure-drawer` presents no
+why. `figure-drawer` presents no
 draft at all: it draws one figure and returns to the skill that called
 it, so the gate, the prose check, the verbatim scan and the fingerprint
 stamp below are that skill's, not its own. The one rule it carries
 itself is the invariant: no citekey in a figure file.
 
 One rule below is narrower still: the pre-gate self-feedback step
-(roadmap [B5](FEATURE-ROADMAP.md#-theme-b-make-synthesis-structural),
-designed in `plans/b5-pregate-self-feedback.md`) is shared by the five
+(designed in `plans/b5-pregate-self-feedback.md`) is shared by the five
 genre skills that write fresh prose from an
 evidence packet (`survey-writer`, `thesis-chapter-writer`,
 `textbook-chapter-writer`, `tutorial-writer`, `deep-research`), and not
@@ -539,9 +537,8 @@ sources' wording by design, so the scan would flag every run, and
 `python -m chitragupta.review digest` is the check that replaces it (and
 the critique loop) there. It does run the prose check below.
 **It cannot block a draft, and no skill treats it as a condition of
-presenting**. When the scan became a standing step, what changed was who may
-invoke a review aid, not what one may do to a draft. `python -m
-chitragupta.draft gate` is still the only gate.
+presenting**. A skill may invoke a review aid; no review aid may block a
+draft. `python -m chitragupta.draft gate` is the only gate.
 
 The caveat travels with it, in every skill, because the drafter is the
 one it is about. Two of the three detection tiers see wording only, so a
@@ -562,13 +559,15 @@ each skill runs `python -m chitragupta.draft style content/drafts/<path>` and
 reports what it says: the findings, and the header lines naming which
 dialect was checked and on whose authority. It measures only what
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9 marks decidable: §2's defect
-markers, an acronym never expanded at first use, and §8's dialect against
-`scope.md`'s `language:` line. So it is silent on whether a paragraph leads
-with its point, it cannot tell a quotation from the draft's own voice, and
+markers, an acronym never expanded at first use or drifted from the
+acronym vocabulary, §8's dialect against `scope.md`'s `language:` line,
+table, figure and equation captions, ids and references, a self-numbered
+chapter heading, and a code line wider than the page. So it is silent
+on whether a paragraph leads with its point, it cannot tell a quotation
+from the draft's own voice, and
 `dialect: not checked` means nobody ever recorded one rather than that nothing
 was wrong. **No genre skill fixes what it finds.** A finding is a place to
-look; the first pass of this check over this repository's own docs kept 59
-of its 73 marker hits after inspecting each. The fix paths are
+look, and many are correct as they stand. The fix paths are
 `draft-reviser`'s copy-edit mode, which reads the recorded dialect and logs
 one `revisions.md` entry naming the convention, and `agenda-reviser` for
 unattended `prose` items.
@@ -576,14 +575,12 @@ Like the scan it exits 0 whatever it finds;
 [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" is why it may never become a
 gate.
 
-**Both are run, and neither writes without being asked.** The scan was
-offered instead of run until that change, on the reasoning that it can
-be read as an accusation and `--write` files a report. That reasoning
-missed that the only defence against verbatim reuse was then post-hoc *and*
-optional, so a draft could be presented having never been checked. Both
-steps now run; neither passes `--write` unless the person asks, and
-neither can block a draft. (The earlier critique step does file a
-verbatim baseline under `content/review/`, for its own recheck.) A `PostToolUse`
+**Both are run, and neither writes without being asked.** Running them
+on every draft means no draft is presented unchecked. Neither passes
+`--write` unless the person asks, because a filed report can read as an
+accusation, and neither can block a draft. (The earlier critique step
+does file a verbatim baseline under `content/review/`, for its own
+recheck.) A `PostToolUse`
 hook reports the prose check per write, to the agent, mid-loop; these
 steps report the finished draft once, to the human.
 [HOOKS.md](HOOKS.md) has that split: invocation is enforced, conformance
@@ -592,19 +589,18 @@ is not.
 ## 🚧 The boundaries, and why they are enforced
 
 Every skill carries a "When to invoke" table whose rows are mostly
-*other* skills. That looks like duplication and is not: the genre
-boundary is the thing most likely to be crossed, because crossing it
-feels helpful at the time.
+*other* skills. The rows are there because the genre boundary is the
+thing most likely to be crossed: crossing it feels helpful at the time.
 
-Crossing it is costly because the rules are opposite, not just
-different. A tutorial's "one path, no branches" would delete a
+Crossing it is costly because neighbouring genres have opposite rules.
+A tutorial's "one path, no branches" would delete a
 survey's deliverable, because alternatives are what a survey is for. A
 survey's "weigh both sides without picking a winner" would gut a thesis
 chapter, whose job is to take a position. A textbook chapter's
 digressions into *why* are the exact defect that stalls a tutorial. So a
 skill that drifts into the neighbouring genre produces a document that
-fails at both jobs, not merely a slightly-off one, and the failure is
-invisible until a reader tries to use it.
+fails at both jobs, and the failure is invisible until a reader tries
+to use it.
 
 This is [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §5 (don't let a
 document do two jobs), enforced at the point where it is easiest to
@@ -612,8 +608,7 @@ break.
 
 ## 🚫 Genres this project does not have
 
-Named here so a skill can tell you plainly instead of writing the wrong
-thing:
+A skill asked for one of these says so plainly:
 
 | Genre | Reader's state | What happens |
 | --- | --- | --- |

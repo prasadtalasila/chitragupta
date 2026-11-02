@@ -1,7 +1,6 @@
 # 🎬 Demo recording
 
-Status: **reference.** Terminal segment recorded 2026-09-18 against
-`main`; browser segment re-recorded 2026-10-01 (#809).
+Status: **reference.**
 
 **Written for** anyone who wants to see the pipeline run before reading
 the rest of the documentation. It makes one pass through the spine
@@ -19,7 +18,7 @@ including the browser segment, is below.
 <video controls width="100%" poster="images/demo-webapp.png">
   <source src="images/demo.webm" type="video/webm">
   <source src="images/demo.mp4" type="video/mp4">
-  Your browser does not render an inline video here -- the source files
+  Your browser does not render an inline video here; the source files
   are <a href="images/demo.webm">demo.webm</a> and
   <a href="images/demo.mp4">demo.mp4</a>.
 </video>
@@ -86,25 +85,16 @@ assembling the frames into video with `ffmpeg`. The capture script
 asserts the number of rendered topic circles against the topic count the
 page itself embeds, and fails the run on a mismatch. Without that check,
 a selector that has moved would yield a video of the same establishing
-shot repeated, which is exactly what the viewer's markup change since the
-first recording would otherwise have produced. It also checks, after every
+shot repeated. It also checks, after every
 click, that the panel names the topic just clicked.
 
-The browser segment was re-recorded on its own on 2026-10-01, when the
-sample page was re-emitted in merge-tree leaf order (#809) and its
-circle moved. Only the browser segment shows that circle, so the
-terminal segment was kept as it was: the first 40.4 seconds of
-`demo.mp4` are stream-copied from the previous file, cut on the
-keyframe where the browser segment starts, and decode to the same
-frames. The new browser segment was encoded with the same `libx264
--crf 20` settings and joined on after them. `demo.webm` (`libvpx-vp9
--crf 32 -b:v 0`) and `demo.gif` (`fps=10`, `scale=640`, a single
-`palettegen`/`paletteuse` pass) were then re-encoded from the new
-`demo.mp4`. The GIF chain reproduces the previous `demo.gif` byte for
-byte from the previous `demo.mp4`; the VP9 encode does not, though its
-keyframe layout and size match to within 1%. `demo-webapp.png` is the
-topic-1 frame of the new capture. `demo.svg` is terminal-only and did
-not change.
+The two segments are encoded separately and joined: `demo.mp4` with
+`libx264 -crf 20`, then `demo.webm` (`libvpx-vp9 -crf 32 -b:v 0`) and
+`demo.gif` (`fps=10`, `scale=640`, a single `palettegen`/`paletteuse`
+pass) re-encoded from `demo.mp4`. A segment can be re-recorded alone:
+cut `demo.mp4` on the keyframe where the browser segment starts and
+stream-copy the other half. `demo-webapp.png` is the topic-1 frame of
+the browser capture, and `demo.svg` is the terminal segment only.
 
 Nothing in either segment touched a real project. The sample project's
 committed drafts, dossiers and reviews were only read; the commands that

@@ -1,6 +1,6 @@
 # 🪟 Windows: what works, what doesn't, and how to install
 
-Status: **reference.** Written 2026-09-02.
+Status: **reference.**
 
 **Written for** someone running this pipeline on Windows, either
 natively or under WSL2. **Assumed:** nothing beyond
@@ -64,7 +64,7 @@ launcher does not resolve produces **nothing at all**: no error, no log
 line. The citation gate is one of those hooks, so the settings file
 still lists it, the suite still passes, and drafts land ungated.
 [SOUL.md](../SOUL.md) has why that is the one failure this project
-cannot tolerate. Four things now report it: `chitragupta
+cannot tolerate. Four things report it: `chitragupta
 draft gate` and the session-start preflight both call
 `chitragupta/hook_launchers.py`, the install script prints what it finds
 at the end of `python-deps`, and CI's `launchers` job checks it on both
@@ -186,16 +186,12 @@ consideration on a large corpus.
 
 ## 🚫 Why there is no PowerShell installer
 
-This is deliberate, and recorded here so it is not proposed as an
-oversight.
-
 `DEVELOPER-AGENTS.md` forbids a second install path, and states the
 invariant behind the rule: there is one place a dependency fact can be
 written, so a fix lands once and every target picks it up. A `.ps1`
 that created a venv and ran `poetry install` would be a second
-implementation of a path that already works: CI's Windows leg runs the
-bash script and has been green for ten consecutive runs. The duplicate
-would add nothing and would drift.
+implementation of a path that already works: CI's blocking Windows leg
+runs the bash script. The duplicate would add nothing and would drift.
 
 The real gap is smaller than an installer: three OS packages with no
 apt behind them. Scripting `winget` would not close it either, because

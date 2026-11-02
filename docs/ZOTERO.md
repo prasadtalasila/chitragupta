@@ -1,6 +1,6 @@
 # 📚 Exporting your library from Zotero
 
-Status: **how-to.** Written 2026-08-03. Updated 2026-08-24.
+Status: **how-to.**
 
 **Written for** anyone getting their own library into this pipeline for
 the first time. **Assumed:** nothing. **Not covered here:** what the
@@ -10,7 +10,8 @@ How to get a `.bib` file and its PDFs into the shape this pipeline
 expects. See [../README.md](../README.md) for the Quickstart that
 refers here.
 
-Step 1 above, in detail, for [Zotero](https://www.zotero.org/) (see its own
+The Quickstart's first step, in detail, for
+[Zotero](https://www.zotero.org/) (see its own
 [export documentation](https://www.zotero.org/support/kb/exporting) for the
 general feature):
 
@@ -67,10 +68,9 @@ collection-scoping reference, offers the list above, records the answer as a
 `--collection` on every retrieval call for the rest of the run;
 `draft-reviser` and `corpus-reviser` then read that line back and do not
 ask again. Decline the offer and everything searches the whole
-library, exactly as it did before.
+library.
 
-Neither what the narrowing buys nor what it costs is obvious, so both
-are worth knowing. Measured over a 642-item corpus (`bench/RESULTS.md`,
+Measured over a 642-item corpus (`bench/RESULTS.md`,
 2026-08-19): scoping to a 19-item shelf raised the share of surfaced
 papers that were cited from 0.31 to 0.89, and it cost nothing in index
 terms, because the retrieval cache is shared and scoring is
@@ -102,11 +102,11 @@ without the attachments there is nothing for this pipeline to parse. So an
 export done the way this page describes never had the cache to lose.
 Turning JabRef fields on costs you nothing further.
 
-Two things follow. If you also keep a *separate* Better BibTeX export for
-something else (a `.bib` for a LaTeX document, an auto-export on a
-timer), that one does lose its cache, since the preference is global rather than
-per-export. And if you do not want collections, leave the option off:
-nothing else in this pipeline reads the field.
+If you also keep a *separate* Better BibTeX export for something else (a
+`.bib` for a LaTeX document, an auto-export on a timer), that one does
+lose its cache, since the preference is global rather than per-export.
+If you do not want collections, leave the option off: nothing else in
+this pipeline reads the field.
 
 If Better BibTeX is not an option at all, there is a discouraged
 fallback that reads collection membership out of `zotero.sqlite`
@@ -130,8 +130,8 @@ the enrichment layer's corpus is the bibliography, so anything it can
 retrieve is something a draft may cite. See
 [`chitragupta/enrich/corpus.py`](https://github.com/prasadtalasila/chitragupta/blob/main/chitragupta/enrich/corpus.py)
 and AGENTS.md's citekey
-invariant. (Earlier versions did have such a directory, `papers/pdfs/`;
-it is gone. A PDF there is now ignored.)
+invariant. A PDF placed anywhere without a `.bib` entry pointing at it
+is ignored.
 
 To add more papers later: add the entry in Zotero, re-export the same way
 (re-check **Export Files** so new attachments are included), then re-run

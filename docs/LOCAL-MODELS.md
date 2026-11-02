@@ -1,8 +1,10 @@
 # 🖥 Local models: recorded runs on Codex, OpenCode and Continue
 
-Status: **two runs recorded.** Written 2026-10-02 for
+Status: **measurements.**
+
+Two runs, recorded for
 [issue 904](https://github.com/prasadtalasila/chitragupta/issues/904),
-with the Continue facts
+plus the Continue facts
 [issue 901](https://github.com/prasadtalasila/chitragupta/issues/901)
 asked to confirm before building.
 
@@ -47,8 +49,8 @@ Each run scaffolded a fresh project with `chitragupta init --agent
 ran a real `corpus sync`, and sent the same prompt: draft a survey with
 the harness's own copy of `survey-writer`, with the skill's scoping
 questions answered up front. Each example's `run.sh` is the script that
-ran. The one change since is a guard that refuses to run into an
-existing directory. A logging proxy between each harness and the server
+ran, plus a guard that refuses to run into an existing directory. A
+logging proxy between each harness and the server
 recorded every request, which is where the tool lists and context sizes
 come from.
 
@@ -115,7 +117,7 @@ type with a warning. Under a model name Codex does not know, it offers
 no `apply_patch` at all. A `model_catalog_json` entry cloned from a
 built-in model makes Codex offer it, but only with
 `"apply_patch_tool_type": "freeform"` (Codex 0.159.3 accepts no other
-value), so llama.cpp still drops it. Codex no longer has a
+value), so llama.cpp still drops it. Codex has no
 chat-completions wire API to fall back on.
 
 So the model wrote every file with a shell here-document, and the gate

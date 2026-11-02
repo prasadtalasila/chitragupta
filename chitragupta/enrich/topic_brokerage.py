@@ -43,7 +43,7 @@ def _family_stats(graph, label) -> dict:
 
 def brokerage(labels: list, edges_overlap: list, edges_semantic: list) -> dict:
     """`{label: {"overlap": {...}, "semantic": {...}}}` for every topic:
-    the `analysis` block docs/TOPIC-DISCOVERY-GRAPH.md §3 designs, in
+    the `analysis` block docs/TOPIC-DISCOVERY-GRAPH.md §2 describes, in
     its key names."""
     import networkx as nx
 

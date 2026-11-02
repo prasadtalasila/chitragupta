@@ -7,7 +7,7 @@
    nothing in common" from "these share a paper, and the gate judged it
    unsurprising".
 
-   `docs/TOPIC-DISCOVERY-GRAPH.md` §7.7 answers it with a stored
+   `docs/TOPIC-DISCOVERY-GRAPH.md` §2 answers it with a stored
    `edges_withheld` list. #670 first kept that field out of scope; the
    §2 amendment (#707) reopened it, and #710 stores it -- so `explain`
    now prefers the stage's own stored p for a withheld pair, and only

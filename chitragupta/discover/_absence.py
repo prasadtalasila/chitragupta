@@ -1,7 +1,7 @@
 """`discover --why A B`: why there is *no* overlap edge here.
 
 The terminal twin of the app's absence verdict (`assets/webapp/
-absence.js`), the gap docs/TOPIC-DISCOVERY-GRAPH.md §13.3 called nearly
+absence.js`), the gap docs/TOPIC-DISCOVERY-GRAPH.md called nearly
 free to close: the tail's inputs -- each topic's members and `n_docs` --
 are already on this side. Same arithmetic, same verdict, one extra fact
 the app payload drops and the artefact keeps: the gate's own threshold.

@@ -1,6 +1,6 @@
 # 🏗 The pipeline, its ladders, and its tiers
 
-Status: **reference.** Written 2026-08-06. Updated 2026-08-24.
+Status: **reference.**
 
 **Written for** anyone who has hit a fallback and wants to know what they
 lost by it. **Assumed:** [CLI.md](CLI.md) for the commands named here.
@@ -73,8 +73,8 @@ a draft.
 
 Those four words are also the run's exit code, which is the whole of what
 an unattended caller gets: **`error` in any stage exits `1`, and every
-other combination exits `0`**, `partial` and `skipped` included. That is
-deliberate, not an oversight in the mapping. `skipped` is the
+other combination exits `0`**, `partial` and `skipped` included, on
+purpose. `skipped` is the
 honest answer on a host without the enrich extra, and `partial` is the
 honest steady state of a corpus holding two PDFs that will never parse; a
 nightly job that failed forever over either would teach its reader to
@@ -228,7 +228,7 @@ produced, including entries whose reference-manager record has no PDF
 attached.
 
 That the bibliography is the *only* source is a guarantee the rest of the
-layer is built on, not an accident of the current implementation. Every
+layer is built on. Every
 document carries a real citekey, which is its whole identity. So every
 Chroma hit, every topic member and every figure record names something a
 draft is allowed to cite.
@@ -322,12 +322,14 @@ supports it, and may it be quoted?
 
 **Where:**
 [`chitragupta/passages.py`](https://github.com/prasadtalasila/chitragupta/blob/main/chitragupta/passages.py),
-read by
-`chitragupta.review provenance` and (not yet) `chitragupta.draft retrieve`,
-which does now read **rung 2 alone**, through
-`passages.corpus_passages`, to find where a document's reference list
+read through `passages.source_passages()` by the review aids
+`provenance`, `support`, `quotation` and `digest`.
+`chitragupta.draft retrieve` reads **rung 2 alone**, through
+`passages.corpus_passages`: to find where a document's reference list
 starts ([RETRIEVAL.md](RETRIEVAL.md#-a-papers-own-bibliography-is-not-indexed)),
-but still cuts its own snippets as character windows out of the flat text.
+and to rank paragraphs under `search --unit passage`
+([RETRIEVAL.md](RETRIEVAL.md#-the-passage-unit)). Its default document
+unit still cuts snippets as character windows out of the flat text.
 `draft retrieve` reads rung 2 alone, not the ladder, because rung 1 is
 the enrichment layer's parse and what BM25 ranks may not depend on
 whether that layer has run.
@@ -351,9 +353,8 @@ exist, because the enrichment stage parses the PDF a second time under
 its own OCR and figure settings.
 
 Rung 2 is self-healing. `sync` treats a citekey it calls `parsed` whose
-sidecar is missing as one that needs parsing again. A corpus parsed
-before this project kept Docling's document model therefore gains
-passages on the next run, and a sidecar deleted by hand comes back.
+sidecar is missing as one that needs parsing again, so a sidecar
+deleted by hand comes back on the next run.
 
 That check is skipped for `pdftotext`, which resolves no reading order
 and writes no sidecar. Demanding one would re-parse the whole corpus on
@@ -399,9 +400,7 @@ cost is quality of retrieval, not correctness of attribution.
 **One thing to know before you change it.** `build_index()` skips
 re-encoding a document whose text hashes the same as last run. The hash is
 taken over whatever this ladder returned, so a change to any rung's
-*output* invalidates that cache and re-encodes the corpus. Restoring page
-breaks to the corpus layer's `.txt` (see ladder 1's rung 3) did exactly
-that, once.
+*output* invalidates that cache and re-encodes the corpus.
 
 ### ⚡ Ladder 3: Accelerator
 
@@ -469,7 +468,7 @@ unavailable.
 It does **not** silently substitute the other backend, because a corpus
 half parsed by each would be impossible to reason about afterwards.
 
-Two backends were evaluated and removed on 2026-08-01 (`markitdown`,
+Two other backends were evaluated and are not offered (`markitdown`,
 `grobid`); [docs/PDF-PARSER.md](PDF-PARSER.md) keeps the comparison as a
 record of the decision.
 
@@ -481,14 +480,15 @@ because nothing degrades: a module either imports or raises
 
 | # | Needs | Commands |
 | --- | --- | --- |
-| 1 | bare `python`, stdlib only | `chitragupta.draft` (all twelve commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover`, `chitragupta.review` (all eleven aids), `chitragupta.passages` |
+| 1 | bare `python`, stdlib only | `chitragupta.draft` (all twelve commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover`, `chitragupta.review` (all eleven aids; `support` and `verbatim`'s tier 3 also need the `enrich` group to score, and say so when it is missing) |
 | 2 | a venv with `bibtexparser` | `python -m chitragupta.corpus sync` |
 | 3 | a venv with the `enrich` group | `python -m chitragupta.enrich` |
 
-Tier 1 is a design constraint, not an accident: the citation gate is the
+Tier 1 is a design constraint: the citation gate is the
 one thing that must run everywhere, including as a hook on a machine that
-has never installed this project's dependencies. `chitragupta/passages.py` belongs
-to that tier too, which is why it describes a Docling document purely
+has never installed this project's dependencies. The module
+`chitragupta/passages.py` belongs to that tier too, which is why it
+describes a Docling document purely
 through `getattr` and never imports the library. See
 [docs/ARCHITECTURE.md](ARCHITECTURE.md#-which-interpreter-and-why).
 

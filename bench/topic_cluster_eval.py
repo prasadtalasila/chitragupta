@@ -4,12 +4,12 @@ hand-written groupings (#689).
 `assets/webapp/families.js` clusters each edge family separately at an
 inflation the reader can drag, and the slider opens at 2.0. Nothing said
 why 2.0. MCL is famously sensitive to exactly that parameter --
-`docs/TOPIC-DISCOVERY-GRAPH.md` §5.2 says so -- so a default nobody has
+`docs/TOPIC-DISCOVERY-GRAPH.md` says so -- so a default nobody has
 measured is a default nobody can move safely: raise it and the reader
 gets more, smaller clusters; lower it and the corpus melts into one, and
 the disagreement grid changes shape either way.
 
-`docs/TOPIC-DISCOVERY-GRAPH.md` §9 names the fix and the precedent: add
+`docs/TOPIC-DISCOVERY-GRAPH.md` names the fix and the precedent: add
 "these topics belong together" groupings to `content/topic_gold.toml`
 and the inflation stops being a feel, exactly as the gold queries did
 for `[discover].min_similarity`. `assets/style/topic_gold.toml.example`

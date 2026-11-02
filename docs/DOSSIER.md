@@ -1,7 +1,6 @@
 # 🗂 The dossier
 
-Status: **reference.** Written 2026-08-22. Updated 2026-08-24, describing the
-format as it stands.
+Status: **reference.**
 
 **Written for** the model or the person reading a dossier back: most
 often `draft-reviser` picking up a draft weeks later, and only sometimes
@@ -21,8 +20,8 @@ drafting step may and may not do with them, and its most useful file
 already made. A human can read it, and occasionally should, but nothing
 here is shaped for that.
 
-That separates it from its counterpart. **[REVIEW.md](REVIEW.md) is for
-you; this is for the thing writing your draft.** A review report is
+[REVIEW.md](REVIEW.md) is its counterpart: it is for you, and this page
+is for the thing writing your draft. A review report is
 evidence you weigh before deciding a draft is done; a dossier is working
 state a machine reloads to keep going. They mirror the same draft path
 and are otherwise unalike: different readers, different lifetimes, and
@@ -51,22 +50,21 @@ what lets `dossier export <topic> --with-rendered` find the renders at
 all: it matches them by their path relative to `content/rendered/`.
 
 There are nine files, seven required and two optional, each answering a
-question the draft itself cannot. The "status before" column is kept
-because it is the argument for the file existing: two were specified but
-never made durable, and the two that were missing entirely are the two
-that matter most.
+question the draft itself cannot. Without the dossier, none of this
+survives the session that wrote the draft: it lives in the transcript
+only.
 
-| File | What it holds | Status before this |
-| --- | --- | --- |
-| `scope.md` | genre, reader, dialect (`language:`), what the draft covers and excludes, glossary, corpus fingerprint, draft fingerprint | in the transcript only |
-| `evidence.md` | each kept citekey, why it was kept, and its claim | **specified** (survey-writer step 2) but written as JSON |
-| `rejected.md` | candidates retrieved and turned down, with the reason | **nowhere** |
-| `sections.md` | section heading -> the citekeys cited under it, and while a run is still going, the ones it plans to cite | **specified** (survey-writer step 8) but written as JSON |
-| `steering.md` | what the user asked for in chat that the draft doesn't show | **nowhere** |
-| `revisions.md` | append-only log of what changed and why | **nowhere** |
-| `retrieval.md` | every retrieval call and the size of what it returned | **nowhere** |
-| `math.md` | ASCII in the draft -> the LaTeX it renders as ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12) | **nowhere** |
-| `outline.md` | the human's own per-section brief/claim/declared queries | **nowhere** |
+| File | What it holds |
+| --- | --- |
+| `scope.md` | genre, reader, dialect (`language:`), what the draft covers and excludes, glossary, corpus fingerprint, draft fingerprint |
+| `evidence.md` | each kept citekey, why it was kept, and its claim |
+| `rejected.md` | candidates retrieved and turned down, with the reason |
+| `sections.md` | section heading -> the citekeys cited under it, and while a run is still going, the ones it plans to cite |
+| `steering.md` | what the user asked for in chat that the draft doesn't show |
+| `revisions.md` | append-only log of what changed and why |
+| `retrieval.md` | every retrieval call and the size of what it returned |
+| `math.md` | ASCII in the draft -> the LaTeX it renders as ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12) |
+| `outline.md` | the human's own per-section brief/claim/declared queries |
 
 Four filled dossiers are committed to read alongside this page:
 `docs/examples/sample-project/content/dossiers/dt-overview/` holds one per
@@ -108,9 +106,9 @@ anything:
   `render` refuses outright when a `<!-- math -->` marker has no mapping
   to resolve, which makes that case loud instead of mute.
 - Because it is keyed on the exact span text, a revision that *rewords*
-  an equation desyncs it. Which skill fixes that is not left open: each
-  of `draft-reviser`, `corpus-reviser` and `agenda-reviser` carries the
-  step, and the four Markdown genre writers create the file.
+  an equation desyncs it. Each of `draft-reviser`, `corpus-reviser` and
+  `agenda-reviser` carries the step that fixes it, and the four Markdown
+  genre writers create the file.
 
 **`scope.md`: the boundary.** Genre, the reader the draft is written
 for, the dialect it is written in (`language:`, so an en-GB draft stays
@@ -126,9 +124,8 @@ asked to leave out.
 **`evidence.md`: what was kept, and why.** One block per kept citekey.
 Where a later pass or a hand edit has written two under the same
 citekey, the **first** is the block every reader gets, with the rest
-reported by `check-evidence`. Keeping the last was the earlier
-behaviour and was silent, so a second block displaced the evidence a
-drafting run had already been handed with nothing anywhere saying so.
+reported by `check-evidence`, so a second block never silently
+displaces the evidence a drafting run was already handed.
 Each block carries `relevance:` (why this source bears on the
 sub-theme), `claim:` (what it establishes, in the drafter's own words)
 and an optional `quote:` (its exact wording). **Only `claim:` may be
@@ -140,9 +137,9 @@ written at the moment the evidence is judged, before any sentence of the
 draft exists, so it cannot be a lightly-edited copy of the passage.
 `quote:` is absent by default, because a quotation is a deliberate act
 and not the residue of retrieval, and `quote:` is what the evidence
-sidecar renders. Blocks written
-before this contract carry a single `support:` field and are never
-rewritten; old and new coexist by construction.
+sidecar renders. An older block
+may carry a single `support:` field instead; it is never rewritten, and
+the two shapes coexist (see below).
 
 **`rejected.md`: the candidates turned down, with the reason.** This is
 the file whose absence *is* the expensive mistake. Without it, the next
@@ -203,7 +200,8 @@ shipped), and optional declared
 sections; `dossier outline <draft>` prints them. Reading and validating
 is all this file does on its own; deciding what's kept and writing
 `sections.md`/`evidence.md` stays the genre skill's job, unchanged.
-`retrieval.md`'s `origin` column (`declared`/`extended`) is what
+`retrieval.md`'s `origin` column (`declared`, `extended` or
+`reground`) is what
 `dossier status` reads to answer "did this draft follow its outline?"
 from the record instead of from trust.
 
@@ -237,12 +235,13 @@ That requirement matters because this set is differenced against the
 ledger in *both* directions, and on the "what has left the corpus?" side
 an invented token would be reported as a broken citation that is not one.
 
-It also made a whole family of real citekeys invisible. `Doe2024` and
-`Lamport94`, the default style of several reference managers, carry
-no separator at all, so a dossier written that way contributed nothing to
-any parse, and a paper it cited leaving the corpus was **never**
-reported. A false negative there is the worse failure of the two, since the
-draft goes on citing a source the ledger no longer holds.
+On its own, it would make a whole family of real citekeys invisible.
+`Doe2024` and `Lamport94`, the default style of several reference
+managers, carry no separator at all, so a dossier written that way would
+contribute nothing to any parse, and a paper it cited leaving the corpus
+would **never** be reported. A false negative there is the worse
+failure of the two, since the draft goes on citing a source the ledger
+no longer holds.
 
 Both halves are kept by admitting a separator-free token only when it is
 one this dossier can already be shown to know: a member of the ledger, or
@@ -250,7 +249,7 @@ a citekey the dossier itself *declares* by opening an `evidence.md`
 heading with it. The second is what closes the departed-key case, which
 ledger membership alone cannot, since a key that has left the ledger is
 by definition not in it. A heading is structural; prose is not, so prose
-still cannot promote a word into a broken-citation report. The strict
+cannot promote a word into a broken-citation report. The strict
 scan is never replaced by the loose one, only added to.
 
 ## 💡 Why Markdown
@@ -264,9 +263,9 @@ freely.
 A restored tarball is also legible on its own a year later, without this
 code.
 
-The cost of that choice is real: there is no schema, so nothing validates
-that `evidence.md` is well-formed. This is accepted deliberately, on the
-same principle as `chitragupta/review/citation_provenance.py`: a check
+The cost of that choice is that there is no schema, so nothing validates
+that `evidence.md` is well-formed. This is accepted on the same
+principle as `chitragupta/review/citation_provenance.py`: a check
 that blocked on something it cannot verify exactly would train people to
 work around it.
 A malformed dossier makes the next revision less efficient. It cannot
@@ -278,14 +277,14 @@ draft and the user.
 One `## \`citekey\`` block carries three possible fields:
 
 ```markdown
-## `talasila_realising_2024`
+## `sample_dt_sync_2023`
 
 relevance: why this source bears on the sub-theme
 claim: what the source establishes, in the drafter's own words
 quote: an optional verbatim span, quotable-only
 ```
 
-- **`relevance:`** is unchanged from before this section existed.
+- **`relevance:`** says why this source bears on the sub-theme.
 - **`claim:`** is required, and is **the only field a drafting step may
   write prose from.** It is written by whoever judged the evidence, at
   the moment they judged it, before any sentence of the draft exists. That
@@ -301,13 +300,14 @@ quote: an optional verbatim span, quotable-only
   this contract removes, so one is captured only when a quotation is
   intended.
 
-**Migration.** This replaces a `support:` field that held, in practice, a raw
-retrieval window (`EVIDENCE_CHARS = 600` in `chitragupta/retrieval_cli.py`),
-handed straight to the drafter. `support:` is **read but never written** after
-this landed: existing dossiers keep it as-is, and nothing rewrites one to the
-new shape. `evidence_blocks()` already returns a block verbatim without owning
-its shape, so old and new coexist by construction. A skill meeting a
-`support:`-only block reads it as `quote:`, the conservative reading, since that
+**A `support:` field.** A block may carry `support:` instead of
+`claim:`/`quote:`. It holds, in practice, a raw retrieval window
+(`EVIDENCE_CHARS = 600` in `chitragupta/retrieval_cli.py`). `support:` is
+**read but never written**: a dossier keeps it as-is, and nothing
+rewrites one to the newer shape. `evidence_blocks()` returns a block
+verbatim without owning its shape, so old and new coexist by
+construction. A skill meeting a `support:`-only block reads it as
+`quote:`, the conservative reading, since that
 is usually what it is.
 
 **That rule is about what a drafter *may quote from*, and it does not
@@ -320,17 +320,16 @@ source wording:
 | A drafting or revising skill | `quote:` | It is deciding whether the block may be quoted at all. Treating unknown provenance as quotable-only is the cautious answer, because it *restricts* what the skill may do with it |
 | `chitragupta/evidence_appendix.py` | nothing at all | It is deciding what to put in a rendered document. A legacy `support:` holds a raw 600-character retrieval window (`EVIDENCE_CHARS`), and printing one as an attributed quotation would publish it |
 
-So the evidence sidecar
-([CLI.md](CLI.md#-chitragupta-draft-evidence)) reads `quote:` and
-only `quote:`. A pre-A2 dossier therefore renders no sidecar, which is
-correct and not a gap: nobody ever decided those windows were worth
+So the evidence sidecar ([CLI.md](CLI.md#-chitragupta-draft-evidence))
+reads `quote:` and only `quote:`. A `support:`-only dossier therefore
+renders no sidecar, because nobody ever decided those windows were worth
 quoting. `claim:` is excluded from it for the mirror-image reason: it is
 the drafter's own words, so quoting it back would attribute this
 project's prose to the source.
 
-If you are changing that module and this looks like an oversight against
-the rule above, it is not; `plans/a4-evidence-appendix.md` records the
-decision and `tests/test_evidence_appendix.py` pins it.
+The difference from the rule above is intended:
+`plans/a4-evidence-appendix.md` records the decision and
+`tests/test_evidence_appendix.py` pins it.
 
 ### 📖 The evidence sidecar, decided per genre
 
@@ -339,8 +338,8 @@ Four of the six drafting skills also render an **evidence sidecar**,
 source and the verbatim spans its dossier marked quotable
 ([CLI.md](CLI.md#-chitragupta-draft-evidence)). It changes what a
 finished document set *looks like*, so each genre answers for itself
-instead of inheriting one switch, and the two answers that produce
-nothing are decisions on the record, not omissions:
+instead of inheriting one switch. The two genres that produce none
+decided so on the record:
 
 | Skill | Emits one? | Why |
 | --- | --- | --- |
@@ -383,11 +382,10 @@ module exists to avoid.
 
 Its own template says the file is "rebuildable from the draft", and it is:
 a heading owns a line range, a citekey is cited on a line, and the
-relation falls out of the intersection. Six genre skills nonetheless
-had a model read the outline and attribute each key by hand. That is a
-mechanical step with a wrong answer available, and a `sections.md` that
-disagrees with the draft hands `draft-reviser` the wrong section for a
-citation.
+relation falls out of the intersection. Attributing each key by hand
+from the outline is a mechanical step with a wrong answer available, and
+a `sections.md` that disagrees with the draft hands `draft-reviser` the
+wrong section for a citation.
 
 ```bash
 python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write
@@ -418,8 +416,7 @@ mirrors the draft's path, so two drafts named `survey.md` in different
 topics do not share one file.
 
 They stay separate *files*, and neither replaces the other, because they
-answer different questions for different readers. The argument for that
-is about Markdown-versus-JSON, not about directories:
+answer different questions for different readers:
 
 | | `provenance.json` | the dossier's Markdown |
 | --- | --- | --- |
@@ -430,7 +427,7 @@ is about Markdown-versus-JSON, not about directories:
 
 The overlap is one column of `sections.md`. Collapsing them would mean
 either putting prose a human needs into JSON, or putting a machine record
-into Markdown that nothing parses. So they stay separate files, and the
+into Markdown that nothing parses. The
 two skills that produce both write both.
 
 ## 📚 The corpus fingerprint
@@ -453,13 +450,11 @@ take a write lock or run a migration.
 
 It does wait for a writer's commit, though, and that is consistent with
 the above. The ledger uses SQLite's default rollback journal, under
-which a reader is locked out for the length of a commit. Until it was
-fixed, this path used a zero busy-timeout and swallowed the resulting
-`SQLITE_BUSY` into "there is no readable ledger", so a `dossier status`
-that happened to overlap a sync's commit reported a drift scan against no
-corpus at all, indistinguishable from a machine that has none. Waiting
-the window out takes no lock while it waits, so the "must not interfere"
-property is untouched and the answer is now the right one.
+which a reader is locked out for the length of a commit. Giving up at
+once would report a drift scan against no corpus at all,
+indistinguishable from a machine that has none. Waiting the window out
+takes no lock while it waits, so the "must not interfere" property is
+untouched.
 
 **Drift is not itself a reason to redraft.** It is a reason to re-search
 if, and only if, the change being made touches a sub-theme the new papers
@@ -480,13 +475,14 @@ that corpus.
 ## 🧭 The draft fingerprint (FEATURE-ROADMAP.md's E3)
 
 The corpus fingerprint above answers "has the corpus moved since this
-draft was written?" Nothing answered the same question about the draft
-itself, so a hand edit left `sections.md`, `evidence.md` and `math.md`
-describing a document that no longer existed, silently. This is also the
+draft was written?" The draft fingerprint answers the same question
+about the draft itself, so a hand edit cannot silently leave
+`sections.md`, `evidence.md` and `math.md` describing a document that
+no longer exists. This is also the
 mechanism behind "how do I hand a revised draft back?";
 [WRITING-PROCESS.md](WRITING-PROCESS.md#-handing-a-hand-edited-draft-back-for-the-next-iteration)
 walks through that from the user's side, and what follows is the format it
-rests on. `scope.md` now also carries a text digest of the draft:
+rests on. `scope.md` carries a text digest of the draft:
 
 ```text
 - draft digest: `a1b2c3d4e5f6`
@@ -540,18 +536,17 @@ not drift to chase, just a draft nobody has stamped yet.
 ### 🧹 The second row has a command, and a second reader
 
 The table above cannot carry two things about "an `evidence.md` block
-whose citekey is no longer cited", both from #701.
+whose citekey is no longer cited".
 
 **It is removable by a primitive instead of a hand edit:**
 
 ```bash
 python -m chitragupta.draft dossier prune content/drafts/<slug>.md              # dry run
 python -m chitragupta.draft dossier prune content/drafts/<slug>.md --apply
-python -m chitragupta.draft dossier prune content/drafts/<slug>.md --citekey doe_x_2024 --apply
+python -m chitragupta.draft dossier prune content/drafts/<slug>.md --citekey sample_dt_factory_2022 --apply
 ```
 
-It is a dry run by default, and that is the design, not timidity:
-`recorded - cited` cannot distinguish a
+It is a dry run by default because `recorded - cited` cannot distinguish a
 citation the user cut from a candidate transcribed into `evidence.md` and never
 cited, and the two want opposite repairs. It deletes by line span, touches
 `evidence.md` only, and refuses (instead of half-doing) a citekey with two
@@ -559,10 +554,10 @@ blocks, a citekey still cited, and a citekey recorded only in `sections.md`
 (which `dossier sections --citekeys --write` already regenerates). `rejected.md`
 is never read or written.
 
-**And `status` is no longer the only surface that reports it.** Every
+**And `status` is not the only surface that reports it.** Every
 class in the table above is gated on the digest having changed, which
-needs a prior `dossier stamp`, so a dossier written before stamping
-landed (2026-08-30) answers nothing, with no backfill path.
+needs a prior `dossier stamp`, so a dossier that was never stamped
+answers nothing.
 `python -m chitragupta.review agenda` therefore computes the same state
 **ungated**, as a surfaced `recorded-but-uncited` item, and over
 `sections.md` as well as `evidence.md`. `status` keeps its gate, for

@@ -37,7 +37,8 @@ enrich group's dependencies (docling, chromadb, bertopic,
 sentence-transformers) are mocked via `sys.modules` for fast,
 deterministic unit tests, so the `dev-deps` group alone is *not*
 enough: the `enrich` group
-(`python-deps`, step 1 of Quickstart) must already be installed too, since
+(`bash scripts/install_full_pipeline.sh python-deps`) must already be
+installed too, since
 `tests/test_bib_reader.py` needs `bibtexparser` and the `chitragupta/enrich/` test
 modules need docling/chromadb/bertopic/sentence-transformers.
 
@@ -45,7 +46,7 @@ One module is the deliberate exception.
 `tests/test_enrich_real_libraries.py` drives the *real* `chromadb` through
 `build_index()`/`search()`, and asks the real
 `sentence_transformers`/`bertopic` classes whether they still accept the
-keywords the fakes accept (#514). The fakes are faithful enough that the
+keywords the fakes accept. The fakes are faithful enough that the
 expensive failure is the day they quietly stop being; that module is what
 notices. It does not download an embedding model (its own docstring says
 why), so it stays as fast and as offline as the rest.
@@ -81,49 +82,24 @@ release zip for the same reason `tests/` is.
 - [bench/PARALLELISM-PLAN.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/PARALLELISM-PLAN.md)
   records what is still unknown, and what to measure before changing it
 
-The headline, in the order it was found:
+What the measurements established, and what the code relies on:
 
-1. Parsing all 501 bib PDFs with `docling` took ~1.6 hours (later
-   measured at 1h 56m), with the A40 at ~7% utilization and three CPU
-   cores of 48 busy. The GPU was worth only 1.79x over CPU-only, because
-   the work was CPU-bound.
-2. Turning OCR off (v0.12.0) was worth more than the GPU: **2.08x
-   serially, 3.91x at 12 workers and 4.79x at 24**, since OCR competes
-   for the same CPU the parallelism needs. (An earlier 2.46x, from a
-   16-PDF serial sample, is still quoted in older text; it estimated the
-   serial case only.)
-3. Parallelising `sync` (v1.0.0) was worth 3.60x at four workers.
-4. That moved the bottleneck onto a single GPU: `AcceleratorDevice.AUTO`
-   resolves to `cuda:0` in every worker, so GPU 0 ran at 100% while
-   GPUs 1-3 idled.
-5. Giving each worker its own card (v1.1.0) was worth a further **1.62x**
-   on the full corpus (528s to 326s at twelve workers). The whole
-   501-PDF corpus now parses in **5m 10s**, against 1h 56m where this
-   started.
-6. Per-worker startup (v2.1.0) turned out to be 3.2s of importing torch
-   and docling plus ~5s of loading Docling's models, and only the first
-   is shareable between processes. A forkserver pool with those modules
-   preloaded, started before the bibliography is read, takes a fixed
-   ~1.5-2s off pool startup: 9.6% of an 8-document run, 2.5% of a
-   60-document one.
-7. Measuring the **whole** corpus instead of extrapolating from a 16-PDF
-   sample (2026-08-04) found the serial baseline was 55m 30s, not the
-   ~39m every document had quoted, which was **41% low**. Correcting it
-   showed 12-worker efficiency is 89%, not the 60% previously reported, and that
-   `worker_ceiling()`'s `cpus // 4` clamp costs **1.41x**: 32 workers
-   beat the 12 it allows.
-8. Asking whether a *quotable passage* survives a re-parse (2026-08-07,
-   `bench/repro_check.py`) found that ~1% of documents come back with a
-   different passage text, and, correcting what this project had
-   asserted twice, that two runs of the **same** configuration are not
-   exempt either. The artifact-by-artifact contract that came out of it
-   is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
+1. A `docling` parse is CPU-bound. A GPU alone buys little; turning OCR
+   off (`[parser].ocr = false`, the default) buys more, because OCR
+   competes for the same CPU the worker pool needs.
+2. The pool gives each worker its own GPU rather than letting every
+   worker resolve to `cuda:0`.
+3. `worker_ceiling()` clamps the pool size; `bench/RESULTS.md` records
+   what that clamp costs on the multi-GPU machine.
+4. About 1% of documents come back with a different quotable passage on
+   a re-parse, even with the same configuration. The
+   artifact-by-artifact contract is in
+   [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
 
-Every one of those steps was measured, and seven intermediate
-conclusions were wrong until the next measurement corrected them,
-including two that sat in the code as stated fact and one that had been
-written into three documents. `bench/` exists so that
-the next one is checked too.
+Read `bench/RESULTS.md`'s "Which sections are current" table before
+quoting a number from it: several early conclusions were overturned by
+later runs and are kept, marked, rather than deleted. `bench/` exists so
+that the next conclusion is measured too.
 
 ## 🧠 Writing a script that drives the enrichment layer
 
@@ -170,64 +146,27 @@ DOCKER-DEVELOPER.md       how the toolchain and agent images are built and verif
                           automatically and RELEASE_TEMPLATE.md (copied by hand)
 docs/                     reference docs that ship in the release zip -- everything except the
                           root-level ones above, which stay put because they're what a reader looks
-                          for first. Every file here opens with a status line on the third line,
-                          `Status: **<kind>.** Written <date>.`, so a reader can tell what they are
-                          holding before reading it -- one of:
+                          for first. README.md's Documentation tables and mkdocs.yml's nav index
+                          them. Every file here carries a status line on its third line,
+                          `Status: **<kind>.**`, so a reader can tell what they are holding before
+                          reading it -- one of:
+                            tutorial.                a lesson a reader follows start to finish
+                            how-to.                  a procedure for a task the reader already has
                             reference.               what exists and how to look it up
-                            how-to.                  a procedure to follow start to finish
                             implemented.             a built subsystem, described as built
                             reasoning document.      why a decision went the way it did, kept
                                                      because the reasoning outlives the decision
                             measurements.            numbers from a real run on a named machine
-                            a proposal, not a plan.  nothing here is built; the decision is open
-                          A new document picks one of those rather than inventing a sixth. Written
-                          is when it was authored and never moves afterward -- git already records
-                          revisions, and a hand-maintained "last revised" goes stale. A revision
-                          substantive enough that a returning reader should know appends a second
-                          sentence right after it, `Updated <date>.` -- itself hand-maintained, so
-                          it is a pointer worth checking against `git log`, not a guarantee: a
-                          suspiciously old Updated date is a reason to check the file's real history,
-                          not proof nothing changed since. Most files carry no Updated sentence at
-                          all, which reads as "unchanged since it was written," not as an omission
-  PARALLELISM.md            parallel parse design: architecture, components, and the roadmap
-  PERFORMANCE.md            what each config setting costs, measured -- the lookup-oriented companion
-                            to PARALLELISM.md's design doc
-  ZOTERO.md                 getting a bib file and its PDFs into the shape this pipeline expects
-  EXPORT-ZOTERO-GROUPS.md   discouraged: recovering collection labels by reading zotero.sqlite
-                            directly, when Better BibTeX cannot produce them -- carries the
-                            warning about which project rules that bends
-  CLI.md                    every command, and which interpreter each one needs
-  CONFIG.md                 every setting, with config.toml.example reproduced in full
-  PDF-PARSER.md             parser backend tradeoffs, why grobid/markitdown were removed, and why
-                            marker/surya/xberg/unstructured were surveyed and not adopted
-  GROBID-CITATION-GRAPH.md  a proposal, not a plan: what a GROBID stage alongside docling would
-                            buy (a corpus-internal citation graph) and what it would cost
-  ARCHITECTURE.md           what runs, what each part writes, what is optional, and which interpreter
-                            each command needs -- the user-facing companion to DESIGN.md
-  RETRIEVAL.md              BM25 vs embeddings vs topic model: which answers what, and what to build
-  DESIGN.md                 architecture and design decisions -- the rationale, not the map
+                            proposal.                nothing here is built; the decision is open
+                          A new document picks one of those rather than inventing an eighth. The
+                          line carries no date: git records when a file was written and revised
   DIAGRAMS.md               the workflow drawn thirteen ways; the fenced mermaid blocks are the source
   diagrams/                 the same thirteen as standalone files, for use outside this repo
     *.mmd                     mermaid sources with a title line
     svg/*.svg                 rendered exports, by scripts/render_diagrams.py. Exports only -- edit the
                               fenced block in DIAGRAMS.md, run --sync (house theme + .mmd copy), re-render
     svg/sources.json          which .mmd fingerprint each export was rendered from; pinned by a test
-  CITATION-PROVENANCE.md    what chitragupta/review/citation_provenance.py reports and how to read it
-  PLAGIARISM.md             what chitragupta/review/verbatim_check/'s overlap/scan modes catch and don't
-                            (verbatim reuse only, paraphrase is a later tier), the n-gram
-                            fingerprinting technique and its literature sources, and a measured
-                            docling-vs-pdftotext backend comparison
-  DRAFT-ITERATION.md        what a dossier holds, and how a draft is revised weeks later without
-                            re-running the pipeline that produced it
-  TOKENS.md                 where a run's tokens go -- the resident/one-shot pools, two worked
-                            examples, and how to measure it without paying for a full run
-  GENRE.md                  the eleven skills in .claude/: which writes what, how to pick, and what
-                            each one refuses to do
-  LADDERS.md                every automatic fallback chain the code walks, and every tier you pick
-                            yourself -- and what the bottom rung of each costs
-  WRITING-STANDARDS.md      the prose standards the genre skills share, and their sources in the
-                            technical-communication literature
-  NAME.md                   where "chitragupta" comes from
+  examples/                 the committed sample project and harness examples (examples/README.md)
   logo.svg, logo-dark.svg   the README banner, light and dark
 LICENSE                   MIT
 assets/                   data files the pipeline reads at runtime, tracked and shipped
@@ -254,7 +193,8 @@ pyproject.toml            Poetry config -- a real, publishable package (name chi
                           the decision and the naming) + pytest/coverage tool config
 poetry.toml               project-local Poetry config: virtualenvs.create = false (installs into
                           whatever venv VIRTUAL_ENV points at, e.g. .venv-full/, instead of Poetry's own)
-poetry.lock               resolved dependency versions -- regenerate with `poetry lock` after editing pyproject.toml
+poetry.lock               resolved dependency versions -- `poetry lock` after editing one constraint;
+                          `python3 scripts/relock.py` to regenerate it from nothing (docs/UV-MIGRATION.md)
 mkdocs.yml                the documentation site published at prasad.talasila.in/chitragupta. `docs_dir: .`
                           on purpose: the site is this repository as it stands, so every cross-document
                           link works unchanged and there is no staging step to keep in sync. Built by
@@ -262,6 +202,12 @@ mkdocs.yml                the documentation site published at prasad.talasila.in
                           (`poetry install --only docs`). Read its header before editing
 chitragupta/                      the corpus and drafting layers (sync needs bibtexparser;
                           citation_gate/references need nothing)
+  __main__.py               the `chitragupta`/`cg` console script: dispatches corpus, draft, review,
+                          enrich, init, doctor, install and figure
+  init.py, doctor.py, install.py  the package-level commands (docs/PACKAGING.md)
+  figure/                   `chitragupta figure sync|check|new|look`, the figure-drawer toolkit
+                          (docs/figure-checks/README.md)
+  discover/                 `corpus discover`: the topic-graph walks, the HTML page and the offline app
   config.py                 every setting, as config.NAME; env var overrides
   config_load.py            the config.toml load and the typed getters config.py reads each setting through
   config_enrich.py          the [enrich]/[discover] knobs, re-exported by config.py as config.NAME
@@ -276,7 +222,7 @@ chitragupta/                      the corpus and drafting layers (sync needs bib
                           can build a full bibliography entry without reading the bib file itself
   pdf_text/                 PDF text extraction, dispatched to pdftotext/docling by config.PARSER; also the parse-quality guard
   sync.py                   orchestrates the above -- the corpus layer's `sync` verb; --remove-stale opts into
-                          deleting stale ledger rows (default: report only, see README's "Removing a paper")
+                          deleting stale ledger rows (default: report only, see docs/ZOTERO.md)
   corpus.py                 the corpus layer's single entry point, `python -m chitragupta.corpus sync|ledger|topics|discover`.
                           sync.py and ledger.py carry no __main__ block of their own. Imports the verb
                           it was given rather than both, so asking for `ledger` never pays for sync's
@@ -321,7 +267,7 @@ chitragupta/review/                the review layer -- one command, `python -m c
                           mirroring the draft), the "not a gate" banner, the header, and the
                           write-md-then-render routine all eleven aids use. No timestamp, so a
                           report diffs across revisions
-  __main__.py               the layer's single entry point: one parser, ten subcommands, each
+  __main__.py               the layer's single entry point: one parser, eleven subcommands, each
                           wired to its aid's own build_parser()/run(). The aids below carry no
                           __main__ block of their own -- see docs/ARCHITECTURE.md on why a layer's
                           command surface stays one level deep
@@ -353,7 +299,9 @@ chitragupta/enrich/                the enrichment layer (pyproject.toml's "enric
                           so every enriched document is citable, keyed by its citekey
   docling_parse.py, embed_index.py, topic_model.py, topic_seeding.py, topic_converge.py
 scripts/                   dev tooling only -- no layer entry point lives here
-  install_full_pipeline.sh  single staged install path (os-deps/python-deps/dev-deps/all) for host + Docker
+  install_full_pipeline.sh  single staged install path for host, Docker and CI: os-deps, python-deps,
+                          dev-deps, all, plus the opt-in cpu-torch, gpu-torch, vale, actionlint, stix-two
+  relock.py                 regenerates poetry.lock through uv's resolver (docs/UV-MIGRATION.md)
   release.py                 bundles a distributable release/chitragupta-<version>.zip, dev files excluded
 tests/                    pytest suite -- unit tests per module + end-to-end feature tests (see "Running tests")
 content/                  generated, gitignored (regenerate with sync)
@@ -363,9 +311,9 @@ content/                  generated, gitignored (regenerate with sync)
   topic_embed_cache.json  (chitragupta/enrich/ outputs)
 logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups. Level from
                           config.toml's [logging]; relocate with the LOGS_DIR env var
-.claude/skills/           drafting layer: five that write a draft (survey-writer,
+.claude/skills/           drafting layer: six that write a draft (survey-writer,
                           thesis-chapter-writer, textbook-chapter-writer, tutorial-writer,
-                          deep-research), three that revise one that already exists
+                          deep-research, review-digest), three that revise one that already exists
                           (draft-reviser, corpus-reviser, agenda-reviser), one that
                           assembles accepted units into a book (book-assembler), and one
                           that draws a figure for the others (figure-drawer). Each has a
@@ -396,59 +344,11 @@ docker/                   Dockerfile (TeX Live/Pandoc/Poetry), Dockerfile.claude
 
 ## 📐 Figures and copyright
 
-With `[enrich].docling_images` on (off by default), the Docling stage writes
-each paper's figure bitmaps to `content/docling/<doc>_artifacts/` and an
-index of them to `content/docling/<doc>.figures.json`.
-
-**Those images are a reading aid, not draft content.** Nothing in this
-repo inserts them into `content/drafts/`, and nothing should start doing
-so. A figure's copyright belongs to the publisher or the authors, and
-citing a paper grants no right to reproduce its figures. `citation_gate`
-gates *citekeys*, and there is deliberately no equivalent gate for
-images. The ledger also has no license column, so the pipeline cannot
-tell a CC BY paper from an all-rights-reserved one; that judgment
-stays with you, per figure.
-
-The supported way to reference a figure is therefore **textually**, and
-each record in `<doc>.figures.json` carries a ready-to-paste `cite`
-string:
-
-```json
-{
-  "page": 8,
-  "caption": "Figure 3. Subdivision of the entry process of a Digital Twin",
-  "cite": "Figure 3 of [@richstein_characterizing_2024], p.8",
-  "image": "richstein_characterizing_2024_artifacts/image_000005_....png"
-}
-```
-
-Three details worth knowing about that `cite` string:
-
-- The number comes from the **caption's own text**, never from the
-  picture's position. Publisher logos and licence badges are pictures
-  too (on a real 17-page MDPI paper, 6 of the 13 extracted pictures
-  were furniture rather than figures), so the Nth picture is routinely
-  not the paper's Figure N.
-- The number is captured *whole*, including chapter-scoped forms
-  (`Fig. 1.1` ... `Fig. 1.4`, the convention in edited book chapters)
-  and sub-figure letters (`Figure 2a`). Matching only the leading
-  integer would collapse a chapter's four distinct figures onto one
-  `Figure 1`, giving a citation that points at the wrong picture.
-- A picture whose caption carries no number is cited by page instead
-  (`"the figure on p.1 of [@key]"`), rather than being given a number
-  this repo would have to invent. Two panels of one figure (captions
-  beginning `(a)` / `(b)`) therefore share a page-based citation; that
-  is the fallback behaving correctly, not a collision.
-
-Every figure's `cite` string is a real `[@citekey]`, because every
-document the enrichment layer parses comes from the bib file (see
-`chitragupta/enrich/corpus.py`).
-
-A wholly original diagram (not derived from any source paper's figure)
-is a different case this section doesn't restrict; see
-[docs/WRITING-STANDARDS.md](docs/WRITING-STANDARDS.md) §10 for the
-supported form and why it's plain ASCII rather than Unicode
-box-drawing.
+A source paper's figures are a reading aid, never draft content.
+[AGENTS.md](AGENTS.md) states the rule and the one exception (the
+verbatim digest); `python -m chitragupta.draft figures <citekey>` is the
+supported way to look at them. Code here must not insert a source
+image into `content/drafts/`.
 
 ## 📖 Citation provenance
 
@@ -482,8 +382,8 @@ Full design rationale, including the measurements behind those choices:
 
 ## ❓ Open questions and unbuilt features
 
-Running this pipeline on a schedule was the long-standing goal here.
-Most of it now exists: a rotating `logs/pipeline.log`, shared by the
+Running this pipeline on a schedule is supported: a rotating
+`logs/pipeline.log`, shared by the
 corpus and enrichment layers (see `chitragupta/logging_setup.py`), a pages/s
 throughput figure, exit codes an unattended caller can branch
 on, and worked cron and systemd units in

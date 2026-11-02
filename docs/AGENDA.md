@@ -1,6 +1,6 @@
 # 🗺 The agenda file, section by section
 
-Status: **reference.** Written 2026-09-15.
+Status: **reference.**
 
 **Written for** anyone reading an agenda report for the first time and
 wanting to know what each part of it means before acting on any of it.
@@ -9,10 +9,11 @@ wanting to know what each part of it means before acting on any of it.
 measures ([REVIEW.md](REVIEW.md)), and the unattended-repair loop's
 design ([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)).
 
-An agenda is one ranked, deduplicated worklist merged across the eight
-review aids that read a draft (every aid except `union`, which reads a
-book), so you read one document instead of eight. Produce
-one with:
+An agenda is one ranked, deduplicated worklist merged across eight of
+the review aids, so you read one document instead of eight. It reads
+every aid except itself, `union` (which reads a book, not a draft) and
+`digest` (whose classes describe a verbatim digest only). Produce one
+with:
 
 ```bash
 chitragupta review agenda content/drafts/dt/survey.md
@@ -59,7 +60,7 @@ The one exception is `--baseline`, which re-runs the aids itself; see
 
 This is the whole file, from a real run over the sample project's survey
 ([the committed original](examples/sample-project/content/review/dt-overview/survey.agenda.md)),
-abridged only by dropping repeated item lines. Its `Command:` line is
+abridged by dropping repeated item lines. Its `Command:` line is
 quoted exactly as the committed report records it, in the module form;
 `chitragupta review agenda <draft>` is the same command and is what this
 documentation uses everywhere else:
@@ -96,6 +97,8 @@ person to decide.
 - Claim support: read
 - Prose (style_check): read
 - Dossier drift: read
+- Recorded-but-uncited citekeys: read
+- Accepted items: none recorded for this draft
 
 One aid is never listed here: `review digest`, whose classes describe a
 verbatim digest and nothing else, so the agenda never reads it. For the
@@ -142,20 +145,31 @@ digest is the whole text ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)).
 | The `>` notice | the review-layer contract, repeated in every aid's report | it is there because a file outlives the session that made it; a reader months later must not mistake it for a verdict |
 | `- Draft:` / `- Command:` / `- chitragupta <version>` | provenance: what was read, by what command, at what version | re-run the `Command:` line verbatim to reproduce the report |
 | `## How to read this` | the same contract in prose, plus the `unattended` rule | read once; it is identical in every agenda |
-| `## Sources` | one line per aid, saying whether its report was **read**, **not run**, or read but contributing no items | **read this before the findings.** A short agenda with four aids "not run" is not a clean draft |
+| `## Sources` | one line per input: each aid, the prose check, dossier drift, the recorded-but-uncited citekeys and the acceptance record, saying whether it was read and in what state | **read this before the findings.** A short agenda with four aids "not run" is not a clean draft |
 | `## Summary` | counts per class, worst class first | tells you the shape of the work before you read a single item |
 | `## Findings` | the items themselves, grouped by class, ranked by class then severity | the worklist |
 
-People tend to skip `## Sources`, and should not. Three different
-things can appear there:
+People tend to skip `## Sources`, and should not. An aid's line says
+one of these:
 
 - **read**: the aid's report was found and merged.
 - **not run**: no report exists. Nothing from that aid is in this
   agenda, and its absence is not evidence of anything.
 - **read, no item class defined**: the aid ran and was read, but its
-  findings do not map to an agenda class. `synthesis` is the standing
-  example: it is reported for a human, and deliberately contributes no
-  worklist item.
+  findings do not map to an agenda class. `synthesis` and `figure` are
+  reported for a human, and deliberately contribute no worklist item.
+- **read, nothing checked**: the quotation aid ran but had no dossier,
+  or no quote the draft cites, so it looked at nothing.
+- **stale**: the aid's report is older than the draft. Re-run that aid.
+- **not refreshed**: under `--baseline`, the aid's refresh failed, so
+  its findings are an earlier run's and are not counted.
+
+The other inputs have their own states. The prose check is **partial**
+when `vale` is not on `PATH`. Dossier drift and the recorded-but-uncited
+citekeys are **not available** for a draft with no dossier, and drift is
+read without the ledger when the corpus is unavailable. The accepted
+items line says how many acceptances are recorded, or that the record is
+**unreadable**, in which case nothing is suppressed.
 
 ## 📌 The item line
 
@@ -180,20 +194,24 @@ to text you have since rewritten.
 
 ## 🏷 The classes
 
+In rank order: the worklist lists classes in this order, then by
+severity within a class.
+
 | Class | Raised by | Means |
 | --- | --- | --- |
+| `missing-citekey` | dossier drift | the draft cites a citekey the corpus does not hold |
+| `recorded-but-uncited` | dossier | `evidence.md` or `sections.md` records a source the draft cites nowhere |
 | `verbatim-run` | verbatim scan | a run of words the draft shares with a parsed source |
+| `prose` | `draft style` | a defect marker, an unexpanded acronym, or dialect drift against `scope.md` |
 | `unsupported-claim` | citation provenance | the cited source does not lexically support the claim citing it (`no support found` / `weak`) |
 | `claim-support` | claim support | the same question asked by an entailment model, ranked rather than banded |
 | `uncited-claim` | uncited prose | a sentence that reads as a factual claim with no citation |
 | `misquoted` | quotation integrity | a quoted span that does not match the source it cites |
-| `missing-citekey` | dossier drift | the draft cites a citekey the corpus no longer holds |
-| `recorded-but-uncited` | dossier drift | `evidence.md` keeps a source the draft cites nowhere |
-| `prose` | `draft style` | a defect marker, an unexpanded acronym, or dialect drift against `scope.md` |
+
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#-item-classes) gives the
+reason behind each class's disposition.
 
 ## ⚖ Unattended versus surfaced
-
-This is the distinction the whole file is organised around.
 
 | | Meaning | Classes |
 | --- | --- | --- |
