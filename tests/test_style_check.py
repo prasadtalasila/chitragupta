@@ -580,3 +580,27 @@ class TestCheckWiring:
             "chitragupta.DefectMarkers",
             "chitragupta.AcronymDrift",
         }
+
+
+class TestWithRepair:
+    """How each Vale finding may be repaired: `"edit"` lets the review
+    agenda fix it unattended, `"review"` lists it for a person."""
+
+    @staticmethod
+    def _repair(rule: str, source: str = "scope.md") -> str:
+        found = {"rule": rule, "match": "x", "line": 1, "count": 1}
+        return style_rules.with_repair([found], source)[0]["repair"]
+
+    def test_just_is_left_for_a_person(self):
+        """Vale cannot tell the filler adverb ("just run it") from the
+        adjective ("a just outcome"), so no pass may rewrite it unseen."""
+        assert self._repair("chitragupta.Just") == "review"
+
+    def test_a_defect_marker_is_still_repaired_unattended(self):
+        assert self._repair("chitragupta.DefectMarkers") == "edit"
+
+    def test_a_dialect_from_config_is_left_for_a_person(self):
+        assert self._repair("chitragupta.DialectGB", "config.toml") == "review"
+
+    def test_a_dialect_the_author_declared_is_repaired_unattended(self):
+        assert self._repair("chitragupta.DialectGB", "scope.md") == "edit"
