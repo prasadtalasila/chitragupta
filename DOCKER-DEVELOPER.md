@@ -14,7 +14,7 @@ What CI does and does not build:
 
 | Image | Built by CI | Run by CI |
 | --- | --- | --- |
-| `docker/Dockerfile` | **Yes**: `ci.yml`'s `docker-build` job runs `docker build --build-arg TORCH_VARIANT=cpu` on every push and PR (#302) | No. It builds and is thrown away; nothing execs into it |
+| `docker/Dockerfile` | **Yes**: `ci.yml`'s `docker-build` job runs `docker build --build-arg TORCH_VARIANT=cpu` on every push and PR | No. It builds and is thrown away; nothing execs into it |
 | `docker/Dockerfile.claude` | No; no workflow builds it | No |
 
 So a break in the toolchain image's *build* is caught automatically; a
@@ -32,13 +32,12 @@ correctly. Re-verify after changing `docker/Dockerfile`,
 has its own hand-run checks, under
 ["Verify the container"](DOCKER.md#-verify-the-container) in that file.
 
-Since the base moved to Ubuntu 26.04 LTS / Python 3.14, that
-`docker-build` job does more than check that the Dockerfile parses: it
-is the only automated check that installs `poetry.lock` under Python
-3.14 at all; the test matrix runs 3.12 and 3.13. A re-lock that drifts
-back below the cp314 wheel line (the failure mode issue #607 documents,
-which leaves CI otherwise green) fails there instead of on a user's
-machine. `pyproject.toml`'s comment on the `python` range explains why
+The base image is Ubuntu 26.04 LTS with its Python 3.14. The `test`
+job's Linux leg runs on `ubuntu-26.04` with the runner's own Python
+3.14, and the `docker-build` job installs `poetry.lock` inside the image
+too, so a re-lock that drifts below the cp314 wheel line fails in CI
+instead of on a user's machine. `pyproject.toml`'s comment on the
+`python` range explains why
 that drift is possible in the first place, and
 [docs/UV-MIGRATION.md](docs/UV-MIGRATION.md) has the measurements behind
 it.

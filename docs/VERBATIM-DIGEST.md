@@ -1,7 +1,6 @@
 # 📋 The verbatim digest
 
-Status: **reference.** Written 2026-10-09, for
-[discussion 991](https://github.com/prasadtalasila/chitragupta/discussions/991).
+Status: **reference.**
 
 **Written for** someone studying a topic who wants the papers' own
 words in one place, and for whoever reads the report that checks
@@ -216,9 +215,7 @@ every other digest check is instant; and keeping the digest aid at
 interpreter tier 1, stdlib only, means it runs on any host that can run
 the gate. To use it on a digest, run it on the same file, read its
 report beside the digest's, and treat an `unsupported-text` item the
-model marks entailed as "cite it correctly" rather than "delete it". A
-later change could add a `--support` flag that runs the two together;
-the agenda's `claim-support` class is the shape it would take.
+model marks entailed as "cite it correctly" rather than "delete it".
 
 ## 🖼 Figures
 

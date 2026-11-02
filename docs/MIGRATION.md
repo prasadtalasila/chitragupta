@@ -1,13 +1,11 @@
 # 🧳 Backing up, restoring and moving a project
 
-Status: **reference.** Written 2026-10-05, for 6.133.0.
+Status: **how-to.**
 
 **Written for** anyone who wants a copy of their drafts somewhere safe,
 needs last month's draft back, or is moving a project to a new directory,
 a new computer, or into a container. **Assumed:** a working project, set
-up as [CLI.md](CLI.md#-installing) describes. **Not covered here:** the
-Poetry-to-uv lockfile change, which has its own page,
-[UV-MIGRATION.md](UV-MIGRATION.md), and has nothing to do with your data.
+up as [CLI.md](CLI.md#-installing) describes.
 
 ## 🧭 Table of contents
 
@@ -15,7 +13,6 @@ Poetry-to-uv lockfile change, which has its own page,
 - [What a project holds](#-what-a-project-holds)
 - [Backing up drafts: dossier export and restore](#-backing-up-drafts-dossier-export-and-restore)
 - [A full backup](#-a-full-backup)
-- [The ledger path change in 6.133.0](#-the-ledger-path-change-in-61330)
 - [Moving to another directory](#-moving-to-another-directory)
 - [Moving to another computer](#-moving-to-another-computer)
 - [Sharing a project between a container and the host](#-sharing-a-project-between-a-container-and-the-host)
@@ -29,8 +26,8 @@ Poetry-to-uv lockfile change, which has its own page,
   Restore only writes when you add `--force`.
 - To move a project, copy the whole project directory with a tool that
   keeps file modification times (`rsync -a`, `cp -a` or `tar`). Then run
-  `chitragupta corpus sync` in the new place. Since 6.133.0 that sync
-  re-parses nothing.
+  `chitragupta corpus sync` in the new place. That sync re-parses
+  nothing.
 - On a new computer, install chitragupta first, run `chitragupta doctor`,
   and check two things the copy cannot fix for you: absolute paths in
   `config.toml`, and absolute PDF paths inside `bibliography.bib`.
@@ -41,6 +38,11 @@ A project is the directory that holds `config.toml`. Everything
 chitragupta reads or writes for that project is under it, unless your
 `config.toml` points somewhere else. The table sorts the contents by what
 losing them costs you.
+
+The ledger stores each paper's parsed-text path relative to `parsed/`
+under `[content].dir`, and its PDF path relative to the bib file's
+directory, so a copied or moved project finds every file again without
+re-parsing.
 
 `content/` in this page means your content directory: whatever
 `[content].dir` in `config.toml` names (or the `CONTENT_DIR` environment
@@ -154,50 +156,6 @@ Replace `project` with your directory's name. Leave out
 
 Make the backup when no `sync`, `enrich` or `render` is running, so
 the ledger is not caught halfway through a write.
-
-## 🔄 The ledger path change in 6.133.0
-
-The ledger records, for each paper, where its parsed text and its PDF are.
-Up to 6.132.0 it stored those as full paths on the machine that ran
-`sync`, such as `/home/ana/thesis/content/parsed/smith2024.txt`.
-Every reader checks that a path from the ledger lands inside the
-`parsed/` directory of `[content].dir` (for text) or the bib file's
-directory (for PDFs).
-After a move, the old full paths pointed somewhere else, every row failed
-that check, and `sync` printed `WARNING refusing ...` and parsed the
-whole library again.
-
-From 6.133.0 the ledger stores both paths relative to those directories:
-`parsed_path` is just `<citekey>.txt`, read from `parsed/` under
-`[content].dir`, and `pdf_path` is relative to the directory the bib
-file is really in, after following symlinks. Change `[content].dir`, or
-rename the directory and update the setting to match, and the ledger
-still finds every file.
-
-You do not run a migration step:
-
-- The first time a writer opens an older ledger (normally your next
-  `chitragupta corpus sync`), every old `parsed_path` is rewritten to
-  `<citekey>.txt`. This works even if the project has already moved,
-  because the file name depends only on the citekey.
-- The same `sync` rewrites every old `pdf_path` as it reads the bib file.
-- Read-only commands (`search`, `evidence`, `tldr`) keep working on an
-  older ledger in the meantime. They read an old full path where it
-  still points, and ignore it with a warning where it no longer does.
-- The search caches key on the stored path text, so each rebuilds once
-  after the upgrade.
-
-Two related fixes shipped with it. A relative `CHITRAGUPTA_PROJECT`
-(such as `../thesis`) is now resolved from the directory you set it in,
-so every later command finds the same project. And a project path that
-contains `?`, `#` or `%` now works for read-only commands, which used to
-open the wrong file and report the ledger as out of date.
-
-> [!IMPORTANT]
-> Every machine and container that shares one ledger should run 6.133.0
-> or later. An older release reads `smith2024.txt` relative to whatever
-> directory it runs in, finds nothing, and its `sync` writes full paths
-> back into the ledger.
 
 ## 📁 Moving to another directory
 
@@ -323,24 +281,20 @@ this.
 
 The Docker setup in [DOCKER.md](../DOCKER.md) mounts your project at
 `/workspace` inside the container, so the same project has one path on
-the host and another inside. Since 6.133.0 that is fine: the ledger
-stores nothing that depends on where the project is mounted, so a
+the host and another inside. That is fine: the ledger stores nothing
+that depends on where the project is mounted, so a
 `sync` on the host followed by a `search` in the container (or the other
 way round) finds the same text and parses nothing again.
 
-Two conditions:
-
-- The host and the container must both run 6.133.0 or later (see
-  [above](#-the-ledger-path-change-in-61330)).
-- The compose file mounts `papers/` read-only at `/workspace/papers`, so
-  `[bib].path` has to stay inside the project, which is the default.
+One condition: the compose file mounts `papers/` read-only at
+`/workspace/papers`, so `[bib].path` has to stay inside the project,
+which is the default.
 
 ## 🩺 When something looks wrong after a move
 
 | What you see | Why | What to do |
 | --- | --- | --- |
-| `WARNING refusing ...: it does not land inside ...` for every paper | An older release wrote the ledger, and a read-only command ran before any `sync` | Run `chitragupta corpus sync` once on 6.133.0 or later |
-| Every document is re-parsed after a move | The machine runs a release older than 6.133.0, or another machine sharing the ledger does | Upgrade every machine, then `sync` |
+| Every document is re-parsed after a move | A machine sharing the ledger runs an older chitragupta than the others | Install the same release on every machine, then `sync` |
 | Entries reported as having no PDF, `pdf_outside_papers`, exit code 3 | The bib file's `file` fields hold absolute paths from the old machine | Export the bib file again with relative paths (see [step 3](#3-check-the-paths-the-copy-cannot-fix)) |
 | `sync` takes as long as hashing the whole library, but parses nothing | The copy did not keep modification times | Nothing; the next `sync` is fast again |
 | `enrich` runs Docling on every PDF again | The copy did not keep the PDFs' modification times | Let it run, or copy again with `rsync -a` |

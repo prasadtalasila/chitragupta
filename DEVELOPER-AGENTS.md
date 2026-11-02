@@ -209,11 +209,10 @@ escapes, isn't worth hand-rolling), so it must be run via the installed venv,
 not the bare system interpreter. `python -m chitragupta.draft gate` is the
 exception (see [AGENTS.md](AGENTS.md)).
 
-**Probe for a toolchain; never assume one, in either direction.** An
-earlier revision of this file asserted that root, TeX Live and Pandoc were
-unavailable here, and a later one asserted the opposite. Both were one
-machine's facts written as project rules, and both went stale. The
-durable rule is the probe:
+**Probe for a toolchain; never assume one, in either direction.**
+Whether a host has root, TeX Live or Pandoc is one machine's fact, not a
+project rule, and writing it down as one goes stale. The durable rule is
+the probe:
 
 - **When the enrichment layer's dependencies are present:** stages that need them
   (Docling parsing; Pandoc/TeX Live rendering) work directly on the host,
@@ -234,6 +233,10 @@ bash scripts/install_full_pipeline.sh os-deps      # apt-get: TeX Live, Pandoc, 
 bash scripts/install_full_pipeline.sh dev-deps     # pytest/pytest-cov, to run the test suite -- opt-in
 bash scripts/install_full_pipeline.sh all          # os-deps + python-deps
 bash scripts/install_full_pipeline.sh cpu-torch    # swap torch to the cpu-only wheel index -- opt-in
+bash scripts/install_full_pipeline.sh gpu-torch    # match torch to this host's GPU driver (needs CHITRAGUPTA_PYTHON) -- opt-in
+bash scripts/install_full_pipeline.sh vale         # the Vale prose linter alone -- opt-in
+bash scripts/install_full_pipeline.sh actionlint   # the workflow linter alone -- opt-in
+bash scripts/install_full_pipeline.sh stix-two     # the STIX Two font alone -- opt-in
 ```
 
 This is **the single install script for both the host and Docker and CI**:
@@ -244,14 +247,16 @@ dependencies are managed by Poetry as a lockfile/venv manager for a
 checkout, Docker and CI ([docs/PACKAGING.md](docs/PACKAGING.md) records
 the decision to also make this a published, pip-installable package, and
 what had to land first). If you find a dependency-order issue, fix it
-once in `pyproject.toml` (+ `poetry lock` to update `poetry.lock`) and
-every target picks it up. Don't add a second install path.
+once in `pyproject.toml` (+ `poetry lock` to update `poetry.lock`, or
+`python3 scripts/relock.py` to regenerate it from nothing; see
+[docs/UV-MIGRATION.md](docs/UV-MIGRATION.md)) and every target picks it
+up. Don't add a second install path.
 
 Read that last sentence as the invariant it protects, not as the
 mechanism: the goal is **one place a dependency fact can be written**, so
 a fix lands once and every target picks it up. The single script is the
-mechanism for a checkout, Docker and CI; **there are now two front
-doors** onto it (#265): `install_full_pipeline.sh` for those three, and
+mechanism for a checkout, Docker and CI; **there are two front
+doors** onto it: `install_full_pipeline.sh` for those three, and
 `chitragupta install os-deps|gpu-torch` for someone who pip-installed,
 reaching the *same script's* `os-deps` stage and the *same*
 `ensure_gpu_torch` function rather than a reimplementation of either.
@@ -291,17 +296,17 @@ than carrying their own copy of the swap.
 `docker/` (Dockerfile) builds the same TeX Live/Pandoc stack inside a
 container instead, for hosts where the
 `os-deps` assumption above doesn't hold (no root, or root deliberately
-withheld). **It has still not been built or run in this environment** (no
-Docker daemon here); treat it as a draft to validate, not a tested
-artifact.
+withheld). CI builds its `cpu` variant on every push and PR but never
+runs it; [DOCKER-DEVELOPER.md](DOCKER-DEVELOPER.md) has what is verified
+by hand.
 
 **Install this checkout editable, or not at all.** `.claude/hooks/`'s
 launchers decide which `chitragupta` a hook's child imports by where the
 package resolves *without* the working tree on `sys.path`
 (`.claude/hooks/safe_path.py`, docs/HOOKS.md). A checkout whose venv also
-carries a non-editable `chitragupta-cli` -- `pip install chitragupta-cli`
+carries a non-editable `chitragupta-cli` (`pip install chitragupta-cli`
 run inside this same checkout's venv, instead of `poetry install` or
-`pip install -e .` -- reads exactly like an installed project to that
+`pip install -e .`) reads exactly like an installed project to that
 check, so its hooks run the installed copy rather than the working tree,
 and a change here silently stops being what the citation gate enforces.
 `scripts/install_full_pipeline.sh` (above) and `poetry install` give you
@@ -358,19 +363,19 @@ re-export, and re-run `python -m chitragupta.corpus sync`.
 
 ## 🤝 Conventions a new stage has to follow
 
-There are three, each learned from a bug rather than chosen:
+There are three, each one the fix for a failure that is easy to repeat:
 
 - **Anything holding the write lock reports per document.** DESIGN.md's
   concurrency policy requires a serial section to be observably making
-  progress, and an unreported one is indistinguishable from a hang. A
-  correct run was read as stuck and killed at 399 of 501 documents
-  (#50). `sync`, `docling_parse` and `embed_index` all emit
+  progress, and an unreported one is indistinguishable from a hang: a
+  correct run gets read as stuck and killed. `sync`, `docling_parse`
+  and `embed_index` all emit
   `[done/total] <citekey>`, opened *before* the slow call so the reader
   sees the document currently under way rather than the last one that
   finished. Where it goes differs, and the split is deliberate.
   `sync`'s stdout is a documented contract (bibliography order,
   diffable between runs, pinned by tests), so its progress and warnings
-  go through `logging` to `logs/pipeline.log` instead (3.4.0). The
+  go through `logging` to `logs/pipeline.log` instead. The
   enrichment stages keep their stdout and *mirror* it into the same file
   via `logging_setup.say()`, which prints and logs one line with
   `extra={"file_only": True}` so the console handler doesn't echo it.
@@ -416,13 +421,11 @@ need up-front tests, but the resulting real change does.
 issue, a review comment or a code report usually names both a symptom
 and the fix it thinks closes it, and the two are checked separately: the
 failing test reproduces the *symptom*, and only then does the prescribed
-fix get to prove it turns that test green. Twice in the 6.53.35--6.53.46
-run the prescription did not survive that: issue #506 asked the code to
-accept a citekey "exactly equal to a known ledger citekey", which cannot
-close a report about citekeys that have *left* the ledger, and the drift
-guard written for issue #512 passed silently on three reformats of the
-file it was reading. Both were found by the test, not by re-reading the
-issue.
+fix get to prove it turns that test green. A prescribed fix can fail to
+close its own symptom (accepting a citekey "exactly equal to a known
+ledger citekey" cannot close a report about citekeys that have *left*
+the ledger), and only the test shows that; re-reading the issue does
+not.
 
 **A guard is tested against the exact shape it was blind to.** For a
 check that reports "clean" the failure is silent, so a test asserting it
@@ -446,28 +449,15 @@ absence fails tests that have nothing to do with configuration:
 `.claude/hooks/`'s launchers, the CSL resolver, the citation-gate hook.
 `.github/workflows/ci.yml` runs exactly this `cp` in both the `test` and
 the `lint` job for that reason, and the session-start hook tells a new
-clone to. Nobody had told a *worktree*, and the cost of not knowing was
-16 of the 17 failures that a whole release run then carried as a
-constant.
+clone to. A worktree needs it just the same.
 
 **A finished checkout on a complete toolchain has no known failures at
 all.** That is the number worth having, because it makes any red yours.
-Measured on `origin/main` at 6.53.46, one worktree, one `.venv-full`,
-three states:
-
-| State | Result |
-| --- | --- |
-| No `config.toml`, no `os-deps` | 17 failed, 4490 passed, 70 skipped |
-| `config.toml`, no `os-deps` | 1 failed, 4503 passed, 72 skipped |
-| `config.toml` + `install_full_pipeline.sh os-deps` | **0 failed, 4573 passed, 3 skipped** |
-
-The middle row's one failure is `tests/test_sync.py`'s forkserver case,
-which shells out to `pdftotext`; it fails identically in the main
-checkout on such a host, so it is a missing binary rather than
-anything about the worktree. The last row's three skips are the two
-wanting a `papers/bibliography.bib` (gitignored per-host data, absent
-on any fresh checkout and in CI) and one case that only has something
-to skip over off Linux.
+Without `config.toml`, tests fail across the suite; without `os-deps`,
+the tests that shell out to `pdftotext`, `pandoc` or `lualatex` fail or
+self-skip. With both, the only skips are the cases that want a
+`papers/bibliography.bib` (gitignored per-host data, absent on any fresh
+checkout and in CI) and one that only has something to skip off Linux.
 
 **So baseline, and expect zero.** Write the counts down before touching
 anything, then answer "did I break something?" by diffing pass and fail
@@ -525,7 +515,7 @@ Before saying so, run, in this repo:
   lower number, it reads `coveragerc-windows.toml`, which excludes
   exactly the lines that leg cannot reach (`pragma: no cover-windows`),
   so a self-skipped render test and Windows code nothing reaches stay
-  distinguishable (#291). `tests/test_coverage_configs_agree.py` pins
+  distinguishable. `tests/test_coverage_configs_agree.py` pins
   the two configs to one floor, and this sentence to it.
 - **CI's whole `lint` job, in one command**, with your dev venv active
   so `python`, `pylint` and `ruff` resolve to the pinned ones:
@@ -545,7 +535,7 @@ Before saying so, run, in this repo:
   runs as in CI: it writes only this checkout's `node_modules/`.
   `tests/test_check_local.py` reads both files and fails
   when they part, so a step added to the job reaches the script in the
-  same change (#865). None of it is optional or CI's job alone:
+  same change. None of it is optional or CI's job alone:
   `markdownlint` in particular fails on prose that no test touches, so
   a green suite says nothing about it. "The linters, which are
   enforced" below explains the four linters' roots.
@@ -582,10 +572,9 @@ Before saying so, run, in this repo:
   `canvas.js`, `sidepanel.js` and `app.js` is written to run without a
   DOM and without cytoscape so that this command can exercise the real
   functions; those five are the DOM wiring left over, split out of
-  `app.js` (search and pickers by #857, the canvas and the side panel
-  after it) so each piece stays under the C2 limit, and the only five
+  `app.js` so each piece stays under the C2 limit, and the only five
   outside the coverage bar, because node never loads them.
-  `tests/webapp/browser_smoke.test.js` (#933) is what tests them, and
+  `tests/webapp/browser_smoke.test.js` is what tests them, and
   is their whole bar: it exports `fixture.js` through the real exporter
   (`python3` from the repository root, so it needs `config.toml` like
   the rest of the suite), opens it from `file://` in headless Chrome
@@ -615,8 +604,8 @@ Before saying so, run, in this repo:
   `tests/test_enrich_embed_index.py` and `tests/test_enrich_topic_model.py`'s
   own comments).
 
-  **For `chitragupta/enrich/*` this is now partly automated, and it
-  matters which part.** `tests/test_enrich_real_libraries.py` (#514) runs
+  **For `chitragupta/enrich/*` this is partly automated, and it
+  matters which part.** `tests/test_enrich_real_libraries.py` runs
   on every leg that has the `enrich` group installed, which is both of
   CI's: it drives the real `chromadb` through `build_index()`/`search()`,
   and asks the real `sentence_transformers`/`bertopic` classes whether
@@ -625,16 +614,15 @@ Before saying so, run, in this repo:
   because that would make every CI run depend on a ~420 MB HuggingFace
   fetch. So
   the hand-run smoke test still stands for anything touching
-  `model.encode()` or the clustering itself; it no longer stands for the
-  chromadb persistence paths, which the suite now covers better than a
-  hand run would.
+  `model.encode()` or the clustering itself; the chromadb persistence
+  paths are covered by the suite, better than a hand run would.
 
 Only once all of the above are green does a task count as complete.
 
 ### 🐛 Reading a red `codecov/project` on a branch you believe is 100%
 
 Believe your local run first, and check the session count before you go
-looking for the coverage you lost, because twice now there was none to find.
+looking for the coverage you lost: usually there is none to find.
 
 Each matrix leg uploads its own report, and the two are only correct
 merged: score the Windows one alone and a 100% branch reads ~99%. Codecov
@@ -649,10 +637,9 @@ curl -s https://api.codecov.io/api/v2/github/prasadtalasila/repos/chitragupta/co
 ```
 
 Two sessions and 100.0 against a status that reported ~99% means the
-status was computed early, not that an upload was lost. Note what that
-rules out: on #199 both legs logged `Upload queued for processing
-complete` on the first attempt, so the upload step being green was
-accurate and `fail_ci_if_error: true` would have changed nothing.
+status was computed early, not that an upload was lost. A green upload
+step is accurate in that case, and `fail_ci_if_error: true` would change
+nothing.
 `codecov.yml`'s `after_n_builds` is the gate that holds the notification
 until both uploads are in; that file carries the reasoning, and
 `tests/test_codecov_upload_gate.py` keeps its number in step with the
@@ -700,125 +687,70 @@ same repository, so `.claude/**/*.md` reaches entire nested copies of
 the tree, copies of `docs/examples/sample-project/` among them, which
 the first two negations do **not** exclude, because those patterns are
 anchored at the repo root and the nested copy sits several directories
-down. Measured on 2026-09-03: 40,026 findings across 1,250 files, every
-one of them inside `.claude/worktrees/`, against 0 in the tracked tree.
-CI stayed green throughout (it lints a fresh checkout, which has no
-worktrees), so the entire cost fell on the local run this section calls
-non-optional, and 40,000 lines of noise is indistinguishable from a
+down. Without it a local run reports tens of thousands of findings, all
+inside worktrees, and noise on that scale is indistinguishable from a
 check nobody runs. The negation is in `ci.yml` too, where it is inert,
 rather than only here: one command that a contributor and CI both run
 is the property the glob comment upstream of it is protecting.
 
 **Read the linter's own exit code, not a pipeline's.** `pylint … | tail`
-reports `tail`'s status, so a real finding passes for a clean run. That
-put a `line-too-long` through a local check and into CI on 2026-08-15.
+reports `tail`'s status, so a real finding passes for a clean run.
 
 **All four are blocking, at a binary zero-messages bar**, never a
 `fail-under` score, because
 [R3](docs/AUTO-IMPROVEMENT.md#-the-requirements) rules out driving a
 number, and a score can improve while the thing you cared about gets
-worse. There is no backlog left to avoid: the pylint/markdownlint
-adoption in 5.8.0 cleared both to zero first, and ruff check's and ruff
-format's own adoptions did the same, which is this file's own rule that
-**a check that has not been made to pass must not ship.**
+worse. The tree is at zero for all four, which is this file's own rule
+that **a check that has not been made to pass must not ship.**
+[docs/TECHNICAL-DEBT.md](docs/TECHNICAL-DEBT.md)'s 5.2 and 5.5 record
+how each adoption got there.
 
-What that adoption had to settle, since each is a decision a later reader
-will otherwise have to re-derive:
+The configuration decisions that still bind, so a later reader does not
+have to re-derive them:
 
-- **The encoding sites went first.** Enabling pylint before fixing them
-  would have closed the detector on the debt register's top item without
-  closing the item. All of the locale-codec encoding item is fixed, not
-  just the seven sites pylint could see.
-- **Wrapping long lines grew ten registered files.** `line-too-long` and
-  the C2 file-length ratchet pull against each other; C0301 won, and the
-  counts in `tests/test_code_standards_scan.py` moved with it.
-- **`MD060` was off** at adoption: table cell padding, 839 of the
-  947-finding baseline, declined because the alternative was a diff
-  touching every table in the documentation to move spaces around. **On
-  now**, since #362 made `markdownlint-cli2 --fix` do that pass instead
-  of a person; see [docs/TECHNICAL-DEBT.md's
-  5.2](docs/TECHNICAL-DEBT.md#-52-markdownlint-a-measured-baseline).
-- **The enrich group's imports are in `ignored-modules`** rather than
-  installed in CI. They are lazy imports inside the functions that need
-  them; pylint resolves imports statically wherever they sit, so without
-  that list a lint job that does not download torch reports `import-error`
-  against all of them.
-
-**What ruff's adoption had to settle**, the same shape of decision, with
-no DTaaS config to inherit it from:
-
-- **`select` is `["E", "F", "BLE", "RUF100"]`, not ruff's own (much
-  broader) default.** `BLE` is the rule the adoption exists for; `E`/`F`
-  are pyflakes/pycodestyle's core correctness checks plus the "keep
-  lines short" review rule [CODE-STANDARDS.md's build
-  order](docs/CODE-STANDARDS.md#-build-order) already named for ruff;
-  `RUF100` is what turns a `# noqa: BLE001` into a checked claim instead
+- **The enrich group's imports are in `.pylintrc`'s `ignored-modules`**
+  rather than installed in CI. They are lazy imports inside the
+  functions that need them; pylint resolves imports statically wherever
+  they sit, so without that list a lint job that does not download torch
+  reports `import-error` against all of them.
+- **`line-too-long` (C0301) is on**, and wins over the C2 file-length
+  ratchet where the two pull against each other.
+- **`MD060` (table cell padding) is on**; `markdownlint-cli2 --fix`
+  does that pass, not a person.
+- **ruff's `select` is `["E", "F", "BLE", "RUF100"]`, not ruff's own
+  (much broader) default.** `BLE` (blind `except`) is the rule ruff is
+  here for; `E`/`F` are pyflakes/pycodestyle's core correctness checks
+  plus the "keep lines short" rule
+  [CODE-STANDARDS.md's build order](docs/CODE-STANDARDS.md#-build-order)
+  names; `RUF100` turns a `# noqa: BLE001` into a checked claim instead
   of a comment nothing reads.
 - **`per-file-ignores` covers `__init__.py`'s `F401`/`E402`** wholesale
-  (`registry/`, `spec/`, `unit/`, `dossier/`, `render_output/`,
-  `review/figure_layout/`) rather than 52 per-line `noqa`s: each
-  re-exports a submodule's public name so `from chitragupta import x`
-  reaches it, four of them via a deliberately late import to dodge a
-  circular import at definition time, both already explained inline
-  where the comment rules require it.
-- **The measurement found two real gaps**, not just inert markers:
-  `chitragupta/overlap_skipgram.py`'s `CorpusSkipgramIndex` annotated
-  three fields `"array[int]"` with no `array` import in the module
-  (F821, fixed by adding it), and `style_check.language_of`/
-  `style_acronym_drift.findings` each caught a blind `Exception` that
-  `dossier.dossier_dir` only ever raises as `dossier.DossierError`
-  (BLE001, fixed by narrowing, not suppressing).
-- **One of the 12 existing `# noqa: BLE001` markers was already
-  unneeded**, and `RUF100` is what proved it:
-  `chitragupta/pdf_text/_backends.py`'s `_extract_docling` re-raises via
-  `raise ... from exc`, which BLE001's own definition of "blind"
-  exempts. `bench/`'s two markers were checked the same way and are
-  genuine: `bench/README.md` records `bench/`'s exclusion from every check
-  including this one as a decision (#356), unchanged, so they stay inert
-  in practice but correct on the evidence.
-- **`ruff`'s own version is pinned exactly**, not only for Sonar S8544:
+  rather than per-line `noqa`s: each re-exports a submodule's public
+  name so `from chitragupta import x` reaches it, some via a deliberately
+  late import to dodge a circular import, already explained inline where
+  the comment rules require it.
+- **ruff's own version is pinned exactly**, not only for Sonar S8544:
   `RUF100`'s verdict on a given `except` block depends on carve-outs
-  (like the re-raise one above) that are undocumented and narrower than
-  `BLE001` looks, so an unpinned bump could move that verdict and redden
-  the job on a rule this project never touched.
+  (a `raise ... from exc` re-raise is not "blind") that are undocumented
+  and narrower than `BLE001` looks, so an unpinned bump could move that
+  verdict and redden the job on a rule this project never touched.
+- **`ruff format`'s roots are `chitragupta scripts tests bench
+  .claude/hooks`**, wider than either linter's: `tests/` and `bench/`
+  are formatted though neither is linted. Style and per-site suppression
+  are different axes. Its hanging-indent style is accepted as is; there
+  is no config knob that reproduces paren-aligned wrapping.
+- **`.git-blame-ignore-revs` lists whole-tree reformat commits.** This
+  repository squash-merges, so a reformat's SHA on `main` exists only
+  after the merge, and its entry lands in a follow-up PR. The file's
+  header states the mechanism.
 
-**What `ruff format`'s adoption (#362) had to settle:**
-
-- **Roots are `chitragupta scripts tests bench .claude/hooks`**, wider
-  than either linter's: `tests/` and `bench/` are formatted though
-  neither is linted. Style and per-site suppression are different axes;
-  narrowing the formatter's roots to match the linters' would relocate
-  the same "inconsistent, unformatted tree" gap this item exists to
-  close rather than close it.
-- **The reformat is an order of magnitude past 5.1's line-wrap
-  precedent, and was accepted at that scale rather than reduced.** This
-  codebase hand-aligns wrapped arguments to the opening paren; `ruff
-  format` always uses a hanging indent instead, with no config knob to
-  reconcile the two (`skip-magic-trailing-comma` was tried; negligible
-  effect). 222 of 259 Python files, +9,052/-5,153 lines, six new C2
-  offenders from the reformat alone; see [docs/TECHNICAL-DEBT.md's
-  5.5](docs/TECHNICAL-DEBT.md#-55-ruff-format-the-whole-tree-reformat)
-  for the full accounting. They were registered the same way 5.1's ten
-  were, not papered over or exempted: in `tests/test_code_standards_scan.py`'s
-  `LEGACY_LONG_FILES` at the time, and in
-  `code-standards-register.toml`'s `[[c2]]` table since issue 431.
-- **`.git-blame-ignore-revs` lands empty of entries in this PR.** This
-  repository squash-merges every PR (see "Merging" below), so the commit
-  the reformat becomes on `main` is one GitHub composes at merge time,
-  and its SHA cannot be known before the merge and so cannot be written into
-  the same PR that creates it. The entry for #362's reformat commit lands
-  in a small follow-up PR immediately after, once that SHA exists; the
-  file's own header states the mechanism so the next reformat's author
-  does not have to re-derive it.
-
-`.gitattributes` (`* text=auto eol=lf`) *is* in force now and needs no
-runner: it normalises line endings so CI's Windows leg reads
-byte-identical files to the Linux leg, which matters because over a
-dozen tests here scan this repository's own source.
+`.gitattributes` (`* text=auto eol=lf`) normalises line endings so CI's
+Windows leg reads byte-identical files to the Linux leg, which matters
+because over a dozen tests here scan this repository's own source.
 
 ## 🔍 Reviewing before you push: the OpenCodeReview plugin
 
-**This is a step in the cycle, not an optional extra.** Step 3 of
+**This is a required step in the cycle.** Step 3 of
 [Shipping a code change](#-shipping-a-code-change-the-full-cycle) is to run
 it on the branch and act on what it finds, before the PR is opened, with
 the same standing as the local check suite above it. It is the one review
@@ -856,13 +788,13 @@ have. `review` additionally needs `OCR_LLM_URL`/`OCR_LLM_TOKEN`/
 **Say how much of the branch it saw, not only which mode ran.** OCR
 cannot review Markdown at all (every `.md` file comes back excluded as
 `unsupported_ext`), so on a prose-heavy branch the review covers a
-fraction of the diff. Measured on three consecutive PRs: 9 files of 25
-(#199), 8 of 12 (#204), 10 of 21 (#209). "OCR reviewed the branch" is a
-much weaker claim on the first kind of branch than the second, and the
-test plan should carry the count so a reader can tell them apart.
+fraction of the diff, often under half its files. "OCR reviewed the
+branch" is a much weaker claim on a prose-heavy branch than on a code
+one, and the test plan should carry the count so a reader can tell them
+apart.
 
-**Two things about installing it**, neither guessable and both hit on
-this host. `npm i -g @alibaba-group/open-code-review@1.9.9` puts the
+**Two things about installing it**, neither guessable. `npm i -g
+@alibaba-group/open-code-review@1.9.9` puts the
 binary at `$(npm root -g)/../bin/ocr`, which is not on `PATH` by
 default. It is pinned because the extension list and schema probed below
 are facts about this exact release, not about OCR in general. And npm's
@@ -907,7 +839,7 @@ human reading the diff for everything else (content, argument,
 whether a stale sentence is still true), which is the one check with no
 detector and stays that way.
 
-Two traps, both of which have already caught someone:
+Two traps:
 
 - **`ocr rules check <path>` is a rule *lookup*, not a coverage check.**
   It resolves a rule for a file OCR would never open, so it will
@@ -951,16 +883,8 @@ unconditionally, whatever the branch's commits are called.
 **Never add the PR number by hand**, anywhere: not in the PR title, not
 in a branch commit, not in a merge subject. GitHub appends it when it
 composes the title (e.g. `Fix reconcile drift detection (#42)`), and it
-composes the title every time now. Writing it in as well is how you get
+composes the title every time. Writing it in as well is how you get
 `(#42) (#42)`.
-
-That rule used to carry an exception: merging with an explicit
-`--subject`, which GitHub takes verbatim and appends nothing to, so the
-number had to be written in. That exception is **gone**, and so is the
-older hazard beside it, that `COMMIT_OR_PR_TITLE` took a one-commit
-branch's *commit* title rather than the PR's, so a drifted commit title
-landed instead. Both were fixed by the settings in [Merging](#-merging),
-applied 2026-08-18.
 
 Body: a blank line, then a bulleted list of the specific, concrete changes,
 each bullet starting with a present-tense verb (Fix, Add, Remove, Migrate,
@@ -998,20 +922,19 @@ is the grammar):
 - **At merge**, by `python scripts/merge_pr.py <N>`; see
   [Merging](#-merging).
 
-Nothing else in the description reaches the commit. Until #827 the
-script assembled the body by scraping every bullet out of the
-description, and `main` shows the result: #910, #912 and #913 each
-carry every change twice (once from `## Description`, once from `## What
-changed`), and #906's body includes reviewer notes. The template is a
+Nothing else in the description reaches the commit. The body is
+written, not extracted: scraping bullets out of the description carries
+every change twice and drags reviewer notes onto `main`. The template is a
 *review* document (`## Type of Change`, `## Test plan`,
 `## Checklist`), and a commit body is a piece of writing for a different
 reader, so it is written, not extracted.
 
 No repository setting could do this instead.
 `squash_merge_commit_message` takes exactly three values (`PR_BODY`,
-`COMMIT_MESSAGES`, `BLANK`), and none of them transforms the text. #827
-moves it to `BLANK`, which only decides what a merge that bypasses the
-script lands: a title and no body, rather than the raw description.
+`COMMIT_MESSAGES`, `BLANK`), and none of them transforms the text.
+`BLANK` (see [the settings](#-what-the-repository-settings-fixed-and-what-they-could-not))
+only decides what a merge that bypasses the script lands: a title and
+no body, rather than the raw description.
 
 ## 🔀 Merging
 
@@ -1043,13 +966,11 @@ runs, unchanged**. If that exits 1, it prints why and **exits 1 without
 merging**. `--dry-run` reports the same verdict, since that is where a
 person looks first.
 
-**The `git fetch` is the only new step**, and it is the fix. That
+**The `git fetch` is what makes it work.** That
 script reads `origin/main` and the tag list out of local git, so without
 a fetch it compares against whatever this checkout last saw, and the
 merge or tag that causes a collision lands *inside* the window being
-checked. Verified by deleting `v6.59.0` and the local `origin/main` ref
-and re-running: the check still refused, and the tag was back
-afterwards. No new rules were written; reusing that script is what keeps
+checked. No new rules are written here; reusing that script is what keeps
 the merge-time check from drifting away from the pull-request-time one.
 
 **This is not a duplicate of the CI check, and step 8 above cannot
@@ -1060,10 +981,9 @@ produce a *byte-identical* `version =` line, so git merges it with no
 conflict and `mergeable_state` stays `clean`; nothing else looks. And
 step 8's "has `main` moved?" is a check a person performs *before*
 merging, so the gap is between that check and the merge call itself.
-Measured on #560: the check passed, and #564 merged and tagged the same
-6.58.0 **17 seconds** later, so `main` landed on a version already
-released against different content and #560's work needed a follow-up
-bump (#565) to reach a release at all.
+Another PR can merge and tag the same version seconds after your check
+passes, leaving `main` on a version already released against different
+content.
 
 Three consequences follow:
 
@@ -1093,11 +1013,11 @@ git show origin/main:pyproject.toml | grep -m1 '^version'   # must be yours
 **No `--subject`, and no `(#N)`.** `squash_merge_commit_title` is
 `PR_TITLE`, so GitHub composes the title from the PR and appends the
 number itself. Passing `--subject` takes your string verbatim instead,
-which means re-solving a problem that is now solved and getting `(#42)
-(#42)` if you also write the number in. The script does not offer the
+which bypasses that and gives `(#42) (#42)` if you also write the
+number in. The script does not offer the
 flag, so this cannot happen by way of it.
 
-**A body on stdin is still needed, and is not a leftover.** With the
+**A body on stdin is still needed.** With the
 body setting at `BLANK`, a squash commit without `--body-file` has a
 title and no body. As ["Commit messages"](#-commit-messages) sets out, no
 value of `squash_merge_commit_message` produces the documented shape,
@@ -1105,51 +1025,39 @@ because none of them transforms the text.
 `plans/827-commit-message-format.md` has why the body is checked rather
 than assembled, and why the merge side is enforced by being the one
 documented command (producer-is-enforcement, the same standing the
-OpenCodeReview step below already has) while the pull-request side is a
+OpenCodeReview step above already has) while the pull-request side is a
 required check.
 
-The exact command matters less than this: the format becomes something a
-check holds you to while the PR is open, instead of something a person
-has to remember at the end of a long session, in a browser, after CI has
-gone green. That is this project's standing answer to guidance that does
-not stick: the
-ratchet, the citation gate, and this are the same move
+The format is something a check holds you to while the PR is open,
+instead of something a person has to remember at the end of a long
+session, in a browser, after CI has gone green. The ratchet, the
+citation gate and this check are the same response to guidance that
+does not stick
 ([docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md#-why-a-ratchet-suits-this-project-specifically)).
 
 ### ⚙ What the repository settings fixed, and what they could not
 
-Applied 2026-08-18 (#238), after being recorded here undone for long
-enough to be worth saying which half each one closed:
+The repository is configured with:
 
 ```bash
 gh api -X PATCH repos/prasadtalasila/chitragupta \
   -f squash_merge_commit_title=PR_TITLE \
-  -f squash_merge_commit_message=PR_BODY \
   -F allow_merge_commit=false -F allow_rebase_merge=false
 ```
 
-- **`PR_TITLE` closed the title completely.** "GitHub uses the PR title"
-  is now unconditional rather than true only on a multi-commit branch,
-  and the `(#N)`-by-hand exception this file used to carry is gone with
-  it. Nothing about a title has to be remembered at merge time.
-- **`PR_BODY` did not close the body**, and the expectation that it would
-  was a reasoning error worth leaving on the record rather than silently
-  correcting: #238 argued the squash body could be the PR description
-  because the PR template "already shapes" it. It does shape it, into a
-  review document, which is a different artefact from a commit message.
-  The improvement is real but narrower than claimed: the fallback when
-  someone forgets `--body-file` is now a verbose template instead of
-  `*`-concatenated commit titles. Both are wrong; the new one is wrong
-  more legibly.
-- **Disabling the other two methods** made "Merge method: squash" a fact
-  about the repository rather than a sentence in this file, which is the
-  one of the three that needed no follow-up.
+- **`PR_TITLE` closes the title completely.** "GitHub uses the PR title"
+  is unconditional, so nothing about a title has to be remembered at
+  merge time.
+- **Disabling the other two methods** makes "Merge method: squash" a
+  fact about the repository rather than a sentence in this file.
+- **No body setting closes the body.** The PR template shapes the
+  description into a review document, which is a different artefact
+  from a commit message. That is why the author writes the body
+  (["Commit messages"](#-commit-messages)).
 
-Issue #827 closed the body by having the author write it (["Commit
-messages"](#-commit-messages)), and changes two settings to match. Both
-need the repository owner, and both are applied only after #827 merges:
-a required check can be selected only once it has reported at least
-once, and the session token here gets HTTP 403 from branch protection.
+Two settings complete that, and both need the repository owner. They
+are an open action until the owner applies them; until then the body
+setting is `PR_BODY` and the `commit-message` check is advisory:
 
 ```bash
 gh api -X PATCH repos/prasadtalasila/chitragupta \
@@ -1157,17 +1065,16 @@ gh api -X PATCH repos/prasadtalasila/chitragupta \
 ```
 
 - **`BLANK` replaces `PR_BODY`.** A merge that bypasses `merge_pr.py`
-  (the web UI's button) now lands a title and no body, instead of
-  the raw description with its tick-boxes and anything a bullet smuggled
-  in (a `Co-authored-by:` trailer, a live `Closes #N`, an escape
-  sequence; #827 has the probes). Still wrong, but empty rather than
-  wrong in ways that cannot be rewritten out of history.
+  (the web UI's button) then lands a title and no body, instead of the
+  raw description with its tick-boxes and anything a bullet smuggled in
+  (a `Co-authored-by:` trailer, a live `Closes #N`, an escape sequence).
+  Still wrong, but empty rather than wrong in ways that cannot be
+  rewritten out of history.
 - **`commit-message` becomes a required status check** on `main`, in
-  the repository's `main` ruleset or in branch protection.
+  the repository's `main` ruleset or in branch protection. A required
+  check can be selected only once it has reported at least once.
 
-**Status: pending.** Until the owner applies both, the body setting is
-still `PR_BODY` and the check is advisory. Replace this paragraph with
-the date each was applied.
+When the owner applies them, replace this paragraph with the fact.
 
 The general lesson, since this file is where process claims live: a
 setting closes a gap only where a machine can do the whole job. Titles
@@ -1185,7 +1092,7 @@ don't restate their section list here:
   `.github/ISSUE_TEMPLATE/feature_request.md`.
 
 A PR title is held to the same bar as a commit's title line: concise,
-describes the effect. It is now held to it literally, since
+describes the effect. It is held to it literally, since
 `squash_merge_commit_title = PR_TITLE` makes the PR title the commit
 title on `main` whatever the branch's commits are called. The template's
 **Test plan** section is not a formality: fill it from what you
@@ -1204,7 +1111,7 @@ sentence; see [Merging](#-merging). Each PR becomes exactly one commit
 on `main`.
 
 **Dependabot PRs.** `.github/dependabot.yml` opens one grouped PR a
-week that bumps the workflows' pinned action SHAs (#829). It arrives
+week that bumps the workflows' pinned action SHAs. It arrives
 red, as expected: Dependabot neither raises
 `pyproject.toml`'s version nor writes a `## Commit message` section,
 so `lint`'s version-bump check and the `commit-message` check both fail
@@ -1281,18 +1188,14 @@ not merely started:
      Nth aid") in every place that already stated the old total:
      files nowhere in your diff, found only by grepping the repository
      for the specific number or name your change moved, not by
-     rereading the files you happened to touch. Seen on 2026-08-27: a
-     ninth review aid landing on a branch that had rebased past two
-     others (`#416`, `#419`) left a stale "the other seven"/"the other
-     eight" in a dozen places (`chitragupta/review/agenda/*.py`'s own
-     docstrings, `docs/CLI.md`, `docs/ARCHITECTURE.md`,
-     `docs/FEATURES.md`, `docs/DIAGRAMS.md` and its rendered exports),
-     none of them in the PR's file list, all of them broken by it. The
-     same sweep also caught the opposite mistake: prose bumped from
-     "seven" to "eight" on the assumption that a new aid changed what
-     an *existing* aid's code reads, when the code hadn't been touched
-     at all. The fix there is reverting the doc, not changing the code
-     to match a claim nobody verified.
+     rereading the files you happened to touch. A new review aid, for
+     example, moves "the other N" in code docstrings, `docs/CLI.md`,
+     `docs/ARCHITECTURE.md`, `docs/FEATURES.md`, `docs/DIAGRAMS.md` and
+     its rendered exports, none of them in the PR's file list. Watch for
+     the opposite mistake too: do not bump a count on the assumption that
+     a new item changed what *existing* code reads. If the code was not
+     touched, revert the doc rather than changing the code to match a claim
+     nobody verified.
    - **What the documentation already decided, which your change may
      have just contradicted.** The first two searches look for prose
      your change falsified; this one looks for prose that falsifies
@@ -1300,21 +1203,15 @@ not merely started:
      dangerous shape, because it reads as history and is in fact a
      constraint: `docs/DESIGN.md` turns down locking the ledger on the
      ground that it "would force a run into one transaction, discarding
-     the incremental commit points on a crash", and the first version of
-     the fix for issue #511 batched `sync`'s commits into exactly that,
-     with a raise path that was live in that loop at the time (a PDF
-     moved mid-sync, m-71, closed since in #553), so a real run would
-     have discarded every row written. The sweep is what caught it; no
-     test would have. Grep the documentation for the **claim** your
-     change touches, not for the files in your diff.
+     the incremental commit points on a crash"; a fix that batches `sync`'s
+     commits contradicts that, and only this sweep catches it, since no test
+     would. Grep the documentation for the **claim** your change touches,
+     not for the files in your diff.
 
-   That last point is the whole method, and the run that produced these
-   three searches kept paying for it: in PR #547 a commit fixed a
-   duplicated sentence in four places and the sweep found three more
-   verbatim copies still false, and in PR #548 a six-line code change
-   that added a fifth precondition to a tier whose four were enumerated
-   by count moved 13 prose sites. The size of a diff predicts nothing
-   about the size of its sweep.
+   Search for the claim, not the file. A six-line code change that adds
+   an item to an enumerated set can move a dozen prose sites, and a
+   sentence fixed in four places can have three more verbatim copies. The
+   size of a diff predicts nothing about the size of its sweep.
 
    A doc that was already stale *before* your change touched
    anything (traceable with `git log -1 -L<line>,<line>:<path>` to a
@@ -1340,17 +1237,13 @@ not merely started:
    on the new head. A branch that went green against an older `main` is
    not evidence about the merge commit, which is what lands.
 
-   This is not bookkeeping. CI already builds the *merge* commit for a
+   CI builds the *merge* commit for a
    `pull_request` event, so a stale branch can go red for something it
    did not do and, worse, can go **green on a state that no longer
-   exists**. Both were seen on 2026-08-15: #204's `lint` failed on
-   over-length lines that arrived from `main` in #198, and #209 merged
-   cleanly onto a version `main` had already taken, landing on `main`
-   claiming a release it was not. The version is the usual casualty,
-   because two branches picking the *same* number produce a
-   byte-identical line that git merges without a conflict.
-   `scripts/check_version_bump.py` now fails CI on that, but it can only
-   fail on a run that actually happened.
+   exists**. The version is the usual casualty, because two branches
+   picking the *same* number produce a byte-identical line that git
+   merges without a conflict. `scripts/check_version_bump.py` fails CI on
+   that, but it can only fail on a run that actually happened.
 9. Squash-merge the PR: `python scripts/merge_pr.py <N>` (see "Merging"
    above). It re-checks the version against `main` and the tags at the
    last possible moment and refuses rather than merging a collision,
@@ -1361,6 +1254,7 @@ not merely started:
    window before it; nothing closes the one after it, and a tag pushed
    on a collided version names somebody else's content.
 11. Confirm `.github/workflows/release.yml` completed and the resulting
-   GitHub Release has its `chitragupta-<version>.zip` asset
-   attached. This is the deliverable, not the tag or the merge by
+   GitHub Release has its assets attached: `chitragupta-<version>.zip`,
+   `chitragupta-docker-<version>.zip`, and the wheel and sdist. This is
+   the deliverable, not the tag or the merge by
    itself.

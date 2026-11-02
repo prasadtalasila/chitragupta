@@ -1,6 +1,6 @@
 # 🔬 Write a deep-research report, start to finish
 
-Status: **tutorial.** Written 2026-09-15.
+Status: **tutorial.**
 
 **Written for** an author who wants a multi-perspective, contradiction-
 mapped report on a question their library can answer, and who has not
@@ -186,9 +186,8 @@ Where the corpus is silent the report says so rather than reaching.
   and does not answer.
 ```
 
-Those last two glossary entries do real work. A report whose purpose is
-to show where the sources conflict has to be able to tell a real conflict
-from two authors using one word differently.
+Those last two glossary entries let the report tell a real conflict
+between sources from two authors using one word differently.
 
 ### An `outline.md` is optional here, and constrains Phase 4
 
@@ -205,7 +204,7 @@ printed), `claim:` (your prose, grounded or reported), `queries:` (run
 verbatim). A complete example is at
 [`examples/dossiers/deep-research/outline.md`](examples/dossiers/deep-research/outline.md).
 Leave the file out entirely if you would rather see what the corpus
-suggests. That is the normal choice for a first run on a question.
+suggests, which is the normal choice for a first run on a question.
 
 Give the skill the draft path when you ask, so its phases write into the
 dossier you just made instead of creating a second one.
@@ -220,14 +219,14 @@ dossier you just made instead of creating a second one.
 "Deep research", "multi-perspective analysis" or "in-depth report with
 contradiction mapping" selects the `deep-research` skill.
 
-Expect it to tell you up front that this is a heavy run. That is
-expected behaviour, and not a warning about your question.
+It tells you up front that this is a heavy run. It says that for every
+question.
 
 ## 🔭 Step 4: the seven phases, and what you do during them
 
-You are not idle here. The skill states its perspective list and its
-outline as it goes but does not pause for approval: interrupt it then if
-you want to change either.
+The skill states its perspective list and its outline as it goes but
+does not pause for approval. Interrupt it then if you want to change
+either.
 
 | Phase | What happens | What you do |
 | --- | --- | --- |
@@ -263,17 +262,24 @@ disagrees with itself should show you the spans it is comparing.
 
 ## 🔍 Step 6: read the review aids
 
+All advisory, all exit 0. `--write` files a report under
+`content/review/` for the agenda below to read; `provenance` files its
+report on every run and has no `--write`.
+
 ```bash
 chitragupta draft style content/drafts/deep-research-fidelity.md
-chitragupta review verbatim scan content/drafts/deep-research-fidelity.md
-chitragupta review synthesis content/drafts/deep-research-fidelity.md
-chitragupta review support content/drafts/deep-research-fidelity.md
-chitragupta review uncited content/drafts/deep-research-fidelity.md
+chitragupta review verbatim scan content/drafts/deep-research-fidelity.md --write
+chitragupta review synthesis content/drafts/deep-research-fidelity.md --write
+chitragupta review provenance content/drafts/deep-research-fidelity.md
+chitragupta review support content/drafts/deep-research-fidelity.md --write
+chitragupta review quotation content/drafts/deep-research-fidelity.md --write
+chitragupta review uncited content/drafts/deep-research-fidelity.md --write
 ```
 
 | Aid | Reads for | Why it matters in this genre |
 | --- | --- | --- |
 | `review synthesis` | paragraphs that summarise sources in sequence instead of synthesising them | a report assembled from parallel section writers is exactly where this creeps in: each writer summarises its own sources honestly, and the seams show |
+| `review provenance` | whether the cited source's text matches the claim, worst matches first | the lexical first pass behind every `unsupported-claim` item below |
 | `review support` | whether each citation entails its claim | a contradiction map makes strong claims about who said what; this is what checks them |
 | `review quotation` | whether a quoted span matches its source | a report that quotes both sides of a disagreement must quote both correctly |
 | `review verbatim` | wording shared with any parsed source | several writers drawing on one paper can converge on its phrasing |
@@ -281,35 +287,38 @@ chitragupta review uncited content/drafts/deep-research-fidelity.md
 
 ### The agenda: all of them as one worklist
 
-[AGENDA.md](AGENDA.md) explains every section of an agenda file in
-full; what follows is the short version for this genre.
-
 ```bash
 chitragupta review agenda content/drafts/deep-research-fidelity.md
 ```
 
-It **reads the aids' filed JSON and never runs an aid**, so run them
-first with `--write`. Items are `[unattended]` (safe to repair
-automatically: `prose`, short verbatim runs, `missing-citekey`) or
-`[surfaced]` (yours to judge).
+The agenda merges the reports the aids above filed into one ranked
+worklist. It never runs an aid itself, and it names any aid whose report
+is absent. [AGENDA.md](AGENDA.md) explains every section of the file;
+[WRITE-A-SURVEY.md's step 7](WRITE-A-SURVEY.md#the-agenda-all-of-them-as-one-worklist)
+covers the `[unattended]`/`[surfaced]` classes, `--baseline` and
+`--accept`. What follows is the part specific to a deep-research report.
 
 This genre produces the longest agendas, because it makes the most
-claims. For the fidelity report:
+claims. For the fidelity report (the fixed "How to read this" paragraph
+is left out):
 
 ```markdown
 # Agenda: content/drafts/deep-research-fidelity.md
 
 > **Review aid, not a gate.** This report is evidence for a human
-> judgement, never a verdict. No draft is blocked by what it says.
+> judgement, never a verdict. A driver may read it back; no draft is
+> blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's
+> "Layer 4: the review layer".
 
 - Draft: `content/drafts/deep-research-fidelity.md`
 - Command: `chitragupta review agenda content/drafts/deep-research-fidelity.md`
+- chitragupta 6.155.0
 
 ## Sources
 
 - Citation provenance: read
 - Verbatim scan: read
-- Citation coverage: read
+- Citation coverage: not run
 - Multi-source synthesis: read, no item class defined
 - TikZ layout check: not run
 - Uncited prose: read
@@ -317,6 +326,8 @@ claims. For the fidelity report:
 - Claim support: read
 - Prose (style_check): read
 - Dossier drift: read
+- Recorded-but-uncited citekeys: read
+- Accepted items: none recorded for this draft
 
 ## Summary
 
@@ -373,30 +384,11 @@ As the author, look at three items before anything else:
 - The `unsupported-claim` in section 5 is the resolving question,
   which is where a deep-research report is most tempted to overreach.
 
-Note the `[surfaced]`/`[unattended]` ratio: this genre's findings are
-overwhelmingly judgement calls, as you would expect from a report whose
-value lies in its argument.
-
-To check a round of edits helped:
-
-```bash
-chitragupta review agenda content/drafts/deep-research-fidelity.md \
-    --baseline content/review/deep-research-fidelity.agenda.json
-```
-
-That re-runs the aids and reports each finding as `resolved`,
-`persisting`, `new` or `accepted`. Read the `new` list: a repair that
-resolves one claim and weakens another leaves the count flat.
-
-Where you have considered a surfaced item and decided it stands:
-
-```bash
-chitragupta review agenda content/drafts/deep-research-fidelity.md \
-    --accept 289df3c9be7c
-```
-
-Only `claim-support`, `uncited-claim` and `unsupported-claim` may be
-accepted; anything else is refused with exit code 2.
+Most of this genre's findings are `[surfaced]`: judgement calls about
+the report's argument. The `[unattended]` verbatim runs can be
+handed off: ask to "work the review agenda" and `agenda-reviser` rewords
+them one at a time, re-running the gate and a baseline recheck after
+each and logging every attempt in `revisions.md`.
 
 ## 📝 Step 7: change something
 

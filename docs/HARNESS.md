@@ -1,20 +1,17 @@
 # 🔌 Harnesses: one citekey gate on Claude Code, Codex and OpenCode
 
-Status: **building, from 6.126.0.** Written 2026-09-29. Implements
-[issue 812](https://github.com/prasadtalasila/chitragupta/issues/812)
-(Claude Code and Codex) and
-[issue 900](https://github.com/prasadtalasila/chitragupta/issues/900)
-(OpenCode). Continue is split out to
+Status: **implemented.**
+
+Continue support is open, in
 [issue 901](https://github.com/prasadtalasila/chitragupta/issues/901).
-The task-by-task plan is
+The task-by-task plan for the rest is
 [plans/812-harness-neutral-core.md](https://github.com/prasadtalasila/chitragupta/blob/main/plans/812-harness-neutral-core.md).
 
-This document records why the pipeline is being made to run on more
-than one agent harness, what the design session of 2026-09-26 to
-2026-09-29 decided, and which designs it turned down and why. The
-rejections matter as much as the decisions. Several of the rejected
-designs look like the obvious fix, and each one fails the same test:
-**can the model skip it?**
+This document records why the pipeline runs on more than one agent
+harness, what the design session of 2026-09-26 to
+2026-09-29 decided, and which designs it turned down and why. Several
+of the rejected designs look like the obvious fix, and each one fails
+the same test: **can the model skip it?**
 
 **Written for** anyone adding a harness, changing a launcher, or
 wondering why the OpenCode plugin holds no gate logic. It assumes
@@ -54,24 +51,24 @@ not supported.
 
 ## ❗ The problem
 
-Before this work, three facts made the gate Claude Code-only:
+Without per-harness work, three facts make the gate Claude Code-only:
 
-1. The only automatic check was a Claude Code hook.
+1. A Claude Code hook alone is not enough.
    `.claude/hooks/citation_gate_hook.py` fires on Claude Code's
    `Write|Edit` matcher and reads `tool_input.file_path`.
-2. Codex's hook never fired on a draft. Codex edits through
-   `apply_patch`, whose payload carries the patch text in
-   `tool_input.command` and no `file_path`. Even had the matcher
-   matched, `draft_target` would have found no path and failed open:
-   a gate that looks like it passed.
-3. Render let a fabricated key through in three formats. Measured
-   on 2026-09-26: `draft render --format md` refused a key missing from
-   the ledger, but only as a side effect of building the numbered
-   reference list. `--format docx` printed pandoc's citeproc warning
-   and wrote the document anyway, and pdf and tex take the same path.
+2. Codex edits through `apply_patch`, whose payload carries the patch
+   text in `tool_input.command` and no `file_path`. A hook that reads
+   only `file_path` finds no path there and fails open: a gate that
+   looks like it passed.
+3. Pandoc alone does not refuse a fabricated key. Measured on
+   2026-09-26, before render ran the gate: `--format md` refused a key
+   missing from the ledger only as a side effect of building the
+   numbered reference list, while `--format docx` printed pandoc's
+   citeproc warning and wrote the document anyway, and pdf and tex take
+   the same path.
 
-OpenCode read none of `.claude/settings.json`, so it had no check at
-all.
+OpenCode reads none of `.claude/settings.json`, so without its plugin it
+has no check at all.
 
 ## 🧱 The design: three checks over one gate
 
@@ -80,8 +77,8 @@ copied into a skill, a hook launcher or a plugin.
 
 1. **Self-check (asked).** Before presenting, each skill runs
    `python -m chitragupta.draft gate` on its own draft and fixes what it
-   reports. This step already existed in every skill; each harness now
-   gets its own copy of the skill, naming its own tools (see "Skills:
+   reports. Each harness gets its own copy of the skill, naming its own tools
+   (see "Skills:
    one copy per harness" below).
 2. **Mandatory check (enforced).** A thin per-harness launcher runs the
    existing hook scripts on every write to a draft. The model cannot
@@ -96,11 +93,11 @@ copied into a skill, a hook launcher or a plugin.
 The mandatory check is the one that needed per-harness work, and it was
 kept as small as possible:
 
-- **The hooks stay in `.claude/hooks/`.** Codex's `.codex/hooks.json`
+- **The hooks live in `.claude/hooks/`.** Codex's `.codex/hooks.json`
   and OpenCode's plugin both launch those same scripts. Moving them to
-  a neutral folder would have churned about 28 test files and the
-  coverage source for no change in behaviour.
-- **The hooks learn one new payload shape**: `apply_patch` patch text.
+  a neutral folder would churn about 28 test files and the coverage
+  source for no change in behaviour.
+- **The hooks read one extra payload shape**: `apply_patch` patch text.
   Codex and OpenCode use the same envelope (OpenAI's V4A grammar), so
   one parser, `.claude/hooks/patch_paths.py`, serves both. Every draft
   a patch adds, updates or moves is gated. A patch that mentions
@@ -211,7 +208,7 @@ copies agree, a required step present in one is present in all three.
 
 ### Only `SKILL.md` is per harness
 
-Everything else a skill uses exists once, under `.claude/` (#997):
+Everything else a skill uses exists once, under `.claude/`:
 `.claude/skills/<name>/references/` for one skill, and
 `.claude/skills-common/references/` for a passage several skills share.
 All three copies of `SKILL.md` name those files by their path from the
@@ -244,7 +241,7 @@ is named by some `SKILL.md`, no shared file names a skill or a tool, and
 the Codex and OpenCode folders hold `SKILL.md` and nothing else.
 
 **Measured on 2026-10-06/07** with `bench/bench_skill_harnesses.py`,
-against projects scaffolded from the #997 branch. Claude Code ran
+against freshly scaffolded projects. Claude Code ran
 `claude -p --model sonnet`; Codex 0.159.3 and OpenCode 1.18.34 ran
 Qwen3.6-35B-A3B on a local llama-server. Tier 1 asks each harness to load
 a skill and print the first line of every `.claude/` file it names; a
@@ -269,9 +266,9 @@ read the same way.
 **A pointer alone is not enough for a step that must run.** Tier 2 runs a
 real survey. With the critique step reduced to "read `critique.md` and
 follow it", a Claude Code run skipped the step outright: no baseline, no
-recheck, no `revisions.md` entry. The same run against `main` worked the
-loop. Each genre's step now keeps the loop's commands inline and says the
-step is not done until they have run; two re-runs both worked the loop.
+recheck, no `revisions.md` entry. With the loop's commands inline and the
+step saying it is not done until they have run, two re-runs both worked
+the loop, so each genre's step keeps them inline.
 `tests/test_skill_pregate_feedback_step.py` fails if the step's own text
 loses them. Move rationale and detail into a reference; keep the
 commands a step requires in `SKILL.md`.
@@ -286,16 +283,16 @@ killed.
 ## 🚫 Designs turned down, and why
 
 **An MCP server with gated `draft_write` / `draft_edit` tools, as the
-enforcement.** This was the issue's first proposal. The tools would run
+enforcement.** The tools would run
 the gate before writing, so a bad key would never reach disk through
 them. But a pre-write gate enforces only if the model has no other way
 to write, and on every harness it has one: its built-in edit tool, or
 failing that the shell. On Codex, Claude Code and OpenCode the hook or
 plugin already covers the built-in tools, so the server would be a
 second write path to maintain and secure for no added guarantee. It
-moved to #901, where Continue has no hooks at all and the server,
+belongs to #901, where Continue has no hooks at all and the server,
 with Continue's built-in write tools excluded, *is* the enforcement.
-Its security choices are recorded there: it writes only
+Its planned security choices are recorded there: it writes only
 `content/drafts/`, reads only `content/`, opens the ledger read-only
 with no sync tool, speaks stdio only, and is launched through the
 installed `chitragupta mcp` command so a planted `chitragupta/` cannot
@@ -307,8 +304,8 @@ here reads that layout. But the model decides whether to run a skill's
 script. That is the "asked, not enforced" posture ARCHITECTURE.md rules
 out, and the model likeliest to skip the step is also the likeliest to
 fabricate. It is kept as the self-check, never as the only check. No
-`scripts/` folder was added either: the self-check is already one CLI
-call, and a script in each of nine skills would be nine copies of it.
+`scripts/` folder either: the self-check is already one CLI call, and a
+script in each of eleven skills would be eleven copies of it.
 
 **A pre-write check inside the OpenCode plugin.** `tool.execute.before`
 could refuse a bad write before it lands. But to gate the text an
@@ -337,13 +334,13 @@ Every refusal names the bad key and its line, and nothing else.
 is never committed.
 
 **Hand-kept copies of each skill with no check between them.** Eleven skills of
-1,800-6,300 words each (after #997), copied three ways, would drift, and a
+1,800-6,300 words each, copied three ways, would drift, and a
 copy that drifts on the gate step is a fabrication path. The copies exist, but
 only because the phrase-map test fails on any drift outside the entries meant
 to differ.
 
 **One harness-neutral wording, with a tool glossary in `AGENTS.md`.**
-Built first and replaced. "Edit the passage in place" gives up Claude
+Tried and replaced. "Edit the passage in place" gives up Claude
 Code's exact tool names and gives Codex and OpenCode nothing specific,
 and a glossary in `AGENTS.md` asks the model to connect a phrase to a
 table in another file that Claude Code does not even load (it loads
@@ -403,15 +400,15 @@ is relied on (the plan's Task 0).
 
 ## ⚖ Decisions a maintainer made
 
-- **Render refusing in every format ships as MINOR** (2026-09-29).
+- **Render refusing in every format is a MINOR change.**
   DEVELOPER-AGENTS.md calls a change MAJOR when it requires an existing
-  user to change how they invoke the pipeline, and a docx render that
-  succeeded with a warning now fails. The call was that writing a
-  document with an unknown key was never intended behaviour, so this
-  closes a gap rather than breaking an invocation. There is no flag to
-  restore the old behaviour.
-- **Continue is out of scope for now**, split to #901, together with
-  the MCP server.
+  user to change how they invoke the pipeline, and a docx render with an
+  unknown key fails rather than succeeding with a warning. The call is
+  that writing a document with an unknown key was never intended
+  behaviour, so refusing it closes a gap rather than breaking an
+  invocation. There is no flag to let such a render through.
+- **Continue is out of scope here**; it is #901, together with the MCP
+  server.
 - **OpenCode is built alongside Codex**, not after it, since it needs
   no MCP server and reuses the same hook scripts.
 
@@ -441,12 +438,12 @@ call.
   hand-run gate then printed the liveness warning, and after a trusted
   run it printed none.
 - **A hook runs in the session's working directory**, which is wherever
-  Codex was started, and Codex sets no project-directory variable. The
-  first launcher, a relative `python .claude/hooks/<x>.py`, therefore
-  failed to start from any subfolder, and the draft landed ungated. Each
-  launcher line now walks up to the folder holding `.codex/hooks.json`
-  and runs the hook from there, under `python -P`; blocking from
-  `content/` was then measured.
+  Codex was started, and Codex sets no project-directory variable. A
+  relative launcher such as `python .claude/hooks/<x>.py` therefore fails to
+  start from
+  any subfolder, and the draft lands ungated. Each launcher line walks up
+  to the folder holding `.codex/hooks.json` and runs the hook from there,
+  under `python -P`; blocking from `content/` is measured.
 - **Codex reads project skills only from `.agents/skills/`**, never
   `.claude/skills/`, which is where its own copy lives. It reads
   `AGENTS.md` natively.
@@ -482,8 +479,9 @@ call.
 - A skill with `tags:` loads, and a long description is kept whole.
 - **The per-harness layout, end to end** (2026-09-30, a project
   scaffolded from the built wheel with `--agent claude --agent codex
-  --agent opencode`): Codex listed the nine skills from `.agents/skills/`;
-  OpenCode, in two runs, listed only the nine `-opencode` skills, handed
+  --agent opencode`, when the project had nine skills): Codex listed
+  them all from `.agents/skills/`; OpenCode, in two runs, listed only
+  the `-opencode` skills, handed
   the model the OpenCode wording when it loaded `survey-writer-opencode`,
   and refused `survey-writer` under the deny list.
 - **One environment trap, not OpenCode's or this repository's.** In the

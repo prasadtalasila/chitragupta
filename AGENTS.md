@@ -90,8 +90,8 @@ layer below, advisorily and never as a block.
 ## 🧼 Start each draft in a clean session
 
 Begin a draft in a fresh session: `/clear` in Claude Code, or a new
-conversation in whatever agent you use. The reason is not tidiness: it
-closes the one failure the gate above cannot see.
+conversation in whatever agent you use. A fresh session closes the one
+failure the gate above cannot see.
 
 The gate is mechanical and complete for what it measures. A citekey is
 in the ledger or it is not, so a **fabricated** one is caught every
@@ -213,7 +213,7 @@ enrichment layer is optional and nothing above it needs it.
   never a source for any other draft, `draft-reviser` is still the way
   to change one, and `agenda-reviser` is never run on one.
 
-  **The human's own prose is a first-class input, not an obstacle.** An
+  **The human's own prose is a first-class input.** An
   `outline.md` in the dossier can declare, per section, a brief the
   draft must obey but never show, the human's own claims to be grounded,
   and the exact retrieval queries to run verbatim; a hand-written
@@ -308,8 +308,9 @@ enrichment layer is optional and nothing above it needs it.
   `quotation` (is each recorded quote really in its source), `support`
   (does the source entail the claim, by a real NLI model), `union` (does
   an assembled book still carry every citekey its accepted units stand
-  on), and `agenda`, which runs nothing itself but merges the other
-  eight draft-reading aids' reports, the drafting layer's prose check
+  on), `digest` (how much of a verbatim digest is not the sources' own
+  words), and `agenda`, which runs nothing itself but merges eight
+  draft-reading aids' reports, the drafting layer's prose check
   and the dossier's drift report into one ranked, deduplicated worklist.
   Each produces **evidence for a human judgement, never a verdict**:
   every one exits 0 whether it finds something or not, and
@@ -326,7 +327,7 @@ enrichment layer is optional and nothing above it needs it.
 
   *Review*, not *verification*: `chitragupta.draft gate` is verification, it lives
   in the drafting layer, and it is that layer's only exit. The gate
-  answers a question with one correct answer and may block; these ten
+  answers a question with one correct answer and may block; these eleven
   answer questions of judgement and may not.
 
   **Having one correct answer is necessary for a gate, but not

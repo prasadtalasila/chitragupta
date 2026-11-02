@@ -5,7 +5,7 @@ the other, and neither replaces the other:
 
 | File | What it is | Size | Needs a checkout |
 | --- | --- | --- | --- |
-| `docker/Dockerfile` | The **toolchain image**. Builds the full TeX Live/Pandoc/Poetry/torch stack from this repository's own `scripts/install_full_pipeline.sh`, for hosts where you don't hold root. Ubuntu 26.04 LTS / Python 3.14, with the C headers and compiler triton JITs against (#668). Mount your checkout, get a shell with everything resolved. | 5.09GB (cpu) / 11.6GB (gpu, unmeasured since the base bump) | Yes: it is the checkout you mount and work in |
+| `docker/Dockerfile` | The **toolchain image**. Builds the full TeX Live/Pandoc/Poetry/torch stack from this repository's own `scripts/install_full_pipeline.sh`, for hosts where you don't hold root. Ubuntu 26.04 LTS / Python 3.14, with the C headers and compiler triton JITs against. Mount your checkout, get a shell with everything resolved. | 5.09GB (cpu) / 11.6GB (gpu, measured on an earlier base image) | Yes: it is the checkout you mount and work in |
 | `docker/Dockerfile.claude` | The **agent image**. Node, Claude Code, and a `/opt/venv` install of the published `chitragupta-cli` package, driven by `docker/docker-compose.yml` as a long-lived `claude remote-control` host. The toolchain is *not* baked in; you add what you need at runtime with `chitragupta install`. | ~2.5GB | No, it installs from PyPI |
 
 `docker/Dockerfile` is documented first, then the agent image under
@@ -42,9 +42,12 @@ This runs `scripts/install_full_pipeline.sh` twice as separate,
 independently cached layers: `os-deps`, then `python-deps` (via Poetry,
 with `SKIP_VENV=1` so it installs into `/opt/venv` instead of creating
 its own). Editing later Dockerfile lines or unrelated repo files
-therefore doesn't force earlier layers to rebuild. The exception is the
-script itself, which is `COPY`'d once before either stage runs, so
-editing `scripts/install_full_pipeline.sh` invalidates both layers.
+therefore doesn't force earlier layers to rebuild. Two exceptions: the
+script itself is `COPY`'d once before either stage runs, so editing
+`scripts/install_full_pipeline.sh` invalidates both layers; and
+`pyproject.toml`, `poetry.lock`, `poetry.toml` and `README.md` are
+`COPY`'d before the `python-deps` layer, so editing any of them
+rebuilds that layer.
 Docker's cache keys each layer on the exact command *and* any files that
 command's `COPY` depends on, and this file feeds both of them. The
 `python-deps` layer pulls torch and Docling's models; expect a long
@@ -63,7 +66,7 @@ one you get:
 
 | `TORCH_VARIANT` | Build command | Measured image size | When to use it |
 | --- | --- | --- | --- |
-| `gpu` (default) | `docker build -t chitragupta -f docker/Dockerfile .` | 11.6GB | `docker run --gpus` deployments. The bundled CUDA runtime is enough on its own: no host CUDA toolkit is needed, only a matching driver |
+| `gpu` (default) | `docker build -t chitragupta -f docker/Dockerfile .` | 11.6GB (earlier base image) | `docker run --gpus` deployments. The bundled CUDA runtime is enough on its own: no host CUDA toolkit is needed, only a matching driver |
 | `cpu` | `docker build -t chitragupta -f docker/Dockerfile --build-arg TORCH_VARIANT=cpu .` | 5.09GB | Everything else. Embeddings/clustering/rendering all run fine on CPU, and this is what you want for build-verification or a host with no GPU at all |
 
 The `cpu` variant reinstalls `torch`/`torchvision` from PyTorch's own
@@ -154,17 +157,16 @@ the citation gate returns
 this is an environment fault, not a bad citekey ..."}
 ```
 
-on every draft write. This image was first built with `pipx`, and that
-is what happened: the container came up looking healthy and refused to
-let anything be drafted in it. The gate is right to block, since it will
-not pass a draft it could not check, so the fix belongs here and not in
-the hook.
+on every draft write: the container comes up looking healthy and
+refuses to let anything be drafted in it. The gate is right to block,
+since it will not pass a draft it could not check, so the fix belongs
+in the image and not in the hook.
 
 A `/etc/profile.d/` snippet carries the same `PATH` for login shells,
 which source `/etc/profile` and rebuild `PATH` from scratch, discarding
-what `ENV PATH` set. The `pipx` version appeared to survive a login
+what `ENV PATH` set. (A `pipx` install can appear to survive a login
 shell only because Debian's `~/.profile` re-adds `$HOME/.local/bin`,
-where pipx's shims happen to live. That was luck.
+where pipx's shims live; that is luck, not a design.)
 
 ### 🔧 Build and run
 
@@ -227,15 +229,14 @@ host without the NVIDIA Container Toolkit
 Compose has no conditional for a volume or a reservation, so two
 services under two profiles is the only shape that lets one file serve
 both machines. Verified both ways on a host with the toolkit:
-`--profile gpu` reaches all three A40s and `nvidia-smi` inside the
+`--profile gpu` reaches every GPU on the host and `nvidia-smi` inside the
 container, `--profile cpu` shows no `/dev/nvidia*` at all.
 
 ### ⚙ What compose reads from the environment
 
-Every path and name is a variable. The first version of this file
-carried one developer's home directory and a release number in its own
-filename, which made it unusable to anyone else and stale on the next
-release. Set these in `docker/.env` or in the environment:
+Every path and name is a variable, so the file carries no one
+developer's home directory and no release number. Set these in
+`docker/.env` or in the environment:
 
 | Variable | Default | What it does |
 | --- | --- | --- |
@@ -256,8 +257,8 @@ without them, naming the variable and the file; a bare `docker build`
 that forgets the matching `--build-arg` fails on an explicit guard
 rather than creating an account called `""`.
 
-This is deliberate. The account belongs to *your machine*, not to this
-project, and a default that is wrong for almost everyone is worse than
+The account belongs to *your machine*, not to this project, and a
+default that is wrong for almost everyone is worse than
 no default at all: it works just well enough to write files owned by the
 wrong uid into your workspace, which you then cannot edit from outside
 the container. Copy `.env.example` to `.env` and fill in the three
@@ -301,12 +302,7 @@ chitragupta install enrich   # into /opt/venv, no sudo needed
 The CLI does this, so you need not know the pip command: it resolves
 `'chitragupta-cli[enrich]'` pinned to the version already running, so
 adding the extra cannot silently upgrade the tool.
-
-**`chitragupta install enrich` needs 6.76.0 or newer**, and this image
-installs whatever PyPI serves, so an image built from an older release
-will not have the verb yet and `chitragupta install --help` will not
-list it. `pip install 'chitragupta-cli[enrich]'` is the equivalent
-there, and still works everywhere.
+`pip install 'chitragupta-cli[enrich]'` is the equivalent by hand.
 
 ### ✅ Verify the container
 

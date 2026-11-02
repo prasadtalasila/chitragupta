@@ -1,7 +1,6 @@
 # 🔍 The review layer
 
-Status: **reference.** Written 2026-08-22. Updated 2026-10-09, describing the
-eleven aids as they stand.
+Status: **reference.**
 
 **Written for** you, after a draft is finished: someone deciding
 whether it is good enough to hand over. **Assumed:**
@@ -12,11 +11,10 @@ which is an architecture question and lives in
 verbatim detector works internally, which is
 [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md).
 
-This is the human-facing half of the pipeline's record-keeping, which
-separates it cleanly from its counterpart. [DOSSIER.md](DOSSIER.md)
-documents working state a *model* reloads to keep drafting; this
-documents evidence *you* weigh before deciding a draft is done. The two
-mirror the same draft path and are otherwise unalike:
+This is the human-facing half of the pipeline's record-keeping.
+[DOSSIER.md](DOSSIER.md) documents working state a *model* reloads to keep
+drafting; this documents evidence *you* weigh before deciding a draft is
+done. The two mirror the same draft path and are otherwise unalike:
 
 | | The dossier | A review report |
 | --- | --- | --- |
@@ -29,11 +27,10 @@ mirror the same draft path and are otherwise unalike:
 
 **None of these is a gate, and none may become one.** Each produces
 evidence for a human judgement, never a verdict, and each exits 0 whether
-it finds something or not. Nothing in the pipeline reads a report back;
-no draft is blocked by what one says.
+it finds something or not. The agenda and `agenda-reviser` read
+reports to build a worklist, but no draft is blocked by what one says.
 
-That is a design commitment, not a current limitation.
-[SOUL.md](../SOUL.md) commits to it, and
+This is a design commitment. [SOUL.md](../SOUL.md) commits to it, and
 [ARCHITECTURE.md](ARCHITECTURE.md#-layer-4-the-review-layer) has the
 argument for why decidability is not what earns a check the right to
 block. The consequence here is that **an aid that finds nothing is not
@@ -59,7 +56,9 @@ aid asks two shapes of question. `overlap` and `locate` compare the
 draft against *one* cited source and tell you which page a phrase is on;
 `scan` compares it against **any** parsed source, cited or not, so it is
 the one that finds reuse from a paper the paragraph never cites, and
-reuse in connective prose that cites nothing at all. Detection runs in
+reuse in connective prose that cites nothing at all. A fourth mode,
+`recheck`, compares a fresh scan against a recorded one, so a repair
+can be judged by what it resolved. Detection runs in
 three tiers (exact n-gram, skip-gram, embedding), and the aid names any
 tier it could not run instead of silently reporting less.
 
@@ -90,12 +89,19 @@ figure builds one arrow out of two `\draw`s, the edge list to confirm
 the figure connects what you meant it to, and a figure file that manages
 a TikZ library load by hand. Such a file renders correctly on its own
 and multiplies node spacing the moment a second figure joins it in one
-document (#781). This is the mechanical half of the figure style guide:
+document. This is the mechanical half of the figure style guide:
 it checks what can be measured from the compiled geometry and leaves
 taste to you ([TIKZ-STYLE.md](TIKZ-STYLE.md)). It also says **how much of
 a figure it could measure at all**. A picture that names no node has no
-geometry to check, and that no longer reads the same as a picture that
-passed.
+geometry to check, and the report says so instead of reading as a
+picture that passed.
+
+`review figure` runs over a whole draft and reports 7 of the figure
+rule ids. `chitragupta figure check` checks one figure file against all
+36 rules, and measures every drawn node, where `review figure` measures
+only the named ones. Run `figure check` on each figure as you draw it;
+[figure-checks/README.md](figure-checks/README.md) has the rule table
+and how the two commands differ.
 
 It **measures and never places.** TikZ computes the layout; this reads
 the result back out of a real compile and reports on it, so its
@@ -143,31 +149,24 @@ that publishes no quote the draft cites, and `checked` otherwise. Only
 `checked` means a quote was looked at.
 
 **`review agenda`: one ranked, deduplicated worklist across the eight
-it reads.** [AGENDA.md](AGENDA.md) walks one report section by
-section. It reads eight, not nine: `union` reads a book rather than a
-draft, so its findings are about a different object than the agenda's
-other inputs and it is deliberately not among them. Each of the aids
-above answers its own question in isolation. This one reads what they
-already wrote (each optional; an aid that never ran is named as absent,
-not treated as clean), plus the drafting layer's prose check, the
-dossier's drift report and its recorded-but-uncited citekeys, and merges
-them into one ordered list a person or a future reviser skill can work
-down. In its bare form it **reads, never runs, an aid**: a stale or
-missing input is named in the report's header instead of triggering a
-live re-run.
+it reads.** It reads eight of the other ten aids. `union` is left out
+because it reads a book, not a draft, and `digest` because its classes
+mean nothing outside a verbatim digest. Each of the aids above answers
+its own question in isolation. This one reads what they already wrote
+(each optional; an aid that never ran is named as absent, not treated as
+clean), plus the drafting layer's prose check, the dossier's drift
+report and its recorded-but-uncited citekeys, and merges them into one
+ordered list a person or the `agenda-reviser` skill can work down. In
+its bare form it **reads, never runs, an aid**: a stale or missing input
+is named in the report's header instead of triggering a live re-run.
 `--baseline` is the one exception: it re-runs the eight aids first so the
 comparison it reports means something, then rebuilds and diffs against a
-previous agenda. Every item carries whether it is `unattended` (safe for
-a future automated pass) or merely surfaced for a human to decide;
-`missing-citekey`, `prose` (unless its rule marks it for review), and
-the short runs a deterministic verbatim tier finds (not the embedding
-tier's) are the former. Everything judgement-shaped (`recorded-but-uncited`,
-`unsupported-claim`, `claim-support`, `uncited-claim` and `misquoted`)
-is the latter. Three of those surfaced classes (`claim-support`,
-`uncited-claim` and `unsupported-claim`) can be marked considered and
-accepted with `--accept <id>`, which keeps the item off later worklists
-until its span changes; `misquoted` cannot, and
-[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) has why.
+previous agenda. Every item is either `unattended` (safe for an
+automated pass) or surfaced for a person to decide, and some surfaced
+items can be accepted with `--accept <id>`.
+[AGENDA.md](AGENDA.md) walks one report section by section and owns the
+class table: which class each aid raises, which are unattended, and
+which may be accepted.
 
 **`review support`: does the source entail this claim?** It asks the
 same underlying question as `provenance` in a different way.
@@ -315,7 +314,7 @@ method, the peak-memory figures and the caveats:
 | 10,003 | yes | 332 | 41,019 | 314 | 96 | 818 | 109 | 88 | 1,017 | 62,292 | **106,085** |
 | 18,061 | yes | 277 | 35,698 | 315 | 98 | 641 | 121 | 90 | 1,282 | 45,902 | **84,424** |
 
-Two aids now make up the cost of the layer, not one. `verbatim` is
+Two aids make up the cost of the layer. `verbatim` is
 90--94% of any run where its embedding tier can execute, and 447 ms
 where it cannot. That 44--86x difference depends on whether the dossier, the
 Docling sidecars, the ledger and the enrichment layer are all present,
@@ -323,15 +322,13 @@ not on the draft. `support` has no such off switch: it always loads the
 entailment model and scores every citation. What it *does* have is a
 dial, `[enrich].support_premise_topk`, which caps how many premises each
 citation is scored against and is uncapped by default, so every figure
-here is the uncapped cost ([CONFIG.md](CONFIG.md), issue #693). It costs
+here is the uncapped cost ([CONFIG.md](CONFIG.md)). It costs
 21.2--62.3 s on every draft measured, dossier or not. Where `verbatim`'s
 tier 3 cannot run, `support` alone is ~95% of the total; where both run,
-they split it, 39%/59% on the 10,003-word draft. The layer's floor
-moved. Before `support`, the cheapest and dearest run differed by a
-factor of 23 (1,859 ms to 43,793 ms), entirely from whether tier 3
-executed. Now they differ by a factor of 3 (35,323 ms to 106,085 ms),
-because `support` puts a 21-second-plus floor under every run. Every
-other aid is between 88 ms and 1.3 s.
+they split it, 39%/59% on the 10,003-word draft. The cheapest and
+dearest runs differ by a factor of 3 (35,323 ms to 106,085 ms), because
+`support` puts a 21-second-plus floor under every run. Every other aid
+is between 88 ms and 1.3 s.
 
 Cost scales on cited sources, counted differently per aid.
 `verbatim` and `provenance` fetch each source once, so their cost

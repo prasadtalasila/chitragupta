@@ -1,19 +1,16 @@
 # 🕸 Proposal: a GROBID stage for a corpus-internal citation graph
 
-Status: **a proposal, not a plan.** Written 2026-08-07. Updated 2026-08-24.
+Status: **proposal.**
 
-Nothing described here is built, and `[grobid]` is not a setting that
-exists. This document argues a case and records what it would cost; the
-decision has not been taken.
+A proposal, not a plan: nothing described here is built, and `[grobid]`
+is not a setting that exists. This document argues a case and records
+what it would cost; the decision has not been taken.
 
 **Written for** someone weighing whether to add the stage. It assumes
 [ARCHITECTURE.md](ARCHITECTURE.md) for the four layers and
 [PDF-PARSER.md](PDF-PARSER.md) for why GROBID was removed from this
-repository on 2026-08-01, which this proposal has to answer before it
-can argue anything else.
-
-Originally drafted 2026-08-07, against an earlier layout of this
-repository, and updated here for the current one.
+repository, which this proposal has to answer before it can argue
+anything else.
 
 ## 🧭 Table of contents
 
@@ -28,18 +25,18 @@ repository, and updated here for the current one.
 
 ## 💡 Answering the removal first
 
-GROBID was in this repository and was **removed on 2026-08-01**. Any
+GROBID was in this repository and was **removed**. Any
 proposal to bring it back has to say what is different, so:
 
-> What GROBID uniquely offered -- parsing a paper's own reference list
-> into structured author/title/year/DOI records, via the
-> `/api/processFulltextDocument` endpoint this repo never called --
+> What only GROBID offered was parsing a paper's own reference list into
+> structured author/title/year/DOI records, via the
+> `/api/processFulltextDocument` endpoint this repo never called. That
 > serves *corpus discovery* [...] If corpus-growth-by-snowballing later
 > becomes a real workflow, the case to revisit is for
-> `/api/processFulltextDocument` specifically -- not the header endpoint
+> `/api/processFulltextDocument` specifically, not the header endpoint
 > that was here.
 >
-> -- [PDF-PARSER.md](PDF-PARSER.md#-why-grobid-was-removed)
+> From [PDF-PARSER.md](PDF-PARSER.md#-why-grobid-was-removed)
 
 This proposal is that revisit. The removed integration called
 `/api/processHeaderDocument` for title, authors and abstract, metadata
@@ -48,7 +45,7 @@ why it earned nothing. What is proposed here calls
 `/api/processFulltextDocument` for reference *lists*, which the bib file
 does not supply and nothing else in the pipeline can derive.
 
-That is a difference in capability, not a re-litigation. It does
+That is a difference in capability. It does
 **not** dispose of the operational objection (a pinned JDK 21, a
 multi-GB Gradle build, and a long-running service), which is unchanged
 and is the main cost weighed in
@@ -67,7 +64,8 @@ Two layers touch PDFs, and neither produces bibliographic structure:
   `python -m chitragupta.enrich --stages docling`) always uses docling
   regardless of `[parser].backend`, producing
   `content/docling/<citekey>.md` plus a `.passages.json` sidecar of
-  reading-ordered, quotable passages. This feeds embeddings and BERTopic.
+  reading-ordered, quotable passages. This feeds the embedding and topic
+  stages.
 
 What neither produces is **structured bibliographic metadata and a
 citation graph**. The only metadata source is `papers/bibliography.bib`
@@ -232,7 +230,7 @@ consolidate_citations = 1        # GROBID_CONSOLIDATE_CITATIONS
                                  # external lookups
 ```
 
-`consolidate_citations` deserves a flag in the requirements table:
+`consolidate_citations` needs a flag in the requirements table:
 GROBID's consolidation calls CrossRef to resolve incomplete reference
 strings, so **this stage may need network access per document at parse
 time**. Everything else here needs the network once, for model downloads,
@@ -261,17 +259,14 @@ in `papers/bibliography.bib`. Those become **edges to external nodes**,
 never new citable claims. `citation_graph.py` may only ever *resolve* a
 reference against an *existing* ledger citekey; it must never mint one.
 
-Two consequences are new since the original draft:
+Two consequences follow:
 
-- **There is no longer a second, uncitable document namespace to appeal
-  to.** The original draft justified this by analogy with `papers/pdfs/`,
-  a directory of raw PDFs that were indexed but never citable. That
-  directory, its config key and its `doc:<stem>` id namespace were all
-  removed because a permanently non-citable case was a cost every
-  downstream stage paid. **Reintroducing one here would undo that**, so
-  external nodes must live in `citation_graph.json` alone: never in the
-  ledger, never in Chroma, never anywhere a retrieval call can return
-  them.
+- **There is no second, uncitable document namespace.** The pipeline
+  indexes no raw PDFs outside the bib file, because a permanently
+  non-citable case is a cost every downstream stage pays. **This stage
+  must not introduce one**, so external nodes live in
+  `citation_graph.json` alone: never in the ledger, never in Chroma,
+  never anywhere a retrieval call can return them.
 - **A citekey is also a filename**, enforced by
   `citekey_safety.citekey_problem()`. Anything writing
   `content/grobid/<citekey>.tei.xml` builds the name with
@@ -285,7 +280,7 @@ The operational objection that removed GROBID still stands:
 
 | Cost | Detail |
 | --- | --- |
-| A pinned JDK 21 | Its bundled Kotlin compiler cannot parse a JDK 25 version string. Unchanged since the removal |
+| A pinned JDK 21 | Its bundled Kotlin compiler cannot parse a JDK 25 version string |
 | A multi-GB, multi-minute build | Or accepting the prebuilt Docker image and its footprint |
 | A long-running service on port 8070 | The only component here that is not a batch job, a new operational shape |
 | Per-document network | With `consolidate_citations > 0`. New for this pipeline |
@@ -313,13 +308,12 @@ only design that supports it without touching the citekey invariant.
 
 ## ❓ Open questions
 
-- **Does the graph have a consumer?** `content/topics.json` is already an
-  artefact no drafting skill reads (see `DEVELOPER.md`, git checkout
-  only). Adding a
-  second unread artefact, at the cost of a JDK and a service, would be a
-  worse version of the same mistake. A concrete consumer (a
-  `survey-writer` step, a retrieval signal) should be named before this
-  is built.
+- **Does the graph have a consumer?** No drafting skill reads
+  `content/topics.json` either; its readers are the `converge` stage and
+  `corpus discover`. An artefact with no reader at all, at the cost of a
+  JDK and a service, would be a poor trade. A
+  concrete consumer (a `survey-writer` step, a retrieval signal,
+  `corpus discover`) should be named before this is built.
 - **How well does title/DOI resolution work** against a real bib
   file, where the same paper appears as a preprint in one entry and a
   published version in another? The edge count is meaningless if

@@ -54,8 +54,7 @@ one file:
    because they cross-reference each other by name and dropping one
    leaves dangling links in the rest. The developer guidance therefore
    reaches a release consumer anyway. What the routing prevents is that
-   guidance reaching a *drafting session*, and that is the distinction
-   that matters.
+   guidance reaching a *drafting session*.
 3. **It has to degrade.** Different agents load different files:
    `CLAUDE.md`, `AGENTS.md`, or neither. This file therefore duplicates
    no guidance and imports nothing. Whichever of the two an agent picks

@@ -1,6 +1,6 @@
 # 📚 Populating `groups` in a plugin-free Zotero BibTeX export
 
-Status: **how-to.** Written 2026-08-17. Updated 2026-08-23.
+Status: **how-to.**
 
 **Written for** someone who wants Zotero collection labels in the ledger
 but cannot get [Better BibTeX](https://retorque.re/zotero-better-bibtex/)
@@ -36,7 +36,7 @@ Two of this project's rules bend for it:
   `.bib` file can be read and diffed by the person who exported it; a
   multi-megabyte application database cannot. Deriving
   citation-adjacent metadata from something the user cannot check is
-  exactly the opacity this project exists to argue against
+  the opacity this project exists to argue against
   ([SOUL.md](../SOUL.md)).
 
 It does not touch citekeys, which is the one line that cannot be crossed
@@ -134,12 +134,16 @@ Once an item is found, its collections come from a straight join:
   is not a bug; there is just nothing to report (5 of 644).
 - **Blocks carrying no fields** are counted as `no_fields` and left alone
   (2 of 644). These are Zotero's contentless `@misc{key,}` stubs for an
-  attachment with no metadata, which `bibtexparser` is right to drop. A
-  recorded issue documents the same two blocks in this library. The
-  bucket is named for what they are and not for a failure, because
-  reporting them as "dropped" on a healthy library is exactly the
-  crying-wolf problem 4.2 is about. They are still counted, so the
-  buckets sum to the total.
+  attachment with no metadata, which `bibtexparser` is right to drop.
+  The bucket is named for what they are and not for a failure, because
+  reporting them as "dropped" would raise a false alarm on a healthy
+  library. They are still counted, so the buckets sum to the total.
+- **Asking for a parent collection does not select its
+  subcollections.** `chitragupta/bib_collections.py` matches a parent
+  against `Parent > Child` paths, but this script writes leaf names only,
+  so `--collection "Digital twins"` finds only the papers filed directly
+  under `Digital twins`, not those in `Modelling` beneath it. Ask for
+  each subcollection by name.
 - **A collection name containing a literal comma** would corrupt the
   `{a,b}` list; the script substitutes `;` inside an individual name
   before joining. Untested against real data, because Zotero's UI does not

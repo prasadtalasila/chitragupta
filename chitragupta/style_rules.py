@@ -57,6 +57,12 @@ _ALL_DIALECT_RULES = (_DIALECT_GB, _DIALECT_US, _DIALECT_IN)
 # `style_check`'s own docstring says why it may be wrong for one.
 _AUTHOR_SOURCES = ("scope.md", "--language")
 
+# Vale rules whose every finding needs a reader. `Just` matches the word
+# whatever its part of speech, and only the filler adverb ("just run
+# it") is a defect; the adjective ("a just outcome") is correct prose, so
+# an unattended rewrite would change what the sentence means.
+_ALWAYS_REVIEW = ("chitragupta.Just",)
+
 
 def with_repair(findings: "list[dict]", language_source: str) -> "list[dict]":
     """Vale's collapsed `findings`, each stamped with the `repair` mode
@@ -65,10 +71,13 @@ def with_repair(findings: "list[dict]", language_source: str) -> "list[dict]":
     A dialect finding is `"review"` unless the dialect came from the
     author: re-spelling a whole draft to a host-wide default is not a
     repair to make unattended when the draft's own dialect may be the
-    deliberate one. Every other Vale rule is an `"edit"`.
+    deliberate one. A rule in `_ALWAYS_REVIEW` is always `"review"`.
+    Every other Vale rule is an `"edit"`.
     """
     for finding in findings:
         dialect = finding["rule"] in _ALL_DIALECT_RULES
-        review = dialect and language_source not in _AUTHOR_SOURCES
+        review = finding["rule"] in _ALWAYS_REVIEW or (
+            dialect and language_source not in _AUTHOR_SOURCES
+        )
         finding["repair"] = "review" if review else "edit"
     return findings

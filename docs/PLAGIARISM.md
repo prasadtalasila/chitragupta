@@ -1,11 +1,9 @@
 # 🔍 Plagiarism / verbatim-reuse detection
 
-Status: **implemented, three detection tiers of a planned three.** The
-second and third shipped advisory-only. The third runs only where the
-optional enrichment layer, the Docling passage sidecars, a synced ledger
-and the draft's own dossier are all present. Written 2026-08-10. Updated
-2026-08-27 with measured scan costs; tier 2 added 2026-08-13,
-tier 3 added 2026-08-15.
+Status: **implemented.**
+
+Three detection tiers are built. The second and third are advisory
+only.
 
 **Written for** someone deciding whether the verbatim `overlap` and
 `scan` checks are enough review before presenting a draft, or
@@ -72,10 +70,6 @@ number is the width of the aligned sentences, not a count of words the
 two sides share, so a long `aligned` count beside a low `score` is a weak
 alignment over a long sentence rather than a long lift.
 
-All of this replaces a report that printed the draft's own normalized
-words as a lone blockquote under a "verbatim" heading, where a paraphrase
-read as an uncaught exact-tier match.
-
 The markup uses emphasis and strong emphasis and nothing else.
 `~~strikeout~~` would be the obvious mark for a dropped word, but it is
 unusable here: pandoc compiles it to `\st{}`, which needs `soul.sty`. A
@@ -99,8 +93,8 @@ This pipeline draws citekeys from a synced bibliography and gates on
 them (`chitragupta/citation_gate.py`): a draft cannot cite a source that isn't
 real. That answers "is every citation genuine" and says nothing about
 "does the wording around a citation belong to whoever it credits, or to
-someone else". `chitragupta/review/verbatim_check/`'s two modes exist to
-answer the second question mechanically, over what is currently checked:
+someone else". `chitragupta/review/verbatim_check/`'s `overlap` and `scan`
+modes answer the second question mechanically, over what is currently checked:
 verbatim word n-grams (tier 1), stemmed skip-grams (tier 2) and, where the
 `enrich` group is installed, embedding similarity (tier 3).
 
@@ -110,10 +104,9 @@ synonym swapped every few words, or an inflection changed. Genuine
 restatement in new sentence structure (the same claim, said differently)
 is invisible to both deterministic tiers by construction.
 
-That matters more here than it would elsewhere, because the drafts this
-pipeline produces are LLM-written, and literal paraphrase is an LLM's
-default failure mode when it drifts too close to a source, not an edge
-case.
+That gap matters here because the drafts this pipeline produces are
+LLM-written, and literal paraphrase is an LLM's default failure mode
+when it drifts too close to a source.
 
 Treat a clean `scan` as "no exact or near-exact copying, no word-swapped
 paraphrase, and (where tier 3 ran) no close restatement of a source a
@@ -147,7 +140,7 @@ result and a thorough one look identical.
 | Sees an uncited source's wording? | No; structurally cannot, by design | Yes |
 | Sees connective prose citing nothing? | No | Yes |
 | Typical use | Quick check on one citation while drafting | Full-draft pass before presenting |
-| Cost | Sub-second, even cold | **447 ms where tier 3 cannot run; 19.7--41.0 s where it can**, since it embeds each shortlisted source's sentences. Re-measured 2026-08-27 across five drafts on a 642-document corpus; see [What a scan costs](#-what-a-scan-costs) below, and [PERFORMANCE.md](PERFORMANCE.md#-what-a-review-pass-costs) for the method |
+| Cost | Sub-second, even cold | **447 ms where tier 3 cannot run; 19.7--41.0 s where it can**, since it embeds each shortlisted source's sentences. Measured 2026-08-27 across five drafts on a 642-document corpus; see [What a scan costs](#-what-a-scan-costs) below, and [PERFORMANCE.md](PERFORMANCE.md#-what-a-review-pass-costs) for the method |
 
 ### ⏱ What a scan costs
 
@@ -206,9 +199,10 @@ does not. One detail is specific to these two: a malformed invocation (a
 bad flag, a missing argument) exits 2. That is ordinary CLI-usage error
 handling, not a verdict on the draft.
 
-Whether long verbatim runs should gate is a later and deliberately
-separate decision, recorded as the exact tier's own Phase 2. These tools
-only produce the findings that decision would be tuned against.
+Whether long verbatim runs should gate was measured and declined: no
+span-length threshold separated real reuse from correctly quoted,
+correctly attributed passages
+([REQUIREMENTS.md §5.1](REQUIREMENTS.md#-51-current-position)).
 
 ## ⚙ How it works
 
@@ -251,8 +245,8 @@ not-a-verdict notice and the same absence of a timestamp.
 
 Each payload finding also carries `severity`: the same
 `long`/`short`/`quoted` bucket the written report groups by, derived the
-same way. A programmatic consumer (the remediation loop below, an
-eventual gate) therefore reads the same severity a human reviewer sees,
+same way. A programmatic consumer (the remediation loop below)
+therefore reads the same severity a human reviewer sees,
 without regex-parsing the printed lines or recomputing the threshold.
 
 It also carries `id`, a position-free name for the finding, and four
@@ -278,7 +272,7 @@ lifted passage tends to look like.
 
 The same merge recovers a lift that a source page break would otherwise
 have split, including a remainder shorter than `--min-run` stranded
-alone on one side of the break, which used to be dropped silently.
+alone on one side of the break.
 
 Each finding reports five things:
 
@@ -294,9 +288,9 @@ Each finding reports five things:
   double quotes, or a Markdown blockquote line. This is a deterministic
   bit, not a severity judgment.
 
-  Two things bound how far a quoted span may reach, both added
-  after a single stray delimiter was found demoting real findings into
-  this bucket. A double quote straight after a digit is an inch or
+  Two things bound how far a quoted span may reach, so that a single
+  stray delimiter cannot demote real findings into this bucket. A double
+  quote straight after a digit is an inch or
   second mark (`a 6" pipe`) and does not open a span; and no span may
   cross a blank line, so an unclosed quotation costs at most its own
   paragraph rather than running on to the *opening* mark of the next
@@ -311,18 +305,17 @@ recovers it into the run's word content without moving `end_page`.
 `quoted` reads as overlap, not containment, and the difference is not
 cosmetic. A matched run is wider than
 the quotation that evidences it and routinely opens a word or two before
-the opening mark, in the draft's own framing prose. The original reading
-required the *whole* run to sit inside the marks, and so reported
-`quoted: false` on correctly quoted, correctly credited passages, which
-is precisely the material the flag exists to let a reader skip. Four
-hand-labelled `attributed-quotation` findings across tiers 1 and 2 had
-that shape, two of them with the quoted words a minority of the span, so
-a majority-of-span rule does not reach them either.
+the opening mark, in the draft's own framing prose. A containment rule
+would report `quoted: false` on correctly quoted, correctly credited
+passages, which is precisely the material the flag exists to let a
+reader skip. Four hand-labelled `attributed-quotation` findings across
+tiers 1 and 2 have that shape, two of them with the quoted words a
+minority of the span, so a majority-of-span rule does not reach them
+either.
 
 ## ⚠ Severity buckets, and the boilerplate allowlist
 
-Two additions, both aimed at the same goal as any future
-gate built on top of `scan`: a tolerable false-positive rate.
+Two mechanisms, both aimed at a tolerable false-positive rate.
 
 Severity buckets appear in the written report only. stdout stays
 longest-first, unchanged: it is read once, in a terminal, mid-review.
@@ -446,7 +439,7 @@ It refuses a baseline it cannot compare against:
 - another aid's payload;
 - one written under `--limit`, where truncation makes "absent" ambiguous;
 - one missing a field the comparison prints, such as `id`, a locator,
-  `tier`, or `end_page` from a build predating the global-position fix;
+  `tier` or `end_page`;
 - one from a different release series, since what counts as one finding
   can change between them;
 - one that is unreadable or not JSON.
@@ -459,7 +452,7 @@ the objective count already excludes tier 3, so the baseline is still a
 valid comparison basis. The warning only says that an `embedding` entry
 in `resolved`/`new` may reflect the enrich group being installed or
 removed, or the corpus being rebuilt under a different model, rather than
-an edit. A baseline predating `corpus_key` is not treated as a mismatch,
+an edit. A baseline with no `corpus_key` is not treated as a mismatch,
 since there is nothing recorded to compare against.
 
 The buckets above, not the model, decide what may be repaired without
@@ -475,9 +468,7 @@ for someone under *what you will not do*.
 **None of this is a gate.** `recheck` exits 0 whatever it finds, like
 every other review command. `python -m chitragupta.draft gate` remains the only
 thing in this pipeline that blocks. Whether a long allowlist-filtered run
-should ever join it is
-[the overlap-gate proposal](AUTO-IMPROVEMENT.md#-build-order)'s question;
-it has since been measured rather than guessed, and
+should join it was measured and declined;
 [the gate measurement](PLAGIARISM-DESIGN.md#-measured-what-a-blocking-overlap-gate-would-block)
 records what the measurement found.
 
@@ -582,8 +573,8 @@ wall-clock time is not the limiting factor:
   is not recommended casually. If a shorter floor is needed, treat it as
   a deliberate reindex decision rather than a flag.
 
-The page-boundary limitation is no longer a recall gap: source positions
-are global, so a lift split by a source page break is found as one run
+A source page break is not a recall gap: source positions are global,
+so a lift split by a source page break is found as one run
 (see the gap-tolerant merge above), whatever `--gap` and `--min-run` are
 set to.
 
@@ -594,8 +585,9 @@ set to.
   document-frequency measurements, and the tiers deliberately not built.
 - [CLI.md](CLI.md): `overlap`/`scan` flags and usage, and the
   review-aid step of [The full first run, step by
-  step](CLI.md#-the-full-first-run-step-by-step). `scan` is also offered
-  by each of the nine skills' own final-check steps.
+  step](CLI.md#-the-full-first-run-step-by-step). Most skills
+  run `scan` as one of their own final checks; `review-digest` does not,
+  because a digest is copied text by design.
 - [VERBATIM-DIGEST.md](VERBATIM-DIGEST.md): the one genre where verbatim
   reuse is the design, with a citation closing every copied run, and
   what keeps its wording out of every other draft.

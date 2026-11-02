@@ -3,31 +3,32 @@
 # Copy this to config.toml (gitignored, per-host) before running anything:
 #     cp config.toml.example config.toml
 #
-# Every key below is OPTIONAL -- anything you delete falls back to the
+# Every key below is OPTIONAL: anything you delete falls back to the
 # default noted beside it, so the smallest valid file is an empty one.
 #
-# Any value can be overridden per-run by an environment variable of the
-# same name, without editing this file:
+# Any value can be overridden per-run by an environment variable, without
+# editing this file. docs/CONFIG.md names each key's variable:
 #     BIB_FILE=/path/to/other.bib python -m chitragupta.corpus sync
 #
-# Full reference -- accepted values, defaults, and how each value is
-# parsed:                                         docs/CONFIG.md
+# Full reference (accepted values, defaults, and how each value is
+# parsed):                                        docs/CONFIG.md
 # What each setting costs, measured:              docs/PERFORMANCE.md
 
 [bib]
-# The BibTeX export -- the source of truth for citekeys and bibliographic
+# The BibTeX export, the source of truth for citekeys and bibliographic
 # metadata. A manual, point-in-time export from your reference manager,
 # not continuously auto-synced: re-export after adding papers, then
 # re-run `python -m chitragupta.corpus sync`. Gitignored, per-host data.
-# Relative to the repo root, or absolute.  Default: papers/bibliography.bib
+# Relative to the project directory, or absolute.
+#                                         Default: papers/bibliography.bib
 path = "papers/bibliography.bib"
 
 # Which BibTeX field carries Zotero collection membership, so a draft can
 # retrieve from the subset you curated for it rather than the whole
 # library. `groups` is JabRef's field, and what Better BibTeX writes under
-# "Export JabRef-specific fields" -- Zotero's own exporter drops
+# "Export JabRef-specific fields". Zotero's own exporter drops
 # collections entirely, so on a plain export nothing is in any collection
-# and every command behaves as it did before. docs/ZOTERO.md has the
+# and no command changes behaviour. docs/ZOTERO.md has the
 # click-path.                                             Default: groups
 collections_field = "groups"
 
@@ -43,13 +44,13 @@ collections_field = "groups"
 # vacuously.
 # That one directory is then the whole record of the work, and a copy of
 # it is complete.
-# Relative to the repo root, or absolute.  Default: content
+# Relative to the project directory, or absolute.  Default: content
 dir = "content"
 
 
 [render]
 # How `python -m chitragupta.draft render` formats citations. Used by
-# nothing else -- not by sync, not by the citation gate.
+# nothing else: not by sync, not by the citation gate.
 
 # The CSL style pandoc's --citeproc formats citations and the
 # bibliography with. IEEE ships with this repo; the CSL project
@@ -63,13 +64,13 @@ dir = "content"
 # default, which is Chicago author-date.
 # Set this only to point at *your own* style. Left unset (as it ships),
 # the vendored assets/csl/ieee.csl is resolved from wherever this code is
-# installed -- which is the only way it is found once this is a wheel
+# installed, which is the only way it is found once this is a wheel
 # rather than a checkout, since a shipped asset does not live in your
 # project directory. A value here is relative to your project directory,
 # or absolute.                             Default: the vendored ieee.csl
 # csl = "my-styles/acm.csl"
 
-# Whether a run of consecutive citations collapses -- [3]–[6] rather than
+# Whether a run of consecutive citations collapses: [3]-[6] rather than
 # [3], [4], [5], [6].
 #
 # The IEEE Reference Guide's own examples use the collapsed form, but
@@ -77,7 +78,7 @@ dir = "content"
 # (collapse="citation-number") which the style omits. Rather than carry a
 # modified copy of a CC BY-SA style in-tree, render_output.py adds that
 # attribute to a *temp copy* at render time, leaving assets/csl/ieee.csl
-# byte-identical to what the CSL project publishes -- so it can be
+# byte-identical to what the CSL project publishes, so it can be
 # re-fetched and diffed. See assets/csl/README.md.
 #
 # false renders whatever the style on disk says, unmodified. A style that
@@ -87,11 +88,11 @@ collapse_citations = true
 
 [style]
 # `vale_config` and `language` are what `python -m chitragupta.draft style`
-# checks a draft's prose against -- a review aid: it exits 0 whatever it
-# finds, and nothing in this pipeline blocks on it
+# checks a draft's prose against. It is a review aid: it exits 0 whatever
+# it finds, and nothing in this pipeline blocks on it
 # (docs/ARCHITECTURE.md, "Layer 4"). `acronyms`, below, is read by the
-# genre-writing skills at drafting time instead, not by this
-# command.
+# genre-writing skills at drafting time, by that command's glossary
+# check, and by [retrieval].acronym_expansion.
 
 # The Vale configuration and rule package. Vendored, for the reason the
 # CSL style above is: a style fetched at run time is not the style that
@@ -113,7 +114,7 @@ collapse_citations = true
 # A fallback dialect, for a draft whose dossier records none. BCP-47:
 # en-GB, en-US, en-IN.
 #
-# A fallback, never an override -- the `language:` line in a draft's own
+# A fallback, never an override: the `language:` line in a draft's own
 # scope.md always wins, because a thesis at an Indian university and an
 # IEEE submission legitimately differ and only the per-draft record knows
 # which this is. This is the standing preference for someone who has
@@ -129,7 +130,7 @@ collapse_citations = true
 # The acronym vocabulary a genre skill reads at step 0: PDF, CPU, URL and
 # similar are vendored (assets/style/acronyms.toml, always loaded);
 # point this at your own file to add your field's vocabulary on top of
-# it, merged rather than replacing it -- your domain acronyms are your
+# it, merged rather than replacing it. Your domain acronyms are your
 # data, not this project's. `chitragupta init` writes
 # content/acronyms.toml for you from assets/style/acronyms.toml.example
 # (gitignored, per-host, the same footing as this file); in a git
@@ -140,14 +141,14 @@ collapse_citations = true
 # Point this at your file, never back at assets/style/acronyms.toml
 # itself, which is the vendored floor this merges *over*. Unset falls
 # back to that floor alone. See assets/style/README.md.
-#                                          Default: assets/style/acronyms.toml
+#                         Default if absent: assets/style/acronyms.toml
 acronyms = "content/acronyms.toml"
 
 [parser]
 # Which backend `python -m chitragupta.corpus sync` uses to turn a PDF into
 # content/parsed/<citekey>.txt.
 #
-#   "pdftotext"  default -- fast, needs poppler-utils on PATH, no Python
+#   "pdftotext"  default: fast, needs poppler-utils on PATH, no Python
 #                dependency, native page boundaries (form feeds between
 #                pages).
 #   "docling"    best structural fidelity (reading order, sections,
@@ -182,7 +183,7 @@ backend = "pdftotext"
 # So: false suits born-digital papers. Set true for scans (with OCR off,
 # docling extracts almost nothing from a scan) or where tables-as-images
 # matter more than parse time. The parse-quality guard below will NOT
-# catch a wrong choice -- it looks for run-together words, not for
+# catch a wrong choice: it looks for run-together words, not for
 # content that never arrived. Figures: docs/PERFORMANCE.md.
 #                                                          Default: false
 ocr = false
@@ -192,7 +193,7 @@ ocr = false
 #
 # Off, docling writes the literal marker `<!-- formula-not-decoded -->`
 # where an equation was, and that is what lands in
-# content/parsed/<citekey>.txt -- so a paragraph reads "More formally:"
+# content/parsed/<citekey>.txt, so a paragraph reads "More formally:"
 # and then nothing. Measured over a 497-document corpus: 148 carried the
 # marker and none carried any decoded LaTeX.
 #
@@ -200,14 +201,14 @@ ocr = false
 # trade as `ocr` above. What makes it worth more than that ratio
 # suggests: chitragupta/retrieval.py indexes content/parsed/*.txt and
 # nothing else, so with this off an equation is invisible to a drafting
-# skill, and with it on the equation is LaTeX -- text, which that index
+# skill, and with it on the equation is LaTeX: text, which that index
 # already handles, with no other setting to change.
 #
 # On a host with a GPU this needs CPython headers and a C compiler
 # present (`python3-dev` and `gcc`, both in the `os-deps` stage): torch's
 # bundled triton compiles a shim at runtime, and without them the
 # recognition model fails per batch and you get the `false` output
-# above -- markers, no LaTeX -- on a run that reports success and
+# above (markers, no LaTeX) on a run that reports success and
 # records every document as parsed. See docs/PDF-PARSER.md's "docling
 # silently empties every formula on a GPU host" for how to tell and how
 # to recover.
@@ -226,7 +227,7 @@ formulas = false
 #   1        default, and the historical behaviour: one document at a
 #            time, no pool, no subprocesses. Nothing about a run changes
 #            unless you raise this.
-#   <int>    that many workers, clamped -- see below.
+#   <int>    that many workers, clamped (see below).
 #   "auto"   as many as this machine can sustain.
 #
 # Counts *documents* in flight; each docling worker is itself
@@ -234,9 +235,9 @@ formulas = false
 #
 # The resolved count is min(what you asked for, what the machine allows,
 # how many documents actually need parsing), never below 1. "What the
-# machine allows" is the CPUs this *process* may run on -- not the
+# machine allows" is the CPUs this *process* may run on (not the
 # machine's total, which on a shared or containerised machine can be far
-# larger -- divided by 4 for docling:
+# larger), divided by 4 for docling:
 #
 #   CPUs available to the process   4    8    16   48
 #   "auto" resolves to              1    2    4    12
@@ -247,7 +248,7 @@ formulas = false
 # has not been made; docs/PERFORMANCE.md has the numbers.
 #
 # So a four-core desktop resolves to 2, and asking for 15 there still
-# gets 2 -- clamped and said out loud on stderr, rather than silently
+# gets 2, clamped and said out loud on stderr, rather than silently
 # obeyed (which thrashes) or silently ignored.
 #
 # Two things this cannot see: a cgroup CPU *quota* (`docker --cpus=2`)
@@ -260,8 +261,8 @@ formulas = false
 # process). Restrict that with CUDA_VISIBLE_DEVICES; there is no separate
 # setting for it.
 #
-# A card with under 2.5 GiB free -- one another process is already using
-# -- is left out of that rotation and said so on stderr, because a worker
+# A card with under 2.5 GiB free (one another process is already using)
+# is left out of that rotation and said so on stderr, because a worker
 # that cannot load a model fails documents far faster than a working
 # worker parses them, and the pool then feeds it most of the corpus. If
 # every card is busy the run parses on the CPU instead, and a worker that
@@ -283,7 +284,7 @@ workers = 1
 #
 # Worth a fixed 1-2s off pool startup, which is most of a run when there
 # are a handful of documents and nothing when there are hundreds. It does
-# not make a bulk parse faster -- the numbers, and why, are in
+# not make a bulk parse faster; the numbers, and why, are in
 # docs/PERFORMANCE.md.
 #
 # "fork" is deliberately not an option: it is no faster than forkserver,
@@ -300,13 +301,13 @@ start_method = "auto"
 # A positive number, or "off" (also "none", "false", or empty) for no
 # limit. 0 and negative numbers are rejected rather than read as "off".
 #
-# Applies to both backends, by the mechanism each has -- and those are
+# Applies to both backends, by the mechanism each has, and those are
 # not equally strong:
 #   - pdftotext: a subprocess timeout, i.e. a real kill. The one backend
 #     where a wedged parse can actually be stopped. The same limit bounds
-#     the pdftotext runs made outside sync -- `review verbatim`'s page
+#     the pdftotext runs made outside sync (`review verbatim`'s page
 #     lookup, the passage report's PDF fallback, enrich's embedding
-#     fallback -- each of which then falls back as for an unreadable PDF.
+#     fallback), each of which then falls back as for an unreadable PDF.
 #   - docling: its own check *between* pipeline stages. Bounds a
 #     pathologically slow document; will not interrupt a hang inside one
 #     stage.
@@ -333,13 +334,13 @@ document_timeout = "off"
 # On by default, unlike most safety valves here, because the failure it
 # catches is one a user actually hit: a run that never finishes. The
 # default is loose on purpose, a warning is printed at half the budget,
-# and a false positive is cheap -- outstanding documents are marked
+# and a false positive is cheap: outstanding documents are marked
 # failed and retried next run, not lost. Only applies when workers > 1.
 #                                                           Default: 1800
 stall_timeout = 1800
 
 # Parse-quality guard. `sync` warns when more than `long_word_ratio` of a
-# document's words are longer than `long_word_chars` -- what a backend
+# document's words are longer than `long_word_chars`, which is what a backend
 # losing the spaces between words looks like. Retrieval tokenizes on
 # whitespace, so fused words stop matching queries entirely. Documents
 # shorter than `min_tokens` words are skipped as too noisy to judge.
@@ -352,7 +353,7 @@ min_tokens = 200
 
 [logging]
 # How much the pipeline writes to logs/pipeline.log (rotated,
-# gitignored -- created on first run). One of Python's own level names:
+# gitignored, created on first run). One of Python's own level names:
 # DEBUG, INFO, WARNING, ERROR, CRITICAL. Case-insensitive.
 #
 # One file for both `python -m chitragupta.corpus sync` and `python -m chitragupta.enrich`: each
@@ -362,8 +363,8 @@ min_tokens = 200
 # see docs/CONFIG.md for why.
 #
 # Only affects the file. Terminal output (stdout/stderr) is unchanged by
-# this setting -- the per-document progress and summary lines print
-# exactly as they always have, regardless of level.
+# this setting: the per-document progress and summary lines print the
+# same at every level.
 #                                                            Default: INFO
 level = "INFO"
 
@@ -373,7 +374,7 @@ level = "INFO"
 # chitragupta/review/citation_provenance.py bands the fraction of a citing sentence's
 # distinctive words found in the best-matching source passage. Below
 # weak_score a finding reads "no support found", which means "go look at
-# this one first" -- never "this citation is wrong". At or above
+# this one first", never "this citation is wrong". At or above
 # good_score it is banded "supported".
 #
 # Round numbers rather than tuned ones, because the report sets a reading
@@ -382,17 +383,17 @@ weak_score = 0.20
 good_score = 0.50
 
 [retrieval]
-# BM25 keyword search -- chitragupta/retrieval.py and its scorer,
+# BM25 keyword search: chitragupta/retrieval.py and its scorer,
 # chitragupta/retrieval_scoring.py. Tier 1: stdlib only, no venv, no
 # model. Deliberately *not* in [enrich] below, whose settings all need
 # the optional dependency group; these run on a bare `python3`.
 
 # How much more a query term counts when it appears in a paper's title or
-# its abstract than in its body (#762).
+# its abstract than in its body.
 #
-# The weighted term frequency is a delta on the ordinary one --
-# `tf + (weight - 1) * tf_in_field` -- so **1.0 leaves ranking exactly as
-# it was**, to the bit, and is not an approximation of "off". Above 1.0
+# The weighted term frequency is a delta on the ordinary one,
+# `tf + (weight - 1) * tf_in_field`, so **1.0 leaves ranking exactly as
+# it is without the weight**, to the bit. Above 1.0
 # the field counts for more; 0.0 discounts it entirely. Negative and
 # infinite are rejected at load rather than producing a ranking nobody
 # can explain.
@@ -403,37 +404,25 @@ good_score = 0.50
 # support is the thing this project keeps refusing to do.
 #
 # `weight_abstract` needs a structural passage sidecar to have anything
-# to weight, and only `[parser].backend = "docling"` writes one -- on the
+# to weight, and only `[parser].backend = "docling"` writes one. On the
 # shipped `pdftotext` default there is no abstract to find, so the weight
 # is silently inert. `weight_title` always applies: a title comes from
-# the ledger. Issue #772 proposes letting the enrichment layer's sidecar
-# feed this too.
+# the ledger.
 #                                                    Defaults: 1.0 / 1.0
 weight_title = 1.0
 weight_abstract = 1.0
 
-# Okapi BM25's own two free parameters (#788). `k1` sets how fast a term's
-# frequency saturates -- how much the ninth mention of a word adds over
-# the first -- and `b` how strongly a document's score is normalized by
-# its length, from 0 (not at all) to 1 (in full).
+# Okapi BM25's own two free parameters. `k1` sets how fast a term's
+# frequency saturates (how much the ninth mention of a word adds over
+# the first), and `b` how strongly a document's score is normalized by
+# its length, from 0 (not at all) to 1 (in full). Both apply to the
+# passage unit below as well, which shares the same scorer.
 #
-# **The defaults were examined, not merely inherited.** 1.5 and 0.75 are
-# the TREC-era ad-hoc retrieval values, chosen on news and web documents
-# rather than on a bibliography of academic PDFs. #788 swept both against
-# this project's own corpus, one parameter at a time. `b` came through
-# with nothing better to offer; `k1` came through with a clear preference
-# for 8.0 that was *not* adopted, because the only ground truth the
-# measuring host could build is the one that cannot settle it. Read
-# bench/RESULTS.md before turning either dial -- the table says far more
-# than the two numbers below do.
-#
-# **And it is a result about this corpus, not about yours.** `b` exists
-# precisely to handle a length spread, and a shelf of four-page papers
-# normalizes differently from one that is half books. Lower `b` if short
-# documents are winning on brevity rather than on relevance; raise it if
-# long ones are winning on sheer size. Raise `k1` if a paper that is
-# genuinely about your query keeps losing to one that mentions it. Both
-# apply to the passage unit below as well, which shares the same scorer.
+# The defaults are the textbook TREC values, swept against this
+# project's corpus; docs/RETRIEVAL.md and bench/RESULTS.md have the
+# result. Lower `b` if short documents win on brevity rather than
+# relevance; raise it if long ones win on sheer size. Raise `k1` if a
+# paper genuinely about your query keeps losing to one that mentions it.
 #
 # `k1` is rejected below 0 or non-finite, `b` outside [0, 1], at load
 # rather than as a ranking nobody can explain.
@@ -441,12 +430,12 @@ weight_abstract = 1.0
 k1 = 1.5
 b = 0.75
 
-# Expand a query's acronyms before ranking it (#789).
+# Expand a query's acronyms before ranking it.
 #
 # BM25 matches exactly, so a query for "DT fidelity" reaches no paper
 # that spells "digital twin" out and never abbreviates it. With this on,
 # an acronym in your query also searches for the words it stands for,
-# each counting as much as a word you typed yourself -- measured: a
+# each counting as much as a word you typed yourself. Measured: a
 # smaller share was swept and full weight won every figure it moved, so
 # this is a switch rather than a dial. A word already in your query is
 # never added twice.
@@ -460,13 +449,13 @@ b = 0.75
 # On by default. On a project whose acronyms file is still the shipped
 # seed that means five general-computing entries and a handful of domain
 # ones; what it is worth grows with the file. Switch it off if your
-# corpus punishes the extra matches -- docs/RETRIEVAL.md has the
+# corpus punishes the extra matches; docs/RETRIEVAL.md has the
 # precision figures to judge that by.
 #                                                           Default: true
 acronym_expansion = true
 
 # The two settings below apply to the *passage* unit only
-# (`retrieve search --unit passage`, #769). The document unit takes
+# (`retrieve search --unit passage`). The document unit takes
 # neither: it is one-result-per-citekey by construction, so there is
 # nothing to cap, and it ranks whole documents, so there is no
 # short-passage problem to floor.
@@ -474,7 +463,7 @@ acronym_expansion = true
 # The most passages one citekey may contribute to a single result set.
 # Lower to 1 for maximal source diversity per query; raise it where a
 # single paper legitimately deserves more of the result. The document
-# unit needs no equivalent -- it already returns one result per source.
+# unit needs no equivalent: it already returns one result per source.
 #                                                             Default: 3
 max_passages_per_source = 3
 
@@ -483,7 +472,7 @@ max_passages_per_source = 3
 # pre-truncated candidate list, so a cap applied to it can only shorten
 # the result. BM25 scores every passage in memory, so the cap walks the
 # fully ranked list and promotes another paper's passage into the window
-# by construction -- a multiplier would be a knob with one answer.
+# by construction, so a multiplier would be a knob with one answer.
 
 # Passages shorter than this many tokens are not indexed at all. BM25's
 # length normalization rewards a short dense match, so without a floor a
@@ -497,9 +486,8 @@ min_passage_tokens = 20
 [enrich]
 # Used only by chitragupta/enrich/* (the "enrich" dependency group), never by sync
 # or the citation gate. The table name is matched exactly and there is no
-# fallback: a config.toml spelling this header anything else -- [heavy] is
-# the one worth naming, since it is what this table used to be called --
-# gets the defaults below, silently, rather than an error.
+# fallback: a config.toml spelling this header anything else gets the
+# defaults below, silently, rather than an error.
 
 # Which sentence-transformers model backs semantic search.
 #
@@ -513,7 +501,7 @@ min_passage_tokens = 20
 # without error and silently underperform. docs/CONFIG.md's "Choosing an
 # embedding model" lists what works and what needs a code change first.
 #
-# Changing this does not re-embed the existing index -- rebuild it with
+# Changing this does not re-embed the existing index. Rebuild it with
 # `python -m chitragupta.enrich --stages embed`.
 #                       Default if absent: sentence-transformers/all-MiniLM-L6-v2
 embedding_model = "sentence-transformers/all-mpnet-base-v2"
@@ -525,19 +513,19 @@ embedding_model = "sentence-transformers/all-mpnet-base-v2"
 #   over-fetch k * multiplier  ->  [rerank]  ->  cap per citekey  ->  keep k
 #
 # docs/CORPUS-SEARCH.md draws it. All three are validated at load: a
-# value below 1, a float or a bool raises, naming the key -- because
+# value below 1, a float or a bool raises, naming the key, because
 # each nonsense value fails as a quietly empty result rather than as an
 # error.
 # ---------------------------------------------------------------------
 
 # How many passages a search returns when the caller doesn't say. A
-# default, not a ceiling -- the CLI's --k and any skill that names a k
+# default, not a ceiling: the CLI's --k and any skill that names a k
 # still win.
 #                                                             Default: 5
 embed_top_k = 5
 
 # The most chunks of one citekey embed_index.search() will return among
-# its top k (#305): a per-citekey cap applied to the ranked list before
+# its top k: a per-citekey cap applied to the ranked list before
 # it's truncated, so one thoroughly-matched paper can't fill every
 # slot. BM25's chitragupta.retrieval.search() needs no matching key --
 # it's already one-per-citekey by construction. Its passage-unit sibling
@@ -551,22 +539,22 @@ embed_max_passages_per_source = 3
 # How much deeper than k to fetch from Chroma before capping, so that
 # dropping a dominant paper's excess chunks *promotes* another paper's
 # chunk into the window rather than merely shortening the list. At 1 the
-# cap can only shorten -- which is the failure #305 existed to fix.
+# cap can only shorten.
 #
 # This is the lever for "the right paper never came back at all": 27% of
-# correct papers never entered the pool in the measurement behind #380.
+# correct papers never entered the pool in the rerank measurement.
 # It is also the expensive one when rerank is on, since the reranker
-# scores the whole pool -- 5 -> 20 -> 50 chunks costs roughly
+# scores the whole pool: 5 -> 20 -> 50 chunks costs roughly
 # 1x -> 3.3x -> 7.2x.
 #                                                             Default: 4
 embed_overfetch_multiplier = 4
 
 # Whether embed_index.search() reorders its over-fetched passages with a
-# cross-encoder before that cap is applied (#380). Off, and that is a
-# measurement rather than caution -- bench/RESULTS.md, 2026-08-26:
+# cross-encoder before that cap is applied. Off, and that is a
+# measurement (bench/RESULTS.md, 2026-08-26):
 #   - recall@5 does not move (156 of 256 either way; the correct paper
 #     is lost 20x and gained 20x, so the swaps cancel);
-#   - source diversity does not move at all -- the cap sets it, not the
+#   - source diversity does not move at all: the cap sets it, not the
 #     ordering, so this does NOT help multi-source drafting;
 #   - what it does buy is shallow ordering: recall@3 129 -> 139 of 256;
 #   - it costs 2.5x a search call on a GPU and 5.75x on a CPU.
@@ -578,8 +566,8 @@ rerank = false
 # Which cross-encoder scores (query, passage) pairs when rerank is on.
 # Read only when it is.
 #
-# This takes a *cross-encoder* -- one that scores both texts jointly in a
-# single forward pass -- not an embedding model, so the "query: " /
+# This takes a *cross-encoder* (one that scores both texts jointly in a
+# single forward pass), not an embedding model, so the "query: " /
 # "passage: " prefix warning above does NOT apply here: BAAI/bge-reranker
 # -base is a sequence-classification cross-encoder and is a genuine
 # drop-in. docs/CORPUS-SEARCH.md's "Choosing a reranker" has the measured
@@ -590,16 +578,16 @@ rerank = false
 rerank_model = "cross-encoder/ms-marco-MiniLM-L6-v2"
 
 # Which sentence_transformers.CrossEncoder model scores claim-support
-# checking's (premise, hypothesis) pairs -- chitragupta/entailment.py's
+# checking's (premise, hypothesis) pairs: chitragupta/entailment.py's
 # Entailer, the aid that flags a citing sentence's claim as unsupported by
 # its cited source's retrieved passage.
 #
 # NOTE the default below is not the code's fallback. If this key is
 # absent entirely you get nli-deberta-v3-small (the smaller of the two
-# DeBERTa-v3 candidates investigated -- cross-encoder/nli-MiniLM2-L6-H768,
-# a different family, has fewer parameters still; see docs/CONFIG.md --
-# 141,897,219 parameters, 87.55 MNLI-mismatched accuracy); this file
-# ships nli-deberta-v3-base (larger, 184,424,451 parameters, 90.04
+# DeBERTa-v3 candidates investigated, 141,897,219 parameters, 87.55
+# MNLI-mismatched accuracy; cross-encoder/nli-MiniLM2-L6-H768, a
+# different family, has fewer parameters still, see docs/CONFIG.md); this
+# file ships nli-deberta-v3-base (larger, 184,424,451 parameters, 90.04
 # MNLI-mismatched accuracy). Both are genuine drop-ins, confirmed by
 # actually loading each one.
 #
@@ -610,41 +598,35 @@ rerank_model = "cross-encoder/ms-marco-MiniLM-L6-v2"
 # what works and what needs a code change first.
 #
 # Changing this affects only the next run that touches claim-support
-# checking -- unlike embedding_model above, there is no index to rebuild.
+# checking. Unlike embedding_model above, there is no index to rebuild.
 #                       Default if absent: cross-encoder/nli-deberta-v3-small
 entailment_model = "cross-encoder/nli-deberta-v3-base"
 
-# How many premises `review support` scores per citation -- "off" for all
+# How many premises `review support` scores per citation: "off" for all
 # of them, which is the default and what every cost figure in
 # docs/PERFORMANCE.md was measured under.
 #
 # This is the one setting that decides what a review pass costs.
 # `support` sends the entailment model one (passage, claim) pair per
 # quotable passage of the cited source, measured at 725-887 pairs per
-# citation on the real corpus -- a number set by how finely the parse
+# citation on the real corpus, a number set by how finely the parse
 # segmented the corpus, not by the length of your draft. It is why
-# `support` is ~97% of the whole nine-aid total on a draft with no
-# dossier, and why it nearly doubled in cost when a re-parse re-segmented
-# the corpus without adding a single document (issue #693).
+# `support` was ~97% of a whole review pass on a draft with no dossier
+# (measured when the review layer had nine aids), and why it nearly
+# doubled in cost when a re-parse re-segmented the corpus without adding
+# a single document.
 #
 # Setting a number here pre-ranks the premises by the same lexical
 # overlap `[provenance]` above bands, and sends the model only the top k.
 # Cheaper in proportion: k = 32 against ~800 premises is roughly a 25x
 # cut in model work.
 #
-# Left off because it was measured and it damaged the report, not merely
-# because it was unproven. Swept from k = 8 to 128 over two real drafts
-# (bench/RESULTS.md, 2026-09-09): the lexical pre-rank picks the same
-# supporting passage as the entailment model for only 56.5% of citations
-# even at k = 128, and claims scoring 0.995 uncapped came back at 0.138
-# -- a well-supported citation promoted to the top of the review agenda
-# as the draft's worst finding. The two drafts also disagreed about
-# which k was safe.
-#
-# So there is no recommended value. Run bench/bench_support_topk.py on
-# your own drafts before setting this at all, and note what it cannot
-# say: it compares against the uncapped scorer, which is not the same as
-# being right. That needs the human ratings issue #757 tracks.
+# Left off because it was measured and it damaged the report: the
+# lexical pre-rank picks a different supporting passage from the
+# entailment model for many citations, so a well-supported claim can
+# come back as the draft's worst finding. There is no recommended value;
+# docs/CONFIG.md has the sweep, and bench/bench_support_topk.py runs it
+# on your own drafts.
 #                                       Default if absent: off (uncapped)
 support_premise_topk = "off"
 
@@ -663,15 +645,14 @@ support_premise_topk = "off"
 #                                                          Default: false
 docling_images = false
 
-# Render scale for those bitmaps -- 2.0 is roughly 144 DPI, enough to
+# Render scale for those bitmaps. 2.0 is roughly 144 DPI, enough to
 # read a figure back without storing print-resolution files.
 #
-# Not clamped, and it no longer needs to be: raising it costs CPU and
+# Not clamped, and it does not need to be: raising it costs CPU and
 # disk, not memory, because each crop is rendered and released one at a
 # time. The 99-page slide deck in this project's corpus goes from 159s
 # and 160 MiB of PNG at 2.0 to 439s and 695 MiB at 6.0, with peak memory
 # unchanged (+0.02 GiB against +0.06 GiB over the images-off base).
-# Before #600 that same document at 6.0 reached 74 GiB and then failed.
 #                                                            Default: 2.0
 docling_image_scale = 2.0
 
@@ -680,7 +661,7 @@ docling_image_scale = 2.0
 # sidecar as decoded LaTeX instead of "formula-not-decoded" markers.
 # Off by default for the same economics as OCR: an extra model download
 # and an extra pass per page. Changing this invalidates the whole
-# Docling cache -- it changes what every .md and sidecar should contain.
+# Docling cache, because it changes what every .md and sidecar should contain.
 #                                                          Default: false
 docling_formulas = false
 
@@ -695,7 +676,7 @@ docling_formulas = false
 #
 # This is the selection rule. Each phrase is ranked against its *own*
 # scores, because measured over a real 497-document corpus every phrase
-# had its own scale -- "Standards" peaked at 0.295 corpus-wide while
+# had its own scale: "Standards" peaked at 0.295 corpus-wide while
 # "Digital Twin" had a median of 0.338, so one cutoff returned nothing for
 # the first and half the library for the second. Raise it when a topic is
 # genuinely broad and you want the tail; the report always says how many
@@ -703,7 +684,7 @@ docling_formulas = false
 #                                                             Default: 25
 seed_topic_max_papers = 25
 
-# The noise floor beneath that ranking -- not the selection rule. It only
+# The noise floor beneath that ranking, not the selection rule. It only
 # keeps a seed that means nothing (a person's name left in the list)
 # returning nothing rather than its 25 nearest neighbours.
 #                                                           Default: 0.15
@@ -713,7 +694,7 @@ seed_topic_min_similarity = 0.15
 # `--stages extract-keywords` reads each parsed paper's own declared
 # "Keywords:"/"Index Terms" line and aggregates the phrases corpus-wide
 # into keywords_path. That file is a GENERATED artifact, regenerated
-# fresh on every run -- unlike seed_topics.toml it is never hand-edited,
+# fresh on every run. Unlike seed_topics.toml, it is never hand-edited,
 # and a phrase you want to keep permanently belongs in your own
 # seed_topics.toml instead. A paper with no detectable declaration
 # contributes nothing; the stage's report counts how many had one.
@@ -724,14 +705,14 @@ seed_topic_min_similarity = 0.15
 keywords_path = "keywords.toml"
 
 # How many extracted phrases survive, most-widely-declared first (ties
-# alphabetical). 40 is the value the exploratory run behind this feature
-# used to produce a list that read as meaningful topic vocabulary
+# alphabetical). 40 is the value with which the exploratory run behind
+# this feature produced a list that read as meaningful topic vocabulary
 # (bench/RESULTS.md, 2026-09-03c).
 #                                                             Default: 40
 keyword_top_n = 40
 
 # The floor under a phrase's distinct-document count. 2 drops a phrase
-# declared by only one paper -- one author's idiosyncratic term rather
+# declared by only one paper: one author's idiosyncratic term rather
 # than corpus vocabulary.
 #                                                              Default: 2
 keyword_min_df = 2
@@ -739,9 +720,7 @@ keyword_min_df = 2
 # Note there is no setting for how many seed topics you may write, and
 # no reason for one. Seeds never steer the clustering: they are matched
 # against the same document vectors afterwards, so a hundred seed phrases
-# cost exactly as many emergent topics as none -- zero. Routing them
-# through BERTopic's zero-shot mode did cost topics (81 down to 53 for
-# nine phrases, measured) and that path has been removed.
+# cost exactly as many emergent topics as none: zero.
 
 # How close an emergent topic must sit to a seed phrase for that phrase to
 # *name* it, in the converged set (content/topic_set.json). Above this the
@@ -756,7 +735,7 @@ keyword_min_df = 2
 topic_converge_similarity = 0.45
 
 # Whether the words a topic is *named* by exclude the corpus's own
-# authors -- read from your bibliography, not a name list. Names only:
+# authors, read from your bibliography rather than a name list. Names only:
 # this never changes which papers are grouped together, just how the
 # group is described.
 #
@@ -769,7 +748,7 @@ topic_converge_similarity = 0.45
 #                                                           Default: true
 topic_exclude_author_names = true
 
-# How fine the emergent topic structure is -- the depth knob, and the one
+# How fine the emergent topic structure is: the depth knob, and the one
 # worth turning first. Measured on a real 497-document corpus, holding
 # everything else fixed:
 #
@@ -791,8 +770,8 @@ topic_min_samples = 2
 #
 # 5 rather than 10 because it is better on three axes at once, measured:
 # 83 topics against 76, 9% of the corpus left out against 17%, and a
-# stability of 0.80 against 0.71 -- how well the same setting reproduces
-# under resampling. The pairing hardcoded before 6.9.0 scored 0.14 there.
+# stability (how well the same setting reproduces under resampling) of
+# 0.80 against 0.71.
 #                                                              Default: 5
 topic_neighbors = 5
 
@@ -800,11 +779,7 @@ topic_neighbors = 5
 # belongs to, rather than only the single topic id BERTopic returns. A
 # paper genuinely about two things cannot be expressed by one id: on a
 # real 497-document corpus, 140 papers belong to more than one topic.
-#
-# Applies to an unseeded run. With a seed list BERTopic swaps out its
-# clusterer and there is nothing left to ask for soft memberships -- run
-# the stage without seeds when the question is "what is in my corpus that
-# I have not named yet".
+# Recorded for every run.
 #                                                            Default: true
 topic_distribution = true
 
@@ -817,7 +792,7 @@ topic_membership_ratio = 0.5
 topic_membership_max = 8
 
 # How surprising a shared-member count must be before two topics get an
-# overlap edge in content/topic_graph.json -- the hypergeometric tail
+# overlap edge in content/topic_graph.json: the hypergeometric tail
 # against the corpus size. A significance level rather than a weight
 # floor, so it needs no re-tuning as the corpus grows, and it refuses the
 # edge two large topics would otherwise get merely for both being large.
@@ -838,7 +813,7 @@ topic_graph_neighbors = 5
 # to paper search. Gates only the semantic evidence: a BM25 hit on the
 # topic's own vocabulary claims it regardless, and without the `enrich`
 # group there is no semantic evidence, so this has no effect. 0.35 is a
-# starting point, not a measurement -- docs/TOPIC-DISCOVERY.md's gold set
+# starting point, not a measurement; docs/TOPIC-DISCOVERY.md's gold set
 # is what will tune it.
 #                                                           Default: 0.35
 min_similarity = 0.35

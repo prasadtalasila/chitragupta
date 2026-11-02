@@ -1,9 +1,6 @@
 # 🎯 Requirements
 
-Status: **requirements record, revised against the codebase.** Written
-2026-08-18. Updated 2026-08-24. The underlying discussion was held
-August 2026; this revision was written 2026-08-18, against `main` at
-v5.29.0.
+Status: **reasoning document.**
 
 What a grounded long-form AI writing system must do, how closed- and
 open-source tools measure up against that bar, the architectural
@@ -11,32 +8,29 @@ principles that follow from it, and where Chitragupta itself stands
 against its own requirement set.
 
 **Written for** someone deciding whether Chitragupta's architecture is
-the right one, or picking up its remaining roadmap. **Assumed:** nothing;
+the right one, or checking it against its own requirements. **Assumed:** nothing;
 this file is self-contained. **Not covered here:** the day-to-day
 mechanics of running the pipeline ([README.md](../README.md),
 [CLI.md](CLI.md)); this is a requirements-and-status record, not a
 how-to.
 
-*A note on the landscape section's evidence quality (§2), unchanged
-since the original discussion: nearly all "Best X in 2026" comparison
-content in this product category is vendor-authored SEO material
+*A note on the landscape section's evidence quality (§2): nearly all
+"Best X in 2026" comparison content in this product category is
+vendor-authored SEO material
 (Paperguide, SciSpace, Anara, and Kenkyu each publish "neutral"
 comparison pages ranking themselves first). Throughout, a claim a vendor
 makes **about a competitor** (an against-interest admission, e.g. "Jenni
 has no plagiarism checker") is treated as more reliable than a claim a
-vendor makes about itself. This section was not re-researched for this
-revision; it is a point-in-time market snapshot, not a tracked claim,
-and nothing in §5's status table depends on it. Everything said about
-Chitragupta itself in §5 was checked against the current code and the
-project's own closed GitHub issues, not carried over from the original
-discussion.*
+vendor makes about itself. It is a point-in-time market snapshot, not a
+tracked claim, and nothing in §5's status table depends on it. Everything said about
+Chitragupta itself in §5 is checked against the code.*
 
 ## 🧭 Table of contents
 
 - [1. What a Good Grounded Writing Software Must Do](#-1-what-a-good-grounded-writing-software-must-do)
 - [2. The Landscape: Closed and Open Source](#-2-the-landscape-closed-and-open-source)
 - [3. Architectural Principles for Grounded Long-Form Drafting](#-3-architectural-principles-for-grounded-long-form-drafting)
-- [4. How Chitragupta Was Built](#-4-how-chitragupta-was-built)
+- [4. How Chitragupta Is Built](#-4-how-chitragupta-is-built)
 - [5. Where Chitragupta Stands, and What's Left](#-5-where-chitragupta-stands-and-whats-left)
 - [6. One Experiment Worth Running Regardless](#-6-one-experiment-worth-running-regardless)
 
@@ -189,12 +183,12 @@ exists:
   parse-and-ledger corpus layer; a **blocking** citation gate
   (`chitragupta.draft gate`) on the only draft->render path, with failed drafts
   regenerated automatically; local-first (corpus never leaves the
-  machine); auditable, readable enforcement code. Since the original
-  discussion, closed-corpus verbatim-overlap detection (exact and
-  paraphrase tiers), a rewrite-and-reverify remediation skill, and an
-  automatic, non-blocking prose/dialect checker have all shipped too
-  (§5). **This architecture (bibliography-only entrance + deterministic
-  ledger + blocking gate as sole exit) still has no direct open- or
+  machine); auditable, readable enforcement code; closed-corpus
+  verbatim-overlap detection (exact and paraphrase tiers), a
+  rewrite-and-reverify remediation skill, and an automatic,
+  non-blocking prose/dialect checker (§5). **This architecture
+  (bibliography-only entrance + deterministic ledger + blocking gate as
+  sole exit) has no direct open- or
   closed-source equivalent**, and the gate remains the *only* blocking
   check anywhere in the pipeline by deliberate, measured decision (§5.1).
 - **STORM / claude-storm** (Stanford OVAL; the `hadufer/claude-storm`
@@ -248,7 +242,7 @@ exists:
   upstream of any bring-your-own-corpus pipeline (and Chitragupta's
   actual upstream), but not a writing tool.
 
-### 📉 What a 2026-08-28 source read of those four found
+### 📉 What a source read of those four found
 
 Read for architecture only, as [INSPIRATION.md](INSPIRATION.md) requires.
 The result was largely negative, and that is the useful part: these are
@@ -326,7 +320,7 @@ is any entry point that reads it.
 
 ### 📚 Two surveys, and what they say this pipeline is
 
-Read 2026-08-29, and useful mainly for placing this project in the
+Useful mainly for placing this project in the
 field's own vocabulary rather than its own:
 
 - **Gao et al.**, *"Retrieval-Augmented Generation for Large Language
@@ -341,7 +335,8 @@ field's own vocabulary rather than its own:
   (input / intermediate / output).
 
 Placed against those, this pipeline is **Advanced** (not Modular),
-**Once** (not iterative), **Doc**-granularity on its lexical path,
+**Once** (not iterative, apart from one opt-in two-round re-grounding
+in `draft-reviser`), **Doc**-granularity on its lexical path,
 **input-layer** by necessity, and **train-free** by design.
 [RAG.md](RAG.md#-where-this-sits-in-the-standard-taxonomy) carries the
 table and what each choice costs.
@@ -354,10 +349,10 @@ than merely unbuilt. The second is **negative rejection** (declining to
 answer when the retrieved material does not support one), named as a
 first-class evaluable ability. This project is built around that
 behaviour and has never measured it:
-[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s C6 went on to be skipped by
+[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s C6 is skipped by
 evidence, because on a corpus of 642 papers about one subject a negative
 query set cannot be built by subtraction, and no retrieval call this
-project has logged has ever come back short. The behaviour is now
+project has logged has ever come back short. The behaviour is
 reported per draft (a declared query that returned nothing is named, and
 the sentences resting on it are cut rather than cited), but reporting it
 is not measuring the rate. The third is a
@@ -373,7 +368,7 @@ systems uses at each, and the trade-off it buys.
 
 ### 🧪 Two more, read for retrieval and evaluation
 
-A follow-up read of **AutoRAG** and **MiniRAG** (2026-08-28) added two
+A follow-up read of **AutoRAG** and **MiniRAG** added two
 findings and one warning.
 
 **The warning is about measuring retrieval at all, and it is the most
@@ -410,23 +405,19 @@ replaced by a loop index before the prompt is built, which is the
 inverse of this project's requirement.
 
 That is the gap [DRAFT-ITERATION.md](DRAFT-ITERATION.md)'s dossier and
-the `draft-reviser` / `corpus-reviser` split were built to fill, and this
-read found no open- or closed-source equivalent for either. It also
-sharpened what was then missing here: nothing fingerprinted the draft,
-so a *hand*-edited draft was as invisible to this pipeline as to the
-other four. That has since shipped: `dossier stamp` and `dossier status`
-notice a hand edit (#462, Theme E in
-[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-theme-e-the-humans-own-structure)).
+the `draft-reviser` / `corpus-reviser` split fill, and this read found
+no open- or closed-source equivalent for either. A *hand*-edited draft
+is visible here too: `dossier stamp` and `dossier status` fingerprint
+the draft and report a hand edit ([DOSSIER.md](DOSSIER.md)).
 
-### 🕸 Five more, read for topic discovery (2026-09-02)
+### 🕸 Five more, read for topic discovery
 
 A third structured read, of **OpenScholar** (this time its retrieval
 half; §2.2 already covers its synthesis half), **FlashRAG**,
 **RAG-Retrieval**, **FlashRank** and **llama_index**, alongside a
 re-read of AutoRAG and MiniRAG, preceded the topic-discovery feature
 ([TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md)), and unlike the reads above
-this one ended in shipped code the same day, so the findings can be
-stated as decisions rather than notes. The itemised
+its findings are decisions that shipped, not notes. The itemised
 borrowed/refused ledger is in
 [INSPIRATION.md](INSPIRATION.md#-topic-discovery); what belongs *here*
 is what these systems said about the requirements.
@@ -449,7 +440,7 @@ OpenScholar's self-feedback loop and post-hoc citation attribution
 solve a problem the citekey invariant defines away; AutoRAG 2.x is an
 LLM agent at query time, so only its archived 1.x *methodology*
 transferred: the hand-labelled gold set and per-stage metrics that
-`bench/topic_discovery_eval.py` now implements, with the generated-QA
+`bench/topic_discovery_eval.py` implements, with the generated-QA
 circularity §"Two more" documents avoided by hand-writing the queries.
 
 **One requirement sharpened.** The graph-RAG systems keep documents and
@@ -458,7 +449,7 @@ concepts in one traversable structure; this project's equivalent
 citekeys) confirmed that a *personal-corpus* graph needs no graph
 database, no service, and no LLM: one derived JSON file suffices at
 this scale, which is an architectural claim §3.1's two-plane separation
-predicted and the feature now demonstrates.
+predicted and the feature demonstrates.
 
 ### 🔍 2.3 Plagiarism detection for a closed corpus (source-vs-draft overlap, iThenticate-style)
 
@@ -468,8 +459,7 @@ but for the closed-corpus use case that index is unnecessary; every open
 option compares only against sources **you supply**, which is exactly
 right when the corpus is already local PDFs.
 
-**Verified (project site read directly, active as of the original
-discussion):**
+**Verified (project site read directly):**
 
 - **WCopyfind / Copyfind** (Lou Bloomfield, U. Virginia): open source
   (GPL). Compares a suspect document against a local collection of
@@ -559,9 +549,9 @@ can partially cheat with large contexts; at book scale, consistency is
 entirely an artifact-management problem. (Commercial chat-centric SaaS
 externalizes very little, which is why their "multi-chapter
 consistency" claims are weak and their ceiling is thesis chapters.)
-Chitragupta already externalizes per-draft state this way, via the
-dossier (`docs/DRAFT-ITERATION.md`); the book-scale registries above are
-the still-open piece (§5.2).
+Chitragupta externalizes per-draft state this way, via the dossier
+([DRAFT-ITERATION.md](DRAFT-ITERATION.md)), and book-scale state through
+the spec and the registries (§5.2).
 
 ### 🌳 3.4 Hierarchical decomposition with a fixed unit of generation
 
@@ -631,13 +621,12 @@ touching enforcement machinery.
 
 ---
 
-## 🔨 4. How Chitragupta Was Built
+## 🔨 4. How Chitragupta Is Built
 
-The build sequence Chitragupta followed, in the dependency
-order the principles above imply. Each step below is marked with what
-shipped it; §5 has the full status table.
+How Chitragupta meets each principle, in the dependency order the
+principles above imply. §5 has the status table.
 
-### 📚 4.1 Corpus substrate first — built
+### 📚 4.1 Corpus substrate first
 
 1. **Ingestion**: parse the reference manager's export (BibTeX).
    `chitragupta/bib_reader.py` handles the real format quirks. Zotero's
@@ -653,7 +642,7 @@ shipped it; §5 has the full status table.
    (PDF, parsed text, bib entry) and is the ground truth for "what
    exists" and the cache key for everything downstream.
 
-### ✅ 4.2 The gate — built
+### ✅ 4.2 The gate
 
 1. `python -m chitragupta.draft gate` validates every citekey a draft uses
    against the ledger, which `sync` fills only from the bib export, on
@@ -664,7 +653,7 @@ shipped it; §5 has the full status table.
    (`.claude/hooks/citation_gate_hook.py`) enforces the same check
    mechanically on every write under `content/drafts/`.
 
-### 🔍 4.3 Overlap detection (the plagiarism layer) — built
+### 🔍 4.3 Overlap detection (the plagiarism layer)
 
 1. **Whole-draft x whole-corpus verbatim scan** (`python -m
    chitragupta.review verbatim scan`): every parsed source is
@@ -687,7 +676,7 @@ shipped it; §5 has the full status table.
    **Declined.** `chitragupta.draft gate` remains the only blocking check
    in the pipeline.
 
-### 🔁 4.4 The remediation loop — built
+### 🔁 4.4 The remediation loop
 
 1. Overlap findings are machine-readable (`--json`, draft span, source
    span, citekey, run length) and feed the `agenda-reviser` skill: a
@@ -699,7 +688,7 @@ shipped it; §5 has the full status table.
    (`revisions.md`), so edit provenance is as auditable as citation
    provenance.
 
-### 🔤 4.5 Language quality layer — built for English, explicitly parked for others
+### 🔤 4.5 Language quality layer: English only
 
 1. Deterministic-first: `python -m chitragupta.draft style` wraps a
     vendored Vale configuration (`assets/vale/`) checking §2's defect markers, an
@@ -724,7 +713,7 @@ shipped it; §5 has the full status table.
     priority." None of the three is built: verified directly, there is
     no babel/polyglossia or other language-metadata plumbing anywhere in
     `chitragupta/render_output/`. A draft in a language other than
-    English today gets nothing automatic: pandoc renders it with English hyphenation
+    English gets nothing automatic: pandoc renders it with English hyphenation
     rules and an English-locale CSL regardless of the draft's own content,
     its reference list joins authors with English "and", and its
     retrieval assumes an ASCII-ish, English-tuned index. The one
@@ -734,7 +723,7 @@ shipped it; §5 has the full status table.
     itself calls "already soft-solved". Everything else in that
     paragraph is what that issue would have built and didn't.
 
-### 📕 4.6 Scaling to books — built (see §5.2 and WRITE-A-BOOK.md)
+### 📕 4.6 Scaling to books (see §5.2 and WRITE-A-BOOK.md)
 
 1. **Spec/outline artifact** with human sign-off before any prose.
 2. **Unit decomposition**: generation contract at section granularity;
@@ -752,7 +741,7 @@ shipped it; §5 has the full status table.
 5. **LaTeX book assembly** as a genre skill: data, not code, per
    §3.7.
 
-### 🧪 4.7 Testing and operations — built, and structural to the repo
+### 🧪 4.7 Testing and operations
 
 - The deterministic plane gets ordinary unit/CI tests (fixtures of bib
   files, PDFs, drafts with planted violations). This repository holds
@@ -770,8 +759,7 @@ shipped it; §5 has the full status table.
 
 ### 🔭 5.1 Current position
 
-Every principle in §3 that does not depend on book scale is built and in
-production. As of v5.29.0:
+Every principle in §3 is built:
 
 | Principle | Status |
 | --- | --- |
@@ -793,8 +781,7 @@ production. As of v5.29.0:
 
 Competitive position: **commercial tools (Paperguide, SciSpace, Jenni,
 ThesisAI, ...) remain feature supersets as products, but Chitragupta's
-architecture is further ahead of them than it was at the time of the
-original discussion**. It now also does closed-corpus
+architecture is ahead of them on grounding**. It does closed-corpus
 overlap detection across all three PAN-literature tiers, with a
 measured, on-the-record decision about where a second blocking gate
 would and would not help, which none of the commercial tools publish
@@ -803,15 +790,14 @@ enough to even ask about.
 ### 📕 5.2 Book scale
 
 What raises the ceiling from chapter/report scale to book scale is
-built, tracked under one umbrella issue and described in full in
+built and described in full in
 [WRITE-A-BOOK.md](WRITE-A-BOOK.md). It depended on none of the tracks
 above, but benefits from all of them, since every gate and every
 review aid built there applies per-unit at book scale, which is what
-makes a 300-page grounded document tractable at all. In the order it was
-built:
+makes a 300-page grounded document tractable at all. Its four parts:
 
 1. **A spec/outline artifact with human sign-off before any prose.** The
-   smallest piece, and independently useful at chapter scale today: an
+   smallest piece, and independently useful at chapter scale: an
    on-disk outline (book -> part -> chapter -> section), approved by a
    human before generation starts, living beside the dossier under the
    same path-mirroring convention as `content/dossiers/`.
@@ -833,9 +819,7 @@ built:
    enforcement machinery because everything it assembles has already
    passed every gate per-unit.
 
-All four are closed, in the order listed above;
-[WRITE-A-BOOK.md](WRITE-A-BOOK.md) records what each shipped as, as well
-as what it was scoped to be.
+[WRITE-A-BOOK.md](WRITE-A-BOOK.md) describes each as built.
 
 ---
 

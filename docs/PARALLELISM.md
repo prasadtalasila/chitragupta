@@ -1,6 +1,6 @@
 # ⚡ Parallelism: design and roadmap
 
-Status: **implemented.** Written 2026-08-03. Updated 2026-08-24.
+Status: **implemented.**
 
 **Written for** someone changing how the parse path schedules work.
 **Assumed:** [ARCHITECTURE.md](ARCHITECTURE.md). **Not covered here:**
@@ -10,11 +10,10 @@ which worker count to choose on your own machine; that is
 How the PDF parse path runs work in parallel, what each component is for,
 and what is planned next.
 
-This is a **design document, not a history.** It describes the code as it
-is. For what any of it *costs*, see [PERFORMANCE.md](PERFORMANCE.md); for
-how a setting is spelled, [CONFIG.md](CONFIG.md); for the measurements
-themselves, and the conclusions later ones overturned, `bench/RESULTS.md`
-and `git log`.
+This document describes the code as it is. For what any of it *costs*,
+see [PERFORMANCE.md](PERFORMANCE.md); for how a setting is spelled,
+[CONFIG.md](CONFIG.md); for the measurements themselves,
+`bench/RESULTS.md` and `git log`.
 
 ## 🧭 Table of contents
 
@@ -90,10 +89,10 @@ says, since that setting governs the corpus layer's own parse, not
 enrichment's. `resolve_workers`, `worker_ceiling`, `gpu_count` and
 `usable_devices` therefore all take an explicit `docling: bool` argument
 instead of reading `config.PARSER` themselves: `chitragupta/sync.py` passes
-`config.PARSER == "docling"`, `chitragupta/enrich/` always passes `True`. A
-version of this that read `config.PARSER` directly made every GPU on a
-`pdftotext`-configured host (the shipped default) invisible to enrichment's
-own pool; a recorded issue holds that history.
+`config.PARSER == "docling"`, `chitragupta/enrich/` always passes `True`.
+Reading `config.PARSER` directly would make every GPU on a
+`pdftotext`-configured host (the shipped default) invisible to
+enrichment's own pool.
 
 ## 🔄 The parse path, end to end
 
@@ -317,7 +316,7 @@ worker's whole shard: `DocumentConverter.initialized_pipelines` is an
 per document.
 
 The ~5s model load is per process and shareable by no start method, which
-is why `forkserver` is worth a fixed 1–2s rather than a multiple.
+is why `forkserver` is worth a fixed 1-2s rather than a multiple.
 
 ## ⚖ How the worker count is decided
 
@@ -343,32 +342,20 @@ Each backend gets the concurrency it can use:
 ### 🧠 Why there is no memory term
 
 Those three ceilings are CPU and workload; **RAM is not one of them**,
-and that is now a decision, not an omission. A recorded issue
-reported the gap: `"auto"` resolves to 24 workers on a 96-CPU host whatever the
-machine's memory, and a docling worker extracting figures was measured in
-the tens of GB, so the resolved width's worst case exceeded RAM by an
-order of magnitude.
+by design. `"auto"` resolves to 24 workers on a 96-CPU host whatever the
+machine's memory.
 
-A memory ceiling was the obvious fix and is not the right one, because it
-**cannot** be sufficient: the ceiling floors at one worker, and a single
-worker parsing a large enough figure-heavy document exceeds RAM at any
-width. Capping the pool would have made the failure rarer without making
-it impossible.
+A memory ceiling cannot be sufficient: it floors at one worker, and a
+single worker whose memory grows with the document exceeds RAM at any
+width. It would make a failure rarer without making it impossible. The
+per-document term is bounded instead. `chitragupta/enrich/_docling_crops.py`
+renders each figure crop and releases it, so a docling worker peaks at
+about 4.2 GiB whatever the document's length, page size, image scale or
+accelerator ([PERFORMANCE.md](PERFORMANCE.md#-memory-bounded-per-document)
+has the measurements). At that bound, 24 workers is ~101 GiB against
+251 GB on the 96-CPU host.
 
-The cause was per-document, not per-pool. Docling held every figure crop
-until the end of the parse, so peak RSS scaled with a document's figure
-count: +8.95 GiB on one 99-page deck, and a 74.31 GiB failure at
-`docling_image_scale = 6.0`. `chitragupta/enrich/_docling_crops.py` renders
-each crop and releases it instead, which takes that term to +0.02 GiB and
-makes it independent of document length, page size, image scale and
-accelerator (`docs/PERFORMANCE.md` has the table and the change that
-shipped it holds the measurements).
-
-With the per-document cost bounded at ~4.2 GiB, the arithmetic the issue
-objected to comes out fine on the host that raised it: 24 workers is
-~101 GiB against 251 GB. Under the old path the same 24 workers was
-~313 GiB, which did not fit. So the width was a symptom, and no
-`available_bytes // per_worker_estimate` term exists, by design. Any
+No `available_bytes // per_worker_estimate` term exists. Any
 such term would need a per-worker byte estimate, which could only be
 fitted from one corpus on one machine, and would then serialise runs on
 smaller hosts that were never at risk. The same reasoning that keeps
@@ -468,7 +455,9 @@ measured default, or a short calibration run.
 
 ### ▶ 2. Selective OCR
 
-OCR costs 2.08x serially and up to 4.79x in parallel, to recover content
+OCR costs 2.1x to 2.9x serially and 3.1x to 4.8x at 12 to 24 workers
+(two corpus runs, [PERFORMANCE.md](PERFORMANCE.md#-parserocr----the-largest-single-lever-and-a-trade)),
+to recover content
 in a minority of documents: of 16 sampled, 8 changed and ~2 materially.
 Detecting bitmap-heavy pages cheaply and running OCR only there converts
 a global tax into a per-document one.
@@ -498,8 +487,6 @@ docling exposes no batch API, so this is upstream work.
   it is a real cost of raising `workers`, not only a curiosity.
 
 ### ❓ Open questions
-
-Gaps, not tasks.
 
 - **Does the clamp finding generalise** past one machine and one corpus?
   Blocks item 1 above.

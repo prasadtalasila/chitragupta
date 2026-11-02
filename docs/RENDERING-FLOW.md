@@ -1,6 +1,6 @@
 # 🖨 Rendering flow
 
-Status: **reference.** Written 2026-08-24. Updated 2026-08-26.
+Status: **reference.**
 
 How `python -m chitragupta.draft render` turns a draft into `.md`/`.tex`/`.pdf`/`.docx`,
 where a rendered draft's bibliography comes from, and what happens
@@ -20,15 +20,16 @@ single `bibtex` pass over a composed book
 
 - [The two paths through `render()`](#-the-two-paths-through-render)
 - [Citation resolution: resolve now, or defer to the consuming document](#-citation-resolution-resolve-now-or-defer-to-the-consuming-document)
+- [The pdf engine and its fonts](#-the-pdf-engine-and-its-fonts)
 - [Mathematics: substituted on the pandoc path only](#-mathematics-substituted-on-the-pandoc-path-only)
-- [Four places a rendered bibliography can live](#-four-places-a-rendered-bibliography-can-live)
+- [Five places a rendered bibliography can live](#-five-places-a-rendered-bibliography-can-live)
 - [The manual References section, and why citeproc replaces it](#-the-manual-references-section-and-why-citeproc-replaces-it)
 - [Figure substitution: four combinations, one real no-op](#-figure-substitution-four-combinations-one-real-no-op)
 - [Figure numbering: a caption wraps the marker, in two passes](#-figure-numbering-a-caption-wraps-the-marker-in-two-passes)
 - [Table numbering: four cases, and pandoc numbers in only one](#-table-numbering-four-cases-and-pandoc-numbers-in-only-one)
 - [Equation numbering: the one pass that reads what `_math` left behind](#-equation-numbering-the-one-pass-that-reads-what-_math-left-behind)
-- [Known defect: the fourth combination isn't a no-op on this host](#-known-defect-the-fourth-combination-isnt-a-no-op-on-this-host)
-- [Still unbuilt: `--natbib` for a thesis fragment's own preview](#-still-unbuilt---natbib-for-a-thesis-fragments-own-preview)
+- [Two rewrites only a fragment gets](#-two-rewrites-only-a-fragment-gets)
+- [Open gaps](#-open-gaps)
 
 ## 🔀 The two paths through `render()`
 
@@ -43,12 +44,10 @@ decided by `output_format` and the draft's own suffix:
   fenced divs that render as literal punctuation anywhere that isn't
   pandoc.
 - **Every other combination goes through pandoc**, against
-  `config.BIB_FILE_PATH`, and (for `pdf`) LuaLaTeX. This is the path
-  the rest of this document is about, including a `.tex` fragment
-  rendered to `.md`: converting `\citep{...}` to Markdown is a real
-  format conversion, so it does not qualify for the first bullet's
-  shortcut. Whether citations are resolved here or deferred is the next
-  section.
+  `config.BIB_FILE_PATH`, and (for `pdf`) LuaLaTeX. The rest of this
+  document covers this path, including a `.tex` fragment rendered to
+  `.md`: converting `\citep{...}` to Markdown is a real format
+  conversion, so it does not qualify for the first bullet's shortcut.
 
 Output always lands mirrored under `content/rendered/`: a draft at
 `content/drafts/<topic>/<name>.tex` renders to
@@ -93,22 +92,23 @@ written to; the `.bib` that lands beside a fragment is a copy with
 every `--`-bearing key aliased, not just the ones one draft cites, so
 the result does not depend on which unit was rendered last.
 
-Every other character reaches pandoc as written (#948).
+Every other character reaches pandoc as written.
 
-## 🔤 The pdf engine and its fonts (#996)
+## 🔤 The pdf engine and its fonts
 
 A `pdf` render runs **LuaLaTeX**, the only engine for this project's own
 pdfs. It reads UTF-8 and OpenType fonts natively, so a character prints
 when a font has it. The fonts are in `chitragupta/pdf_fonts.py`: STIX Two
 Text and Math, Latin Modern Mono for code at its own size, and a
 `luaotfload` fallback chain (STIX Two Math, Noto Serif, DejaVu Sans, Noto
-Sans Symbols 2, Noto Serif Telugu, Devanagari and CJK SC, Unifont). The
+Sans Symbols 2, Noto Serif Telugu, Devanagari and CJK SC, Unifont and
+Unifont Upper; the code font's chain puts DejaVu Sans Mono first). The
 chain is set in the shipped header `assets/latex/chitragupta-lualatex.tex`
 rather than through pandoc's `mainfontfallback` variable, because only
-newer pandoc templates know that variable and Ubuntu 24.04's apt pandoc
-(3.1.3, which CI installs) silently dropped it. That chain prints
+newer pandoc templates know that variable; an older one, such as
+Ubuntu 24.04's apt pandoc 3.1.3, silently drops it. That chain prints
 every one of the 1,873 characters `chitragupta-unicode.sty` prints under
-pdflatex, so a draft that rendered before still does
+pdflatex, so any draft pdflatex could print still prints
 (`tests/test_render_output_fonts.py`), as well as Telugu, Devanagari and
 Chinese.
 
@@ -119,11 +119,11 @@ A character no font in the chain has stops the build, by name.
 `[unicode]` hint. Without it, LuaTeX drops the glyph with only a log
 warning, which is a silent change of what the PDF says.
 
-`assets/latex/chitragupta-unicode.sty` (#948) still ships, for the output
-someone else compiles: `_unicode.py` copies it beside a `tex` or
+`assets/latex/chitragupta-unicode.sty` ships for the output someone else
+compiles: `_unicode.py` copies it beside a `tex` or
 `--fragment` output whose draft contains a character it maps, because the
-thesis or book that `\input`s it may well be pdflatex. A `pdf` render no
-longer loads it; under LuaLaTeX it is a no-op anyway. A project's
+thesis or book that `\input`s it may well be pdflatex. A `pdf` render does
+not load it; under LuaLaTeX it would be a no-op. A project's
 `content/unicode-extra.tex` goes into every LaTeX-bound render's preamble
 behind a two-line shim that defines `\DeclareUnicodeCharacter` on top of
 `newunicodechar` where the engine's kernel lacks it, so the same line
@@ -136,7 +136,7 @@ code-running primitive, because LuaLaTeX would run a `\directlua` in
 either. Plain mathematics is left as math. It rewrites the entries
 rather than citeproc's output, because citeproc merges the author's own
 citation prefix and suffix (`[\emph{cf.} @key, p. 3]`) into the same
-node as the `.bib` text, and those are the author's to keep (#1022).
+node as the `.bib` text, and those are the author's to keep.
 TeX in the draft body, in a citation's prefix or suffix, and in figure
 files still runs, Lua included; that is an accepted residual, set out in
 [SECURITY.md](SECURITY.md).
@@ -175,9 +175,9 @@ a `<!-- math -->` marker with no row, and one with no `math.md` at all.
 The second is what renaming a draft looks like, because a dossier is
 found by path alone. Heuristic gaps print `[math]` warnings and carry on.
 
-## 🗂 Four places a rendered bibliography can live
+## 🗂 Five places a rendered bibliography can live
 
-A render's citations don't resolve against a single file. Four different
+A render's citations don't resolve against a single file. Five different
 stores are involved, only one of them this pipeline's own, and confusing
 one for another is the easiest way to misread what a rendered draft
 proves:
@@ -190,19 +190,20 @@ proves:
 | The real bibliography, for a `.tex` fragment specifically | your own thesis's `\bibliography{...}`/biblatex resource, outside this repository entirely | your own `pdflatex`+`bibtex` run, at submission |
 | The real bibliography, for an assembled book | `content/rendered/<book>/`, the copy the fragment render wrote there | `book.tex`'s `\bibliography{...}`, one `bibtex` pass over the whole book |
 
-The fourth row only applies to `thesis-chapter-writer`'s output. Every
-other genre's rendered draft *is* the bibliography-bearing artefact: its
-citeproc-built reference list is the one a reader sees. A `.tex`
-fragment's `\citep{doe_x_2024}` is deliberately left for the surrounding
-thesis to resolve: `\input`ed into your own document, your own
+The fourth row only applies to `thesis-chapter-writer`'s output, and the
+fifth only to units assembled into a book. Every other genre's rendered
+draft *is* the bibliography-bearing artefact: its citeproc-built
+reference list is the one a reader sees. A `.tex` fragment's
+`\citep{<citekey>}` is deliberately left for the surrounding thesis to
+resolve: `\input`ed into your own document, your own
 `\bibliography{}`/biblatex run numbers it consistently with your other
 chapters. The `.md`/`.pdf` preview this pipeline renders from that same
 fragment (`--format md`/`--format pdf`, both run by
-`thesis-chapter-writer` step 12) still goes through row three (citeproc
-against `papers/bibliography.bib`), because a preview has to resolve
-citations to be readable at all. That preview is not the deliverable and
-nothing downstream reads it back; the fragment on disk, unresolved
-`\citep{}` markers and all, is.
+`thesis-chapter-writer` step 12) still goes through rows one and three
+(citeproc against `papers/bibliography.bib`, into `content/rendered/`),
+because a preview has to resolve citations to be readable at all. That
+preview is not the deliverable and nothing downstream reads it back; the
+fragment on disk, unresolved `\citep{}` markers and all, is.
 
 ## 📄 The manual References section, and why citeproc replaces it
 
@@ -223,12 +224,13 @@ titles `references_section.REFERENCE_TITLE` names (References,
 Bibliography, Works cited), numbered or not, so a hand-titled
 `## Bibliography` is swapped like a generated `## References`, and
 `draft references` replaces it rather than appending a second list
-after it (#951). The review layer's uncited-prose report and the
+after it. The review layer's uncited-prose report and the
 typeset check compose the same title pattern, so all three agree on
 where the bibliography is.
 
 `thesis-chapter-writer` skips the `references` step entirely
-([ARCHITECTURE.md:192](ARCHITECTURE.md)). That is by design, and
+([ARCHITECTURE.md's drafting layer](ARCHITECTURE.md#-layer-2-the-drafting-layer)).
+That is by design, and
 mechanically it could not run anyway: `references.py`'s CLI takes
 "Path to the draft file (Markdown)", and `section_start` scans for a
 Markdown heading a `.tex` fragment never has. Because the fragment
@@ -247,10 +249,10 @@ LaTeX-bound (`tex`/`latex`/`pdf`):
 
 | Draft carries | Output wants | What happens |
 | --- | --- | --- |
-| Markdown `figure:` marker + ASCII twin | LaTeX-bound | `_substitute_tikz_for_ascii`: marker becomes a centred paragraph, `{\centering\input{figures/<name>.tex}\par}` (#1085); for `pdf`, with the figure's page mark before the `\par` (below) |
+| Markdown `figure:` marker + ASCII twin | LaTeX-bound | `_substitute_tikz_for_ascii`: marker becomes a centred paragraph, `{\centering\input{figures/<name>.tex}\par}`; for `pdf`, with the figure's page mark before the `\par` (below) |
 | Markdown `figure:` marker + ASCII twin | non-LaTeX | `_substitute_ascii_for_marker`: marker becomes a fenced ASCII block |
 | `.tex` fragment's inline `\input` + ASCII twin | non-LaTeX (`.md` preview) | `_substitute_ascii_for_tikz`: `\input{...}` becomes a `\begin{verbatim}` block of the ASCII twin |
-| `.tex` fragment's inline `\input` | LaTeX-bound (`tex`/`pdf`) | documented no-op: the TikZ is real and already inline, so nothing is substituted |
+| `.tex` fragment's inline `\input` | LaTeX-bound (`tex`/`pdf`) | no-op by design: the TikZ is real and already inline, so nothing is substituted (but see [open gaps](#-open-gaps)) |
 
 The third row exists because pandoc's LaTeX reader "resolves the `\input`
 but then drops the `tikzpicture` environment, and keeps dropping it under
@@ -258,13 +260,14 @@ but then drops the `tikzpicture` environment, and keeps dropping it under
 docstring), so without the swap a `.tex` fragment's figure would
 silently vanish from its own `.md` preview.
 
-Two consequences of that table surprise people who have only read the
-code:
+What that table implies, and what sits beside it in the preamble:
 
-- **Nothing here adds a `figure` float or a `\caption`.** The
-  substitution is a bare `\input`, so a captioned, numbered figure is one
-  whose *figure file* carries the float
-  ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10).
+- **The substitution itself adds no `figure` float or `\caption`.** It
+  is a bare `\input`. A float and a number come only from a caption
+  line under the marker, which the [caption
+  pass](#-figure-numbering-a-caption-wraps-the-marker-in-two-passes)
+  wraps in `\begin{figure}`; an uncaptioned marker renders with no
+  float and no number.
 - **Only `tex`/`latex`/`pdf` ever draw the TikZ.** `md`, `html` and
   `docx` all take row two and render the ASCII twin, which is why a
   panelled figure's `(a)`/`(b)` sub-captions have to exist in the `.txt`
@@ -281,7 +284,7 @@ code:
   document skips the load and finds no macros. A `--fragment` render has
   no preamble for this to land in and prints the union instead, for the
   book that `\input`s it ([WRITE-A-BOOK.md](WRITE-A-BOOK.md)).
-- **Where a figure may float is set in the preamble too** (#1065).
+- **Where a figure may float is set in the preamble too.**
   Every standalone `tex`/`latex`/`pdf` render includes
   `assets/latex/chitragupta-floats.tex`, whose float fractions keep a
   figure that fits on a text page off a page of its own; a `--fragment`
@@ -292,7 +295,7 @@ code:
   travels in the pdf's Info dictionary, because pandoc has deleted the
   log by then and the engine may not write a file outside pandoc's
   temp directory (`plans/1065-float-placement.md`).
-- **A `pdf` render marks each figure's page** (#1052). In a Markdown
+- **A `pdf` render marks each figure's page.** In a Markdown
   draft the `\input` is followed, inside the figure's own paragraph, by
   a PDF named destination, `cgfig:<marker base>`
   (`render_output/_figure_anchor.py`): no ink, no bookmark, and no word
@@ -304,12 +307,10 @@ code:
 
 ## 🔢 Figure numbering: a caption wraps the marker, in two passes
 
-Issue 411 gives a *captioned* figure the same "author writes no number"
-contract §13 gives a table, via
-`chitragupta/render_output/_figure_captions.py`. That module is a
-sibling of `_figures.py` rather than a part of it, split out once the
-combined module crossed `docs/CODE-STANDARDS.md`'s 250-code-line
-ratchet.
+A *captioned* figure gets the same "author writes no number" contract
+§13 gives a table, via
+`chitragupta/render_output/_figure_captions.py`, a sibling of
+`_figures.py` rather than a part of it.
 
 The Markdown contract is a `figure:` marker followed directly by its
 caption, no blank line between (`_FIGURE_CAPTION_PAIR_RE`):
@@ -327,24 +328,23 @@ is gone:
 
 | Pass | What it resolves | LaTeX-bound (`tex`/`latex`/`pdf`) | Everything else |
 | --- | --- | --- | --- |
-| `substitute_captions` | The `[marker, caption]` pair | Wraps the untouched marker in a `\begin{figure}`/`\end{figure}` pair, each its own raw `` ```{=latex} `` block; LaTeX's own counter numbers it, no `\thefigure` override ever written. The caption stays pandoc-visible text, with only `` `\caption{`{=latex} `` and `` `}\label{fig:<id>}`{=latex} `` injected around it as raw-attribute spans, so a caption's own `[@key]`, `&` or `%` is Markdown-processed and LaTeX-escaped like any other prose rather than landing raw inside `\caption{...}` (issue 494) | `<marker>\n**Figure N:** <caption>`, N counted in document order among captioned figures only |
+| `substitute_captions` | The `[marker, caption]` pair | Wraps the untouched marker in a `\begin{figure}`/`\end{figure}` pair, each its own raw `` ```{=latex} `` block; LaTeX's own counter numbers it, no `\thefigure` override ever written. The caption stays pandoc-visible text, with only `` `\caption{`{=latex} `` and `` `}\label{fig:<id>}`{=latex} `` injected around it as raw-attribute spans, so a caption's own `[@key]`, `&` or `%` is Markdown-processed and LaTeX-escaped like any other prose rather than landing raw inside `\caption{...}` | `<marker>\n**Figure N:** <caption>`, N counted in document order among captioned figures only |
 | `substitute_refs` | An inline `<!-- figureref: <id> -->` | `` `Figure~\ref{fig:<id>}`{=latex} ``, for the same raw-attribute-span reason `_tables._reference_for` needs for `~` | `Figure N` |
 
-**Why `\begin{figure}` and `\end{figure}` cannot share one raw block with
-the caption between them.** Pandoc's raw-TeX passthrough reads a bare
-`\begin{env}...\end{env}` span (the same mechanism `\input{...}` markers
-rely on elsewhere in this file) as one opaque block, copied to the
-writer byte-identical and never Markdown-processed. An earlier revision
-interpolated the caption straight into such a span, which is why it was
-neither Markdown-processed nor LaTeX-escaped: a caption's `&` broke
-pdflatex, a `%` silently truncated the rest of the line (the `\label`
-included), and a caption's own `[@key]` reached the PDF as literal,
-unresolved text. Splitting `\begin{figure}`/`\end{figure}` into two
-explicit fenced raw blocks, with the caption as ordinary pandoc content
-between them, is what lets the caption go through the Markdown reader at
-all. `_tables._caption_for` already had the same fix shape, one row up,
-because a table's caption was never trapped inside a hand-written raw
-environment in the first place.
+**Why `\begin{figure}` and `\end{figure}` cannot share one raw block
+with the caption between them.** Pandoc's raw-TeX passthrough reads a
+bare `\begin{env}...\end{env}` span (the same mechanism `\input{...}`
+markers rely on elsewhere in this file) as one opaque block, copied to
+the writer byte-identical and never Markdown-processed. A caption inside
+such a span would be neither Markdown-processed nor LaTeX-escaped: a
+caption's `&` breaks the build, a `%` silently truncates the rest of the
+line (the `\label` included), and a caption's own `[@key]` reaches the
+PDF as literal, unresolved text. Splitting
+`\begin{figure}`/`\end{figure}` into two explicit fenced raw blocks,
+with the caption as ordinary pandoc content between them, is what lets
+the caption go through the Markdown reader at all.
+`_tables._caption_for` has the same shape, because a table's caption is
+never inside a hand-written raw environment either.
 
 An uncaptioned marker matches neither pass's regex and renders
 exactly as ["Figure substitution" above](#-figure-substitution-four-combinations-one-real-no-op)
@@ -356,9 +356,8 @@ left exactly as written; `python -m chitragupta.draft style`
 The `.tex` fragment (`thesis-chapter-writer`) carries neither marker and
 is untouched by either pass. It hand-authors a real `\begin{figure}`
 inline, the same carve-out the table section below states for a
-`\begin{table}`. The only change there is one line removed:
-`\renewcommand{\thefigure}{N.M}` is no longer written, so the user's own
-thesis-wide `figure` counter numbers it instead.
+`\begin{table}`. Nothing writes a `\renewcommand{\thefigure}`, so the
+user's own thesis-wide `figure` counter numbers it.
 
 **The renderer never scales a figure, and is not to gain a way to.** It
 `\input`s a figure bare, at its natural size, and has no `\resizebox`,
@@ -368,12 +367,13 @@ the factor happens to be: six hand-written figures wrapped in
 5.5pt and 7.1pt against a 9pt body, with `pdflatex` exiting 0
 ([TIKZ-STYLE.md](TIKZ-STYLE.md#-draw-for-the-width-it-will-be-printed-at)).
 An overflowing figure is answered by its layout, which
-`figure check`'s `size-width` reports, never by a scale knob, however
-reasonable the request looks when one figure is a few points too wide.
-This is written down as a decision because an absence gets filled
-(#1016). A scale in a document the pipeline does not write, such as a
-thesis that `\input`s `thesis-chapter-writer`'s fragment, is outside
-every check here; the drafting skills tell the author not to add one.
+[`figure check`](figure-checks/README.md)'s `size-width` reports,
+never by a scale knob, however reasonable the request looks when one
+figure is a few points too wide. This is written down as a decision
+because an absence gets filled. A scale in a document
+the pipeline does not write, such as a thesis that `\input`s
+`thesis-chapter-writer`'s fragment, is outside every check here; the
+drafting skills tell the author not to add one.
 
 ## 🔢 Table numbering: four cases, and pandoc numbers in only one
 
@@ -381,7 +381,7 @@ every check here; the drafting skills tell the author not to add one.
 [WRITING-STANDARDS.md §13](WRITING-STANDARDS.md)'s two markers (the
 `<!-- table: <id> -->` under a caption line, and the inline
 `<!-- tableref: <id> -->`) into whatever the target format can count
-with. Every row was measured on this host's pandoc 3.1.11.1, because the
+with. Every row was measured on pandoc 3.1.11.1, because the
 obvious assumption (pandoc numbers a captioned table) is true in exactly
 one of them:
 
@@ -392,8 +392,7 @@ one of them:
 | `.md` | `docx`, `html`, ... | `: Table N: <caption>`, a real caption carrying a number pandoc will not supply | `Table N` |
 | `.tex` | any | untouched; the fragment writes `\caption{}\label{}` itself | untouched |
 
-Three things in that table are not guessable and cost a render each to
-find out:
+Three things in that table are not guessable:
 
 - **The docx writer numbers nothing.** A captioned table round-trips out
   of `.docx` as a bare caption paragraph, so the number has to be in the
@@ -418,7 +417,7 @@ reason the next section states.
 
 ## 🔢 Equation numbering: the one pass that reads what `_math` left behind
 
-Issue 457 gives a *marked* equation the same "author writes no number"
+A *marked* equation gets the same "author writes no number"
 contract as a table or figure, via
 `chitragupta/render_output/_equation_captions.py`. Unlike either of
 those, not every displayed equation gets one: an author opts a specific
@@ -458,93 +457,58 @@ refers to, or an id problem, the same way `style_tables.py`/
 the way those two do, because an equation's own marked block is itself a
 fence (see that module's docstring).
 
-## 🐛 Known defect: the fourth combination isn't a no-op on this host
+## ✂ Two rewrites only a fragment gets
 
-The fourth row's no-op rests on one assumption: that pandoc, asked to
-render a `.tex` fragment to `tex`/`pdf`, hands the TikZ straight through
-to the TeX engine untouched. It does not, on pandoc 3.1.11.1 (this host,
-2026-08-24), and nothing in `_with_figures_for` or `_pandoc_command`
-intercepts it, because the fourth row is coded as "nothing to do here."
+`_substituted` (`chitragupta/render_output/_substitution.py`) makes two
+changes to the temp copy of a `--fragment` render, never to the draft on
+disk:
 
-`_pandoc_command` (`chitragupta/render_output/_pandoc.py`) never passes
-`-f`/`--from`. Without it, pandoc guesses the reader from the input
-file's extension, and for `.tex` that guess is the **LaTeX** reader, not
-Markdown. Reproducing the render directly (not a mock) confirms it:
+- **The manual References section is dropped**, heading included, with
+  any text after it kept (`_citeproc.drop_manual_refs`). The document
+  that `\input`s the fragment resolves citations once for the whole of
+  itself, so a per-chapter list would be a second, differently numbered
+  answer.
+- **A chapter number the top heading states is dropped**
+  (`chitragupta/render_output/_chapter_number.py`). A heading such as
+  `# Chapter 1: Why Anyone Pays` would otherwise be numbered twice in an
+  assembled book, because the `book` class supplies "Chapter 1" as well.
+  It fires only on a top-level heading that already states a number, in
+  both the Markdown and the `\chapter{}` spelling. The draft on disk
+  keeps the number, because that heading titles the unit's own
+  standalone pdf, where nothing else supplies one.
 
-```bash
-$ printf '\\begin{tikzpicture}\\draw[blue] (0,0) circle (1);\\end{tikzpicture}\n' > figures/fig1.tex
-$ printf '\\section{Framing}\nPrior work established Y.\n\n\\input{figures/fig1.tex}\n\nText after the figure.\n' > chapter.tex
-$ pandoc chapter.tex --standalone -o out.tex; echo "exit=$?"
-exit=0
-```
+Both sit in `_substituted` rather than at the call site because that
+function is the one answer to "what does the writer actually see".
 
-`out.tex` contains `\section{Framing}\label{framing}` (the auto-generated
-`\label` only the LaTeX reader's `auto_identifiers` extension produces),
-`Prior work established Y.`, and `Text after the figure.`; the
-`\input` is resolved and the `tikzpicture` environment inside it is
-gone. No warning, exit `0`. This is the same failure mode
-`_substitute_ascii_for_tikz`'s docstring already names for the `.tex`→`.md`
-path (pandoc's LaTeX reader drops an environment it doesn't
-understand), except that combination has a swap guarding it and this one
-does not, because `_with_figures_for`'s docstring treats `.tex`→`tex`/`pdf`
-as the one genuinely inline case needing no substitution. The file on
-disk is inline; what pandoc's reader does with it before the TeX engine ever
-sees the result is not.
+## 🕳 Open gaps
 
-**This contradicts `thesis-chapter-writer/SKILL.md`'s own claim** (step
-9: "`--format tex` and `--format pdf` get the TikZ") for any figure that
-uses `\input`, which is the shape that skill's own step 9 tells the
-genre to write. Passing `-f latex+raw_tex` instead of the bare default
-reader leaves `\input{...}` as a raw command rather than resolving it.
-That is confirmed to restore the figure, since LuaLaTeX (with `TEXINPUTS`
-already set for the `pdf` format, `chitragupta/render_output/__init__.py`)
-then reads the real file itself. **Not applied anywhere in this
-codebase as of this writing.** It is flagged here rather than fixed,
-since fixing it is a separate, scoped change.
+- **A `.tex` fragment's TikZ is dropped from its own `tex`/`pdf` render.**
+  `_pandoc_command` (`chitragupta/render_output/_pandoc.py`) passes no
+  `-f`/`--from`, so pandoc reads a `.tex` input with its LaTeX reader,
+  which resolves `\input{figures/<name>.tex}` and then drops the
+  `tikzpicture` environment inside it, with exit `0` and no warning. The
+  fourth row of the [figure substitution
+  table](#-figure-substitution-four-combinations-one-real-no-op) assumes
+  the TikZ passes through, and `thesis-chapter-writer`'s step 9 says
+  `--format tex` and `--format pdf` get it. Passing `-f latex+raw_tex`
+  leaves `\input{...}` as a raw command for LuaLaTeX to read, which
+  restores the figure; nothing passes it yet. Reproduce it directly:
 
-## 🧾 Still unbuilt: `--natbib` for a thesis fragment's own preview
+  ```bash
+  $ printf '\\begin{tikzpicture}\\draw[blue] (0,0) circle (1);\\end{tikzpicture}\n' > figures/fig1.tex
+  $ printf '\\section{Framing}\nPrior work established Y.\n\n\\input{figures/fig1.tex}\n\nText after the figure.\n' > chapter.tex
+  $ pandoc chapter.tex --standalone -o out.tex; echo "exit=$?"
+  exit=0
+  ```
 
-`--natbib` is built now, for `--fragment` (see the citation
-resolution section above). What is still unbuilt is the narrower case this
-section originally described: rendering a `.tex` fragment's own `tex`/`pdf`
-*preview* with `--natbib`, so the preview defers to `bibtex` the way the
-fragment's real `\input`-ing thesis eventually will, rather than baking
-citeproc's numbering into a document that only wants to demonstrate the
-fragment compiles. That path still passes `--citeproc`, and
-`thesis-chapter-writer` depends on it: the preview is the only place that
-fragment's citations are ever shown resolved.
-
-Two notes from the original design, and what the built path needed:
-
-- It would need `-f latex+raw_tex-auto_identifiers` on the LaTeX reader
-  (the previous section's fix, plus turning off `auto_identifiers` so a
-  fragment's own `\section{Introduction}` doesn't collide with another
-  chapter's). **Still required, and still unbuilt**: the built path
-  reads Markdown, not LaTeX, so it never needed this.
-- It would need `--variable biblio-style=IEEEtran`, since pandoc's own
-  default under `--natbib` is `plainnat` (author-year). **Not needed as
-  built**: a `--fragment` render emits no preamble at all, so there is
-  nothing for that variable to land in; the assembled book states
-  `\bibliographystyle{IEEEtran}` itself, alongside
-  `\usepackage[numbers,sort&compress]{natbib}` for numeric markers.
-
-The original note closed by saying that a future change wiring
-`--natbib` into a genre that *does* write a `## References` section
-"should make the refusal explicit rather than relying on the same
-accident". That is what `_citeproc.drop_manual_refs` is: a fragment's
-manual References section is removed from the temp copy outright
-(heading included, tail after it preserved) rather than left to
-`section_start` happening to find nothing.
-
-There is a second fragment-only rewrite, and both live in one place. A
-heading that states its own chapter number (`# Chapter 1: Why Anyone
-Pays`) is numbered twice in an assembled book, because the `book` class
-supplies "Chapter 1" as well, so
-`chitragupta/render_output/_chapter_number.py` drops the prefix from the
-same temp copy, in the same `if fragment:` branch of `_substituted`
-(#804). It fires only on a top-level heading that already states a
-number, in both the Markdown and the `\chapter{}` spelling, and never on
-the draft on disk: that heading is what titles the unit's own standalone
-pdf, where nothing else supplies a chapter number. Both rewrites sit in
-`_substituted` rather than at the call site because that function is
-already the one answer to "what does the writer actually see".
+  `out.tex` keeps the section and both sentences; the `tikzpicture` is
+  gone.
+- **A `.tex` fragment's own `tex`/`pdf` preview resolves citations with
+  `--citeproc`, not `--natbib`.** `--natbib` is used for `--fragment`
+  renders of Markdown units (see [citation
+  resolution](#-citation-resolution-resolve-now-or-defer-to-the-consuming-document)),
+  but a thesis fragment's preview still bakes in citeproc's numbering.
+  `thesis-chapter-writer` depends on that today: the preview is the only
+  place the fragment's citations are shown resolved. Switching it would
+  need `-f latex+raw_tex-auto_identifiers` on the LaTeX reader (the fix
+  above, plus no auto-generated `\label` to collide across chapters).

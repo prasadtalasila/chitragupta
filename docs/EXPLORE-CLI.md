@@ -1,6 +1,7 @@
 # ⌨ Explore the Graph — CLI
 
-Status: **guide.** Written 2026-09-07.
+Status: **how-to.**
+
 [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) is the reference for how every
 number here is computed; [CLI.md](CLI.md#-chitragupta-corpus-discover)
 documents every flag; [EXPLORE-WEB.md](EXPLORE-WEB.md) is this page's
@@ -27,11 +28,13 @@ $ chitragupta corpus discover
 ```
 
 *Real corpus, trimmed.* This lists every topic with its provenance,
-size and top terms, plus the seed phrases no topic covers. Provenance is
+size and top terms, plus the papers no topic covers (an
+`uncovered by any topic:` line of citekeys). Provenance is
 `seed` or `emergent`, which is all the artefact records; `--origins` is
 what tells a hand-written seed from an extracted keyword and from a
-corroborated phrase both files name. The uncovered seed phrases are the
-"literature that has not met itself" observation worth noticing first.
+corroborated phrase both files name. An uncovered paper is one the
+topic model and every seed phrase passed over, which is worth noticing
+before you plan a draft around the topics.
 
 ## 🔍 One topic
 
@@ -221,6 +224,6 @@ of what the app then shows.
 
 Every one of the app's analytical views has a terminal twin here, each
 pinned to the app's own arithmetic by a shared case file under
-`tests/webapp/`;
-[TOPIC-DISCOVERY-GRAPH.md §13](TOPIC-DISCOVERY-GRAPH.md#13-the-app-and-the-terminal-the-capability-gap-and-two-ways-to-close-it)
-is the record of the gap this closed.
+`tests/webapp/`.
+[TOPIC-DISCOVERY-GRAPH.md](TOPIC-DISCOVERY-GRAPH.md#2-what-is-stored-and-what-the-browser-computes)
+records which numbers the stage stores and which the browser computes.

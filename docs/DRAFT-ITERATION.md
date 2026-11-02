@@ -1,6 +1,6 @@
 # ✍ Iterating on a draft
 
-Status: **implemented.** Written 2026-08-06. Updated 2026-08-31.
+Status: **implemented.**
 
 **If you are here to change a draft you wrote weeks ago, read the
 walkthrough in
@@ -70,11 +70,11 @@ other twelve weren't, who the reader is, which definition of a contested
 term the draft settled on, and what the user asked for in chat that the
 prose doesn't show.
 
-Before this module, all of that lived in one conversation and was lost
-when it ended, so "shorten section 3" cost a full re-run: retrieve, score
-every candidate again, re-cluster, rewrite. That is a structural cost,
-not a constant factor, and everything else in this document follows from
-removing it.
+Without a record on disk, all of that lives in one conversation and is
+lost when it ends, so "shorten section 3" would cost a full re-run:
+retrieve, score every candidate again, re-cluster, rewrite. That is a
+structural cost, not a constant factor, and everything else in this
+document follows from removing it.
 
 ## ⚡ Where the tokens go
 
@@ -93,10 +93,10 @@ but stay resident, fan-out packets held across phases, whole-file
 rewrites, and **no revision path at all**.
 
 This module exists to remove the fourth, which is also the only one of
-the four that is *structural* instead of a constant factor. Before
-`chitragupta/dossier/` and the `draft-reviser` skill, no genre skill had a
-branch for "an existing draft plus a change request", so the only way to
-alter a paragraph was to run Phase 1 through Phase 7 again.
+the four that is *structural* instead of a constant factor. No genre
+skill has a branch for "an existing draft plus a change request";
+without `chitragupta/dossier/` and the `draft-reviser` skill, the only
+way to alter a paragraph would be to run Phase 1 through Phase 7 again.
 
 ## 🗂 The dossier
 
@@ -113,8 +113,7 @@ below assumes that format and does not restate it.
 
 The dossier was built to be read by the *next* session. `brief` is the
 part that is read by the *current* one: by a subagent, in place of the
-orchestrator pasting the same text into its prompt. It closes a
-long-recorded issue.
+orchestrator pasting the same text into its prompt.
 
 **The problem, in one phase.** `deep-research` Phase 5 dispatches one
 writer per section, and each needs the kept claims its section stands on.
@@ -170,18 +169,18 @@ rejected trade in
 [TOKENS.md](TOKENS.md#-the-one-way-to-cut-residency-and-what-it-would-cost)
 and not implemented here.
 
-The three subagent definitions still declare
-`tools: Bash, Read, Grep, Glob` with no `Write`, and still say in prose
-that they write nothing.
+The three subagent definitions declare
+`tools: Bash, Read, Grep, Glob` with no `Write`, and say in prose that
+they write nothing.
 
-**The second effect, which is not about tokens.** Before `brief`, an
-orchestrator that moved past Phase 2 without transcribing lost six
-packets' worth of judgment and nothing reported it: the draft looked
-finished and the record was absent. A run that *dispatches* from
-the file cannot skip the file. `brief` exits 1 when nothing resolves and
-names every citekey with no block, and `--check` lets the orchestrator
-find that out before four writers are already running. Silent loss
-became a named failure, raised while it is still cheap to fix.
+**The second effect, which is not about tokens.** An orchestrator that
+moves past Phase 2 without transcribing would lose six packets' worth of
+judgment with nothing reporting it: the draft would look finished and
+the record would be absent. A run that *dispatches* from the file cannot
+skip the file. `brief` exits 1 when nothing resolves and names every
+citekey with no block, and `--check` lets the orchestrator find that out
+before four writers are already running, while it is still cheap to
+fix.
 
 **Who else can use it.** Nothing in `brief` is `deep-research`-specific:
 any skill that fans out over sections has the same shape.
@@ -201,7 +200,7 @@ report over every dossier under `content/dossiers/`, always exiting 0,
 because "some drafts have drifted" is the normal state of a live corpus
 and not a build failure.
 
-`sync` now names the dossiers that still reference a citekey it is about
+`sync` also names the dossiers that still reference a citekey it is about
 to drop, at the moment of the drop
 ([CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove)).
 That is the same evidence from the other end and it does not replace
@@ -276,14 +275,13 @@ The obvious implementation, calling
 `chitragupta.retrieval.search(query, k=15)` for each recorded query, is
 ruled out, because a report must not change what it reports on:
 
-- `search()` used to reach the ledger through `ledger.connect()`, the
+- The ledger is opened read-only through `ledger.read_connection`, as
+  every reader opens it, and never through `ledger.connect()`, the
   writer, which mkdirs `content/`, executes the schema and runs
-  migrations. It no longer does: every reader now opens the ledger
-  read-only through `ledger.read_connection`, which is also what
-  `status` uses. An inspection must not take a write lock or run a
-  migration. (It *does* wait out a writer's commit window, a deliberate
-  later addition: waiting takes no lock, and the alternative was reporting
-  an empty corpus. See [DOSSIER.md](DOSSIER.md#-the-corpus-fingerprint).)
+  migrations. An inspection must not take a write lock or run a
+  migration. (It *does* wait out a writer's commit window: waiting
+  takes no lock, and the alternative is reporting an empty corpus. See
+  [DOSSIER.md](DOSSIER.md#-the-corpus-fingerprint).)
 - `search()` builds its index through `retrieval._load_index`, which
   calls `_save_cache()` whenever any document's fingerprint has moved.
   After the sync that caused the drift being reported, that is
@@ -309,21 +307,19 @@ Nothing is written back, and the smoke test pins exactly that:
 byte-identical after a scan.
 
 The cost of throwing the index away is that a cold-cache sweep re-does
-work the next `search()` will do again. That is accepted deliberately,
-because the alternative is a read-only command that writes to the corpus
-layer as a side effect, which is much worse.
+work the next `search()` will do again. That is accepted, because the
+alternative is a read-only command that writes to the corpus layer as a
+side effect, which is much worse.
 
-That cost is measured, not assumed. Unlike the token estimates in
+That cost is measured. Unlike the token estimates in
 [TOKENS.md](TOKENS.md), it is a stopwatch figure, so it lives in
 [PERFORMANCE.md](PERFORMANCE.md#-what-a-drift-sweep-costs) with the rest
 of the measurements. The main result, on this project's own
 corpus: sweeping 50 dossiers costs **0.19s more than sweeping one**
 (2.227s vs 2.032s cold), because the tokenization is shared. Had it been
 per dossier, 50 would have taken well over a minute. A warm cache is
-5.1-9.3x faster again. The first draft of this section called a warm
-sweep "nearly free"; the measurement says about 0.2-0.4s warm and ~2.1s
-cold, which is cheap enough to run after every sync but not free, and the
-wording here was corrected to match.
+5.1-9.3x faster again: about 0.2-0.4s warm and ~2.1s cold, which is
+cheap enough to run after every sync but not free.
 
 ### 🏷 Unknown is not the same as absent
 
@@ -337,8 +333,8 @@ sweep says explicitly that the result is unknown, and still exits 0.
 `--all --json` emits the same report as data: per dossier, the recorded
 and current fingerprints, `missing` as citekey -> citing sections,
 `candidates` as citekey, title and the queries that surfaced it, and
-`reconsider` as the same plus the recorded rejection reason. This
-exists because the consumer is not only a human. A re-grounding pass
+`reconsider` as the same plus the recorded rejection reason. Its
+consumer is often a re-grounding pass rather than a person. That pass
 has to swap the missing citations, triage the candidates, and edit only
 the affected sections, and making it re-parse a report written for a
 terminal would be a fragile way to hand over structured facts the sweep
@@ -369,7 +365,9 @@ loop:
 2. Read `scope.md` and `steering.md`. These bound what the revision may
    change: a request that contradicts the recorded scope is a scope
    change, and is raised with the user instead of silently applied.
-3. `python -m chitragupta.draft dossier sections <draft>`: heading to line range.
+3. `python -m chitragupta.draft dossier sections <draft> --citekeys --write`:
+   heading to line range, with the citekeys under each, rebuilt from the
+   draft itself.
 4. Read *only* the affected sections, at those line ranges, and edit
    inside them.
 5. Re-search only if the change genuinely opens new ground, consulting
@@ -448,7 +446,7 @@ revision accepts one or two, so a healthy draft keeps showing candidates
 on every sweep, as intended. The way to silence them would be to write
 the unpursued ones into `rejected.md`, which would turn a title into a
 permanent judgment that every later revision trusts. The same objection
-withdrew `triage` ([REJECTION.md](REJECTION.md)).
+is why there is no `triage` stage ([REJECTION.md](REJECTION.md)).
 
 ### ⚙ The scoped default, and the way out of it
 
@@ -468,7 +466,7 @@ different reader. Its cost is stated before it runs, instead of being
 discovered afterwards in `retrieval.md`.
 
 **Why a separate skill and not a mode.** A split only enforces
-anything if it removes a capability. `draft-reviser` now contains no
+anything if it removes a capability. `draft-reviser` contains no
 instructions for a wide search, so following it cannot produce one by
 drift, which is the strongest enforcement available for a rule that
 must not become a gate. It also makes the expensive path something the
@@ -512,7 +510,7 @@ cut a code block in half. Markdown fences (``` and `~~~`) and LaTeX
 ## 💾 Backup and restore
 
 `content/dossiers/` is gitignored, like `content/drafts/` and
-`content/rendered/` before it. That is deliberate:
+`content/rendered/`. That is deliberate:
 `evidence.md` quotes passages from copyrighted sources, and this project
 already treats per-host content as the user's own to keep. Nothing under your
 project's `content/dossiers/` is tracked. The only committed dossiers are real

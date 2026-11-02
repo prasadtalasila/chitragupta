@@ -26,15 +26,15 @@ Two more things live here that are not scaffolds:
   roles, zone cards, edges, tags, badges, a legend swatch and a two-step
   label ramp. Every scaffold carries a verbatim copy of it, so you never
   copy it by hand; see below.
-- **`exemplars/`** holds seven figures drawn with that block, at a
-  wider page (the render's 453pt) than the scaffolds: three from one
-  paper redrawn, and a comparison, a Markov chain, a sequence and a
-  timeline drawn for this project. They show what the vocabulary is
-  for: zone cards, step badges, a legend, the house `pic`s, lettered
-  panels, an accented state, lifelines and eras placed in time. `pump-markov-chain.tex` is the reference book's
-  pump as a Markov chain, the state-machine layout with an accented
-  state and no initial or accepting one. Read them; start from a
-  scaffold.
+- **`exemplars/`** holds seven figures drawn with that block, at a wider
+  page (the render's 453pt) than the scaffolds: three from one paper
+  redrawn, and a comparison, a Markov chain, a sequence and a timeline
+  drawn for this project. They show what the vocabulary is for: zone
+  cards, step badges, a legend, the house `pic`s, lettered panels, an
+  accented state, lifelines and eras placed in time.
+  `pump-markov-chain.tex` is the reference book's pump as a Markov
+  chain, the state-machine layout with an accented state and no initial
+  or accepting one. Read them; start from a scaffold.
 
 ## 🚀 Using one
 
@@ -90,7 +90,7 @@ text width at that size, so `\input` it bare: a `\resizebox` around it
 prints the type at whatever the scale factor happens to be.
 
 Then write the ASCII twin at `figures/<name>.txt` and reference the pair
-from the draft with a single marker line -- `docs/WRITING-STANDARDS.md`
+from the draft with a single marker line. `docs/WRITING-STANDARDS.md`
 §10 owns that contract, and your genre skill's figure step spells the
 marker for your draft's language. Every scaffold and exemplar here ships
 as such a pair: copy its `.txt` beside the `.tex` and edit both.
@@ -103,13 +103,13 @@ of what the figure says, not necessarily a tracing of it:
 curved pair draw badly in characters and the table is more precise.
 
 **A panelled figure is still one file.** Copy the same scaffold once per
-panel into a single `tikzpicture` -- or two different ones, if the panels
-are different shapes -- and give each panel a `(<letter>) <short title>`
-label node, lettered by its position in reading order: `(a)` first,
-`(b)` next, on through the alphabet. `docs/TIKZ-STYLE.md`'s "Panels
-in one figure" section has the worked example and the rule for a row that stops fitting. These files
-carry no `figure` float, so the float and the `\caption` are added to
-your copy, not found in it.
+panel into a single `tikzpicture` (or two different ones, if the
+panels are different shapes), and give each panel a `(<letter>) <short
+title>` label node, lettered by its position in reading order: `(a)`
+first, `(b)` next, on through the alphabet. `docs/TIKZ-STYLE.md`'s
+"Panels in one figure" section has the worked example and the rule for a
+row that stops fitting. These files carry no `figure` float, so the
+float and the `\caption` are added to your copy, not found in it.
 
 Each file carries its own `\usetikzlibrary` line at the top. Keep it:
 the renderer collects those lines across a draft's figures and loads the
@@ -120,7 +120,7 @@ inside a thesis this pipeline never sees. A picture that reaches for
 `below=4mm of store` with no load anywhere fails the *whole* render, with
 a message naming neither the library nor the figure.
 
-Do not add anything else about loading -- no clearing of
+Do not add anything else about loading: no clearing of
 `\tikz@library@...@loaded`, no saving or restoring of
 `\tikz@node@reset@hook`. Inside a `figure` float those workarounds
 multiply every node's placement shift, silently. See
@@ -128,20 +128,23 @@ multiply every node's placement shift, silently. See
 
 ## ✅ What "known-good" means here
 
-Every scaffold compiles on its own and reports **no binary finding**
-from the layout aid:
+Every scaffold compiles on its own and reports **no finding** from
+`figure check`:
 
 ```bash
-python -m chitragupta.review figure content/drafts/<topic>/<draft>.md
+chitragupta figure check assets/tikz/pipeline.tex
 ```
 
-no node overlap, no protrusion, no node text past the 15-word line. That
-is checked by `tests/test_tikz_scaffolds.py` on every run, so a scaffold
-cannot quietly rot into one that fails the check it exists to pass. The
-same test reads the metaphor table in `docs/TIKZ-STYLE.md`, so adding a
-row there without adding a file here fails.
+The tests hold parts of that on every run, so a scaffold cannot quietly
+rot. `tests/test_tikz_scaffolds.py` checks that no scaffold has a node
+overlap, a protrusion or node text past 15 words, and reads the metaphor
+table in `docs/TIKZ-STYLE.md`, so adding a row there without adding a
+file here fails. `tests/test_figure_check.py` checks that each scaffold
+compiles, accents one node, sets no stray space and fits the width.
+What each rule means is in
+[docs/figure-checks/README.md](../../docs/figure-checks/README.md).
 
-The same file also checks three things the layout aid does not, for the
+`tests/test_tikz_scaffolds.py` also checks four more things, for the
 scaffolds and the exemplars alike:
 
 - every copy of the block is byte-identical to `cg-figstyle.tex`. After
@@ -157,16 +160,9 @@ scaffolds and the exemplars alike:
   further);
 - each scaffold fits the `article` text width unscaled.
 
-One gap to know about: a node drawn by a macro, such as
-`\cglegenditem`'s swatch, is never measured, because the source never
-spells its name. A legend colliding with a card is therefore yours to
-catch by eye. A node named inside a `\foreach`, such as `(s\i)`, is the
-same gap: the check lists it as declared but not measured.
-
-**Every node is named**, and that is load-bearing rather than tidy. The
-aid measures geometry only for a node with an explicit `(name)`, so a
-picture that names nothing reports zero findings because nothing was
-measurable -- which looks exactly like a clean figure and is not one.
+**Every node is named**, and that matters. A finding names a node by
+its `(name)`, and an unnamed node only by its centre in millimetres. A
+picture that names no node at all is reported as `nothing-measurable`.
 Keep the names when you re-label.
 
 ## ✏ Editing one without breaking it
@@ -182,15 +178,17 @@ adjacency in the picture at once.
 Three limits worth knowing before you edit:
 
 - **Gaps are bounded by the protrusion check.** A tall empty horizontal
-  band -- more than a third of the figure's height with no node in it --
-  is reported, because LaTeX sets a figure as a rectangular box and one
-  element stranded above the rest wastes every inch beside it. Spreading
-  a two-row layout out generously is the usual way to trip this.
+  band (more than a third of the figure's height with no node in it)
+  is reported as `content-protrusion`, because LaTeX sets a figure as a
+  rectangular box and one element stranded above the rest wastes every
+  inch beside it. Spreading a two-row layout out generously is the usual
+  way to trip this.
 - **A containing box is not a collision.** `layered-stack.tex` relies on
-  it: a `fit` layer wholly enclosing its members is grouping, which the
-  aid exempts, whereas two layers *partially* overlapping is a finding.
+  it: a `fit` layer wholly enclosing its members is grouping, which
+  `node-overlap` exempts, whereas two layers *partially* overlapping is a
+  finding.
 - **A tree reports no edges.** `branching-tree.tex` uses `child`, which
   draws its edges internally rather than as `\draw` statements, so the
-  aid's edge list comes back empty for it. That is the aid being silently
-  short, not the figure being unwired; confirm a tree's structure from
+  edge list and `budget-edges` come back empty for it. The connector
+  rules still measure the lines it drew. Confirm a tree's structure from
   the source's own nesting.

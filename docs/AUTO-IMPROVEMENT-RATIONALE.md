@@ -1,16 +1,16 @@
 # 💡 Why an auto-improvement loop, and where its line falls
 
-Status: **reasoning document.** Written 2026-08-11. Updated 2026-08-23.
+Status: **reasoning document.**
 
 Why this repository should be able to repair a draft on its own, what it
 must never repair, and the one documented rule that stands in the way.
 
-**Written for** someone deciding whether to accept the proposal and, in
-particular, whether to grant the amendment in
-[The amendment this needs](#-the-amendment-this-needs), which is the only
-part of it the user has to settle personally.
+**Written for** someone who wants to know why the loop is shaped the way
+it is, and in particular why the amendment in
+[The amendment this needs](#-the-amendment-this-needs), which the user
+settled personally, was granted.
 
-**Not covered here:** what would be built. That is
+**Not covered here:** what is built. That is
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md), which is normative and carries
 no argument; where a claim here and a requirement there touch, that file
 states the obligation and this one says why it exists. The prose and
@@ -24,16 +24,17 @@ sweep, and [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) for the detection tiers.
 ## 🧭 Table of contents
 
 - [The gap: detection is built, remediation is not](#-the-gap-detection-is-built-remediation-is-not)
-- [Four signals, four dead ends](#-four-signals-four-dead-ends)
+- [Five signals, five dead ends](#-five-signals-five-dead-ends)
 - [Where the loop sits, and the cycle that decides it](#-where-the-loop-sits-and-the-cycle-that-decides-it)
 - [The method, in autoresearch's own terms](#-the-method-in-autoresearchs-own-terms)
 - [Mapping the method onto this pipeline](#-mapping-the-method-onto-this-pipeline)
 - [Why provenance is excluded](#-why-provenance-is-excluded)
+- [Why `misquoted` may not be accepted](#-why-misquoted-may-not-be-accepted)
 - [Why only a person may start it](#-why-only-a-person-may-start-it)
 - [The amendment this needs](#-the-amendment-this-needs)
 - [The software half](#-the-software-half)
 - [What it would cost](#-what-it-would-cost)
-- [Open questions](#-open-questions)
+- [Decided questions](#-decided-questions)
 - [Naming, and the register the review layer may not use](#-naming-and-the-register-the-review-layer-may-not-use)
 
 ## 🔍 The gap: detection is built, remediation is not
@@ -43,7 +44,7 @@ and unusually bad at doing anything about it. Every quality signal it
 produces terminates in prose that a human must read, hold in their head,
 and hand-translate into a revision request.
 
-That posture is deliberate, not an oversight. The review layer is
+That posture is deliberate. The review layer is
 advisory by construction, and [SOUL.md](../SOUL.md) is explicit that
 "does this source support this sentence" is not a question a machine
 gets to settle.
@@ -62,11 +63,10 @@ A recorded issue already scopes exactly this loop for one signal (verbatim
 runs). The proposal is that shape generalised to the other three, plus the
 class of improvement none of them cover.
 
-## 📡 Four signals, four dead ends
+## 📡 Five signals, five dead ends
 
-Four commands carry every quality signal this repository has, and each one
-is a dead end. The fifth row is not a signal at all; it is there to show
-what has none.
+These commands carry the quality signals this repository has, and on
+their own each one is a dead end.
 
 | Signal | What it finds | What it emits | Who acts on it |
 | --- | --- | --- | --- |
@@ -74,16 +74,11 @@ what has none.
 | `python -m chitragupta.review provenance` | a citation whose source does not visibly support it | Markdown report, or `--json` | human, by hand |
 | `python -m chitragupta.review verbatim scan` | wording shared with a parsed source | Markdown report, or `--json` | human, by hand |
 | `python -m chitragupta.review coverage` | a source retrieval surfaced that the draft never cited | Markdown report, or `--json` | human, by hand |
-| *nothing* | a badly written sentence | -- | human, by hand |
+| `python -m chitragupta.draft style` | a defect marker, an unexpanded acronym, dialect drift | text, or `--json` | human, by hand |
 
-Two things stand out. First, most of the surface was text only. When
-this was written, `--json` on `dossier status --all` was the single
-machine-readable output in the whole quality surface; 5.4.0 added the
-second, on `verbatim scan`, and 6.16.0 the other two, on
-`provenance` and `coverage`. Four of the five signals above are
-machine-readable now. Second, prose quality still has no signal at all:
-`draft-reviser` is section-and-evidence-shaped, and a recorded issue notes
-that a copy-edit touching no evidence has no sanctioned path through it.
+Every signal above is machine-readable, yet each one ends with a person
+reading it and acting by hand. The agenda and `agenda-reviser` are the
+step that joins them.
 
 ## 🔄 Where the loop sits, and the cycle that decides it
 
@@ -100,11 +95,10 @@ review layer:
 corpus ──ledger, parsed/──▶ drafting ──draft──▶ review
 ```
 
-Review has no outgoing edge, and that is load-bearing: until 4.0.0 the
-enrichment layer hosted `provenance` and `render` stages that imported the
-review and drafting layers, and removing them is recorded in both
-[AGENTS.md](../AGENTS.md) and ARCHITECTURE.md as closing "the one cycle in
-this picture". A drafting-layer command reading `content/review/*.json`
+Review has no outgoing edge, and that is load-bearing: the enrichment
+layer hosts no review or drafting stage, which
+[AGENTS.md](../AGENTS.md) and ARCHITECTURE.md record as closing "the one
+cycle in this picture". A drafting-layer command reading `content/review/*.json`
 re-opens it in the other direction.
 
 The edge that matters is the artefact edge, not the import. Review
@@ -123,7 +117,7 @@ extension point: `chitragupta/review/_registry.py` raises a `RuntimeError`
 which exists so a further aid can be added safely. An agenda is "evidence for a
 human judgement, never a verdict", which is the review layer's charter
 word for word, and as an aid it inherits `report_dir`, `report_path`,
-`write` and the exits-0-always posture for free. Reading the other three
+`write` and the exits-0-always posture for free. Reading the other
 aids' output is an edge *within* layer 4.
 
 So the aid belongs in layer 4. The clause that matters is the last one in
@@ -221,11 +215,10 @@ before you edit").
 R4 therefore reads both, and the second half costs nothing to add: R2
 already requires every finding to carry an identity stable across runs,
 and `chitragupta/review/agenda/_recheck.py` already emits
-`resolved`/`persisting`/`new` matched on that id beside the count. The
-requirement was written against the count alone when neither existed.
+`resolved`/`persisting`/`new` matched on that id beside the count.
 Keeping the count as well is deliberate, since it is the cross-class
 signal that catches a `verbatim-run` repair raising the `prose` count,
-but a level count is no longer read as evidence that nothing regressed.
+but a level count is not read as evidence that nothing regressed.
 
 **On never stopping.** It is the most quotable thing in `program.md` and
 the least transferable. A discarded training run costs five GPU-minutes
@@ -270,6 +263,53 @@ is taken. If the registries land as specified, the two are reconciled
 because a registry may block a *book assembly* without any review aid
 blocking a *draft*.
 
+## 🔐 Why `misquoted` may not be accepted
+
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#-5-considered-and-accepted)
+gives three reasons, any one of which is enough. The order in which they
+were settled is the binding part: narrow the class first, decide
+afterwards, because acceptance over a class that means two things can
+permanently suppress the one finding this project exists to catch. The
+measurement behind the answer:
+
+- The quotation matcher applies four normalisations, all on the same
+  exact-matching-only footing. The fourth handles an elision at either
+  *end* of a quote, which leaves `fragments` one piece instead of two:
+  `"For data-driven models the topic is [unresolved]."` against a source
+  reading `"...the topic is still being debated."` is found, because
+  everything before the drafter's own bracket is verbatim. Measured over
+  206 spans extracted from 19 real `evidence.md` files, it took the
+  residual absents from **40 to 38, with no span lost.**
+- One candidate was measured and declined. Stripping a parenthesised
+  abbreviation gloss from the *source* (`"a Digital Twin (DT) to gain
+  the most value"` against a quotation that dropped the `(DT)`)
+  recovers 1 span and loses 12, because a drafter quoting that sentence
+  usually keeps the gloss. It is the obvious next thing to try, which is
+  why it is recorded.
+- The class still means two things. Of the 38 residual absents, 15 are
+  under eight words: the measurement's own extraction rule collecting
+  the book's scare-quoted phrases (`"explain it to a sponsor"`), which a
+  `quote:` field would never hold; 18 have essentially nothing of the
+  quote in the source, which at that extraction rule's fidelity is
+  mostly a mis-attribution and not a finding; and **5 match a real
+  prefix and then diverge**, which is exactly the class this aid exists
+  for. A class that contains those 5 is not a class to let a keystroke
+  silence.
+- The identity problem stands on its own. Accepting a `misquoted` item
+  would require its identity to carry the parsed source's fingerprint, so
+  that a re-parse or a replaced PDF reopens it. That is a new mechanism,
+  and nothing in the measurement argues for paying for it.
+- The cost of "no" is zero today. No dossier in this corpus uses the
+  `quote:`/`claim:`/`support:` contract, so `misquoted`'s universe is
+  empty on every real draft and acceptance would buy nothing measurable.
+  The normalisation is still what makes the class trustworthy the first
+  time the contract is used.
+
+`plans/775-quotation-residual-absents.md` holds the arms, the counts and
+the recipe for rebuilding them. If a later corpus makes the residual
+class mean one thing, this is the entry to revisit, and the sequence to
+keep is: normalise, measure, then decide.
+
 ## 🔒 Why only a person may start it
 
 The specification says the aid may be run by anyone at any time, that the
@@ -281,7 +321,7 @@ exits 0. There is no occasion on which running it is a mistake, so there
 is nothing to restrict. That is the bare command; its `--baseline` mode
 re-runs the eight aids before comparing (~21 s, plus `support`'s own
 ~21--60 s model-load floor per [REVIEW.md](REVIEW.md); and the
-other eight aids' `.tex`/`.pdf` go stale against their `.md` until a
+eight aids' `.tex`/`.pdf` go stale against their `.md` until a
 full-format run follows), so for that mode occasion does matter, and
 R11's restriction to a person asking is what covers it.
 
@@ -323,14 +363,12 @@ the propose-and-accept asymmetry, not about the aid.
 
 ## ✏ The amendment this needs
 
-**Settled: approved by the user on 2026-08-21**
+**Settled: approved by the user**
 (`plans/f-auto-improvement-adoption.md`, a working note not shipped
-outside a git checkout, §"Decision 1"), and applied in 6.20.1 by the
-change that made the verbatim scan a required step in
-the genre skills, which needed it first. The
-argument below is kept because it is why the decision went the way it
-did; the sweep is kept because the next rule-wide sweep will want its
-method rather than its counts.
+outside a git checkout, §"Decision 1"). It is what lets the verbatim
+scan be a required step in the genre skills. The argument below is kept
+because it is why the decision went the way it did; the sweep is kept
+because the next rule-wide sweep will want its method.
 
 One documented rule the loop could not satisfy. It is about *who may
 invoke* a review aid, and the loop's driver invokes them. This sweep
@@ -347,7 +385,7 @@ It is line-based, and every one of these files is hand-wrapped to about
 line ("never\\n automatically") is invisible to it. Two real sites were
 missed exactly
 that way (`uncited_prose.py` and `figure_layout/__init__.py`), and a
-third (`GENRE.md`, which states the rule for all nine skills at once) was
+third (`GENRE.md`, which states the rule for every skill at once) was
 missed because the original pattern had no term for *offered*. A sweep
 that has to be right normalises whitespace per file first and then
 matches; the grep above is for finding where to look.
@@ -359,18 +397,10 @@ docstring's "never invoked", and `chitragupta/dossier/_acronyms.py`'s
 `acronyms-suggest --apply`, and untouched by this). It hits these
 documents too.
 
-Twelve of its matches were real statements of the rule when this was
-written on 2026-08-11. By the time the amendment was applied it was
-twenty-two, in two families: the review layer gained three aids in
-between (`synthesis`, `figure`, `uncited`), and each arrived carrying its
-own copy of the sentence. The count is recorded as a range for that
-reason: it tracks how many aids exist, so it is stale the day a seventh
-lands.
-
-| Family | Sites | Wording |
-| --- | --- | --- |
-| never automatic | 16 | six aid docstrings, `review/__init__.py`, `review/__main__.py`, AGENTS.md, ARCHITECTURE.md ×2, LADDERS.md, CLI.md ×3, GENRE.md |
-| nothing reads it back | 6 | `BANNER`, `_synthesis_render.py`, `synthesis.py`, CLI.md ×2, WRITING-STANDARDS.md |
+Its hits come in two families, "never automatic" and "nothing reads it
+back". The number of real sites tracks how many aids exist, because each
+aid's docstring carries its own copy of the sentence, so a count goes
+stale with the next aid.
 
 Three diagrams were borderline, and they turned out to be in scope. No
 `.mmd` source stated the rule outright; the one label that said "never
@@ -379,8 +409,8 @@ rest. But `00-main-workflow.mmd`'s "REVIEW AIDS
 -- you run these", `g1-corpus-led.mmd`'s "afterwards, **by you**" and
 `extra-sequence.mmd`'s "optional afterwards", which draws *You* invoking
 the aids, were manual-invocation claims on exactly the axis the amendment
-abolishes. Each cost a re-render of its committed SVG under
-`docs/diagrams/svg/`. The "never a gate" text in all three stayed true
+abolishes, and each has a committed SVG under `docs/diagrams/svg/`
+that is re-rendered with it. The "never a gate" text in all three stayed true
 and untouched.
 
 The surviving invariant is the one that was always doing the work, and it
@@ -438,13 +468,14 @@ pipeline layer, and neither should acquire one.
 
 ## ⚡ What it would cost
 
-- **Steps 1-2 of the build order are cheap and additive.** JSON
+- **Steps 2 and 4 of the build order are cheap and additive.** JSON
   serialisation of an existing findings list, plus one new stdlib-only aid
   reading files that already exist. No new dependency, no venv
   requirement, tier 1, no lock.
 - **The skill is where the tokens go.** One reviser dispatch per agenda
   item plus a re-check per attempt. It is bounded (two attempts per
-  item, one pass per invocation), but a long agenda on a long draft is a
+  item, and passes only while the objective count falls, up to
+  `pass_bound`), but a long agenda on a long draft is a
   real run. [TOKENS.md](TOKENS.md) has the arithmetic this would extend;
   the saving to weigh it against is that today the same work happens as a
   human-driven sequence of full `draft-reviser` invocations, each paying
@@ -463,28 +494,25 @@ pipeline layer, and neither should acquire one.
   boilerplate verbatim hits gets ignored, which is why the boilerplate
   allowlist precedes the aid instead of following it.
 
-## ❓ Open questions
+## ✅ Decided questions
 
-- **Should `missing-citekey` be acted on unattended at all?** Removing a
-  citation the corpus no longer supports is objective in the sense that
-  the gate will fail either way, but *what replaces the sentence* is not.
-  The conservative alternative is to surface it with a suggested edit
-  instead of applying one.
-- **How does the agenda behave on a draft with no dossier?** Every aid
-  degrades honestly today; the agenda would lose `rejected.md` and the
-  section map, which are the two things keeping it scoped and
-  non-repetitive. Refusing may be the right answer here even though no
-  other aid refuses.
-- **Does the loop belong to `draft-reviser` as a branch instead of a new
-  skill?** It is "a change to an existing draft", which is that skill's
-  charter. The argument for separation is that its input is a file
-  and not a person.
-- **Does `agenda` strain the aid vocabulary?** A `review.AIDS` key is both
-  the subcommand and the report's filename suffix (the values are the
-  human-readable titles), so this ships as `survey.agenda.md`. One
-  real objection remains: the other three keys name an observed property of
-  the draft, while this one names what to do next. It is also the first
-  aid that reads other aids.
+- **Is `missing-citekey` acted on unattended?** Yes. Removing a
+  citation the corpus does not support is objective, since the gate
+  fails either way. *What replaces the sentence* is not, so the repair
+  de-cites the sentence, and the sentence then surfaces as an
+  `uncited-claim` for a person to decide
+  ([AGENDA.md](AGENDA.md#-unattended-versus-surfaced)).
+- **How does the agenda behave on a draft with no dossier?** It runs.
+  Its header names dossier drift and the recorded-but-uncited citekeys as
+  not available. Section anchors come from the draft's own headings, so
+  they survive. Like every other aid, it does not refuse.
+- **Does the loop belong to `draft-reviser` as a branch?** No. It is a
+  separate skill, `agenda-reviser`, because its input is a file and not
+  a person.
+- **Does `agenda` strain the aid vocabulary?** It ships as a
+  `review.AIDS` key, so its report is `survey.agenda.md`. It is the one
+  key that names what to do next rather than an observed property of the
+  draft, and the first aid that reads other aids.
 
 ## 🏷 Naming, and the register the review layer may not use
 

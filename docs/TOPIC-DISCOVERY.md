@@ -1,7 +1,8 @@
 # 🕸 Topic discovery: from a phrase to the papers, the graph, and an overview
 
-Status: **reference.** Written 2026-09-02. Updated 2026-09-07. All
-parts documented here are built: the `topic-graph` enrichment stage and
+Status: **reference.**
+
+All parts documented here are built: the `topic-graph` enrichment stage and
 the analytics it stores in the artefact, the `corpus discover` reader and
 its graph-exploration views, the precision tier, the gold-set benchmark,
 the HTML graph page and the interactive app. The design they implement
@@ -80,8 +81,8 @@ personal corpus is hundreds of papers, not millions.
 
 ## 🧪 A worked session
 
-Everything this page describes also exists as committed artefacts over
-the five-paper sample corpus: a full `corpus discover` transcript
+The five-paper sample corpus commits a worked set of artefacts: a full
+`corpus discover` transcript
 ([`discover_digital_twin.txt`](examples/sample-project/content/discover_digital_twin.txt)),
 the graph it read
 ([`topic_graph.json`](examples/sample-project/content/topic_graph.json)),
@@ -92,11 +93,21 @@ and a measured gold set with its per-rung scores
 [`topic_gold_results.json`](examples/sample-project/content/topic_gold_results.json)).
 The gold set includes one deliberately misspelled query the fuzzy rung
 has to catch and one out-of-corpus query that must fall through to
-search.
+search. The committed `topic_graph.json` and transcript predate the
+stored analytics described below (`edges_withheld`, `analysis`,
+`communities`, `paths`), so they show the edges and the hierarchy but
+not the brokerage block or the stored clusters. They need
+regenerating from a fresh `topic-graph` run over the sample project.
 
 Below is real output from a four-paper fixture (two seed papers about
 digital twins, three about machine learning, one of them, `dt2022`, in
 both). First, the map:
+
+Each topic's provenance is `seed` (a phrase someone named) or
+`emergent` (the topic model found it). `--origins` refines `seed` into
+three origins by which file named the phrase:
+`seed` (`content/seed_topics.toml`), `keyword` (`content/keywords.toml`,
+written by the `extract-keywords` stage) and `corroborated` (both).
 
 ```console
 $ chitragupta corpus discover
@@ -123,10 +134,15 @@ linked topics:
   semantically near: machine learning  (0.31, bridge: dt2022 <-> dt2022)
 ```
 
-Note what is *absent*: no overlap edge, although the topics share
-`dt2022`. Sharing one paper between topics of size 2 and 3 in a 4-paper
-corpus is arithmetic, not affinity: the hypergeometric gate
-(below) computed p = 1.0 and withheld the edge. On a toy corpus that
+When the artefact carries `analysis`, the view ends with a
+`brokerage (from the artefact):` block: neighbours, ego density, and
+Burt's effective size and constraint, per edge family.
+[EXPLORE-CLI.md](EXPLORE-CLI.md#-one-topic) shows it on a real corpus.
+
+There is no overlap edge, although the topics share `dt2022`. Chance
+alone predicts one shared paper between topics of size 2 and 3 in a
+4-paper corpus, so the hypergeometric gate (below) computed p = 1.0 and
+withheld the edge. On a toy corpus that
 looks strict; on a real one it is what keeps two large topics from
 being "linked" merely for both being large.
 
@@ -189,9 +205,26 @@ producing plausible-looking nonsense.
   "edges_semantic": [{"a": "...", "b": "...", "similarity": 0.74,
                        "bridge": ["citekeyA", "citekeyB"]}],
   "hierarchy": [{"id": "node-0", "a": "...", "b": "...",
-                  "distance": 0.31}]
+                  "distance": 0.31}],
+  "communities": {"overlap": "...", "semantic": "..."},
+  "paths": {"overlap": "...", "semantic": "..."}
 }
 ```
+
+Beyond the two edge families and the merge tree, the stage stores four
+analyses so that `--json`, the terminal views and the app read the same
+numbers:
+
+- `edges_withheld`: every pair that shares a paper but failed the gate,
+  with its shared citekeys and p-value. `--why` and the app's absence
+  panel read it.
+- `analysis` on each topic: degree, ego density, and Burt's effective
+  size and constraint, separately for each family.
+- `communities`: Markov clustering of each family at every inflation the
+  app's slider offers (1.2 to 4.0 in steps of 0.1). `--clusters` reads
+  it.
+- `paths`: next-hop matrices for each family, so `--path` and the app's
+  path buttons walk stored data.
 
 Keys are topic **labels**, never topic ids: ids are unstable across
 runs, and the topic model's own documentation says anything downstream
@@ -244,8 +277,8 @@ them:
   symmetrised. This is the greedy-matching idea BERTScore (Zhang et
   al., 2020) applies to tokens, applied here to papers. At this corpus's
   scale (hundreds of documents, tens of topics) the exact computation
-  costs nothing, so the approximation the centroid would be is all
-  downside.
+  costs nothing, so there is no reason to approximate it with the
+  centroid.
 - **Mean-centred space**, the same space `topic_descriptors` uses and
   for the same measured reason: on a corpus that is all about one
   subject, every raw vector shares a large common component and cosines
@@ -288,6 +321,8 @@ chitragupta corpus discover --path "A" "B" --family overlap   # the chain betwee
 chitragupta corpus discover --compare "A" "B"    # topics side by side
 chitragupta corpus discover "A" --hops 2         # the neighbourhood as rings
 chitragupta corpus discover "A" --hops 2 --family overlap  # ...over one family
+chitragupta corpus discover --origins seed,corroborated    # only the topics you named
+chitragupta corpus discover --app topicapp/      # the interactive app
 ```
 
 The reader computes no topic and no edge. It resolves, joins ledger
@@ -340,13 +375,13 @@ Without the enrich extra, or with an embedding model that will not load
 half is skipped with a one-line note and the rung degrades to BM25
 alone. The failure is remembered for the rest of the command, so
 `--compare A B C` asks for the model once and prints the note once,
-not once per phrase (#1023). Every enrich stage's
+not once per phrase. Every enrich stage's
 self-probe degrades the same way, with a note and never a silent
 substitution. An unresolvable phrase whose fallback also returns
 nothing exits 1 naming the known topics, on **stderr**, like every
 other refusal this verb raises (an absent artefact, a citekey in no
-topic). A refusal is diagnostics, not a payload, so stdout carries a
-document or nothing at all and `--json` never has to parse English.
+topic). Stdout carries a document or nothing at all, so a `--json`
+caller never has to parse English.
 
 ## 🎯 The precision tier
 
@@ -517,7 +552,8 @@ deterministic because the tree is read from the artefact rather than
 settled by a simulation. A topic the tree does not mention (it had
 no vector, or the corpus has fewer than two topics that did) keeps its
 artefact order and follows the leaves. Overlap edges are drawn solid
-and semantic edges dashed, seed topics green and emergent blue.
+and semantic edges dashed. Topics whose provenance is `seed` are
+green and every other topic is blue.
 Clicking a topic opens its papers and both linked-topic lists with their
 evidence, and the stored hierarchy is a collapsible tree. It is a pure
 renderer of the same artefacts `--json` reads, so the page cannot
@@ -529,10 +565,9 @@ write as `{"written": FILE}`, so a caller driving `discover` for
 machine-readable output gets a document on every invocation and never a
 plain sentence it cannot parse.
 
-One deviation from the plan, recorded there too: the plan named a
-`discover graph` subcommand, but the reader's positional argument is a
-free phrase, and a reserved word would shadow any topic literally
-labelled "graph", so it shipped as the `--html` flag.
+The page is a flag and not a `discover graph` subcommand because the
+reader's positional argument is a free phrase: a reserved word would
+shadow any topic literally labelled "graph".
 
 ## 🕸 The interactive app
 
@@ -550,14 +585,12 @@ terminal command answers the same question is
 [EXPLORE-WEB.md](EXPLORE-WEB.md)'s job, including
 [which computations run once in the pipeline and which stay in the
 browser](EXPLORE-WEB.md#-what-the-pipeline-computes-and-what-the-app-computes).
-In short, the analytics a reader could quote (the withheld-edge
-verdicts, per-topic brokerage, the MCL partitions at every inflation the
-slider can take, and the typed path matrices) are computed by the
-`topic-graph` stage and stored in the artefact, so the app and `--json`
-can never disagree about them. What remains in the browser is
+The four stored analyses above are what the app shows, so the
+app and `--json` cannot disagree about them. The browser keeps
 rendering, interaction, and the layouts that depend on what the reader
-has pinned, cut or expanded, plus fallbacks for an export made from an
-older artefact.
+has pinned, cut or expanded. For an artefact that lacks a stored field,
+the app computes that field itself, pinned to the stage by the case
+files under `tests/webapp/`.
 
 ## 🚫 Alternatives considered
 

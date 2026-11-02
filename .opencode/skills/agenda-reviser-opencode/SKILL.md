@@ -289,9 +289,10 @@ Accept the repair only if **all** of:
 - the item's `id` appears in the comparison's `resolved`;
 - `objective_delta` is not positive -- **this now couples classes that
   used to be independent.** A `verbatim-run` repair that introduces an
-  unexpanded acronym or a `Just` raises the `prose` count, and the total
-  rising is exactly what this check exists to catch, so the verbatim
-  repair reverts even though it fixed its own finding;
+  unexpanded acronym or a defect marker such as "simply" raises the
+  `prose` count, and the total rising is exactly what this check exists
+  to catch, so the verbatim repair reverts even though it fixed its own
+  finding;
 - **the comparison's `objective_new` is 0** -- the delta above is a
   total, and a total holds level when a repair resolves its own finding
   and introduces a different objective one. That edit is a swap, not a

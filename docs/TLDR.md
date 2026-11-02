@@ -1,6 +1,6 @@
 # 🔭 Per-citekey TL;DR: the written summary, and the abstract behind it
 
-Status: **reference.** Written 2026-08-24. Updated 2026-09-09.
+Status: **reference.**
 
 `chitragupta draft tldr` keeps a one-paragraph summary per citekey,
 written by a person and cached beside a fingerprint of its parsed text,
@@ -87,7 +87,7 @@ worse than giving no answer.
 - **Not a dossier.** A summary belongs to a *citekey*, not to any one
   draft's working state. Unlike `content/dossiers/<slug>/`, which
   mirrors one draft's path, `content/tldr/` has no draft to mirror.
-- **An eleventh `chitragupta/draft.py` verb**, because the drafting layer
+- **A `chitragupta/draft.py` verb**, because the drafting layer
   is where LLM output already lives, and because a skill session, which
   is what composes the words, is drafting-layer by definition.
 
@@ -112,10 +112,9 @@ instead of getting anything generated; see
 
 ### 📐 Why the passage sidecar and not the flattened text
 
-The obvious implementation is a regex over `content/parsed/<citekey>.txt`,
-and it is the one issue #401 and an earlier revision of this document
-described. It was measured and then replaced, because the flattened file
-has thrown away the structure the job needs.
+The obvious implementation is a regex over `content/parsed/<citekey>.txt`.
+Measured, it loses to the sidecar, because the flattened file has thrown
+away the structure the job needs.
 
 Docling resolves reading order and labels every item it emits, and
 `content/docling/<citekey>.passages.json` already carries both: 498 of
@@ -172,13 +171,12 @@ need re-deriving:
   correct abstract whose real text sits in its first 200 words, which is
   the case of `humlum_large_2025`: its abstract comes first and the
   runaway is behind it.
-- **The floor is 40, not the 60 issue #401 proposed.** `lin_utwin_2023`
+- **The floor is 40, not 60.** `lin_utwin_2023`
   is a real, correctly-bounded abstract at 58 words, and a floor of 60
   drops it.
   `deslauriers_everyday_2022`'s title-and-affiliations false positive
   falls under 40 anyway, at 35. A length check catches it, not any rule
-  about title blocks, which matters to anyone tempted to read the floor
-  as a precision device. It is not one.
+  about title blocks, so the floor is not a precision device.
 - **One real detection is knowingly lost.**
   `fitzgerald_engineering_2024-1` is a genuine chapter abstract sitting
   at item #407 of a whole-book PDF, and the lead window withholds it.
@@ -186,8 +184,8 @@ need re-deriving:
   chapter-in-book PDFs are the documents it loses.
 
 The precision claim behind all of this rests on a sample read by hand,
-not on a count of regex matches: 19 detected bodies were read, as
-issue #401 asked before any of it shipped. Every one between roughly 60
+not on a count of regex matches: 19 detected bodies were read by hand.
+Every one between roughly 60
 and 300 words was a genuine, correctly-bounded abstract. All four false
 positives and all five runaways were outside that band, and the guards
 above were drawn from them.
@@ -215,22 +213,19 @@ Two consequences keep this design small:
 
 ### 🧷 Why a verbatim abstract is not the extractive summary this rejects
 
-An earlier revision of this document said, of the declined generator's
-internals, that "an extractive summary must never be the stored
-artefact". Stitching four sentences from different sections into 110
+An extractive summary must never be the stored artefact. Stitching four
+sentences from different sections into 110
 words produces dangling anaphora ("this approach", "as shown in Fig.
 3", "the proposed method") that refer to things not in the summary. That
-is incoherent by construction, so no tuning fixes it, and the statement
-still stands.
+is incoherent by construction, so no tuning fixes it.
 
 The fallback does not do that, and it differs in kind, not in degree.
 The abstract is one **contiguous** span in reading order that its
 authors wrote to be read standalone. Up to three consecutive paragraphs
 are joined, and the span ends at the next heading. Nothing is selected
 from elsewhere in the paper and nothing is recombined, so no dangling
-reference can arise. That is why issue #401 put the author's abstract on
-a path of its own from the start instead of treating it as the cheap end
-of summarisation.
+reference can arise. That is why the author's abstract has a path of its
+own instead of being the cheap end of summarisation.
 
 ## 🚫 What is declined: whole-paper summarisation
 

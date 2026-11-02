@@ -1,6 +1,6 @@
 # 📐 The workflow, drawn thirteen ways
 
-Status: **reference.** Written 2026-08-06. Updated 2026-09-02.
+Status: **reference.**
 
 Every diagram here describes the same pipeline. They come in four groups:
 
@@ -20,11 +20,21 @@ Every diagram here describes the same pipeline. They come in four groups:
 Read the one that matches your question and ignore the rest.
 
 One property holds in the eleven workflow views: **a genre skill loops on the citation
-gate until it exits 0, and shows you nothing before that.** All five
+gate until it exits 0, and shows you nothing before that.** All six
 genre skills' SKILL.md files carry that instruction, two of them in
 exactly these words: *"Fix and re-run until `OK`. Never present a draft
 that hasn't passed."* A gate failure is normally something you never
 see.
+
+**Drawing a figure is left out of every view.** When a genre skill
+decides a figure is warranted, it hands off to the `figure-drawer`
+skill, which starts the figure with `chitragupta figure new`, checks it
+with `chitragupta figure check` and looks at it with
+`chitragupta figure look`, then hands back
+([FIGURE-DRAWER.md](FIGURE-DRAWER.md)). Where a view lists
+`chitragupta review figure` among the review aids, that is the
+draft-wide pass over a few of `figure check`'s rules, not the per-figure
+check ([figure-checks/README.md](figure-checks/README.md)).
 
 The fenced `mermaid` blocks below are the source of truth, and GitHub
 renders them inline, so a change to the pipeline and a change to its
@@ -771,7 +781,7 @@ you, deciding what the survey should be about before anything is drafted.
 
 For the same reason, in the other direction, `chitragupta.review`'s
 `coverage` aid ("retrieval surfaced
-this paper -- did the draft actually cite it?") only asks a meaningful
+this paper: did the draft actually cite it?") only asks a meaningful
 question in this genre.
 
 ```mermaid

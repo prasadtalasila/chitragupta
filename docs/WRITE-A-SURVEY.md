@@ -1,6 +1,6 @@
 # 📚 Write a survey, start to finish
 
-Status: **tutorial.** Written 2026-09-15.
+Status: **tutorial.**
 
 **Written for** an author who wants a literature survey, a related-work
 section or a "state of the art" chapter out of their own library, and who
@@ -45,8 +45,8 @@ For a draft you decide to call `dt/survey`:
 | `content/review/dt/survey.*.md` | the review reports you chose to keep |
 
 Every citekey in that draft appears in your own `.bib` export **and** was
-picked up by a real parse of a real PDF. That is the one guarantee this
-pipeline exists to make, and the gate in step 6 enforces it.
+picked up by a real parse of a real PDF. The gate in step 6 enforces
+this, and it is the one guarantee the pipeline exists to make.
 
 ## 🔧 Before you start
 
@@ -342,7 +342,8 @@ be in there.
 
 ## ⏳ Step 5: what the skill does while you wait
 
-The skill is not a black box. In order, it does the following:
+In order, the skill does the following, and reports each step as it
+goes:
 
 1. **Retrieves broadly**, over-fetching on purpose, per sub-theme or per
    declared `queries:` line.
@@ -356,10 +357,13 @@ The skill is not a black box. In order, it does the following:
    between sources before writing a word.
 5. **Drafts** in Markdown with `[@citekey]` markers, a comparison table,
    and a gap analysis, the part of a survey most worth reading.
-6. **Never writes a citekey it did not get from a retrieval result.**
+6. **Hands any figure it decides on to `figure-drawer`**, which draws
+   the TikZ file and its ASCII twin
+   ([FIGURE-DRAWER.md](FIGURE-DRAWER.md)).
+7. **Never writes a citekey it did not get from a retrieval result.**
 
-You will see it working. Where the corpus is thin it says so instead of
-filling the hole with a plausible sentence.
+Where the corpus is thin it says so instead of filling the hole with a
+plausible sentence.
 
 ## ✅ Step 6: gate, references, render
 
@@ -401,23 +405,28 @@ chitragupta draft evidence content/drafts/dt/survey.md --format pdf
 
 It lists each cited source with the verbatim spans that justified it,
 grouped by the section that leans on them. If it prints `no quoted
-evidence recorded`, the run captured no quotations. That is a real
-answer about the draft, not a broken command.
+evidence recorded`, the command worked and the run captured no
+quotations.
 
 ## 🔍 Step 7: read the review aids
 
-None of these can block anything. All of them exit 0. They are there to
-be read and disagreed with.
+None of these can block anything, and all of them exit 0. You read them
+and decide. `--write` files each report under
+`content/review/dt/`, in Markdown plus JSON, for the agenda below to
+read; `provenance` files its report on every run and has no `--write`.
 
 ```bash
 chitragupta draft style content/drafts/dt/survey.md
-chitragupta review verbatim scan content/drafts/dt/survey.md
-chitragupta review synthesis content/drafts/dt/survey.md
-chitragupta review uncited content/drafts/dt/survey.md
+chitragupta review verbatim scan content/drafts/dt/survey.md --write
+chitragupta review synthesis content/drafts/dt/survey.md --write
+chitragupta review uncited content/drafts/dt/survey.md --write
+chitragupta review provenance content/drafts/dt/survey.md
+chitragupta review quotation content/drafts/dt/survey.md --write
+chitragupta review support content/drafts/dt/survey.md --write
 
 # coverage needs the queries to check against -- give it the ones your
 # outline declared, repeating the flag:
-chitragupta review coverage content/drafts/dt/survey.md \
+chitragupta review coverage content/drafts/dt/survey.md --write \
     --query "digital twin model fidelity" \
     --query "digital twin validation verification"
 ```
@@ -426,32 +435,31 @@ What each is for, and what a finding from it means:
 
 | Aid | Reads for | A finding means |
 | --- | --- | --- |
-| `draft style` | defect markers, an acronym never expanded at first use, dialect against `scope.md` | a place to look. The first run of this check over this project's own docs kept 59 of 73 marker hits on inspection |
+| `draft style` | defect markers, an acronym never expanded at first use, dialect against `scope.md`, and table, figure and equation ids and references | a place to look, not a defect: a marker inside a quotation is correct as it stands |
 | `review verbatim` | wording shared with any parsed source, cited or not | a run of words that also appears in a source. A `quoted` run that cites its source is a legitimate quotation; `long` and `short` are the buckets to read |
 | `review coverage` | how much of what retrieval surfaced got cited | a query whose top results the draft ignored: sometimes correct, sometimes a theme you dropped by accident |
 | `review synthesis` | paragraphs that summarise sources in sequence instead of synthesising them | the classic survey failure: three sentences, three citekeys, no connection drawn |
 | `review uncited` | claims that read like they need a source and have none | a sentence making a factual claim on nobody's authority |
+| `review provenance` | whether the cited source's text matches the claim, worst matches first | a citation whose source says little or nothing of what the sentence claims |
 | `review quotation` | whether a quoted span matches the source it cites | a quotation that has drifted from what the paper says |
 | `review support` | whether the cited source entails the claim | a citation that is real but does not carry the sentence's weight |
 
-Add `--write` to any `review` command above to file the report under
-`content/review/dt/`, in Markdown plus JSON. `draft style` has no
-`--write`; the agenda runs it itself.
+`draft style` has no `--write`; the agenda runs it itself.
 
 ### The agenda: all of them as one worklist
 
 [AGENDA.md](AGENDA.md) explains every section of an agenda file in
 full; what follows is the short version for this genre.
 
-Instead of reading seven reports, merge them:
+Instead of reading eight reports, merge them:
 
 ```bash
 chitragupta review agenda content/drafts/dt/survey.md
 ```
 
 The agenda **reads the aids' filed JSON and never runs an aid**, so run
-the aids you want included first (with `--write`), then the agenda. It
-names any aid whose report is absent instead of silently omitting it.
+the aids you want included first, as above, then the agenda. It names
+any aid whose report is absent instead of silently omitting it.
 
 Every item carries three things: a **class**, a **section anchor**, and
 whether it is `unattended` or `surfaced`.
@@ -462,16 +470,21 @@ whether it is `unattended` or `surfaced`.
 | `[surfaced]` | a judgement only you can make | `unsupported-claim`, `claim-support`, `uncited-claim`, `recorded-but-uncited`, `misquoted` |
 
 This is what the report looks like for the survey we have been building,
-in the shape and with the counts and ids a real run produces:
+in the shape and with the counts and ids a real run produces (the fixed
+"How to read this" paragraph is left out, and the findings list is an
+excerpt):
 
 ```markdown
 # Agenda: content/drafts/dt/survey.md
 
 > **Review aid, not a gate.** This report is evidence for a human
-> judgement, never a verdict. No draft is blocked by what it says.
+> judgement, never a verdict. A driver may read it back; no draft is
+> blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's
+> "Layer 4: the review layer".
 
 - Draft: `content/drafts/dt/survey.md`
 - Command: `chitragupta review agenda content/drafts/dt/survey.md`
+- chitragupta 6.155.0
 
 ## Sources
 
@@ -485,6 +498,8 @@ in the shape and with the counts and ids a real run produces:
 - Claim support: read
 - Prose (style_check): read
 - Dossier drift: read
+- Recorded-but-uncited citekeys: read
+- Accepted items: none recorded for this draft
 
 ## Summary
 
@@ -522,7 +537,7 @@ in the shape and with the counts and ids a real run produces:
 ### prose
 
 - `5a8bf91ec244` [unattended] (4. Comparison of the surveyed
-  approaches): chitragupta.DefectMarker: 'obviously' (1x)
+  approaches): chitragupta.DefectMarkers: 'obviously' (1x)
 ```
 
 The `[surfaced]` items are the ones worth your time. In the excerpt

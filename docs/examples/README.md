@@ -1,6 +1,6 @@
 # 📂 Examples
 
-Status: **reference artefacts.** Written 2026-09-02.
+Status: **reference.**
 
 **Written for** you, alongside the documentation: every file under
 `sample-project/` is a real output of the real pipeline, run against
@@ -24,7 +24,7 @@ Two notes, so the samples cannot mislead:
 A second directory sits beside `sample-project/` and is **not** pipeline
 output: [`dossiers/`](dossiers/README.md) holds hand-written `scope.md`
 and `outline.md` files, one pair per genre, plus a book's `spec.md`.
-They are the files *you* fill in, shown filled in, for the five
+They are the files *you* fill in, shown filled in, for the six
 start-to-finish tutorials under Writing. Nothing in them was produced by
 a run, and they contain no citekeys.
 

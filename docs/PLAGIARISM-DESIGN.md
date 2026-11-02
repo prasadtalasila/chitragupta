@@ -1,10 +1,9 @@
 # 🔍 Plagiarism detection: how the three tiers work, and what was measured
 
-Status: **three detection tiers, all built; the second and third
-advisory-only.** Written 2026-08-15. Updated 2026-08-27 with tier 3's
-re-measured cost and its scaling law; split out of
-[PLAGIARISM.md](PLAGIARISM.md) on 2026-08-24, which had grown to carry
-both.
+Status: **implemented.**
+
+Three detection tiers are built; the second and third are advisory
+only.
 
 **Written for** someone changing `chitragupta/overlap_index.py`,
 `chitragupta/overlap_skipgram.py`, `chitragupta/overlap_embed.py` or
@@ -67,10 +66,11 @@ second.
 
 ## 📊 Measured: what a blocking overlap gate would block
 
-[The overlap-gate proposal](AUTO-IMPROVEMENT.md#-build-order) asks whether
-a long verbatim run should block a draft the way the citation gate blocks
-an unresolvable citekey, and forbids guessing the threshold.
-`bench/bench_overlap_gate.py`
+The overlap-gate proposal asked whether a long verbatim run should block
+a draft the way the citation gate blocks an unresolvable citekey, and
+forbade guessing the threshold. The answer is no: the gate is declined
+([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#-build-order)), on the
+measurement below. `bench/bench_overlap_gate.py`
 measured it against this project's own 15-chapter book
 (178,077 words) and the same 497-document corpus the book was written
 from. The book is organic prose with no planted reuse, which is what
@@ -83,18 +83,18 @@ such as a standard's own wording, a field's fixed definition, or an
 attributed quotation. **T** is the candidate threshold, a run length in
 words.
 
-### 🐛 The measurement first had to fix a masking bug
+### 🐛 An unmasked reference list swamps the result
 
 `_mask_for_scan` blanks the draft's own References section before
 scanning, because two documents citing the same paper share its title and
-venue verbatim. `references_section.section_start` matched only single-level
-heading numbers, so a book numbering headings per chapter
-(`## 1.14 References`) was never masked, and the whole bibliography was
-scanned against the corpus. On one chapter that was 97.7% of all findings
-and **100%** of its long-run bucket. Fixed; the numbers below are from
-the corrected behaviour. It is the first thing to check if a `scan`
-result looks implausibly noisy: findings clustered at the end of the
-draft, all naming different sources, are its reference list.
+venue verbatim. `references_section.section_start` recognises
+multi-level heading numbers, so a book numbering headings per chapter
+(`## 1.14 References`) is masked too. Left unmasked, the whole
+bibliography is scanned against the corpus: on one chapter that was
+97.7% of all findings and **100%** of its long-run bucket. It is the
+first thing to check if a `scan` result looks implausibly noisy:
+findings clustered at the end of the draft, all naming different
+sources, are its reference list.
 
 ### 📉 The threshold is not a discriminating variable
 
@@ -248,8 +248,8 @@ cover disjoint populations instead of competing for the same one.
   paper or re-parsing one shifts every number above, and a run that was
   clean can turn dirty with no draft edit. That is deterministic *given a
   corpus state*, a weaker guarantee than `chitragupta.draft gate`'s and
-  the same shape as the per-host allowlist below. The gate proposal, not
-  this document, is where that trade is priced.
+  the same shape as the per-host allowlist below. That trade is one
+  more reason the gate is declined.
 
 The measurement is `bench/RESULTS.md`'s `2026-08-13b` section. It is not
 linked, because `bench/` is one of the trees the documentation site does
@@ -272,8 +272,9 @@ habit. A summary, for anyone deciding what to build next:
 | Schleimer, Wilkerson & Aiken, [winnowing / MOSS](https://theory.stanford.edu/~aiken/publications/papers/sigmod03.pdf) | Keep the minimum hash per window of size w; detection of any match >= w+n-1 is still *guaranteed*, index shrinks to ~2/(w+1) of full size | Deferred: a real lever at book scale, unnecessary at ~500 papers where the full index already fits in RAM. The cache-key design (`tokenizer_version`) leaves room for it later |
 
 **Only deterministic checks may ever block a draft.** Exact and
-skip-gram matching are deterministic and gate-eligible in principle (a
-later, separate decision). Embedding similarity is never deterministic
+skip-gram matching are deterministic and gate-eligible in principle,
+though the gate itself is declined on the measurement above. Embedding
+similarity is never deterministic
 across a config edit (the chroma collection is namespaced per embedding
 model precisely because vectors change when `[enrich].embedding_model`
 does), so it can only advise and never gate.
@@ -292,11 +293,10 @@ are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
 2. **Deterministic light-paraphrase tier.** Stemmed, stopword-filtered
    odd/even skip-grams in the same index framework: the CoReMo design.
    Catches synonym swaps and inflection changes while staying objective
-   enough to gate eventually. Built: `chitragupta/overlap_skipgram.py`,
-   findings carry `tier: "skip-gram"`. Shipped **advisory only**, on
+   enough to be gate-eligible in principle. Built: `chitragupta/overlap_skipgram.py`,
+   findings carry `tier: "skip-gram"`. **Advisory only**, on
    the contributor discussion's "start advisory, promote with evidence".
-   Nothing in `scan` decides gate-eligibility for it; that is the gate
-   proposal's decision, and this tier existing does not change it.
+   Nothing in `scan` decides gate-eligibility for it.
 
    It was measured on 2026-08-14, and it stays advisory on the strength
    of that measurement. Over a real 15-chapter book, 2 of 27 findings
@@ -311,7 +311,7 @@ are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
    contributor discussion asks for before promoting it. See
    `bench/RESULTS.md`'s 2026-08-14 skip-gram measurement before trusting
    a clean `scan` on this tier any more than on tier 1.
-3. **Embedding paraphrase tier.** Built 2026-08-15,
+3. **Embedding paraphrase tier.** Built:
    `chitragupta/overlap_embed.py` with `chitragupta/overlap_embed_scope.py`
    (whether the tier can run at all), `chitragupta/overlap_align.py`,
    `chitragupta/overlap_segments.py` and `chitragupta/overlap_chroma.py`;
@@ -378,21 +378,18 @@ are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
    uses only to rank citekeys. Its alignment runs over ~20-word
    windows of the passage sidecars, which are embedded on demand and
    held only for the duration of one `scan`. Each source is therefore
-   embedded once per scanned draft, not once per corpus. On the
-   15-chapter book that is ~100s per chapter.
+   embedded once per scanned draft, not once per corpus.
 
-   It was re-measured on 2026-08-27, and the prediction holds. "Once per
+   Measured on 2026-08-27, the prediction holds. "Once per
    scanned draft" implies the cost should track the number of *distinct
    cited sources* and not draft length, and it does: an 18,061-word chapter
    citing 28 citekeys scans in 35.7 s, while a 10,003-word chapter
    citing 40 scans in 41.0 s, so the longer draft has the shorter scan.
    That is about **1.0--1.5 s per distinct citekey**, and it is the
-   scaling law to reason with. The ~100s figure above came
-   from a 497-document corpus and an earlier revision; the corpus is
-   642 documents now and the tier is faster, not slower. Without tier 3
+   scaling law to reason with, on a 642-document corpus. Without tier 3
    the same scans take 447--474 ms, so the tier costs 44--86x
    everything else in a `scan` combined, and peaks at ~1,492 MB against
-   23--73 MB for any other review aid. Full method and the other eight
+   23--73 MB for any other review aid. Full method and the other
    aids' figures:
    [PERFORMANCE.md](PERFORMANCE.md#-what-a-review-pass-costs).
 

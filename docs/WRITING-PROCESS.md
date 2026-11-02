@@ -1,8 +1,6 @@
 # ✍ Writing process: from a bare corpus to a finished draft or book
 
-Status: **reference.** Written 2026-08-30. Updated 2026-08-31, with the
-command surface for writing and revising a draft, and how a hand-edited
-draft is picked back up.
+Status: **reference.**
 
 **Written for** someone about to write with this pipeline, start to
 finish: the order the phases happen in, and which document has the
@@ -11,9 +9,8 @@ your corpus is already synced, skip to whichever phase you're at.
 **Not covered here:** which genre to pick, in detail
 ([GENRE.md](GENRE.md)); every flag and every command this pipeline
 exposes ([CLI.md](CLI.md)); config knobs ([CONFIG.md](CONFIG.md)); how
-to get your library into shape ([ZOTERO.md](ZOTERO.md)). This document
-maps how those fit together, and each of them has the detail this one
-deliberately leaves out.
+to get your library into shape ([ZOTERO.md](ZOTERO.md)). This page
+shows how those fit together; each of them has the detail.
 
 ## 🧭 Table of contents
 
@@ -62,16 +59,18 @@ For example: "write a survey section on digital twin composability",
 "draft a thesis chapter on runtime verification for autonomous robots",
 "write a textbook chapter introducing digital twin asset reuse", "write
 a tutorial that builds a minimal digital twin asset from scratch", "do
-deep research on fault injection for digital twin testbeds". The
+deep research on fault injection for digital twin testbeds", "make me
+a digest of the synchronisation papers in their own words". The
 matching skill picks the request up and runs step 3 above for you.
 
-Which of the six genres matches what you asked for is
-[GENRE.md](GENRE.md#-picking-one)'s whole job. Read it if you're not
-sure whether what you want is a survey, a thesis chapter, a textbook
-chapter, a tutorial, or a deep-research report. In short, the choice
-depends on what your reader is doing while they read: entering a field,
-reading adversarially for a claim, studying worked examples, following
-you at a keyboard, or reconciling several perspectives.
+[GENRE.md](GENRE.md#-picking-one) matches what you asked for to one of
+the six genres. Read it if you're not sure whether what you want is a
+survey, a thesis chapter, a textbook chapter, a tutorial, a
+deep-research report or a verbatim digest. In short, the choice depends
+on what your reader is doing while they read: entering a field, reading
+adversarially for a claim, studying worked examples, following you at a
+keyboard, reconciling several perspectives, or studying the papers' own
+words privately.
 
 Step 1 is optional, and is the only step before you ask. It writes
 `outline.md`, where you set out each section's `brief:`, one or more
@@ -141,18 +140,10 @@ Nothing runs automatically when you save, and you don't have to tell the
 pipeline you edited it. The next time you ask for a revision, or run
 `chitragupta draft dossier status content/drafts/<slug>.md` yourself, step 1
 above compares a digest of the draft's current text against the one recorded
-at the last `dossier stamp`. A changed digest reports `CHANGED since last
-stamp` and only then checks five more specific things your edit might have
-caused: a citation you added with no `evidence.md` block, an `evidence.md`
-block for a citation you removed, a heading with no row in `sections.md`, a
-`sections.md` row with no matching heading, and a `math.md` row appearing
-nowhere in the draft. `draft-reviser` offers each finding to you one at a time
-and acts only on what you agree to. It never applies a repair unasked, and
-it never blocks the revision on one going unanswered. (`agenda-reviser` is the
-one exception: it may not touch `scope.md`, so a repair it makes leaves the
-fingerprint deliberately stale. That stale fingerprint signals that an
-automated pass, not your own revision session, touched the draft since anyone
-last confirmed it.)
+at the last `dossier stamp`, and reports what your edit may have left out of
+step with the dossier. `draft-reviser` offers each finding one at a time and
+never applies a repair unasked. [USER-EDITS.md](USER-EDITS.md) walks
+through every finding and its repair.
 
 Nothing here is a gate. A hand-edited draft that never gets re-stamped
 only makes the next revision less efficient. It cannot make a draft
@@ -160,7 +151,7 @@ wrong, because `chitragupta draft gate` still stands between any draft
 and its citekeys.
 
 Before you decide a draft is finished, [REVIEW.md](REVIEW.md) is the
-human-facing check. It has ten advisory aids (verbatim overlap,
+human-facing check. It has eleven advisory aids (verbatim overlap,
 citation provenance, uncited claims, and more) that only report and
 never block. None of them is a gate; the only mechanical gate is
 `citation_gate`, and it only refuses a fabricated citekey.
@@ -176,10 +167,11 @@ walkthrough. In outline:
 | --- | --- | --- |
 | 1 | `spec init`, then edit `spec.md` | you |
 | 2 | `spec sign` | **you, and only you** |
-| 3 | `unit contract` -> a genre skill writes the prose | skill |
-| 4 | `unit accept` | you, per unit |
+| 3 | `spec seed`, then fill in each chapter's `outline.md` | you |
+| 3b | `unit contract`, then a genre skill writes the chapter | you, then skill |
+| 4 | `spec align`, then `unit accept` | you, per unit |
 
-Steps 3 and 4 repeat once per chapter. `spec sign` is the book track's
+Steps 3b and 4 repeat once per chapter. `spec sign` is the book track's
 first of two human sign-offs; nothing downstream can start without
 it.
 
@@ -190,8 +182,9 @@ Once every chapter is accepted:
 | Step | Command | Who runs it |
 | --- | --- | --- |
 | 5 | `registry build`, `registry check` | you or the assembler |
-| 6 | the `book-assembler` skill composes `book.tex` | skill |
+| 6 | the `book-assembler` skill composes `book.tex` and runs `draft gate` on it | skill |
 | 7 | `lualatex`, `bibtexu`, `lualatex` x2 | you or the assembler |
+| 7b | `review union` | you |
 | 8 | read it | **you, and only you** |
 
 Steps 5 to 7 are what `.claude/skills/book-assembler/` does in one run

@@ -1,5 +1,5 @@
 """Every rule `chitragupta figure check` reports, by the id a finding, a
-`% cg-allow:` line, docs/TIKZ-STYLE.md and the figure-drawer skill all
+`% cg-allow:` line, docs/figure-checks/README.md and the figure-drawer skill all
 quote (#1053).
 
 One registry, because the id is the contract between four places and a

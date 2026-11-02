@@ -1,10 +1,11 @@
 # 🤝 Code standards: what is binary, what is judgement, and the ratchet
 
-Status: **standard, partly enforced.** Written 2026-08-13. Updated 2026-08-24.
+Status: **reference.**
+
 The two size rules below are enforced by `tests/test_code_standards_scan.py`;
 everything under [The rest of the checklist](#-the-rest-of-the-checklist) is a
-review standard with no detector, and [Build order](#-build-order) says which
-detectors would come next.
+review standard with no detector, and [Build order](#-build-order) lists
+the detectors that run today.
 
 This is the code counterpart of
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md): that one is the standard the
@@ -68,8 +69,8 @@ is how a standard produces worse code than none.
 > **R3:** "An unattended item's check is **binary**. No continuous score
 > is ever the thing being optimised."
 >
-> -- [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#-the-requirements), which
-> owns the wording
+> ([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#-the-requirements) owns the
+> wording.)
 
 That rule was written for drafts. It applies here unchanged, and it is
 why this document is split the way it is. "No function exceeds 25
@@ -170,7 +171,7 @@ measure the codebase is in good shape: 26 offenders in `chitragupta/`,
 not 128, and the tests hold the bar almost perfectly at 1 in 1926.
 
 The same correction applies to files: `chitragupta/config.py` is 696
-physical lines and 246 lines of code (2026-10-07), the difference being
+physical lines and 246 lines of code, the difference being
 450 lines of per-setting rationale. The file rule counts code lines (non-blank,
 non-comment) for the same reason.
 
@@ -178,9 +179,7 @@ non-comment) for the same reason.
 under it, not looser: at 5.7.1, `chitragupta/sync.py::run` was 322 physical lines
 but **117 statements**, 4.7× the next worst function in the repository.
 Physical lines ranked it 2.4× the next worst and understated how far out
-it was. (It has since been split back under the limit and delisted,
-which is the ratchet doing its job, but the measurement is what
-justified counting statements, so it stays.)
+it was.
 
 ## 🧹 The Boy Scout Rule, and surgical changes
 
@@ -208,10 +207,7 @@ open:
 That keeps what the rule is *for* (decay is not permitted) while
 keeping diffs reviewable. Concretely: noticing that a module is on the
 register while fixing something unrelated in it is a reason to say so in
-the PR, not a licence to refactor it there. `chitragupta/dossier.py` was
-this example until a dedicated PR split it and delisted it, and
-`chitragupta/review/verbatim_check.py` was this example until another did
-the same, which is the ratchet doing exactly what it's for.
+the PR, not a licence to refactor it there.
 
 The one case where the rule applies to your own edit unchanged is the
 orphan you created: an import, variable or helper that *your* change made
@@ -235,7 +231,7 @@ hold it (1 offender in 1926), so including them locks in a bar that is
 met rather than declaring one that is not. C2 does not cover the tests
 because a test module here is one-per-source-module by convention, and
 its length tracks the surface of the module under test rather than a count
-of responsibilities; `tests/test_pdf_text.py` at 2044 code lines (2026-10-07) is
+of responsibilities; `tests/test_pdf_text.py` at over 2,000 code lines is
 thorough, not overloaded. (`tests/test_enrich_real_libraries.py` is the
 one exception to the convention rather than to the rule: it is a second
 module against `chitragupta/enrich/embed_index.py`, split out because it
@@ -308,7 +304,7 @@ has, both of which fail:
 
 | Option | What happens here |
 | --- | --- |
-| Enforce the rule outright | 28 functions and 12 modules fail on day one. The build is red for reasons nobody in this PR caused, so the rule gets disabled or the threshold raised until it passes, and a threshold tuned to today's worst code is not a standard |
+| Enforce the rule outright | Every existing offender fails on day one (28 functions and 12 modules when the rules were adopted). The build is red for reasons nobody in this PR caused, so the rule gets disabled or the threshold raised until it passes, and a threshold tuned to today's worst code is not a standard |
 | Write it down as guidance | It is followed until the first deadline. Nothing detects the drift, and two years later the document describes a codebase that no longer exists |
 
 The ratchet takes the useful half of each. Here:
@@ -317,10 +313,10 @@ The ratchet takes the useful half of each. Here:
   `[[c1]]` and `[[c2]]` tables: **3
   functions** and **1 module**. Those two counts are themselves pinned
   by `test_the_registers_are_the_size_this_document_says`, so a shrinking
-  register cannot leave this sentence stale. The register moved out of
-  `tests/test_code_standards_scan.py` in issue 431, so that the
-  edit-time hook could read it from a file the release archive ships;
-  the test still enforces it and is still the authority.
+  register cannot leave this sentence stale. The register is a TOML file
+  so that the edit-time hook (`.claude/hooks/code_standards_hook.py`) can
+  read it from a file the release archive ships;
+  `tests/test_code_standards_scan.py` enforces it and is the authority.
 - **New offenders fail.** Anything not in the register that crosses
   either threshold fails the suite, with the count and the limit in the
   message.
@@ -351,15 +347,12 @@ Three reasons apply beyond the general argument.
    failing test reaches a session that read nothing.
 3. **It makes the debt legible instead of ambient.** "The code quality is
    poor" is unactionable and, measured properly, was not even true here.
-   "`chitragupta/sync.py::run` is 117 statements and
-   `chitragupta/dossier.py` is 1605 code lines" (the register's two worst
-   entries on the day it was written) is a worklist, ordered, with the
-   entries worth taking first at the top.
+   A register entry with its size beside it is a worklist, ordered, with
+   the entries worth taking first at the top.
 
-The register is a debt list, not an allowance. Neither of those two is
-taken in the change that introduces this document: refactoring them is a
-code change, this is a standard, and "several small, reviewable PRs over
-one large one" applies to the project's own housekeeping.
+The register is a debt list, not an allowance. Paying an entry off is a
+code change in its own pull request, because "several small, reviewable
+PRs over one large one" applies to the project's own housekeeping.
 
 **What the ratchet deliberately does not do** is cap the growth of a
 module already on the C2 register. A registered file may get longer
@@ -388,8 +381,8 @@ should not get one.
 | Rule | Fate |
 | --- | --- |
 | Keep configurable data at high levels | Already here: `config.toml` is the single source, every key overridable by an env var |
-| Prefer polymorphism to if/else | **N/A as stated**: `chitragupta/` is classless. Its functional equivalent *is* used: `review.AIDS` is a dispatch table, and a new aid is added by registering it rather than by editing a branch |
-| Separate multi-threading code | Already here: the process pool lives in `chitragupta/pdf_text/` and `sync._parse_parallel`, and nothing else in the codebase knows about it |
+| Prefer polymorphism to if/else | **N/A as stated**: `chitragupta/` has no class hierarchies; its classes are dataclasses, exceptions and a few small wrappers. Its functional equivalent *is* used: `review.AIDS` is a dispatch table, and a new aid is added by registering it rather than by editing a branch |
+| Separate multi-threading code | Already here: the process pool lives in `chitragupta/pdf_text/` and `chitragupta/sync_pool.py`, and nothing else in the codebase knows about it |
 | Prevent over-configurability | Review. A `config.toml` key with one caller and no user asking for it is a maintenance cost, not flexibility |
 | Use dependency injection | Already here as **the probe pattern**: a stage depends on "is pandoc on PATH?", answered at run time, never on a `--target` flag naming its environment |
 | Follow Law of Demeter | Already here as module boundaries: `references.py` reads the ledger's `bib_fields` column and must not reach through to `bibliography.bib` |
@@ -407,7 +400,7 @@ inversion is the probe pattern.
 | Be consistent | Review, and the highest-value one in this list. A second way of doing something already done is the most common finding here |
 | Use explanatory variables | Review |
 | Encapsulate boundary conditions | Already here, as a whole module: `chitragupta/passages.py` is the single place that decides which span of a source may be shown, so no caller re-derives it |
-| Prefer dedicated value objects to primitive types | **Mostly N/A.** A citekey is deliberately a bare `str`, because it is also a filename stem and a ledger key; the invariant is enforced by one shared validator (`chitragupta/citekey_safety.py`, re-exported as `bib_reader.citekey_problem()`) and by one path builder, `citekey_safety.citekey_path()`, which every per-citekey file name goes through (`tests/test_citekey_path.py` fails on any other join), rather than by a wrapper type |
+| Prefer dedicated value objects to primitive types | **Already here where it helps**: records such as `Passage`, `SearchResult` and `Reference` are dataclasses. The exception is deliberate: a citekey is a bare `str`, because it is also a filename stem and a ledger key; the invariant is enforced by one shared validator (`chitragupta/citekey_safety.py`, re-exported as `bib_reader.citekey_problem()`) and by one path builder, `citekey_safety.citekey_path()`, which every per-citekey file name goes through (`tests/test_citekey_path.py` fails on any other join), rather than by a wrapper type |
 | Avoid logical dependency | Review |
 | Avoid negative conditionals | Review |
 
@@ -446,13 +439,13 @@ indentation.
 ### 🧱 Objects and data structures
 
 Largely **N/A**, and the reason is stated so the gap does not read as an
-omission. `chitragupta/` has almost no classes, and the few it has
-(`interrupt_guard`, `_AnnotatedStream`) are small context managers and
-wrappers.
+omission. `chitragupta/` has no class hierarchies. Its classes are
+dataclasses holding records, exception types, and a few small context
+managers and wrappers (`interrupt_guard`, `_AnnotatedStream`).
 
 "Prefer data structures" and "hide internal structure" are what the
-codebase already does: modules expose functions over plain dicts, tuples
-and `sqlite3` rows. "Should be small", "do one thing" and "small number
+codebase already does: modules expose functions over dataclasses, plain
+dicts, tuples and `sqlite3` rows. "Should be small", "do one thing" and "small number
 of instance variables" apply to any class that does appear, and C1
 already covers its methods.
 
@@ -475,7 +468,7 @@ agree or disagree with.
 | Smell | What it looks like here |
 | --- | --- |
 | **Rigidity**: a small change cascades | Adding a parse failure cause that requires touching every caller, instead of adding a mark on the exception |
-| **Fragility**: one change breaks many places | The reason the review layer has one output contract in `review/__init__.py` rather than eleven aids each writing their own path |
+| **Fragility**: one change breaks many places | The reason the review layer has one output contract in `review/__init__.py`, and one procedure around it in `review/_emit.py`, rather than eleven aids each writing their own path |
 | **Immobility**: code cannot be reused | The reason `chitragupta/passages.py` is a module and not logic inlined into `verbatim_check` |
 | **Needless complexity** | Speculative configurability, an abstraction with one call site, defensive handling for an impossible state |
 | **Needless repetition** | Two similar blocks are a coincidence; three are a pattern. Extracting from two call sites is as likely to produce a wrongly-shaped abstraction as to remove real duplication |
@@ -492,82 +485,46 @@ goal-driven execution. The third is the one
 
 ## ▶ Build order
 
-What would extend the enforced half, cheapest first, as proposed when
-this document was written. All four items have since landed, each in a
-different shape than proposed here; see their own notes.
+The detectors that extend the enforced half, each at a binary bar.
 
-1. ~~**A linter and formatter (`ruff`).**~~ **Both halves are landed now,
-   in two separate steps.** The linter landed first, as `pylint`, not
-   `ruff`: `ci.yml`'s `lint` job runs
-   `pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks` at a binary
-   zero-messages bar (`docs/TECHNICAL-DEBT.md §5.1`), measured and
-   enforced the way this item asked for: a baseline first, a
-   `.pylintrc` `disable=` register of the same shape this item wanted for
-   `ruff`. It still subsumes what this rung was for: the Names rules,
-   unused imports (`unused-import`), and `too-many-*` overlapping C1 from
-   a different angle. `ruff` itself landed after, in two more rounds:
-   item 2 as the linter, `BLE`/`E`/`F`/`RUF100`; a later change as the
-   formatter, `ruff format --check` over
-   `chitragupta`/`scripts`/`tests`/`bench`/`.claude/hooks` (wider than
-   either linter's roots; `docs/TECHNICAL-DEBT.md`'s ruff-format
-   subsection says why). Line length (`docs/TECHNICAL-DEBT.md §5.1`'s
-   "31 long lines", hand-fixed at the time) is enforced now on both
-   counts: `E501` from item 2, and the formatter refusing a line its own
-   wrapping would have shortened.
-2. ~~**A `# noqa`-free policy for the ratchet.**~~ **Landed as `ruff`**
-   (`docs/TECHNICAL-DEBT.md`'s ruff subsection), at the same binary bar
-   pylint and markdownlint hold. `ci.yml`'s `lint` job runs
-   `ruff check chitragupta scripts .claude/hooks`, `pyproject.toml`'s
-   `[tool.ruff.lint]` selects `BLE` (this item's own reason for existing)
-   plus `E`/`F` (which subsumes item 1's remaining `E501` gap) and
-   `RUF100`, the rule that makes a `# noqa: BLE001` a checked claim
-   rather than a comment nothing reads, which is what makes this a
-   `# noqa`-free *policy* rather than just a second linter. One of the 12
-   existing markers turned out to be unneeded on that evidence
-   (`chitragupta/pdf_text/_backends.py`'s re-raising `except`; BLE001's
-   own definition exempts a block that ends in `raise`) and was removed.
-   The rest were each confirmed live rather than assumed so.
-3. ~~**Type annotations and a checker.**~~ **Annotated in full, and
-   the checker declined, not deferred.** Every `def` under
-   `chitragupta/` now carries a return annotation, and
-   `tests/test_annotation_scan.py` ratchets it the way C1/C2 are
-   ratcheted: today's zero gaps are frozen, and a new one fails the
-   suite. Its `ast`-walk is the count's own source of truth, not a figure
-   copied here to go stale. What stayed unbuilt is a real type checker:
-   `mypy` over a 100%-covered stdlib codebase is still worth having and
-   is still its own project, not a step in this one, which is the same
-   call this item made when it was written rather than a reopened
-   question.
-4. **A doc-drift detector.** **Half built**, and the half that was left
-   is the one worth naming, because effort would not close it.
+**Enforced today:**
 
-   **Built:** every claim about the *registers* is now binary.
+1. **C1 and C2**, by `tests/test_code_standards_scan.py` for Python and
+   `tests/webapp/code_standards.test.js` for `assets/webapp/`, against
+   `code-standards-register.toml`.
+2. **A linter and a formatter.** `ci.yml`'s `lint` job runs
+   `pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks`,
+   `ruff check` over the same roots, and `ruff format --check` over
+   `chitragupta`/`scripts`/`tests`/`bench`/`.claude/hooks`, each at zero
+   findings. `pylint` covers the Names rules and unused imports;
+   `ruff`'s `E501` and the formatter enforce short lines.
+   [TECHNICAL-DEBT.md](TECHNICAL-DEBT.md#-tier-5-continuous-integration-and-the-linters)
+   has the baselines.
+3. **A `# noqa`-free policy.** `ruff`'s `BLE` makes a blind `except` a
+   finding, and `RUF100` makes every `# noqa: BLE001` a checked claim
+   rather than a comment nothing reads.
+4. **Type annotations.** Every `def` under `chitragupta/` carries a
+   return annotation, and `tests/test_annotation_scan.py` ratchets it the
+   way C1/C2 are ratcheted. A type checker (`mypy`) is declined as part
+   of this standard: worth having, and its own project.
+5. **A doc-drift detector for the registers.** Every claim about the
+   *registers* is binary.
    `test_the_registers_are_the_size_this_document_says` pins this
-   document's copy of the two sizes;
-   `tests/test_technical_debt_scan.py` pins TECHNICAL-DEBT.md's copy,
-   and also fails when that document names a function or module
-   as currently-open C1/C2 debt that the register no longer lists. Both
-   incidents on record are caught by it, checked against the real
-   historical files: the C1/C2 counts that read 26/13 against a real
-   10/11 until the drift was repaired, and `chitragupta/sync.py::run`,
-   delisted and still named as the second-highest-priority open item
-   four days later.
+   document's copy of the two sizes; `tests/test_technical_debt_scan.py`
+   pins TECHNICAL-DEBT.md's copy, and fails when that document names a
+   function or module as open C1/C2 debt that the register no longer
+   lists.
 
-   **Not built, and not a backlog item:** `docs/DESIGN.md`'s "Three
-   layers", against ARCHITECTURE.md's and AGENTS.md's four: the
-   staleness this document's own PR fixed, found by reading. That is a
-   free-standing factual claim with no register behind it, so there is
-   nothing binary to check it against, and
-   [R3](AUTO-IMPROVEMENT.md#-the-requirements) rules out reaching for a
-   prose-accuracy *score* instead. A claim becomes checkable when
-   something machine-readable becomes its source of truth, not when
-   someone writes a cleverer scanner.
-
-   This document is itself an instance of the unbuilt half. The
-   physical-line-versus-statement measurement above (128 against 26, 63
-   against 1) is quoted here and in
-   `tests/test_code_standards_scan.py`'s docstring; a refactor that moves
-   those numbers leaves two copies to update by hand.
+**Not built, and not a backlog item:** a detector for free-standing
+factual claims in prose, the kind with no register behind them. There is
+nothing binary to check such a claim against, and
+[R3](AUTO-IMPROVEMENT.md#-the-requirements) rules out reaching for a
+prose-accuracy *score* instead. A claim becomes checkable when something
+machine-readable becomes its source of truth, not when someone writes a
+cleverer scanner. This document has one such claim: the
+physical-line-versus-statement measurement above is quoted here and in
+`tests/test_code_standards_scan.py`'s docstring, and a refactor that
+moves those numbers leaves two copies to update by hand.
 
 ## 🚫 What this does not change
 

@@ -1,6 +1,6 @@
 # 🤖 LLMs and coding agents
 
-Status: **current for 6.128.** Written 2026-10-02.
+Status: **how-to.**
 
 **Written for** anyone choosing which coding agent, and which model, to
 draft with. chitragupta itself calls no language model: nothing under
@@ -83,7 +83,7 @@ Claude Code reaches it through `CLAUDE.md`.
 
 ### Codex
 
-Start `codex` in the project. The skills are the same ten, read from
+Start `codex` in the project. The skills are the same eleven, read from
 `.agents/skills/`, and Codex reads `AGENTS.md` itself. Each `SKILL.md`
 there names its reference files by their path from the project root,
 under `.claude/`; Codex reads them on demand like any other file
