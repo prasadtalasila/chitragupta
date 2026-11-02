@@ -7,12 +7,10 @@ a stage that looks obviously useful was built and withdrawn. **Assumed:**
 [RETRIEVAL.md](RETRIEVAL.md). **Not covered here:** how retrieval is run,
 which is [CLI.md](CLI.md).
 
-Why turning a source *down* is the judgment the rest of this pipeline
-rests on; why a two-stage retrieval read built to make rejection cheaper
-was withdrawn before it shipped; and what was kept from it.
-
-This is a record of a decision that went the other way, kept because the
-reasoning is reusable and the mistake is an easy one to make twice.
+Turning a source *down* is the judgment the rest of this pipeline rests
+on. A two-stage retrieval read built to make rejection cheaper was
+withdrawn before it shipped, and parts of it were kept. The reasoning is
+recorded because it is reusable and the mistake is easy to make twice.
 
 Related reading:
 
@@ -52,9 +50,9 @@ can disagree. A source wrongly rejected leaves no trace in the draft, so
 nothing downstream can find it.
 
 **It is sticky.** [DRAFT-ITERATION.md](DRAFT-ITERATION.md) records
-rejected candidates in `rejected.md` precisely so a later revision does
-not re-search and re-judge the same papers, which is the single most
-expensive thing a fresh session does. `draft-reviser` is instructed:
+rejected candidates in `rejected.md` so a later revision does not
+re-search and re-judge the same papers, the most expensive thing a fresh
+session does. `draft-reviser` is instructed:
 if a candidate is listed there with a reason, **do not retrieve and
 re-judge it**. That instruction is what makes revision cheap, and it is
 also what makes a rejection permanent. Acceptances get revisited every
@@ -63,7 +61,7 @@ time the draft is edited; rejections do not get revisited at all.
 The one place a rejection is deliberately re-surfaced is the drift
 sweep's `reconsider` list: a declined paper that the dossier's own
 queries still reach, carried with the reason it was declined. Even there
-it is shown, not re-judged: re-grounding weighs the recorded
+the paper is not re-judged from scratch: re-grounding weighs the recorded
 reason and re-opens the paper only if that reason has stopped holding
 ([DRAFT-ITERATION.md](DRAFT-ITERATION.md#-re-grounding-after-the-corpus-moves)).
 The rule runs the other way too: a re-grounding pass may not write an
@@ -72,20 +70,20 @@ because that would manufacture a permanent judgment out of a title.
 
 **It propagates into claims.** A survey's deliverable includes what the
 corpus does *not* cover. `deep-research` reports a "blind spot" and is
-explicitly told that "no appropriate answer can be formulated from this
+told that "no appropriate answer can be formulated from this
 corpus" is a valid, honest output. Both of those turn a rejection into an
 assertion about the world. A false rejection omits a source and also
 manufactures a gap.
 
-So the question this document asks is how much evidence should stand
-behind the one decision the pipeline never revisits.
+The question is therefore how much evidence should stand behind the one
+decision the pipeline never revisits.
 
 ## ⚡ What the two-stage read costs
 
 As built, it split retrieval into `triage` (a short window, for ruling
 candidates out) and `evidence` (query-scored passages, for the survivors
-only). The arithmetic is easy to get backwards. These are the numbers
-that were supposed to justify it.
+only). The numbers below were meant to justify it, and the arithmetic is
+easy to get backwards.
 
 Per sub-theme at `k=15`, in characters of payload reaching the caller:
 
@@ -102,8 +100,7 @@ Three things follow.
 one-stage below about five survivors and loses above eight. So the
 economics depend on a skill following an instruction. Models are
 agreeable, so the likely failure is passing candidates through, which
-makes it worse than what it replaced. The benefit rests on discipline,
-and the failure is silent.
+makes it worse than what it replaced, and nothing reports that failure.
 
 **It is a constant factor on a cost that was already removed.** The
 original analysis behind the two changes that removed it put it
@@ -113,7 +110,7 @@ context-trimming second, because it is "a constant factor on a run you'd
 no longer need to make". The dossier removed the structural cost. This is
 the lesser half.
 
-**The reliable reduction is somewhere else entirely.** The two cost pools
+**The reliable reduction is somewhere else.** The two cost pools
 are orchestrator-resident (re-sent every remaining turn) and subagent
 one-shot (paid once). Two-stage reduces *bytes retrieved*. The subagent
 boundary changes *which pool those bytes land in*. That effect is
@@ -157,8 +154,7 @@ Two lessons worth keeping, independent of two-stage:
 ## ⚠ Why it does not generalise across genres
 
 Two-stage was designed against `survey-writer`'s profile (over-fetch at
-`k=15`, keep about three), and its saving is conditional on exactly that
-shape.
+`k=15`, keep about three), and its saving is conditional on that shape.
 
 | Genre | Citekeys in the measured example | Fit | Dominant problem |
 | --- | --- | --- | --- |
@@ -172,8 +168,8 @@ The counts are from the example drafts measured when this was decided,
 not from today's sample project. The argument rests on each genre's
 citation profile rather than on any one file.
 
-**`tutorial-writer`** cites only in a closing "Where to go next", never
-mid-lesson: one to three pointers. The machinery is overhead against a
+**`tutorial-writer`** cites only in a closing "Where to go next"
+section: one to three pointers. The machinery is overhead against a
 saving of a few hundred characters, on a skill whose stated virtue is a
 single clean path. Its actual bottleneck is verifying the lesson runs,
 which retrieval does not touch.
@@ -272,7 +268,7 @@ Recording the stage would let `draft-reviser` apply a tiered rule instead
 of a flat one: never re-fetch a scope rejection (re-read `scope.md`
 instead), trust an evidence rejection, and **re-check triage rejections
 when the change being made touches that sub-theme**. Revision stays cheap
-by default and gets careful exactly where it is risky. It would also let
+by default and gets careful where it is risky. It would also let
 a survey's gap analysis be honest ("12 of 19 candidates were ruled out
 on a 160-character window and never read" is a real caveat on a claimed
 gap), and give `dossier status` a health signal worth printing.
@@ -345,16 +341,16 @@ subagents, where they are billed once.
 ## ⚙ Should any of this be configurable?
 
 There is precedent for judgment thresholds in `config.toml`:
-`PROVENANCE_WEAK_SCORE` and `PROVENANCE_GOOD_SCORE` are exactly that. So
+`PROVENANCE_WEAK_SCORE` and `PROVENANCE_GOOD_SCORE` are two. So
 the instinct to move `160`, `500`, `600` and `2` there is reasonable. It
 is still the wrong call, for four reasons.
 
 **They are not independent knobs.** The break-even is a *function* of
 `TRIAGE_CHARS`, `EVIDENCE_CHARS`, `EVIDENCE_WINDOWS` and `k` together.
 Exposing them separately invites combinations that silently invert the
-design's purpose. This has happened: the 3-windows-of-700 default did
-exactly that. No test pins the documented arithmetic, and a config value
-could not be pinned by one anyway.
+design's purpose, as the 3-windows-of-700 default did. No test pins the
+documented arithmetic, and a config value could not be pinned by one
+anyway.
 
 **The flexibility already exists at a better granularity.** `--chars`,
 `--windows` and `--k` are per-call: explicit at the call site, visible in
@@ -363,7 +359,7 @@ choice *invisible*.
 
 **`config.toml` is gitignored per-host data.** A dossier's rejections
 would then depend on a setting recorded nowhere and differing per
-machine. This repository is careful about precisely this; see
+machine. This repository guards against that; see
 [ARCHITECTURE.md](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not)
 and the `bench/repro_check.py` work that found two runs of the *same*
 configuration are not exempt.
@@ -411,7 +407,6 @@ triage/evidence) chosen *per genre by default* and overridable per
 invocation, and land the stage column first, so a dossier can say which
 regime produced each entry. Revisit once the still-open measurement
 issue has established whether the window sizes matter on a real corpus.
-Tuning knobs on unmeasured defaults is premature.
 
 ## ⚖ What was decided
 

@@ -88,8 +88,8 @@ its source's style.
 - Lead each paragraph with its point. A reader skimming only first sentences
   should still get the argument.
 - Cut hedging that carries no information. "It may be argued that X is
-  possibly a factor" says less than "X is a factor", and the difference is
-  noise, not caution. Real uncertainty gets stated, once, precisely.
+  possibly a factor" says less than "X is a factor" and is no more
+  cautious. State real uncertainty once, precisely.
 
 ## ✂ 5. Don't let a document do two jobs
 
@@ -104,7 +104,7 @@ alternatives and weigh them, a tutorial must eliminate every choice.
 If, while drafting, you find yourself writing material that belongs to a
 different genre, **stop and say so to the user** rather than absorbing it.
 The routing tables in each genre SKILL.md ("When to invoke", or "What
-this genre is not" in `tutorial-writer`) exist for exactly this moment.
+this genre is not" in `tutorial-writer`) exist for this case.
 
 ## 👓 6. Read it once as the reader
 
@@ -120,15 +120,15 @@ something never established.
 This pass catches more real problems than any other single step. The
 technical-communication literature's stronger form of it is a usability
 test with a real member of the audience. That is not available inside a
-drafting run, so this reread is the substitute. Make it a genuine second
-pass, not a skim of what you just wrote.
+drafting run, so this reread is the substitute. Read the whole draft a
+second time; do not skim it.
 
 ## ❓ 7. Say what you don't know
 
 Every genre here shares one rule from AGENTS.md's citekey invariant: a gap
 stated plainly is always better than a gap papered over. Thin corpus
-coverage, an unresolved contradiction, a step you couldn't verify: all of
-these get reported to the user in prose. None of them get smoothed.
+coverage, an unresolved contradiction, a step you couldn't verify: report
+each of these to the user in prose instead of smoothing it over.
 
 ## 🗣 8. Dialect and house style
 
@@ -155,19 +155,18 @@ impose conventions these standards do not settle: serial comma or not,
 "Section 3" or "§3", how a figure is captioned. Record the decision
 beside the dialect, rather than re-deciding it section by section.
 
-One caveat belongs to this section. §2's defect-marker list is English
-literals, and §4's voice rules are an Anglophone technical-writing
-convention. A draft in another language needs them adapted rather than
-transliterated, and nothing in this document should be read as claiming
-they carry over unchanged.
+§2's defect-marker list is English literals, and §4's voice rules are an
+Anglophone technical-writing convention. A draft in another language needs
+them adapted rather than transliterated; they do not carry over
+unchanged.
 
 ## ✅ 9. What is checked mechanically, and what is not
 
-Some rules above have a decidable answer and some do not. The split
-matters in both directions, and getting it wrong fails in opposite ways.
-Mechanising §4's "short sentences" builds a machine that splits sentences
-past the point the argument survives. Leaving §2's literals to memory
-means they are checked only when someone remembers to.
+Some rules above have a decidable answer and some do not, and putting a
+rule on the wrong side fails either way. Mechanising §4's "short
+sentences" builds a machine that splits sentences past the point the
+argument survives; leaving §2's literals to memory means they are checked
+only when someone remembers to.
 
 | Rule | Section | Decidable? | Checked by, and may a machine repair it unattended? |
 | --- | --- | --- | --- |
@@ -286,8 +285,8 @@ carries only a marker naming them**, with one exception, which is not
 about figures. `thesis-chapter-writer`'s `.tex` fragment is what the user
 `\input`s directly into their own real thesis, never touched by this
 pipeline again once it leaves `content/drafts/`; a marker-only TikZ would
-render fine through this pipeline's own renderer and then silently vanish
-the moment the user does the one thing that genre exists for. So that
+render fine through this pipeline's own renderer and then vanish without
+warning when the user `\input`s the fragment into their thesis. So that
 genre's TikZ stays inline, via the `\input` a real thesis resolves for
 itself; its ASCII, like every other form in every other genre, is a file
 named by a marker.
@@ -320,9 +319,8 @@ a reviser find every figure by `grep` rather than by parsing the draft.
 **One marker, one vocabulary, in both genres: `figure:`, naming the
 figure's base name without a suffix.** The renderer derives `<base>.tex`
 and `<base>.txt` from it. The two spellings below differ only because a
-comment in Markdown and a comment in LaTeX are written differently;
-the thing you write, and the rule you remember, is the same either way,
-and no draft ever names one figure twice.
+comment in Markdown and a comment in LaTeX are written differently; what
+you write is the same either way, and no draft names one figure twice.
 
 **Markdown drafts** (`tutorial-writer`, `textbook-chapter-writer`,
 `survey-writer`) carry the marker alone, with no fence beside it:
@@ -348,8 +346,8 @@ thesis resolves for itself, with the ASCII marker following it:
 ```
 
 For `--format md` the renderer substitutes the `.txt` contents for that
-`\input`, in a temp copy. Writing a `verbatim` block by hand is not the
-author's job here: the fragment on disk stays exactly what the user
+`\input`, in a temp copy. The author does not write a `verbatim` block
+by hand: the fragment on disk stays exactly what the user
 `\input`s into their own thesis, and the ASCII appears only in the
 preview that needs it.
 
@@ -377,8 +375,9 @@ pipeline.
   accepted.** Figures here use a house palette
   ([TIKZ-STYLE.md](TIKZ-STYLE.md)), and the 7-bit twin cannot reproduce
   it; `md`, `docx` and `html` render only the twin. The pair contract
-  is therefore about the *point*, not the pixels: **both forms must work
-  as figures, and they need not carry the same secondary distinctions.**
+  therefore covers what the figure shows, not how it looks: **both forms
+  must work as figures, and they need not carry the same secondary
+  distinctions.**
   Keep the argument legible through position, arrow direction and
   labels, which the twin can express, and let colour make the picture
   quick to read rather than possible to read.
@@ -394,8 +393,8 @@ pipeline.
   "Figure 3" written into a node label or a `\node` caption inside
   `figures/<name>.tex` is a second, unmanaged number that nothing
   renumbers and nothing checks; it survives into the PDF beside the
-  real one. The rule generalises: **the artifact carries the picture,
-  the document carries its identity.**
+  real one. In general, **the figure file carries the picture and the
+  draft carries its number and caption.**
 - **No citekeys inside a figure file.** `python -m chitragupta.draft gate` reads
   the draft and does not follow `\input`, so a citekey in a node label
   or a caption inside `figures/<name>.tex` is invisible to the one check
@@ -422,17 +421,15 @@ pipeline.
 - **Plain 7-bit ASCII in the ASCII form**, wherever it lives, same
   alphabet and same reasoning as the Unicode exclusion above. It is
   what every non-LaTeX render emits, and a draft with no TikZ figure at
-  all still renders its fence straight into the pdf, which is the run
-  where one Unicode box character takes the whole document down
-  with it.
+  all still renders its fence straight into the pdf, where one Unicode
+  box character fails the whole document.
 - **Panels are lettered, in both forms, however many there are.** A
   figure showing the same thing under several conditions is one figure
   with panels (one marker, one pair, whatever the count), and each
   panel carries a sub-caption reading `(<letter>) <short title>`, where
   the letter is the panel's place in reading order: `(a)` for the first,
   `(b)` for the second, on through the alphabet. The letters have to be
-  in the ASCII form too, and not
-  as a decoration: every format except `tex`/`pdf` renders the `.txt`
+  in the ASCII form too: every format except `tex`/`pdf` renders the `.txt`
   and never sees the picture, so a figure lettered only in its TikZ
   ships a `docx` and an `html` whose panels are unlabelled. `figure
   check` reports that as `t3-panels`. [TIKZ-STYLE.md](TIKZ-STYLE.md) has the worked
@@ -441,9 +438,7 @@ pipeline.
 - **A figure is captioned in the draft, not in the figure file**;
   "A caption, and no number you write yourself" below has the contract.
   A marker with no caption below it renders unnumbered and uncaptioned,
-  and `draft style` reports it (`chitragupta.FigureNoCaption`), because
-  "captioned in the draft" is the contract and a marker without one has
-  not met it.
+  and `draft style` reports it (`chitragupta.FigureNoCaption`).
   Which lettering a venue wants for panels (`(a)`,
   `(i)`, `A`, or titles with no letters) is a §8 house-style decision:
   record it in the dossier's `scope.md` beside the dialect, where
@@ -479,9 +474,8 @@ keep in sync with the file name.
 
 **A figure with no caption line below it renders unchanged**: a bare
 `\input` or a bare ASCII fence, no float, no number, and invisible to
-`figureref` resolution. It is not an *accepted* case: `draft style`
-reports it as `chitragupta.FigureNoCaption`. The rule is in the
-standard, not in the renderer.
+`figureref` resolution. The renderer accepts it and the standard does
+not: `draft style` reports it as `chitragupta.FigureNoCaption`.
 
 **Never write the number.** [RENDERING-FLOW.md](RENDERING-FLOW.md)'s
 "Figure numbering" has the per-format cases: LaTeX-bound output wraps
@@ -493,10 +487,10 @@ numbers a table outside LaTeX.
 The `.tex` fragment carries neither marker: `thesis-chapter-writer`
 hand-authors a real `\begin{figure}...\caption{}...\label{fig:<id>}`
 around its inline `\input`, the same carve-out §13 gives a hand-written
-`\begin{table}`. The one thing that changes there too: never write
-`\renewcommand{\thefigure}{N.M}`. The consuming thesis's own counter is
-what has to agree with its own chapter numbering, which is the whole
-reason a number never belongs in a draft.
+`\begin{table}`. There too, never write
+`\renewcommand{\thefigure}{N.M}`: the consuming thesis's own counter has
+to agree with its own chapter numbering, which is why a number never
+belongs in a draft.
 
 `python -m chitragupta.draft style` reports the decidable part of this:
 a figure marker carrying no caption, a captioned figure no sentence
@@ -563,7 +557,7 @@ paragraphs rest on the same single citekey. This is the same instruction
 `textbook-chapter-writer` step 4 already gives, stated as a property of
 the finished section rather than as advice about searching.
 
-**Declaring a single-source unit.** Sometimes one paper genuinely is the
+**Declaring a single-source unit.** Sometimes one paper is the
 only source in the corpus for a point. That is fine, and forcing a
 second citation where none fits is worse than the problem. Say so, in
 the draft, immediately above or below the unit with **no blank line**
@@ -580,15 +574,14 @@ between them:
 Both are invisible when rendered. A marker separated from its unit by a
 blank line declares nothing; it becomes a block of its own.
 
-What checks this, and what it will not do: `python -m
-chitragupta.review synthesis <draft>` counts citekeys per unit, at the
-unit your genre binds at, and separates declared single-source units
-from undeclared ones. It is **advisory**: it exits 0 whatever it finds,
-it blocks no draft, and a thin corpus legitimately produces
-single-source units. There is no target proportion to drive down.
-[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3 is why: a number a loop
-optimises stops measuring what it named.
-A human reads it and decides.
+`python -m chitragupta.review synthesis <draft>` counts citekeys per
+unit, at the unit your genre binds at, and separates declared
+single-source units from undeclared ones. It is **advisory**: it exits 0
+whatever it finds, it blocks no draft, and a thin corpus legitimately
+produces single-source units. There is no target proportion to drive
+down, because a number a loop optimises stops measuring what it named
+([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3). A human reads the
+report and decides.
 
 The idea is adapted from [OpenScholar](https://github.com/AkariAsai/OpenScholar)'s
 own drafting instruction, credited in [INSPIRATION.md](INSPIRATION.md)
@@ -612,13 +605,13 @@ A `.tex` draft (`thesis-chapter-writer`'s) writes `\(…\)` and `\[…\]`
 directly and has no third option; the rest of this section still applies
 to it.
 
-This needs stating because the failure is invisible in the draft and
-only appears downstream. Pandoc's Markdown reader turns a code span into
-`\texttt{}` and escapes its spaces, so an unhandled `` `k = 4` `` becomes
-`\texttt{k\ =\ 4}` in the rendered LaTeX (upright, typewriter, with
-`=` set as ordinary text), while a real equation two paragraphs earlier
-becomes `\[…\]`. Both look plausible in the Markdown source. Only the pdf
-shows that the same symbol has been set two ways.
+The failure is invisible in the draft and appears only downstream.
+Pandoc's Markdown reader turns a code span into `\texttt{}` and escapes
+its spaces, so an unhandled `` `k = 4` `` becomes `\texttt{k\ =\ 4}` in
+the rendered LaTeX (upright, typewriter, with `=` set as ordinary text),
+while a real equation two paragraphs earlier becomes `\[…\]`. Both look
+plausible in the Markdown source. Only the pdf shows that the same
+symbol has been set two ways.
 
 ### 🗺 The mapped form, and why it is preferred
 
@@ -692,9 +685,9 @@ govern the mapping's LaTeX column, which is the only place LaTeX appears.
   upright, monospace, `x` still a letter. A displayed equation is the
   marker plus fence above, or `$$…$$`; a *symbol legend* is a list, with
   each symbol set as math like every other mention of it. **A fence
-  inside a blockquote is still a fence**, which is where the occurrence
-  that prompted this was hiding: one relation, set three ways in
-  one chapter, and the fenced one was the odd one out.
+  inside a blockquote is still a fence**. The case that prompted this
+  rule was one relation set three ways in one chapter, and the wrong one
+  was a fence inside a blockquote.
 - **A matrix with two or more columns is displayed, not set inline.** TeX
   cannot break a line inside `\begin{bmatrix}`, so an inline matrix is
   one box the paragraph has to fit around, and two in a sentence leave
@@ -709,7 +702,7 @@ govern the mapping's LaTeX column, which is the only place LaTeX appears.
 - **Backticks keep everything they were always for**: field names
   (`as_of`, `event_time`), endpoints, filenames, literal values,
   identifiers. A parameter named in an API *and* used in an equation is
-  the genuinely ambiguous case; pick by which role the sentence is
+  the ambiguous case; pick by which role the sentence is
   playing, and be consistent within the section.
 - **Dates, versions and timestamps are not math.** `2026-02-01` in math
   mode sets its hyphens as minus signs.
@@ -728,7 +721,6 @@ Pick the mapped form when the Markdown is read, when there are enough
 equations that a table earns its keep, or when the ASCII should read
 naturally: `` `t = tau * ln(2)` `` maps to `t = \tau \ln 2`, so the
 source stays legible while the LaTeX stays typographically right.
-Neither is a compromise, which is why both are kept.
 
 ### 🔍 What is checked, and what you still have to look for
 
@@ -790,12 +782,11 @@ never becomes a `\texttt{}`.
 
 ### 🔢 A number for a chosen few, not for every displayed equation
 
-A table or a figure earns a number simply by existing; a displayed
-equation does not. Numbering every step of a derivation is noise, so
-this section leaves the choice to the author. Unlike everything else
-`render` checks in this section, **nothing here can decide which
-equations deserve one**. What follows is guidance for making that call,
-not a rule a program executes.
+A table or a figure gets a number by existing; a displayed equation
+does not. Numbering every step of a derivation is noise, so the choice
+is the author's. Unlike everything else `render` checks in this
+section, **nothing here can decide which equations deserve one**; the
+list below is guidance for making that call.
 
 Number an equation when:
 
@@ -862,10 +853,9 @@ result from an intermediate step, which nothing here can do.
 
 ## 🔢 13. Tables
 
-A table is evidence arranged for comparison. It needs two things this
-section is about: a **caption**, so the rendered document can number it,
-and a **sentence that reads it**, so the reader is not left to work out
-what the arrangement was for.
+A table is evidence arranged for comparison. It needs a **caption**, so
+the rendered document can number it, and a **sentence that reads it**,
+so the reader is not left to work out what the arrangement was for.
 
 Without a caption, a survey's comparison table renders as an unnumbered
 `longtable` that no sentence can name.
@@ -1030,16 +1020,16 @@ and does not work.
 Where a choice exists, prefer a token under about **15 characters**, or
 one with an internal `-`, `/` or `_` to break at.
 
-This is guidance with no check behind it, for the following reason.
-TeX hyphenates a long English word in a roman font perfectly well:
-`interoperability` sets as `in-teroperability` even in a 4cm column, and
-so does a camelCase identifier written in prose. Measured across this
-project's own 428-page book, no prose word caused an overflow, and a
-rule flagging every token over 15 characters raised 36 candidates
-(`interoperability`, `indistinguishable`, `microcontrollers`), none of
-which has a repair that is not a worse word. So it stays advice to an
-author choosing between two phrasings, and never becomes a finding. §9's
-table records it beside the other row with no mechanical proxy.
+No check backs this, because TeX hyphenates a long English word in a
+roman font well: `interoperability` sets as `in-teroperability` even in
+a 4cm column, and so does a camelCase identifier written in prose.
+Measured across this project's own 428-page book, no prose word caused
+an overflow, and a rule flagging every token over 15 characters raised
+36 candidates (`interoperability`, `indistinguishable`,
+`microcontrollers`), none of which has a repair that is not a worse
+word. So it stays advice to an author choosing between two phrasings,
+and never becomes a finding. §9's table records it beside the other row
+with no mechanical proxy.
 
 `python -m chitragupta.draft style` reports the decidable part of this
 section: a bare URL, and a code line over the column limit. The

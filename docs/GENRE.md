@@ -8,8 +8,7 @@ wondering why a skill refused something. **Assumed:**
 **Not covered here:** how a skill is written or changed. That is
 `DEVELOPER-AGENTS.md` (git checkout only).
 
-Which skill writes what, how to pick between them, and what each one
-refuses to do. Eleven skills live in `.claude/`: six write a new draft,
+Eleven skills live in `.claude/`: six write a new draft,
 three change an existing one, one assembles a book from units the
 others wrote, and one draws the figures the others hand it. Of the
 three revisers, one is cheap and scoped, one goes back to the whole
@@ -19,9 +18,9 @@ unattended findings.
 You do not invoke any of them by name. Each has a `description` in its
 frontmatter that names its triggers, and asking for the thing in ordinary
 words ("write a survey section on X", "draft a thesis chapter on Y")
-is what selects it. This document is for the two cases where that isn't
-enough: when you want to know which genre you are asking for,
-and when you want to know why the one that ran refused something.
+is what selects it. This page covers the two cases where that is not
+enough: choosing which genre to ask for, and finding out why the skill
+that ran refused something.
 
 If you have picked your genre and want to be walked through it, each
 one has a start-to-finish tutorial with every command from `dossier init`
@@ -33,8 +32,7 @@ to a gated, rendered draft, and an example outline:
 [deep-research report](WRITE-A-DEEP-RESEARCH-REPORT.md). The verbatim
 digest has its own page, [VERBATIM-DIGEST.md](VERBATIM-DIGEST.md), and
 the book track, which assembles chapters into one book, is walked
-through in [WRITE-A-BOOK.md](WRITE-A-BOOK.md). This page is the
-chooser; those are the walkthroughs.
+through in [WRITE-A-BOOK.md](WRITE-A-BOOK.md).
 
 Related reading:
 
@@ -130,7 +128,7 @@ the genre requires),
 (textbook chapter) and
 [`trust-chapter.tex`](examples/sample-project/content/drafts/dt-overview/trust-chapter.tex)
 (thesis chapter fragment). Read them as samples of *shape*: the
-sources are synthetic, but the shapes are exactly what each genre below
+sources are synthetic, but each draft has the shape its genre below
 promises.
 
 ### 📚 `survey-writer`
@@ -148,9 +146,9 @@ defending one approach as correct, which is the thesis chapter's job and
 which here hides the disagreement the reader came for. Alternatives are the
 deliverable, so they are never collapsed for a cleaner narrative.
 
-This is the skill whose retrieval pass dominates its own token cost, and
-the one whose economics are worked through in
-[TOKENS.md](TOKENS.md#-example-1-one-rejected-paper-followed-to-the-end-of-the-run).
+Its retrieval pass dominates its token cost, and
+[TOKENS.md](TOKENS.md#-example-1-one-rejected-paper-followed-to-the-end-of-the-run)
+works through the numbers.
 
 ### 🎓 `thesis-chapter-writer`
 
@@ -199,11 +197,11 @@ Its rule, from which everything else follows: **a tutorial that doesn't
 work is worse than no tutorial.** A learner who follows your instructions
 exactly and gets an error concludes that they are the problem.
 
-So the lesson is single-path, with no options or branches. Every value is
-concrete, never a placeholder. Every step that produces output says
-what the learner should see. And the whole thing is run end to end before
-it is presented. Citations appear only in a closing "Where to go next",
-never mid-lesson.
+So the lesson follows one path with no options or branches, uses a
+concrete value wherever a placeholder might go, and says what the
+learner should see after every step that produces output. The whole
+lesson is run end to end before it is presented. Citations appear only
+in a closing "Where to go next" section.
 
 Its two failure directions are drifting into explanation (the lesson
 stalls while you explain the architecture) and drifting into a how-to
@@ -244,7 +242,7 @@ remaining thing that could reduce it, is
 
 ### 📋 `review-digest`
 
-The sixth genre, and the one that turns the others' first rule round. A
+The sixth genre reverses the first rule of the other five. A
 verbatim digest is private study text: most of it is copied exactly from
 parsed PDFs in the corpus, each copied run ends with a citation, there
 are no quotation marks, and a few short sentences of the drafter's own
@@ -266,8 +264,8 @@ including the one prohibition: never run `agenda-reviser` on a digest.
 
 ## ✏ Revising: `draft-reviser`
 
-Not a genre. It changes a draft one of the six already wrote, including
-in a session that has never seen it.
+`draft-reviser` is not a genre. It changes a draft one of the six
+already wrote, including in a session that has never seen it.
 
 It reads the dossier instead of the corpus. `scope.md` and `steering.md`
 bound what the revision may change. `sections.md` maps the change onto
@@ -306,19 +304,20 @@ asks to change something that already exists -> use `draft-reviser`,
 never re-run this skill*. Once as a clause in its frontmatter
 `description`, which is the surface that decides which skill is picked in
 the first place. The table alone is not enough: it is read only after a
-skill has already been chosen. [TOKENS.md](TOKENS.md) is why the rule exists.
+skill has already been chosen. [TOKENS.md](TOKENS.md) explains why the
+rule exists.
 
-It is a default, not a gate. Nothing enforces it; no hook checks it,
-and the only mechanical gate in the pipeline is `citation_gate`. That is
-deliberate: [SOUL.md](../SOUL.md) puts "let a machine outrank a human
+The rule is a default: nothing enforces it, no hook checks it, and the
+only mechanical gate in the pipeline is `citation_gate`. That is
+deliberate. [SOUL.md](../SOUL.md) puts "let a machine outrank a human
 on a judgment call" under *what you will not do*, and how wide a revision
-should look is exactly such a call. So the wider option is a separate
+should look is such a call. So the wider option is a separate
 skill instead of an exception: `corpus-reviser`, below.
 
 ## 🔁 Revising widely: `corpus-reviser`
 
-Also not a genre. It does what `draft-reviser` does (change a draft
-that already exists) with one thing different: it re-searches every
+`corpus-reviser` is not a genre either. Like `draft-reviser` it changes
+a draft that already exists, with one difference: it re-searches every
 sub-theme in `sections.md` and reads the whole draft, instead of the one
 sub-theme a change touches.
 
@@ -333,7 +332,7 @@ Invoke it when you ask for a whole-corpus pass in as many words, when a
 scope change you agreed to has invalidated the recorded queries, or when
 the draft is being re-targeted at a different reader. Anything else,
 including repairing citations after a sync moved the corpus, is
-`draft-reviser`. When it is genuinely unclear, the skills are told to
+`draft-reviser`. When it is unclear, the skills are told to
 pick `draft-reviser` and say so: being wrongly narrow costs a clarifying
 sentence, being wrongly wide costs the tokens.
 
@@ -350,7 +349,7 @@ state and pays to rediscover a worse version of it.
 
 ## 🩹 Working the agenda: `agenda-reviser`
 
-Not a genre either, and narrower than both revisers above: its input is
+`agenda-reviser` is narrower than both revisers above: its input is
 one worklist instead of a request in prose. `python -m chitragupta.review
 agenda <draft>` merges every review aid's report into one ranked,
 deduplicated list, and each item's own `unattended` field (read, never
@@ -395,11 +394,11 @@ cannot repair is escalated, not worked around.
 
 ## 📕 Assembling a book
 
-`book-assembler` writes no prose. It
-composes units that are already accepted and gate-passed into
-one LaTeX book (front matter, `\part`, `\chapter`, one `\input` per
-unit, back matter) from the outline `python -m chitragupta.draft spec` holds
-and the acceptance records `python -m chitragupta.draft unit` wrote.
+`book-assembler` writes no prose. It composes units that are already
+accepted and gate-passed into one LaTeX book (front matter, `\part`,
+`\chapter`, one `\input` per unit, back matter) from the outline
+`python -m chitragupta.draft spec` holds and the acceptance records
+`python -m chitragupta.draft unit` wrote.
 
 It is the last step of the book-scale track and stops at that track's
 second human gate: it presents what it composed, with every registry
@@ -448,12 +447,11 @@ wrong.
 
 ## 🔑 What all eleven have in common
 
-These rules are the same in every skill, stated in each
+These rules are the same in every skill. Each is stated in each
 of the eleven `SKILL.md` files or, where several skills share the wording
 (the critique loop, the prose check, the verbatim scan, collection
 scoping), once in a reference under `.claude/skills-common/references/`
-that each skill's step names. A skill that broke one would be the
-bug.
+that each skill's step names. A skill that breaks one has a bug.
 
 Each `SKILL.md` exists once per harness (`.claude/skills/`,
 `.agents/skills/` and `.opencode/skills/*-opencode/`), differing only in
@@ -616,6 +614,5 @@ A skill asked for one of these says so plainly:
 | **Reference** | needs a fact, fast | No skill |
 
 Both are Diátaxis quadrants this repository has deliberately not built.
-`tutorial-writer` names them explicitly so that a request for one is
-answered with a short procedure instead of a tutorial the asker
-does not need.
+`tutorial-writer` names them so that a request for one is answered
+with a short procedure instead of a tutorial the asker does not need.

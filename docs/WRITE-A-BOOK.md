@@ -17,16 +17,15 @@ Sister tutorials, for the chapters this book is made of:
 [a tutorial](WRITE-A-TUTORIAL.md),
 [a deep-research report](WRITE-A-DEEP-RESEARCH-REPORT.md).
 
-A book is more than a longer draft. It is a signed outline, one
-authored chapter per `{#id}`, an acceptance record per chapter, three
-derived registries, and an assembly step, with **two human sign-offs**:
-one before any prose is generated and one before the book is called
-finished. Neither sign-off can be automated.
+A book is a signed outline, one authored chapter per `{#id}`, an
+acceptance record per chapter, three derived registries, and an assembly
+step, with **two human sign-offs**: one before any prose is generated
+and one before the book is called finished. Neither sign-off can be
+automated.
 
-The walkthrough is the first half of this document, in the order you
-run it, with a real book's output at each step. The second half is the
-reasoning: each step links to the argument behind it, so a decision is
-stated once and read where you need it.
+The first half walks through the steps in the order you run them, with
+a real book's output at each step. The second half gives the reasoning,
+and each step links to the part it rests on.
 
 ## 🧭 Table of contents
 
@@ -68,8 +67,8 @@ deterministically afterwards, the same two-plane discipline as the rest
 of the project: the artefacts are written by deterministic
 passes, never by an LLM writing to the corpus plane.
 
-Two human sign-offs, and no more: **the outline** and **the finished
-book**. No automated check verifies that an argument is good, only that
+There are exactly two human sign-offs: **the outline** and **the
+finished book**. No automated check verifies that an argument is good, only that
 it is grounded, consistent and complete. Everything between the two
 sign-offs is mechanical.
 
@@ -138,8 +137,7 @@ content/rendered/twins/book.pdf       the built book -- step 7
 Everything the assembly produces is output and lands under
 `content/rendered/twins/`, which is where a chapter's own render goes
 anyway, so the fragments arrive there without being told to, and
-`book.tex` is composed beside them. Nothing you author is ever mixed in
-with something regenerated, in either direction.
+`book.tex` is composed beside them.
 
 `content/specs/` mirrors the book's own directory under `content/drafts/`,
 the same rule `content/dossiers/`, `content/rendered/` and
@@ -354,7 +352,7 @@ add. The write itself is done by `dossier init`, so the package that owns
 
 A freshly seeded outline has headings and no briefs, so
 `dossier outline <draft> --check` will report each as "neither a brief:
-nor a claim: block". That is correct: nobody has filled it in yet.
+nor a claim: block". That is expected, since nobody has filled it in yet.
 
 **Filling it in is the chapter author's job, and it is the same
 `outline.md` every other genre uses.** Per section: `brief:` (steering,
@@ -363,7 +361,7 @@ never printed), `claim:` (your prose, grounded or reported back),
 the reader, what the chapter covers, what it defers to another chapter,
 and the glossary.
 
-The glossary matters most. Chapter authors working in parallel will
+Fill in the glossary most carefully. Chapter authors working in parallel will
 define the same term three ways unless each chapter's `scope.md` pins
 it, and step 5's terminology registry catches them when they do.
 
@@ -514,9 +512,8 @@ the draft. It refuses five ways, each for a stated reason:
    `chitragupta draft gate` itself uses, so the two read
    identically. It reads the file once on purpose, so the prose it
    hashes and records is exactly the prose the gate checked, even if a
-   write lands while it runs. A unit nobody may cite from is not a unit a
-   book may assemble from. This is the existing gate doing its existing
-   job; `accept` adds no second gate.
+   write lands while it runs. A unit that fails the gate cannot be
+   assembled into a book, and `accept` adds no second gate.
 
 The record holds the input digest the prose was generated against, the
 sources, what it cites, and a digest of the prose itself. It carries
@@ -541,8 +538,8 @@ it", the dossier's fingerprint is "has it changed since the sidecars were
 reconciled". Different commands refresh them (`unit accept` and
 `dossier stamp`), so they can disagree, and `unit status` prints both.
 `no dossier`, `not stamped`, `agrees`, `disagrees` and
-`stamped, no draft` are the five answers. Reported, never enforced:
-this layer does not judge a dossier.
+`stamped, no draft` are the five answers. The comparison is reported and
+never enforced, because this layer does not judge a dossier.
 
 ```bash
 chitragupta draft unit status content/drafts/twins
@@ -623,8 +620,8 @@ only then composes. Everything it assembles has already passed every gate
 per unit, so assembly is deterministic composition plus a human
 sign-off; there is no enforcement machinery here to write.
 
-**The conventions are data.** The whole composition is one table, and
-the ids carry through unchanged:
+**The whole composition is one table**, and the ids carry through
+unchanged:
 
 | Outline | LaTeX | Label |
 | --- | --- | --- |
@@ -644,7 +641,7 @@ converted with
 chitragupta draft render <unit>.md --format tex --fragment
 ```
 
-and `--fragment` makes the difference: no preamble, the unit's own `#`
+and `--fragment` changes the output: no preamble, the unit's own `#`
 heading becomes a `\chapter`, and code blocks are left unhighlighted
 because `Shaded`/`Highlighting` exist only in the standalone template.
 It also **defers its citations**: the fragment emits `\citep{...}`
@@ -677,12 +674,10 @@ book.
 
 ### 🔠 Brace-protect acronyms in your `.bib` titles
 
-A book needs one thing from your bibliography that a single draft does
-not. Two IEEE implementations format your
-references: `assets/csl/ieee.csl` for a standalone render, and
-`IEEEtran.bst` for the assembled book. They agree, byte for byte, on
-every entry measured, **provided acronyms in a title are wrapped in
-braces**:
+Two IEEE implementations format your references: `assets/csl/ieee.csl`
+for a standalone render, and `IEEEtran.bst` for the assembled book. They
+agree, byte for byte, on every entry measured, **provided acronyms in a
+title are wrapped in braces**:
 
 ```bibtex
 title = {A Survey of {IoT} and {AI} Digital Twins: An {FMI}-Based Approach}
@@ -702,7 +697,7 @@ pipeline rewrites your titles: it would have to guess which capitalised
 word is an acronym and which is a proper noun, and this project does not
 silently alter a human's bibliographic data.
 
-One more consequence for the book itself: `margin=80pt`, about 28mm.
+The book also sets `margin=80pt`, about 28mm.
 The `book` class's own margins are 94pt inner and 143pt outer (measured),
 generous enough to run a 15-chapter book to 546 pages; a third of that
 was tried and read too tight for print, so the setting is that doubled.
@@ -808,7 +803,7 @@ reports two findings, which mean opposite problems:
 
 | Finding | What happened | Usually means |
 | --- | --- | --- |
-| `dropped` | an accepted unit the assembly never `\input`s, named with every citekey the book then holds nowhere else | a chapter left out of `book.tex` by accident: the most expensive assembly mistake there is, and invisible in a PDF that compiles |
+| `dropped` | an accepted unit the assembly never `\input`s, named with every citekey the book then holds nowhere else | a chapter left out of `book.tex` by accident, which a PDF that compiles does not show |
 | `appeared` | a citekey in a file the assembly includes that no unit owns | a title page, appendix or preamble file citing something; fine if deliberate, a leak if not |
 
 It resolves the assembly's `\input` chain instead of grepping
@@ -838,17 +833,17 @@ registries could not read, every finding, and what the gate and the two
 review aids said) and stops there. **It does not say the book is
 finished**, and neither does anything else in this pipeline.
 
-Nothing here has read the argument. The checks establish that a book is
-grounded, consistent and complete; none of them establishes that it is
-any good. That judgement is the second human gate, and it is yours.
+No check reads the argument. The checks establish that a book is
+grounded, consistent and complete, not that it is any good; that
+judgement is the second human gate, and it is yours.
 
 The assembler has already run the prose check (`draft style`) and the
 verbatim scan on every unit and reported both. If you change a unit after
 assembly, run them again on that unit, not on `book.tex`, which holds no
 prose. Both are review aids that exit 0 whatever they find. The scan sees
 verbatim and near-verbatim reuse only; real restatement is only detected
-where the embedding tier can run, so a clean scan is not a clean bill of
-health ([PLAGIARISM.md](PLAGIARISM.md)). A change to a unit's prose goes
+where the embedding tier can run, so a clean scan does not rule
+restatement out ([PLAGIARISM.md](PLAGIARISM.md)). A change to a unit's prose goes
 through `draft-reviser`, and an unattended agenda finding through
 `agenda-reviser`; then re-accept the unit (step 4) and reassemble.
 
@@ -937,8 +932,8 @@ a book-wide answer makes every in-flight revision a book-wide freeze.
 The escape, re-running `spec sign`, was worse than the freeze. It
 re-approves all fifteen chapters at once, so the record could not
 tell "a human read this" from "a human re-approved it as collateral while
-fixing something else." This document already states the principle for
-the retrofit case, and it applies here unchanged: *a sign-off recorded on
+fixing something else." The principle stated for the retrofit case
+applies here unchanged: *a sign-off recorded on
 an outline nobody has read is a record of the wrong thing.*
 
 Keyed by chapter **id**, not title, for the reason ids exist at all: a
@@ -970,7 +965,7 @@ level**: two or more declared sections, or one whose title differs from
 the chapter's own. Anything else reports "described at chapter level;
 nothing to align", with no finding.
 
-The scoping is necessary. Measured on the real book: its
+Measured on the real book: its
 retrofitted outline declares one section per chapter while its author
 wrote about forty headings under each: **4 declared sections against 161
 authored headings** across the first four chapters. Without the rule,
@@ -986,11 +981,11 @@ records an **artifact**: a file the citation gate runs on, whose whole
 text is hashed into `output_digest` and whose citekeys are extracted. A
 heading has no independent existence on disk.
 
-The two coincide only when a book is one file per section, and **the
-difference matters**: alignment only has content while the outline is
-finer than the file. Collapse them in either direction (declare only
-chapters, or go back to one file per section) and "did you write what
-you said you would?" becomes a question with no possible answer.
+The two coincide only when a book is one file per section, and
+alignment only has content while the outline is finer than the file.
+Collapse them in either direction (declare only chapters, or go back to
+one file per section) and "did you write what you said you would?"
+becomes a question with no possible answer.
 
 So `unit contract|accept|status` resolve against **acceptance units**: a
 chapter the outline describes at section level *is* one; a chapter
@@ -1000,8 +995,8 @@ is every retrofitted book and why they keep working unchanged.
 A third sense of the word lives in `chitragupta/review/_units.py`: the
 scale the multi-source rule binds at, which is **genre-dependent**
 (paragraph for a thesis chapter, section for a textbook one). That one is
-about evidence; this one is about artifacts. They are not the same
-question and are not expected to agree.
+about evidence and this one about artifacts, so they are not expected to
+agree.
 
 ## ✅ What `status`'s exit code is, and is not
 
@@ -1022,8 +1017,7 @@ refusal.
 
 What the exit code buys is that a skill can ask the question without
 parsing prose. What it does with the answer (stop and ask you to
-approve the outline first) is the human gate itself; no machine
-outranks anybody.
+approve the outline first) is the human gate itself.
 
 ## 🔒 What the input digest covers, and what it must not
 
@@ -1093,11 +1087,11 @@ should be told about the rest of the book: the terminology the *other*
 accepted units settled, and the ids it may point at. A unit is never told
 to conform to itself.
 
-That excerpt is deliberately **not** part of the unit's input digest, and the
-reason is the cascade. A registry grows with every acceptance, so hashing it in
-would mark every later unit stale each time an earlier one was accepted, which
-destroys the property the contract exists for, that an unchanged unit costs
-nothing to re-run. Instead the excerpt is injected at generation time, and
-inconsistency is caught afterwards by `registry check` over the whole book.
-`registries` stays in the contract's shape, empty and labelled, so a caller that
-does want to pin one has somewhere to put it.
+That excerpt is deliberately **not** part of the unit's input digest. A
+registry grows with every acceptance, so hashing it in would mark every later
+unit stale each time an earlier one was accepted, which destroys the property
+the contract exists for, that an unchanged unit costs nothing to re-run.
+Instead the excerpt is injected at generation time, and inconsistency is
+caught afterwards by `registry check` over the whole book. `registries` stays
+in the contract's shape, empty and labelled, so a caller that does want to pin
+one has somewhere to put it.

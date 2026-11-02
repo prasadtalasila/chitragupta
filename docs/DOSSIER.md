@@ -11,14 +11,13 @@ dispatching a subagent from it, and backing one up are all
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md); this page is the format those
 depend on.
 
-**This is machine-facing documentation, by design.** The dossier exists
-so a *drafting run* can be resumed by something that was not present
-when it started. Its reader is usually an LLM: it is written in Markdown
-because a model reads Markdown natively, its fields are named for what a
-drafting step may and may not do with them, and its most useful file
-(`rejected.md`) exists to stop a model paying twice for a judgement
-already made. A human can read it, and occasionally should, but nothing
-here is shaped for that.
+**This is machine-facing documentation.** The dossier lets a *drafting
+run* be resumed by something that was not present when it started. Its
+reader is usually an LLM: it is written in Markdown because a model reads
+Markdown natively, its fields are named for what a drafting step may and
+may not do with them, and its most useful file (`rejected.md`) exists to
+stop a model paying twice for a judgement already made. A human can read
+it, and occasionally should, but nothing here is shaped for that.
 
 [REVIEW.md](REVIEW.md) is its counterpart: it is for you, and this page
 is for the thing writing your draft. A review report is
@@ -104,7 +103,7 @@ anything:
   `dossier rename`. Moving a draft orphans its mapping, and every
   equation in it silently reverts to typewriter text on the next render.
   `render` refuses outright when a `<!-- math -->` marker has no mapping
-  to resolve, which makes that case loud instead of mute.
+  to resolve, so that case at least stops the render.
 - Because it is keyed on the exact span text, a revision that *rewords*
   an equation desyncs it. Each of `draft-reviser`, `corpus-reviser` and
   `agenda-reviser` carries the step that fixes it, and the four Markdown
@@ -132,17 +131,17 @@ and an optional `quote:` (its exact wording). **Only `claim:` may be
 drafted prose from** (the verbatim digest,
 [VERBATIM-DIGEST.md](VERBATIM-DIGEST.md), is the one genre that copies
 its `quote:`s into the draft, each with its citation and no quotation
-marks), and the ordering is the whole mechanism: it is
+marks). The rule works through ordering: `claim:` is
 written at the moment the evidence is judged, before any sentence of the
-draft exists, so it cannot be a lightly-edited copy of the passage.
-`quote:` is absent by default, because a quotation is a deliberate act
-and not the residue of retrieval, and `quote:` is what the evidence
-sidecar renders. An older block
+draft exists, so it cannot be a lightly edited copy of the passage.
+`quote:` is absent by default and is captured only when a quotation is
+intended, since retrieval should not leave one behind as a side effect.
+It is also what the evidence sidecar renders. An older block
 may carry a single `support:` field instead; it is never rewritten, and
 the two shapes coexist (see below).
 
-**`rejected.md`: the candidates turned down, with the reason.** This is
-the file whose absence *is* the expensive mistake. Without it, the next
+**`rejected.md`: the candidates turned down, with the reason.** Without
+it, the next
 revision retrieves the same papers, re-reads them, and re-reaches the
 same judgement, paying the full cost of a decision already made. A
 reviser is required to honour it: a candidate listed here with a reason
@@ -156,9 +155,9 @@ Derived, not maintained: a heading owns a line range, a citekey is cited
 on a line, and the relation falls out of the intersection.
 `draft dossier sections --citekeys --write` rebuilds it from the draft,
 skipping fenced code and LaTeX verbatim so a `# Step 1` comment in an
-example listing is neither a heading nor a citation. That matters because
-a hand-maintained version disagreeing with the draft hands a reviser the
-wrong section for a citation. `deep-research` is the one exception, and
+example listing is neither a heading nor a citation. A hand-maintained
+version that disagreed with the draft would hand a reviser the wrong
+section for a citation. `deep-research` is the one exception, and
 only for timing: it writes *planned* rows before the sections exist, and
 replaces them with what the finished report cites.
 
@@ -171,22 +170,21 @@ which is the commonest way a revised draft comes back subtly wrong.
 
 **`revisions.md`: an append-only log of what changed and why**,
 including the attempts that failed. A repair tried and reverted is
-knowledge: without the record, the next session re-tries it, re-discovers
+logged too: without the record, the next session re-tries it, re-discovers
 the same problem, and reverts again. `agenda-reviser` logs every attempt
 here, refusals and reverts included, and a copy-edit pass leaves one
 entry naming the convention it applied. It is append-only because the
 value is the sequence, not the current state.
 
-**`retrieval.md`: every retrieval call, and the size of what came
-back.** It has two jobs. It lets you compare one run's retrieval cost
-against another's on a real corpus, and, more importantly, it **bounds
-re-grounding**: when a draft has to be brought back into line after the
-corpus moved, the candidates come from the queries already recorded here,
-so that pass cannot invent a new search and silently become a full
-re-draft. It has one limit: it records the *character payload* of each
-call, not tokens, and nothing records what the drafting turns themselves cost.
-That is enough to compare two runs, but not enough to price a whole
-draft.
+**`retrieval.md`: every retrieval call, and the size of what came back.**
+It lets you compare one run's retrieval cost against another's on a real
+corpus, and, more importantly, it **bounds re-grounding**: when a draft
+has to be brought back into line after the corpus moved, the candidates
+come from the queries already recorded here, so that pass cannot invent a
+new search and silently become a full re-draft. It records the *character
+payload* of each call, not tokens, and nothing records what the drafting
+turns themselves cost. That is enough to compare two runs, but not enough
+to price a whole draft.
 
 **`outline.md`: the human's own structure, declared instead of
 guessed.** Per section: a `##`-or-deeper heading (a level-1 line is the
@@ -205,7 +203,7 @@ is all this file does on its own; deciding what's kept and writing
 `dossier status` reads to answer "did this draft follow its outline?"
 from the record instead of from trust.
 
-**A declared query that came back empty is not a declared query
+**A declared query that came back empty counts as run but not
 answered.** `status` reads the `results` column too, and reports
 a query it issued that returned nothing separately from the ones that
 returned candidates. Such a query is counted in the same "run" figure,
@@ -231,7 +229,7 @@ A citekey is read out of a dossier from a backticked or `@`-prefixed
 token. The default shape requires a separator run (a letter start, then
 at least one `_`/`:`/`-` followed by more alphanumerics), so
 `@noauthor_digital_nodate` is a citekey and `@someone` and `@2` are not.
-That requirement matters because this set is differenced against the
+The separator is required because this set is differenced against the
 ledger in *both* directions, and on the "what has left the corpus?" side
 an invented token would be reported as a broken citation that is not one.
 
@@ -287,10 +285,9 @@ quote: an optional verbatim span, quotable-only
 - **`relevance:`** says why this source bears on the sub-theme.
 - **`claim:`** is required, and is **the only field a drafting step may
   write prose from.** It is written by whoever judged the evidence, at
-  the moment they judged it, before any sentence of the draft exists. That
-  ordering is the whole mechanism: a claim written from memory, once the
-  passage is no longer the thing on screen, cannot be a lightly-edited
-  copy of it.
+  the moment they judged it, before any sentence of the draft exists.
+  Because of that ordering, a claim written from memory, once the passage
+  is off screen, cannot be a lightly edited copy of it.
 - **`quote:`** is optional, verbatim, and usable in a draft **only**
   inside quotation marks with an attribution, except in a verbatim
   digest, where every copied run is a recorded `quote:` rendered in place
@@ -310,10 +307,9 @@ construction. A skill meeting a `support:`-only block reads it as
 `quote:`, the conservative reading, since that
 is usually what it is.
 
-**That rule is about what a drafter *may quote from*, and it does not
-extend to anything that *prints* the field.** The two are different
-questions with opposite safe answers, and conflating them would publish
-source wording:
+**That rule covers what a drafter *may quote from*, and does not extend
+to anything that *prints* the field.** The two questions have opposite
+safe answers, and conflating them would publish source wording:
 
 | | Reads a `support:`-only block as... | Why |
 | --- | --- | --- |
@@ -363,10 +359,10 @@ the findings below it are then about text that may not be the block in
 play. It then compares each block's `claim:` against its own `quote:`
 (`chitragupta/dossier/_evidence_check.py`, reusing
 `chitragupta/overlap_skipgram.py`'s stemmed word stream) and warns when
-the claim reads like the quote with its words moved. It is advisory,
-printed and never blocking, and deliberately silent about the score by
-default: [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3 rules out a
-similarity number a drafting step could optimise against, so a bare
+the claim reads like the quote with its words moved. It is advisory and
+never blocks, and by default it prints no score:
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3 rules out a similarity
+number a drafting step could optimise against, so a bare
 warning is what prints; `--score` opts into the number for a human
 reading the output by hand.
 
@@ -448,13 +444,12 @@ The ledger is opened read-only, exactly as `python -m
 chitragupta.corpus ledger` opens it. This is an inspection: it must not
 take a write lock or run a migration.
 
-It does wait for a writer's commit, though, and that is consistent with
-the above. The ledger uses SQLite's default rollback journal, under
-which a reader is locked out for the length of a commit. Giving up at
-once would report a drift scan against no corpus at all,
-indistinguishable from a machine that has none. Waiting the window out
-takes no lock while it waits, so the "must not interfere" property is
-untouched.
+It does wait for a writer's commit. The ledger uses SQLite's default
+rollback journal, under which a reader is locked out for the length of a
+commit. Giving up at once would report a drift scan against no corpus at
+all, indistinguishable from a machine that has none. Waiting the window
+out takes no lock while it waits, so the "must not interfere" property
+is untouched.
 
 **Drift is not itself a reason to redraft.** It is a reason to re-search
 if, and only if, the change being made touches a sub-theme the new papers
@@ -508,7 +503,7 @@ python -m chitragupta.draft dossier stamp content/drafts/<path>
 
 `agenda-reviser` is the deliberate exception: it may not touch `scope.md`
 at all, so a repair it makes leaves the fingerprint stale on purpose.
-`dossier status` then reads `CHANGED since last stamp`, the honest signal
+`dossier status` then reads `CHANGED since last stamp`, the signal
 that an automated pass, not a person's own revision session, touched the
 draft since anyone last confirmed it.
 
