@@ -329,7 +329,8 @@ and renamed to fit the topic** (drop one that genuinely doesn't apply):
    against.
 
 Always add the **Basic fact writer**. State your final persona list before
-dispatching.
+dispatching. `.claude/skills/deep-research/references/report.md` §2 has how
+STORM discovers personas, which the retrieval calls above stand in for.
 
 ## Phase 2 -- Multi-perspective grounded interviews (parallel)
 
@@ -627,60 +628,19 @@ python -m chitragupta.draft gate content/drafts/deep-research-<slug>.md
 Fix and re-run until `OK`. Never present a draft that hasn't passed.
 
 **(d) Save and render.** Write to `content/drafts/deep-research-<slug>.md`
-(the canonical, source-of-truth format). Then fill in the `## References`
-section (`.claude/skills/deep-research/references/report.md` §5's
-template) from exactly the gated citekeys,
-rather than hand-assembling it:
-
-```bash
-python -m chitragupta.draft references content/drafts/deep-research-<slug>.md
-```
-
-Stdlib-only, like the citation gate -- bare `python`, no venv. It writes
-numbered IEEE-style entries; leave the body's inline citations as
-`[@citekey]` rather than hand-numbering them to `[1]`, since pandoc
-assigns the numbers at render time. Then render the other three formats:
-
-```bash
-python -m chitragupta.draft render content/drafts/deep-research-<slug>.md --format tex
-python -m chitragupta.draft render content/drafts/deep-research-<slug>.md --format pdf
-python -m chitragupta.draft render content/drafts/deep-research-<slug>.md --format md
-```
-
-All three land beside the draft: a draft at
-`content/drafts/<topic>/<name>.md` renders to
-`content/rendered/<topic>/<name>.{tex,pdf,md}`, so one topic directory
-holds the report, its dossier and its renders. The `md` output is a
-numbered copy -- the same IEEE numbers as the PDF, for a reader who
-won't open one. The draft itself keeps its `[@citekey]` markers.
-
-This needs only bare `python` plus `pandoc` (and, for pdf, LuaLaTeX) on PATH —
-no enrich group required. If either command reports `[missing-binary]` or
-`[error]`, print a one-line warning in chat with that message and continue
-anyway — a rendering failure never blocks presenting the `.md` report.
-
-**Then render the evidence sidecar**, in the same formats:
-
-```bash
-python -m chitragupta.draft evidence content/drafts/deep-research-<slug>.md --format pdf
-python -m chitragupta.draft evidence content/drafts/deep-research-<slug>.md --format md
-```
+(the canonical, source-of-truth format). Then follow
+`.claude/skills-common/references/render-and-references.md`
+§1, §2 and §3 for that draft: fill in the `## References` section
+(`.claude/skills/deep-research/references/report.md` §5's template) from
+exactly the gated citekeys, render tex, pdf and md, then the evidence
+sidecar in pdf and md. The step is not done until `draft references`,
+`draft render` and `draft evidence` have run.
 
 **Deep research emits one, and has the strongest claim to it of the five
 genres:** showing its work *is* the product here. A report that reconciles
 several perspectives and names where the corpus disagrees with itself is
 read by someone who wants to check a contradiction against what each
-source actually said, and the sidecar is where they do that. It lands as
-`content/rendered/<topic>/<name>.evidence.{pdf,md}` beside the render,
-grouping each source's `quote:` spans under the section that leans on
-them.
-
-It is built from `evidence.md` and can only name citekeys the report
-already cites, so it cannot introduce a source or a claim. A report whose
-blocks carry no `quote:` produces no sidecar and says
-`no quoted evidence recorded`; that is the expected answer when no
-quotation was deliberately captured, and it is never a reason to go back
-and add one.
+source actually said, and the sidecar is where they do that.
 
 **(e) Close the dossier.** Two things are still only in this conversation:
 
@@ -775,7 +735,8 @@ its working state get backed up.
 
 - **Grounded by default, closed-corpus.** Every claim traces to a real
   citekey, or is stated as not found. Never fabricate a citekey, a quote,
-  or a finding.
+  or a finding. `.claude/skills/deep-research/references/report.md` §6
+  has the honesty rules the report is held to.
 - **Parallelize, with a cap.** Dispatch same-phase subagents in one message;
   bound concurrency per
   `.claude/skills/deep-research/references/report.md` §1.

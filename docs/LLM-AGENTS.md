@@ -64,9 +64,10 @@ chooses which agent's files to write, and can be repeated:
 Every project also gets `config.toml`, `papers/`, `content/`, `assets/`,
 `AGENTS.md`, `SOUL.md` and the documentation. `.claude/` is written for
 every agent, because it holds the hook scripts Codex and OpenCode run
-too, and the only copy of each skill's reference files: the Codex and
-OpenCode `SKILL.md` copies point at `.claude/skills/<name>/references/`
-and `.claude/skills-common/references/` by path. Keep `.claude/` in a
+too, and the only copy of each skill's reference files and assets: the
+Codex and OpenCode `SKILL.md` copies point at
+`.claude/skills/<name>/references/` and
+`.claude/skills-common/references/` by path. Keep `.claude/` in a
 project that uses only Codex or OpenCode. After scaffolding, put your
 `.bib` export and PDFs in `papers/`, run `chitragupta corpus sync`, and
 run `chitragupta doctor`. Doctor reports

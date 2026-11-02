@@ -148,7 +148,8 @@ a harness-neutral phrase it has to translate.
 │   ├── agents/                    # Claude Code subagents
 │   ├── skills/<name>/
 │   │   ├── SKILL.md               # Claude Code wording
-│   │   └── references/            # this skill's detail, read on demand
+│   │   ├── references/            # this skill's detail, read on demand
+│   │   └── assets/                # template files a skill copies from
 │   └── skills-common/references/  # detail several skills share
 ├── .agents/
 │   └── skills/<name>/SKILL.md     # Codex wording
@@ -209,7 +210,9 @@ copies agree, a required step present in one is present in all three.
 ### Only `SKILL.md` is per harness
 
 Everything else a skill uses exists once, under `.claude/`:
-`.claude/skills/<name>/references/` for one skill, and
+`.claude/skills/<name>/references/` for one skill's detail,
+`.claude/skills/<name>/assets/` for a template it copies from (so far
+only book-assembler's `book-skeleton.tex`), and
 `.claude/skills-common/references/` for a passage several skills share.
 All three copies of `SKILL.md` name those files by their path from the
 project root, so the files sit outside the Codex and OpenCode skill
@@ -272,6 +275,33 @@ the loop, so each genre's step keeps them inline.
 `tests/test_skill_pregate_feedback_step.py` fails if the step's own text
 loses them. Move rationale and detail into a reference; keep the
 commands a step requires in `SKILL.md`.
+
+**The render step is the one measured exception**, measured on
+2026-10-30 to 11-02. survey-writer's steps 12 and 13 (`draft references`, `draft
+render`, `draft evidence`) were cut to a pointer at
+`.claude/skills-common/references/render-and-references.md`, with no
+command left in `SKILL.md`, and the Tier 2 survey was run with its
+"then render" clause removed, so only the skill could make a model run
+them. Claude Code ran `claude -p --model sonnet`; Codex 0.159.3 and
+OpenCode 1.18.34 ran the same Qwen3.6-35B-A3B `UD-Q4_K_M` on
+llama-server b11321 (CPU, one slot, 131,072-token context). Each run was
+capped at 3600 seconds on Claude Code and 14,400 on the local harnesses.
+
+| Harness | Runs per arm | Commands inline | Pointer only |
+| --- | ---: | --- | --- |
+| Claude Code | 3 | all three steps, 3 of 3 | reference opened and all three steps run, 3 of 3 |
+| Codex | 1 | `draft references` skipped; md rendered, no tex or pdf | reference opened; references, tex, pdf, md and the sidecar |
+| OpenCode | 1 | all three steps | reference opened; all three steps |
+
+Every final draft passed the gate. No pointer-only step was skipped;
+the one partial skip was a run with the commands inline. That is one
+step on small samples, so it licenses moving this step, which is what
+the four genre writers and deep-research now do, and nothing more. The
+critique loop keeps its commands inline until it is measured the same
+way. `bench/bench_skill_harnesses.py --tier 2 --skill-only` re-runs the
+pointer arm, since it scaffolds the tree it runs from; run with this
+script against a tree from before the size budget, it gives the inline
+arm.
 
 Two harness facts the bench had to work around, both recorded in the
 script: OpenCode takes its project directory from the inherited `PWD`,

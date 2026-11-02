@@ -465,54 +465,16 @@ candidate for the chapter.
     Fix and re-run until `OK` before presenting. If there are no citations at
     all, the gate step is unnecessary -- just save to
     `content/drafts/<slug>.md`.
-13. **Build the References section.** Once the gate passes, generate it from
-    exactly the gated citekeys rather than writing it by hand:
-
-    ```bash
-    python -m chitragupta.draft references content/drafts/<slug>.md
-    ```
-
-    Stdlib-only, like the citation gate -- bare `python`, no venv. Writes
-    numbered IEEE-style entries from `content/ledger.sqlite`, ordered by
-    first appearance so the numbers match the rendered PDF's, each keeping
-    its citekey in a trailing code span so a reader can trace every
-    `[@citekey]` marker in the body back to an entry by that same key.
-    Leave the body's inline citations as `[@citekey]` -- do **not**
-    hand-number them to `[1]`; pandoc assigns the numbers at render time,
-    and the literal key is what the gate verifies. If this chapter's
-    other section headings are manually numbered (e.g. `## 6. Challenges and
-    Open Issues`), pass `--heading "N. References"` with the next number so
-    the new section matches the draft's own numbering instead of the bare
-    `## References` default. Skip this step entirely if there are no
-    citations at all -- same as the gate step.
-14. **Render tex and pdf.** Once saved (and gated/referenced, if it has
-    citations), also render the other three formats:
-
-    ```bash
-    python -m chitragupta.draft render content/drafts/<slug>.md --format tex
-    python -m chitragupta.draft render content/drafts/<slug>.md --format pdf
-    python -m chitragupta.draft render content/drafts/<slug>.md --format md
-    ```
-
-    All three land beside the draft: a draft at
-    `content/drafts/<topic>/<name>.md` renders to
-    `content/rendered/<topic>/<name>.{tex,pdf,md}`, so one topic
-    directory holds the draft, its dossier and its renders. The `md`
-    output is a numbered copy -- the same IEEE numbers as the PDF, for a
-    reader who won't open one. The draft itself keeps its `[@citekey]`
-    markers.
-
-    This needs only bare `python` plus `pandoc` (and, for pdf, LuaLaTeX) on PATH
-    -- no enrich group required. If either command reports `[missing-binary]` or
-    `[error]`, print a one-line warning in chat with that message and continue
-    anyway -- a rendering failure never blocks presenting the `.md` draft.
-
-    **Then render the evidence sidecar** -- and expect it to be thin, or
-    absent:
-
-    ```bash
-    python -m chitragupta.draft evidence content/drafts/<slug>.md --format pdf
-    ```
+13. **Build the References section.** Once the gate passes, follow
+    `.claude/skills-common/references/render-and-references.md`
+    §1 for `content/drafts/<slug>.md`, including its `--heading`
+    rule if this chapter numbers its own section headings. Skip this step
+    entirely if there are no citations at all -- same as the gate step.
+14. **Render tex, pdf and md, then the evidence sidecar** -- and expect
+    the sidecar to be thin, or absent. Once saved (and gated and
+    referenced, if it has citations), follow
+    `.claude/skills-common/references/render-and-references.md`
+    §2 for all three formats, then §3 for the sidecar in **pdf only**.
 
     **This chapter emits one when it has anything to show, which is
     often not.** That follows from what this genre already is rather than

@@ -147,43 +147,19 @@ turn a wide pass into the re-run this skill exists to avoid.
 - **The dossier is written back** -- `scope.md` only if the user agreed
   to a scope change, plus `evidence.md`, `rejected.md`, `sections.md`,
   `steering.md`, and a `revisions.md` entry saying plainly that this pass
-  was wide and why. **`math.md` too, if the draft has one**: it is keyed
-  on the exact text of a code span (docs/WRITING-STANDARDS.md §12), and a
-  wide rewrite reworders more quantities than a scoped one. Same rule as
-  `draft-reviser` -- add, drop or re-key a row per quantity, and let the
-  render's `[math]` warnings say what you missed.
-- **A table's id survives a rewrite; the number does not need to.**
-  Same rule as `draft-reviser`: `docs/WRITING-STANDARDS.md` §13's
-  `<!-- table: id -->` marker renumbers itself, so a wide pass is free
-  to reword the prose around a table without touching its number. What
-  it can still break is the id: a table moved into another section, or
-  dropped while something still points at it with
-  `<!-- tableref: id -->`, is `TableUnreferenced`/`TableUnknownRef`, the
-  same defect a scoped revision could introduce, just more likely here
-  because more sections are in motion at once.
-- **Figures still follow the draft's own genre.** Same rule as
-  `draft-reviser`: `scope.md`'s `genre:` line names the skill whose
-  drafting process decides how freely `docs/WRITING-STANDARDS.md` §10's
-  figures apply -- and a `deep-research` draft gets none, wide pass or
-  not. `draft-reviser`'s **touch a figure, touch both forms** rule
-  carries over unchanged: a figure exists as a TikZ picture and as a
-  plain-ASCII diagram, nothing can check that the two still depict the
-  same thing, and a wide pass is the one most likely to edit a figure
-  in passing while re-reading a section for something else. So does its
-  **consult a source figure before redrawing one** rule: a wide pass
-  re-reads every cited paper anyway, and `python -m chitragupta.draft
-  figures <citekey>` is the one way to see what a paper's figure actually
-  shows rather than what its caption claims. Look, never reproduce.
-- **A numbered equation's id survives a rewrite; the number does not
-  need to.** Same rule as `draft-reviser`: `docs/WRITING-STANDARDS.md`
-  §12's `<!-- equation: id -->` marker renumbers itself, so only the id
-  is a wide pass's concern -- reword the surrounding derivation freely,
-  but a numbered equation moved into another section, or deleted while
-  something still points at it with `<!-- equationref: id -->`, is
-  `EquationUnreferenced`/`EquationUnknownRef`, not a rewrite defect.
-  Whether a *newly*-reworded derivation should now carry a number at
-  all is the same judgment call §12 gives every genre, not one this
-  pass gets to skip because the rewrite was wide.
+  was wide and why. **`math.md` too, if the draft has one**: a wide
+  rewrite rewords more quantities than a scoped one
+  (`.claude/skills-common/references/figures-tables-equations.md` §6).
+- **Figures, tables and equations follow the same rules as in
+  `draft-reviser`.** Figures follow the draft's own genre, read from
+  `scope.md`'s `genre:` line, and a `deep-research` draft gets none,
+  wide pass or not. A figure exists in two forms that change together.
+  Tables, captioned figures and numbered equations renumber themselves,
+  so only their ids are a wide pass's concern, and a wide pass is the
+  one most likely to move one into another section.
+  `.claude/skills-common/references/figures-tables-equations.md`
+  §1, §2, §3, §4 and §5 have each rule; read the section for whatever
+  this pass touches.
 - **The gate is the exit.** Never present a draft that hasn't passed
   `python -m chitragupta.draft gate`.
 - **Re-stamp the draft fingerprint once the gate passes** (#454): `python

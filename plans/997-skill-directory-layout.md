@@ -1,8 +1,23 @@
 # Splitting each skill into `SKILL.md`, `references/`, `scripts/` and `assets/`
 
-Status: **PR 1 built in PR #1039, 6.138.0; PR 2 unbuilt.** Written
-2026-10-06 against `8517f70`, for
+Status: **closed.** PR 1 built in PR #1039 (6.138.0) and finished in
+PR #1106 ([plans/997-1091-skill-budget.md](997-1091-skill-budget.md),
+6.156.0); PR 2 declined. Written 2026-10-06 against `8517f70`, for
 [issue 997](https://github.com/prasadtalasila/chitragupta/issues/997).
+
+**How it closed** (2026-11-02), task by task:
+
+| Task | Outcome |
+| --- | --- |
+| 7 `corpus-read-only.md` | declined: the four genre copies differ, and a "never run `sync`" rule belongs in front of the model every run |
+| 8 `figure-handoff.md` | declined: the stub left after #1027 and #1048 is the decision, the handoff sentence (which names a skill) and three phrases `tests/test_skill_figure_step.py` pins in each genre on purpose |
+| 9 `render-and-references.md` | built, after a pointer-only render step was measured being followed on all three harnesses (docs/HARNESS.md) |
+| 10 draft-reviser | partial: `no-dossier.md` built; `whole-corpus.md` declined, since that section is a routing decision that names `corpus-reviser`, and a reference may name no skill |
+| 11 `classes.md` | not taken: the class table is the line between repairing unattended and stopping to ask, which every run applies, so it stays in `SKILL.md` |
+| 12 `assets/book-skeleton.tex` | built, the first `assets/` in any skill |
+| 13 `depth-presets.md` | not taken: optional, and ten lines read on every run |
+| 14 corpus-reviser | built, as the shared `figures-tables-equations.md` both revisers cite |
+| PR 2, Tasks 16 to 18 | declined with issue 1069 |
 
 **What changed on the way** (recorded 2026-10-21, per
 [plans/README.md](README.md)'s "Record the outcome"; #1039 added this
@@ -26,7 +41,10 @@ ticked at the time):
   measured being skipped. Only the loop's prose moved to
   `critique.md`. The same caution applies to Tasks 8 and 9, which move
   passages that likewise sit next to commands -- do not assume a bare
-  pointer is enough there either.
+  pointer is enough there either. (Updated 2026-11-02: Task 9's render
+  step was then measured, and a bare pointer was followed on all three
+  harnesses, so it moved. The critique loop is still unmeasured and
+  keeps its commands.)
 - **Part C shipped in part, and Task 11 diverged.** agenda-reviser got
   three per-class files (`repair-missing-citekey.md`, `repair-prose.md`,
   `repair-verbatim-run.md`) instead of the planned `classes.md` plus

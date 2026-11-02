@@ -24,48 +24,14 @@ PDF: a unit's `\cref{ch-1}` points at the same id the outline declared
 and `python -m chitragupta.draft registry check` verified. Never rename one on
 the way through.
 
-The document skeleton, in order:
-
-```latex
-\documentclass[11pt,a4paper]{book}
-\usepackage{amsmath}                         % before unicode-math and cleveref
-\usepackage{fontspec}\usepackage{unicode-math}
-\input{chitragupta-lualatex}                 % see "Unicode characters" below
-\usepackage[a4paper,margin=80pt]{geometry}   % see "Margins" below
-\usepackage{longtable,booktabs,array,calc}   % what the converted units use
-\setlength{\LTcapwidth}{\textwidth}          % see "Table captions" below
-\usepackage{graphicx}
-\usepackage{tikz}
-\usetikzlibrary{positioning,fit}             % see "TikZ libraries" below
-\input{chitragupta-floats}                    % see "Figure placement" below
-\usepackage[hidelinks]{hyperref}
-\usepackage{cleveref}
-\usepackage{fvextra}                         % see "Wide code lines" below
-\DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines}
-\usepackage[numbers,sort&compress]{natbib}   % see "The bibliography" below
-\setcounter{secnumdepth}{2}                  % see "Numbering" below
-\setcounter{tocdepth}{1}                     % chapters and sections only
-\providecommand{\tightlist}{%
-  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
-\title{<the outline's own title>}
-\author{<ask the user; never invent one>}
-\date{}
-\input{preamble}                             % only if the book has one
-
-\begin{document}
-\frontmatter
-\maketitle
-\tableofcontents
-
-\mainmatter
-% \part / \input, in outline order
-
-\backmatter
-\bibliographystyle{IEEEtran}
-\addcontentsline{toc}{chapter}{Bibliography}
-\bibliography{bibliography}                  % the .bib render wrote here
-\end{document}
-```
+The document skeleton is
+`.claude/skills/book-assembler/assets/book-skeleton.tex`. Copy it into
+`book.tex` rather than retyping it: replace each `<...>` placeholder
+(the outline's own title; an author you ask the user for and never
+invent), keep the `\input{preamble}` line only if the book has one (see
+"An authored preamble" below), and put the parts and chapters where its
+`\mainmatter` comment says. Each line's comment names the section below
+that explains it.
 
 **The two `\setcounter` lines, and which is which.** `secnumdepth{2}` is
 the `book` class's own default, restated here so the book *states* its
@@ -79,7 +45,7 @@ they are simply not listed.
 **An authored preamble, if the book has one.** If
 `content/specs/<book>/preamble.tex` exists, copy it beside `book.tex` and
 `\input` it as the **last line of the preamble**, immediately before
-`\begin{document}`, so it overrides every default set above it. It has to
+`\begin{document}`, so it overrides every default the skeleton sets. It has to
 land there rather than later in the document: a `\setcounter` after
 `\begin{document}` is read too late to change how the body was set. If it does not
 exist, emit no `\input` at all and say nothing -- its absence is the
@@ -89,7 +55,7 @@ else this skeleton gets wrong for one book gets corrected without
 editing the skeleton for every book.
 
 Note the two senses of "preamble" this file uses: the **generated**
-preamble is the block above, written inline into `book.tex`; the
+preamble is the skeleton, copied into `book.tex`; the
 **authored** preamble is `preamble.tex`, a file the user owns.
 
 **The bibliography is one list at the end of the book, built by one
@@ -149,11 +115,11 @@ half of a 80pt-margin line while the prose around it runs the full
 `\textwidth`. `draft render` sets it for a standalone draft; a unit
 converted `--fragment` has no preamble for that to land in, so the book
 sets it here. Unguarded, unlike the render's own `\ifdefined` form: the
-line above it loads `longtable` unconditionally, so the register always
+skeleton's line above it loads `longtable` unconditionally, so the register always
 exists by this point.
 
 **TikZ libraries: the book must load them, and no figure file may.**
-Same structural reason as `fvextra` and `\LTcapwidth` above --
+Same structural reason as `fvextra` and `\LTcapwidth` --
 `draft render` puts the union of a draft's `\usetikzlibrary` names in its
 own preamble, and a unit converted `--fragment` has no preamble for that
 to land in.
@@ -180,10 +146,10 @@ a library:
 ```
 
 Collect those across every unit, deduplicate, and write the result as the
-single `\usetikzlibrary` line in the skeleton above. Never write
+single `\usetikzlibrary` line in the skeleton. Never write
 `\usetikzlibrary{}` -- an empty comma list fails fatally rather than
 skipping a name -- so a book whose units draw no figure omits both that
-line and the `\usepackage{tikz}` above it.
+line and the skeleton's `\usepackage{tikz}` above it.
 
 A unit's figure file still carries its own plain `\usetikzlibrary` line,
 and that is correct: with the book's preamble load already done it is a
@@ -207,7 +173,7 @@ line and gets the file copied beside it:
 ```
 
 If any unit printed it, keep the `\input{chitragupta-floats}` line in the
-skeleton above; if none did, drop it. Never edit the copied file, and
+skeleton; if none did, drop it. Never edit the copied file, and
 never give one figure `[H]` to get it out of a float page: the file's own
 header says why each number is what it is, and a forced figure leaves a
 ragged page bottom instead. A book that wants other fractions sets them
@@ -226,7 +192,7 @@ directory under `content/rendered/`:
 ```
 
 If any unit printed it, keep the `\input{chitragupta-lualatex}` line in
-the skeleton above; if none did, drop it, and the book sets in
+the skeleton; if none did, drop it, and the book sets in
 LuaLaTeX's default Latin Modern. `amsmath` comes before `unicode-math`
 because `unicode-math` must load after it. Never rewrite a unit's
 characters to get the book through. A character no font in the chain
@@ -236,7 +202,7 @@ unit, through the revising skill the step that sent you here names.
 
 **Build the book with LuaLaTeX** (#1037): `lualatex`, `bibtexu`, then
 `lualatex` twice, from the book's own directory, as SKILL.md's step 9
-gives them. The skeleton above is written for that engine and no
+gives them. The skeleton is written for that engine and no
 other: `fontspec` and `unicode-math` exist only under LuaLaTeX (and
 XeLaTeX), and the font header is LuaLaTeX's.
 

@@ -514,44 +514,16 @@ the lesson design is the part worth keeping either way.
     unclosed one as prose, and so does the gate.
 
 14. **Build the References section**, only if the draft cites anything:
+    follow
+    `.claude/skills-common/references/render-and-references.md`
+    §1 for `content/drafts/<slug>.md`. Skip it entirely if there are no
+    citations. Keep the default `## References` heading --
+    the same contract as `textbook-chapter-writer` (#699); §1 says why
+    any other heading lists every reference twice.
 
-    ```bash
-    python -m chitragupta.draft references content/drafts/<slug>.md
-    ```
-
-    Stdlib-only, bare `python`, no venv. Entries are numbered IEEE-style;
-    leave the inline citations as `[@citekey]` rather than hand-numbering
-    them. Skip entirely if there are no citations.
-
-    Keep the default `## References` heading -- the same contract as
-    `textbook-chapter-writer` (#699). `render_output` recognises the
-    section only by a heading whose text is `References`, `Bibliography`
-    or `Works cited`, bare or number-prefixed, and swaps its entries for
-    citeproc's own bibliography; any other heading (an earlier draft of
-    this skill said `Further reading`) leaves the manual list in the
-    rendered `.tex`/`.pdf` *and* citeproc's bibliography below it, so
-    every reference appears twice.
-
-15. **Render tex, pdf, and numbered md.**
-
-    ```bash
-    python -m chitragupta.draft render content/drafts/<slug>.md --format tex
-    python -m chitragupta.draft render content/drafts/<slug>.md --format pdf
-    python -m chitragupta.draft render content/drafts/<slug>.md --format md
-    ```
-
-    All three land beside the draft: a draft at
-    `content/drafts/<topic>/<name>.md` renders to
-    `content/rendered/<topic>/<name>.{tex,pdf,md}`, so one topic
-    directory holds the draft, its dossier and its renders. The `md`
-    output is a numbered copy -- the same IEEE numbers as the PDF, for a
-    reader who won't open one. The draft itself keeps its `[@citekey]`
-    markers.
-
-    Bare `python` plus `pandoc` (and, for pdf, LuaLaTeX) on PATH -- no enrich
-    group. If either reports `[missing-binary]` or `[error]`, print a one-line
-    warning in chat with that message and continue anyway; a rendering failure
-    never blocks presenting the `.md` draft.
+15. **Render tex, pdf, and numbered md.** Follow
+    `.claude/skills-common/references/render-and-references.md`
+    §2 for the same draft, in all three formats.
 
     **Do not render an evidence sidecar, and this is a recorded answer
     rather than an omission.** The other four genres run
