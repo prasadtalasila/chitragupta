@@ -379,7 +379,7 @@
     function fold(family, i, a, b, width, surprise) {
       var source = drawnAs[a], target = drawnAs[b];
       if (!source || !target || source === target) { return; }
-      var key = family + " " + source + " " + target;
+      var key = family + "\u0000" + source + "\u0000" + target;
       var bundle = bundles[key];
       if (!bundle) {
         bundle = bundles[key] = {
