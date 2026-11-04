@@ -233,3 +233,31 @@ def test_a_second_term_inside_a_definition_is_a_problem(draft, bullet):
 def test_bold_inside_a_definition_that_defines_nothing_is_fine(draft):
     write_glossary(draft, "- **Physical twin** -- the chapter says **actual twin**, borrowed.")
     assert _glossary.glossary_problems(draft) == []
+
+
+def test_a_definition_continued_at_the_margin_is_a_problem(draft):
+    """Lazy continuation is valid Markdown, and would otherwise print a
+    definition cut off at its first line with no finding."""
+    write_glossary(draft, "- **Term** -- a long definition that\ncontinues at the margin.")
+    (problem,) = _glossary.glossary_problems(draft)
+    assert "indent" in problem.reason
+
+
+def test_a_maths_term_is_a_problem_rather_than_vanishing(draft):
+    write_glossary(draft, "- **$x$** -- a maths term.")
+    (problem,) = _glossary.glossary_problems(draft)
+    assert "backticks" in problem.reason
+
+
+@pytest.mark.parametrize("marker", ["*", "+"])
+def test_a_bullet_not_written_with_a_hyphen_says_so(draft, marker):
+    write_glossary(draft, f"{marker} **Term** -- a definition.")
+    (problem,) = _glossary.glossary_problems(draft)
+    assert "starts with `-`" in problem.reason
+
+
+def test_a_draft_outside_content_drafts_still_raises_for_the_acronym_checks(tmp_path):
+    """`dossier acronyms suggest` on a stray path says why, as it did
+    before the parser moved; only the registry treats it as no glossary."""
+    with pytest.raises(dossier.DossierError):
+        dossier.glossary_terms(tmp_path / "stray.md")

@@ -35,7 +35,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from chitragupta.citation_gate import extract_citekeys_from_line
-from chitragupta.dossier import SCOPE_MD, DossierError, dossier_dir
+from chitragupta.dossier import SCOPE_MD, dossier_dir
 from chitragupta.dossier._draft_fingerprint import _DRAFT_DIGEST_LINE
 
 _GLOSSARY_HEADING = re.compile(r"^## Glossary[ \t]*$", re.MULTILINE)
@@ -90,11 +90,7 @@ def _section(draft: Path) -> "tuple[int, str] | None":
     HTML comments are blanked rather than removed, so line numbers stay
     the file's own: the template's worked example is in one.
     """
-    try:
-        scope = dossier_dir(draft) / SCOPE_MD
-    except DossierError:
-        # A draft outside content/drafts/ has no dossier to read.
-        return None
+    scope = dossier_dir(draft) / SCOPE_MD
     if not scope.is_file():
         return None
     text = _HTML_COMMENT.sub(lambda m: "\n" * m.group(0).count("\n"), scope.read_text("utf-8"))
@@ -111,29 +107,38 @@ def has_glossary(draft: Path) -> bool:
     return _section(draft) is not None
 
 
-def _bullets(draft: Path) -> "list[tuple[int, str]]":
-    """`(line, text)` of every bullet at the margin, continuation lines
-    included."""
+class _Bullet(NamedTuple):
+    line: int
+    text: str
+    # A non-blank line at the margin straight after the bullet: valid
+    # Markdown (lazy continuation), and a definition this parser would
+    # otherwise cut off at its first line without saying so.
+    lazy: bool
+
+
+def _bullets(draft: Path) -> "list[_Bullet]":
+    """Every bullet at the margin, continuation lines included."""
     section = _section(draft)
     if section is None:
         return []
     first_line, body = section
-    found: list[tuple[int, list[str]]] = []
+    found: list[list] = []
     in_bullet = False
     for offset, line in enumerate(body.splitlines()):
         # `dossier stamp` appends its digest line at the end of a scope.md
         # that predates the field, which is inside `## Glossary`, the last
         # section: metadata, not a term.
-        if _DRAFT_DIGEST_LINE.match(line):
+        if _DRAFT_DIGEST_LINE.match(line) or not line.strip():
             in_bullet = False
         elif _BULLET.match(line):
-            found.append((first_line + offset + 1, [line]))
+            found.append([first_line + offset + 1, [line], False])
             in_bullet = True
-        elif in_bullet and line[:1].isspace() and line.strip():
+        elif in_bullet and line[:1].isspace():
             found[-1][1].append(line)
-        else:
+        elif in_bullet:
+            found[-1][2] = True
             in_bullet = False
-    return [(line, "\n".join(lines)) for line, lines in found]
+    return [_Bullet(line, "\n".join(lines), lazy) for line, lines, lazy in found]
 
 
 def _entry(line: int, text: str) -> "Entry | None":
@@ -151,26 +156,37 @@ def _entry(line: int, text: str) -> "Entry | None":
 
 def glossary_entries(draft: Path) -> "list[Entry]":
     """Every well-formed bullet with a definition, in file order."""
-    entries = (_entry(line, text) for line, text in _bullets(draft))
+    entries = (_entry(bullet.line, bullet.text) for bullet in _bullets(draft))
     return [entry for entry in entries if entry is not None and entry.definition]
+
+
+def _reason(bullet: _Bullet) -> "str | None":
+    """Why `bullet` cannot be printed, or `None` if it can."""
+    entry = _entry(bullet.line, bullet.text)
+    if bullet.text[:1] != "-":
+        return "a glossary bullet starts with `-`"
+    if entry is None:
+        return _SHAPE
+    if entry.term[:1] == "$":
+        return "write a symbol in backticks, `- **`x`** -- ...`, not as maths"
+    if not entry.definition:
+        return "has no definition"
+    if bullet.lazy:
+        return "continues at the margin; indent the wrapped line"
+    if _SECOND_TERM.search(entry.definition):
+        return "defines a second term; one term per bullet"
+    if extract_citekeys_from_line(" ".join(entry.definition.split())):
+        return "holds a citekey; a glossary never cites, the chapter does"
+    return None
 
 
 def glossary_problems(draft: Path) -> "list[Problem]":
     """Every bullet the book's glossary cannot print, with the reason."""
     problems = []
-    for line, text in _bullets(draft):
-        entry = _entry(line, text)
-        if entry is None:
-            reason = _SHAPE
-        elif not entry.definition:
-            reason = "has no definition"
-        elif _SECOND_TERM.search(entry.definition):
-            reason = "defines a second term; one term per bullet"
-        elif extract_citekeys_from_line(" ".join(entry.definition.split())):
-            reason = "holds a citekey; a glossary never cites, the chapter does"
-        else:
-            continue
-        problems.append(Problem(line, text.splitlines()[0], reason))
+    for bullet in _bullets(draft):
+        reason = _reason(bullet)
+        if reason is not None:
+            problems.append(Problem(bullet.line, bullet.text.splitlines()[0], reason))
     return problems
 
 
@@ -178,7 +194,8 @@ def glossary_terms(draft: Path) -> dict[str, str]:
     """Recorded `term -> definition` pairs from the draft's `## Glossary`.
 
     `{}` if there's no dossier yet, no `## Glossary` heading, or no
-    bullet in the recognised shape -- never an error. A term defined
+    bullet in the recognised shape. Raises `DossierError` for a draft
+    outside `content/drafts/`, as it always has. A term defined
     twice keeps its last definition: the dict view the acronym checks
     were written against. `glossary_entries()` keeps every one.
     """

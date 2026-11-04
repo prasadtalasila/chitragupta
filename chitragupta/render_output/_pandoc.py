@@ -439,11 +439,12 @@ def _run_pandoc(cmd: list[str], env: dict[str, str] | None) -> None:
         _floats.print_report(Path(argv[argv.index("-o") + 1]))
 
 
-# The paragraph `markdown_to_latex` joins its texts with and splits the
-# output on. A word pandoc passes through unchanged and no definition
-# would hold; a text that holds it anyway is refused rather than split
-# in the wrong place.
+# What `markdown_to_latex` joins its texts with and splits the output on.
+# A raw LaTeX block rather than a paragraph: a text starting `: ` turns
+# the paragraph before it into a definition-list term, which a bare
+# separator paragraph would be, and pandoc copies a raw block verbatim.
 _SEPARATOR = "CHITRAGUPTATEXTSEPARATOR"
+_SEPARATOR_BLOCK = f"\n\n```{{=latex}}\n%{_SEPARATOR}\n```\n\n"
 
 
 def markdown_to_latex(texts: "list[str]") -> "list[str]":
@@ -462,7 +463,7 @@ def markdown_to_latex(texts: "list[str]") -> "list[str]":
     if not texts:
         return []
     _require("pandoc")
-    joined = f"\n\n{_SEPARATOR}\n\n".join(texts)
+    joined = _SEPARATOR_BLOCK.join(texts)
     argv = [  # pragma: no cover-windows
         programs.require_program("pandoc"),
         "--from=markdown",
@@ -475,4 +476,7 @@ def markdown_to_latex(texts: "list[str]") -> "list[str]":
     result = subprocess.run(  # pragma: no cover-windows
         argv, input=joined, check=True, capture_output=True, text=True
     )
-    return [part.strip() for part in result.stdout.split(_SEPARATOR)]  # pragma: no cover-windows
+    parts = [part.strip() for part in result.stdout.split(f"%{_SEPARATOR}")]
+    if len(parts) != len(texts):
+        raise ValueError(f"pandoc returned {len(parts)} parts for {len(texts)} texts")
+    return parts

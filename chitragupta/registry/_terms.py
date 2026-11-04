@@ -17,7 +17,7 @@ limit.
 import re
 from pathlib import Path
 
-from chitragupta.dossier import _glossary
+from chitragupta.dossier import DossierError, _glossary
 from chitragupta.render_output import _math
 
 # One trailing parenthetical that is not a symbol: `Digital twin (DT)`
@@ -32,17 +32,22 @@ def term_key(term: str) -> str:
 
 
 def _kind(entry) -> str:
-    """`notation` for an entry that is only a symbol (or only maths), the
-    distinction the registry has drawn since #138."""
-    if entry.name is None or (entry.term[:1] == "$" and entry.term[-1:] == "$"):
-        return "notation"
-    return "term"
+    """`notation` for an entry that is only a symbol, the distinction the
+    registry has drawn since #138. A term written as `$...$` maths is a
+    `[glossary]` problem instead: it has no symbol to typeset."""
+    return "notation" if entry.name is None else "term"
 
 
 def read_unit(unit_id: str, draft: Path, built: dict) -> None:
     """Fold one accepted unit's glossary into `built`."""
-    if not _glossary.has_glossary(draft):
+    try:
+        has_glossary = _glossary.has_glossary(draft)
+    except DossierError:
+        # A unit outside content/drafts/ has no dossier to read.
+        has_glossary = False
+    if not has_glossary:
         built["no_glossary"].append(unit_id)
+        return
     mapping = _math.load_mapping(draft)
     for entry in _glossary.glossary_entries(draft):
         definition = " ".join(entry.definition.split())
@@ -82,7 +87,7 @@ def _units(rows) -> str:
     return ", ".join(f"{u} ({n}x)" if n > 1 else u for u, n in sorted(counts.items()))
 
 
-def _meaning(row: dict) -> str:
+def meaning(row: dict) -> str:
     """What a symbol stands for: its term, or for a bare symbol its
     definition."""
     return term_key(row["term"]) if row["kind"] == "term" else row["definition"].lower()
@@ -101,7 +106,7 @@ def _notation_findings(built: dict) -> "list[tuple[str, str]]":
     found = []
     with_symbol = [row for row in built["terms"] if row["symbol"]]
     for symbol, rows in _grouped(with_symbol, lambda row: row["symbol"]).items():
-        meanings = _grouped(rows, _meaning)
+        meanings = _grouped(rows, meaning)
         if len({row["unit"] for row in rows}) > 1 and len(meanings) > 1:
             listed = "; ".join(f"{m} ({_units(r)})" for m, r in meanings.items())
             found.append(("notation", f"`{symbol}` names different things: {listed}"))

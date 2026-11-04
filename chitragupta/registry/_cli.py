@@ -8,6 +8,7 @@ the one front door.
 """
 
 import argparse
+import subprocess
 import sys
 
 from pathlib import Path
@@ -119,6 +120,9 @@ def _write_pages(built: dict, args) -> int:
         pages = _pages.render(built, markdown_to_latex)
     except MissingBinary as exc:
         print(f"[missing-binary] {exc}", file=sys.stderr)
+        return 1
+    except (ValueError, OSError, subprocess.CalledProcessError) as exc:
+        print(f"[conversion] pandoc could not convert the glossary: {exc}", file=sys.stderr)
         return 1
     for target, text, what in zip((args.glossary, args.notation), pages, ("glossary", "symbol")):
         if target is None:

@@ -39,3 +39,24 @@ def test_a_missing_pandoc_is_the_render_layers_own_error(monkeypatch):
     monkeypatch.setattr(_pandoc, "_require", missing)
     with pytest.raises(MissingBinary):
         _pandoc.markdown_to_latex(["text"])
+
+
+@pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
+def test_a_text_that_would_continue_a_definition_list_stays_its_own():
+    """A paragraph starting `: ` turns the paragraph before it into a
+    definition-list term, which a bare separator paragraph would be."""
+    out = _pandoc.markdown_to_latex(["first", ": second", "third"])
+    assert out[0] == "first"
+    assert out[2] == "third"
+    assert len(out) == 3
+
+
+def test_a_conversion_that_loses_a_text_is_refused(monkeypatch):
+    class Result:
+        stdout = "only one part"
+
+    monkeypatch.setattr(_pandoc, "_require", lambda binary: None)
+    monkeypatch.setattr(_pandoc.programs, "require_program", lambda binary: binary)
+    monkeypatch.setattr(_pandoc.subprocess, "run", lambda *a, **k: Result())
+    with pytest.raises(ValueError, match="2 texts"):
+        _pandoc.markdown_to_latex(["one", "two"])

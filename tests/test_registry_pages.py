@@ -88,7 +88,24 @@ def test_no_terms_means_no_pages(book):
     assert pages(book) == (None, None)
 
 
+def test_the_heading_takes_a_symbol_from_whichever_unit_gives_one(book):
+    accept(book, "ch-model", "", glossary="- **Baseline** -- a value.")
+    accept(book, "ch-data", "", glossary="- **Baseline** (`M_0`) -- the value.")
+    glossary, _ = pages(book)
+    assert "\\item[{Baseline (`M_0`)}]" in glossary
+
+
 # --- the List of Symbols -------------------------------------------------
+
+
+def test_a_bare_symbol_with_one_meaning_is_one_row_as_check_says(book):
+    """`check` and the page use one meaning key, so they cannot disagree."""
+    accept(book, "ch-model", "", glossary="- **`k`** -- The gain.")
+    accept(book, "ch-data", "", glossary="- **`k`** -- the gain.")
+    _, notation = pages(book)
+    assert notation.count("`k` &") == 1
+    findings = registry.findings(registry.build(book))
+    assert not [text for kind, text in findings if kind == "notation"]
 
 
 def test_one_meaning_in_several_chapters_is_one_row(book):
@@ -210,6 +227,21 @@ def test_a_missing_pandoc_refuses_with_the_render_layers_error(book, tmp_path, m
     code, glossary, _ = build(book, tmp_path)
     assert code == 1
     assert "[missing-binary]" in capsys.readouterr().err
+    assert not glossary.exists()
+
+
+@pytest.mark.parametrize("error", [ValueError("a text holds the separator"), OSError("pandoc")])
+def test_a_failed_conversion_refuses_without_a_traceback(
+    book, tmp_path, monkeypatch, capsys, error
+):
+    def failing(texts):
+        raise error
+
+    monkeypatch.setattr("chitragupta.registry._cli.markdown_to_latex", failing)
+    accept(book, "ch-model", "", glossary="- **Model** -- a description.")
+    code, glossary, _ = build(book, tmp_path)
+    assert code == 1
+    assert "[conversion]" in capsys.readouterr().err
     assert not glossary.exists()
 
 

@@ -26,7 +26,7 @@ import re
 import tempfile
 from pathlib import Path
 
-from chitragupta.registry._terms import term_key
+from chitragupta.registry._terms import meaning, term_key
 from chitragupta.render_output._math import _GREEK_NAMES
 
 _BANNER = (
@@ -66,7 +66,8 @@ def glossary_entries(built: dict) -> "list[tuple[str, list[tuple[str, list[str]]
     entries = []
     for _, rows in sorted(_grouped(named, lambda row: term_key(row["term"])).items()):
         definitions = _grouped(rows, lambda row: row["markdown"])
-        entries.append((_heading(rows[0]), [(d, _units(r)) for d, r in definitions.items()]))
+        heading = next((row for row in rows if row["symbol_markdown"]), rows[0])
+        entries.append((_heading(heading), [(d, _units(r)) for d, r in definitions.items()]))
     return entries
 
 
@@ -85,13 +86,12 @@ def notation_rows(built: dict) -> "list[tuple[str, str, list[str]]]":
         _grouped(with_symbol, lambda row: row["symbol"]).items(),
         key=lambda item: _symbol_order(item[0]),
     ):
-        meanings = _grouped(
-            found, lambda row: term_key(row["term"]) if row["kind"] == "term" else row["markdown"]
-        )
-        for same in meanings.values():
+        # The meaning key `registry check`'s `[notation]` finding uses, so
+        # the page and the check cannot disagree on what one meaning is.
+        for same in _grouped(found, meaning).values():
             first = same[0]
-            meaning = first["term"] if first["kind"] == "term" else first["markdown"]
-            rows.append((first["symbol_markdown"], meaning, _units(same)))
+            label = first["term"] if first["kind"] == "term" else first["markdown"]
+            rows.append((first["symbol_markdown"], label, _units(same)))
     return rows
 
 
@@ -123,8 +123,8 @@ def _notation_tex(rows, latex) -> str:
         "\\addcontentsline{toc}{chapter}{List of Symbols}",
         "\\begin{longtable}{@{}l p{0.55\\textwidth} p{0.25\\textwidth}@{}}",
     ]
-    for symbol, meaning, units in rows:
-        lines.append(f"{latex[symbol]} & {latex[meaning]} & {_cref(units)[1:-1]} \\\\")
+    for symbol, label, units in rows:
+        lines.append(f"{latex[symbol]} & {latex[label]} & {_cref(units)[1:-1]} \\\\")
     return "\n".join(lines + ["\\end{longtable}"]) + "\n"
 
 
@@ -138,7 +138,7 @@ def render(built: dict, convert) -> "tuple[str | None, str | None]":
     entries, rows = glossary_entries(built), notation_rows(built)
     texts = [heading for heading, _ in entries]
     texts += [text for _, definitions in entries for text, _ in definitions]
-    texts += [text for symbol, meaning, _ in rows for text in (symbol, meaning)]
+    texts += [text for symbol, label, _ in rows for text in (symbol, label)]
     unique = list(dict.fromkeys(texts))
     latex = dict(zip(unique, convert(unique)))
     return (
