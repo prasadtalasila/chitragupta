@@ -60,3 +60,21 @@ def test_a_conversion_that_loses_a_text_is_refused(monkeypatch):
     monkeypatch.setattr(_pandoc.subprocess, "run", lambda *a, **k: Result())
     with pytest.raises(ConversionError, match="2 texts"):
         _pandoc.markdown_to_latex(["one", "two"])
+
+
+def test_the_output_is_split_on_the_separator_block(monkeypatch):
+    """No pandoc needed, so every leg covers the split, Windows included."""
+    seen = {}
+
+    class Result:
+        stdout = f"one\n\n%{_pandoc._SEPARATOR}\n\ntwo\n"
+
+    def run(argv, **kwargs):
+        seen["input"] = kwargs["input"]
+        return Result()
+
+    monkeypatch.setattr(_pandoc, "_require", lambda binary: None)
+    monkeypatch.setattr(_pandoc.programs, "require_program", lambda binary: binary)
+    monkeypatch.setattr(_pandoc.subprocess, "run", run)
+    assert _pandoc.markdown_to_latex(["a", "b"]) == ["one", "two"]
+    assert f"```{{=latex}}\n%{_pandoc._SEPARATOR}\n```" in seen["input"]
