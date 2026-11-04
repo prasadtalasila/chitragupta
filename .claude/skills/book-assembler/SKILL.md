@@ -75,9 +75,14 @@ or in the unit through `draft-reviser` -- never by this skill.
    optional and is not summarised away:
 
    ```bash
-   python -m chitragupta.draft registry build content/drafts/<book>
+   python -m chitragupta.draft registry build content/drafts/<book> \
+       --glossary content/rendered/<book>/glossary.tex \
+       --notation content/rendered/<book>/notation.tex
    python -m chitragupta.draft registry check content/drafts/<book>
    ```
+
+   If `build` exits 1 on `[glossary]` bullets, **stop** and report them:
+   the fix is `draft-reviser` on that unit's `scope.md`, never yours.
 
    `check` exits 0 whatever it finds -- it is a machine's reading of
    prose, and `docs/ARCHITECTURE.md`'s "Layer 4" is why it may not
@@ -132,6 +137,10 @@ or in the unit through `draft-reviser` -- never by this skill.
    `content/drafts/<book>/` holds the chapters a person wrote and nothing
    else, and step 4's fragments are already here beside what you are
    about to write.
+
+   `\input` `glossary` then `notation` under `\backmatter`, before the
+   bibliography, each only if step 3 wrote it; say nothing of one it did
+   not.
 
    **Copy `content/specs/<book>/preamble.tex` beside `book.tex` if it
    exists**, and `\input` it as the last line of the generated preamble.

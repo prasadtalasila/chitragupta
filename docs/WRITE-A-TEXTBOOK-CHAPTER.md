@@ -131,7 +131,7 @@ yours:
 | `## Reader` | the student, concretely, including the courses they have had | decides what is assumed, what is recapped, and how fast the worked examples move |
 | `## Covers` | the chapter's content **and its learning objectives** | this genre has no other home for the objectives, and they are the chapter's contract |
 | `## Does not cover` | what is deferred to a later chapter or a lab | students who see a term with no treatment assume they missed it |
-| `## Glossary` | each recurring term with one definition | a term that drifts between sections is a student's lost afternoon |
+| `## Glossary` | each recurring term with one definition, and its symbol in backticks after the bold if it has one | a term that drifts between sections is a student's lost afternoon; in a book, these bullets are the Glossary and the List of Symbols |
 
 Set the dialect with the command, so the format is right:
 
@@ -188,8 +188,8 @@ build one are pointed at the lab, which is a tutorial.
 - **Estimate** -- our current best guess of the state, always paired
   with its variance. A number without its variance is never called an
   estimate in this chapter.
-- **Gain** -- the weight given to a new measurement against the current
-  estimate, between 0 and 1.
+- **Gain** (`K`) -- the weight given to a new measurement against the
+  current estimate, between 0 and 1.
 ```
 
 Putting the objectives in `## Covers` is the convention for this genre:

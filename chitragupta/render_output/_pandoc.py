@@ -437,3 +437,42 @@ def _run_pandoc(cmd: list[str], env: dict[str, str] | None) -> None:
     # never raised.
     if "--pdf-engine" in argv:
         _floats.print_report(Path(argv[argv.index("-o") + 1]))
+
+
+# The paragraph `markdown_to_latex` joins its texts with and splits the
+# output on. A word pandoc passes through unchanged and no definition
+# would hold; a text that holds it anyway is refused rather than split
+# in the wrong place.
+_SEPARATOR = "CHITRAGUPTATEXTSEPARATOR"
+
+
+def markdown_to_latex(texts: "list[str]") -> "list[str]":
+    """Each of `texts`, Markdown, as a LaTeX fragment, in order.
+
+    For text this package did not read from a draft: the book's glossary
+    and list of symbols (chitragupta/registry/_pages.py, #1138), whose
+    definitions are Markdown in each unit's `scope.md`. One process for
+    the whole list, joined on `_SEPARATOR`, because a book has a few
+    hundred definitions and a process each would be most of the run.
+    The same inline-code filter as a draft's own render, so a code span
+    breaks the same way in the glossary as in the chapter.
+    """
+    if any(_SEPARATOR in text for text in texts):
+        raise ValueError(f"a text holds the separator {_SEPARATOR!r}")
+    if not texts:
+        return []
+    _require("pandoc")
+    joined = f"\n\n{_SEPARATOR}\n\n".join(texts)
+    argv = [  # pragma: no cover-windows
+        programs.require_program("pandoc"),
+        "--from=markdown",
+        "--to=latex",
+        "--wrap=none",
+        "--no-highlight",
+        "--lua-filter",
+        str(config.shipped("assets", "pandoc", "breakable_inline_code.lua")),
+    ]
+    result = subprocess.run(  # pragma: no cover-windows
+        argv, input=joined, check=True, capture_output=True, text=True
+    )
+    return [part.strip() for part in result.stdout.split(_SEPARATOR)]  # pragma: no cover-windows

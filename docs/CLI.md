@@ -1802,14 +1802,14 @@ deterministic pass
 and written under `content/specs/<book>/registries/`.
 
 ```bash
-chitragupta draft registry build   content/drafts/<book>
+chitragupta draft registry build   content/drafts/<book> [--glossary PATH] [--notation PATH]
 chitragupta draft registry check   content/drafts/<book>
 chitragupta draft registry excerpt content/drafts/<book> <unit-id>
 ```
 
 | Command | Does | Exit |
 | --- | --- | --- |
-| `build` | rebuild `terms.md`, `claims.md`, `xrefs.md` from accepted units | 1 only if the book has no readable outline |
+| `build` | rebuild `terms.md`, `claims.md`, `xrefs.md` from accepted units; with `--glossary`/`--notation`, also write the book's Glossary and List of Symbols as LaTeX from the units' `scope.md` glossaries | 1 if the book has no readable outline; with either flag, also 1 if a glossary bullet cannot be printed or pandoc is missing, and then no page is written |
 | `check` | what the registries disagree on | **always 0** |
 | `excerpt` | what one unit's generation should be told the rest of the book settled | 1 only if the book has no readable outline |
 
@@ -1817,7 +1817,8 @@ chitragupta draft registry excerpt content/drafts/<book> <unit-id>
 `chitragupta.review` aid and unlike `spec status`/`unit status`. Those two report
 whether a *human decided* something; this reports a *machine's reading of
 prose*, which is judgement however mechanical the arithmetic. There is no
-flag that makes it block;
+flag that makes it block (`build --glossary` refusing is a build declining
+to write an incomplete page, and `check` reports the same bullets);
 [WRITE-A-BOOK.md](WRITE-A-BOOK.md#-why-registry-check-exits-0-when-the-two-status-commands-do-not)
 has the argument, and [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" the
 rule behind it.

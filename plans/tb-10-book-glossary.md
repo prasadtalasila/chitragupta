@@ -436,3 +436,31 @@ they override anything above that reads otherwise.
     file line. List of Symbols: the symbol lowercased; a symbol is Greek
     when it starts with a `_math._GREEK_NAMES` word followed by the end
     or `_`/`^`; Latin first, then Greek, then anything else.
+
+## What changed while building
+
+Found against the real book's dossiers (a copy, rewritten to ` -- `,
+built and compiled with LuaLaTeX):
+
+- **`dossier stamp`'s digest line sits in `## Glossary`.** Stamp appends
+  `- draft digest: ...` to the end of a `scope.md` that predates the
+  field, and Glossary is the last section; two of the eight dossiers
+  have it there. The parser skips that line, using the stamp module's
+  own `_DRAFT_DIGEST_LINE`.
+- **Several terms in one bullet survive a separator fix.** Once only the
+  first `:` is rewritten, `**Solver** -- ... **Event scheduler**: ...`
+  matches the shape. A bold phrase followed by `--` or `:` inside a
+  definition is now a problem ("defines a second term"); bold that
+  defines nothing passes.
+- **`\Cref{a,b}` sorts and merges.** It printed "Chapters A and 7" for
+  chapter 7 and the appendix, so every unit gets its own `\Cref`,
+  joined by commas, in outline order.
+- **cleveref calls an appendix chapter "Chapter A"** under the
+  skeleton's preamble, for any `\Cref` in the book, not only these
+  pages. Left as it is here and raised separately; the docs say "Chapter
+  A" rather than "Appendix A".
+- **Symbols go through pandoc with everything else** (amendment 3 had
+  them bypass it): `$<latex>$` passes through unchanged as `\(...\)`,
+  and one path is simpler than two.
+- The five `WRITE-A-*.md` guides: only the textbook guide's example
+  gained a symbol bullet, the genre a book's units are written in.

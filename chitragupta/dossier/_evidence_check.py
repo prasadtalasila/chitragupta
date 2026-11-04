@@ -49,9 +49,9 @@ _FIELD = re.compile(r"^-?\s*(?P<field>claim|quote|relevance|support):\s*", re.MU
 
 
 def fields(block: str) -> dict[str, str]:
-    """`block`'s `field: value` lines, keyed by field name -- the same
-    match-then-slice-to-the-next-match reading `_citekeys._GLOSSARY_TERM`
-    uses, over this module's own field set instead of glossary bullets.
+    """`block`'s `field: value` lines, keyed by field name -- a
+    match-then-slice-to-the-next-match reading over this module's own
+    field set.
 
     Public because `chitragupta/evidence_appendix.py` reads the same four
     fields out of the same file. `evidence.md` has one field parser and

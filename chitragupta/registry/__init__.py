@@ -5,8 +5,9 @@ outline `chitragupta/spec/` holds and whose units `chitragupta/unit/` has accept
 Three registries, all derived by a deterministic post-pass over
 **accepted units only** (#138):
 
-- **terminology and notation** -- a term is defined once, and the
-  definition is where it was defined;
+- **terminology and notation** -- read from each unit's `scope.md`
+  glossary since #1138 (chitragupta/registry/_terms.py): a term is
+  defined once, and a symbol means one thing;
 - **the claim register** -- what has been asserted, in which unit, with
   which citation;
 - **the cross-reference graph** -- which unit points at what, and whether
@@ -16,9 +17,9 @@ Three registries, all derived by a deterministic post-pass over
 them trustworthy at all: they are a reading of accepted prose, the way
 `chitragupta/ledger.py` is a reading of a real bib file. Extraction reuses the
 conventions the repository already has rather than inventing a second
-set -- the `- **Term** -- definition` bullet the dossier glossary uses,
-the sentence splitter the provenance aid uses, and the `## References`
-cut-off `chitragupta/acronyms.py` measured against the real 15-chapter book.
+set -- the dossier glossary's own parser, the sentence splitter the
+provenance aid uses, and the `## References` cut-off
+`chitragupta/acronyms.py` measured against the real 15-chapter book.
 
 **A cross-reference is never spelled `@id`.** That is a citekey position,
 and a section id reaching it would put something the ledger has never
@@ -46,8 +47,9 @@ from chitragupta import spec, unit
 # is worse than reaching across for the name. Promoting any of them to a
 # public name belongs in its own PR, not this one.
 from chitragupta.acronyms import _REFERENCES_HEADING
-from chitragupta.dossier._citekeys import _GLOSSARY_TERM
+from chitragupta.dossier._glossary import _GLOSSARY_TERM
 from chitragupta.citation_gate import extract_citekeys_from_line, is_latex
+from chitragupta.registry import _terms
 from chitragupta.sentences import split as split_sentences
 
 # `[text](#some-id)` -- the Markdown cross-reference. Anchored on the
@@ -76,32 +78,14 @@ def registry_dir(book) -> Path:
     return spec.spec_dir(book) / "registries"
 
 
-def definitions(text: str) -> list[tuple[str, str, str]]:
-    """`(term, kind, definition)` for every definition bullet in `text`.
-
-    `notation` rather than `term` when the term is written as code or
-    maths -- `` `x_t` `` or `$x_t$` -- which is the only distinction
-    between the two registries #138 asks for that a machine can draw
-    without being told.
-    """
-    found = []
-    for match in _GLOSSARY_TERM.finditer(text):
-        term = match.group("term").strip()
-        line_end = text.find("\n", match.end())
-        definition = text[match.end() : line_end if line_end != -1 else len(text)].strip()
-        kind = "notation" if term[:1] in "`$" and term[-1:] in "`$" else "term"
-        found.append((term, kind, definition))
-    return found
-
-
 def _prose(text: str) -> str:
     """`text` with the parts no claim is made in removed.
 
     Two exclusions. A reference list is nothing but citation-bearing
     lines, so reading it as claims would fill the register with
     bibliography -- the same cut `chitragupta/acronyms.py` makes, measured
-    there against the real book. And a definition bullet is a
-    definition, already registered as one.
+    there against the real book. And a definition-shaped bullet is
+    left out too: a term's home is the glossary, not a claim.
     """
     cut = _REFERENCES_HEADING.search(text)
     body = text[: cut.start()] if cut else text
@@ -157,10 +141,7 @@ def _read_unit(book, unit_id: str, built: dict, anchors: set[str]) -> None:
     """Fold one accepted unit into the registries being built."""
     path = unit.draft_path(book, unit_id)
     text = path.read_text(encoding="utf-8")
-    for term, kind, definition in definitions(text):
-        built["terms"].append(
-            {"term": term, "kind": kind, "unit": unit_id, "definition": definition}
-        )
+    _terms.read_unit(unit_id, path, built)
     for claim, citekeys in claims(text, latex=is_latex(path)):
         built["claims"].append({"claim": claim, "unit": unit_id, "citekeys": citekeys})
     for target in references(text):
@@ -178,7 +159,15 @@ def build(book) -> dict:
     tell which they are holding.
     """
     outline = unit.outline(book)
-    built = {"accepted": [], "skipped": [], "terms": [], "claims": [], "xrefs": []}
+    built = {
+        "accepted": [],
+        "skipped": [],
+        "terms": [],
+        "claims": [],
+        "xrefs": [],
+        "glossary": [],
+        "no_glossary": [],
+    }
     # Every id in the outline, not only the sections: "see Chapter 1" is
     # an ordinary cross-reference, and reporting it unresolved because a
     # chapter generates no prose of its own would be a finding about this
@@ -216,15 +205,7 @@ def findings(built: dict) -> list[tuple[str, str]]:
     Evidence for a human judgement, never a verdict -- which is why the
     caller prints these and exits 0 regardless. See docs/WRITE-A-BOOK.md.
     """
-    found = []
-    for term, rows in _repeats(built["terms"], "term").items():
-        found.append(
-            (
-                "term",
-                f"`{term}` is defined in more than one unit: "
-                + ", ".join(sorted(row["unit"] for row in rows)),
-            )
-        )
+    found = _terms.findings(built)
     for rows in _repeats(
         [{**row, "key": claim_key(row["claim"])} for row in built["claims"]], "key"
     ).values():

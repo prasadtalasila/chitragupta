@@ -10,9 +10,13 @@ the one front door.
 import argparse
 import sys
 
+from pathlib import Path
+
 from chitragupta import spec
 from chitragupta.unit import UnitError
-from chitragupta.registry import build, excerpt, findings, registry_dir
+from chitragupta.registry import _pages, _terms, build, excerpt, findings, registry_dir
+from chitragupta.render_output._errors import MissingBinary
+from chitragupta.render_output._pandoc import markdown_to_latex
 
 _BOOK_HELP = "The book's directory under content/drafts/"
 
@@ -26,7 +30,7 @@ _BANNER = (
 )
 
 _FILES = {
-    "terms.md": ("term", "kind", "defined in", "definition"),
+    "terms.md": ("term", "symbol", "kind", "defined in", "definition"),
     "claims.md": ("claim", "unit", "citekeys"),
     "xrefs.md": ("from", "target", "resolves"),
 }
@@ -47,7 +51,8 @@ def _table(headers, rows) -> str:
 def _rows(name: str, built: dict) -> list[tuple]:
     if name == "terms.md":
         return [
-            (row["term"], row["kind"], row["unit"], row["definition"]) for row in built["terms"]
+            (row["term"], row["symbol"] or "", row["kind"], row["unit"], row["definition"])
+            for row in built["terms"]
         ]
     if name == "claims.md":
         return [(row["claim"], row["unit"], " ".join(row["citekeys"])) for row in built["claims"]]
@@ -87,6 +92,42 @@ def _cmd_build(args) -> int:
     for path in _write(args.book, built):
         print(f"Wrote {path}.")
     print(f"  {_coverage(built)}")
+    if args.glossary or args.notation:
+        return _write_pages(built, args)
+    return 0
+
+
+def _write_pages(built: dict, args) -> int:
+    """The Glossary and List of Symbols, or a refusal that writes neither.
+
+    A *build* refusing, not a check blocking: `registry check` reports
+    the same `[glossary]` bullets and exits 0. A page built over them
+    would silently leave terms out, so this stops and says which, as
+    `render` stops on an unmapped `<!-- math -->` marker (SOUL.md,
+    "Atomic, or not at all").
+    """
+    problems = _terms.problem_findings(built)
+    if problems:
+        for kind, message in problems:
+            print(f"  [{kind}] {message}", file=sys.stderr)
+        print(
+            f"\n  {len(problems)} glossary bullet(s) cannot be printed; no page written.",
+            file=sys.stderr,
+        )
+        return 1
+    try:
+        pages = _pages.render(built, markdown_to_latex)
+    except MissingBinary as exc:
+        print(f"[missing-binary] {exc}", file=sys.stderr)
+        return 1
+    for target, text, what in zip((args.glossary, args.notation), pages, ("glossary", "symbol")):
+        if target is None:
+            continue
+        if text is None:
+            print(f"  No {what} entries in the accepted units; {target} not written.")
+            continue
+        _pages.write(Path(target), text)
+        print(f"Wrote {target}.")
     return 0
 
 
@@ -121,7 +162,10 @@ def _cmd_excerpt(args) -> int:
     print(f"# What the rest of {args.book} already settled")
     print("\n## Terminology already defined elsewhere\n")
     for row in slice_["terms"]:
-        print(f"- **{row['term']}** ({row['kind']}, in {row['unit']}) -- {row['definition']}")
+        symbol = f" (`{row['symbol']}`)" if row["symbol"] and row["kind"] == "term" else ""
+        print(
+            f"- **{row['term']}**{symbol} ({row['kind']}, in {row['unit']}) -- {row['definition']}"
+        )
     if not slice_["terms"]:
         print("- nothing yet.")
     print("\n## Ids this unit may point at\n")
@@ -133,12 +177,19 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m chitragupta.draft registry",
         description="Terminology, claims and cross-references over a book's "
-        "accepted units. A review aid: it never blocks.",
+        "accepted units. A review aid: `check` never blocks; `build --glossary` "
+        "refuses to write a page it would have to leave terms out of.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_build = sub.add_parser("build", help="Rebuild the three registries from accepted units")
     p_build.add_argument("book", help=_BOOK_HELP)
+    p_build.add_argument(
+        "--glossary", metavar="PATH", help="Also write the book's Glossary as LaTeX to PATH"
+    )
+    p_build.add_argument(
+        "--notation", metavar="PATH", help="Also write the book's List of Symbols as LaTeX to PATH"
+    )
     p_build.set_defaults(func=_cmd_build)
 
     p_check = sub.add_parser("check", help="What the registries disagree on (always exits 0)")
