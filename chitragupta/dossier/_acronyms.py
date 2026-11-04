@@ -2,8 +2,8 @@
 new entries from a draft's glossary and its own prose, and -- on
 request -- writing them.
 
-Split from chitragupta/dossier/_citekeys.py, which still owns glossary parsing
-itself (`glossary_terms()`): this half grew past
+Split from chitragupta/dossier/_citekeys.py. Glossary parsing is
+chitragupta/dossier/_glossary.py's (`glossary_terms()`); this half grew past
 docs/CODE-STANDARDS.md's C2 module-line limit once `--apply` and its
 guard rail were added. The boundary follows the shape
 chitragupta/style_report.py already uses for the same reason -- what a command
@@ -14,7 +14,7 @@ import tomllib
 from pathlib import Path
 
 from chitragupta import acronyms, config
-from chitragupta.dossier._citekeys import glossary_terms
+from chitragupta.dossier._glossary import glossary_terms
 
 
 def suggest_acronyms(draft: Path) -> dict[str, str]:

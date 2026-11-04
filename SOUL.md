@@ -75,7 +75,8 @@ What matters here is what each layer is *not allowed* to do:
 There is exactly one citation gate. Every other check over a draft (the
 review aids, the style report, `doctor`, the book track's registry
 checks) is advisory wherever in the tree it lives, and none grows a flag
-that blocks.
+that blocks. A build is not a check: one that cannot write a correct
+file refuses to write it, as `render` refuses an unmapped maths marker.
 
 ## 🤝 What earns trust here
 

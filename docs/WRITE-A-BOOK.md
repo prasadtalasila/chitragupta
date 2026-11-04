@@ -581,7 +581,7 @@ deterministic pass over **accepted units only**:
 
 | Registry | Written from | Flags |
 | --- | --- | --- |
-| terminology and notation | `- **Term** -- definition` bullets | a term defined in more than one unit |
+| terminology and notation | each unit's `scope.md` `## Glossary` (`- **Term** -- definition`, optionally `- **Term** (`sym`) -- definition`) | a term defined more than once, a symbol naming two things or typeset two ways, a glossary bullet in another shape, a unit with no glossary |
 | claims | every sentence that cites something | the same claim made in more than one unit |
 | cross-references | `[text](#id)` and `\ref{id}`/`\cref{id}` | a reference no unit or outline entry defines |
 
@@ -591,10 +591,12 @@ Three properties hold for all of them:
   the ones it could not see. A registry over half a book is not the same
   claim as one over all of it.
 - **Nothing here is written by an LLM.** They are a deterministic reading
-  of accepted prose, which is why they can be trusted: the same standing
+  of accepted units and their dossiers' glossaries, which is why they
+  can be trusted: the same standing
   `chitragupta/ledger.py` has as a reading of a real bib file.
-- **The conventions are borrowed.** The definition bullet is
-  the dossier glossary's, the sentence splitter is the provenance aid's,
+- **The conventions are borrowed.** The glossary parser is the one
+  the acronym checks use (`chitragupta/dossier/_glossary.py`), the
+  sentence splitter is the provenance aid's,
   and everything from a `## References` heading onward is cut the way
   `chitragupta/acronyms.py` cuts it, measured there against the real
   15-chapter book, because a rendered reference list is all
@@ -611,6 +613,48 @@ citekey.
 ([why](#-why-registry-check-exits-0-when-the-two-status-commands-do-not)),
 and there are things it structurally cannot see
 ([which](#-what-the-registries-cannot-see)).
+
+### 📖 The Glossary and the List of Symbols
+
+The same pass writes the book's two reference pages when asked:
+
+```bash
+chitragupta draft registry build content/drafts/<book> \
+    --glossary content/rendered/<book>/glossary.tex \
+    --notation content/rendered/<book>/notation.tex
+```
+
+Both are read from the units' `scope.md` glossaries and nothing else, so
+every word on them is a definition a unit's author pinned. A symbol
+sits in the bullet beside its term, `- **Baseline** (`M_0`) -- ...`,
+or alone, `- **`x_k`** -- ...`; the template `dossier init` writes shows
+all three shapes.
+
+- **Glossary:** alphabetical. A term with several definitions prints
+  each, numbered, in outline order; each definition ends with its
+  chapter as `\Cref{<unit-id>}`; identical definitions print once with
+  every chapter.
+- **List of Symbols:** one table for the whole book. A symbol with one
+  meaning is one row listing its chapters; a symbol naming different
+  things gets a row per meaning.
+- **Typesetting:** each definition and symbol goes through its own
+  unit's `math.md` mapping, then pandoc, so `M_0` looks the same on the
+  page as in the chapter.
+
+**A glossary bullet in another shape stops the build.** `--glossary`
+and `--notation` write the three registries, then refuse (exit 1, no
+page written) if any accepted unit's glossary holds a bullet they cannot
+print: `**Term**:` instead of `**Term** --`, several terms in one
+bullet, a definition that is empty or carries a citekey. `check` reports
+the same bullets and still exits 0. That is a build refusing to write a
+page it would have to leave terms out of, the way `render` refuses an
+unmapped `<!-- math -->` marker, not a check blocking; the fix is the
+unit's `scope.md`, through `draft-reviser`.
+
+**What the pages cannot catch:** a qualifier inside a well-formed term
+(`**Digital twin (DT), working definition for Part I** -- ...`) and a
+definition that only says "as before". Both print as written, so read
+both pages before the second sign-off.
 
 ## ▶ Step 6: assemble the book
 
@@ -856,7 +900,7 @@ The first book assembled by this track was a 15-chapter textbook,
 | --- | --- |
 | outline | 3 parts, 15 chapters, 15 units |
 | citations, gate-verified | 864 across the 15 units, 194 distinct citekeys |
-| terminology registry | 15 definitions |
+| terminology registry | 15 definitions (read from the drafts' prose; since #1138 it reads the dossiers' glossaries) |
 | claim register | 388 claims |
 | cross-reference graph | 0 edges; the chapters refer to each other in English, not as links |
 | `registry check` | 1 finding: one claim made in two chapters |
@@ -1058,7 +1102,10 @@ thinks dangles. That is judgement however mechanical the arithmetic, so
 it is evidence and never a verdict. No flag changes this:
 DEVELOPER-AGENTS.md bars promoting a new check into a gate
 outright rather than leaving it to an argument about how precise the
-check is.
+check is. `registry build --glossary` exiting 1 is not such a flag: it
+is a build declining to write a page with terms missing from it, and
+`check` reports the same bullets and still exits 0
+([the pages](#-the-glossary-and-the-list-of-symbols)).
 
 What the registry proposal calls a "blocking global check" is therefore
 delivered as guaranteed invocation in step 6, ahead of the human sign-off

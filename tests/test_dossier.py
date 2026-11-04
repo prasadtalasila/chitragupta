@@ -310,14 +310,10 @@ def _write_glossary(draft, body):
     Shared by TestGlossaryTerms and TestSuggestAcronyms.
     """
     scope = dossier.dossier_dir(draft) / "scope.md"
-    placeholder = (
-        "## Glossary\n\n"
-        "<!-- Each recurring term with the one definition the whole "
-        "draft uses. -->\n"
-    )
     text = scope.read_text()
-    assert placeholder in text
-    scope.write_text(text.replace(placeholder, f"## Glossary\n\n{body}\n"))
+    head, heading, _ = text.partition("## Glossary\n")
+    assert heading, "the shipped scope.md ends with ## Glossary"
+    scope.write_text(f"{head}## Glossary\n\n{body}\n")
 
 
 class TestGlossaryTerms:
@@ -331,17 +327,17 @@ class TestGlossaryTerms:
     """
 
     def test_returns_empty_dict_without_a_dossier(self, draft):
-        assert _citekeys.glossary_terms(draft) == {}
+        assert dossier.glossary_terms(draft) == {}
 
     def test_the_shipped_placeholder_has_no_terms(self, draft):
         dossier.init(draft, "survey")
-        assert _citekeys.glossary_terms(draft) == {}
+        assert dossier.glossary_terms(draft) == {}
 
     def test_returns_empty_when_scope_has_no_glossary_heading_at_all(self, draft):
         dossier.init(draft, "survey")
         scope = dossier.dossier_dir(draft) / "scope.md"
         scope.write_text(scope.read_text().replace("## Glossary", "## Not a glossary"))
-        assert _citekeys.glossary_terms(draft) == {}
+        assert dossier.glossary_terms(draft) == {}
 
     def test_a_bullet_with_no_definition_text_is_skipped(self, draft):
         dossier.init(draft, "survey")
@@ -349,12 +345,12 @@ class TestGlossaryTerms:
             draft,
             "- **DTaaS** --\n- **FMU** -- Functional Mock-up Unit.",
         )
-        assert _citekeys.glossary_terms(draft) == {"FMU": "Functional Mock-up Unit."}
+        assert dossier.glossary_terms(draft) == {"FMU": "Functional Mock-up Unit."}
 
     def test_parses_a_single_bullet(self, draft):
         dossier.init(draft, "survey")
         _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
-        assert _citekeys.glossary_terms(draft) == {"DTaaS": "Digital Twin as a Service."}
+        assert dossier.glossary_terms(draft) == {"DTaaS": "Digital Twin as a Service."}
 
     def test_parses_several_bullets(self, draft):
         dossier.init(draft, "survey")
@@ -364,7 +360,7 @@ class TestGlossaryTerms:
             "- **FMU** -- Functional Mock-up Unit, the packaging format "
             "co-simulation tools exchange.",
         )
-        terms = _citekeys.glossary_terms(draft)
+        terms = dossier.glossary_terms(draft)
         assert terms["DTaaS"] == "Digital Twin as a Service."
         assert terms["FMU"].startswith("Functional Mock-up Unit")
 
@@ -376,14 +372,14 @@ class TestGlossaryTerms:
             "  estimate of the physical twin's condition. *Estimate*, not\n"
             "  *reading*: it may include quantities no sensor measures.",
         )
-        terms = _citekeys.glossary_terms(draft)
+        terms = dossier.glossary_terms(draft)
         assert terms["Twin state"].startswith("the digital object's current best")
         assert "*Estimate*, not" in terms["Twin state"]
 
     def test_a_hand_typed_line_that_does_not_match_is_skipped_not_an_error(self, draft):
         dossier.init(draft, "survey")
         _write_glossary(draft, "DTaaS: Digital Twin as a Service (no bullet)")
-        assert _citekeys.glossary_terms(draft) == {}
+        assert dossier.glossary_terms(draft) == {}
 
     def test_stops_at_the_next_heading(self, draft):
         # ## Glossary is the last section _scope() writes, so appending
@@ -395,7 +391,7 @@ class TestGlossaryTerms:
         scope.write_text(
             scope.read_text() + "\n## Not glossary\n\n- **Not a term** -- should not appear.\n"
         )
-        assert _citekeys.glossary_terms(draft) == {"DTaaS": "Digital Twin as a Service."}
+        assert dossier.glossary_terms(draft) == {"DTaaS": "Digital Twin as a Service."}
 
 
 class TestSuggestAcronyms:

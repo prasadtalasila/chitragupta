@@ -243,3 +243,24 @@ it. Parts become `##`; a chapter that is a single unit of the same name
 becomes one link rather than a heading repeating its own link text
 underneath; a chapter with several sections becomes `###` and a list.
 It is the reading copy for anyone who is not building LaTeX.
+
+**Glossary and List of Symbols: generated, never written.** Step 3's
+`registry build --glossary --notation` writes `glossary.tex` and
+`notation.tex` beside `book.tex` from the accepted units' `scope.md`
+glossaries; each carries its own `\chapter*` and `\addcontentsline`, so
+`book.tex` holds one `\input` each, under `\backmatter`, glossary first,
+before the bibliography. A page step 3 did not write (no terms, or no
+symbols) gets no `\input`. The layout, for checking the PDF:
+
+- a term with several definitions prints each, numbered, in outline
+  order; identical definitions print once;
+- every definition ends with `\Cref{<unit-id>}`, which resolves to
+  "Chapter 3" only because step 4 puts `\label{<unit-id>}` right after
+  each `\chapter`; cleveref names an appendix unit "Chapter A", as it
+  does for any `\Cref` to one in this book;
+- the List of Symbols is one `longtable` for the book, a row per symbol
+  and meaning.
+
+What neither page can catch is a qualifier inside a term or a definition
+that only says "as before"; both print as written, which is why the
+second sign-off reads them.

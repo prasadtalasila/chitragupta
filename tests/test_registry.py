@@ -10,7 +10,7 @@ judgement however mechanical the arithmetic.
 
 import pytest
 
-from chitragupta import citation_gate, registry, unit
+from chitragupta import citation_gate, dossier, registry, unit
 
 
 GOOD_SPEC = """# Composable Digital Twins
@@ -43,9 +43,7 @@ The unreliable half.
 """
 
 
-MODEL_UNIT = """- **digital twin** -- a model paired with a live data link
-
-A twin pairs a model with a link [@smith_example_2024].
+MODEL_UNIT = """A twin pairs a model with a link [@smith_example_2024].
 
 See [the data half](#ch-data) for the other half.
 """
@@ -72,28 +70,62 @@ DECLARED = {
 }
 
 
-def accept(book, unit_id, body):
+# The glossary `MODEL_UNIT`'s dossier records, for the tests that need a
+# term: since #1138 the terminology registry reads `scope.md`, not prose.
+MODEL_GLOSSARY = "- **digital twin** -- a model paired with a live data link"
+
+
+def accept(book, unit_id, body, glossary=None):
     """Accept `body` as `unit_id`'s prose, under the headings its outline
-    declares so the chapter stays aligned."""
+    declares so the chapter stays aligned, with `glossary` (bullets) as
+    its dossier's `## Glossary` when given."""
     headings = "".join(f"## {heading}\n\n" for heading in DECLARED.get(unit_id, ()))
     path = book / f"{unit_id}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"# {unit_id}\n\n{headings}{body}", encoding="utf-8")
+    if glossary is not None:
+        write_glossary(path, glossary)
     assert unit.main(["accept", str(book), unit_id]) == 0
     return path
+
+
+def write_glossary(path, bullets):
+    dossier.init(path, "textbook")
+    scope = dossier.dossier_dir(path) / "scope.md"
+    head, _, _ = scope.read_text(encoding="utf-8").partition("## Glossary")
+    scope.write_text(f"{head}## Glossary\n\n{bullets}\n", encoding="utf-8")
+
+
+def xref_findings(book):
+    return [text for kind, text in registry.findings(registry.build(book)) if kind == "xref"]
 
 
 # --- what each registry reads out of one unit ----------------------------
 
 
-def test_a_definition_is_the_bullet_shape_the_glossary_already_uses():
-    found = registry.definitions("- **digital twin** -- a model plus a live link\n")
-    assert found == [("digital twin", "term", "a model plus a live link")]
+def test_a_term_is_read_from_the_units_glossary(book):
+    accept(book, "ch-model", MODEL_UNIT, glossary=MODEL_GLOSSARY)
+    (row,) = registry.build(book)["terms"]
+    assert (row["term"], row["kind"], row["unit"]) == ("digital twin", "term", "ch-model")
+    assert row["definition"] == "a model paired with a live data link"
 
 
-def test_a_backticked_term_is_notation_rather_than_terminology():
-    found = registry.definitions("- **`x_t`** -- the state at time t\n")
-    assert found[0][0] == "`x_t`" and found[0][1] == "notation"
+def test_a_definition_bullet_in_the_prose_is_not_a_term(book):
+    """The pre-#1138 source, and the guard against it coming back."""
+    accept(book, "ch-model", "- **digital twin** -- a model plus a live link\n", glossary="")
+    assert registry.build(book)["terms"] == []
+
+
+def test_a_backticked_term_is_notation_rather_than_terminology(book):
+    accept(book, "ch-model", MODEL_UNIT, glossary="- **`x_t`** -- the state at time t")
+    (row,) = registry.build(book)["terms"]
+    assert (row["term"], row["symbol"], row["kind"]) == ("`x_t`", "x_t", "notation")
+
+
+def test_a_symbol_is_read_beside_its_term(book):
+    accept(book, "ch-model", MODEL_UNIT, glossary="- **Baseline** (`M_0`) -- the present value")
+    (row,) = registry.build(book)["terms"]
+    assert (row["term"], row["symbol"], row["kind"]) == ("Baseline", "M_0", "term")
 
 
 def test_a_claim_is_a_sentence_that_cites_something():
@@ -109,7 +141,7 @@ def test_a_tex_unit_is_read_with_latex_rules(tmp_path):
     (tmp_path / "ch-x.tex").write_text(
         "The `digital twin' view \\citep{smith_2024} is `neat'.\n", encoding="utf-8"
     )
-    built = {"terms": [], "claims": [], "xrefs": []}
+    built = {"terms": [], "claims": [], "xrefs": [], "glossary": [], "no_glossary": []}
     registry._read_unit(tmp_path, "ch-x", built, set())
     assert [claim["citekeys"] for claim in built["claims"]] == [["smith_2024"]]
 
@@ -149,7 +181,7 @@ def test_a_unit_may_define_its_own_anchor_for_others_to_reference():
 
 
 def test_the_registries_are_built_from_accepted_units_only(book):
-    accept(book, "ch-model", MODEL_UNIT)
+    accept(book, "ch-model", MODEL_UNIT, glossary=MODEL_GLOSSARY)
     (book / "ch-data.md").write_text("Unaccepted prose.\n", encoding="utf-8")
     built = registry.build(book)
     assert built["accepted"] == ["ch-model"]
@@ -159,11 +191,61 @@ def test_the_registries_are_built_from_accepted_units_only(book):
 
 
 def test_a_term_defined_in_two_units_is_a_finding(book):
-    accept(book, "ch-model", MODEL_UNIT)
-    accept(book, "ch-data", "- **digital twin** -- something else entirely\n")
+    accept(book, "ch-model", MODEL_UNIT, glossary=MODEL_GLOSSARY)
+    accept(book, "ch-data", "", glossary="- **Digital twin (DT)** -- something else entirely")
     findings = registry.findings(registry.build(book))
-    assert any(
-        "digital twin" in text and "ch-model" in text and "ch-data" in text for _, text in findings
+    assert ("term", "`digital twin` is defined more than once: ch-data, ch-model") in findings
+
+
+def test_a_term_defined_twice_in_one_unit_is_a_finding(book):
+    accept(
+        book,
+        "ch-model",
+        MODEL_UNIT,
+        glossary="- **Solver** -- one thing\n- **Solver** -- another",
+    )
+    findings = registry.findings(registry.build(book))
+    assert ("term", "`Solver` is defined more than once: ch-model (2x)") in findings
+
+
+def test_a_symbol_naming_two_terms_in_two_units_is_a_finding(book):
+    accept(book, "ch-model", MODEL_UNIT, glossary="- **Gain** (`k`) -- the controller's gain")
+    accept(book, "ch-data", "", glossary="- **Rate constant** (`k`) -- how fast heat leaves")
+    findings = registry.findings(registry.build(book))
+    assert any(kind == "notation" and "names different things" in text for kind, text in findings)
+
+
+def test_one_symbol_with_one_meaning_in_two_units_is_not_a_finding(book):
+    accept(book, "ch-model", MODEL_UNIT, glossary="- **Real-time factor** (`RTF`) -- a ratio")
+    accept(book, "ch-data", "", glossary="- **real-time factor** (`RTF`) -- a ratio")
+    findings = registry.findings(registry.build(book))
+    assert not [text for kind, text in findings if kind == "notation"]
+
+
+def test_a_symbol_typeset_two_ways_is_a_finding(book):
+    for unit_id, latex in (("ch-model", r"m_\mathrm{t}"), ("ch-data", "m_t")):
+        path = book / f"{unit_id}.md"
+        math = dossier.dossier_dir(path) / "math.md"
+        math.parent.mkdir(parents=True, exist_ok=True)
+        math.write_text(f"| ASCII | LaTeX |\n| --- | --- |\n| `m_t` | `{latex}` |\n")
+    glossary = "- **Target moisture** (`m_t`) -- the target"
+    accept(book, "ch-model", MODEL_UNIT, glossary=glossary)
+    accept(book, "ch-data", "", glossary=glossary)
+    findings = registry.findings(registry.build(book))
+    assert any(kind == "notation" and "typeset differently" in text for kind, text in findings)
+
+
+def test_an_off_format_glossary_bullet_is_a_finding(book):
+    accept(book, "ch-model", MODEL_UNIT, glossary="- **Residual**: the difference")
+    (finding,) = registry.findings(registry.build(book))
+    assert finding[0] == "glossary"
+    assert "ch-model scope.md:" in finding[1] and "**Residual**:" in finding[1]
+
+
+def test_a_unit_with_no_glossary_is_a_finding(book):
+    accept(book, "ch-model", MODEL_UNIT)
+    assert ("glossary", "ch-model has no ## Glossary in scope.md") in registry.findings(
+        registry.build(book)
     )
 
 
@@ -182,7 +264,7 @@ def test_a_claim_is_matched_regardless_of_case_and_spacing(book):
 
 def test_a_cross_reference_to_a_unit_the_outline_holds_resolves(book):
     accept(book, "ch-model", MODEL_UNIT)
-    assert registry.findings(registry.build(book)) == []
+    assert xref_findings(book) == []
 
 
 def test_a_cross_reference_to_a_chapter_resolves(book):
@@ -190,7 +272,7 @@ def test_a_cross_reference_to_a_chapter_resolves(book):
     unresolved because a chapter generates no prose of its own would be a
     finding about the registry rather than about the book."""
     accept(book, "ch-model", "As \\cref{ch-data} sets out.\n")
-    assert registry.findings(registry.build(book)) == []
+    assert xref_findings(book) == []
 
 
 def test_a_cross_reference_to_nothing_is_a_finding(book):
@@ -202,14 +284,14 @@ def test_a_cross_reference_to_nothing_is_a_finding(book):
 def test_a_cross_reference_to_an_anchor_another_unit_defines_resolves(book):
     accept(book, "ch-model", "See \\cref{fig-one}.\n")
     accept(book, "ch-data", "The figure {#fig-one}\n")
-    assert registry.findings(registry.build(book)) == []
+    assert xref_findings(book) == []
 
 
 # --- the commands --------------------------------------------------------
 
 
 def test_build_writes_one_file_per_registry(book, capsys):
-    accept(book, "ch-model", MODEL_UNIT)
+    accept(book, "ch-model", MODEL_UNIT, glossary=MODEL_GLOSSARY)
     capsys.readouterr()
     assert registry.main(["build", str(book)]) == 0
     written = registry.registry_dir(book)
@@ -221,7 +303,7 @@ def test_build_writes_one_file_per_registry(book, capsys):
 
 
 def test_building_twice_over_unchanged_units_writes_the_same_bytes(book):
-    accept(book, "ch-model", MODEL_UNIT)
+    accept(book, "ch-model", MODEL_UNIT, glossary=MODEL_GLOSSARY)
     registry.main(["build", str(book)])
     first = (registry.registry_dir(book) / "terms.md").read_text(encoding="utf-8")
     registry.main(["build", str(book)])
@@ -249,15 +331,15 @@ def test_check_says_how_many_units_it_could_not_see(book, capsys):
 
 
 def test_check_on_a_clean_book_says_so(book, capsys):
-    accept(book, "ch-model", MODEL_UNIT)
-    accept(book, "ch-data", "The other half.\n")
+    accept(book, "ch-model", MODEL_UNIT, glossary=MODEL_GLOSSARY)
+    accept(book, "ch-data", "The other half.\n", glossary="- **link** -- the live data feed")
     capsys.readouterr()
     assert registry.main(["check", str(book)]) == 0
     assert "no findings" in capsys.readouterr().out
 
 
 def test_an_excerpt_is_what_a_later_unit_should_be_given(book, capsys):
-    accept(book, "ch-model", MODEL_UNIT)
+    accept(book, "ch-model", MODEL_UNIT, glossary=MODEL_GLOSSARY)
     capsys.readouterr()
     assert registry.main(["excerpt", str(book), "ch-data"]) == 0
     out = capsys.readouterr().out
@@ -265,10 +347,19 @@ def test_an_excerpt_is_what_a_later_unit_should_be_given(book, capsys):
     assert "ch-model" in out
 
 
+def test_an_excerpt_carries_a_terms_symbol(book, capsys):
+    accept(book, "ch-model", MODEL_UNIT, glossary="- **Baseline** (`M_0`) -- the present value")
+    capsys.readouterr()
+    registry.main(["excerpt", str(book), "ch-data"])
+    assert "- **Baseline** (`M_0`) (term, in ch-model) -- the present value" in (
+        capsys.readouterr().out
+    )
+
+
 def test_an_excerpt_leaves_out_the_units_own_definitions(book, capsys):
     """A unit is not told to conform to itself -- it is told what the
     rest of the book already settled."""
-    accept(book, "ch-model", MODEL_UNIT)
+    accept(book, "ch-model", MODEL_UNIT, glossary=MODEL_GLOSSARY)
     capsys.readouterr()
     registry.main(["excerpt", str(book), "ch-model"])
     assert "digital twin" not in capsys.readouterr().out

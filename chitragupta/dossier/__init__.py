@@ -343,7 +343,8 @@ def _cmd_list(args: argparse.Namespace) -> int:
 # the reason.
 # pylint: disable=wrong-import-position
 from chitragupta.dossier._archive import export, restore
-from chitragupta.dossier._citekeys import citekeys_by_section, glossary_terms
+from chitragupta.dossier._citekeys import citekeys_by_section
+from chitragupta.dossier._glossary import glossary_terms
 from chitragupta.dossier._create import init
 from chitragupta.dossier._drift import drift, drift_all
 from chitragupta.dossier._language import set_language
