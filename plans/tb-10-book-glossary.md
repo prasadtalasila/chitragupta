@@ -74,6 +74,7 @@ Each was taken with the user on 2026-11-03/04.
 | 11 | How is a symbol told apart from a term? | An optional symbol slot in the bullet: `- **Name** (`sym`) -- definition` |
 | 12 | Which existing shapes stay valid? | `- **Term** -- definition` (no symbol), and the symbol inside the bold, `- **Baseline (`M_0`)** -- ...`. The colon form does not |
 | 13 | Collect the symbols in one place? | Yes: a list of symbols from the same `scope.md` bullets, in the back matter **right after the glossary** |
+| 14 | One table or one per chapter? | **One consolidated table**; rows merge by meaning |
 
 ## 1. The format, and how it is read
 
@@ -258,10 +259,15 @@ The file:
 The same entries, those with a symbol, under the same refusal,
 no-entries and determinism rules as `--glossary`.
 
+- **One consolidated table** for the whole book, never one per
+  chapter.
 - **Rows.** Symbol, meaning (the term's name, or the definition for a
-  symbol-only entry), chapter as `\Cref{<unit-id>}`. A symbol used in
-  several units gets one row per unit, so a clash is visible on the
-  page as well as in `[notation]`.
+  symbol-only entry), chapters as `\Cref{<unit-id>}`. Rows merge **by
+  meaning**: a symbol with the same term identity in several units is
+  one row listing those chapters in outline order (`RTF`, real-time
+  factor, Chapter 7, Appendix A); a symbol naming different terms gets
+  one row per meaning, so a clash is visible on the page as well as in
+  `[notation]`.
 - **Typesetting.** Each symbol through its own unit's `math.md`, as in
   section 3. A symbol with no mapping stays as the code span it is in
   the chapter.
@@ -324,7 +330,8 @@ Tests first, in `tests/test_dossier.py` and `tests/test_registry.py`:
   findings print and `check` exits 0; `excerpt` carries dossier terms;
 - `--glossary`: alphabetical; inline vs numbered; symbol after the
   name; symbol-only entries absent; `\Cref{<unit-id>}`;
-- `--notation`: only entries with a symbol; one row per unit; Greek
+- `--notation`: only entries with a symbol; same meaning merges into one row
+  listing its chapters, different meanings stay separate rows; Greek
   after Latin;
 - both flags: byte-identical rebuild; refusal exits 1 and leaves an
   earlier file alone; nothing to write, no file; a unit's `math.md`
