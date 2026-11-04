@@ -12,6 +12,11 @@ class MissingBinary(RuntimeError):
     pass
 
 
+class ConversionError(RuntimeError):
+    """`_pandoc.markdown_to_latex` could not hand back one LaTeX text per
+    Markdown text it was given (#1138)."""
+
+
 # Re-exported: this name shipped here first, and
 # chitragupta/review/citation_provenance.py catches it as `render_output.OutsideContentDir`.
 # It now lives in chitragupta/config.py, because chitragupta/citation_gate.py and

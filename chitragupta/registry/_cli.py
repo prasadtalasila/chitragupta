@@ -16,7 +16,7 @@ from pathlib import Path
 from chitragupta import spec
 from chitragupta.unit import UnitError
 from chitragupta.registry import _pages, _terms, build, excerpt, findings, registry_dir
-from chitragupta.render_output._errors import MissingBinary
+from chitragupta.render_output._errors import ConversionError, MissingBinary
 from chitragupta.render_output._pandoc import markdown_to_latex
 
 _BOOK_HELP = "The book's directory under content/drafts/"
@@ -121,7 +121,7 @@ def _write_pages(built: dict, args) -> int:
     except MissingBinary as exc:
         print(f"[missing-binary] {exc}", file=sys.stderr)
         return 1
-    except (ValueError, OSError, subprocess.CalledProcessError) as exc:
+    except (ConversionError, OSError, subprocess.CalledProcessError) as exc:
         print(f"[conversion] pandoc could not convert the glossary: {exc}", file=sys.stderr)
         return 1
     for target, text, what in zip((args.glossary, args.notation), pages, ("glossary", "symbol")):

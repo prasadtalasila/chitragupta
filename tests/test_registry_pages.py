@@ -12,7 +12,7 @@ import pytest
 from chitragupta import dossier, registry
 from chitragupta.registry import _pages
 from chitragupta.render_output import _pandoc
-from chitragupta.render_output._errors import MissingBinary
+from chitragupta.render_output._errors import ConversionError, MissingBinary
 from tests.conftest import pandoc_available
 
 # conftest's `signed_book` reads this module's BOOK_SPEC as the outline.
@@ -230,7 +230,9 @@ def test_a_missing_pandoc_refuses_with_the_render_layers_error(book, tmp_path, m
     assert not glossary.exists()
 
 
-@pytest.mark.parametrize("error", [ValueError("a text holds the separator"), OSError("pandoc")])
+@pytest.mark.parametrize(
+    "error", [ConversionError("a text holds the separator"), OSError("pandoc")]
+)
 def test_a_failed_conversion_refuses_without_a_traceback(
     book, tmp_path, monkeypatch, capsys, error
 ):

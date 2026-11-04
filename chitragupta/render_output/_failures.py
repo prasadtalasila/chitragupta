@@ -22,12 +22,13 @@ because that file is at the code-line limit (docs/CODE-STANDARDS.md).
 import subprocess
 
 from chitragupta import ledger, reference_entries
-from chitragupta.render_output._errors import MissingBinary, OutsideContentDir
+from chitragupta.render_output._errors import ConversionError, MissingBinary, OutsideContentDir
 from chitragupta.render_output._gate import UngatedDraft
 from chitragupta.render_output._math import MathMappingError
 
 RENDER_FAILURES: tuple[type[Exception], ...] = (
     MissingBinary,
+    ConversionError,
     OutsideContentDir,
     UngatedDraft,
     MathMappingError,

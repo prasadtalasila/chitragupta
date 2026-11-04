@@ -4,7 +4,7 @@ for the book's generated glossary and list of symbols (#1138)."""
 import pytest
 
 from chitragupta.render_output import _pandoc
-from chitragupta.render_output._errors import MissingBinary
+from chitragupta.render_output._errors import ConversionError, MissingBinary
 from tests.conftest import pandoc_available
 
 
@@ -28,7 +28,7 @@ def test_no_texts_runs_no_pandoc(monkeypatch):
 
 
 def test_a_text_holding_the_separator_is_refused():
-    with pytest.raises(ValueError, match="separator"):
+    with pytest.raises(ConversionError, match="separator"):
         _pandoc.markdown_to_latex([f"a {_pandoc._SEPARATOR} b"])
 
 
@@ -58,5 +58,5 @@ def test_a_conversion_that_loses_a_text_is_refused(monkeypatch):
     monkeypatch.setattr(_pandoc, "_require", lambda binary: None)
     monkeypatch.setattr(_pandoc.programs, "require_program", lambda binary: binary)
     monkeypatch.setattr(_pandoc.subprocess, "run", lambda *a, **k: Result())
-    with pytest.raises(ValueError, match="2 texts"):
+    with pytest.raises(ConversionError, match="2 texts"):
         _pandoc.markdown_to_latex(["one", "two"])

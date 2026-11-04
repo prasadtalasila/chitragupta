@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from chitragupta import config, ledger, reference_entries
-from chitragupta.render_output._errors import MissingBinary, OutsideContentDir
+from chitragupta.render_output._errors import ConversionError, MissingBinary, OutsideContentDir
 from chitragupta.render_output._figures import _figure_refs
 from chitragupta.render_output._math import MathMappingError
 
@@ -206,13 +206,15 @@ def _rendered(args: argparse.Namespace) -> Path | None:
         # The heuristic gaps stay warnings -- only this is certain.
         print(f"[error] {exc}")
         return None
-    except OutsideContentDir as exc:
+    except (OutsideContentDir, ConversionError) as exc:
         # Reported like any other render failure rather than as a
         # traceback, same as the KeyError below: a genre skill's
         # documented reaction to `[error]` is to warn and carry on
         # presenting the draft, which is right here too -- the draft is
         # fine, and it is the place this copy would have gone that is
-        # wrong.
+        # wrong. `ConversionError` comes from `markdown_to_latex`, which
+        # `render()` does not call; it is caught here because every
+        # member of RENDER_FAILURES is.
         print(f"[error] {exc}")
         return None
     except subprocess.CalledProcessError as exc:  # pragma: no cover-windows

@@ -16,7 +16,7 @@ from pathlib import Path
 
 from chitragupta import config, install, pdf_fonts, programs, tex_engine
 from chitragupta.render_output._csl import _collapsed_csl, _resolve_csl
-from chitragupta.render_output._errors import MissingBinary, _require
+from chitragupta.render_output._errors import ConversionError, MissingBinary, _require
 from chitragupta.render_output import _floats
 from chitragupta.render_output._tables import _LATEX_BOUND
 from chitragupta.render_output._tikz_libraries import header_include, preamble_libraries
@@ -459,7 +459,7 @@ def markdown_to_latex(texts: "list[str]") -> "list[str]":
     breaks the same way in the glossary as in the chapter.
     """
     if any(_SEPARATOR in text for text in texts):
-        raise ValueError(f"a text holds the separator {_SEPARATOR!r}")
+        raise ConversionError(f"a text holds the separator {_SEPARATOR!r}")
     if not texts:
         return []
     _require("pandoc")
@@ -478,5 +478,5 @@ def markdown_to_latex(texts: "list[str]") -> "list[str]":
     )
     parts = [part.strip() for part in result.stdout.split(f"%{_SEPARATOR}")]
     if len(parts) != len(texts):
-        raise ValueError(f"pandoc returned {len(parts)} parts for {len(texts)} texts")
+        raise ConversionError(f"pandoc returned {len(parts)} parts for {len(texts)} texts")
     return parts
