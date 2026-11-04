@@ -373,3 +373,66 @@ A separate commit in `chitragupta-drafts`, after this ships, driven by
   qualifiers dropped while doing so;
 - then `registry build --glossary --notation` and `registry check` run,
   and every remaining finding reported to the user.
+
+## Amendments from review
+
+A review of this plan against the code (2026-11-04) changed these, and
+they override anything above that reads otherwise.
+
+1. **Modules.** `chitragupta/dossier/_citekeys.py` is at 246 of 250 code
+   lines, so `_GLOSSARY_HEADING`, `_GLOSSARY_TERM`, `glossary_terms` and
+   the new `glossary_entries`/`glossary_problems` move to
+   `chitragupta/dossier/_glossary.py` (a split the change forces; the
+   importers in `_acronyms.py`, `style_acronym_drift.py` via
+   `dossier.glossary_terms`, and `registry/__init__.py` follow). The two
+   page writers go in `chitragupta/registry/_pages.py`, called by
+   `_cli.py`.
+2. **Where a definition ends.** A bullet is `^[-*+]\s` at column 0. Its
+   definition is the bullet line plus every following line indented by
+   at least one space; it ends at the first blank line or column-0
+   line. So an off-format bullet or a paragraph after a good bullet is
+   never absorbed into the definition before it. A bullet with an empty
+   definition (`- **DTaaS** --`) is still skipped by `glossary_terms()`
+   and is a `[glossary]` problem (reason: no definition).
+3. **Symbols are not sent through pandoc.** A mapped symbol is written
+   as `$<latex>$` straight from the unit's `math.md`; an unmapped one
+   goes through the same conversion as a definition (a code span).
+   Pandoc writes inline maths in a definition as `\(...\)`, and the
+   tests assert that. `\item[{...}]` wraps its term in braces, so a `]`
+   in a term cannot end the optional argument.
+4. **One pandoc helper, one call.** `render_output.markdown_to_latex(texts:
+   list[str]) -> list[str]` in `_pandoc.py`: `-f markdown -t latex
+   --wrap=none --no-highlight` with `breakable_inline_code.lua`, through
+   `programs.require_program` as `_run_pandoc` does. The texts are
+   joined by a sentinel paragraph (a fixed token that cannot occur in a
+   definition, checked before joining) and split after, so a whole book
+   is one process. The math mapping is applied per unit *before*
+   joining, which is why one call is still per-unit-correct.
+5. **Exit codes.** `build --glossary/--notation` always writes
+   `terms.md`, `claims.md` and `xrefs.md` first. Then, on any problem
+   or a missing pandoc, it prints them (`[glossary] ...` /
+   `[missing-binary] ...`) and exits 1, and neither page is written. A
+   page is written to a temporary file and renamed, so it is never left
+   half-written. `_cli.py`'s `except` gains `MissingBinary`.
+6. **The words "never blocks".** SOUL.md's "none grows a flag that
+   blocks", `_cli.py`'s parser description and docs/WRITE-A-BOOK.md's
+   "why check exits 0" gain one clause each: a *check* never blocks; a
+   *build* that cannot write a correct file refuses, as `render` refuses
+   an unmapped `<!-- math -->` marker. `registry check` itself is
+   unchanged.
+7. **The symbol-inside-the-bold split changes a key.** `glossary_terms()`
+   keys `**Baseline (`M_0`)**` as `Baseline`, not ``Baseline (`M_0`)``.
+   Harmless for acronym detection (`acronyms._candidate` needs
+   `[A-Z]{2,6}`), and pinned by a test.
+8. **A unit with no glossary is reported.** An accepted unit with no
+   `scope.md`, or no `## Glossary` in it, is one `[glossary]` finding
+   (`<unit> has no ## Glossary`), never a refusal: a chapter with no
+   terms is legitimate.
+9. **Appendices.** "Appendix A" from `\Cref` depends on `\appendix`
+   preceding the unit's `\input`; latex-conventions.md says so.
+   `longtable`, `cleveref` and `description`/`enumerate` are already
+   loaded by the skeleton.
+10. **Sort keys.** Glossary: term identity, then outline order, then
+    file line. List of Symbols: the symbol lowercased; a symbol is Greek
+    when it starts with a `_math._GREEK_NAMES` word followed by the end
+    or `_`/`^`; Latin first, then Greek, then anything else.
