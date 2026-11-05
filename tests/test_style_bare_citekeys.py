@@ -124,6 +124,11 @@ class TestATexUnit:
         draft.write_text("A duplicate, \\texttt{obaidat\\_hubcap\\_2022}.\n")
         assert found(draft) == [(1, "obaidat_hubcap_2022", "review")]
 
+    def test_a_texttt_that_is_not_a_key_is_not_reported(self, corpus, tmp_path):
+        draft = tmp_path / "chapter.tex"
+        draft.write_text("Run \\texttt{make\\_figures} first.\n")
+        assert found(draft) == []
+
 
 class TestNoLedger:
     def test_no_ledger_gives_no_findings(self, isolated_config, tmp_path):
