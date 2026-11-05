@@ -895,7 +895,10 @@ directory, and the success report shaped by `--json`.
 
 ### ✅ `chitragupta draft gate`
 
-The hard gate: fails if a draft cites a citekey the ledger doesn't hold.
+The hard gate: fails if a draft cites a citekey the ledger doesn't hold
+as a parsed source. A key with no ledger row fails as `not found in
+ledger`; one whose PDF never parsed (`no_pdf`, `discovered`,
+`parse_failed`) fails naming its status.
 **Takes no options**: every argument is a file to check.
 
 | Argument | What it does |
@@ -1091,8 +1094,10 @@ exits 0**, because some drafts having drifted is the normal state of a
 live corpus and not a failure, so a caller branches on the contents and
 not the status code. It reports two different things per dossier:
 
-- **missing**: a citekey the draft cites (`evidence.md` / `sections.md`)
-  that has left the ledger, listed with the sections citing it. A defect.
+- **missing**: a citekey the dossier declares (an `evidence.md` heading
+  or a `sections.md` cell) that has left the ledger or whose PDF no
+  longer parses, listed with the sections citing it. A defect. A
+  backticked word in `evidence.md` prose is not a declaration.
 - **candidates**: papers now in the ledger that one of the dossier's own
   `retrieval.md` queries would surface in its top 15, minus everything
   already kept *or rejected*. A query recorded against a Zotero
@@ -1666,6 +1671,7 @@ right margin rather than anything about the prose itself:
 
 | Rule | What it means |
 | --- | --- |
+| `chitragupta.BareCitekey` | A ledger citekey a reader would see printed raw: in prose without its `@`, or set as code. A parsed key in prose may be repaired unattended to `[@key]`; a code span or a key with no parsed PDF is `review` (WRITING-STANDARDS.md §16) |
 | `chitragupta.BareUrl` | A URL is printed raw where a `[text](https://…)` link would read better and give the pdf something to click. A code span that is *only* a URL counts; one holding a command that contains a URL does not |
 | `chitragupta.WideCodeLine` | A code line is wider than the page fits. In a Markdown draft the render loads `fvextra` and the line wraps with a `,→` continuation marker, so this is a quality note; in a `.tex` fragment, `\input` into a thesis whose preamble this pipeline may not touch, nothing can load it and the line really does run into the margin |
 
@@ -3261,8 +3267,8 @@ real corpus is legible rather than silent for its whole duration:
 
 `unchanged` is the incremental skip (same text as last run, not
 re-encoded); `no text to embed` is a bib entry with no parsed text behind
-it, which stays searchable by title through `chitragupta/retrieval.py` and not by
-meaning. Ctrl+C is safe: every chunk upserted before the interrupt is
+it. It is not citable, so neither `chitragupta/retrieval.py` nor this index
+offers it. Ctrl+C is safe: every chunk upserted before the interrupt is
 already in `content/chroma/`, the stage says how far it got, and re-running
 picks up from there.
 

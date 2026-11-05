@@ -38,8 +38,19 @@ a rendered document without passing a check you cannot talk your way
 past.
 
 Rule: a citekey may only be used if it appears in `papers/bibliography.bib`
-(the source of truth; see below) and was picked up into `content/ledger.sqlite`
-by `python -m chitragupta.corpus sync`.
+(the source of truth; see below), was picked up into `content/ledger.sqlite`
+by `python -m chitragupta.corpus sync`, **and its PDF parsed** (ledger
+status `parsed`). An entry with no PDF, such as a web page, is in the
+`.bib`, but nothing in the corpus can ground a claim on it: the gate
+fails it and retrieval never offers it.
+
+A citation is always a marker: `[@key]`, or `\citep{key}` in a `.tex`
+fragment. Citations render in IEEE style, so a paper used as a noun is
+still the marker: "In [@key], the authors ..." renders as "In [3], the
+authors ...". Never write the key itself in prose or in a code span: it
+prints raw, and no reader can resolve it (`draft style` reports it as
+`BareCitekey`). A remark about the corpus itself, a duplicate entry for
+instance, belongs in the dossier's `revisions.md`, never in the draft.
 
 All six genre skills (`survey-writer`, `thesis-chapter-writer`,
 `textbook-chapter-writer`, `tutorial-writer`, `deep-research`,

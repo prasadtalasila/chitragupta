@@ -191,6 +191,7 @@ only when someone remembers to.
 | Whether an equation should have been numbered at all | §12 | **no** | not checked: there is no mechanical proxy |
 | A matrix with two or more columns is displayed, not set inline | §12 | yes | not checked: whether one overflows depends on the math font ([§12](#-what-is-checked-and-what-you-still-have-to-look-for)) |
 | A URL is written as a `[text](https://…)` link rather than printed raw | §14 | yes | `BareUrl`: yes |
+| A citekey is cited as a marker, never printed as the key itself | §16 | yes | `BareCitekey`: yes for a parsed key in prose (the repair is `[@key]`); no (`review`) for a key set as code, or one with no parsed PDF ([§16](#-16-a-citation-is-always-a-marker)) |
 | A code line fits the page's column limit | §14 | yes | `WideCodeLine`: no (`review`): a wide line may be deliberate ([§14](#-keep-a-code-block-inside-the-page)) |
 | A heading does not state its own chapter number | §15 | yes | `ChapterSelfNumbered`, `.tex` units only: yes ([§15](#-15-a-heading-does-not-number-itself)) |
 | A very long token has a breakable form | §14 | yes | not checked: the proxy found no repair that was not a worse word ([§14](#-prefer-a-breakable-form-for-a-very-long-token)) |
@@ -1181,6 +1182,25 @@ remedy.** `## 1.0 Before you start` under LaTeX's own numbering renders
 `\setcounter{secnumdepth}{-2}` in the book's authored preamble, which is
 a decision about the whole document. [WRITE-A-BOOK.md](WRITE-A-BOOK.md)
 has what that costs and when it is the wrong lever.
+
+## 🔖 16. A citation is always a marker
+
+A cited paper is written as its citation marker, `[@key]` (`\citep{key}`
+in a `.tex` fragment), and never as its citekey. Citations render in IEEE
+style, so a paper used as a noun is still the marker: "In [@key], the
+authors measure ..." renders as "In [3], the authors measure ...". A key
+written without its `@` ("the frameworks gil_survey_2024 evaluates") or
+set as code prints raw, and no reader can resolve it.
+
+A sentence that is about the corpus rather than the subject, such as "the
+corpus holds a duplicate entry for this paper", is not for the reader at
+all. It belongs in the dossier's `revisions.md`.
+
+`draft style` reports both as `BareCitekey`, reading only what a reader
+sees: not the References section's key labels, comments, code blocks or
+the citations themselves. A parsed key in prose is repaired unattended to
+`[@key]`. A key set as code, or one whose PDF never parsed (which may not
+be cited at all), is left to a person.
 
 ## 📖 Sources and attribution
 

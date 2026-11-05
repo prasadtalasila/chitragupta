@@ -17,9 +17,9 @@ import pytest
 
 from chitragupta import config, ledger, render_output
 from tests.conftest import (
+    add_citable,
     content_draft,
     lualatex_available,
-    make_reference,
     pandoc_available,
     pdf_text,
     pdftotext_available,
@@ -38,9 +38,7 @@ def _leaked(pdf) -> bool:
 
 def _cited_draft(isolated_config, title: str) -> Path:
     con = ledger.connect()
-    ledger.upsert_reference(
-        con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024")
-    )
+    add_citable(con, "smith_2024", title="An Example Paper", year="2024")
     con.close()
     isolated_config.BIB_FILE_PATH.write_text(
         f"@article{{smith_2024,\n  title={{{title}}},\n  year={{2024}},\n}}\n",

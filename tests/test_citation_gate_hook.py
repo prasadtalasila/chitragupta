@@ -44,7 +44,7 @@ import pytest
 
 from chitragupta import ledger
 
-from tests.conftest import _IS_COVERAGE_BOOTSTRAP, make_reference
+from tests.conftest import _IS_COVERAGE_BOOTSTRAP, add_citable
 from tests.ledger_faults import leave_hot_journal
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -308,9 +308,7 @@ class TestGateEnforcement:
         assert "too large to gate" in response["reason"]
 
     def test_verified_citation_does_not_block(self, hook_repo, ledger_con):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="smith_real_2024", title="A Real Paper")
-        )
+        add_citable(ledger_con, "smith_real_2024", title="A Real Paper")
         path = hook_repo.draft()
         path.write_text("A real, grounded claim [@smith_real_2024].\n")
         result = hook_repo.run(path)

@@ -4,10 +4,10 @@ made it into a draft's citations. Informational only, not a gate."""
 import json
 from pathlib import Path
 
-from chitragupta import config, ledger
+from chitragupta import config
 from chitragupta.review import _citation_coverage_render, citation_coverage
 
-from tests.conftest import make_reference
+from tests.conftest import add_citable
 
 
 class TestCitedCitekeys:
@@ -24,9 +24,7 @@ class TestCitedCitekeys:
 
 class TestComputeCoverage:
     def test_full_coverage_when_every_candidate_cited(self, ledger_con, tmp_path):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = tmp_path / "draft.md"
         draft.write_text("Composable twins [@a2024] are useful.\n")
 
@@ -38,12 +36,8 @@ class TestComputeCoverage:
         assert result.coverage_pct == 100.0
 
     def test_partial_coverage_lists_uncited_candidates(self, ledger_con, tmp_path):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="b2024", title="Digital Twin Simulation")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
+        add_citable(ledger_con, "b2024", title="Digital Twin Simulation")
         draft = tmp_path / "draft.md"
         draft.write_text("Composable twins [@a2024] are useful.\n")
 
@@ -65,9 +59,7 @@ class TestComputeCoverage:
         assert result.cited_outside_candidates == {"a2024"}
 
     def test_cited_outside_candidates_tracked_separately(self, ledger_con, tmp_path):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = tmp_path / "draft.md"
         draft.write_text("[@a2024] and also [@never_retrieved_2024].\n")
 
@@ -79,12 +71,8 @@ class TestComputeCoverage:
 
 class TestFormatReport:
     def test_reports_coverage_percentage_and_gaps(self, ledger_con, tmp_path):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="b2024", title="Digital Twin Simulation")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
+        add_citable(ledger_con, "b2024", title="Digital Twin Simulation")
         draft = tmp_path / "draft.md"
         draft.write_text("Composable twins [@a2024] are useful.\n")
 
@@ -95,9 +83,7 @@ class TestFormatReport:
         assert "b2024: Digital Twin Simulation" in report
 
     def test_reports_citations_outside_candidates(self, ledger_con, tmp_path):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = tmp_path / "draft.md"
         draft.write_text("[@a2024] and also [@never_retrieved_2024].\n")
 
@@ -127,9 +113,7 @@ def _draft(text: str = "Composable twins [@a2024] are useful.\n", name: str = "d
 
 class TestMain:
     def test_main_prints_report_and_returns_zero(self, ledger_con, isolated_config, capsys):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft()
 
         rc = citation_coverage.main([str(draft), "--query", "digital twin composability"])
@@ -139,9 +123,7 @@ class TestMain:
         assert "Coverage: 100%" in out
 
     def test_main_supports_repeated_query_and_custom_k(self, ledger_con, isolated_config, capsys):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft("[@a2024]\n")
 
         rc = citation_coverage.main(
@@ -165,9 +147,7 @@ class TestWrite:
     reports rather than only in a terminal that gets closed."""
 
     def test_off_by_default(self, ledger_con, isolated_config, capsys):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft()
 
         citation_coverage.main([str(draft), "--query", "digital twin composability"])
@@ -175,9 +155,7 @@ class TestWrite:
         assert not config.REVIEW_DIR.exists()
 
     def test_write_lands_in_the_mirrored_review_dir(self, ledger_con, isolated_config, capsys):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft(name="dt/survey.md")
 
         rc = citation_coverage.main(
@@ -198,9 +176,7 @@ class TestWrite:
     def test_the_report_records_its_queries(self, ledger_con, isolated_config, capsys):
         """A coverage figure is meaningless without the queries it was
         measured against, so the header carries the whole invocation."""
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft()
 
         citation_coverage.main(
@@ -246,9 +222,7 @@ class TestWrite:
         """The whole point of the report: a source retrieval surfaced and
         the draft never cited. A bare citekey would make the reader look
         each one up."""
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft("Cites nothing from the corpus.\n")
 
         citation_coverage.main(
@@ -265,12 +239,8 @@ class TestWrite:
         """Listed so the report cannot be misread as a complete picture
         of the draft's sources -- and labelled so it is not misread as a
         finding either."""
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="b2023", title="Unrelated Runtime Verification")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
+        add_citable(ledger_con, "b2023", title="Unrelated Runtime Verification")
         draft = _draft("Cites both [@a2024] [@b2023].\n")
 
         citation_coverage.main(
@@ -296,9 +266,7 @@ class TestWrite:
         Without `--write` the recorded command prints to stdout and writes
         nothing -- it reproduces the *findings* but not the file, which is
         the one thing someone holding the file wants."""
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft()
 
         citation_coverage.main(
@@ -313,9 +281,7 @@ class TestWrite:
     ):
         """No wall-clock timestamp anywhere in a report: the point of
         writing one is that it diffs cleanly against the next revision's."""
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft()
         argv = [str(draft), "--query", "digital twin", "--write", "--formats", "md"]
 
@@ -337,9 +303,7 @@ class TestJsonPayload:
     def test_json_flag_prints_the_payload_instead_of_text(
         self, ledger_con, isolated_config, capsys
     ):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft()
 
         rc = citation_coverage.main([str(draft), "--query", "digital twin composability", "--json"])
@@ -350,9 +314,7 @@ class TestJsonPayload:
         assert payload["coverage_pct"] == 100.0
 
     def test_json_flag_alone_does_not_write_a_file(self, ledger_con, isolated_config, capsys):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft()
 
         citation_coverage.main([str(draft), "--query", "digital twin composability", "--json"])
@@ -362,12 +324,8 @@ class TestJsonPayload:
     def test_findings_match_the_printed_report_one_for_one(
         self, ledger_con, isolated_config, capsys
     ):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="b2024", title="Digital Twin Simulation")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
+        add_citable(ledger_con, "b2024", title="Digital Twin Simulation")
         draft = _draft()
 
         citation_coverage.main([str(draft), "--query", "digital twin", "--json"])
@@ -381,12 +339,8 @@ class TestJsonPayload:
         }
 
     def test_uncited_candidates_carry_their_title(self, ledger_con, isolated_config, capsys):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="b2024", title="Digital Twin Simulation")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
+        add_citable(ledger_con, "b2024", title="Digital Twin Simulation")
         draft = _draft()
 
         citation_coverage.main([str(draft), "--query", "digital twin", "--json"])
@@ -415,12 +369,8 @@ class TestJsonPayload:
     def test_finding_ids_are_stable_across_runs_and_distinct_from_each_other(
         self, ledger_con, isolated_config, capsys
     ):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="b2024", title="Digital Twin Simulation")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
+        add_citable(ledger_con, "b2024", title="Digital Twin Simulation")
         draft = _draft()
         argv = [str(draft), "--query", "digital twin", "--json"]
 
@@ -435,9 +385,7 @@ class TestJsonPayload:
     def test_write_files_the_json_sibling_regardless_of_the_json_flag(
         self, ledger_con, isolated_config, capsys
     ):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft(name="dt/survey.md")
 
         rc = citation_coverage.main(
@@ -457,9 +405,7 @@ class TestJsonPayload:
     def test_two_runs_over_unchanged_input_write_byte_identical_json(
         self, ledger_con, isolated_config, capsys
     ):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft()
         argv = [str(draft), "--query", "digital twin", "--write", "--formats", "md"]
 
@@ -473,9 +419,7 @@ class TestJsonPayload:
     def test_json_flag_moves_the_written_summary_to_stderr(
         self, ledger_con, isolated_config, capsys
     ):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Composability")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft()
 
         citation_coverage.main(

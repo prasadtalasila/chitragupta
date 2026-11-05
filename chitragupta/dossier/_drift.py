@@ -263,8 +263,13 @@ def drift(dossier: Path, corpus: "Corpus | None" = None) -> Drift:
 
     sections_citing = section_citekeys(dossier, known)
     cited = _citekeys_in(dossier, CITED_FILES, known)
+    # Only what the dossier *declares* can go missing (#1117): an
+    # `evidence.md` heading or a `sections.md` cell. `cited` also matches
+    # backticked prose, and the skill's own name in the evidence preamble
+    # (`tutorial-writer`) was reported as a citation that left the ledger.
+    declared = declared_citekeys(dossier) | set(sections_citing)
     report.missing = {
-        citekey: sections_citing.get(citekey, []) for citekey in sorted(cited - corpus.citekeys)
+        citekey: sections_citing.get(citekey, []) for citekey in sorted(declared - corpus.citekeys)
     }
 
     # Everything the dossier ever weighed -- rejections included, which is

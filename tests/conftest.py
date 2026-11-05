@@ -336,6 +336,17 @@ def add_item(citekey, parsed_text=None, pdf_path=None, title="T"):
         con.close()
 
 
+def add_citable(con, citekey, **overrides):
+    """A ledger row the gate accepts: `upsert_reference`, then `parsed`.
+
+    Since #1118 a row whose PDF never parsed is not citable, so a test that
+    needs a key to *pass* the gate seeds it with this rather than with
+    `upsert_reference` alone, which leaves the row `no_pdf`. The parsed
+    text need not exist: only the status is read."""
+    ledger.upsert_reference(con, make_reference(citekey=citekey, **overrides))
+    ledger.mark_parsed(con, citekey, parsed_file(citekey))
+
+
 def plant_sidecar(citekey, records, *, docling=True) -> Path:
     """A structural passage sidecar, `<citekey>.passages.json`, holding
     `records` as written.
@@ -478,8 +489,7 @@ def book(book_dir, request):
 def example_ledger(ledger_con):
     """A ledger holding the one reference the book tests' outlines and
     drafts cite, so a unit citing it can be accepted."""
-    ledger.upsert_reference(ledger_con, make_reference(citekey="smith_example_2024"))
-    ledger_con.commit()
+    add_citable(ledger_con, "smith_example_2024")
     return ledger_con
 
 

@@ -70,7 +70,7 @@ their own each one is a dead end.
 
 | Signal | What it finds | What it emits | Who acts on it |
 | --- | --- | --- | --- |
-| `python -m chitragupta.draft dossier status --all` | a cited citekey that has left the ledger; a newly reachable paper the dossier never weighed | text, or `--json` | human, by hand |
+| `python -m chitragupta.draft dossier status --all` | a cited citekey that has left the ledger or no longer parses; a newly reachable paper the dossier never weighed | text, or `--json` | human, by hand |
 | `python -m chitragupta.review provenance` | a citation whose source does not visibly support it | Markdown report, or `--json` | human, by hand |
 | `python -m chitragupta.review verbatim scan` | wording shared with a parsed source | Markdown report, or `--json` | human, by hand |
 | `python -m chitragupta.review coverage` | a source retrieval surfaced that the draft never cited | Markdown report, or `--json` | human, by hand |

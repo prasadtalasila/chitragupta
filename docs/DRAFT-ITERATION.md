@@ -211,7 +211,7 @@ mentions without telling a missing citekey from a candidate.
 
 | Finding | What it is | What it costs to ignore |
 | --- | --- | --- |
-| **Missing**: a cited citekey that has left the ledger | a defect | the draft cites a paper the corpus no longer has; the citation gate will fail on it |
+| **Missing**: a cited citekey that has left the ledger or no longer parses | a defect | the draft cites a paper the corpus no longer has; the citation gate will fail on it |
 | **Candidate**: a newly reachable paper the dossier never weighed | a decision | nothing, until the sub-theme it bears on is revised |
 
 The design avoids collapsing the two into one "drift" number. A missing

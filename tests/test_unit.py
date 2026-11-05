@@ -11,7 +11,8 @@ import json
 
 import pytest
 
-from chitragupta import spec, unit
+from chitragupta import ledger, spec, unit
+from tests.conftest import make_reference
 
 
 GOOD_SPEC = """# Composable Digital Twins
@@ -549,6 +550,31 @@ def test_accept_refuses_a_source_that_is_not_in_the_ledger(book, example_ledger,
     assert not unit.record_path(book, "ch-model").exists()
 
 
+def test_accept_refuses_a_source_whose_pdf_never_parsed(book, example_ledger, capsys):
+    """#1118: a `no_pdf` row is a real bib entry nothing in the corpus can
+    ground, so it may not be recorded as a source either."""
+    ledger.upsert_reference(example_ledger, make_reference(citekey="web_page_2024"))
+    sign_off(book)
+    write_unit_draft(book, "ch-model")
+    capsys.readouterr()
+    assert unit.main(["accept", str(book), "ch-model", "--source", "web_page_2024"]) == 1
+    err = capsys.readouterr().err
+    assert "web_page_2024 has no parsed PDF (status no_pdf)" in err
+    assert not unit.record_path(book, "ch-model").exists()
+
+
+def test_accept_names_an_absent_source_beside_an_unparsed_one(book, example_ledger, capsys):
+    ledger.upsert_reference(example_ledger, make_reference(citekey="web_page_2024"))
+    sign_off(book)
+    write_unit_draft(book, "ch-model")
+    capsys.readouterr()
+    argv = ["accept", str(book), "ch-model", "--source", "web_page_2024"]
+    assert unit.main([*argv, "--source", "invented_source_2030"]) == 1
+    err = capsys.readouterr().err
+    assert "web_page_2024 has no parsed PDF (status no_pdf)" in err
+    assert "invented_source_2030 is not in the ledger" in err
+
+
 def test_accept_names_every_unknown_source_not_just_the_first(book, example_ledger, capsys):
     sign_off(book)
     write_unit_draft(book, "ch-model")
@@ -587,9 +613,9 @@ def test_accept_gates_the_very_text_it_records(book, example_ledger, monkeypatch
     gated = []
     real = citation_gate.check_text
 
-    def capture(path, text, known):
+    def capture(path, text, known, unparsed=None):
         gated.append(text)
-        return real(path, text, known)
+        return real(path, text, known, unparsed)
 
     monkeypatch.setattr(citation_gate, "check_text", capture)
     capsys.readouterr()

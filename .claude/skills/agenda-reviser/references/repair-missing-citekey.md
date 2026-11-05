@@ -1,6 +1,8 @@
 # Repairing a `missing-citekey` item
 
-Read this when the item in hand is of class `missing-citekey`. The step that sent
+Read this when the item in hand is of class `missing-citekey`: a key the
+dossier declares that has left the ledger, or whose PDF no longer parses
+(it is then still in the `.bib` but not citable). The step that sent
 you here says which edit tool to use. Paths here are from the project
 root.
 

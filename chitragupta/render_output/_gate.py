@@ -17,6 +17,7 @@ import io
 from pathlib import Path
 
 from chitragupta import citation_gate, ledger
+from chitragupta.ledger_citable import citable_citekeys, unparsed_citekeys
 from chitragupta.render_output._substitution import _draft_warnings
 
 
@@ -35,8 +36,8 @@ def gated_warnings(draft_text: str, input_path: Path) -> "list[tuple[str, str]]"
     """
     if citation_gate.extract_citekeys_for(input_path, draft_text):
         with ledger.reading() as con:
-            known = ledger.known_citekeys(con)
-        result = citation_gate.check_text(input_path, draft_text, known)
+            known, unparsed = citable_citekeys(con), unparsed_citekeys(con)
+        result = citation_gate.check_text(input_path, draft_text, known, unparsed)
         if not result.ok:
             raise UngatedDraft(_report(input_path, result))
     return _draft_warnings(draft_text, input_path)

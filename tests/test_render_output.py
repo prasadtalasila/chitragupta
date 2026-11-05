@@ -15,8 +15,8 @@ import pytest
 from chitragupta import ledger
 from chitragupta import render_output
 from tests.conftest import content_draft, pdf_text
-from tests.conftest import make_reference
 from tests.conftest import (
+    add_citable,
     CAPTIONED_MD,
     MARKED_MD,
     MARKED_INPUT,
@@ -106,14 +106,12 @@ class TestRenderMarkdown:
     def test_produces_plain_numbered_markdown(self, isolated_config, tmp_path, monkeypatch):
         con = ledger.connect()
         for key, title in [("b_2024", "B Paper"), ("a_2023", "A Paper")]:
-            ledger.upsert_reference(
+            add_citable(
                 con,
-                make_reference(
-                    citekey=key,
-                    title=title,
-                    year="2024",
-                    fields={"author": "Doe, Jane", "journal": "J. Things"},
-                ),
+                key,
+                title=title,
+                year="2024",
+                fields={"author": "Doe, Jane", "journal": "J. Things"},
             )
         con.close()
 
@@ -152,7 +150,7 @@ class TestRenderMarkdown:
 
     def test_leaves_the_draft_untouched(self, isolated_config, tmp_path):
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="a_2024", title="A Paper", year="2024"))
+        add_citable(con, "a_2024", title="A Paper", year="2024")
         con.close()
 
         draft = content_draft(isolated_config, "draft.md")
@@ -169,7 +167,7 @@ class TestRenderMarkdown:
         # preview: that is a real conversion, and the fragment carries
         # \citep{...} rather than [@key] and no reference list of its own.
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="a_2024", title="A Paper", year="2024"))
+        add_citable(con, "a_2024", title="A Paper", year="2024")
         con.close()
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{a_2024,\n  author={Doe, Jane},\n  title={A Paper},\n  year={2024},\n}\n"
@@ -232,9 +230,7 @@ class TestRenderMarkdown:
 class TestRenderReal:
     def test_renders_markdown_with_citation_to_pdf(self, isolated_config, tmp_path):
         con = ledger.connect()
-        ledger.upsert_reference(
-            con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024")
-        )
+        add_citable(con, "smith_2024", title="An Example Paper", year="2024")
         con.close()
 
         bib = isolated_config.BIB_FILE_PATH
@@ -259,9 +255,7 @@ class TestRenderReal:
         secret.parent.mkdir()
         secret.write_text("NOT-FOR-THE-PDF\n")
         con = ledger.connect()
-        ledger.upsert_reference(
-            con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024")
-        )
+        add_citable(con, "smith_2024", title="An Example Paper", year="2024")
         con.close()
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n"
@@ -329,9 +323,7 @@ class TestRenderReal:
         self, isolated_config, tmp_path
     ):
         con = ledger.connect()
-        ledger.upsert_reference(
-            con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024")
-        )
+        add_citable(con, "smith_2024", title="An Example Paper", year="2024")
         con.close()
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  author={Smith, Jane},\n  title={An Example Paper},\n"
@@ -366,9 +358,7 @@ class TestRenderReal:
         self, isolated_config, tmp_path
     ):
         con = ledger.connect()
-        ledger.upsert_reference(
-            con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024")
-        )
+        add_citable(con, "smith_2024", title="An Example Paper", year="2024")
         con.close()
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  author={Smith, Jane},\n  title={An Example Paper},\n"
@@ -394,9 +384,7 @@ class TestRenderReal:
         con = ledger.connect()
         keys = [f"k{i}_2024" for i in range(1, 6)]
         for key in keys:
-            ledger.upsert_reference(
-                con, make_reference(citekey=key, title=f"Paper {key}", year="2024")
-            )
+            add_citable(con, key, title=f"Paper {key}", year="2024")
         con.close()
         isolated_config.BIB_FILE_PATH.write_text(
             "\n".join(
@@ -431,9 +419,7 @@ class TestRenderReal:
         con = ledger.connect()
         keys = [f"k{i}_2024" for i in range(1, 4)]
         for key in keys:
-            ledger.upsert_reference(
-                con, make_reference(citekey=key, title=f"Paper {key}", year="2024")
-            )
+            add_citable(con, key, title=f"Paper {key}", year="2024")
         con.close()
         isolated_config.BIB_FILE_PATH.write_text(
             "\n".join(
@@ -457,12 +443,7 @@ class TestRenderReal:
 
     def test_double_hyphen_citekey_survives_render(self, isolated_config, tmp_path):
         con = ledger.connect()
-        ledger.upsert_reference(
-            con,
-            make_reference(
-                citekey="zech_digital-twins-as--service_2024", title="Zech Paper", year="2024"
-            ),
-        )
+        add_citable(con, "zech_digital-twins-as--service_2024", title="Zech Paper", year="2024")
         con.close()
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{zech_digital-twins-as--service_2024,\n"
@@ -488,9 +469,7 @@ class TestRenderReal:
         # this CLI is actually invoked (from the repo root, not
         # content/drafts/).
         con = ledger.connect()
-        ledger.upsert_reference(
-            con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024")
-        )
+        add_citable(con, "smith_2024", title="An Example Paper", year="2024")
         con.close()
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title={An Example Paper},\n  year={2024},\n}\n"
@@ -530,9 +509,7 @@ class TestRenderReal:
         # pdflatex pass embed it correctly. A .tex a user can't compile
         # isn't a real deliverable.
         con = ledger.connect()
-        ledger.upsert_reference(
-            con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024")
-        )
+        add_citable(con, "smith_2024", title="An Example Paper", year="2024")
         con.close()
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title={An Example Paper},\n  year={2024},\n}\n"
@@ -1150,7 +1127,7 @@ class TestCaptionedFigureRenderReal:
         # pandoc's Markdown reader like any other prose, so citeproc
         # resolves it the same way.
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="a_2024", title="A Paper", year="2024"))
+        add_citable(con, "a_2024", title="A Paper", year="2024")
         con.close()
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{a_2024,\n  author={Doe, Jane},\n  title={A Paper},\n  year={2024},\n}\n"

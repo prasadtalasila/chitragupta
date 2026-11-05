@@ -2130,6 +2130,77 @@ class TestSeparatorFreeCitekeys:
         assert set(_drift.drift(target).missing) == {"Doe2024"}
 
 
+def _seed_unparsed(citekey, status="no_pdf"):
+    """One ledger row that is in the .bib but whose PDF never parsed."""
+    from chitragupta import ledger
+
+    con = ledger.connect()
+    try:
+        con.execute(
+            "INSERT INTO items (citekey, status, last_synced) VALUES (?, ?, '2026-01-01')",
+            (citekey, status),
+        )
+        con.commit()
+    finally:
+        con.close()
+
+
+class TestTheCorpusIsParsedRows:
+    """#1118: a row whose PDF never parsed is not citable, so it is not
+    part of the corpus a dossier is measured against either."""
+
+    def test_the_corpus_fingerprint_counts_only_parsed_rows(self, isolated_config):
+        _seed_ledger(["a_paper_2024", "b_paper_2024"])
+        _seed_unparsed("web_page_2024")
+        assert dossier.known_citekeys() == {"a_paper_2024", "b_paper_2024"}
+
+    def test_a_cited_key_whose_row_stopped_being_parsed_is_missing(self, grounded):
+        _seed_corpus([("other_paper_2025", "Other", "unrelated text")])
+        _seed_unparsed("kept_paper_2024")
+        assert _drift.drift(grounded).missing == {"kept_paper_2024": ["1. First"]}
+
+
+class TestOnlyADeclaredKeyCanGoMissing:
+    """#1117: prose in `evidence.md` is not a citation. A backticked word
+    such as the skill's name is reported missing only if the dossier
+    declares it -- an `evidence.md` heading or a `sections.md` cell."""
+
+    def test_a_backticked_word_in_the_evidence_preamble_is_not_missing(self, draft):
+        dossier.init(draft, "tutorial")
+        target = dossier.dossier_dir(draft)
+        (target / "evidence.md").write_text(
+            "# Evidence\n\nKept by the `tutorial-writer` skill; one block per cited source.\n"
+        )
+        _seed_corpus([("other_paper_2025", "Other", "unrelated text")])
+        assert _drift.drift(target).missing == {}
+
+    def test_a_declared_key_that_left_the_ledger_is_still_missing(self, grounded):
+        _seed_corpus([("other_paper_2025", "Other", "unrelated text")])
+        assert _drift.drift(grounded).missing == {"kept_paper_2024": ["1. First"]}
+
+    def test_a_sections_md_key_that_left_the_ledger_is_missing(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        (target / "sections.md").write_text(
+            "# Sections and their citekeys\n\n| section | citekeys |\n|---|---|\n"
+            "| 1. First | `gone_paper_2024` |\n"
+        )
+        _seed_corpus([("other_paper_2025", "Other", "unrelated text")])
+        assert _drift.drift(target).missing == {"gone_paper_2024": ["1. First"]}
+
+    def test_a_key_cited_only_in_an_evidence_body_is_not_missing(self, draft):
+        """The accepted cost of the fix (plans/1117-1119-citable-means-parsed.md):
+        a key named only in the body of a block whose heading does not open
+        with it is the same shape as the prose #1117 reported."""
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        (target / "evidence.md").write_text(
+            "# Kept evidence\n\n## Background\n\nSee `gone_paper_2024` for this.\n"
+        )
+        _seed_corpus([("other_paper_2025", "Other", "unrelated text")])
+        assert _drift.drift(target).missing == {}
+
+
 class TestDuplicateEvidenceBlocks:
     """m-65 (#506). Two `## `key`` blocks for one citekey silently kept
     the *last*, so a second block -- appended by a later retrieval pass,

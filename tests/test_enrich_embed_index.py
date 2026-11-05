@@ -17,9 +17,10 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import chroma_paging, config, reranker
+from chitragupta import chroma_paging, config, ledger, reranker
 from chitragupta.enrich import _index_reader, _rerank, embed_index
 from chitragupta.enrich.corpus import CorpusDoc
+from tests.conftest import add_citable
 
 
 # SQLite's SQLITE_MAX_VARIABLE_NUMBER on 3.32+, and so the ceiling on
@@ -787,6 +788,28 @@ class TestSearch:
         assert results[0]["citekey"] == "a2024"
         assert results[0]["distance"] == 0.123
         assert len(results[0]["snippet"]) == 10
+
+
+class TestSearchDropsUnparsedRows:
+    """#1118: a row whose PDF never parsed is not citable. Its chunks can
+    sit in an index built before its status changed -- `build_corpus`
+    reads text whatever the status -- so `search` drops them."""
+
+    def test_a_parse_failed_rows_chunk_is_not_returned(
+        self, isolated_config, fake_enrich_deps, ledger_con
+    ):
+        add_citable(ledger_con, "a2024")
+        add_citable(ledger_con, "b2024")
+        ledger.mark_parse_failed(ledger_con, "b2024", "corrupt pdf")
+        client, _ = embed_index.get_client_and_model()
+        collection = client.get_or_create_collection(embed_index.collection_name())
+        collection.query_response = {
+            "documents": [["stale text", "good text"]],
+            "metadatas": [[{"citekey": "b2024", "title": "B"}, {"citekey": "a2024", "title": "A"}]],
+            "distances": [[0.1, 0.2]],
+        }
+
+        assert [r["citekey"] for r in embed_index.search("query", k=3)] == ["a2024"]
 
 
 class TestSearchIsAReader:
