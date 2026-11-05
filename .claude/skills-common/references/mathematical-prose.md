@@ -6,7 +6,7 @@ governs the prose around symbols, conditions and derivations.
 `docs/WRITING-STANDARDS.md` §12 governs how a symbol is *set*, and the
 dossier's `math.md` holds its LaTeX and, under `## Symbols`, its
 meaning. Nothing here is checked by a tool; the rules are for the
-writing pass and for the read-as-the-student pass. Paths here are from
+writing pass and for the reread as the reader. Paths here are from
 the project root.
 
 The examples share one model: a potted plant whose soil moisture `m`
@@ -29,7 +29,7 @@ the meaning once; this sentence is where the reader meets it.
 - *Before:* "Watering with `V` ml raises it by `g * V`."
   *After:* "Let `V` be the dose, the volume of water given at one
   check, in millilitres. Let `g` be the dose response: the rise in
-  moisture per millilitre."
+  moisture per millilitre, in percentage points."
 
 ## Repeat the role word after a gap
 
@@ -50,7 +50,9 @@ Pick a letter the reader can remember (`d` for drying, `V` for volume),
 and keep each region of the alphabet to one job: `i`, `j`, `k`, `n` for
 indices and counts, `t` for time, `T_` with a subscript for intervals
 and periods, `a`, `b`, `c` for constants fitted from data, Greek letters
-for model parameters. One letter means one thing for the whole chapter,
+for model parameters. The regions govern the base letter; a subscript
+is a label, so `m_t` (target moisture) is a moisture, not a time. One
+letter means one thing for the whole chapter,
 and in a book for the whole book. A book's `registry check` reports a
 symbol naming two things, but a clash is cheaper to avoid than to
 repair across chapters.
@@ -84,7 +86,7 @@ and when it has arrived.
   `T_c`, followed by the next section.
   *After:* "We now show that checking every `T_c = (m - m_lo) / d`
   hours is just often enough. ... So we have shown that a check interval
-  of `(m - m_lo) / d` hours keeps the moisture above `m_lo` without
+  of `(m - m_lo) / d` hours keeps the moisture at or above `m_lo` without
   water in between."
 - *Before:* "Substituting, rearranging and simplifying gives the dose."
   *After:* "We want the dose `V` that restores the target moisture
@@ -115,8 +117,8 @@ check first.
 
 - *Before:* "So the linear model gives the next reading."
   *After:* "The dose is below the pot's 200 ml capacity, so no water
-  drains away and the linear model applies: the next reading is
-  `m + g * V`."
+  drains away and the linear model applies: the moisture just after
+  watering is `m + g * V`."
 - *Before:* "Hence the controller never lets the plant dry out."
   *After:* "The drying rate `d` was measured as constant across the
   day, which the interval bound assumes; hence the controller never
@@ -144,8 +146,9 @@ above apply unchanged, with symbols set as LaTeX:
 
 The ideas in this file are Gareth Wilkes's, *A Brief Guide to
 Mathematical Writing* (Department of Pure Mathematics and Mathematical
-Statistics, University of Cambridge, revised 2023): "Notation and
-definitions", "Formatting and structuring proofs" and "Diagrams". The
+Statistics, University of Cambridge, revised 2023): §1 "General tips"
+(its "If ... then", linearity, checking conditions and diagrams), §2
+"Notation and definitions" and §3 "Formatting and structuring proofs". The
 guide states no licence, so they are paraphrased here and none of its
 wording or examples is used. `docs/WRITING-STANDARDS.md` "Sources and
 attribution" carries the credit.
