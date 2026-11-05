@@ -37,6 +37,10 @@ _TOLERANCE_PT = 1.0
 _PROTRUSION_BAND_FRACTION = 1 / 3
 
 Box = tuple[float, float, float, float]
+Point = tuple[float, float]
+
+# Points per Bézier piece when a curve is flattened into straight ones.
+_CURVE_STEPS = 8
 
 
 def _without_bbox(boxes: dict[str, Box]) -> dict[str, Box]:
@@ -227,3 +231,44 @@ def emptiness(boxes: dict[str, Box]) -> float | None:
         return None
     filled = sum((x2 - x1) * (y2 - y1) for x1, y1, x2, y2 in nodes.values())
     return max(0.0, 1.0 - filled / bbox_area)
+
+
+def subpaths(segments: list[tuple[str, Point]]) -> list[tuple[list[Point], bool]]:
+    """`[(points, curved)]`, one per subpath of two points or more, from
+    a path's logged `(op, point)` segments (`_drawn.py` has the ops).
+    Curves are flattened; a rectangle is dropped."""
+    pieces: list[tuple[list[Point], bool]] = []
+    points: list[Point] = []
+    curved, supports, rectangle = False, [], False
+    for op, point in segments:
+        if op in ("M", "R"):
+            if len(points) > 1 and not rectangle:
+                pieces.append((points, curved))
+            points, curved, supports, rectangle = [point], False, [], op == "R"
+        elif op == "L":
+            points.append(point)
+        elif op == "Z":
+            points.append(points[0])
+        elif op == "C":
+            supports.append(point)
+            if len(supports) == 3:
+                points += _bezier(points[-1], supports[0], supports[1], supports[2])
+                curved, supports = True, []
+    if len(points) > 1 and not rectangle:
+        pieces.append((points, curved))
+    return pieces
+
+
+def _bezier(p0: Point, p1: Point, p2: Point, p3: Point) -> list[Point]:
+    """A cubic Bézier as `_CURVE_STEPS` straight pieces, `p0` excluded."""
+    out = []
+    for step in range(1, _CURVE_STEPS + 1):
+        t = step / _CURVE_STEPS
+        u = 1 - t
+        out.append(
+            (
+                u**3 * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t**3 * p3[0],
+                u**3 * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t**3 * p3[1],
+            )
+        )
+    return out

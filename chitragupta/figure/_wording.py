@@ -38,7 +38,7 @@ from dataclasses import dataclass
 from chitragupta._tex_comments import strip_comments
 from chitragupta.figure._focal import declaration
 from chitragupta.figure._rules import Finding
-from chitragupta.review.figure_layout._source import _PATH_STATEMENT_RE
+from chitragupta.review.figure_layout._scan import path_spans
 
 TAG_WORDS = 3
 GLOSS_WORDS = 6
@@ -214,8 +214,8 @@ def _cglabs(text: str) -> list[tuple[str, str]]:
 def _tags(text: str) -> list[str]:
     """The label of every node placed on a path that joins two points."""
     tags = []
-    for statement in _PATH_STATEMENT_RE.finditer(text):
-        body = statement.group("body")
+    for start, end in path_spans(text):
+        body = text[start:end]
         if _JOINS_RE.search(_blanked(body)):
             tags += [label for _, label, _ in _labels(body) if not label.startswith("\\cglab")]
     return tags

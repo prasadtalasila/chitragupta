@@ -1867,22 +1867,38 @@ class TestCheckFigure:
 
         assert result.failed and result.boxes is None
 
+    LOOP = (
+        "\\begin{tikzpicture}\n"
+        "\\foreach \\i in {1,2} { \\node (s\\i) at (\\i,0) {S}; }\n"
+        "\\node (a) at (0,1) {A};\n"
+        "\\end{tikzpicture}%\n"
+    )
+
     @pytest.mark.slow
     @needs_tikz
-    def test_a_loop_named_node_is_reported_unmeasured_not_broken(self, tmp_path):
+    def test_a_loop_named_node_compiles_and_is_measured_from_what_tikz_drew(self, tmp_path):
         """#1072, end to end: the sample book's `run-modes.tex` names its
         nodes `(s\\i)` in a `\\foreach` and compiles on its own, yet was
-        reported as `does-not-compile`."""
+        reported as `does-not-compile`. `figure check`'s hook then says
+        what the name expanded to, and those nodes are measured (#1112)."""
         path = tmp_path / "fig.tex"
-        path.write_text(
-            "\\begin{tikzpicture}\n"
-            "\\foreach \\i in {1,2} { \\node (s\\i) at (\\i,0) {S}; }\n"
-            "\\node (a) at (0,1) {A};\n"
-            "\\end{tikzpicture}%\n",
-            encoding="utf-8",
-        )
+        path.write_text(self.LOOP, encoding="utf-8")
 
         result = figure_layout.check_figure(path, "", boxed=True)
+
+        assert result.failed is None
+        assert result.unmeasured == []
+        assert result.declared == ["s1", "s2", "a"]
+
+    @pytest.mark.slow
+    @needs_tikz
+    def test_without_the_hook_a_loop_named_node_is_reported_unmeasured(self, tmp_path):
+        """`review figure` compiles without the drawing hook, so nothing
+        says what `s\\i` became: it stays declared and unmeasured."""
+        path = tmp_path / "fig.tex"
+        path.write_text(self.LOOP, encoding="utf-8")
+
+        result = figure_layout.check_figure(path, "")
 
         assert result.failed is None
         assert result.unmeasured == ["s\\i"]

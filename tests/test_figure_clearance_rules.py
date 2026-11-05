@@ -5,6 +5,8 @@ connector's path, and its text box is what a reader sees, so the tests
 give one explicitly.
 """
 
+from dataclasses import replace
+
 from chitragupta.figure._clearance_rules import tag_clearance, tag_covered, transit
 from chitragupta.figure._connectors import MM, connectors
 from tests.figure_drawn_fixtures import drawn, line, node
@@ -66,6 +68,58 @@ class TestTagClearance:
         (finding,) = tag_clearance(cons, figure)
 
         assert finding.measurement == "tag 0.0mm from its line (node box)"
+
+
+class TestTagClearanceFromTheInk:
+    """#1113: from the stroke's edge and the arrowheads, not the
+    centreline."""
+
+    def _inked(self, tag, **ink):
+        figure, _ = _figure(tag)
+        figure.lines[0] = replace(figure.lines[0], **ink)
+        return figure, connectors(figure)[0]
+
+    def test_c2_measures_from_the_strokes_edge(self):
+        """1.2mm off the centre of a 1.2mm-wide stroke is 0.6mm off its
+        ink, and fires."""
+        figure, cons = self._inked(_tag("cgu-1", (60, 10 + 1.2 * MM, 80, 25)), width=1.2 * MM)
+
+        (finding,) = tag_clearance(cons, figure)
+
+        assert finding.measurement == "tag 0.6mm from its line"
+
+    def test_c2_measures_from_an_arrowhead_beside_the_tag(self):
+        """1.55mm clear of the shaft, but above a head 2.1mm wide. The
+        hull is logged out of order, with a repeat and an inner point."""
+        head = ((97, 10), (90, 10 + 1.05 * MM), (93, 10), (90, 10 - 1.05 * MM), (97, 10))
+        figure, cons = self._inked(_tag("cgu-1", (85, 10 + 1.55 * MM, 95, 25)), heads=(head,))
+
+        (finding,) = tag_clearance(cons, figure)
+
+        assert finding.measurement == "tag 0.5mm from its line"
+
+    def test_c2_holds_beside_the_shaft_away_from_the_head(self):
+        head = ((97, 10), (90, 13), (90, 7))
+        figure, cons = self._inked(_tag("cgu-1", (50, 10 + 1.5 * MM, 70, 25)), heads=(head,))
+
+        assert tag_clearance(cons, figure) == []
+
+    def test_c2_holds_where_a_tags_corner_only_nears_a_heads_barb(self):
+        """A midway tag on a short edge ends just before the head starts:
+        near its barb, not beside it, so the shaft is what is measured."""
+        head = ((97, 10), (90, 10 + 1.05 * MM), (90, 10 - 1.05 * MM))
+        figure, cons = self._inked(_tag("cgu-1", (60, 10 + 1.5 * MM, 89, 25)), heads=(head,))
+
+        assert tag_clearance(cons, figure) == []
+
+    def test_c2_reads_a_head_of_two_points_as_a_segment(self):
+        figure, cons = self._inked(
+            _tag("cgu-1", (85, 10 + 1.5 * MM, 95, 25)), heads=(((88, 11), (92, 12)),)
+        )
+
+        (finding,) = tag_clearance(cons, figure)
+
+        assert finding.measurement == f"tag {(10 + 1.5 * MM - 12) / MM:.1f}mm from its line"
 
 
 class TestTransit:

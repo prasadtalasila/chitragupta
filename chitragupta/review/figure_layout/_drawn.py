@@ -28,6 +28,9 @@ plotted path never reaches `max_print_line`):
   of its transform, printed at the end of the picture. A quarter turn
   (`rotate=90` or `-90`) is measured: its box is exact, and its text box
   is turned about the `text` anchor. Any other turn is set aside.
+- `CGLW <index> <width>`: that path's line width (#1113).
+- `CGTIP <index> <tip> <x> <y>`: one point of the convex hull of an
+  arrowhead pgf drew on that path, numbered per tip (#1113).
 - `CGPAINT`, `CGTEXT` and `CGTEXTCOLOR`: the colours paths and text were
   set in (#1055), whose grammar `_paint.py` documents and reads.
 
@@ -51,15 +54,13 @@ is never mistaken for the next line's tag.
 import re
 from dataclasses import dataclass, field, replace
 
-from chitragupta.review.figure_layout._geometry import Box
+from chitragupta.review.figure_layout._geometry import Box, Point, subpaths
 from chitragupta.review.figure_layout._paint import Colours, Paint, TextRun, frame_paint
 
-Point = tuple[float, float]
 
-# Points per Bézier piece when a curve is flattened into straight ones.
-_CURVE_STEPS = 8
-
-_LINE_RE = re.compile(r"^(CGNODE|CGPATH|CGSEG|CGNB|CGPAINT|CGTEXT|CGTEXTCOLOR) (.*)$", re.MULTILINE)
+_LINE_RE = re.compile(
+    r"^(CGNODE|CGPATH|CGSEG|CGNB|CGPAINT|CGTEXT|CGTEXTCOLOR|CGLW|CGTIP) (.*)$", re.MULTILINE
+)
 
 
 @dataclass(frozen=True)
@@ -103,6 +104,10 @@ class DrawnLine:
     labels: tuple[str, ...]
     # What it was stroked in (#1055); `None` from a log without paint.
     stroke: Paint | None = None
+    # Its line width in pt, and the outline of each arrowhead on its
+    # path (#1113); 0 and none from a log without them.
+    width: float = 0.0
+    heads: tuple[tuple[Point, ...], ...] = ()
 
 
 @dataclass
@@ -122,6 +127,8 @@ class _Path:
     segments: list[tuple[str, Point]] = field(default_factory=list)
     paint: tuple[Paint, Paint] | None = None
     action: str = ""
+    width: float = 0.0
+    heads: dict[int, list[Point]] = field(default_factory=dict)
 
 
 def parse_drawn(log: str) -> Drawn | None:
@@ -170,12 +177,22 @@ class _Reader:
         elif kind == "CGSEG":
             index, op, x, y = rest.split()
             self.paths[int(index)].segments.append((op, (float(x), float(y))))
+        elif kind in ("CGLW", "CGTIP"):
+            self._ink(kind, rest.split())
         elif kind == "CGNB":
             *fields, name = rest.split(None, 8)
             node = _node(name, fields, self.texts, name in self.framed)
             self.nodes[name] = self._coloured(node)
         else:
             self.colours.take(kind, rest)
+
+    def _ink(self, kind: str, fields: list[str]) -> None:
+        """A path's line width, or one point of an arrowhead on it (#1113)."""
+        path = self.paths[int(fields[0])]
+        if kind == "CGLW":
+            path.width = _pt(fields[1])
+        else:
+            path.heads.setdefault(int(fields[1]), []).append((float(fields[2]), float(fields[3])))
 
     def _coloured(self, node: DrawnNode) -> DrawnNode:
         """`node` with its frame's paint and its text's runs (#1055)."""
@@ -238,58 +255,26 @@ def _quarter_turn(b: float, c: float) -> bool:
 
 
 def _lines(index: int, path: _Path) -> list[DrawnLine]:
-    """A path's open and closed subpaths as lines; rectangles dropped."""
-    pieces = _subpaths(path.segments)
+    """A path's open and closed subpaths as lines; rectangles dropped.
+    pgf sets a start tip on the first subpath and an end tip on the
+    last, so the heads go to the subpaths that carry a tip."""
+    pieces = subpaths(path.segments)
+    heads = tuple(tuple(points) for points in path.heads.values())
     lines = []
     for number, (points, curved) in enumerate(pieces):
+        start_tip = path.start_tip and number == 0
+        end_tip = path.end_tip and number == len(pieces) - 1
         lines.append(
             DrawnLine(
                 index=index,
                 points=tuple(points),
                 curved=curved,
-                start_tip=path.start_tip and number == 0,
-                end_tip=path.end_tip and number == len(pieces) - 1,
+                start_tip=start_tip,
+                end_tip=end_tip,
                 labels=path.labels,
                 stroke=path.paint[0] if path.paint else None,
+                width=path.width,
+                heads=heads if start_tip or end_tip else (),
             )
         )
     return lines
-
-
-def _subpaths(segments: list[tuple[str, Point]]) -> list[tuple[list[Point], bool]]:
-    """`[(points, curved)]`, one per subpath of two points or more."""
-    pieces: list[tuple[list[Point], bool]] = []
-    points: list[Point] = []
-    curved, supports, rectangle = False, [], False
-    for op, point in segments:
-        if op in ("M", "R"):
-            if len(points) > 1 and not rectangle:
-                pieces.append((points, curved))
-            points, curved, supports, rectangle = [point], False, [], op == "R"
-        elif op == "L":
-            points.append(point)
-        elif op == "Z":
-            points.append(points[0])
-        elif op == "C":
-            supports.append(point)
-            if len(supports) == 3:
-                points += _bezier(points[-1], supports[0], supports[1], supports[2])
-                curved, supports = True, []
-    if len(points) > 1 and not rectangle:
-        pieces.append((points, curved))
-    return pieces
-
-
-def _bezier(p0: Point, p1: Point, p2: Point, p3: Point) -> list[Point]:
-    """A cubic Bézier as `_CURVE_STEPS` straight pieces, `p0` excluded."""
-    out = []
-    for step in range(1, _CURVE_STEPS + 1):
-        t = step / _CURVE_STEPS
-        u = 1 - t
-        out.append(
-            (
-                u**3 * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t**3 * p3[0],
-                u**3 * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t**3 * p3[1],
-            )
-        )
-    return out

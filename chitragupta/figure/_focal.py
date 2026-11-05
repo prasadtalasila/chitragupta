@@ -68,10 +68,13 @@ def declaration(text: str, start: int) -> tuple[str, str, int]:
         elif char == "[":
             depth = 1
         elif char == "(":
-            end = text.find(")", i)
+            # A calc position, `($(a)!0.5!(b)$)`, reads to its `$)`, not
+            # its first `)`, as `_scan.declaration` reads it (#1112).
+            calc = text[i + 1 : i + 2] == "$"
+            end = text.find("$)", i) + 1 if calc else text.find(")", i)
             name = name or ("" if after_at else text[i + 1 : end].strip())
-            after_at, i = False, len(text) if end < 0 else end
-        elif _AT_RE.match(text, i):
+            after_at, i = False, len(text) if end <= 0 else end
+        elif _AT_RE.match(text, i) and not text[i - 1 : i].isalnum():
             after_at = True
         elif char in "{;":
             break

@@ -51,7 +51,7 @@ own heading, never count as findings and cannot be allowed.
 | `node-text-overload` | element | Cut the label to 15 words or split the node |
 | `stranded-arrowhead` | element | Put the `->` on the last piece of the line only |
 | `c1-orthogonal` | element | Route the edge as an elbow, `-\|` or `\|-`, or line the two nodes up |
-| `c2-tag-clearance` | element | Use `cgtag` (unfilled, `auto`), which sits 1mm clear; never a filled tag over its line |
+| `c2-tag-clearance` | element | Use `cgtag` (unfilled, `auto`), which sits 1.5mm clear; never a filled tag over its line, nor one beside an arrowhead: move it along with `pos=` |
 | `c3-coincident` | element | Give each edge its own lane: attach at a different point, or offset one |
 | `c4-attach` | element | Attach a lone edge at the side's midpoint (`a.east`); spread several evenly along the side, at least 2mm apart |
 | `c5-transit` | element | Re-route the edge around the node it crosses, or move the node |

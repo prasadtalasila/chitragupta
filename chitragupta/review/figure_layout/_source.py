@@ -14,6 +14,7 @@ below says what that costs it.
 import re
 
 from chitragupta._tex_comments import strip_comments
+from chitragupta.review.figure_layout._scan import declaration, path_bodies
 
 # docs/TIKZ-STYLE.md's conciseness rule, as the number it is written as.
 # One place, because the report quotes it back to the reader.
@@ -30,6 +31,7 @@ __all__ = [
     "MAX_NODE_WORDS",
     "edge_list",
     "loads_library_by_hand",
+    "named_nodes",
     "overlong_nodes",
     "stranded_arrowheads",
     "strip_comments",
@@ -53,17 +55,24 @@ __all__ = [
 # declaration and no sentence.
 _NODE_KEYWORD = r"(?:\\node|(?<=[{;\]>|)\-])\s*node)"
 
-_NODE_RE = re.compile(
-    _NODE_KEYWORD + r"\s*(?:\[[^\]]*\])?\s*\((?P<name>[^)]+)\)"
-    r"(?:\s*at\s*\([^)]*\))?\s*\{(?P<label>.*?)\}",
-    re.DOTALL,
-)
+_NODE_START_RE = re.compile(_NODE_KEYWORD)
 
 
-# A `\draw`/`\path` statement, up to its terminating semicolon.
-_PATH_STATEMENT_RE = re.compile(r"\\(?:draw|path)\b(?P<body>[^;]*);", re.DOTALL)
+def named_nodes(source: str) -> list[tuple[str, str]]:
+    """`(name, label)` of every named node the source declares, in
+    source order, comments stripped. The declaration is read by
+    `_scan.declaration`, so the name may come before or after `at (x,y)`
+    (#1112) and a label holding `(`, `)` or `;` is text."""
+    text = strip_comments(source)
+    found = []
+    for match in _NODE_START_RE.finditer(text):
+        declared = declaration(text, match.end())
+        if declared is not None and declared[0]:
+            found.append((declared[0], declared[1]))
+    return found
 
-# Every parenthesised token in such a statement, in source order.
+
+# Every parenthesised token in a path statement's body, in source order.
 _PAREN_TOKEN_RE = re.compile(r"\(([^)]*)\)")
 
 # An `edge` operator, or a node placed on a path and named, options
@@ -122,12 +131,11 @@ def overlong_nodes(source: str) -> list[tuple[str, int]]:
     docs/TIKZ-STYLE.md is explicit that doing so is the same defect
     wearing a smaller typeface -- but to cut the text or split the node.
     """
-    found = []
-    for match in _NODE_RE.finditer(strip_comments(source)):
-        count = _label_words(match.group("label"))
-        if count > MAX_NODE_WORDS:
-            found.append((match.group("name").strip(), count))
-    return found
+    return [
+        (name, count)
+        for name, label in named_nodes(source)
+        if (count := _label_words(label)) > MAX_NODE_WORDS
+    ]
 
 
 def edge_list(source: str) -> list[tuple[str, str]]:
@@ -172,6 +180,10 @@ def edge_list(source: str) -> list[tuple[str, str]]:
       names intact -- which is why anything containing a comma, or
       starting with a backslash, is dropped as a coordinate rather than
       reported: a real node name is never spelled either way.
+    - **A label is text.** A statement ends at its first `;` outside a
+      brace group, and every brace group is emptied before the tokens
+      are read, so `node {0.1 (repaired)}` adds no name and
+      `node {in;\\\\out}` does not end the path (#1112).
 
     Widening any of these means parsing TikZ's path grammar properly.
     That is a real piece of work and not obviously worth it: the check
@@ -182,8 +194,8 @@ def edge_list(source: str) -> list[tuple[str, str]]:
     evidence about those figures and not a proof about TikZ.
     """
     edges = []
-    for statement in _PATH_STATEMENT_RE.finditer(strip_comments(source)):
-        edges += _pairs(statement.group("body"))
+    for body in path_bodies(strip_comments(source)):
+        edges += _pairs(body)
     return edges
 
 
@@ -198,9 +210,9 @@ def ambiguous_edges(source: str) -> list[tuple[str, str]]:
     """
     return [
         pair
-        for statement in _PATH_STATEMENT_RE.finditer(strip_comments(source))
-        if _ON_PATH_RE.search(statement.group("body"))
-        for pair in _pairs(statement.group("body"))
+        for body in path_bodies(strip_comments(source))
+        if _ON_PATH_RE.search(body)
+        for pair in _pairs(body)
     ]
 
 
@@ -307,8 +319,8 @@ def stranded_arrowheads(source: str) -> list[str]:
     `(90,34)`, which a `\\draw[thick]` bezier then continues out of.
     """
     ends_with_head, opens_at = [], set()
-    for statement in _PATH_STATEMENT_RE.finditer(strip_comments(source)):
-        options, body = _split_options(statement.group("body"))
+    for statement in path_bodies(strip_comments(source)):
+        options, body = _split_options(statement)
         points = [_point(token) for token in _PAREN_TOKEN_RE.findall(body)]
         if not points:
             continue

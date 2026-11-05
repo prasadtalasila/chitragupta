@@ -110,10 +110,14 @@ nodes up.
 
 ### `c2-tag-clearance`
 
-**Catches.** A tag whose text is under 0.8mm or over 3mm from its own
-line. The target is the edge. It is measured from the text, not the
-node box, which `above` and the rest put on the line; the house `cgtag`
-sits 1mm clear. A `sloped` tag is not measured.
+**Catches.** A tag whose text is under 1mm or over 3mm from its own
+line's ink: the stroke's edge, half the line width off its centre, or an
+arrowhead the tag sits beside (its text and the head share a stretch of
+the line), measured from the outline pgf gives the head (#1113). The
+target is the edge. It is measured from the text, not the node box,
+which `above` and the rest put on the line; the house `cgtag` sets its
+text 1.5mm off the centreline, about 1.35mm off the house stroke. A
+`sloped` tag is not measured.
 
 **Why it matters.** A tag on its line cuts the line where the eye is
 following it. A tag far from its line is read as belonging to the next
@@ -141,8 +145,9 @@ Fixed: a plain `cgtag`, which sets the word just above the line.
 | --- | --- |
 | ![The word passages breaks the arrow from Parse to Index](examples/c2-tag-clearance/faulty.png) | ![The word passages sits just above an unbroken arrow](examples/c2-tag-clearance/fixed.png) |
 
-**Fix.** Use `cgtag` (unfilled, `auto`), which sits 1mm clear; never a
-filled tag over its line.
+**Fix.** Use `cgtag` (unfilled, `auto`), which sits 1.5mm clear; never a
+filled tag over its line, nor one beside an arrowhead: move it along with
+`pos=`.
 
 ### `c3-coincident`
 

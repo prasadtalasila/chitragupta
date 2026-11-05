@@ -133,7 +133,7 @@ Faulty: the TikZ tags the arrow `writes passages`.
 
 ```latex
 \node[cgbox, text width=26mm] (index) {\cglab{Index}{store passages}};
-\node[cgkey, text width=26mm, right=34mm of index] (ledger) {\cglab{Ledger}{one SQLite file}};
+\node[cgkey, text width=26mm, right=38mm of index] (ledger) {\cglab{Ledger}{one SQLite file}};
 \draw[cgedge] (index) -- node[cgtag] {writes passages} (ledger);
 ```
 
