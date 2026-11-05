@@ -292,6 +292,11 @@ def failure_counts(con: sqlite3.Connection) -> dict[str, int]:
 
 
 def known_citekeys(con: sqlite3.Connection) -> set[str]:
+    """Every citekey with a row, whatever its status.
+
+    Not a citability test: a `no_pdf` row is here too. Whether a draft may
+    cite a key is `ledger_citable.citable_citekeys` (#1118).
+    """
     return {row[0] for row in con.execute("SELECT citekey FROM items")}
 
 
