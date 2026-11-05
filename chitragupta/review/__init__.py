@@ -73,7 +73,7 @@ import tomllib
 from pathlib import Path
 from typing import TextIO
 
-from chitragupta import config
+from chitragupta import _private_use, config
 from chitragupta.review._paths import report_dir, require_reviewable
 
 # One place per aid, so a caller cannot invent a report kind by
@@ -214,6 +214,14 @@ def write(draft: Path, aid: str, body: str, formats: list[str]) -> dict[str, Pat
     """
     md_path = report_path(draft, aid)
     md_path.parent.mkdir(parents=True, exist_ok=True)
+    # Before the .md, so the .tex/.pdf rendered from it can set every
+    # character (#1125); the .json, written separately, keeps the original.
+    # Mostly they are quoted from a source's text layer, but the draft
+    # lines a report echoes are marked too: the draft's own render still
+    # stops on one, which is where an author fixes it.
+    body, markers = _private_use.mark(body)
+    if markers:
+        print(_private_use.note(markers), file=sys.stderr)
     md_path.write_text(body, encoding="utf-8")
     written = {"md": md_path}
 

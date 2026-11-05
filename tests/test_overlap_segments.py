@@ -14,7 +14,7 @@ import pytest
 
 from chitragupta import config, overlap_segments
 from chitragupta.review import verbatim_check as vc
-from tests.conftest import make_reference
+from tests.conftest import add_citable, make_reference
 
 
 def segments(text, mapping):
@@ -194,9 +194,7 @@ class TestSourceSentences:
     @pytest.fixture
     def sidecar(self, ledger_con, tmp_path):
         def write(citekey, records):
-            from chitragupta import ledger
-
-            ledger.upsert_reference(ledger_con, make_reference(citekey=citekey))
+            add_citable(ledger_con, citekey)
             path = config.DOCLING_DIR / f"{citekey}.passages.json"
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(records), encoding="utf-8")
@@ -241,7 +239,7 @@ class TestSourceSentences:
         parsed.write_text("page one text\fpage two text", encoding="utf-8")
         ledger.upsert_reference(ledger_con, make_reference(citekey="smith_2024"))
         ledger_con.execute(
-            "UPDATE items SET parsed_path = ? WHERE citekey = ?",
+            "UPDATE items SET status = 'parsed', parsed_path = ? WHERE citekey = ?",
             (str(parsed), "smith_2024"),
         )
         assert overlap_segments.source_sentences(ledger_con, "smith_2024") == []

@@ -10,8 +10,8 @@ from chitragupta.review.agenda._items import Item
 
 def _suppress_missing_citekey_duplicates(items: list[Item]) -> list[Item]:
     """A citekey that has left the ledger makes
-    `citation_provenance.source_passages` return a "not in the ledger"
-    reason (`chitragupta/passages.py:290`), which scores 0.0 and bands as
+    `citation_provenance.source_passages` return a "not found in the
+    corpus" reason (`passages._not_current`), which scores 0.0 and bands as
     `"no support found"` -- the same missing citekey surfacing a second
     time as an apparently independent `unsupported-claim`, when it is a
     symptom of the `missing-citekey` defect, not new evidence. Drop the

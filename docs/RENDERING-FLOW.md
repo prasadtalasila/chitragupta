@@ -125,6 +125,14 @@ A character no font in the chain has stops the build, by name.
 `[unicode]` hint. Without it, LuaTeX drops the glyph with only a log
 warning, which is a silent change of what the PDF says.
 
+A review report and an evidence sidecar are the exception for one class
+of character. They quote the sources' text layers, which carry Unicode
+private-use code points (U+E000 to U+F8FF and planes 15 and 16) that no
+font has and no author can fix, so `chitragupta/_private_use.py` writes
+each one as a visible `[U+E230]` in the `.md` the render reads, and the
+command prints a `note:` line naming them. A report's `.json` keeps the
+original (#1125).
+
 `assets/latex/chitragupta-unicode.sty` ships for the output someone else
 compiles: `_unicode.py` copies it beside a `tex` or
 `--fragment` output whose draft contains a character it maps, because the

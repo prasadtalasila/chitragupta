@@ -8,7 +8,7 @@ import pytest
 
 from chitragupta import config, ledger, render_output, review
 from chitragupta.render_output._failures import RENDER_FAILURES
-from tests.conftest import make_reference
+from tests.conftest import lualatex_available, make_reference, pandoc_available
 
 
 class TestReportPath:
@@ -254,6 +254,40 @@ class TestWrite:
         second = review.write(draft, "verbatim", body, ["md"])["md"].read_bytes()
 
         assert first == second
+
+    def test_a_private_use_character_is_written_as_a_marker(self, isolated_config, capsys):
+        """#1125: the character comes from a source's text layer, and no
+        font in the render chain has it, so LuaLaTeX stopped and the
+        report had no PDF. The marker reaches the .md the renders read."""
+        body = "> updated at every step \ue230 and the gain follows.\n"
+
+        written = review.write(config.DRAFTS_DIR / "survey.md", "provenance", body, ["md"])
+
+        assert written["md"].read_text(encoding="utf-8") == (
+            "> updated at every step [U+E230] and the gain follows.\n"
+        )
+        assert "shown as [U+E230]" in capsys.readouterr().err
+
+    def test_a_report_without_one_prints_no_note(self, isolated_config, capsys):
+        review.write(config.DRAFTS_DIR / "survey.md", "provenance", "# body\n", ["md"])
+        assert "private-use" not in capsys.readouterr().err
+
+    @pytest.mark.slow
+    @pytest.mark.skipif(
+        not (pandoc_available and lualatex_available), reason="pandoc/lualatex not installed"
+    )
+    def test_the_issues_report_now_renders_a_pdf(self, isolated_config):
+        """#1125's reproduction, unpatched: before the marker the pdf was
+        skipped with LuaLaTeX's `Missing character`."""
+        isolated_config.BIB_FILE_PATH.write_text("")
+        body = (
+            "# Provenance\n\nClosest passage in the source:\n\n"
+            "> The filter state is updated at every step \ue230 and the gain follows.\n"
+        )
+
+        written = review.write(config.DRAFTS_DIR / "x.md", "provenance", body, ["md", "pdf"])
+
+        assert written["pdf"].exists()
 
 
 class TestEnvelope:

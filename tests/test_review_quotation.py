@@ -31,6 +31,7 @@ from chitragupta import config, dossier, ledger, review
 from chitragupta.review import __main__ as review_main
 from chitragupta.review import _quotation_match as match
 from chitragupta.review import _quotation_render, quotation
+from tests.conftest import add_item
 from tests.test_review_units import draft_at
 
 KEY = "shao_analysis_2023"
@@ -55,7 +56,10 @@ def a_dossier(draft: Path, blocks: str) -> Path:
 
 
 def a_source(citekey: str, *records: tuple[int, str]) -> Path:
-    """A rung-2 passage sidecar: reading-ordered text with a page each."""
+    """A rung-2 passage sidecar: reading-ordered text with a page each,
+    for a key whose ledger row is `parsed`, the only status whose files
+    the passage ladder reads (#1153)."""
+    add_item(citekey)
     path = config.PARSED_DIR / f"{citekey}.passages.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -532,6 +536,7 @@ class TestDegenerateInput:
         already turns anything that is not a page a reader could turn to
         into None. A span is still found; it simply reports no page."""
         draft = a_draft()
+        add_item(KEY)
         path = config.PARSED_DIR / f"{KEY}.passages.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(

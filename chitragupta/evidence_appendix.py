@@ -59,7 +59,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from chitragupta import citation_gate, config, ledger, reference_entries, references
+from chitragupta import _private_use, citation_gate, config, ledger, reference_entries, references
 from chitragupta.dossier import citekeys_by_section, dossier_dir
 from chitragupta.dossier._citekeys import evidence_blocks
 from chitragupta.dossier._evidence_check import fields
@@ -201,6 +201,11 @@ def write(draft: Path, out_dir: Path, draft_text: str | None = None) -> Path | N
         return None
     with ledger.reading() as con:
         text = build(draft_text, dossier_dir(draft), con, latex=latex)
+    # A quote copies the source's text layer, so its private-use
+    # characters would stop the sidecar's PDF (#1125).
+    text, markers = _private_use.mark(text)
+    if markers:
+        print(_private_use.note(markers), file=sys.stderr)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = sidecar_path(draft, out_dir)

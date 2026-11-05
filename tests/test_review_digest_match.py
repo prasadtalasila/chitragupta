@@ -202,9 +202,9 @@ def test_a_source_without_reading_order_is_unverifiable():
 
 def test_a_citekey_the_ledger_lacks_carries_the_lookups_reason():
     checked = match.Checked()
-    lookup = a_lookup(reason="not in the ledger -- run `python -m chitragupta.corpus sync`")
+    lookup = a_lookup(reason="not found in the corpus")
     match.check_run(a_run("Anything."), lookup, checked)
-    assert checked.unverifiable[0].reason.startswith(f"{KEY}: not in the ledger")
+    assert checked.unverifiable[0].reason == f"{KEY}: not found in the corpus"
 
 
 def test_two_citekeys_pool_their_passages():

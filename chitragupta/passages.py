@@ -142,9 +142,24 @@ def _page_number(raw) -> int | None:
 
 def _ledger_row(con, citekey: str) -> Any:
     row = con.execute(
-        "SELECT parsed_path, pdf_path, title FROM items WHERE citekey = ?", (citekey,)
+        "SELECT parsed_path, pdf_path, title, status FROM items WHERE citekey = ?", (citekey,)
     ).fetchone()
     return row
+
+
+# Asked before any rung (#1153). A corpus change leaves files on disk
+# that no longer describe the paper: a key dropped from the .bib loses its
+# row but keeps its sidecars, and a failed re-parse keeps the old parse's
+# text. Only a `parsed` row's files are current, the rule
+# `retrieval._full_text` follows (#490). No sync hint for a missing row: a
+# sync is what removes such a key, and the key may never have been real.
+def _not_current(row) -> str | None:
+    """Why `row`'s files may not be read, or None if they may."""
+    if row is None:
+        return "not found in the corpus"
+    if row[3] != "parsed":
+        return f"status is {row[3]} -- no current parsed text"
+    return None
 
 
 def _from_sidecar(path: Path) -> list[Passage] | None:
@@ -261,13 +276,13 @@ def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
     problem = citekey_problem(citekey)
     if problem:
         return [], f"citekey is unsafe as a filename stem: {problem}"
+    row = _ledger_row(con, citekey)
+    stale = _not_current(row)
+    if stale:
+        return [], stale
     sidecar = structural_passages(citekey)
     if sidecar:
         return sidecar, None
-
-    row = _ledger_row(con, citekey)
-    if row is None:
-        return [], "not in the ledger -- run `python -m chitragupta.corpus sync`"
 
     # Both columns confined before either is opened (issue 821), each
     # stored relative to its root (#966). The PDF one is the sharper of
