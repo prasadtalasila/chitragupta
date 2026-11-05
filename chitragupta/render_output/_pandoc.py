@@ -127,7 +127,7 @@ def _pandoc_command(
     fragment: bool = False,
     has_code_block: bool = False,
     preamble_files: list[Path] | None = None,
-    index_terms: Path | None = None,
+    index_terms: str | Path | None = None,
 ) -> tuple[list[str], dict[str, str] | None]:
     """The pandoc argv and the environment to run it in."""
     # A fragment is for `\input` into a larger document, so it gets no

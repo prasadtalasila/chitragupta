@@ -22,7 +22,7 @@ def sidecar_path(out_dir: Path, unit_id: str) -> Path:
     return Path(out_dir) / f"{unit_id}.index.json"
 
 
-def pandoc_args(input_path: Path, terms: "Path | None", out_dir: Path) -> list[str]:
+def pandoc_args(input_path: Path, terms: "str | Path | None", out_dir: Path) -> list[str]:
     """The argv that indexes `input_path`, or none without a term table.
 
     The unit id is the draft's own stem, not the temporary copy pandoc
