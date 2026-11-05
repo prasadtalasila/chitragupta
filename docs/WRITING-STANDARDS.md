@@ -729,13 +729,58 @@ source stays legible while the LaTeX stays typographically right.
 mapping file at all. Both mean the pdf would carry verbatim text where
 you said an equation goes.
 
-**Three heuristics only warn**, because a wrong guess must not stop a
-render: a span that looks like a quantity (`h = 9`) with no row, a span
-equal to a symbol your own mapped equations already use, and an untagged
-fence that looks like a displayed equation nobody marked. The second is
-there because the first cannot see a bare `` `k` `` (there is no
-operator to key on), and single symbols were the *dominant* shape when
-this was measured, roughly 296 of 515 in one book.
+**Everything else only warns**, because a wrong guess must not stop a
+render. A span with no row is a `[math]` gap when a named rule calls it
+a quantity, and the warning names the rule
+(`` `-1` looks like a quantity (signed-number) ``), so a false alarm
+points at what fired. In order:
+
+1. **Your own symbols.** A span that is, or is built from, a name your
+   `math.md` already uses: `k`, `-k`, `T_k`, `EC_0`, `OCV(SoC)`,
+   `(A, B, C)`. The names come from the LaTeX column (single letters,
+   Greek control words) and from the ASCII column when they look like a
+   symbol: one letter, a capital in it (`SoC`), or a Greek name.
+   Lowercase words such as `level` never count. Single symbols were the
+   *dominant* shape when this was first measured, roughly 296 of 515 in
+   one book, and no operator rule can see them.
+2. **Shape, anywhere.** A relation (`h = 9`), arithmetic between digits
+   (`3 - 1`), a signed number (`-0.074`), a bracketed list of numbers
+   (`[1 0]`) or a `;` matrix, `*` or `^` between operands
+   (`A * P_est * A^T`), a spaced `+ - /` (`t + h`), a derivative
+   (`dT/dt`), a conditional (`P(A | B)`), a subscripted Greek name
+   (`sigma_2`), an index step (`x_{k+1}`), scientific notation
+   (`1e-12`), or a list of numbers (`0, 3`). Before the rules that look
+   *inside* a span, tokens that are plainly paths, file names, URL
+   queries, `<placeholders>`, dates or versions are set aside, so
+   `` `code/02-01-x/` `` and a command line naming `02-01-s.md` are not
+   read as subtraction.
+3. **Only in a draft with a `math.md`.** A single letter, a bare number
+   (`0.5`) and a bare Greek name (`lambda`, `Pi`). These are as often
+   code (`404`) as mathematics, so they count only for an author who
+   declared mapped mathematics.
+
+When one of these is code, say so once, in a one-column table anywhere
+in the same `math.md`:
+
+```markdown
+## Not mathematics
+
+| Code in the draft |
+| --- |
+| `404` |
+```
+
+A listed span is never a gap, and a listed span the draft no longer
+contains is reported, as the orphan of a mapping row is. Two rows with
+the same ASCII and different LaTeX are reported too (the last one is
+what renders), and so is a span both mapped and listed.
+
+An untagged fence that looks like a displayed equation nobody marked is
+the last warning, judged line by line on shape alone.
+
+A file that can have no `math.md`, such as a review report or anything
+outside `content/drafts/`, gets none of these warnings, since each asks
+for a row nobody can add. A `<!-- math -->` marker in one still fails.
 
 The third names both remedies, because a bare fence leaves the question
 open in both directions: mark it if it is an equation, tag it if it is
@@ -756,12 +801,16 @@ certain.
 
 **What no check sees.** A quantity spelled out (`slope`, `offset`,
 `Assemble(N)`) reads like an identifier, so unless it has a row it
-looks like ordinary code to everything above. So does any expression
-containing `/`, to a search written to skip file paths. And a draft using
-the *inline* form has no mapping to close the world against, so it gets
-the operator heuristic only. All three happened in this
-repository's own book; `plans/math-typesetting-convention.md` records
-what each cost.
+looks like ordinary code to everything above, and so does a name such
+as `SoC` that no other row of the draft's `math.md` mentions. Operators
+between multi-letter names must be spaced to be seen: `EC - EC_0` is a
+gap, `EC-EC_0` is set aside as a hyphenated word. A draft using the
+*inline* form has no mapping to close the world against, so it gets the
+shape rules only. The known false alarm the other way is SQL's
+`SELECT * FROM t`, whose remedy is the table above.
+`plans/math-typesetting-convention.md` records what the gaps cost this
+repository's own book, and `plans/1115-1116-math-shape-rules.md` how the
+rules were measured.
 
 An inline matrix wide enough to overflow is not checked either. Whether
 it fits depends on the math font as much as on the matrix: the hint

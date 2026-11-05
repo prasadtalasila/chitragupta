@@ -173,7 +173,9 @@ Two conditions fail the render rather than warning, because both mean
 the pdf would carry verbatim text where the author said an equation goes:
 a `<!-- math -->` marker with no row, and one with no `math.md` at all.
 The second is what renaming a draft looks like, because a dossier is
-found by path alone. Heuristic gaps print `[math]` warnings and carry on.
+found by path alone. Heuristic gaps print `[math]` warnings and carry on,
+except for a file that can have no `math.md` (a review report), which
+prints none.
 
 ## 🗂 Five places a rendered bibliography can live
 

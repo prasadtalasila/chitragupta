@@ -22,13 +22,13 @@ from chitragupta.render_output._math import (
     _BLOCK_RE,
     _CITEKEY_RE,
     _FENCE_RE,
-    _MATH_SHAPED_RE,
     _MAX_EQUATION_LINES,
     _SNAKE_CASE_RE,
     _SPAN_RE,
     _body_of,
     _symbols_of,
 )
+from chitragupta.render_output._math_shapes import rule_for, shape_rule
 
 
 def _fence_gaps(masked: str) -> "list[str]":
@@ -58,7 +58,9 @@ def _fence_gaps(masked: str) -> "list[str]":
             continue
         # `lines[0]` is reached only once the body has matched, so an
         # empty fence cannot get here.
-        if _MATH_SHAPED_RE.search(body) and not _SNAKE_CASE_RE.search(body):
+        # Shape alone, line by line: a fence is not a span, so the draft's
+        # own symbols and the context rules have no say here.
+        if any(shape_rule(line.strip()) for line in lines) and not _SNAKE_CASE_RE.search(body):
             found.append(
                 f"`{lines[0]}` looks like a displayed equation but its fence has no "
                 "`<!-- math -->` marker. Tag the fence if it is code."
@@ -75,13 +77,19 @@ def _fence_gaps(masked: str) -> "list[str]":
 # staleness check silently reporting no desynced math at all, with every
 # test here still green.
 class MathFinding(NamedTuple):
-    """A `warnings()` line and its kind: fence, gap, symbol or orphan."""
+    """A `warnings()` line and its kind: fence, gap, symbol, orphan,
+    unused-code (a "not mathematics" row matching nothing) or duplicate."""
 
     kind: str
     message: str
 
 
-def findings(text: str, mapping: "dict[str, str]", found_file: bool) -> "list[MathFinding]":
+def findings(
+    text: str,
+    mapping: "dict[str, str]",
+    found_file: bool,
+    not_math: "frozenset[str]" = frozenset(),
+) -> "list[MathFinding]":
     """Every gap and orphan in `text`, each tagged with its kind.
 
     `warnings()` is this reduced to the message strings, for the callers
@@ -99,7 +107,12 @@ def findings(text: str, mapping: "dict[str, str]", found_file: bool) -> "list[Ma
 
     `found_file` separates "this draft has no mathematics" from "this
     draft's mapping is gone" -- the second is what a rename looks like,
-    and without the distinction they are the same silence.
+    and without the distinction they are the same silence. It also gates
+    `_math_shapes`' context rules (a bare `404` or `t`), which only an
+    author who keeps a `math.md` has asked for.
+
+    `not_math` is that file's "not mathematics" table: spans the author
+    has said are code, never reported as gaps.
     """
     masked = _BLOCK_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
     found = [MathFinding("fence", message) for message in _fence_gaps(masked)]
@@ -112,27 +125,84 @@ def findings(text: str, mapping: "dict[str, str]", found_file: bool) -> "list[Ma
     spans = {m.group("body").strip() for m in _SPAN_RE.finditer(span_masked)}
     symbols = _symbols_of(mapping)
 
-    for span in sorted(spans - set(mapping)):
+    for span in sorted(spans - set(mapping) - not_math):
         if _CITEKEY_RE.match(span):
             continue
-        if _MATH_SHAPED_RE.search(span):
-            gap = f"`{span}` looks like a quantity but has no row in {MAPPING_FILENAME}"
-            found.append(MathFinding("gap", gap))
-        elif span in symbols:
+        rule = rule_for(span, symbols, found_file)
+        if rule == "symbol":
             used_by = (
                 f"`{span}` is a symbol this draft's own equations use, "
                 f"but has no row in {MAPPING_FILENAME}"
             )
             found.append(MathFinding("symbol", used_by))
+        elif rule == "symbol-built":
+            built = (
+                f"`{span}` is built from symbols this draft's own equations use, "
+                f"but has no row in {MAPPING_FILENAME}"
+            )
+            found.append(MathFinding("symbol", built))
+        elif rule:
+            gap = f"`{span}` looks like a quantity ({rule}) but has no row in {MAPPING_FILENAME}"
+            found.append(MathFinding("gap", gap))
 
     if found_file:
         used = spans | {_body_of(m) for m in _BLOCK_RE.finditer(text)}
         for orphan in sorted(set(mapping) - used):
             gone = f"`{orphan}` has a row in {MAPPING_FILENAME} but appears nowhere in the draft"
             found.append(MathFinding("orphan", gone))
+        # Its own kind, not `orphan`: `_math_desync` reads an orphan as the
+        # mathematics having moved, and a stale code row says nothing of it.
+        for unused in sorted(not_math - spans):
+            listed = (
+                f"`{unused}` is listed as not mathematics in {MAPPING_FILENAME} "
+                "but appears nowhere in the draft"
+            )
+            found.append(MathFinding("unused-code", listed))
     return found
 
 
-def warnings(text: str, mapping: "dict[str, str]", has_mapping_file: bool) -> "list[str]":
+def duplicates(
+    rows: "list[tuple[str, str]]", not_math: "frozenset[str]" = frozenset()
+) -> "list[MathFinding]":
+    """Every key `rows` resolves two ways (#1116).
+
+    `load_mapping` keeps a repeated key's last row, which is right for
+    rendering and silent about it. Repeating a row with the *same* LaTeX
+    changes nothing, so only differing values are reported; so is a key
+    that is both mapped and listed as not mathematics, which contradicts
+    itself.
+    """
+    values: "dict[str, list[str]]" = {}
+    for ascii_, latex in rows:
+        values.setdefault(ascii_, []).append(latex)
+    found = []
+    for ascii_, latex in values.items():
+        distinct = list(dict.fromkeys(latex))
+        if len(distinct) > 1:
+            listed = ", ".join(f"`{value}`" for value in distinct)
+            found.append(
+                MathFinding(
+                    "duplicate",
+                    f"`{ascii_}` has {len(latex)} rows in {MAPPING_FILENAME} with different "
+                    f"LaTeX: {listed}; the last is rendered",
+                )
+            )
+        if ascii_ in not_math:
+            found.append(
+                MathFinding(
+                    "duplicate",
+                    f"`{ascii_}` has a row in {MAPPING_FILENAME} and is also listed as "
+                    "not mathematics; the row is rendered",
+                )
+            )
+    return found
+
+
+def warnings(
+    text: str,
+    mapping: "dict[str, str]",
+    has_mapping_file: bool,
+    not_math: "frozenset[str]" = frozenset(),
+) -> "list[str]":
     """`findings()` as lines a caller can print, in the same order."""
-    return [found.message for found in findings(text, mapping, has_mapping_file)]
+    return [found.message for found in findings(text, mapping, has_mapping_file, not_math)]

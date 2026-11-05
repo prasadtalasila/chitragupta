@@ -56,6 +56,12 @@ MAPPING_FILENAME = "math.md"
 # and so the file stays readable as an ordinary Markdown table.
 _ROW_RE = re.compile(r"^\|\s*`(?P<ascii>[^`]+)`\s*\|\s*`(?P<latex>[^`]+)`\s*\|\s*$", re.M)
 
+# A row of the one-column "not mathematics" table: | `<span>` |. The
+# author's answer for a span the shape rules call a quantity and which is
+# code (`404`). One cell where `_ROW_RE` needs two, so the two tables
+# never read each other's rows.
+_NOT_MATH_ROW_RE = re.compile(r"^\|\s*`(?P<ascii>[^`]+)`\s*\|\s*$", re.M)
+
 # An inline code span. Deliberately single-line: a span never spans a
 # blank line, and allowing it to would let one stray backtick swallow a
 # paragraph.
@@ -109,11 +115,6 @@ _SNAKE_CASE_RE = re.compile(r"\w_\w")
 # shape a marker is worth writing by hand anyway.
 _MAX_EQUATION_LINES = 4
 
-# Enough of an operator to call a span a quantity rather than an
-# identifier. Necessarily heuristic; the symbol closure below is what
-# catches a bare `k`, which this cannot.
-_MATH_SHAPED_RE = re.compile(r"[=<>]|\d\s*[-+*/^]\s*\d")
-
 # A citekey is never mathematics, and `bottjer_review_2023` is otherwise
 # math-shaped to nothing here -- but `zech_digital-twins-as--service_2024`
 # is, once a hyphen run is involved. Excluded by shape, before the
@@ -125,6 +126,9 @@ _CITEKEY_RE = re.compile(r"^[a-z][a-z0-9-]*(_[a-z0-9-]+)+_\d{4}(-\d+)?$")
 # see `_symbols_of`.
 _SYMBOL_RE = re.compile(r"(?<![A-Za-z\\])([A-Za-z])(?![A-Za-z])")
 _GREEK_RE = re.compile(r"\\([a-z]+)")
+# A name in a mapping key: `T` of `T_k`, `SoC` of `OCV(SoC)`. Not a
+# subscript, which follows an underscore.
+_ASCII_NAME_RE = re.compile(r"(?<![A-Za-z0-9_])[A-Za-z][A-Za-z0-9]*")
 _GREEK_NAMES = frozenset(
     "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi "
     "pi rho sigma tau upsilon phi chi psi omega".split()
@@ -163,21 +167,41 @@ def mapping_path(draft: Path) -> "Path | None":
     return target
 
 
+def _mapping_text(draft: Path) -> str:
+    """`draft`'s `math.md`, or "" if it has none or can have none."""
+    path = mapping_path(draft)
+    if path is None or not path.is_file():
+        return ""
+    return path.read_text(encoding="utf-8")
+
+
+def mapping_rows(draft: Path) -> "list[tuple[str, str]]":
+    """Every ASCII -> LaTeX row of `draft`'s `math.md`, in file order.
+
+    The rows rather than a dict, so a key written twice is still visible
+    to `_math_findings.duplicates()` (#1116).
+    """
+    return [
+        (m.group("ascii").strip(), m.group("latex").strip())
+        for m in _ROW_RE.finditer(_mapping_text(draft))
+    ]
+
+
 def load_mapping(draft: Path) -> "dict[str, str]":
     """`draft`'s ASCII -> LaTeX table, empty if it has none.
 
     Empty rather than raising, because an absent mapping is the ordinary
     state of every draft written before this existed and of every draft
     with no mathematics in it. `_math_findings.findings()` is what tells
-    those two apart, through the `has_mapping_file` flag it takes.
+    those two apart, through the `has_mapping_file` flag it takes. A key
+    written twice keeps its last row.
     """
-    path = mapping_path(draft)
-    if path is None or not path.is_file():
-        return {}
-    return {
-        m.group("ascii").strip(): m.group("latex").strip()
-        for m in _ROW_RE.finditer(path.read_text(encoding="utf-8"))
-    }
+    return dict(mapping_rows(draft))
+
+
+def not_math(draft: Path) -> "frozenset[str]":
+    """The spans `draft`'s `math.md` lists as not mathematics."""
+    return frozenset(m.group("ascii").strip() for m in _NOT_MATH_ROW_RE.finditer(_mapping_text(draft)))
 
 
 def _symbols_of(mapping: "dict[str, str]") -> "frozenset[str]":
@@ -191,12 +215,26 @@ def _symbols_of(mapping: "dict[str, str]") -> "frozenset[str]":
     inside an equation, it arrives in the value space in the same
     revision, and a later bare mention of it can be flagged with no
     guessing at all.
+
+    The ASCII side is read too (#1116), because `\\mathit{SoC}` gives the
+    LaTeX scan nothing: a name in a key counts when it looks like a
+    symbol -- one letter, a capital in it (`SoC`, `EC`), or a Greek
+    name. Lowercase words are left out, since a key such as
+    `level + h * (pump_flow - demand) / area` would otherwise make every
+    `level` in the prose a gap.
     """
     symbols: set[str] = set()
-    for latex in mapping.values():
+    for ascii_, latex in mapping.items():
         symbols.update(_SYMBOL_RE.findall(latex))
         symbols.update(g for g in _GREEK_RE.findall(latex) if g in _GREEK_NAMES)
+        if not _CITEKEY_RE.match(ascii_):
+            symbols.update(n for n in _ASCII_NAME_RE.findall(ascii_) if _symbol_like(n))
     return frozenset(symbols)
+
+
+def _symbol_like(name: str) -> bool:
+    """One letter, a capital letter in it, or a Greek name."""
+    return len(name) == 1 or name != name.lower() or name.lower() in _GREEK_NAMES
 
 
 def _body_of(match: "re.Match[str]") -> str:
