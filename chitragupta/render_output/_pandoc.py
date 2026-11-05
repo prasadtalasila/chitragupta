@@ -148,8 +148,10 @@ def _pandoc_command(
     # syntax-highlighting output uses `Shaded`/`Highlighting` environments
     # that only the standalone template defines, so a highlighted fragment
     # fails to compile in the book that \input-s it. Plain `verbatim` is
-    # what a fragment can promise. The citeproc macros are the one
-    # exception a book must supply itself -- see docs/WRITE-A-BOOK.md.
+    # what a fragment can promise. Its citations stay `\citep{key}`
+    # (`--natbib`, below), so the book supplies only its own
+    # `\bibliographystyle`/`\bibliography` -- see book-assembler's
+    # references/latex-conventions.md.
     shape = ["--top-level-division=chapter", "--no-highlight"] if fragment else ["--standalone"]
     cmd = [
         "pandoc",
@@ -259,7 +261,8 @@ def _pandoc_command(
     # a render that works today over a package its draft never needs.
     # A `--fragment` render emits no preamble at all, so this reaches
     # nothing there -- a book supplies it from its own preamble, the
-    # same way it supplies the citeproc macros (docs/WRITE-A-BOOK.md).
+    # same way it supplies its bibliography commands (book-assembler's
+    # references/latex-conventions.md).
     if has_code_block:  # pragma: no cover-windows
         cmd += [
             "--variable",

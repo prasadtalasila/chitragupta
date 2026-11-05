@@ -8,6 +8,7 @@ chitragupta/review/verbatim_check/_corpus.py's docstring for the split.
 from pathlib import Path
 
 from chitragupta import config, review
+from chitragupta.dossier import draft_relpath
 from chitragupta.passage_diff import annotate, one_line
 from chitragupta.review.verbatim_check._scan import (
     BUCKET_ORDER,
@@ -45,10 +46,13 @@ def render_scan_markdown(
     envelope cannot disagree about what produced them.
     """
     allowlist_path = config.VERBATIM_ALLOWLIST_PATH
+    # Shown relative to the project, as the draft is: an absolute path put
+    # the author's home directory into every committed report (#1167).
+    shown = draft_relpath(allowlist_path)
     if not allowlist_path.exists():
-        allowlist_line = f"- Allowlist: none configured (`{allowlist_path}` not found)"
+        allowlist_line = f"- Allowlist: none configured (`{shown}` not found)"
     else:
-        allowlist_line = f"- Allowlist: `{allowlist_path}` ({suppressed} finding(s) suppressed)"
+        allowlist_line = f"- Allowlist: `{shown}` ({suppressed} finding(s) suppressed)"
 
     lines = review.header(Path(draft), "verbatim", command)
     lines = lines[:-1] + [allowlist_line, ""]

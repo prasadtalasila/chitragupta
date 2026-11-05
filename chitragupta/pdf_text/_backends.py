@@ -93,7 +93,7 @@ def _extract_docling(pdf_path: str, out_path: Path, threads: int | None = None) 
     `page_break_placeholder="\\f"` puts form feeds where the pages were, so
     this backend's output has the same shape as `pdftotext`'s and every
     consumer that splits on them -- the passage ladder's page-level rung,
-    `chitragupta/review/verbatim_check.py` -- reports a real page instead of p.1.
+    `chitragupta/review/verbatim_check/` -- reports a real page instead of p.1.
     Docling emits a break *between* consecutive pages that carry items and
     none before the first, so splitting yields 1-based page numbers
     directly. A page carrying no items at all contributes no break and so

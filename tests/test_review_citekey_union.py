@@ -2,8 +2,8 @@
 
 What is worth pinning here is the invariant itself and the honesty
 around it. A book is composed **by reference** -- `book.tex` is a
-skeleton that `\\input`s its units, and citeproc resolved each unit's
-citations inside that unit -- so a source goes missing at this step by
+skeleton that `\\input`s its units, whose citations stay `\\citep{key}`
+for the book's one `bibtexu` pass -- so a source goes missing at this step by
 the assembly omitting the unit that stood on it, and the finding is
 located to that unit. The other direction is about the assembly's own
 material: a citekey in a title page or an appendix entered outside any

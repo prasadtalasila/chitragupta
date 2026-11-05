@@ -40,7 +40,7 @@ that is sitting there anyway.
 `passage_records()` is re-exported here rather than defined here since
 #627 pushed this module past the 250-line ceiling -- it lives in
 `chitragupta/_passage_records.py`, still stdlib-only, still the one
-definition both producers share (`chitragupta/pdf_text.py` in the corpus
+definition both producers share (`chitragupta/pdf_text/` in the corpus
 layer and `chitragupta/enrich/docling_parse.py` in the enrichment
 layer). The reason it is reachable *through this module* is unchanged:
 this module is the sidecar's reader, and writer and reader drift apart

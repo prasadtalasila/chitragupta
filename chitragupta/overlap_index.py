@@ -1,6 +1,6 @@
 """Corpus-wide n-gram fingerprint index, cached on disk under content/overlap/.
 
-`chitragupta/review/verbatim_check.py`'s `overlap` mode used to fingerprint one source
+`chitragupta/review/verbatim_check/`'s `overlap` mode used to fingerprint one source
 per invocation, from scratch, in memory, and throw the work away: a `gram ->
 page` dict rebuilt on every run, from text re-extracted by re-invoking
 `pdftotext` as a subprocess. Fine for "compare this draft against this one
@@ -48,12 +48,12 @@ Both caches are read/written with no writer lock (`chitragupta/runlock.py`): lik
 run is in progress, and staleness is handled by the key comparison above,
 not by locking.
 
-Tokenization mirrors `chitragupta/review/verbatim_check.py`'s `WORD`/`norm` --
+Tokenization mirrors `chitragupta/review/verbatim_check/`'s `WORD`/`norm` --
 lowercase `[a-z0-9]+` tokens -- so `grams_for_citekey` agrees with what
 that script's `overlap` mode reported before this module existed.
 Duplicated rather than imported: `chitragupta/` is the corpus layer `scripts/`
 consumes, not the reverse, and this is two lines that must not drift out
-of sync with the ones in `chitragupta/review/verbatim_check.py`.
+of sync with the ones in `chitragupta/review/verbatim_check/`.
 
 A gram's hash is a 64-bit rolling polynomial hash over each word's
 `blake2b` digest, deterministic across processes and runs (unlike

@@ -18,14 +18,9 @@ says. A proportion is exactly the shape docs/AUTO-IMPROVEMENT.md's R3
 exists to keep out of an unattended loop, so there is no threshold here,
 no target, and no per-genre bar -- only counts, and a human to read them.
 
-One of the seven commands in the **review layer**, with
-chitragupta/review/citation_provenance.py,
-chitragupta/review/citation_coverage.py,
-chitragupta/review/verbatim_check/,
-chitragupta/review/figure_layout/,
-chitragupta/review/uncited_prose.py and
-chitragupta/review/quotation.py -- read over a finished draft, by a
-person or by a driver, never a gate, and never holding the write lock.
+One of the review layer's aids (`chitragupta/review/_registry.py`'s
+`AIDS` names them all) -- read over a
+finished draft, by a person or by a driver, never a gate, and never holding the write lock.
 
 This aid owns its own units through `_units.py`. `verbatim_check` splits
 paragraphs its own way for its own purposes, and the two are **not**
@@ -123,7 +118,7 @@ def build_report(draft: Path, kind: str, source: str, genre: str | None) -> Repo
 
 def finding_id(kind: str, text: str) -> str:
     """A finding's name, stable across runs and position-free -- the same
-    convention the other three aids' `finding_id` use.
+    convention every other aid's `finding_id` uses.
 
     Keyed on the unit's marker-stripped text, so declaring a unit does
     not rename the finding that describes it, and on the finding's kind,

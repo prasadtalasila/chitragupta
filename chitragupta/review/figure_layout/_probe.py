@@ -286,7 +286,7 @@ def measure(figure_path: Path, *, boxed: bool = False) -> Measurement:
     """
     # Every line below needs a real lualatex, which CI's Windows leg does
     # not install (`os-deps` is apt-only) -- the same `no cover-windows`
-    # marking render_output.py's own toolchain tail carries, and for the
+    # marking render_output/'s own toolchain tail carries, and for the
     # same reason. The Linux leg measures all of it for real.
     source = figure_path.read_text(encoding="utf-8")  # pragma: no cover-windows
     with tempfile.TemporaryDirectory() as tmp:  # pragma: no cover-windows

@@ -3,40 +3,56 @@
   "aid": "agenda",
   "draft": "content/drafts/dt-overview/trust-chapter.tex",
   "command": "python -m chitragupta.review agenda content/drafts/dt-overview/trust-chapter.tex",
-  "version": "6.61.7",
+  "version": "6.166.1",
   "sources": {
     "aids": {
       "provenance": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "verbatim": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "coverage": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "synthesis": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "figure": {
         "available": false,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "uncited": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "quotation": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "support": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       }
     },
     "style": {
@@ -46,6 +62,10 @@
     "drift": {
       "available": true,
       "corpus_available": true
+    },
+    "accepted": {
+      "available": false,
+      "count": 0
     }
   },
   "pass_bound": 3,
@@ -57,6 +77,10 @@
       "section": "The argument",
       "citekey": "sample_dt_sync_2023",
       "line": 26,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_dt_sync_2023]` scores weak: In comparative trials, explicit staleness marking -- returning every value with ",
       "detail": {
@@ -78,6 +102,10 @@
       "section": "Synthesis",
       "citekey": "sample_dt_overview_2024",
       "line": 55,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_dt_overview_2024]` scores weak: The vocabulary of [...] sharpens the claim: what distinguishes a twin from a sha",
       "detail": {
@@ -93,6 +121,10 @@
       "section": "Operational Trust as the Limiting Resource of Digital-Twin Deployments",
       "citekey": null,
       "line": 4,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "\\label{ch:trust}",
       "detail": {
@@ -106,6 +138,10 @@
       "section": "Research question",
       "citekey": null,
       "line": 7,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "\\label{sec:trust-rq}",
       "detail": {
@@ -119,6 +155,10 @@
       "section": "Research question",
       "citekey": null,
       "line": 9,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "This chapter addresses RQ2: \\emph{what limits the operational authority a digita",
       "detail": {
@@ -132,6 +172,10 @@
       "section": "The argument",
       "citekey": null,
       "line": 16,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "\\label{sec:trust-argument}",
       "detail": {
@@ -145,6 +189,10 @@
       "section": "The argument",
       "citekey": null,
       "line": 18,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "Three strands of evidence converge on the same answer: the limiting resource is ",
       "detail": {
@@ -158,6 +206,10 @@
       "section": "Synthesis",
       "citekey": null,
       "line": 50,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "\\label{sec:trust-synthesis}",
       "detail": {
@@ -171,6 +223,10 @@
       "section": "Limitations",
       "citekey": null,
       "line": 62,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "\\label{sec:trust-limitations}",
       "detail": {
@@ -184,6 +240,10 @@
       "section": "Limitations",
       "citekey": null,
       "line": 64,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "The corpus is small and synthetic, its trust measures are behavioural proxies (m",
       "detail": {
@@ -197,6 +257,10 @@
       "section": "Limitations",
       "citekey": null,
       "line": 66,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "The claim this chapter defends is therefore directional: where the two have been",
       "detail": {
@@ -210,6 +274,10 @@
       "section": "The argument",
       "citekey": null,
       "line": 22,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "First, the synchronisation literature separates the two directly.",
       "detail": {
@@ -223,6 +291,10 @@
       "section": "The argument",
       "citekey": null,
       "line": 26,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "Accuracy was held constant; honesty moved; trust followed the honesty.",
       "detail": {
@@ -242,6 +314,10 @@
       "section": "The argument",
       "citekey": null,
       "line": 29,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "Second, the longest observational record in the corpus shows authority following",
       "detail": {
@@ -255,6 +331,10 @@
       "section": "The argument",
       "citekey": null,
       "line": 40,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "Third, the same asymmetry appears at the analytics layer.",
       "detail": {
@@ -268,6 +348,10 @@
       "section": "The argument",
       "citekey": null,
       "line": 45,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "The recommended layered configuration buys accuracy where it is cheap but anchor",
       "detail": {
@@ -281,6 +365,10 @@
       "section": "Synthesis",
       "citekey": null,
       "line": 52,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "Across all three strands, the mechanism that converts a working twin into a trus",
       "detail": {
@@ -294,6 +382,10 @@
       "section": "Synthesis",
       "citekey": null,
       "line": 58,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "Authority, in other words, is granted against the override log, not against the ",
       "detail": {
@@ -301,5 +393,7 @@
         "uncited_id": "2e22445b63a8"
       }
     }
-  ]
+  ],
+  "stale_spans": [],
+  "accepted": []
 }

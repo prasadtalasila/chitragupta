@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-chapter.md`
 - Command: `python -m chitragupta.review agenda content/drafts/dt-overview/staleness-chapter.md`
-- chitragupta 6.61.7
+- chitragupta 6.166.1
 
 ## How to read this
 
@@ -26,6 +26,8 @@ person to decide.
 - Claim support: read
 - Prose (style_check): read
 - Dossier drift: read
+- Recorded-but-uncited citekeys: read
+- Accepted items: none recorded for this draft
 
 ## Summary
 
@@ -36,7 +38,8 @@ person to decide.
 
 ### prose
 
-- `44be99531d05` [unattended] (Exercises): chitragupta.Just: 'just' (1x)
+- `44be99531d05` [surfaced] (Exercises): chitragupta.Just: 'just' (1x)
+
 ### unsupported-claim
 
 - `6e8823894243` [surfaced] (3.1 Motivation): `[@sample_dt_factory_2022]` scores weak: Field studies report that the costly failures are precisely the quiet ones, wher

@@ -674,7 +674,7 @@ since the citekey comes from your own BibTeX export. `content/chroma/` is
 only opened if it already exists and the `enrich` extra is installed;
 otherwise you get a `NOTE:` line saying the class was not scanned, instead
 of a silent zero. The chroma collection is namespaced by
-`[embedding].model`, so a corpus embedded under a different model reads as
+`[enrich].embedding_model`, so a corpus embedded under a different model reads as
 zero vectors here; that is a true statement about the collection this
 configuration would use.
 

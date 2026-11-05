@@ -303,7 +303,7 @@ def units(text: str, kind: str, *, latex: bool = False) -> list[Unit]:
     """`text` split into units of `kind`.
 
     Fenced code and LaTeX verbatim are blanked first, by the same
-    `citation_gate` helper `references.py` and `verbatim_check.py`
+    `citation_gate` helper `references.py` and `verbatim_check/`
     already share. That is what keeps a `<!-- single-source: ... -->`
     inside a fenced block -- a textbook chapter demonstrating this very
     markup -- from being read as a declaration of the paragraph

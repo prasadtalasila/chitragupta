@@ -93,11 +93,9 @@ and a measured gold set with its per-rung scores
 [`topic_gold_results.json`](examples/sample-project/content/topic_gold_results.json)).
 The gold set includes one deliberately misspelled query the fuzzy rung
 has to catch and one out-of-corpus query that must fall through to
-search. The committed `topic_graph.json` and transcript predate the
-stored analytics described below (`edges_withheld`, `analysis`,
-`communities`, `paths`), so they show the edges and the hierarchy but
-not the brokerage block or the stored clusters. They need
-regenerating from a fresh `topic-graph` run over the sample project.
+search. The committed `topic_graph.json` carries the stored analytics
+described below (`edges_withheld`, `analysis`, `communities`, `paths`),
+and the transcript ends with the brokerage block they feed.
 
 Below is real output from a four-paper fixture (two seed papers about
 digital twins, three about machine learning, one of them, `dt2022`, in

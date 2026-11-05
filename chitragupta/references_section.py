@@ -17,7 +17,7 @@ from chitragupta import citation_gate
 # Matches the References heading `references.py` writes, bare ("## References")
 # or numbered to match a draft's own heading convention ("## 6. References"),
 # at any heading level -- used both to detect an existing section (for
-# render_output.py, which strips it before handing the draft to pandoc)
+# render_output/, which strips it before handing the draft to pandoc)
 # and to find where to splice in a replacement.
 #
 # The section number is multi-level (`\d+(?:\.\d+)*`), not a single digit

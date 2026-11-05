@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-tutorial.md`
 - Command: `python -m chitragupta.review agenda content/drafts/dt-overview/staleness-tutorial.md`
-- chitragupta 6.61.7
+- chitragupta 6.166.1
 
 ## How to read this
 
@@ -26,6 +26,8 @@ person to decide.
 - Claim support: read
 - Prose (style_check): read
 - Dossier drift: read
+- Recorded-but-uncited citekeys: read
+- Accepted items: none recorded for this draft
 
 ## Summary
 
@@ -36,8 +38,9 @@ person to decide.
 
 ### prose
 
-- `5a8bf91ec244` [unattended] (3. Mark staleness instead): chitragupta.WideCodeLine: 'print(f"STALE ({age:.0f}s old) -- last known temperature: {s' (1x)
-- `3f97e7ce6b6d` [unattended] (Where to go next): chitragupta.Just: 'just' (1x)
+- `5a8bf91ec244` [surfaced] (3. Mark staleness instead): chitragupta.WideCodeLine: 'print(f"STALE ({age:.0f}s old) -- last known temperature: {s' (1x)
+- `3f97e7ce6b6d` [surfaced] (Where to go next): chitragupta.Just: 'just' (1x)
+
 ### unsupported-claim
 
 - `dc34bfbaf303` [surfaced] (Where to go next): `[@sample_dt_factory_2022]` scores no support found: Explicit staleness marking roughly halved operator mistrust incidents in a compa

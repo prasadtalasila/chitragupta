@@ -75,7 +75,7 @@ documentation uses everywhere else:
 
 - Draft: `content/drafts/dt-overview/survey.md`
 - Command: `python -m chitragupta.review agenda content/drafts/dt-overview/survey.md`
-- chitragupta 6.61.7
+- chitragupta 6.166.1
 
 ## How to read this
 
@@ -118,8 +118,20 @@ digest is the whole text ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)).
 
 - `6bdcbebedc51` [unattended] (1. Introduction): 13-word verbatim run
   citing `sample_dt_overview_2024`
+
+    *source p.1, draft line 7, paragraph 3*
+
+    > a digital model exchanges data with its physical counterpart only through manual steps
+
 - `91bce1eac368` [unattended] (2. Keeping the twin true): 13-word
-  verbatim run citing `sample_dt_factory_2022`, 5 matched
+  skip-gram match citing `sample_dt_factory_2022`, 5 matched
+
+    *source p.1, draft line 37, paragraph 7*
+
+    > **draft** -- **showing** supervisors agreeing with the twin in over ninety five percent **of cases**
+
+    > **source** -- **showed** supervisors agreeing with the twin’*s choice* in over ninety-five percent
+
 
 ### unsupported-claim
 
@@ -186,6 +198,11 @@ Every finding is one line with four parts:
 | **disposition** | `[unattended]` or `[surfaced]`; see below |
 | **section anchor** | which heading of the draft the finding sits under, so you can go straight there. Absent for a finding that is not about one section |
 | **summary** | one line of what was found. Deliberately thin: the full payload lives in the raising aid's own report, keyed by the id |
+
+A `verbatim-run` line is followed by its excerpt: where it sits in the
+source and the draft, then the copied words. A skip-gram match shows
+both sides, the words that differ marked, as in the verbatim scan's own
+report ([the example above](#-a-complete-agenda) has one of each).
 
 The id is stable while the finding's identity is unchanged. Edit the
 sentence and it becomes a different finding with a different id. That

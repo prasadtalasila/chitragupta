@@ -45,7 +45,7 @@ serialisation of the findings the report already prints -- never a second
 computation -- so that a caller consuming them programmatically does not
 have to regex the printed form back into data (issue #127). A *sibling*,
 not one of `write()`'s formats: `tex` and `pdf` are renders of the
-Markdown through `chitragupta/render_output.py`, and this is not a render of
+Markdown through `chitragupta/render_output/`, and this is not a render of
 anything. All eleven aids emit one now -- `verbatim scan` since #127,
 `provenance` and `coverage` since #309, and `synthesis`, `figure`,
 `uncited`, `quotation`, `agenda`, `support`, `union` and `digest` from the
@@ -205,7 +205,7 @@ def write(draft: Path, aid: str, body: str, formats: list[str]) -> dict[str, Pat
     beside it. Returns `{format: path}` for what succeeded.
 
     `md` is produced directly. `tex`/`pdf` go through
-    `chitragupta/render_output.py`, the same path every genre draft uses -- it
+    `chitragupta/render_output/`, the same path every genre draft uses -- it
     needs pandoc, and LuaLaTeX for pdf, so a missing binary is reported and
     skipped rather than failing the whole run, matching how every other
     stage in this project treats an absent optional tool. So is every
@@ -262,7 +262,7 @@ def write(draft: Path, aid: str, body: str, formats: list[str]) -> dict[str, Pat
             # (#949). The md report above is already written and
             # unaffected, and the caller files the `.json` the agenda reads
             # next, so one format is skipped rather than the run taken out
-            # -- how render_output.py's own CLI reports each of these too.
+            # -- how render_output/'s own CLI reports each of these too.
             # The shared tuple rather than classes listed here, so a
             # failure render() gains later is caught without this
             # needing to know.

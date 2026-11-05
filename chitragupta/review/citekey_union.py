@@ -17,11 +17,12 @@ reconstruction.
 
 **A book is composed by reference, and reading it any other way gives a
 wholly false report.** `book.tex` is structure only -- it `\\input`s its
-units and citeproc resolved each unit's citations inside that unit -- so
-the assembly's own text contains no citekey, and subtracting against it
-would report every source in the book as lost. `_citekey_union_includes`
-owns that resolution and its docstring owns the argument; what follows
-from it is the shape of both directions here:
+units, whose citations stay `\\citep{key}` (`--natbib`) for the book's
+one `bibtexu` pass -- so the assembly's own text contains no citekey,
+and subtracting against it would report every source in the book as
+lost. `_citekey_union_includes` owns that resolution and its docstring
+owns the argument; what follows from it is the shape of both directions
+here:
 
 - **Dropped**: an accepted unit the assembly never includes. Including a
   unit includes all of its prose, so omitting one is how a source

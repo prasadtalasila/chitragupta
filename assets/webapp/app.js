@@ -7,7 +7,7 @@
    What is left in this file is the wiring between the modules: the
    payload check, `state` (the selection, filter and view fields every
    DOM module reaches across the split for), the resolution and focus
-   controls, the hierarchy and uncovered-seed sections, and the
+   controls, the hierarchy and uncovered-paper sections, and the
    document-level Esc and click-away handlers. The logic those DOM
    events call lives in graph.js (payload -> what is visible, what
    cytoscape is handed) and panel.js (data -> HTML). The DOM wiring is
@@ -236,9 +236,9 @@
   }
   renderHierarchy();
 
-  // ---------- uncovered seeds ----------
+  // ---------- uncovered papers ----------
 
-  /* Hidden entirely when every seed found a home -- an empty admission
+  /* Hidden entirely when every paper found a topic -- an empty admission
      is noise -- and hidden too for an older payload that predates the
      field, which is indistinguishable from that and honestly so. */
   (function renderUncovered() {

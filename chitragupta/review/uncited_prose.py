@@ -40,10 +40,9 @@ uncited claim is evidence, not wording. An unattended reviser rewording
 one would make it look supported without making it supported, which is
 the failure class this project exists to prevent.
 
-One of the seven commands in the **review layer**, beside
-citation_provenance.py, citation_coverage.py, verbatim_check/,
-synthesis.py, figure_layout/ and quotation.py -- read over a finished
-draft, by a person or by a driver, never a gate, and never holding the
+One of the review layer's aids (`chitragupta/review/_registry.py`'s
+`AIDS` names them all) -- read over a
+finished draft, by a person or by a driver, never a gate, and never holding the
 write lock. Alone among the seven it reads nothing but the draft: no
 ledger, no corpus, no sync, no `enrich` extra, and not even the figures
 a draft references.
@@ -97,7 +96,7 @@ def build_report(draft: Path, standing: str, genre: str | None, genre_source: st
 
 def finding_id(sentence: str) -> str:
     """A finding's name, stable across runs and position-free -- the same
-    convention the other four aids' `finding_id` use.
+    convention every other aid's `finding_id` uses.
 
     Keyed on the sentence alone, so three things follow, all wanted:
     editing an unrelated paragraph renames nothing; citing the sentence

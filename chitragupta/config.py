@@ -159,7 +159,7 @@ LEDGER_PATH = CONTENT_DIR / "ledger.sqlite"
 # the .tex/.pdf renders of each. See chitragupta/review/__init__.py and
 # docs/ARCHITECTURE.md's "Layer 4: the review layer".
 #
-# Named for the layer, not for one of its three aids: all three write
+# Named for the layer, not for one of its aids: every aid writes
 # here. The genre skills' own section-to-citekey JSON is not a review
 # artefact and does not -- it is drafting state, and lives in the
 # dossier directory.
@@ -174,7 +174,7 @@ DOSSIERS_DIR = CONTENT_DIR / "dossiers"
 # The outline a book is generated from, one directory per book, mirroring
 # the book's own directory under DRAFTS_DIR -- content/drafts/twins/ has
 # its outline and its sign-off record at content/specs/twins/. See
-# chitragupta/spec.py and docs/WRITE-A-BOOK.md.
+# chitragupta/spec/ and docs/WRITE-A-BOOK.md.
 #
 # Mirrored one level differently from the three above, and deliberately:
 # those mirror a *draft*, so they carry the draft's parent directory; a
@@ -316,8 +316,8 @@ RETRIEVAL_PASSAGE_INDEX_PATH = CONTENT_DIR / "retrieval_passage_index.json"
 # stat-before-hash shape as RETRIEVAL_INDEX_PATH above.
 OVERLAP_DIR = CONTENT_DIR / "overlap"
 # Boilerplate phrases (acronyms, fixed phrasing, defined terms, whole
-# paragraphs) chitragupta/review/verbatim_check.py's `scan` should never flag --
-# see docs/PLAGIARISM.md. Per-host, hand-edited data, like content/library.bib:
+# paragraphs) chitragupta/review/verbatim_check/'s `scan` should never flag --
+# see docs/PLAGIARISM.md. Per-host, hand-edited data, like papers/bibliography.bib:
 # gitignored, absent on a fresh clone (scan treats that as "no
 # suppressions configured", not an error), and never what one host waved
 # through is not another host's decision to make. Fixed under CONTENT_DIR
@@ -329,7 +329,7 @@ VERBATIM_ALLOWLIST_PATH = CONTENT_DIR / "verbatim_allowlist.toml"
 # doesn't force the ledger's five commit points into one transaction.
 PIPELINE_LOCK_PATH = CONTENT_DIR / "pipeline.lock.db"
 
-# Which backend chitragupta/pdf_text.py dispatches to -- see config.toml's
+# Which backend chitragupta/pdf_text/ dispatches to -- see config.toml's
 # [parser] comment for the tradeoffs (speed, page-boundary loss) before
 # switching off the default. Folded to its spelling at load like the
 # other enums, because sync.py, sync_pool.py and ledger_upsert.py compare
@@ -545,7 +545,7 @@ VALE_CONFIG_PATH = (
 STYLE_LANGUAGE = _get("STYLE_LANGUAGE", "style", "language", default="")
 # Whether a run of consecutive citation numbers collapses ([3]-[6] rather
 # than [3], [4], [5], [6]). IEEE's own guide shows the collapsed form, but
-# upstream ieee.csl doesn't produce it; render_output.py injects the one
+# upstream ieee.csl doesn't produce it; render_output/ injects the one
 # attribute that does, into a temp copy. False renders whatever the style
 # on disk says, unmodified.
 RENDER_COLLAPSE_CITATIONS = _get_bool(

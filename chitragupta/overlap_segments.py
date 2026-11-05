@@ -5,7 +5,7 @@ because they are the two halves of the same question -- what unit gets
 embedded, and where in the original does it sit -- and because the
 answers come from completely different places. The draft side reads a
 Markdown or LaTeX file this pipeline wrote, with sections, citation
-markers and a word stream `chitragupta/review/verbatim_check.py` has already
+markers and a word stream `chitragupta/review/verbatim_check/` has already
 tokenized. The source side reads a Docling passage sidecar through
 `chitragupta/passages.py`'s ladder.
 

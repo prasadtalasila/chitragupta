@@ -24,7 +24,7 @@ def sidecar_path(citekey: str) -> Path:
     """The corpus layer's passage sidecar for `citekey` (rung 2).
 
     Built from the citekey in one place, so the writer in
-    `chitragupta/pdf_text.py` and the reader in `passages` cannot drift
+    `chitragupta/pdf_text/` and the reader in `passages` cannot drift
     apart. The enrichment layer's own sidecar (rung 1) is *not* this path
     -- it lives under `config.DOCLING_DIR`, written by that layer's own
     parse under its own OCR and figure settings, so the two must not share

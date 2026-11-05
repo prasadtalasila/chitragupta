@@ -1,7 +1,7 @@
 """chitragupta/review/__main__.py: the review layer's single entry point.
 
-What the three aids *compute* is covered in tests/test_citation_provenance.py,
-tests/test_citation_coverage.py and tests/test_verbatim_check.py. This
+What each aid *computes* is covered in its own test module
+(tests/test_citation_provenance.py, tests/test_verbatim_check.py, ...). This
 file pins only the dispatch, and the invariant the dispatch exists to
 serve: **one entry point per layer, one level deep**, the same shape
 `python -m chitragupta.corpus sync` gives the corpus layer.

@@ -232,7 +232,7 @@ install_os_deps() {
     # by hand rendering a real draft after the rest of the toolchain
     # reported fine.
     # texlive-pictures ships tikz.sty (Debian/Ubuntu, confirmed via
-    # `dpkg -S`) -- chitragupta/render_output.py loads it conditionally for a
+    # `dpkg -S`) -- chitragupta/render_output/ loads it conditionally for a
     # draft with a \input/\include'd TikZ figure (#222), and none of the
     # packages above pull it in.
     # texlive-binaries owns /usr/bin/bibtex (confirmed via `dpkg -S` on
@@ -259,7 +259,7 @@ install_os_deps() {
     # a base image installed with --no-install-recommends
     # (docker/Dockerfile's ubuntu:26.04, and any host provisioned only by
     # this stage) has none of them, so `import cv2` fails.
-    # That error is never the one you see. chitragupta/pdf_text.py's forkserver
+    # That error is never the one you see. chitragupta/pdf_text/'s forkserver
     # preloads docling, `forkserver.main()` catches ImportError and
     # discards it, and cv2's own loader leaves `sys.OpenCV_LOADER` set
     # when its bootstrap dies partway -- so every worker forked afterwards

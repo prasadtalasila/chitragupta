@@ -225,11 +225,11 @@ TOPIC_NEIGHBORS = _get_int(
 # documents, 140 belong to more than one topic and the scalar discards
 # 222 memberships outright.
 #
-# Recorded from HDBSCAN's own soft clustering, which is the only
-# mechanism of four measured that agrees with the clustering it is
-# describing -- its assignment appears in the memberships it produces for
-# 100% of documents and leads for 99%, against 30-45% for every
-# centroid-distance rule. See chitragupta/enrich/topic_model.py.
+# Recorded as cosine to each topic's descriptor (its members' centroid,
+# on mean-centred embeddings), with the assigned topic always present --
+# `MEMBERSHIP_MECHANISM` in chitragupta/enrich/topic_model.py, which has
+# why. HDBSCAN's own soft clustering was measured and rejected: for a
+# core point it answers nearly binarily (docs/CONFIG.md).
 #
 # Recorded for every run since the zero-shot path was removed: BERTopic
 # only swaps its clusterer for a placeholder in that mode, so there is

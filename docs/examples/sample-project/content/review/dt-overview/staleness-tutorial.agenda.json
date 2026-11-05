@@ -3,40 +3,56 @@
   "aid": "agenda",
   "draft": "content/drafts/dt-overview/staleness-tutorial.md",
   "command": "python -m chitragupta.review agenda content/drafts/dt-overview/staleness-tutorial.md",
-  "version": "6.61.7",
+  "version": "6.166.1",
   "sources": {
     "aids": {
       "provenance": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "verbatim": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "coverage": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "synthesis": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "figure": {
         "available": false,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "uncited": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "quotation": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "support": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       }
     },
     "style": {
@@ -46,10 +62,14 @@
     "drift": {
       "available": true,
       "corpus_available": true
+    },
+    "accepted": {
+      "available": false,
+      "count": 0
     }
   },
   "pass_bound": 3,
-  "objective_class_count": 2,
+  "objective_class_count": 0,
   "items": [
     {
       "id": "5a8bf91ec244",
@@ -57,7 +77,11 @@
       "section": "3. Mark staleness instead",
       "citekey": null,
       "line": 66,
-      "unattended": true,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
+      "unattended": false,
       "summary": "chitragupta.WideCodeLine: 'print(f\"STALE ({age:.0f}s old) -- last known temperature: {s' (1x)",
       "detail": {
         "message": "this code line is 90 columns wide, over the 76 a page fits. A fenced block renders as LaTeX `verbatim`, which wraps only because the render loads `fvextra`; keeping the line short avoids the continuation marker a wrap leaves behind (WRITING-STANDARDS.md \u00a714).",
@@ -71,7 +95,11 @@
       "section": "Where to go next",
       "citekey": null,
       "line": 110,
-      "unattended": true,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
+      "unattended": false,
       "summary": "chitragupta.Just: 'just' (1x)",
       "detail": {
         "message": "'just' -- adverb or adjective? Only the adverb is a defect marker (WRITING-STANDARDS.md \u00a72, \u00a79).",
@@ -85,6 +113,10 @@
       "section": "Where to go next",
       "citekey": "sample_dt_factory_2022",
       "line": 109,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_dt_factory_2022]` scores no support found: Explicit staleness marking roughly halved operator mistrust incidents in a compa",
       "detail": {
@@ -100,6 +132,10 @@
       "section": "Where to go next",
       "citekey": "sample_dt_sync_2023",
       "line": 107,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_dt_sync_2023]` scores weak: Explicit staleness marking roughly halved operator mistrust incidents in a compa",
       "detail": {
@@ -115,6 +151,10 @@
       "section": "Where to go next",
       "citekey": "sample_dt_overview_2024",
       "line": 111,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_dt_overview_2024]` scores weak: For the vocabulary of what you just built -- and why it is a shadow, not yet a t",
       "detail": {
@@ -124,5 +164,7 @@
         "provenance_id": "0fab0f944cc3"
       }
     }
-  ]
+  ],
+  "stale_spans": [],
+  "accepted": []
 }

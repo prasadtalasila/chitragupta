@@ -29,7 +29,7 @@ Twelve commands, run by hand or by a genre skill over one draft:
         a draft's prose against docs/WRITING-STANDARDS.md -- a review
         aid, never a gate.
 
-    python -m chitragupta.draft spec init|show|sign|status <book>
+    python -m chitragupta.draft spec init|show|sign|status|align|seed <book>
         the outline a book is generated from, and the human sign-off on
         it -- the book-scale track's first artefact (docs/WRITE-A-BOOK.md).
 

@@ -193,9 +193,9 @@ document, and a combining step is where a source goes missing
 with no error and no log ([RAG.md](RAG.md) catalogues why).
 
 A book is composed by reference, which is what makes this checkable.
-`book.tex` is a skeleton: it `\input`s its units, and
-citeproc resolved each unit's citations inside that unit, so the
-assembly's own text states no citekey at all. Reading it for citekeys and
+`book.tex` is a skeleton: it `\input`s its units, whose citations stay
+`\citep{key}` for the book's one `bibtexu` pass, so the assembly's own
+text states no citekey at all. Reading it for citekeys and
 subtracting would report every source in a correct book as lost. What
 goes missing here is a *unit*. Including one includes all of its prose,
 so omitting one drops every source only it stood on. The

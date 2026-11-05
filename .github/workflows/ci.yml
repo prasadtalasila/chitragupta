@@ -507,7 +507,7 @@ jobs:
       # `broad-exception-caught` disable can't be (docs/TECHNICAL-DEBT.md's
       # ruff subsection) -- `# noqa: BLE001` becomes a checked claim rather
       # than a comment nothing reads. Same roots as pylint, deliberately:
-      # `bench/` stays outside every check in the repository (Tier 3.1),
+      # `bench/` stays outside every linter (docs/TECHNICAL-DEBT.md, Tier 5),
       # unchanged by this. Config lives in `pyproject.toml`'s `[tool.ruff]`,
       # not a flag here, the same split pylint's own `--rcfile` makes.
       - name: ruff

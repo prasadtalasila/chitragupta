@@ -44,7 +44,7 @@ def optional_stack() -> tuple[Any, Any] | None:
     `ModuleNotFoundError` uncaught, and it `mkdir`s `content/chroma/` on
     the way past -- so neither "the import worked" nor "the directory
     exists" can be read off it as an availability signal. This is the
-    probe that one is missing, in the shape `chitragupta/pdf_text.py` already
+    probe that one is missing, in the shape `chitragupta/pdf_text/` already
     uses for its own optional backend.
     """
     try:

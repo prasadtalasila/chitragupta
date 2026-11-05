@@ -1735,6 +1735,24 @@ class TestScanWrite:
         text = (config.REVIEW_DIR / "dt" / "survey.verbatim.md").read_text()
         assert "Allowlist: none configured" in text
 
+    def test_the_allowlist_path_is_shown_relative_to_the_project(
+        self, ledger_con, tmp_path, monkeypatch
+    ):
+        """The line printed the absolute path, so a committed report
+        carried the author's home directory (found regenerating the
+        sample project, #1167)."""
+        draft = self._planted(ledger_con, tmp_path)
+        monkeypatch.setattr(config, "PROJECT_ROOT", config.CONTENT_DIR.parent)
+
+        vc.cmd_scan(str(draft), write=True, formats=["md"])
+
+        text = (config.REVIEW_DIR / "dt" / "survey.verbatim.md").read_text()
+        line = next(line for line in text.splitlines() if line.startswith("- Allowlist:"))
+        assert line == (
+            f"- Allowlist: none configured (`{config.CONTENT_DIR.name}/verbatim_allowlist.toml`"
+            " not found)"
+        )
+
     def test_report_records_the_allowlist_path_and_suppressed_count(self, ledger_con, tmp_path):
         draft = self._planted(ledger_con, tmp_path)
         config.VERBATIM_ALLOWLIST_PATH.parent.mkdir(parents=True, exist_ok=True)

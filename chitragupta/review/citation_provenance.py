@@ -7,10 +7,10 @@ exactly: *does the cited paper actually say this?* A claim that drifted
 away from its source during drafting passes the gate cleanly, because
 the citekey is real; only reading the source catches it.
 
-One of the seven commands in the **review layer**, beside
-citation_coverage.py, verbatim_check/, synthesis.py, figure_layout/,
-uncited_prose.py and quotation.py -- read over a finished draft, by a person or by a
-driver, never a gate, and never holding the write lock.
+One of the review layer's aids (`chitragupta/review/_registry.py`'s
+`AIDS` names them all) -- read over a
+finished draft, by a person or by a driver, never a gate, and never
+holding the write lock.
 chitragupta/review/__init__.py owns what the seven have in common: where
 the report goes (`content/review/`, mirroring the draft's path) and what its header looks like.
 
@@ -110,7 +110,7 @@ def score_claim(claim: str, passages: list[Passage]) -> tuple[float, Passage | N
     Overlap rather than verbatim n-grams: a correct paraphrase keeps most
     of its content words while changing order and function words, so it
     scores well here and scores *zero* under the >=8-word exact runs that
-    chitragupta/review/verbatim_check.py's `overlap` mode uses. That mode is looking
+    chitragupta/review/verbatim_check/'s `overlap` mode uses. That mode is looking
     for borrowed wording; this one is looking for support, and paraphrase
     is the normal case rather than the exception.
     """

@@ -10,6 +10,7 @@ broke the format. `plans/827-commit-message-format.md` has the design.
 """
 
 import importlib.util
+import json
 import re
 import subprocess
 import types
@@ -109,6 +110,7 @@ class TestCommitBodyRefuses:
             "- Fix the thing\x7f",  # DEL
             "- Fix the\tthing",  # tab
             "- Fix the thing\r",  # a lone carriage return
+            '- Write the separator as "\\\x00"',  # #1166: what `--jq` made of `\u0000`
         ],
     )
     def test_an_invisible_or_control_character_is_refused(self, merge_pr, bad):
@@ -279,8 +281,22 @@ class TestGh:
 
 class TestPrBody:
     def test_it_reads_the_body_field(self, merge_pr, monkeypatch):
-        monkeypatch.setattr(merge_pr, "_gh", lambda *a, **k: "the body\n")
+        monkeypatch.setattr(merge_pr, "_gh", lambda *a, **k: '{"body": "the body\\n"}')
         assert merge_pr._pr_body(42) == "the body\n"
+
+    def test_an_escape_in_the_text_arrives_as_text(self, merge_pr, monkeypatch):
+        """A description holding the six characters `\\u0000` reached the
+        merge as a backslash and a NUL byte, because `gh --jq` decoded the
+        escape (#1166, commit 9d3623e). The JSON is parsed here instead."""
+        calls = []
+
+        def fake_gh(*args, **kwargs):
+            calls.append(args)
+            return json.dumps({"body": 'the separator "\\u0000"'})
+
+        monkeypatch.setattr(merge_pr, "_gh", fake_gh)
+        assert merge_pr._pr_body(42) == 'the separator "\\u0000"'
+        assert "--jq" not in calls[0]
 
 
 class TestMerge:

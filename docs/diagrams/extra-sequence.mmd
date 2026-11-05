@@ -58,7 +58,7 @@ sequenceDiagram
     rect rgba(254,242,242,0.7)
     Note over Hook,Gate: VERIFY — enforced mechanically, twice
     Hook->>Gate: every Write/Edit under content/drafts/
-    Gate->>Led: are these citekeys in the ledger?
+    Gate->>Led: are these citekeys in the ledger, each with a parsed PDF?
     loop until the gate exits 0 — you are shown nothing before that
         alt any citekey unresolved
             Led-->>Gate: no

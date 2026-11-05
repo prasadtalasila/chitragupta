@@ -3,40 +3,56 @@
   "aid": "agenda",
   "draft": "content/drafts/dt-overview/survey.md",
   "command": "python -m chitragupta.review agenda content/drafts/dt-overview/survey.md",
-  "version": "6.61.7",
+  "version": "6.166.1",
   "sources": {
     "aids": {
       "provenance": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "verbatim": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "coverage": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "synthesis": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "figure": {
         "available": false,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "uncited": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "quotation": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "support": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       }
     },
     "style": {
@@ -46,6 +62,10 @@
     "drift": {
       "available": true,
       "corpus_available": true
+    },
+    "accepted": {
+      "available": false,
+      "count": 0
     }
   },
   "pass_bound": 3,
@@ -57,6 +77,10 @@
       "section": "1. Introduction",
       "citekey": "sample_dt_overview_2024",
       "line": 7,
+      "page": 1,
+      "end_page": 1,
+      "paragraph": 3,
+      "end_paragraph": 3,
       "unattended": true,
       "summary": "13-word verbatim run citing `sample_dt_overview_2024`",
       "detail": {
@@ -70,8 +94,12 @@
       "section": "1. Introduction",
       "citekey": "sample_dt_overview_2024",
       "line": 12,
+      "page": 1,
+      "end_page": 1,
+      "paragraph": 3,
+      "end_paragraph": 3,
       "unattended": true,
-      "summary": "15-word verbatim run citing `sample_dt_overview_2024`, 6 matched",
+      "summary": "15-word skip-gram match citing `sample_dt_overview_2024`, 6 matched",
       "detail": {
         "severity": "short",
         "verbatim_id": "37ecd99c7d48",
@@ -89,6 +117,10 @@
       "section": "1. Introduction",
       "citekey": "sample_dt_overview_2024",
       "line": 12,
+      "page": 1,
+      "end_page": 1,
+      "paragraph": 3,
+      "end_paragraph": 3,
       "unattended": true,
       "summary": "13-word verbatim run citing `sample_dt_overview_2024`",
       "detail": {
@@ -108,6 +140,10 @@
       "section": "2. Keeping the twin true",
       "citekey": "sample_dt_sync_2023",
       "line": 22,
+      "page": 1,
+      "end_page": 1,
+      "paragraph": 6,
+      "end_paragraph": 6,
       "unattended": true,
       "summary": "9-word verbatim run citing `sample_dt_sync_2023`",
       "detail": {
@@ -127,8 +163,12 @@
       "section": "2. Keeping the twin true",
       "citekey": "sample_dt_sync_2023",
       "line": 23,
+      "page": 1,
+      "end_page": 1,
+      "paragraph": 6,
+      "end_paragraph": 6,
       "unattended": true,
-      "summary": "17-word verbatim run citing `sample_dt_sync_2023`, 8 matched",
+      "summary": "17-word skip-gram match citing `sample_dt_sync_2023`, 8 matched",
       "detail": {
         "severity": "short",
         "verbatim_id": "ac105de4520f"
@@ -140,6 +180,10 @@
       "section": "2. Keeping the twin true",
       "citekey": "sample_dt_sync_2023",
       "line": 24,
+      "page": 1,
+      "end_page": 1,
+      "paragraph": 6,
+      "end_paragraph": 6,
       "unattended": true,
       "summary": "9-word verbatim run citing `sample_dt_sync_2023`",
       "detail": {
@@ -153,6 +197,10 @@
       "section": "2. Keeping the twin true",
       "citekey": "sample_dt_sync_2023",
       "line": 28,
+      "page": 1,
+      "end_page": 1,
+      "paragraph": 6,
+      "end_paragraph": 6,
       "unattended": true,
       "summary": "9-word verbatim run citing `sample_dt_sync_2023`",
       "detail": {
@@ -166,6 +214,10 @@
       "section": "2. Keeping the twin true",
       "citekey": "sample_dt_sync_2023",
       "line": 32,
+      "page": 1,
+      "end_page": 1,
+      "paragraph": 7,
+      "end_paragraph": 7,
       "unattended": true,
       "summary": "13-word verbatim run citing `sample_dt_sync_2023`",
       "detail": {
@@ -179,8 +231,12 @@
       "section": "2. Keeping the twin true",
       "citekey": "sample_dt_factory_2022",
       "line": 37,
+      "page": 1,
+      "end_page": 1,
+      "paragraph": 7,
+      "end_paragraph": 7,
       "unattended": true,
-      "summary": "13-word verbatim run citing `sample_dt_factory_2022`, 5 matched",
+      "summary": "13-word skip-gram match citing `sample_dt_factory_2022`, 5 matched",
       "detail": {
         "severity": "short",
         "verbatim_id": "3eaf8415fcc3"
@@ -192,6 +248,10 @@
       "section": "4. Integrating with everything else",
       "citekey": "sample_std_interop_2021",
       "line": 58,
+      "page": 1,
+      "end_page": 1,
+      "paragraph": 11,
+      "end_paragraph": 11,
       "unattended": true,
       "summary": "11-word verbatim run citing `sample_std_interop_2021`",
       "detail": {
@@ -211,6 +271,10 @@
       "section": "4. Integrating with everything else",
       "citekey": "sample_std_interop_2021",
       "line": 63,
+      "page": 1,
+      "end_page": 1,
+      "paragraph": 11,
+      "end_paragraph": 11,
       "unattended": true,
       "summary": "10-word verbatim run citing `sample_std_interop_2021`",
       "detail": {
@@ -224,6 +288,10 @@
       "section": "6. Conclusion",
       "citekey": "sample_dt_factory_2022",
       "line": 87,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_dt_factory_2022]` scores no support found: Across the sample corpus, the recurring finding is that twins succeed on honesty",
       "detail": {
@@ -239,6 +307,10 @@
       "section": "6. Conclusion",
       "citekey": "sample_ml_anomaly_2023",
       "line": 88,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_ml_anomaly_2023]` scores no support found: Across the sample corpus, the recurring finding is that twins succeed on honesty",
       "detail": {
@@ -254,6 +326,10 @@
       "section": "6. Conclusion",
       "citekey": "sample_std_interop_2021",
       "line": 89,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_std_interop_2021]` scores no support found: Across the sample corpus, the recurring finding is that twins succeed on honesty",
       "detail": {
@@ -269,6 +345,10 @@
       "section": "5. Gaps",
       "citekey": "sample_dt_overview_2024",
       "line": 76,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_dt_overview_2024]` scores weak: Fidelity is argued to be purchased \"decision by decision\", yet no paper offers a",
       "detail": {
@@ -284,6 +364,10 @@
       "section": "5. Gaps",
       "citekey": "sample_dt_factory_2022",
       "line": 78,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_dt_factory_2022]` scores weak: And the organisational trust mechanisms of the factory study have no counterpart",
       "detail": {
@@ -299,6 +383,10 @@
       "section": "5. Gaps",
       "citekey": "sample_ml_anomaly_2023",
       "line": 79,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_ml_anomaly_2023]` scores weak: And the organisational trust mechanisms of the factory study have no counterpart",
       "detail": {
@@ -314,6 +402,10 @@
       "section": "6. Conclusion",
       "citekey": "sample_dt_overview_2024",
       "line": 86,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_dt_overview_2024]` scores weak: Across the sample corpus, the recurring finding is that twins succeed on honesty",
       "detail": {
@@ -335,6 +427,10 @@
       "section": "6. Conclusion",
       "citekey": "sample_dt_sync_2023",
       "line": 86,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_dt_sync_2023]` scores weak: Across the sample corpus, the recurring finding is that twins succeed on honesty",
       "detail": {
@@ -356,6 +452,10 @@
       "section": "1. Introduction",
       "citekey": null,
       "line": 16,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "This survey groups the sample corpus into three themes -- keeping the twin true ",
       "detail": {
@@ -369,6 +469,10 @@
       "section": "1. Introduction",
       "citekey": null,
       "line": 5,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "The phrase *digital twin* is applied to systems with very different levels of am",
       "detail": {
@@ -382,6 +486,10 @@
       "section": "2. Keeping the twin true",
       "citekey": null,
       "line": 22,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "A twin is only as trustworthy as its last synchronisation.",
       "detail": {
@@ -401,6 +509,10 @@
       "section": "2. Keeping the twin true",
       "citekey": null,
       "line": 31,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "Trust is behavioural as much as technical.",
       "detail": {
@@ -414,6 +526,10 @@
       "section": "3. Using the state stream",
       "citekey": null,
       "line": 46,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "Once a twin exists, its state stream is a naturally clean substrate for analytic",
       "detail": {
@@ -427,6 +543,10 @@
       "section": "4. Integrating with everything else",
       "citekey": null,
       "line": 58,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "Twin pilots rarely die of modelling problems; they die of integration.",
       "detail": {
@@ -446,6 +566,10 @@
       "section": "5. Gaps",
       "citekey": null,
       "line": 72,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "Three gaps stand out.",
       "detail": {
@@ -465,6 +589,10 @@
       "section": "5. Gaps",
       "citekey": null,
       "line": 72,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "The corpus measures synchronisation and anomaly detection separately, but no pap",
       "detail": {
@@ -478,5 +606,7 @@
         ]
       }
     }
-  ]
+  ],
+  "stale_spans": [],
+  "accepted": []
 }

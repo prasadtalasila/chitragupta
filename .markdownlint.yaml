@@ -3,9 +3,8 @@
 # takes this project's code standards from.
 #
 # ENFORCED. `.github/workflows/ci.yml`'s `lint` job runs this at a binary
-# zero-messages bar -- see docs/TECHNICAL-DEBT.md's 5.3 for the baseline
-# it was adopted from (947 findings, 839 of them MD060) and the order the
-# two linters were adopted in.
+# zero-messages bar -- see docs/TECHNICAL-DEBT.md's 5.2 for the baseline
+# it was adopted from (927 findings, 827 of them MD060).
 #
 # Run it with:
 #   markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" ".agents/**/*.md" \
@@ -26,8 +25,8 @@ default: true
 # block for the dark-mode logo, which has no Markdown spelling.
 MD033: false
 
-# Table cell padding, 89% of the original adoption baseline (839 of
-# 947) -- declined then (docs/TECHNICAL-DEBT.md's 5.3) because the
+# Table cell padding, 89% of the original adoption baseline (827 of
+# 927) -- declined then (docs/TECHNICAL-DEBT.md's 5.2) because the
 # alternative was a diff moving spaces around every table in the
 # documentation by hand, burying the substantive history of those
 # files. #362 makes it a machine edit instead:

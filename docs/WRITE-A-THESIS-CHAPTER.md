@@ -422,7 +422,7 @@ this (the fixed "How to read this" paragraph is left out):
 
 - Draft: `content/drafts/thesis/methods.tex`
 - Command: `chitragupta review agenda content/drafts/thesis/methods.tex`
-- chitragupta 6.155.0
+- chitragupta 6.166.1
 
 ## Sources
 

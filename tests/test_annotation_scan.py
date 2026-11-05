@@ -1,11 +1,11 @@
 """Return-type annotation coverage under `chitragupta/`, enforced as a ratchet.
 
-[docs/CODE-STANDARDS.md](../docs/CODE-STANDARDS.md)'s build order item 3 --
+[docs/CODE-STANDARDS.md](../docs/CODE-STANDARDS.md)'s build order item 4 --
 "type annotations and a checker" -- is what this file closes the cheap
 half of. #355 annotated every `def` under `chitragupta/` that was missing a
 return type (55 of 813, found by the same `ast`-walk this file runs), and
 this is the check that stops the count going back up. The other half of
-item 3, a real type checker such as `mypy`, is declined rather than
+item 4, a real type checker such as `mypy`, is declined rather than
 deferred: CODE-STANDARDS.md already calls it "worth having and its own
 project, not a step in this one", and nothing here reopens that question.
 
@@ -89,7 +89,7 @@ def test_no_new_def_lacks_a_return_annotation():
         + "".join(f"\n  {name}" for name in new)
         + "\n\nAdd a return annotation, or -- if it genuinely cannot carry one -- "
         "say why in the PR and add it to LEGACY_UNANNOTATED_DEFS in this file. "
-        "See docs/CODE-STANDARDS.md's build order item 3."
+        "See docs/CODE-STANDARDS.md's build order item 4."
     )
 
 
