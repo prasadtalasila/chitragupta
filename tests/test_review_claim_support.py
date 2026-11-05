@@ -465,7 +465,7 @@ class TestRenderMarkdown:
         found = render.findings(report)
         text = render.render_markdown(report, "cmd", found)
         assert "missing_2024" in text
-        assert "not in the ledger" in text or "no readable text" in text
+        assert "not found in the corpus" in text
         # Real bug found while implementing this task (see task-3-report.md):
         # the brief's own `_finding_lines` printed `finding["score"]:.0%`
         # unconditionally, so an unscoreable citekey -- score 0.0 by
@@ -514,7 +514,7 @@ class TestFormatReport:
         # then again from a second, redundant pass over
         # `report.unscoreable` (a real duplication bug found while
         # implementing this task, see task-3-report.md).
-        assert text.count("not in the ledger") == 1
+        assert text.count("not found in the corpus") == 1
 
 
 class TestRegistration:

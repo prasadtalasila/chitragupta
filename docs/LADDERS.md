@@ -341,6 +341,14 @@ whether that layer has run.
 | 3 | `content/parsed/<citekey>.txt` split on form feeds | corpus layer, either backend | no; page only |
 | 4 | `pdftotext -layout` run fresh on the PDF | nobody; computed on demand | no; page only |
 
+**Only a `parsed` ledger row climbs it.** The row is read before any
+rung. A key the corpus no longer holds (no row) reports `not found in the
+corpus`, and a row whose status is anything but `parsed` reports its
+status; neither reads a sidecar, the parsed text or the PDF. A key
+dropped from the `.bib` keeps its sidecars on disk, and a failed re-parse
+keeps the old parse's text, so both would otherwise be quoted as the
+paper's current wording (#1153). It is the rule retrieval follows (#490).
+
 Rungs 1 and 2 hold the same kind of record, from
 `passages.passage_records()`: one entry per prose text item, carrying the
 text, its semantic label, its page and its bounding box.

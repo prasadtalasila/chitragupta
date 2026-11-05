@@ -24,7 +24,7 @@ from chitragupta import (
     overlap_embed,
     overlap_segments,
 )
-from tests.conftest import make_reference
+from tests.conftest import add_citable
 
 
 # SQLite's SQLITE_MAX_VARIABLE_NUMBER on 3.32+, and so the ceiling on how
@@ -579,7 +579,7 @@ class TestAlignDraft:
     @pytest.fixture
     def source(self, ledger_con):
         def write(citekey, records):
-            ledger.upsert_reference(ledger_con, make_reference(citekey=citekey))
+            add_citable(ledger_con, citekey)
             path = config.DOCLING_DIR / f"{citekey}.passages.json"
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(records), encoding="utf-8")

@@ -99,7 +99,38 @@ class TestSourcePassages:
         finally:
             con.close()
         assert found == []
-        assert "ledger" in reason
+        assert reason == "not found in the corpus"
+
+    def test_a_key_that_left_the_corpus_is_not_read_from_its_sidecar(self, isolated_config):
+        """#1153: a key removed from the .bib loses its row on sync, but
+        its sidecars stay on disk; reading them quoted a paper the corpus
+        no longer holds."""
+        plant_sidecar("gone_2024", [{"text": "Left behind.", "label": "text", "page": 1}])
+        con = ledger.connect()
+        try:
+            found, reason = passages.source_passages(con, "gone_2024")
+        finally:
+            con.close()
+        assert found == []
+        assert reason == "not found in the corpus"
+
+    @pytest.mark.parametrize("docling", [True, False])
+    def test_a_row_that_stopped_being_parsed_yields_no_passages(self, isolated_config, docling):
+        """#1153, the #490 class: a re-parse that failed leaves the old
+        parse's text and sidecar on disk, and they are not the paper's
+        current wording."""
+        add_item("a_2024", parsed_text="old page one\fold page two")
+        plant_sidecar(
+            "a_2024", [{"text": "Old wording.", "label": "text", "page": 1}], docling=docling
+        )
+        con = ledger.connect()
+        try:
+            ledger.mark_parse_failed(con, "a_2024", "boom")
+            found, reason = passages.source_passages(con, "a_2024")
+        finally:
+            con.close()
+        assert found == []
+        assert reason == "status is parse_failed -- no current parsed text"
 
     def test_no_parsed_text_and_no_pdf_reports_why(self, isolated_config):
         add_item("a_2024")

@@ -390,6 +390,23 @@ class TestWrite:
             "the gated source must not be rewritten"
         )
 
+    def test_a_private_use_character_in_a_quote_is_written_as_a_marker(
+        self, isolated_config, capsys
+    ):
+        """#1125: a dossier quote copies the source's text layer, private-use
+        characters included, and the sidecar's PDF stopped on them."""
+        con = ledger.connect()
+        seed(con, "doe_a_2024")
+        con.close()
+        draft = content_draft(isolated_config, "drafts/topic/survey.md")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
+        write_dossier(draft, "## `doe_a_2024`\n\nquote: the \uf02d span\n")
+
+        out_path = evidence_appendix.write(draft, isolated_config.CONTENT_DIR / "rendered")
+
+        assert '> "the [U+F02D] span"' in out_path.read_text(encoding="utf-8")
+        assert "shown as [U+F02D]" in capsys.readouterr().err
+
     def test_nothing_to_show_writes_no_file(self, isolated_config):
         con = ledger.connect()
         seed(con, "doe_a_2024")

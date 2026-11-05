@@ -1514,6 +1514,10 @@ write it as LaTeX in the draft, or add a
 preamble of every standalone `pdf` and `tex` render, behind a shim that
 defines `\DeclareUnicodeCharacter` on top of `newunicodechar` where the
 engine lacks it, so the same line works under LuaLaTeX and pdflatex.
+A review report or `draft evidence` sidecar does not fail on a
+private-use character (U+E000 to U+F8FF, planes 15 and 16): it comes
+from a source's text layer, so it is written as `[U+E230]` and a
+`note:` line on stderr names it.
 
 **A figure that fits on a text page stays on one.** Every
 standalone `pdf` and `tex` render includes
