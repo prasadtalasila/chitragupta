@@ -1,6 +1,6 @@
 """The three consistency registries a book is checked against.
 
-`python -m chitragupta.draft registry build|check|excerpt` over a book whose
+`python -m chitragupta.draft registry build|check|excerpt|index` over a book whose
 outline `chitragupta/spec/` holds and whose units `chitragupta/unit/` has accepted.
 Three registries, all derived by a deterministic post-pass over
 **accepted units only** (#138):

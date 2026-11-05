@@ -206,10 +206,11 @@ Three part ids are **reserved**. Each is optional, and none prints a
 The heading text is yours (`## Before the book {#front}` is fine); the
 id is what the parser and the assembler read.
 
-Four chapter ids are reserved too: `{#glossary}`, `{#symbols}`,
-`{#figures}` and `{#tables}` are **generated pages**. You write no file
-for them, `unit status` does not list them, and they take no `####`
-sections. They may sit only in `{#front}` or `{#back}`.
+Five chapter ids are reserved too: `{#glossary}`, `{#symbols}`,
+`{#figures}`, `{#tables}` and `{#index}` are **generated pages**. You
+write no file for them, `unit status` does not list them, and they take
+no `####` sections. They may sit only in `{#front}` or `{#back}`, and
+`{#index}` only in `{#back}` ([the index](book-index.md)).
 
 `spec show`, `spec sign` and `spec status` refuse an outline that breaks
 these rules, with every problem named at once, like any other parse
@@ -219,6 +220,7 @@ problem:
 - `{#appendices}` is not after every ordinary part and before `{#back}`;
 - a generated page is somewhere other than a section-less chapter of
   `{#front}` or `{#back}`;
+- `{#index}` is anywhere but `{#back}`;
 - a reserved id is used at the wrong heading level (`### Intro {#front}`).
 
 An outline without any of them (every outline written before this

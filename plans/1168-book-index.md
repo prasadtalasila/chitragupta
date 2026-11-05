@@ -1,6 +1,8 @@
 # 1168: a back-of-book index built from the glossary
 
-Status: **designed, being built.** Reviewed twice by a second model (Fable); its corrections to id stability, parent keys, the hyperref encap, input discovery, the C2 split and the pass count are folded in. Written 2026-11-05, for
+Status: **designed, being built.** Reviewed twice by a second model
+(Fable); its corrections to id stability, parent keys, the hyperref
+encap, input discovery, the C2 split and the pass count are folded in.
 [issue 1168](https://github.com/prasadtalasila/chitragupta/issues/1168).
 
 **Written for** whoever builds or reviews #1168. **It assumes**

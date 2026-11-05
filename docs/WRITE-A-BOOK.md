@@ -47,7 +47,8 @@ chapters, and for the book changing under you:
 | --- | --- |
 | [Front matter: preface and copyright page](book/front-matter.md) | writing the preface, setting the author and licence, the build line |
 | [Appendices](book/appendices.md) | material numbered A, B, ... after the last chapter |
-| [Back matter: glossary, symbols and lists](book/back-matter.md) | which reference pages print, in what order, and how to drop one |
+| [Back matter: glossary, symbols, lists and the index](book/back-matter.md) | which reference pages print, in what order, and how to drop one |
+| [The index](book/book-index.md) | how the index is built from the glossary, and how `index.toml` and its report tune it |
 | [Changing the outline after sign-off](book/changing-the-outline.md) | adding, removing or moving a chapter once prose exists |
 | [Retrofitting a book drafted before this track](book/retrofit.md) | chapters that already exist, written without an outline |
 
@@ -82,7 +83,7 @@ sign-offs is mechanical.
 | 4 | `spec align`, then `unit accept` | you, per unit | [chapters](book/chapters.md) |
 | 5 | `registry build`, `registry check` | you or the assembler | [registries](book/registries.md) |
 | 6 | the `book-assembler` skill composes `book.tex` | skill | [assemble](book/assemble.md) |
-| 7 | `lualatex`, `bibtexu`, `lualatex` x2 | you or the assembler | [assemble](book/assemble.md) |
+| 7 | `lualatex`, `bibtexu`, `lualatex` x2; with an index, `registry index` and one more `lualatex` | you or the assembler | [assemble](book/assemble.md) |
 | 7b | `review union` | you | [assemble](book/assemble.md) |
 | 8 | read it | **you, and only you** | [assemble](book/assemble.md) |
 

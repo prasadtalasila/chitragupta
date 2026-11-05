@@ -194,7 +194,8 @@ nav:
           - Workflows:
               - "Front matter: preface and copyright": docs/book/front-matter.md
               - Appendices: docs/book/appendices.md
-              - "Back matter: glossary, symbols and lists": docs/book/back-matter.md
+              - "Back matter: glossary, symbols, lists and the index": docs/book/back-matter.md
+              - The index: docs/book/book-index.md
               - Changing the outline after sign-off: docs/book/changing-the-outline.md
               - Retrofitting an existing book: docs/book/retrofit.md
           - Design notes: docs/book/design-notes.md

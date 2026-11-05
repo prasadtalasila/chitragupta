@@ -37,7 +37,7 @@ Twelve commands, run by hand or by a genre skill over one draft:
         one section's generation contract -- what it is generated from,
         hashed -- and the record of its acceptance (docs/WRITE-A-BOOK.md).
 
-    python -m chitragupta.draft registry build|check|excerpt <book> [<unit-id>]
+    python -m chitragupta.draft registry build|check|excerpt|index <book> [<unit-id>]
         terminology, claims and cross-references over a book's accepted
         units -- a review aid, never a gate (docs/WRITE-A-BOOK.md).
 

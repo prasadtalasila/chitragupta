@@ -183,7 +183,7 @@ Once every chapter is accepted:
 | --- | --- | --- |
 | 5 | `registry build`, `registry check` | you or the assembler |
 | 6 | the `book-assembler` skill composes `book.tex` and runs `draft gate` on it | skill |
-| 7 | `lualatex`, `bibtexu`, `lualatex` x2 | you or the assembler |
+| 7 | `lualatex`, `bibtexu`, `lualatex` x2; with an index, `registry index` and one more `lualatex` | you or the assembler |
 | 7b | `review union` | you |
 | 8 | read it | **you, and only you** |
 

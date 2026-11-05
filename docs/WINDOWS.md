@@ -117,6 +117,12 @@ nothing. Always write `${CLAUDE_PROJECT_DIR}`.
    Poppler is what provides `pdftotext`; add its `bin` directory to
    `PATH` yourself, as its package does not.
 
+   A book with an index ([the index](book/book-index.md)) also needs
+   `upmendex`, which MiKTeX ships as its own package,
+   `miktex-upmendex-bin-x64`; install it from the MiKTeX Console's
+   Packages tab. `chitragupta doctor` lists it, with `bibtexu`, among
+   the binaries a book's build runs.
+
 5. **Check what you have:**
 
    ```bash

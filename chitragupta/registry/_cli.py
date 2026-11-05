@@ -1,4 +1,4 @@
-"""`python -m chitragupta.draft registry`'s three commands, and the Markdown the
+"""`python -m chitragupta.draft registry`'s four commands, and the Markdown the
 registries are written as.
 
 Split from `chitragupta/registry/__init__.py` the way `chitragupta/spec/_cli.py` and

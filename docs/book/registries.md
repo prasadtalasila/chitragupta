@@ -76,7 +76,11 @@ chitragupta draft registry build content/drafts/<book> \
     --notation content/rendered/<book>/notation.tex
 ```
 
-Both are read from the units' `scope.md` glossaries and `math.md`
+`--index content/rendered/<book>/index-terms.json` writes a third thing
+from the same glossaries: the book index's term table
+([the index](book-index.md)).
+
+Both pages are read from the units' `scope.md` glossaries and `math.md`
 `## Symbols` tables and nothing else, so every word on them is a
 definition or meaning a unit's author pinned. Since #1143 a symbol
 lives only in `math.md`, the file that already says how to typeset it:

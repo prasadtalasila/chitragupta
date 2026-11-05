@@ -403,4 +403,3 @@ build is the four passes above.
 - **Fixing an entry** is never this skill's job: every finding in the
   report names the `index.toml` line that fixes it, and `index.toml` is
   the author's.
-

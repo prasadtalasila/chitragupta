@@ -144,6 +144,16 @@ resolves `\cref`, the table of contents and the citation numbers now that
 the entries exist. Skip it and every citation renders `[?]` while
 `lualatex` still exits 0.
 
+**With an index, two more steps** ([the index](book-index.md)): once the
+fourth pass has settled the page breaks, `registry index` turns
+`book.idx` into `book.ind`, and a fifth pass prints it:
+
+```bash
+(cd - >/dev/null && chitragupta draft registry index \
+    content/drafts/twins --idx content/rendered/twins/book.idx)
+lualatex -interaction=nonstopmode book.tex
+```
+
 **Then read the log before trusting the PDF.** `lualatex` exits 0 on a
 book that renders `[?]` where a reference should be, because natbib
 reports a dropped citation as a warning, not an error:
