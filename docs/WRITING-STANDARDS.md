@@ -955,6 +955,18 @@ subsection. There is no finding for "this equation should have been
 numbered and was not": that would require the tool to tell a standalone
 result from an intermediate step, which nothing here can do.
 
+### ✍ Prose around the maths
+
+This section says how a symbol is set; the sentences around it follow
+`.claude/skills-common/references/mathematical-prose.md`,
+which both chapter skills read on every run. In short: define each
+symbol in its own sentence with its unit and a role word that agrees with
+its `## Symbols` row, repeat the role word after a gap, give one letter
+one meaning, write the "then", state a derivation's claim first and what
+it showed last, keep the argument to one paragraph per step, and name the
+condition checked before applying a result. None of it is checked by a
+tool.
+
 ## 🔢 13. Tables
 
 A table is evidence arranged for comparison. It needs a **caption**, so
@@ -1237,6 +1249,21 @@ attribution under their licences; this section is that attribution.
    each term once and using it consistently; expanding an acronym at first
    use and then not reverting; short sentences with one idea each; active
    voice with a named actor; leading a paragraph with its point.
+
+**Ideas, not text, from one further work.** Gareth Wilkes, *A Brief
+Guide to Mathematical Writing*, Department of Pure Mathematics and
+Mathematical Statistics, University of Cambridge, revised 2023-10-08.
+The guide states no licence, so nothing from it is quoted and none of its
+examples is reused; the credit is given because the ideas are its.
+Supplies, for §12's prose rules in
+`.claude/skills-common/references/mathematical-prose.md`:
+defining a symbol in its own sentence with a role word, and repeating the
+role word on reuse; choosing letters by mnemonic and alphabet region, and
+never overloading one ("Notation and definitions"); writing the "then",
+stating the claim before a proof and its conclusion after, one step per
+paragraph, and checking a result's conditions before applying it
+("Formatting and structuring proofs"); keeping diagrams for objects,
+not for the argument ("Diagrams").
 
 ### 💡 What is original here
 

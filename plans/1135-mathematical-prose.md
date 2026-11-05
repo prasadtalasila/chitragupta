@@ -1,8 +1,17 @@
 # Mathematical prose: the sentences around a symbol (TB-7)
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use
+> superpowers:subagent-driven-development (recommended) or
+> superpowers:executing-plans to implement this plan task-by-task. Steps
+> use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **planned.** Written 2026-11-05, for
+Status: **built** (v6.161.0; 6.160.x was spent by #1149 to #1151 before
+this merged). Changed on the way: both skills read the
+reference from their `## Prose standards` section, not from an equations
+paragraph, because the textbook's step 7 is the optional figure step and
+the user asked for a read on every run; the thesis pointer fitted without
+a trim; WRITING-STANDARDS names the reference as a code-span path, not a
+link, since no doc links outside `docs/`. Written 2026-11-05, for
 [issue 1135](https://github.com/prasadtalasila/chitragupta/issues/1135).
 Part of [epic 1128](https://github.com/prasadtalasila/chitragupta/issues/1128).
 
@@ -24,7 +33,7 @@ Its decisions are recorded below.
 
 ## What #1147 already delivered, and so is not built here
 
-#1135 asked for three things beyond the prose. #1147 (v6.159.0, which
+Issue 1135 asked for three things beyond the prose. #1147 (v6.159.0, which
 closed #1143) delivered them as data:
 
 | #1135 asked for | Delivered by #1147 as |
@@ -103,6 +112,7 @@ user's decision on 2026-11-05.
 ### Task 1: The reference file and the textbook pointer
 
 **Files:**
+
 - Create: `.claude/skills-common/references/mathematical-prose.md`
 - Modify: `.claude/skills/textbook-chapter-writer/SKILL.md` (the
   "**Equations follow `docs/WRITING-STANDARDS.md` §12 …**" paragraph in
@@ -112,6 +122,7 @@ user's decision on 2026-11-05.
 - Test: `tests/test_skill_references.py`
 
 **Interfaces:**
+
 - Produces: the path `.claude/skills-common/references/mathematical-prose.md`,
   which Task 2 and Task 3 point at; the constant `_MATH_PROSE` and the
   tuple `_MATH_PROSE_GENRES` in the test file, which Task 2 extends.
@@ -140,7 +151,12 @@ def test_the_mathematical_prose_reference_keeps_thesis_symbols_out_of_math_md():
 
 - [ ] **Step 2: Run it and check that it fails**
 
-Run: `PYTHONPATH=$PWD /home/prasad/git/chitragupta-freja/.venv-full/bin/python -m pytest tests/test_skill_references.py -k mathematical_prose -v`
+Run:
+
+```bash
+PYTHONPATH=$PWD /home/prasad/git/chitragupta-freja/.venv-full/bin/python -m pytest tests/test_skill_references.py -k mathematical_prose -v
+```
+
 Expected: FAIL (the file does not exist; no SKILL.md says "Read … now").
 
 - [ ] **Step 3: Write the reference.** A one-paragraph opening says what
@@ -202,12 +218,21 @@ Expected: FAIL (the file does not exist; no SKILL.md says "Read … now").
     mathematical-prose reference read in step 7, with a worked instance
     beside each new symbol."
   - Then check that the three copies changed the same lines:
-    `git diff -U0 -- '*textbook-chapter-writer*/SKILL.md' | grep '^[-+][^-+]' | sort | uniq -c`.
-    Every line should show count 3.
+    Every line of the following should show count 3:
+
+    ```bash
+    git diff -U0 -- '*textbook-chapter-writer*/SKILL.md' \
+      | grep '^[-+][^-+]' | sort | uniq -c
+    ```
 
 - [ ] **Step 5: Run the skill tests**
 
-Run: `PYTHONPATH=$PWD /home/prasad/git/chitragupta-freja/.venv-full/bin/python -m pytest tests/test_skill_references.py tests/test_skill_size.py tests/test_skill_harness_copies.py -q`
+Run:
+
+```bash
+PYTHONPATH=$PWD /home/prasad/git/chitragupta-freja/.venv-full/bin/python -m pytest tests/test_skill_references.py tests/test_skill_size.py tests/test_skill_harness_copies.py -q
+```
+
 Expected: all pass, including the three new parametrised cases and the
 orphan test (`test_every_neutral_file_is_named_by_some_skill`).
 
@@ -225,6 +250,7 @@ git commit -m "Give the textbook skill the mathematical-prose rules (#1135)"
 ### Task 2: The thesis pointer
 
 **Files:**
+
 - Modify: the "**An equation gets the same carve-out …**" paragraph in
   `.claude/skills/thesis-chapter-writer/SKILL.md`,
   `.agents/skills/thesis-chapter-writer/SKILL.md` and
@@ -232,9 +258,11 @@ git commit -m "Give the textbook skill the mathematical-prose rules (#1135)"
 - Test: `tests/test_skill_references.py`
 
 **Interfaces:**
+
 - Consumes: `_MATH_PROSE`, `_MATH_PROSE_GENRES` from Task 1.
 
-- [ ] **Step 1: Extend the test.** Set `_MATH_PROSE_GENRES = ("textbook-chapter-writer", "thesis-chapter-writer")`.
+- [ ] **Step 1: Extend the test.** Add `"thesis-chapter-writer"` to
+  `_MATH_PROSE_GENRES`.
 - [ ] **Step 2: Run** the `-k mathematical_prose` command from Task 1.
   Expected: three thesis cases FAIL.
 - [ ] **Step 3: Add the same "Read … now and follow it" sentence** at the
@@ -250,6 +278,7 @@ git commit -m "Give the textbook skill the mathematical-prose rules (#1135)"
 ### Task 3: WRITING-STANDARDS pointer, credit and version
 
 **Files:**
+
 - Modify: `docs/WRITING-STANDARDS.md` (a new `### ✍ Prose around the
   maths` subsection at the end of §12, after "🔢 A number for a chosen
   few …" and before `## 🔢 13. Tables`; and Sources)
@@ -262,8 +291,7 @@ git commit -m "Give the textbook skill the mathematical-prose rules (#1135)"
   rule list in one line.
 - [ ] **Step 2: Credit Wilkes.** After item 3 in "📖 Sources and
   attribution", add a paragraph headed "**Ideas, not text, from one
-  further work.**" Give the full citation (the author's name as the guide's title page
-  gives it, *A Brief
+  further work.**" Give the full citation (Gareth Wilkes, *A Brief
   Guide to Mathematical Writing*, Department of Pure Mathematics and
   Mathematical Statistics, University of Cambridge, revised
   2023-10-08), state that no licence is stated, that nothing is quoted,
@@ -273,11 +301,17 @@ git commit -m "Give the textbook skill the mathematical-prose rules (#1135)"
   `origin/main`'s `pyproject.toml`.
 - [ ] **Step 4: Run the docs and version checks**
 
-Run: `PYTHONPATH=$PWD /home/prasad/git/chitragupta-freja/.venv-full/bin/python -m pytest tests/test_docs_pins.py tests/test_features_doc.py tests/test_skill_references.py tests/test_skill_size.py tests/test_skill_harness_copies.py -q && /home/prasad/git/chitragupta-freja/.venv-full/bin/python scripts/check_version_bump.py --offline`
+Run:
+
+```bash
+PYTHONPATH=$PWD /home/prasad/git/chitragupta-freja/.venv-full/bin/python -m pytest tests/test_docs_pins.py tests/test_features_doc.py tests/test_skill_references.py tests/test_skill_size.py tests/test_skill_harness_copies.py -q && /home/prasad/git/chitragupta-freja/.venv-full/bin/python scripts/check_version_bump.py --offline
+```
+
 Expected: all pass, and the bump check accepts the new version.
 
 - [ ] **Step 5: Commit** `docs/WRITING-STANDARDS.md` and `pyproject.toml`:
-  "Point WRITING-STANDARDS §12 at the mathematical-prose rules and credit Wilkes (#1135)".
+  "Point WRITING-STANDARDS §12 at the mathematical-prose rules and
+  credit Wilkes (#1135)".
 
 ### Task 4: Review, PR, issue upkeep
 
