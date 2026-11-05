@@ -378,13 +378,13 @@
     }).join("");
   }
 
-  /* The seed phrases no topic covers -- the terminal's `uncovered`
+  /* The citekeys of papers no topic holds -- the terminal's `uncovered`
      list, shown rather than dropped (#717): a reader exploring the app
-     deserves to learn that a seed came back empty, which is itself the
+     deserves to learn that a paper found no topic, which is itself the
      "literature that has not met itself" observation. */
   function uncoveredHtml(uncovered) {
-    return uncovered.map(function (phrase) {
-      return "<div>" + escapeHtml(phrase) + "</div>";
+    return uncovered.map(function (citekey) {
+      return "<div>" + escapeHtml(citekey) + "</div>";
     }).join("");
   }
 

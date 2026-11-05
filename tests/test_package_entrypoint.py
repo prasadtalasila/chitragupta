@@ -28,6 +28,18 @@ class TestDispatch:
         assert "figure" in entry.COMMANDS
         assert entry.CHOICES == {**entry.LAYERS, **entry.COMMANDS}
 
+    def test_the_review_line_counts_the_aids_the_registry_holds(self):
+        """`chitragupta --help` said "four read-only aids" while the
+        registry held eleven (#1165). Both help texts that state a count
+        must state the registry's, spelled the way they spell it."""
+        from chitragupta.review import __main__ as review_main
+        from chitragupta.review._registry import AIDS
+
+        words = "zero one two three four five six seven eight nine ten eleven twelve thirteen"
+        count = words.split()[len(AIDS)]
+        assert f"{count} read-only aids" in entry.LAYERS["review"][1]
+        assert f"{count} read-only aids" in review_main.DESCRIPTION
+
     @pytest.mark.parametrize("layer", ["corpus", "draft", "review", "enrich"])
     def test_a_layer_forwards_help_to_that_layer(self, layer, capsys):
         with pytest.raises(SystemExit) as excinfo:

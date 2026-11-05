@@ -179,7 +179,9 @@ def _cmd_sign(args) -> int:
         return report_problems(parsed, args.book)
     path = signoff_path(args.book)
     path.write_text(_signoff_text(text, parsed, args.by), encoding="utf-8")
-    print(f"Signed off {len(parsed['units'])} unit(s) at digest {digest(text)}.")
+    # The breakdown `status` prints, not "N unit(s)": `unit status` counts
+    # only draftable units, so the one word read as two counts (#1165).
+    print(f"Signed off {_breakdown(parsed)} at digest {digest(text)}.")
     print(f"Wrote {path}.")
     stamped = _scaffold.stamp_year(path.parent)
     if stamped:
@@ -189,6 +191,16 @@ def _cmd_sign(args) -> int:
 
 def _plural(count: int, word: str) -> str:
     return f"{count} {word}" if count == 1 else f"{count} {word}s"
+
+
+def _breakdown(parsed: dict) -> str:
+    """`2 parts, 4 chapters, 4 sections`: the outline by kind. A generated
+    page is counted as one, not as a chapter someone writes."""
+    counts = Counter(
+        "generated page" if unit["id"] in GENERATED else unit["kind"] for unit in parsed["units"]
+    )
+    kinds = [*_KINDS.values(), "generated page"] if counts["generated page"] else _KINDS.values()
+    return ", ".join(_plural(counts[kind], kind) for kind in kinds)
 
 
 def _report_moved_chapters(book: Path, text: str) -> None:
@@ -215,13 +227,8 @@ def _cmd_status(args) -> int:
     text, parsed = read_spec(args.book)
     if parsed["problems"]:
         return report_problems(parsed, args.book)
-    # A generated page is counted as one, not as a chapter someone writes.
-    counts = Counter(
-        "generated page" if unit["id"] in GENERATED else unit["kind"] for unit in parsed["units"]
-    )
     print(f"{spec_path(args.book)}: {parsed['title']}")
-    kinds = [*_KINDS.values(), "generated page"] if counts["generated page"] else _KINDS.values()
-    print("  " + ", ".join(_plural(counts[kind], kind) for kind in kinds))
+    print(f"  {_breakdown(parsed)}")
     recorded = recorded_digest(args.book)
     if recorded is None:
         print("  not signed off: nobody has approved this outline yet.")

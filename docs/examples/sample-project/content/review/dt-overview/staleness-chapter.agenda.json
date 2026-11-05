@@ -3,40 +3,56 @@
   "aid": "agenda",
   "draft": "content/drafts/dt-overview/staleness-chapter.md",
   "command": "python -m chitragupta.review agenda content/drafts/dt-overview/staleness-chapter.md",
-  "version": "6.61.7",
+  "version": "6.166.1",
   "sources": {
     "aids": {
       "provenance": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "verbatim": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "coverage": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "synthesis": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "figure": {
         "available": false,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "uncited": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "quotation": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       },
       "support": {
         "available": true,
-        "stale": false
+        "stale": false,
+        "refreshed": null,
+        "refresh_error": null
       }
     },
     "style": {
@@ -46,10 +62,14 @@
     "drift": {
       "available": true,
       "corpus_available": true
+    },
+    "accepted": {
+      "available": false,
+      "count": 0
     }
   },
   "pass_bound": 3,
-  "objective_class_count": 1,
+  "objective_class_count": 0,
   "items": [
     {
       "id": "44be99531d05",
@@ -57,7 +77,11 @@
       "section": "Exercises",
       "citekey": null,
       "line": 71,
-      "unattended": true,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
+      "unattended": false,
       "summary": "chitragupta.Just: 'just' (1x)",
       "detail": {
         "message": "'just' -- adverb or adjective? Only the adverb is a defect marker (WRITING-STANDARDS.md \u00a72, \u00a79).",
@@ -71,6 +95,10 @@
       "section": "3.1 Motivation",
       "citekey": "sample_dt_factory_2022",
       "line": 18,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_dt_factory_2022]` scores weak: Field studies report that the costly failures are precisely the quiet ones, wher",
       "detail": {
@@ -86,6 +114,10 @@
       "section": "3.1 Motivation",
       "citekey": "sample_dt_sync_2023",
       "line": 20,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_dt_sync_2023]` scores weak: Field studies report that the costly failures are precisely the quiet ones, wher",
       "detail": {
@@ -101,6 +133,10 @@
       "section": "Summary",
       "citekey": "sample_dt_factory_2022",
       "line": 83,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_dt_factory_2022]` scores weak: Staleness is the age of a value at the moment it is used; a budget turns a decis",
       "detail": {
@@ -122,6 +158,10 @@
       "section": "Summary",
       "citekey": "sample_dt_sync_2023",
       "line": 83,
+      "page": null,
+      "end_page": null,
+      "paragraph": null,
+      "end_paragraph": null,
       "unattended": false,
       "summary": "`[@sample_dt_sync_2023]` scores weak: Staleness is the age of a value at the moment it is used; a budget turns a decis",
       "detail": {
@@ -137,5 +177,7 @@
         ]
       }
     }
-  ]
+  ],
+  "stale_spans": [],
+  "accepted": []
 }

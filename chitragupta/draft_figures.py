@@ -159,8 +159,9 @@ def main(argv: "list[str] | None" = None) -> int:
         prog=f"{prog_for('draft')} figures",
         description=(
             "The figures of one synced paper: caption, page, the string to cite each by, "
-            "and the crop to look at. A reading aid -- never reproduce a source figure "
-            "in a draft."
+            "and the crop to look at. A reading aid: a draft never reproduces a source "
+            "figure, except a verbatim digest, which may place the crop beside the run "
+            "it belongs to (docs/VERBATIM-DIGEST.md)."
         ),
     )
     parser.add_argument("citekey")

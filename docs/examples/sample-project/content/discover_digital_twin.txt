@@ -13,6 +13,10 @@ digital twin  (seed, 5 papers)
 
 linked topics:
   semantically near: anomaly detection  (0.64, bridge: sample_ml_anomaly_2023 <-> sample_ml_anomaly_2023)
-  semantically near: interoperability standards  (0.88, bridge: sample_dt_overview_2024 <-> sample_dt_overview_2024)
-  semantically near: topic-0  (0.76, bridge: sample_ml_anomaly_2023 <-> sample_ml_anomaly_2023)
+  semantically near: interoperability standards  (0.88, bridge: sample_dt_sync_2023 <-> sample_dt_sync_2023)
+  semantically near: topic-0  (0.76, bridge: sample_dt_sync_2023 <-> sample_dt_sync_2023)
   semantically near: topic-1  (0.63, bridge: sample_dt_overview_2024 <-> sample_dt_overview_2024)
+
+brokerage (from the artefact):
+  over shared papers: no neighbours in this family
+  over semantic nearness: 4 neighbours, density 1.00, effective size 2.83, constraint 0.65 — reads as a theme: its neighbours mostly connect

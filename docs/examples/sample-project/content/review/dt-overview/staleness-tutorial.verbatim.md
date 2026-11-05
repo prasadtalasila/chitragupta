@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-tutorial.md`
 - Command: `python -m chitragupta.review verbatim scan content/drafts/dt-overview/staleness-tutorial.md --min-run 8 --gap 1 --write`
-- chitragupta 6.61.7
+- chitragupta 6.166.1
 - Allowlist: none configured (`content/verbatim_allowlist.toml` not found)
 
 ## How to read this
@@ -42,6 +42,34 @@ since the vectors change with `[enrich].embedding_model`. Its `score`
 is that alignment's strength, not a probability and not comparable to
 anything the other two report; a passage a deterministic tier already
 flagged is left to that tier rather than reported twice.
+
+**Where a finding shows two blocks, `Draft:` and `Source:`, the two are
+not the same wording** -- had they been, the exact tier would have
+caught it and the tier that did report it would have stood aside. Read
+them against each other, using the markup:
+
+- **Bold** on either side -- a word that side has and the other does
+  not: substituted, or added by the draft.
+- *Italic*, source side only -- a word the source has that the draft
+  dropped.
+- Unmarked -- the wording the two actually share. That is the overlap,
+  and it is left bare so it is the one thing on the line the eye finds
+  without looking.
+
+The draft side is normalized (lowercased, punctuation dropped) because
+that is the stream the tiers compare; the source side is its own text as
+parsed. So do not read a difference in capitals or apostrophes as a
+finding -- the comparison behind the markup is run on normalized words on
+both sides, and marks none of that.
+
+An **exact** finding shows one unmarked block instead of two: the tier
+only fires where the wording is identical, so there is no second side to
+show and nothing to mark.
+
+An **embedding** finding's word count says `aligned`, not `matched`: it
+is the width of the aligned sentences, not a count of words the two
+sides share. A long `aligned` count with a low `score` is a weak
+alignment over a long sentence, not a long lift.
 
 Findings below are grouped most-damning-first: long runs, then short
 ones, then quoted runs -- but a quoted run only drops into the last

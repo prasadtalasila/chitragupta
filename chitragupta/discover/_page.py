@@ -71,7 +71,7 @@ def build_payload(graph: dict, topic_set: dict, terms: dict) -> dict:
         "edges_withheld": graph.get("edges_withheld", []),
         "edges_semantic": graph["edges_semantic"],
         "hierarchy": graph["hierarchy"],
-        # The seed phrases no topic covers. The terminal list view has
+        # The citekeys of papers no topic holds. The terminal list view has
         # always reported these (#717 gave the exported views the same
         # honesty); .get because an artefact from an older converge run
         # may predate the field.

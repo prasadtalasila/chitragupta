@@ -12,3 +12,7 @@ content/pipeline.lock.db
 content/pipeline.lock.db.holder
 logs/
 content/overlap/
+# A review aid's --write also renders its report as .tex and .pdf; the
+# committed sample keeps the .md and .json (docs/examples/README.md).
+content/review/**/*.tex
+content/review/**/*.pdf

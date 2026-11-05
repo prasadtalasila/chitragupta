@@ -132,6 +132,15 @@ class TestFigures:
 
 
 class TestCli:
+    def test_help_leaves_room_for_the_digest_exception(self, capsys):
+        """`--help` said "never reproduce a source figure", which the
+        verbatim digest's documented exception contradicts (#1165)."""
+        with pytest.raises(SystemExit):
+            draft_figures.main(["--help"])
+        out = " ".join(capsys.readouterr().out.split())
+        assert "never reproduce a source figure" not in out
+        assert "verbatim digest" in out
+
     def test_it_prints_each_figure_with_its_citation(self, seeded, capsys):
         _write_index(RECORDS)
         assert draft_figures.main(["a2024"]) == 0

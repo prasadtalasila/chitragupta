@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import re
 import subprocess
 import sys
@@ -210,7 +211,9 @@ def _gh(*args: str, input_text: "str | None" = None) -> str:
 
 
 def _pr_body(pr_number: int) -> str:
-    return _gh("pr", "view", str(pr_number), "--json", "body", "--jq", ".body")
+    """The description as written. Parsed here rather than by `--jq`,
+    which decoded the text `\\u0000` into a NUL byte (#1166)."""
+    return json.loads(_gh("pr", "view", str(pr_number), "--json", "body"))["body"]
 
 
 def _merge(pr_number: int, body: str) -> None:

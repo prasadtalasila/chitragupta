@@ -8,9 +8,9 @@ and a wholly false one.
 **A book is composed by reference, not by fusion**, and that is the fact
 this module exists to handle. `.claude/skills/book-assembler` writes
 `book.tex` as *structure only* -- "every word of prose lives in the units
-this file \\inputs" -- and resolves each unit's citations per unit through
-citeproc, so the numbered IEEE reference lists live in the unit renders
-and **`book.tex` itself contains no citekey at all**. `book.md` is the
+this file \\inputs" -- and each unit's citations stay `\\citep{key}`
+(`--natbib`) until the book's one `bibtexu` pass resolves them, so
+**`book.tex` itself contains no citekey at all**. `book.md` is the
 same shape in Markdown: a table of contents hyperlinking the chapter
 files, never their prose.
 
@@ -50,8 +50,9 @@ from chitragupta.render_output._figures import _local_tex_include_refs, _resolve
 _MD_LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)\s]+)\)")
 
 # The suffixes a bare include may leave off. LaTeX's `\input{foo}` means
-# `foo.tex`; `.def` is here because book-assembler's own preamble inputs
-# `citeproc-defs.def`, and `.md` because a unit may be drafted as one.
+# `foo.tex`; `.def` is here because a book assembled before citations
+# were deferred inputs `citeproc-defs.def`, and `.md` because a unit may
+# be drafted as one.
 _SUFFIXES = (".tex", ".md", ".def")
 
 

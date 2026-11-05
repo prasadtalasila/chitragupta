@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/survey.md`
 - Command: `python -m chitragupta.review agenda content/drafts/dt-overview/survey.md`
-- chitragupta 6.61.7
+- chitragupta 6.166.1
 
 ## How to read this
 
@@ -26,6 +26,8 @@ person to decide.
 - Claim support: read
 - Prose (style_check): read
 - Dossier drift: read
+- Recorded-but-uncited citekeys: read
+- Accepted items: none recorded for this draft
 
 ## Summary
 
@@ -38,16 +40,78 @@ person to decide.
 ### verbatim-run
 
 - `6bdcbebedc51` [unattended] (1. Introduction): 13-word verbatim run citing `sample_dt_overview_2024`
-- `84cebc824e5b` [unattended] (1. Introduction): 15-word verbatim run citing `sample_dt_overview_2024`, 6 matched
+
+    *source p.1, draft line 7, paragraph 3*
+
+    > a digital model exchanges data with its physical counterpart only through manual steps
+
+- `84cebc824e5b` [unattended] (1. Introduction): 15-word skip-gram match citing `sample_dt_overview_2024`, 6 matched
+
+    *source p.1, draft line 12, paragraph 3*
+
+    > **draft** -- synthetic survey of forty deployments twenty eight systems described as twins were by **this** definition
+
+    > **source** -- synthetic survey of forty deployments, twenty-eight systems described as twins were, by **the** definition
+
 - `a5c3ae10b25d` [unattended] (1. Introduction): 13-word verbatim run citing `sample_dt_overview_2024`
+
+    *source p.1, draft line 12, paragraph 3*
+
+    > synthetic survey of forty deployments twenty eight systems described as twins were by
+
 - `15443321c043` [unattended] (2. Keeping the twin true): 9-word verbatim run citing `sample_dt_sync_2023`
-- `3e716e1cee1c` [unattended] (2. Keeping the twin true): 17-word verbatim run citing `sample_dt_sync_2023`, 8 matched
+
+    *source p.1, draft line 22, paragraph 6*
+
+    > twin is only as trustworthy as its last synchronisation
+
+- `3e716e1cee1c` [unattended] (2. Keeping the twin true): 17-word skip-gram match citing `sample_dt_sync_2023`, 8 matched
+
+    *source p.1, draft line 23, paragraph 6*
+
+    > **draft** -- across nine simulated production cells event driven **synchronisation** reduced transmitted volume by 71 percent against one second
+
+    > **source** -- across nine simulated production cells, event-driven **flows** reduced transmitted volume by 71 percent against one-second
+
 - `b0c514d34af4` [unattended] (2. Keeping the twin true): 9-word verbatim run citing `sample_dt_sync_2023`
+
+    *source p.1, draft line 24, paragraph 6*
+
+    > reduced transmitted volume by 71 percent against one second
+
 - `539fac477a87` [unattended] (2. Keeping the twin true): 9-word verbatim run citing `sample_dt_sync_2023`
+
+    *source p.1, draft line 28, paragraph 6*
+
+    > both during slow thermal drift that never crossed its
+
 - `dc32161a46ac` [unattended] (2. Keeping the twin true): 13-word verbatim run citing `sample_dt_sync_2023`
-- `91bce1eac368` [unattended] (2. Keeping the twin true): 13-word verbatim run citing `sample_dt_factory_2022`, 5 matched
+
+    *source p.1, draft line 32, paragraph 7*
+
+    > a twin that knows it is stale must say so on every read
+
+- `91bce1eac368` [unattended] (2. Keeping the twin true): 13-word skip-gram match citing `sample_dt_factory_2022`, 5 matched
+
+    *source p.1, draft line 37, paragraph 7*
+
+    > **draft** -- **showing** supervisors agreeing with the twin in over ninety five percent **of cases**
+
+    > **source** -- **showed** supervisors agreeing with the twin’*s choice* in over ninety-five percent
+
 - `3acc4d59f0b1` [unattended] (4. Integrating with everything else): 11-word verbatim run citing `sample_std_interop_2021`
+
+    *source p.1, draft line 58, paragraph 11*
+
+    > twin pilots rarely die of modelling problems they die of integration
+
 - `1561cffaa101` [unattended] (4. Integrating with everything else): 10-word verbatim run citing `sample_std_interop_2021`
+
+    *source p.1, draft line 63, paragraph 11*
+
+    > integrated a new asset in a median of six days
+
+
 ### unsupported-claim
 
 - `401e348db58b` [surfaced] (6. Conclusion): `[@sample_dt_factory_2022]` scores no support found: Across the sample corpus, the recurring finding is that twins succeed on honesty
@@ -58,6 +122,7 @@ person to decide.
 - `df03e928650d` [surfaced] (5. Gaps): `[@sample_ml_anomaly_2023]` scores weak: And the organisational trust mechanisms of the factory study have no counterpart
 - `a1971eb28d62` [surfaced] (6. Conclusion): `[@sample_dt_overview_2024]` scores weak: Across the sample corpus, the recurring finding is that twins succeed on honesty
 - `ec64b9c0aa2e` [surfaced] (6. Conclusion): `[@sample_dt_sync_2023]` scores weak: Across the sample corpus, the recurring finding is that twins succeed on honesty
+
 ### uncited-claim
 
 - `491fe09dcc87` [surfaced] (1. Introduction): This survey groups the sample corpus into three themes -- keeping the twin true 

@@ -3,7 +3,7 @@
   "aid": "verbatim",
   "draft": "content/drafts/dt-overview/survey.md",
   "command": "python -m chitragupta.review verbatim scan content/drafts/dt-overview/survey.md --min-run 8 --gap 1 --write",
-  "version": "6.61.7",
+  "version": "6.166.1",
   "min_run": 8,
   "gap": 1,
   "limit": null,
@@ -21,6 +21,8 @@
       "matched_words": 8,
       "start": 167,
       "line": 23,
+      "paragraph": 6,
+      "end_paragraph": 6,
       "char_start": 1118,
       "char_end": 1246,
       "draft_text": "across nine\nsimulated production cells, event-driven synchronisation reduced\ntransmitted volume by 71 percent against one-second",
@@ -29,6 +31,7 @@
       "cites_source": true,
       "quoted": false,
       "score": null,
+      "source_text": "across nine simulated production cells, event-driven flows\nreduced transmitted volume by 71 percent against one-second",
       "severity": "short"
     },
     {
@@ -41,6 +44,8 @@
       "matched_words": 6,
       "start": 92,
       "line": 12,
+      "paragraph": 3,
+      "end_paragraph": 3,
       "char_start": 614,
       "char_end": 717,
       "draft_text": "synthetic survey\nof forty deployments, twenty-eight systems described as twins were, by\nthis definition",
@@ -49,6 +54,7 @@
       "cites_source": true,
       "quoted": false,
       "score": null,
+      "source_text": "synthetic survey of forty deployments, twenty-eight systems described as\ntwins were, by the definition",
       "severity": "short"
     },
     {
@@ -61,6 +67,8 @@
       "matched_words": 5,
       "start": 286,
       "line": 37,
+      "paragraph": 7,
+      "end_paragraph": 7,
       "char_start": 1982,
       "char_end": 2061,
       "draft_text": "showing\nsupervisors agreeing with the twin in over ninety-five percent of cases",
@@ -69,6 +77,7 @@
       "cites_source": true,
       "quoted": false,
       "score": null,
+      "source_text": "showed supervisors agreeing with the twin\u2019s choice in over ninety-five percent",
       "severity": "short"
     },
     {
@@ -81,6 +90,8 @@
       "matched_words": 13,
       "start": 37,
       "line": 7,
+      "paragraph": 3,
+      "end_paragraph": 3,
       "char_start": 238,
       "char_end": 324,
       "draft_text": "A digital model exchanges data with its physical\ncounterpart only through manual steps",
@@ -89,6 +100,7 @@
       "cites_source": true,
       "quoted": false,
       "score": null,
+      "source_text": null,
       "severity": "short"
     },
     {
@@ -101,6 +113,8 @@
       "matched_words": 13,
       "start": 92,
       "line": 12,
+      "paragraph": 3,
+      "end_paragraph": 3,
       "char_start": 614,
       "char_end": 701,
       "draft_text": "synthetic survey\nof forty deployments, twenty-eight systems described as twins were, by",
@@ -109,6 +123,7 @@
       "cites_source": true,
       "quoted": false,
       "score": null,
+      "source_text": null,
       "severity": "short"
     },
     {
@@ -121,6 +136,8 @@
       "matched_words": 13,
       "start": 228,
       "line": 32,
+      "paragraph": 7,
+      "end_paragraph": 7,
       "char_start": 1595,
       "char_end": 1650,
       "draft_text": "a twin that knows it is stale must say so on every read",
@@ -129,6 +146,7 @@
       "cites_source": true,
       "quoted": false,
       "score": null,
+      "source_text": null,
       "severity": "short"
     },
     {
@@ -141,6 +159,8 @@
       "matched_words": 11,
       "start": 423,
       "line": 58,
+      "paragraph": 11,
+      "end_paragraph": 11,
       "char_start": 2960,
       "char_end": 3029,
       "draft_text": "Twin pilots rarely die of modelling problems; they die of integration",
@@ -149,6 +169,7 @@
       "cites_source": true,
       "quoted": false,
       "score": null,
+      "source_text": null,
       "severity": "short"
     },
     {
@@ -161,6 +182,8 @@
       "matched_words": 10,
       "start": 474,
       "line": 63,
+      "paragraph": 11,
+      "end_paragraph": 11,
       "char_start": 3323,
       "char_end": 3369,
       "draft_text": "integrated a new asset in a median of six days",
@@ -169,6 +192,7 @@
       "cites_source": true,
       "quoted": false,
       "score": null,
+      "source_text": null,
       "severity": "short"
     },
     {
@@ -181,6 +205,8 @@
       "matched_words": 9,
       "start": 149,
       "line": 22,
+      "paragraph": 6,
+      "end_paragraph": 6,
       "char_start": 998,
       "char_end": 1053,
       "draft_text": "twin is only as trustworthy as its last synchronisation",
@@ -189,6 +215,7 @@
       "cites_source": true,
       "quoted": false,
       "score": null,
+      "source_text": null,
       "severity": "short"
     },
     {
@@ -201,6 +228,8 @@
       "matched_words": 9,
       "start": 175,
       "line": 24,
+      "paragraph": 6,
+      "end_paragraph": 6,
       "char_start": 1187,
       "char_end": 1246,
       "draft_text": "reduced\ntransmitted volume by 71 percent against one-second",
@@ -209,6 +238,7 @@
       "cites_source": true,
       "quoted": false,
       "score": null,
+      "source_text": null,
       "severity": "short"
     },
     {
@@ -221,6 +251,8 @@
       "matched_words": 9,
       "start": 207,
       "line": 28,
+      "paragraph": 6,
+      "end_paragraph": 6,
       "char_start": 1424,
       "char_end": 1477,
       "draft_text": "both during slow thermal drift that never crossed\nits",
@@ -229,6 +261,7 @@
       "cites_source": true,
       "quoted": false,
       "score": null,
+      "source_text": null,
       "severity": "short"
     }
   ]

@@ -89,7 +89,7 @@ def test_no_new_def_lacks_a_return_annotation():
         + "".join(f"\n  {name}" for name in new)
         + "\n\nAdd a return annotation, or -- if it genuinely cannot carry one -- "
         "say why in the PR and add it to LEGACY_UNANNOTATED_DEFS in this file. "
-        "See docs/CODE-STANDARDS.md's build order item 3."
+        "See docs/CODE-STANDARDS.md's build order item 4."
     )
 
 

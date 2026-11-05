@@ -175,11 +175,11 @@ test("the hierarchy lists every merge with its distance", () => {
   assert.match(html, /digital twin \+ machine learning \(distance 0\.31\)/);
 });
 
-test("uncovered seeds are listed, escaped, and joined in payload order", () => {
-  const html = panel.uncoveredHtml(['quantum <"twins">', "swarm robotics"]);
-  assert.match(html, /quantum &lt;&quot;twins&quot;&gt;/);
-  assert.match(html, /<div>swarm robotics<\/div>/);
-  assert.ok(html.indexOf("quantum") < html.indexOf("swarm"));
+test("uncovered papers are listed, escaped, and joined in payload order", () => {
+  const html = panel.uncoveredHtml(['smith_<"2024">', "jones_2023"]);
+  assert.match(html, /smith_&lt;&quot;2024&quot;&gt;/);
+  assert.match(html, /<div>jones_2023<\/div>/);
+  assert.ok(html.indexOf("smith") < html.indexOf("jones"));
   assert.equal(panel.uncoveredHtml([]), "");
 });
 

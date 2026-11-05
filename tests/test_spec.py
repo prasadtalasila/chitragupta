@@ -240,6 +240,19 @@ def test_sign_records_the_digest_of_the_spec_it_signed(book, capsys):
     assert "Signed off" in capsys.readouterr().out
 
 
+def test_sign_counts_what_status_counts_not_units(book, capsys):
+    """`sign` said "Signed off 10 unit(s)" for an outline whose `unit
+    status` later read "1 of 2 unit(s)": one word, two counts (#1165).
+    It names the same breakdown `status` prints instead."""
+    write_spec(book)
+    spec.main(["sign", str(book)])
+    signed = capsys.readouterr().out
+    spec.main(["status", str(book)])
+    breakdown = capsys.readouterr().out.splitlines()[1].strip()
+    assert f"Signed off {breakdown} at digest" in signed
+    assert "unit(s)" not in signed
+
+
 def test_sign_records_who_signed_when_told(book):
     write_spec(book)
     spec.main(["sign", str(book), "--by", "Prasad Talasila"])

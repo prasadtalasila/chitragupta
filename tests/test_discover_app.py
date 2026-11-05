@@ -113,6 +113,15 @@ class TestWriteApp:
         assert loaded - {"data.js"} <= set(_app.APP_FILES)
         assert {"graph.js", "panel.js", "app.js"} <= loaded
 
+    def test_the_uncovered_panel_names_papers_not_seed_phrases(self):
+        """`uncovered` is the citekeys of papers no topic holds
+        (`topic_converge.build`), but the panel was titled "Uncovered
+        seeds" and described seed phrases (#1165)."""
+        page = config.shipped("assets", "webapp", "index.html").read_text(encoding="utf-8")
+        panel = re.search(r'<details id="uncovered">(.*?)</details>', page, re.DOTALL).group(1)
+        assert "<summary>Uncovered papers</summary>" in panel
+        assert "seed" not in panel.lower()
+
     def test_the_page_loads_the_modules_before_the_wiring_that_uses_them(self):
         """app.js reads window.CHITRAGUPTA_APP at once, and data.js has
         to have assigned the payload by then: classic scripts run in

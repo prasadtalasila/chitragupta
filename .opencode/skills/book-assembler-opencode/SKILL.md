@@ -121,9 +121,10 @@ or in the unit through `draft-reviser-opencode` -- never by this skill.
    `--fragment` is what makes it assemblable: no preamble, the unit's own
    `#` heading becomes the book's `\chapter`, and code blocks are left
    unhighlighted because `Shaded`/`Highlighting` are defined only by the
-   standalone template. Everything else is the ordinary render -- citeproc,
-   the IEEE style, and the citekey aliasing that stops a key containing
-   `--` being truncated -- which is why this is one command and not a
+   standalone template. Everything else is the ordinary render --
+   citations left as `\citep{key}` for the book's one bibliography, and
+   the citekey aliasing that stops a key containing `--` being
+   truncated -- which is why this is one command and not a
    pandoc invocation restated here. A unit already drafted as `.tex` by
    `thesis-chapter-writer-opencode` needs no conversion.
 

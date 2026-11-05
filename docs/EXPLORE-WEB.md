@@ -95,7 +95,7 @@ boxes are bundles, one per group pair per family: solid for shared
 papers, dashed for semantic nearness, and never fused. Click a box to
 list what is in it; double-click to open just that one in place.
 
-The sidebar's collapsed "Uncovered seeds" panel lists the `uncovered`
+The sidebar's collapsed "Uncovered papers" panel lists the `uncovered`
 list the terminal's topic map reports: the citekeys of papers that no
 topic holds. It hides itself when every paper is in some topic.
 

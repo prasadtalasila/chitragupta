@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/survey.md`
 - Command: `python -m chitragupta.review verbatim scan content/drafts/dt-overview/survey.md --min-run 8 --gap 1 --write`
-- chitragupta 6.61.7
+- chitragupta 6.166.1
 - Allowlist: none configured (`content/verbatim_allowlist.toml` not found)
 
 ## How to read this
@@ -43,6 +43,34 @@ is that alignment's strength, not a probability and not comparable to
 anything the other two report; a passage a deterministic tier already
 flagged is left to that tier rather than reported twice.
 
+**Where a finding shows two blocks, `Draft:` and `Source:`, the two are
+not the same wording** -- had they been, the exact tier would have
+caught it and the tier that did report it would have stood aside. Read
+them against each other, using the markup:
+
+- **Bold** on either side -- a word that side has and the other does
+  not: substituted, or added by the draft.
+- *Italic*, source side only -- a word the source has that the draft
+  dropped.
+- Unmarked -- the wording the two actually share. That is the overlap,
+  and it is left bare so it is the one thing on the line the eye finds
+  without looking.
+
+The draft side is normalized (lowercased, punctuation dropped) because
+that is the stream the tiers compare; the source side is its own text as
+parsed. So do not read a difference in capitals or apostrophes as a
+finding -- the comparison behind the markup is run on normalized words on
+both sides, and marks none of that.
+
+An **exact** finding shows one unmarked block instead of two: the tier
+only fires where the wording is identical, so there is no second side to
+show and nothing to mark.
+
+An **embedding** finding's word count says `aligned`, not `matched`: it
+is the width of the aligned sentences, not a count of words the two
+sides share. A long `aligned` count with a low `score` is a weak
+alignment over a long sentence, not a long lift.
+
 Findings below are grouped most-damning-first: long runs, then short
 ones, then quoted runs -- but a quoted run only drops into the last
 group when it also cites the source it matched. A quoted run from an
@@ -72,23 +100,49 @@ docs/PLAGIARISM.md.
 
 #### 17 words, 8 matched -- `sample_dt_sync_2023` p.1 (tier=skip-gram)
 
-> across nine simulated production cells event driven synchronisation reduced transmitted volume by 71 percent against one second
+At draft line 23, paragraph 6.
+
+Draft:
+
+> across nine simulated production cells event driven **synchronisation** reduced transmitted volume by 71 percent against one second
+
+Source:
+
+> across nine simulated production cells, event-driven **flows** reduced transmitted volume by 71 percent against one-second
 
 In context: threshold push and event driven flows across nine simulated production cells event driven synchronisation reduced transmitted volume by 71 percent against one second polling while holding worst case staleness...
 
 #### 15 words, 6 matched -- `sample_dt_overview_2024` p.1 (tier=skip-gram)
 
-> synthetic survey of forty deployments twenty eight systems described as twins were by this definition
+At draft line 12, paragraph 3.
+
+Draft:
+
+> synthetic survey of forty deployments twenty eight systems described as twins were by **this** definition
+
+Source:
+
+> synthetic survey of forty deployments, twenty-eight systems described as twins were, by **the** definition
 
 In context: strictly keeps expectations honest in one synthetic survey of forty deployments twenty eight systems described as twins were by this definition shadows this survey groups the sample...
 
 #### 13 words, 5 matched -- `sample_dt_factory_2022` p.1 (tier=skip-gram)
 
-> showing supervisors agreeing with the twin in over ninety five percent of cases
+At draft line 37, paragraph 7.
+
+Draft:
+
+> **showing** supervisors agreeing with the twin in over ninety five percent **of cases**
+
+Source:
+
+> **showed** supervisors agreeing with the twin’*s choice* in over ninety-five percent
 
 In context: accuracy but a published override log showing supervisors agreeing with the twin in over ninety five percent of cases both failures it records were silent...
 
 #### 13 words -- `sample_dt_overview_2024` p.1 (tier=exact)
+
+At draft line 7, paragraph 3.
 
 > a digital model exchanges data with its physical counterpart only through manual steps
 
@@ -96,11 +150,15 @@ In context: here begins by fixing that vocabulary a digital model exchanges data
 
 #### 13 words -- `sample_dt_overview_2024` p.1 (tier=exact)
 
+At draft line 12, paragraph 3.
+
 > synthetic survey of forty deployments twenty eight systems described as twins were by
 
 In context: strictly keeps expectations honest in one synthetic survey of forty deployments twenty eight systems described as twins were by this definition shadows this survey groups...
 
 #### 13 words -- `sample_dt_sync_2023` p.1 (tier=exact)
+
+At draft line 32, paragraph 7.
 
 > a twin that knows it is stale must say so on every read
 
@@ -108,11 +166,15 @@ In context: much as technical marking staleness explicitly a twin that knows it 
 
 #### 11 words -- `sample_std_interop_2021` p.1 (tier=exact)
 
+At draft line 58, paragraph 11.
+
 > twin pilots rarely die of modelling problems they die of integration
 
 In context: model 4 integrating with everything else twin pilots rarely die of modelling problems they die of integration interoperability requires agreement at three layers...
 
 #### 10 words -- `sample_std_interop_2021` p.1 (tier=exact)
+
+At draft line 63, paragraph 11.
 
 > integrated a new asset in a median of six days
 
@@ -120,17 +182,23 @@ In context: named owners sites that maintained one integrated a new asset in a m
 
 #### 9 words -- `sample_dt_sync_2023` p.1 (tier=exact)
 
+At draft line 22, paragraph 6.
+
 > twin is only as trustworthy as its last synchronisation
 
 In context: 2 keeping the twin true a twin is only as trustworthy as its last synchronisation comparing periodic pull threshold push and...
 
 #### 9 words -- `sample_dt_sync_2023` p.1 (tier=exact)
 
+At draft line 24, paragraph 6.
+
 > reduced transmitted volume by 71 percent against one second
 
 In context: simulated production cells event driven synchronisation reduced transmitted volume by 71 percent against one second polling while holding worst case staleness...
 
 #### 9 words -- `sample_dt_sync_2023` p.1 (tier=exact)
+
+At draft line 28, paragraph 6.
 
 > both during slow thermal drift that never crossed its
 

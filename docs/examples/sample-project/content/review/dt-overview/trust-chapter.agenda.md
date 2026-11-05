@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/trust-chapter.tex`
 - Command: `python -m chitragupta.review agenda content/drafts/dt-overview/trust-chapter.tex`
-- chitragupta 6.61.7
+- chitragupta 6.166.1
 
 ## How to read this
 
@@ -26,6 +26,8 @@ person to decide.
 - Claim support: read
 - Prose (style_check): read
 - Dossier drift: read
+- Recorded-but-uncited citekeys: read
+- Accepted items: none recorded for this draft
 
 ## Summary
 
@@ -38,6 +40,7 @@ person to decide.
 
 - `d61be667af63` [surfaced] (The argument): `[@sample_dt_sync_2023]` scores weak: In comparative trials, explicit staleness marking -- returning every value with 
 - `972e8b4ccf59` [surfaced] (Synthesis): `[@sample_dt_overview_2024]` scores weak: The vocabulary of [...] sharpens the claim: what distinguishes a twin from a sha
+
 ### uncited-claim
 
 - `d4740a26c3ff` [surfaced] (Operational Trust as the Limiting Resource of Digital-Twin Deployments): \label{ch:trust}
