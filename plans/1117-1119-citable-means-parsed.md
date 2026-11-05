@@ -106,12 +106,13 @@ source that is not citable, with the same wording.
 
 ### 3. Retrieval never offers an unparsed key
 
-- `retrieval.search()`: scores are filtered to `parsed` rows *after*
-  BM25, the way `collection` already is and for the reason its docstring
-  gives (narrowing the index would change every IDF and split the
-  cache). One comprehension does both filters, so `retrieval.py` (248 of
-  250) does not grow. `retrieval_cache._fingerprint` already carries
-  status, so the cache is untouched. `search_iterative` and `discover` go through `search`.
+- `retrieval.search()`: only `parsed` rows are indexed and ranked.
+  (Built differently from this plan's first draft, which filtered the
+  ranking after BM25 like `collection`: `retrieval.py` was at the cap,
+  and `search` is the only writer of the BM25 cache, so filtering the
+  rows before `_load_index` costs one line and keeps the cache and every
+  IDF over the same set.) `search_iterative` and `discover` go through
+  `search`.
 - `retrieval_cli.evidence()`: an unparsed row raises `KeyError("k has no
   parsed PDF (status s), so it has no text and cannot be cited")`,
   printed by the existing `[error]` path. This inverts a pinned
@@ -120,9 +121,12 @@ source that is not citable, with the same wording.
   `test_parse_failed_status_does_not_serve_stale_parsed_text` (the
   `evidence` one) become refusal tests, and the `evidence` docstring
   line saying an unparsed key is not an error is rewritten.
-- `enrich.embed_index.search()`: hits filtered to `citable_citekeys`
-  (`build_corpus` ignores status, so a `parse_failed` row's stale text
-  can be embedded). Docstring paragraph on metadata-only entries
+- `enrich.embed_index.search()`: hits whose citekey the ledger holds
+  as unparsed are dropped (`ledger_citable.unparsed_on_this_host`), since
+  an index built before a status change still has their chunks.
+  Dropping the known-unparsed rather than keeping only the citable is
+  what lets a search with no ledger behave as before; the gate still
+  refuses the key. Docstring paragraph on metadata-only entries
   rewritten.
 - `retrieval_passages` already filters on status; unchanged.
 

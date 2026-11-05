@@ -215,7 +215,7 @@ reason behind each class's disposition.
 
 | | Meaning | Classes |
 | --- | --- | --- |
-| `[unattended]` | mechanically re-checkable: a future automated pass may repair it **without asking first** | `prose` (except a finding its rule marks `repair: "review"`: `WideCodeLine`, and dialect findings when the dialect came from `config.toml` rather than the author), `verbatim-run` at severity `short` from the `exact` or `skip-gram` tier (an `embedding`-tier run is surfaced), `missing-citekey` |
+| `[unattended]` | mechanically re-checkable: a future automated pass may repair it **without asking first** | `prose` (except a finding its rule marks `repair: "review"`: `WideCodeLine`, a `BareCitekey` set as code or naming a key with no parsed PDF, and dialect findings when the dialect came from `config.toml` rather than the author), `verbatim-run` at severity `short` from the `exact` or `skip-gram` tier (an `embedding`-tier run is surfaced), `missing-citekey` |
 | `[surfaced]` | a judgement about meaning that only a person can make | `unsupported-claim`, `claim-support`, `uncited-claim`, `recorded-but-uncited`, `misquoted` |
 
 The dividing line is whether the repair can be verified by re-running

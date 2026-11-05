@@ -441,7 +441,10 @@ a citekey the dossier itself *declares* by opening an `evidence.md`
 heading with it. The second is what closes the departed-key case, which
 ledger membership alone cannot, since a key that has left the ledger is
 by definition not in it. A heading is structural; prose is not, so prose
-cannot promote a word into a broken-citation report. The strict
+cannot promote a word into a broken-citation report. For the same reason
+only a declared key can be reported missing at all: one in an
+`evidence.md` heading or a `sections.md` cell. A backticked word in prose,
+such as the skill's name in the evidence preamble, never is (#1117). The strict
 scan is never replaced by the loose one, only added to.
 
 ## 💡 Why Markdown
@@ -622,8 +625,11 @@ two skills that produce both write both.
 
 ## 📚 The corpus fingerprint
 
-`scope.md` records how many citekeys the ledger held when the draft was
-written, plus a 12-character digest of that set:
+`scope.md` records how many parsed citekeys the ledger held when the
+draft was written, plus a 12-character digest of that set. Only `parsed`
+rows count: an entry whose PDF never parsed is not citable, so it is no
+part of the corpus a draft is measured against. A fingerprint recorded
+before 6.159.0 counted every row, so it mismatches once:
 
 ```text
 - corpus: 501 citekeys, digest `a1b2c3d4e5f6`
