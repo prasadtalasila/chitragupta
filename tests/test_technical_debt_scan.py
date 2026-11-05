@@ -29,8 +29,8 @@ is the two places where the document makes that claim -- a Tier 1
 subsection heading, and a `[Tier 1]`-tagged item in "What to take first".
 
 **Not free-standing factual claims.** `docs/DESIGN.md`'s layer count and
-Tier 3.1's call-site count have no register behind them, so there is
-nothing to check them against, and
+the broad-`except` count in "What is not debt" have no register behind
+them, so there is nothing to check them against, and
 [R3](../docs/AUTO-IMPROVEMENT.md#the-requirements) is exactly why no
 general prose-accuracy score is attempted instead. Those stay a human
 reconciliation pass's job.

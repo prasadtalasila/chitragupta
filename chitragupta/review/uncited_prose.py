@@ -97,7 +97,7 @@ def build_report(draft: Path, standing: str, genre: str | None, genre_source: st
 
 def finding_id(sentence: str) -> str:
     """A finding's name, stable across runs and position-free -- the same
-    convention the other four aids' `finding_id` use.
+    convention every other aid's `finding_id` uses.
 
     Keyed on the sentence alone, so three things follow, all wanted:
     editing an unrelated paragraph renames nothing; citing the sentence

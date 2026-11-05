@@ -1,11 +1,11 @@
 """Return-type annotation coverage under `chitragupta/`, enforced as a ratchet.
 
-[docs/CODE-STANDARDS.md](../docs/CODE-STANDARDS.md)'s build order item 3 --
+[docs/CODE-STANDARDS.md](../docs/CODE-STANDARDS.md)'s build order item 4 --
 "type annotations and a checker" -- is what this file closes the cheap
 half of. #355 annotated every `def` under `chitragupta/` that was missing a
 return type (55 of 813, found by the same `ast`-walk this file runs), and
 this is the check that stops the count going back up. The other half of
-item 3, a real type checker such as `mypy`, is declined rather than
+item 4, a real type checker such as `mypy`, is declined rather than
 deferred: CODE-STANDARDS.md already calls it "worth having and its own
 project, not a step in this one", and nothing here reopens that question.
 
