@@ -65,3 +65,86 @@ def test_a_misshapen_index_toml_refuses_before_reading_terms(book, tmp_path, cap
     code, target = build_index(book, tmp_path)
     assert code == 1 and not target.exists()
     assert "wrong shape" in capsys.readouterr().err
+
+
+# --- `registry index` ------------------------------------------------------
+
+
+class FakeUpmendex:
+    returncode, stderr = 0, ""
+
+    def __call__(self, argv, cwd=None, **kwargs):
+        (cwd / "book.ind").write_text("\\begin{theindex}\n\\end{theindex}\n", encoding="utf-8")
+        return self
+
+
+@pytest.fixture
+def typeset(book, tmp_path, monkeypatch):
+    """A book with one accepted chapter, its term table built, its sidecar
+    written and a `book.idx` holding one entry, as a typeset book would."""
+    from chitragupta.registry import _index_finish
+
+    monkeypatch.setattr("chitragupta.registry._cli.markdown_to_latex", lambda texts: list(texts))
+    monkeypatch.setattr(_index_finish.programs, "resolve_program", lambda name: f"/bin/{name}")
+    monkeypatch.setattr(_index_finish.subprocess, "run", FakeUpmendex())
+    accept(book, "ch-model", "", glossary="- **Digital twin** -- a model paired with a link.")
+    _, terms = build_index(book, tmp_path)
+    side = {
+        "unit": "ch-model",
+        "terms_digest": _index_finish.digest(terms),
+        "terms": {
+            term_id("digital twin"): {
+                "count": 2,
+                "indexed": True,
+                "spellings": {"digital twin": 2},
+                "midsentence": {"digital twin": 2},
+            }
+        },
+    }
+    (terms.parent / "ch-model.index.json").write_text(json.dumps(side), encoding="utf-8")
+    idx = terms.parent / "book.idx"
+    idx.write_text(f"\\indexentry{{{term_id('digital twin')}|hyperpage}}{{4}}\n", encoding="utf-8")
+    return book, idx
+
+
+def test_index_writes_the_ind_and_the_report(typeset, capsys):
+    book, idx = typeset
+    assert registry.main(["index", str(book), "--idx", str(idx)]) == 0
+    assert "digital twin@digital twin|hyperpage" in (idx.parent / "book-index.idx").read_text(
+        encoding="utf-8"
+    )
+    report = registry.registry_dir(book) / "index.md"
+    assert report.is_file() and (report.parent / "index.json").is_file()
+    assert f"index: 1 entry, 0 findings -> {report} (+ .json)" in capsys.readouterr().out
+
+
+def test_index_refuses_a_stale_build_and_writes_no_report(typeset, capsys):
+    book, idx = typeset
+    (idx.parent / "ch-model.index.json").unlink()
+    assert registry.main(["index", str(book), "--idx", str(idx)]) == 1
+    assert "re-render it with --index-terms" in capsys.readouterr().err
+    assert not (registry.registry_dir(book) / "index.md").exists()
+
+
+def test_index_without_pandoc_is_a_missing_binary(typeset, monkeypatch, capsys):
+    from chitragupta.render_output._errors import MissingBinary
+
+    def missing(texts):
+        raise MissingBinary("pandoc not found")
+
+    monkeypatch.setattr("chitragupta.registry._cli.markdown_to_latex", missing)
+    book, idx = typeset
+    assert registry.main(["index", str(book), "--idx", str(idx)]) == 1
+    assert "[missing-binary] pandoc not found" in capsys.readouterr().err
+
+
+def test_index_with_a_failing_conversion_says_so(typeset, monkeypatch, capsys):
+    from chitragupta.render_output._errors import ConversionError
+
+    def failing(texts):
+        raise ConversionError("lost a text")
+
+    monkeypatch.setattr("chitragupta.registry._cli.markdown_to_latex", failing)
+    book, idx = typeset
+    assert registry.main(["index", str(book), "--idx", str(idx)]) == 1
+    assert "[conversion] pandoc could not convert the index: lost a text" in capsys.readouterr().err
