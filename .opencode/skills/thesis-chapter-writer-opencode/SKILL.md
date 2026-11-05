@@ -104,7 +104,9 @@ named actor, ban "obviously/simply/just", and reread as the reader before
 presenting. That file also carries the attribution for where these
 principles come from -- Diátaxis, Last's *Technical Writing Essentials*, and
 Google's Technical Writing courses, all CC-licensed and all requiring credit.
-The genre-specific additions below layer on top of it.
+The genre-specific additions below layer on top of it. Read
+`.claude/skills-common/references/mathematical-prose.md` now and follow it:
+it governs the sentences around every symbol and derivation.
 
 ### What a thesis chapter owes its reader
 

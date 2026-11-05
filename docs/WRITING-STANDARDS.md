@@ -955,6 +955,18 @@ subsection. There is no finding for "this equation should have been
 numbered and was not": that would require the tool to tell a standalone
 result from an intermediate step, which nothing here can do.
 
+### ✍ Prose around the maths
+
+This section says how a symbol is set; the sentences around it follow
+`.claude/skills-common/references/mathematical-prose.md`, which both
+chapter skills read on every run. In short: define each symbol in its own
+sentence with its unit and a role word (in a Markdown draft, one that
+agrees with its `## Symbols` row), repeat the role word after a gap, give
+one letter one meaning, write the "then", state a derivation's claim
+first and what it showed last, keep the argument to one paragraph per
+step, and name the condition checked before applying a result. None of it
+is checked by a tool.
+
 ## 🔢 13. Tables
 
 A table is evidence arranged for comparison. It needs a **caption**, so
@@ -1238,10 +1250,27 @@ attribution under their licences; this section is that attribution.
    use and then not reverting; short sentences with one idea each; active
    voice with a named actor; leading a paragraph with its point.
 
+**Ideas, not text, from one further work.** Gareth Wilkes, *A Brief
+Guide to Mathematical Writing*, Department of Pure Mathematics and
+Mathematical Statistics, University of Cambridge, revised 2023-10-08.
+The guide states no licence, so nothing from it is quoted and none of its
+examples is reused; the credit is given because the ideas are its.
+Supplies, for §12's prose rules in
+`.claude/skills-common/references/mathematical-prose.md`:
+defining a symbol in its own sentence with a role word, and repeating the
+role word on reuse; choosing letters by mnemonic and alphabet region, and
+never overloading one (§2 "Notation and definitions"); writing the
+"then", keeping the argument linear, checking a result's conditions
+before applying it, and keeping diagrams for objects (§1 "General
+tips"); stating the claim before a proof and a concluding sentence
+after, one step per paragraph (§3 "Formatting and structuring
+proofs").
+
 ### 💡 What is original here
 
-The prose in this file and in every `.claude/skills/*/SKILL.md` is written
-from scratch. A verbatim n-gram check against all three sources above
+The prose in this file, in every `.claude/skills/*/SKILL.md` and in
+`.claude/skills-common/references/` is written from scratch. A verbatim
+n-gram check against the three licensed sources above
 (107,272 words of source; the algorithm is `chitragupta/review/verbatim_check/_overlap.py`'s
 `cmd_overlap`) reports **0% overlap at an 8-word threshold**, and nothing
 above five consecutive shared words anywhere. What is borrowed is the
@@ -1249,3 +1278,8 @@ above five consecutive shared words anywhere. What is borrowed is the
 operational rules for this pipeline's six genres, the decision about which
 principles transfer across genres and which do not (§5's warning), and the
 handling of failure modes specific to multi-agent drafting.
+
+Wilkes's guide (about 5,700 words) was checked the same way against this
+file and `mathematical-prose.md` on 2026-11-05: no run of seven or more
+words is shared with either, and the only six-word run is the guide's
+own title, cited above.

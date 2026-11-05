@@ -117,6 +117,25 @@ def test_each_conditional_section_points_at_its_reference(name, heading, referen
     assert f"`.claude/skills/{name}/references/{reference}`" in section
 
 
+# Both chapter genres read the mathematical-prose rules on every run
+# (#1135): the sentences around a symbol, which no check sees.
+_MATH_PROSE = ".claude/skills-common/references/mathematical-prose.md"
+_MATH_PROSE_GENRES = ("textbook-chapter-writer", "thesis-chapter-writer")
+
+
+@pytest.mark.parametrize("name", _MATH_PROSE_GENRES)
+@pytest.mark.parametrize("harness", sorted(ROOTS))
+def test_each_maths_genre_reads_the_mathematical_prose_reference(name, harness):
+    text = (folder(harness, name) / "SKILL.md").read_text(encoding="utf-8")
+    assert f"Read `{_MATH_PROSE}` now" in " ".join(text.split())
+
+
+def test_the_mathematical_prose_reference_keeps_thesis_symbols_out_of_math_md():
+    text = " ".join((REPO_ROOT / _MATH_PROSE).read_text(encoding="utf-8").split())
+    assert "thesis's own front matter" in text
+    assert "never add a `## Symbols` row" in text
+
+
 @pytest.mark.parametrize("skill_md", every_skill_md(), ids=lambda p: str(p.relative_to(REPO_ROOT)))
 def test_the_first_named_path_says_it_is_from_the_project_root(skill_md):
     """Codex resolves a relative path against the skill's own folder first,
