@@ -8,6 +8,8 @@ otherwise assemble its glossary between two chapters -- and that the
 default outline `spec init` writes obeys every rule it introduces.
 """
 
+import pytest
+
 from chitragupta import spec
 
 FULL = """# Composable Twins
@@ -225,3 +227,31 @@ def test_the_year_is_the_calendar_year_the_sign_off_runs_in():
     from chitragupta.spec import _scaffold
 
     assert _scaffold._this_year() == datetime.date.today().year
+
+
+def test_align_and_status_treat_a_generated_page_as_a_page(book_dir, capsys):
+    spec.main(["init", str(book_dir)])
+    capsys.readouterr()
+    spec.main(["align", str(book_dir)])
+    out = capsys.readouterr().out
+    assert "preface" in out
+    assert not [name for name in spec.GENERATED if f"  {name} " in out]
+    spec.main(["status", str(book_dir)])
+    assert "3 parts, 2 chapters, 1 section, 4 generated pages" in capsys.readouterr().out
+
+
+def test_a_generated_page_is_no_cross_reference_target(signed_book_with_matter):
+    from chitragupta import registry
+
+    anchors = set(registry.build(signed_book_with_matter)["anchors"])
+    assert "preface" in anchors
+    assert anchors.isdisjoint(spec.GENERATED)
+
+
+@pytest.fixture
+def signed_book_with_matter(book_dir, example_ledger):
+    from tests.conftest import write_book_spec
+
+    write_book_spec(book_dir, FULL)
+    spec.main(["sign", str(book_dir)])
+    return book_dir

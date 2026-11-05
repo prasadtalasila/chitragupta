@@ -111,7 +111,7 @@ def test_the_conventions_place_every_reserved_id_and_keep_old_books_working():
         "{#tables}",
     ):
         assert entry in body
-    assert "**An outline with no `{#back}` part** is one written before #1137" in body
+    assert "**An outline with none of the three reserved parts** is one" in body
     assert "Never edit it: its wording, licence and year are the author's." in body
     assert "only if it has something to show" in body
 

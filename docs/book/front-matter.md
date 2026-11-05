@@ -96,10 +96,11 @@ Composable Twins
 
 © 2026 Prasad Talasila. All rights reserved.
 
-No part of this book may be reproduced, stored or transmitted in any
-form without the prior written permission of the author.
+No part of this book may be reproduced, stored in a retrieval system or
+transmitted in any form or by any means without the prior written
+permission of the author.
 
-Built 2026-11-05 · outline 7cfc6678f261 · chitragupta 6.161.0
+Built 2026-11-05 · outline 7cfc6678f261 · chitragupta 6.164.0
 ```
 
 Each part comes from one place:
@@ -142,9 +143,9 @@ instead, replace the two licence sentences; the template carries the CC
 BY 4.0 wording as a comment to start from:
 
 ```latex
-\noindent\copyright\ 2026 \BookAuthor. This work is licensed under the
-Creative Commons Attribution 4.0 International License (CC BY 4.0),
-\url{https://creativecommons.org/licenses/by/4.0/}.
+\noindent\copyright\ 2026 \BookAuthor. This work is licensed under
+the Creative Commons Attribution 4.0 International licence (CC BY
+4.0), https://creativecommons.org/licenses/by/4.0/.
 ```
 
 Either way, the notice covers your own words. A figure or passage

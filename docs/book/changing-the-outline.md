@@ -78,8 +78,15 @@ unchanged too, the unit is `accepted` with no re-acceptance.
 ## 🧩 A chapter with no sections
 
 A chapter whose brief is all the outline says about it (no `####`
-lines) is a unit by itself, written as `<chapter-id>.md`. Adding
-sections to it later makes it a chapter described at section level:
-still the same unit and file, but now `spec align` compares its headings
-against the sections you declared
+lines) is a unit by itself, written as `<chapter-id>.md`. Adding two
+or more sections to it later, or one with a different title, makes it a
+chapter described at section level: still the same unit and file, but
+now `spec align` compares its headings against the sections you declared
 ([why](design-notes.md#-why-a-chapter-is-the-authored-document)).
+
+Adding exactly **one** section that carries the chapter's own title is
+the retrofitted shape instead: the *section* becomes the unit, written
+as `<section-id>.md`, and the chapter's old record is then listed as
+"accepted, but no longer in the outline" although the chapter is still
+there. Give that section its own title, or none at all, unless you are
+retrofitting ([retrofit](retrofit.md)).

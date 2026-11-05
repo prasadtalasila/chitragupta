@@ -46,7 +46,8 @@ they are simply not listed.
 
 **A self-numbered *chapter title* is a different clash, and this is
 the wrong lever for it** (#804). A unit headed `# Chapter 1: Why
-Anyone Pays` is numbered twice by the `book` class, but
+Anyone Pays`, or an appendix headed `# Appendix A: The Mathematics You
+Need` (#1137), is numbered twice by the `book` class, but
 `secnumdepth{-2}` pays a document-level price for a chapter-level
 problem. Measured on one real book, four passes each:
 
@@ -101,8 +102,8 @@ said nothing of:
 `\cleardoublepage` before `\phantomsection` puts the contents entry on
 the list's own page; `\listoffigures` adds none of its own.
 
-**An outline with no `{#back}` part** is one written before #1137, and
-assembles as it always did: `\input{glossary}` then `\input{notation}`
+**An outline with none of the three reserved parts** is one written
+before #1137, and assembles as it always did: `\input{glossary}` then `\input{notation}`
 under `\backmatter`, each only if step 3 wrote it, then the
 bibliography, and no list of figures or tables.
 

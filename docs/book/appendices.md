@@ -76,3 +76,17 @@ B, C, so:
 
 There is no "Part" page for the appendices; the table of contents lists
 them after the last chapter.
+
+**Do not letter the heading yourself, and it does no harm if you do.**
+A unit headed `# Appendix A: The Mathematics You Need` would print
+"Appendix A" twice, once from the class and once from the title, so the
+book's conversion drops a leading `Appendix A:` (or `Appendix A --`,
+`Appendix A.`) exactly as it drops `Chapter 1:` from a chapter. Your
+`.md` keeps it, and so does the appendix's own standalone pdf, where
+nothing else supplies the letter. The prefix is dropped wherever the
+unit sits, so an "Appendix A: Proofs" unit left in an ordinary part (a
+book outlined before `{#appendices}` existed) prints as "Chapter 7 /
+Proofs": move it under `## Appendices {#appendices}` and it prints as
+"Appendix A / Proofs". A `.tex` unit is not converted, so
+`draft style` reports the prefix there as
+`chitragupta.ChapterSelfNumbered` for you to delete.

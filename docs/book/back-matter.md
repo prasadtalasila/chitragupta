@@ -76,10 +76,13 @@ glossary terms, as a `[glossary]` finding. Such a unit with no glossary
 at all is not reported: a hand-written page has no dossier, and needs
 none.
 
-## ↩ Outlines without a back matter
+## ↩ Outlines without reserved parts
 
-An outline with no `{#back}` part (every book outlined before #1137)
-assembles exactly as before: the Glossary and then the List of Symbols,
-each if `registry build` wrote it, then the bibliography, and no lists of
-figures or tables. Add `## Back matter {#back}` with the lines you want
-when you want control over them.
+An outline with none of `{#front}`, `{#appendices}` and `{#back}`
+(every book outlined before #1137) assembles exactly as before: the
+Glossary and then the List of Symbols, each if `registry build` wrote
+it, then the bibliography, and no lists of figures or tables. Add
+`## Back matter {#back}` with the lines you want when you want control
+over them. Once an outline has any of the three reserved parts, the
+outline decides: a Glossary or List of Symbols prints only where an
+entry for it stands.

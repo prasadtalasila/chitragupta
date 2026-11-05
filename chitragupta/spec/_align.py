@@ -33,7 +33,7 @@ from pathlib import Path
 
 from chitragupta import config
 from chitragupta.dossier._sections import sections as _draft_sections
-from chitragupta.spec import SpecError, spec_path
+from chitragupta.spec import GENERATED, SpecError, spec_path
 from chitragupta.spec._read import read_spec, report_problems
 
 # `3.`, `3.1`, `3.1.2 ` at the start of a heading. A genre skill numbers
@@ -201,7 +201,12 @@ def align_chapter(book: Path, chapter: dict, declared: list[dict]) -> dict:
 
 def align(book: Path, parsed: dict) -> dict:
     """Every chapter's alignment, and whether anything disagreed."""
-    reports = [align_chapter(book, chapter, declared) for chapter, declared in chapters(parsed)]
+    # A generated page (#1137) has no draft, so there is nothing to align.
+    reports = [
+        align_chapter(book, chapter, declared)
+        for chapter, declared in chapters(parsed)
+        if chapter["id"] not in GENERATED
+    ]
     return {"chapters": reports, "findings": sum(report["findings"] for report in reports)}
 
 

@@ -1,6 +1,12 @@
 # TB-9: front matter, appendices and back matter from the outline
 
-Status: **designed, being built.** Written 2026-11-05, for
+Status: **built, in [PR 1158](https://github.com/prasadtalasila/chitragupta/pull/1158)
+(v6.164.0).** Changed on the way: an assembly of the digital-twins book
+showed `Appendix A: ...` titles printing the letter twice, so the #804
+prefix rule now drops a leading `Appendix A:` too; `spec align` and
+`spec status` treat generated pages as pages, and the registry gives
+them no anchor (review); issue 1129 (TB-1, source credits) was folded
+into the same pull request at the user's request. Written 2026-11-05, for
 [issue 1137](https://github.com/prasadtalasila/chitragupta/issues/1137),
 part of [epic 1128](https://github.com/prasadtalasila/chitragupta/issues/1128).
 
@@ -76,7 +82,8 @@ Two facts found while planning:
    captioned figure/table. The bibliography is always last.
 10. **Appendices** are in scope: `\appendix` after the main matter, so
     they number A, B, ... and `\cref` prints "Appendix A".
-11. **Compatibility:** an outline with no `{#back}` part assembles as
+11. **Compatibility:** an outline with none of the three reserved
+    parts (widened from "no `{#back}`" in review) assembles as
     before (glossary, then notation, under `\backmatter`, before the
     bibliography; no lists).
 

@@ -178,7 +178,8 @@ def build(book) -> dict:
     # an ordinary cross-reference, and reporting it unresolved because a
     # chapter generates no prose of its own would be a finding about this
     # module rather than about the book.
-    anchors = {entry["id"] for entry in outline}
+    # Less the generated pages (#1137), which the skeleton gives no label.
+    anchors = {entry["id"] for entry in outline if entry["id"] not in spec.GENERATED}
     # The units that are *accepted*, not every section the outline
     # declares -- since #472 a section can be a heading inside a chapter
     # rather than a file of its own, and only a file is ever accepted.

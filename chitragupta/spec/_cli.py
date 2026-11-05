@@ -18,6 +18,7 @@ from collections import Counter
 from pathlib import Path
 
 from chitragupta.spec import (
+    GENERATED,
     _KINDS,
     SpecError,
     chapter_digests,
@@ -214,9 +215,13 @@ def _cmd_status(args) -> int:
     text, parsed = read_spec(args.book)
     if parsed["problems"]:
         return report_problems(parsed, args.book)
-    counts = Counter(unit["kind"] for unit in parsed["units"])
+    # A generated page is counted as one, not as a chapter someone writes.
+    counts = Counter(
+        "generated page" if unit["id"] in GENERATED else unit["kind"] for unit in parsed["units"]
+    )
     print(f"{spec_path(args.book)}: {parsed['title']}")
-    print("  " + ", ".join(_plural(counts[kind], kind) for kind in _KINDS.values()))
+    kinds = [*_KINDS.values(), "generated page"] if counts["generated page"] else _KINDS.values()
+    print("  " + ", ".join(_plural(counts[kind], kind) for kind in kinds))
     recorded = recorded_digest(args.book)
     if recorded is None:
         print("  not signed off: nobody has approved this outline yet.")

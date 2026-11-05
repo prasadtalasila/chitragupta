@@ -39,8 +39,9 @@ The whole of the composition is one table: the outline
 emitted bottom-up from what has been accepted. Read
 `.claude/skills/book-assembler/references/latex-conventions.md` before
 composing, and follow it exactly: the outline-to-LaTeX table and its
-labels, the document skeleton, the `\setcounter` lines, an authored
-preamble, the one bibliography, table captions, TikZ libraries, Unicode,
+labels, the document skeleton, the `\setcounter` lines, front matter,
+appendices and back matter, the copyright page, an authored preamble,
+the one bibliography, table captions, TikZ libraries, Unicode,
 margins, and the two files this skill writes. A character the Unicode
 package does not map is fixed by the author, in the book's `preamble.tex`
 or in the unit through `draft-reviser` -- never by this skill.
@@ -378,3 +379,10 @@ record per unit under `units/`, and the three registries under
 **No acronym vocabulary step**, for the same reason -- there is no prose
 here to expand an acronym in. Each unit's own genre skill handled that
 when the unit was drafted.
+
+## Sources
+
+The front matter, appendices and back matter follow BCcampus's
+*Self-Publishing Guide*, "Textbook Outline" (CC BY 4.0). The citation
+and what it supplies are in
+[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution).

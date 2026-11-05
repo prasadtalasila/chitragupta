@@ -89,8 +89,8 @@ def findings(draft: Path) -> "list[dict]":
                 "chapter-self-numbered",
                 quoted,
                 line_of(text, match.start()),
-                f"`{quoted}` states its own chapter number. The document this "
-                "fragment is `\\input` into numbers the chapter itself, so it "
+                f"`{quoted}` states its own chapter number or appendix letter. The "
+                "document this fragment is `\\input` into numbers the chapter itself, so it "
                 "is printed twice -- at the chapter opening and in the table "
                 "of contents. Drop the prefix and leave the number to the "
                 "enclosing document (WRITING-STANDARDS.md §15).",
