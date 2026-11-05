@@ -369,7 +369,8 @@ reviser (`draft-reviser`, `corpus-reviser`, `agenda-reviser`). **Read**
 by `render` for every format that reaches pandoc (it is ignored for
 `--format md`, which is what keeps the draft's own text ASCII); by
 `dossier status`, which reports a row the draft no longer uses; and by
-a book's `registry` for the List of Symbols. Up to three tables, rules
+a book's `registry`, for the List of Symbols, the Glossary's symbols and
+`registry check`'s cross-unit findings. Up to three tables, rules
 in [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12:
 
 ```markdown

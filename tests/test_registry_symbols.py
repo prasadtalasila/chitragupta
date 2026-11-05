@@ -157,7 +157,18 @@ def test_glossary_maths_with_no_row_is_reported_and_code_is_not(book):
     )
     (found,) = notation(book)
     assert found.startswith("ch-model glossary span `(M_0 - M_1) * c` looks like mathematics (")
-    assert found.endswith("but has no row in its math.md, so it prints as code")
+    assert found.endswith("but its unit's math.md has no row for it, so it prints as code")
+
+
+def test_without_a_math_md_only_the_shape_rules_judge_the_glossary(book):
+    accept(
+        book,
+        "ch-model",
+        MODEL_UNIT,
+        glossary="- **Saving** -- `(M_0 - M_1) * c` a year, at step `H`.",
+    )
+    (found,) = notation(book)
+    assert "`(M_0 - M_1) * c`" in found and "`H`" not in found
 
 
 def test_a_glossary_span_with_a_row_is_quiet(book):
@@ -183,6 +194,15 @@ def test_the_symbols_registry_is_written(book, capsys):
     registry.main(["build", str(book)])
     text = (registry.registry_dir(book) / "symbols.md").read_text(encoding="utf-8")
     assert "| m_lo | **Moisture thresholds**, lower | ch-model |" in text
+
+
+def test_an_excerpt_leaves_out_a_row_that_settled_nothing(book, capsys):
+    accept(
+        book, "ch-model", MODEL_UNIT, glossary="", math={"k": "k"}, symbols=[("k", "**Nothing**")]
+    )
+    capsys.readouterr()
+    registry.main(["excerpt", str(book), "ch-data"])
+    assert "`k`" not in capsys.readouterr().out
 
 
 # --- what build refuses ------------------------------------------------------

@@ -121,7 +121,10 @@ def notation_rows(built: dict) -> "list[tuple[str, str, list[str]]]":
         # The meaning key `registry check`'s `[notation]` finding uses, so
         # the page and the check cannot disagree on what one meaning is.
         for same in _grouped(found, lambda row: row["key"]).values():
-            rows.append((same[0]["symbol_markdown"], same[0]["label"], _units(same)))
+            # Typeset as the unit that gives the meaning does, not as one
+            # pointing at it; the two differing is a `[notation]` finding.
+            source = next((row for row in same if row["kind"] != "see"), same[0])
+            rows.append((source["symbol_markdown"], source["label"], _units(same)))
     return rows
 
 

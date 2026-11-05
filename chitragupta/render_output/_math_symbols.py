@@ -44,6 +44,8 @@ from chitragupta.render_output._math_findings import MathFinding
 _ROW_RE = re.compile(r"^\|\s*`(?P<symbol>[^`]+)`\s*\|(?P<meaning>(?:[^|\\\n]|\\.)*)\|\s*$", re.M)
 _SEE_RE = re.compile(r"^see\s+(?P<unit>\S+)$")
 _LINK_RE = re.compile(r"^\*\*(?P<term>[^*]+)\*\*(?:\s*,\s*(?P<note>.+))?$")
+# A table line that is a separator, `|---|---|`, or the header above one.
+_SEPARATOR_RE = re.compile(r"^\|[\s:|-]+\|\s*$")
 
 _GLOSSARY_HEADING = re.compile(r"^## Glossary[ \t]*$", re.MULTILINE)
 _NEXT_HEADING = re.compile(r"^## ", re.MULTILINE)
@@ -68,6 +70,7 @@ class Meaning(NamedTuple):
 
 
 def has_symbols_section(text: str) -> bool:
+    """Whether a `math.md`'s `text` has a `## Symbols` section at all."""
     return SYMBOLS_SECTION_RE.search(text) is not None
 
 
@@ -115,10 +118,30 @@ def findings(rows: "list[tuple[str, str]]", text: str) -> "list[MathFinding]":
         for symbol, _ in symbols
         if symbol not in mapped
     ]
-    return found + _malformed(symbols)
+    return found + _malformed(symbols) + _stray(text)
 
 
-def _missing(mapped: "dict[str, str]", meant: "set[str]", has_section: bool):
+def _stray(text: str) -> "list[MathFinding]":
+    """A table line under `## Symbols` that is no row, the header or a
+    separator: an unbackticked symbol or a third cell, which would
+    otherwise drop its meaning without a word."""
+    section = SYMBOLS_SECTION_RE.search(text)
+    lines = section.group(0).splitlines() if section else []
+    found = []
+    for i, line in enumerate(lines):
+        header = i + 1 < len(lines) and _SEPARATOR_RE.match(lines[i + 1])
+        if line.startswith("|") and not (header or _SEPARATOR_RE.match(line)):
+            if not _ROW_RE.match(line):
+                found.append(
+                    MathFinding(
+                        "malformed",
+                        f"`{line.strip()}` under ## Symbols is not a | `symbol` | meaning | row",
+                    )
+                )
+    return found
+
+
+def _missing(mapped: "dict[str, str]", meant: "set[str]", has_section: bool) -> "list[MathFinding]":
     missing = [key for key in mapped if is_bare_symbol(key) and key not in meant]
     if missing and not has_section:
         return [

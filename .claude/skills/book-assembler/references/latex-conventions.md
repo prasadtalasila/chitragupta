@@ -268,8 +268,8 @@ symbols) gets no `\input`. The layout, for checking the PDF:
 
 The build refuses, writing neither page, on a glossary bullet it cannot
 print (a leftover symbol slot included), a link or `see` pointer that
-does not resolve, and a `## Symbols` row with no mapping row; `registry
-check` lists each.
+does not resolve, and a `## Symbols` row with no mapping row or that is
+empty, half bold or repeated; `registry check` lists each.
 
 What neither page can catch is a qualifier inside a term or a definition
 that only says "as before"; both print as written, which is why the

@@ -179,6 +179,14 @@ class TestSymbolFindings:
         assert found.kind == "malformed"
         assert "**Term**, then an optional `, note`" in found.message
 
+    @pytest.mark.parametrize("line", ["| v2 | words |", "| `v` | **A** | extra |"])
+    def test_a_line_that_is_no_row_is_not_dropped_silently(self, line):
+        text = "| `r(t)` | `r(t)` |\n\n## Symbols\n\n| Symbol | Meaning |\n| --- | --- |\n"
+        text += line + "\n"
+        (found,) = _math_symbols.findings(_math.mapping_rows(text), text)
+        assert found.kind == "malformed"
+        assert f"`{line}` under ## Symbols is not a | `symbol` | meaning | row" == found.message
+
 
 class TestTheOrphanRule:
     def test_a_symbol_used_inside_a_mapped_formula_is_not_an_orphan(self):

@@ -160,6 +160,26 @@ def test_a_unit_linking_a_term_it_does_not_define_adds_only_a_chapter(book):
     assert "$r$ & Residual & \\Cref{ch-model}, \\Cref{ch-data} \\\\" in notation
 
 
+def test_a_row_is_typeset_as_its_defining_unit_sets_it_not_a_pointer(book):
+    accept(book, "ch-model", "", glossary="", math={"k": "k_a"}, symbols=[("k", "see ch-data")])
+    accept(book, "ch-data", "", glossary="", math={"k": "k_b"}, symbols=[("k", "gain")])
+    _, notation = pages(book)
+    assert "$k_b$ & gain & \\Cref{ch-model}, \\Cref{ch-data} \\\\" in notation
+
+
+def test_two_keys_set_alike_for_one_term_print_one_symbol(book):
+    accept(
+        book,
+        "ch-model",
+        "",
+        glossary="- **Sampling interval** -- how often a quantity is read.",
+        math={"Ts": "T_s", "T_s": "T_s"},
+        symbols=[("Ts", "**Sampling interval**"), ("T_s", "**Sampling interval**")],
+    )
+    glossary, _ = pages(book)
+    assert "\\item[{Sampling interval ($T_s$)}]" in glossary
+
+
 def test_a_term_no_row_links_to_prints_without_a_symbol(book):
     accept(book, "ch-model", "", glossary="- **Electrical conductivity (EC)** -- of the soil.")
     glossary, notation = pages(book)

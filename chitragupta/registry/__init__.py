@@ -234,7 +234,8 @@ def excerpt(book, unit_id: str) -> dict:
     """What a unit's generation should be told about the rest of the book.
 
     The terminology and notation the *other* accepted units already
-    settled, and the ids available to point at. A unit is not told to conform to itself.
+    settled (a `## Symbols` row that does not resolve has settled
+    nothing), and the ids available to point at. A unit is not told to conform to itself.
 
     Deliberately **not** part of `unit.contract`'s input digest: a
     registry grows with every acceptance, so hashing it in would mark
@@ -245,7 +246,7 @@ def excerpt(book, unit_id: str) -> dict:
     built = build(book)
     return {
         "terms": [row for row in built["terms"] if row["unit"] != unit_id],
-        "symbols": [row for row in built["symbols"] if row["unit"] != unit_id],
+        "symbols": [row for row in built["symbols"] if row["unit"] != unit_id and "key" in row],
         "anchors": built["anchors"],
     }
 

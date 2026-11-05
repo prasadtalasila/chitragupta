@@ -18,7 +18,7 @@ borrowed from another unit.
 
 from pathlib import Path
 
-from chitragupta.registry._terms import term_key, units_counted
+from chitragupta.registry._terms import _grouped, term_key, units_counted
 from chitragupta.render_output import _math, _math_symbols
 from chitragupta.render_output._math_shapes import rule_for
 
@@ -41,12 +41,16 @@ def read_unit(unit_id: str, draft: Path, built: dict) -> None:
     not_math = _math.not_math(text)
     names = _math._symbols_of(mapping)
     for span in sorted(_math_symbols.glossary_spans(draft) - set(mapping) - not_math):
-        rule = rule_for(span, names, True)
+        # The context rules (a bare letter, a bare number) only for a unit
+        # that keeps a math.md, as `render` decides them for its draft.
+        rule = rule_for(span, names, bool(text))
         if rule is not None and not _math._CITEKEY_RE.match(span):
             built["glossary_maths"].append({"unit": unit_id, "span": span, "rule": rule})
 
 
-def _row(unit_id: str, symbol: str, meaning, mapping: "dict[str, str]") -> dict:
+def _row(
+    unit_id: str, symbol: str, meaning: _math_symbols.Meaning, mapping: "dict[str, str]"
+) -> dict:
     return {
         "symbol": symbol,
         "unit": unit_id,
@@ -131,13 +135,6 @@ def resolved(built: dict) -> "list[dict]":
     return [row for row in built["symbols"] if "key" in row and row["typeset"] is not None]
 
 
-def _grouped(rows, key) -> "dict[str, list[dict]]":
-    grouped: dict[str, list[dict]] = {}
-    for row in rows:
-        grouped.setdefault(key(row), []).append(row)
-    return grouped
-
-
 def _clashes(built: dict) -> "list[tuple[str, str]]":
     """A symbol naming two things, and a symbol typeset two ways."""
     found = []
@@ -166,7 +163,7 @@ def _glossary_maths(built: dict) -> "list[tuple[str, str]]":
         (
             "notation",
             f"{found['unit']} glossary span `{found['span']}` looks like mathematics "
-            f"({found['rule']}) but has no row in its math.md, so it prints as code",
+            f"({found['rule']}) but its unit's math.md has no row for it, so it prints as code",
         )
         for found in built["glossary_maths"]
     ]
