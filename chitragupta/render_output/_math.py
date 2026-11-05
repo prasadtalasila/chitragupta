@@ -201,7 +201,9 @@ def load_mapping(draft: Path) -> "dict[str, str]":
 
 def not_math(draft: Path) -> "frozenset[str]":
     """The spans `draft`'s `math.md` lists as not mathematics."""
-    return frozenset(m.group("ascii").strip() for m in _NOT_MATH_ROW_RE.finditer(_mapping_text(draft)))
+    return frozenset(
+        m.group("ascii").strip() for m in _NOT_MATH_ROW_RE.finditer(_mapping_text(draft))
+    )
 
 
 def _symbols_of(mapping: "dict[str, str]") -> "frozenset[str]":

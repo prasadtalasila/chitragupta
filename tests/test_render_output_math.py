@@ -624,8 +624,7 @@ class TestGapMessagesNameTheirRule:
     def test_a_built_symbol(self):
         found = _math_findings.warnings("the `EC_0` value", {"EC - EC_0 = 1": "x"}, False)
         assert found == [
-            "`EC_0` is built from symbols this draft's own equations use, "
-            "but has no row in math.md"
+            "`EC_0` is built from symbols this draft's own equations use, but has no row in math.md"
         ]
 
     def test_an_untagged_fence_with_an_identifier_expression(self):
@@ -784,5 +783,12 @@ class TestTheIssuesReproductions:
         )
         _substitution._checked_math_mapping(text, _draft(mapping=mapping, text=text))
         err = capsys.readouterr().err
-        for span in ("[1 0]", "-1", "[120.0, 1.5]", "[118.5, 1.5]", "A * P_est * A^T + Q", "-0.074"):
+        for span in (
+            "[1 0]",
+            "-1",
+            "[120.0, 1.5]",
+            "[118.5, 1.5]",
+            "A * P_est * A^T + Q",
+            "-0.074",
+        ):
             assert f"[math] `{span}` looks like a quantity" in err

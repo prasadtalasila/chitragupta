@@ -61,7 +61,7 @@ unmapped quantity.
 
 ## Design
 
-### 1. A new module, `_math_shapes.py`: "is this span mathematics, and by which rule?"
+### 1. `_math_shapes.py`: is this span mathematics, and by which rule?
 
 One public function, roughly:
 
@@ -140,12 +140,12 @@ C3 runs before the shape rules so a known symbol keeps today's
 
 **Known names** are today's `_symbols_of(mapping)` (single letters and
 Greek names in the LaTeX column) **plus**, by extending `_symbols_of`
-itself in `_math.py`, the identifiers in the ASCII column (new) that look like a symbol: one letter, a capital letter in
-the name (`SoC`, `EC`, `OCV`), or a Greek name. Lowercase words are
-dropped. A key like `level + h * (pump_flow - demand) / area` would
-otherwise make `` `level` `` and `` `demand` `` warn, and `mean` and
-`time` already occur as code spans in these drafts. Citekey-shaped keys
-contribute nothing.
+itself in `_math.py`, the identifiers in the ASCII column (new) that
+look like a symbol: one letter, a capital letter in the name (`SoC`,
+`EC`, `OCV`), or a Greek name. Lowercase words are dropped. A key like
+`level + h * (pump_flow - demand) / area` would otherwise make ``
+`level` `` and `` `demand` `` warn, and `mean` and `time` already occur
+as code spans in these drafts. Citekey-shaped keys contribute nothing.
 
 ### 2. `findings()` uses it
 
@@ -176,8 +176,8 @@ A one-column table anywhere in the file:
 | `21.4` |
 ```
 
-- `_math.not_math(draft) -> frozenset[str]` reads rows matching
-  `^\|\s*`(?P<ascii>[^`]+)`\s*\|\s*$`. `_ROW_RE` needs two cells, so
+- `_math.not_math(draft) -> frozenset[str]` reads one-cell rows
+  (`_NOT_MATH_ROW_RE`). `_ROW_RE` needs two cells, so
   these rows never enter the mapping, and `load_mapping`,
   `registry/_terms.py` and `substitute` are untouched.
 - `findings()` skips a span listed there (spans only; fences keep their
@@ -197,8 +197,8 @@ file order. `load_mapping` becomes `dict(mapping_rows(draft))`, which is
 behaviour-identical (the last row wins). A new
 `_math_findings.duplicates(rows, not_math)` reports kind `duplicate`:
 
-- a key with two or more **different** LaTeX values:
-  `` `eps_k = …` has 2 rows in math.md with different LaTeX: `\epsilon_k …`, `\varepsilon_k …`; the last is rendered ``;
+- a key with two or more **different** LaTeX values, naming the key, each
+  value, and that the last is rendered;
 - a key both mapped and listed as not mathematics.
 
 Identical repeated rows stay silent: the output does not change. It is a
