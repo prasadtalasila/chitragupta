@@ -5,7 +5,7 @@ promises maths: a single formula in a worked example brings it in. It
 governs the prose around symbols, conditions and derivations.
 `docs/WRITING-STANDARDS.md` §12 governs how a symbol is *set*, and the
 dossier's `math.md` holds its LaTeX and, under `## Symbols`, its
-meaning. Nothing here is checked by a tool; the rules are for the
+meaning. No sentence here is checked by a tool; the rules are for the
 writing pass and for the reread as the reader. Paths here are from
 the project root.
 
@@ -49,13 +49,12 @@ definition, recovers it from the phrase.
 Pick a letter the reader can remember (`d` for drying, `V` for volume),
 and keep each region of the alphabet to one job: `i`, `j`, `k`, `n` for
 indices and counts, `t` for time, `T_` with a subscript for intervals
-and periods, `a`, `b`, `c` for constants fitted from data, Greek letters
-for model parameters. The regions govern the base letter; a subscript
-is a label, so `m_t` (target moisture) is a moisture, not a time. One
-letter means one thing for the whole chapter,
-and in a book for the whole book. A book's `registry check` reports a
-symbol naming two things, but a clash is cheaper to avoid than to
-repair across chapters.
+and periods, `a`, `b`, `c` for constants fitted from data. The regions
+govern the base letter; a subscript is a label, so `m_t` (target
+moisture) is a moisture, not a time. One letter means one thing for the
+whole chapter, and in a book for the whole book. A book's `registry
+check` reports a symbol naming two things, but a clash is cheaper to
+avoid than to repair across chapters.
 
 - *Before:* "The checks are counted by `k`; later, `k` is also the
   fitted slope."
@@ -91,7 +90,7 @@ and when it has arrived.
 - *Before:* "Substituting, rearranging and simplifying gives the dose."
   *After:* "We want the dose `V` that restores the target moisture
   `m_t`. ... So we have shown that a dose of `(m_t - m) / g` millilitres
-  restores the target moisture from any reading `m`."
+  restores the target moisture from any reading `m` below it."
 
 ## Keep the argument linear
 

@@ -132,7 +132,8 @@ def test_each_maths_genre_reads_the_mathematical_prose_reference(name, harness):
 
 def test_the_mathematical_prose_reference_keeps_thesis_symbols_out_of_math_md():
     text = " ".join((REPO_ROOT / _MATH_PROSE).read_text(encoding="utf-8").split())
-    assert "front matter" in text and "## Symbols" in text
+    assert "thesis's own front matter" in text
+    assert "never add a `## Symbols` row" in text
 
 
 @pytest.mark.parametrize("skill_md", every_skill_md(), ids=lambda p: str(p.relative_to(REPO_ROOT)))
