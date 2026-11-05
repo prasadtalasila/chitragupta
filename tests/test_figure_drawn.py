@@ -31,6 +31,41 @@ class TestParse:
         assert line.points == ((0.0, 0.0), (10.0, 0.0))
         assert (line.start_tip, line.end_tip, line.curved) == (False, True, False)
 
+    def test_a_lines_width_and_heads_are_read(self):
+        """#1113: `CGLW` and `CGTIP`, numbered per tip, ride on the path."""
+        drawn = parse_drawn(
+            _log(
+                "CGPATH 1 E 1 1 draw,",
+                "CGLW 1 0.85pt",
+                "CGSEG 1 M 0.0 0.0",
+                "CGSEG 1 L 10.0 0.0",
+                "CGTIP 1 1 0.0 0.0",
+                "CGTIP 1 1 2.0 1.0",
+                "CGTIP 1 2 10.0 0.0",
+                "CGTIP 1 2 8.0 1.0",
+            )
+        )
+
+        (line,) = drawn.lines
+        assert line.width == 0.85
+        assert line.heads == (((0.0, 0.0), (2.0, 1.0)), ((10.0, 0.0), (8.0, 1.0)))
+
+    def test_heads_go_only_to_the_subpath_that_carries_the_tip(self):
+        drawn = parse_drawn(
+            _log(
+                "CGPATH 1 E 0 1 draw,",
+                "CGSEG 1 M 0.0 0.0",
+                "CGSEG 1 L 10.0 0.0",
+                "CGSEG 1 M 0.0 5.0",
+                "CGSEG 1 L 10.0 5.0",
+                "CGTIP 1 1 10.0 5.0",
+                "CGTIP 1 1 8.0 6.0",
+            )
+        )
+
+        first, last = drawn.lines
+        assert first.heads == () and last.heads == (((10.0, 5.0), (8.0, 6.0)),)
+
     def test_a_curve_is_flattened_and_marked_curved(self):
         drawn = parse_drawn(
             _log(
@@ -336,6 +371,28 @@ class TestAgainstRealLualatex:
         assert len(line.points) == 3 and line.end_tip and not line.start_tip
         (label,) = line.labels
         assert drawn.nodes[label].text_box is not None
+
+    def test_a_lines_width_and_arrowhead_outline_come_back(self, tmp_path):
+        """#1113: a 2.1mm-wide `Latex` head on a 0.85pt line, read from
+        the hull pgf keeps for the bounding box. If pgf renames
+        `\\pgf@arrows@rigid@hull`, the hook stops the compile instead."""
+        path = tmp_path / "fig.tex"
+        path.write_text(
+            "\\usetikzlibrary{arrows.meta}%\n"
+            "\\begin{tikzpicture}\n"
+            "\\node[draw] (a) at (0,0) {A};\n"
+            "\\node[draw] (b) at (3,0) {B};\n"
+            "\\draw[line width=0.85pt, -{Latex[length=2.6mm, width=2.1mm]}] (a) -- (b);\n"
+            "\\end{tikzpicture}%\n",
+            encoding="utf-8",
+        )
+
+        (line,) = figure_layout.check_figure(path, "", boxed=True).drawn.lines
+
+        assert line.width == pytest.approx(0.85)
+        (head,) = line.heads
+        ys = [y for _, y in head]
+        assert max(ys) - min(ys) == pytest.approx(2.1 * 72.27 / 25.4, abs=0.05)
 
     def test_a_loop_drawn_edge_is_reported_once_per_pass(self, tmp_path):
         path = tmp_path / "fig.tex"

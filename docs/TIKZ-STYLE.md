@@ -583,9 +583,13 @@ The type is not part of this: the floor in "Type and line weight" above
 is what stops a compact figure becoming a squashed one.
 
 **An edge tag sits beside its line.** `cgtag` is unfilled and placed
-with `auto`, on the left of the direction of travel, about 1mm clear of
-the segment; add `swap` to put it on the right. A tag filled over its
-line breaks the line exactly where the eye is following it.
+with `auto`, on the left of the direction of travel, 1.5mm off the
+segment's centre (about 1.35mm clear of the house stroke); add `swap`
+to put it on the right. A tag filled over its line breaks the line
+exactly where the eye is following it. At 1mm a tag's glyphs read as
+touching the stroke at print size (#1113). Set it beside the shaft, not
+beside the arrowhead, which is 2.1mm wide: `figure check`'s
+`c2-tag-clearance` measures from the head's outline too.
 
 The block needs one library line, at the top of the figure with the
 picture's own:

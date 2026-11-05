@@ -37,7 +37,7 @@ from chitragupta import config, pdf_fonts, programs, tex_engine
 from chitragupta.render_output._tikz_libraries import libraries_in
 from chitragupta.review.figure_layout._drawn import Drawn, parse_drawn
 from chitragupta.review.figure_layout._geometry import BBOX_NAME, Box
-from chitragupta.review.figure_layout._source import _NODE_KEYWORD, strip_comments
+from chitragupta.review.figure_layout._source import named_nodes
 
 # What the scaffold prints per node, and what this module parses back.
 # One node per line, `pt`-suffixed as TeX writes dimensions.
@@ -51,13 +51,6 @@ _CGBOX_RE = re.compile(
 # The boxed scaffold's one extra line: the width of the box the whole
 # figure file was set in.
 _CGWIDTH_RE = re.compile(r"^CGWIDTH (?P<wd>-?[\d.]+)pt\s*$", re.MULTILINE)
-
-# `\node[opts] (name) at (x,y) {label}`, for finding what to probe. The
-# same shape `_source.py` parses for its own checks; the pattern stays
-# separate because the two want different things from it -- this one only
-# ever needs the name -- while the declaration's own spelling comes from
-# there, so widening it stays one edit rather than two that can drift.
-_NODE_NAME_RE = re.compile(_NODE_KEYWORD + r"\s*(?:\[[^\]]*\])?\s*\((?P<name>[^)]+)\)")
 
 
 class FigureCompileError(RuntimeError):
@@ -91,10 +84,11 @@ def node_names(source: str) -> list[str]:
     character, so the declaration sits inside a macro's definition and
     names a node only once a caller fills it in (#1012's
     `\\cglegenditem`, whose `(#1)` took the compile down).
+
+    The name may follow the position, `\\node at (0,-2) (b) {beta}`,
+    which is TikZ as much as `(b) at (0,-2)` is (#1112).
     """
-    matches = _NODE_NAME_RE.finditer(strip_comments(source))
-    names = (match.group("name").strip() for match in matches)
-    return [name for name in names if "#" not in name]
+    return [name for name, _ in named_nodes(source) if "#" not in name]
 
 
 # `\cgsides{<node>}` sets `\cgx`, `\cgy`, `\cgxx` and `\cgyy` to a node's

@@ -1,6 +1,6 @@
 % figure check example: tint-outside-band, fixed.
 % cg-layout: pipeline
-% >>> chitragupta figure style v6 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
+% >>> chitragupta figure style v7 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
 % ===========================================================================
 % chitragupta house figure style -- the "presentation tier" prelude block.
 %
@@ -203,10 +203,12 @@
   % --- Edge tag -----------------------------------------------------------
   % A word beside an arrow, never on it. A tag filled over its line
   % breaks the line where the eye is following it, so `auto` sets it on
-  % the left of the direction of travel (`swap` for the right) with about
-  % 1mm between the line and the type: near enough to belong to the
-  % segment, far enough not to touch it.
-  cgtag/.style={font=\normalsize, auto, inner sep=0.5mm, outer sep=0.5mm,
+  % the left of the direction of travel (`swap` for the right) with 1.5mm
+  % between the line's centre and the type, about 1.35mm from a 0.85pt
+  % stroke's edge: near enough to belong to the segment, far enough not
+  % to touch it. 1mm read as touching at print size (#1113), and
+  % `figure check`'s c2 measures from the ink with a 1mm floor.
+  cgtag/.style={font=\normalsize, auto, inner sep=0.5mm, outer sep=1mm,
                 text=cgMuteText},
   cgnote/.style={font=\normalsize\itshape, text=cgMuteText, inner sep=2pt},
   % --- Step badge ---------------------------------------------------------
@@ -332,6 +334,22 @@
       (-1.5mm,0.2mm) -- (-0.4mm,-1.1mm) -- (1.7mm,1.6mm);
   }},
 }%
+
+% --- Shadows and the background layer --------------------------------------
+% Every `cgsoft` shadow declares a fading, and pgf typesets a fading as a
+% picture of its own. Once a layer exists, closing a picture takes every
+% layer's box into it, and the background layer's box is global: so a
+% shadowed node drawn after an `on background layer` scope took the
+% figure's zone cards into its fading, and they never printed (#1111).
+% `\pgfinterruptpicture` saves and restores the layers around a nested
+% picture; this does the same around a fading. Once per document. The
+% two are reached by \csname so the block needs no \makeatletter, and so
+% no `\name@` in it reads as a Pandoc citation.
+\ifx\cgdeclarefading\undefined
+  \let\cgdeclarefading\pgfdeclarefading
+  \def\pgfdeclarefading#1#2{\csname pgf@savelayers\endcsname
+    \cgdeclarefading{#1}{#2}\csname pgf@restorelayers\endcsname}%
+\fi
 % >>> end chitragupta figure style <<<
 \usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows.blur}%
 \begin{tikzpicture}[cg]

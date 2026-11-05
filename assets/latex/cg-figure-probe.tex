@@ -7,11 +7,15 @@
 % and never into review figure's. chitragupta/review/figure_layout/
 % _drawn.py documents the log grammar and reads it.
 %
-% It wraps two pgf internals, \pgfusepath and \pgfmultipartnode, and
+% It wraps three pgf internals, \pgfusepath, \pgfmultipartnode and
+% \pgf@arrows@rigid@hull (#1113), and
 % reads three TikZ ones, \tikz@strokecolor, \tikz@fillcolor and
 % \tikz@textcolor (#1055). A pgf release that renames any of them breaks
 % it; tests/test_figure_drawn.py compiles against the installed TeX Live
-% and fails if so.
+% and fails if so, and the hull wrap stops the compile with a message
+% rather than go quiet. A tip pgf keeps no hull for (a core `->` drawn
+% without `arrows.meta`, as #1113's review found) logs no `CGTIP`, and
+% c2 then measures that line's stroke only.
 \makeatletter
 % `\cgrgb{<colour expression>}\macro`: the colour as `r,g,b`. xcolor's
 % two commands do not expand, so this runs before a \typeout, never in one.
@@ -127,6 +131,8 @@ end
     \cgexpr{stroke}|\cgexpr{fill}}%
   \typeout{CGPATH \the\cgpathcount\space\ifcginnode N\else E\fi\space
     \cgtip\pgf@start@tip@sequence\space\cgtip\pgf@end@tip@sequence\space#1}%
+  % Its line width (#1113): c2 measures a tag from the stroke's edge.
+  \typeout{CGLW \the\cgpathcount\space\the\pgflinewidth}%
   \begingroup
     \def\pgfsyssoftpath@movetotoken##1##2{\cgseg M{##1}{##2}}%
     \def\pgfsyssoftpath@linetotoken##1##2{\cgseg L{##1}{##2}}%
@@ -142,6 +148,31 @@ end
   \endgroup
   \cgoldusepath{#1}%
 }
+% Every arrow tip's outline (#1113), as the points of the convex hull pgf
+% keeps for the picture's bounding box, in the frame the path's own points
+% are logged in: `CGTIP <path> <tip> <x> <y>`. Read here, not from the
+% tip's painting, which `arrows.meta` caches as PDF code after its first
+% use and never sends through \pgfusepath.
+\newcount\cgtipcount
+\ifx\pgf@arrows@rigid@hull\undefined
+  \errmessage{cg-figure-probe: pgf has no \string\pgf@arrows@rigid@hull;
+    arrowheads cannot be measured (#1113)}
+\fi
+\let\cgoldhull\pgf@arrows@rigid@hull
+\def\pgf@arrows@rigid@hull{\cgoldhull
+  \expandafter\let\expandafter\cghull\csname pgf@ar@hull@\pgf@arrow@id\endcsname
+  \ifx\cghull\pgfutil@empty\else
+    \global\advance\cgtipcount 1
+    \begingroup\let\pgf@arrow@hull@point\cgtippoint\cghull\endgroup
+  \fi}
+\def\cgtippoint#1#2{%
+  \pgfutil@tempdima#1\pgfutil@tempdimb#2%
+  \pgf@x\pgf@pt@aa\pgfutil@tempdima\advance\pgf@x by\pgf@pt@ba\pgfutil@tempdimb
+  \advance\pgf@x by\pgf@pt@x
+  \pgf@y\pgf@pt@ab\pgfutil@tempdima\advance\pgf@y by\pgf@pt@bb\pgfutil@tempdimb
+  \advance\pgf@y by\pgf@pt@y
+  \typeout{CGTIP \the\cgpathcount\space\the\cgtipcount\space
+    \strip@pt\pgf@x\space\strip@pt\pgf@y}}
 % At the end of the picture: every node's box from its four sides, in
 % canvas coordinates, its text anchor where its shape has one, and the
 % rotation entries (b, c) of the transform it was set with. The box is

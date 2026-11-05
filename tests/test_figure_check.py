@@ -125,6 +125,13 @@ class TestSizeStray:
 
 
 class TestFocalCount:
+    def test_a_calc_position_is_not_read_as_the_name(self):
+        """`at ($(a)!0.5!(b)$)` is a position; its inner `(b)` is not the
+        node's name (#1112's review)."""
+        source = "\\node[cgkey] at ($(a)!0.5!(b)$) (m) {mid};\n"
+
+        assert cgkey_nodes(source) == ["m"]
+
     @pytest.mark.parametrize(
         ("body", "named"),
         [
