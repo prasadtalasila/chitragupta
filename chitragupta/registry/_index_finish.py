@@ -70,8 +70,8 @@ def parse(text: str) -> "list[tuple[str, str, str]]":
         key = _argument(line, len("\\indexentry")) if line.startswith("\\indexentry") else None
         page = key and _argument(line, key[1])
         if page:
-            ident, bar, encap = key[0].partition("|")
-            found.append((ident, bar + encap, page[0]))
+            ident, separator, encap = key[0].partition("|")
+            found.append((ident, separator + encap, page[0]))
     return found
 
 

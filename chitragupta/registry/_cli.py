@@ -117,6 +117,7 @@ def _write_index(book, built: dict, target: Path) -> int:
     `index.toml` naming a term that does not exist would otherwise index
     something other than what its author asked for."""
     doc, problems = _index_toml.read(spec.spec_dir(book))
+    data: dict = {}
     if not problems:
         # `_linked` is the Glossary page's own reading of which symbols a
         # unit links to a term, so the index and the page cannot disagree.
