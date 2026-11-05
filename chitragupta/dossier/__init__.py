@@ -20,6 +20,7 @@ import sqlite3
 from pathlib import Path
 
 from chitragupta import config, ledger
+from chitragupta.ledger_citable import PARSED
 
 # One constant per dossier filename, because each recurs across this
 # module -- as FILES keys, template keys, path joins and report lookups
@@ -179,7 +180,12 @@ def all_dossiers() -> list[Path]:
 
 
 def _corpus_rows() -> list[sqlite3.Row] | None:
-    """Every ledger item, or None if there is no readable ledger.
+    """Every parsed ledger item, or None if there is no readable ledger.
+
+    Parsed only (#1118): a row whose PDF never parsed is not citable, so
+    it is no part of the corpus a draft is measured against. A cited key
+    whose row stops being parsed is therefore reported missing, exactly as
+    one that left the `.bib` is.
 
     Opened through `ledger.read_connection`, for the same reason
     `chitragupta.ledger`'s own CLI is: this is an inspection, and it must
@@ -225,7 +231,8 @@ def _corpus_rows() -> list[sqlite3.Row] | None:
     try:
         con.row_factory = sqlite3.Row
         return con.execute(
-            "SELECT citekey, title, parsed_path, status, collections FROM items"
+            "SELECT citekey, title, parsed_path, status, collections FROM items WHERE status = ?",
+            (PARSED,),
         ).fetchall()
     except sqlite3.DatabaseError:
         return None
@@ -234,7 +241,7 @@ def _corpus_rows() -> list[sqlite3.Row] | None:
 
 
 def known_citekeys() -> set[str] | None:
-    """Every citekey in the ledger, or None if there is no readable one.
+    """Every parsed citekey in the ledger, or None if there is no readable one.
 
     None (rather than an empty set) distinguishes "no corpus on this
     machine" from "a corpus with nothing in it" -- `status` says
