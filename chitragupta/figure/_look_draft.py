@@ -15,6 +15,10 @@ The page comes from the mark `render_output._figure_anchor` put after
 each figure. A figure with no mark in the PDF -- one whose marker did
 not resolve, or one in a `.tex` draft, which carries none -- gets no
 page picture, and an old one is deleted so it cannot pass for current.
+
+Both go where the PDF went: the figure's mirrored rendered directory by
+default, or the same place below a render's `--output-dir` (#1114), so a
+scratch render never writes over the default render's looks.
 """
 
 import tempfile
@@ -101,39 +105,49 @@ def _page(pdf: Path, number: int, png: Path) -> Page | str:
     return Page(png, number, _png_size(png))
 
 
-def _drop_page(figure: Path) -> None:
+def _dir(figure: Path, look_dir: Path | None) -> Path:
+    """Where `figure`'s look and page go: `look_dir`, or by default its
+    mirrored rendered directory."""
+    return _output_dir(figure) if look_dir is None else look_dir
+
+
+def _drop_page(figure: Path, look_dir: Path | None) -> None:
     """Delete `figure`'s old page picture, which no longer matches the
     PDF just rendered; a cleanup, so a failure to is no failure."""
     try:
-        (_output_dir(figure) / f"{figure.stem}.page.png").unlink(missing_ok=True)
+        (_dir(figure, look_dir) / f"{figure.stem}.page.png").unlink(missing_ok=True)
     except (OSError, OutsideContentDir):
         pass
 
 
-def _page_of(base: str, figure: Path, pdf: Path, marks: dict[str, int]) -> Page | str:
+def _page_of(
+    base: str, figure: Path, pdf: Path, marks: dict[str, int], look_dir: Path | None
+) -> Page | str:
     """`figure`'s page picture, or why there is none."""
-    png = _output_dir(figure) / f"{figure.stem}.page.png"
+    png = _dir(figure, look_dir) / f"{figure.stem}.page.png"
     if base not in marks:
         png.unlink(missing_ok=True)
         return NO_MARK
     return _page(pdf, marks[base], png)
 
 
-def _one(base: str, figure: Path, pdf: Path, marks: dict[str, int] | None) -> DraftFigure:
+def _one(
+    base: str, figure: Path, pdf: Path, marks: dict[str, int] | None, look_dir: Path | None
+) -> DraftFigure:
     """The look and the page are independent: one failing is no reason
     to go without the other."""
     notes = []
     try:
-        result = look(figure)
+        result = look(figure, look_dir)
     except (OSError, UnicodeDecodeError, OutsideContentDir) as exc:
         result = None
         notes.append(f"no look: {exc}")
     page = None
     if marks is None:
-        _drop_page(figure)
+        _drop_page(figure, look_dir)
     else:
         try:
-            found = _page_of(base, figure, pdf, marks)
+            found = _page_of(base, figure, pdf, marks, look_dir)
         except (OSError, OutsideContentDir) as exc:
             found = f"no page PNG: {exc}"
         if isinstance(found, Page):
@@ -143,8 +157,18 @@ def _one(base: str, figure: Path, pdf: Path, marks: dict[str, int] | None) -> Dr
     return DraftFigure(figure, result, page, "; ".join(notes))
 
 
-def refresh(draft: Path, pdf: Path) -> Refresh:
-    """Every figure `draft` names: its look refreshed, its page pictured."""
+def refresh(draft: Path, pdf: Path, output_dir: Path | None = None) -> Refresh:
+    """Every figure `draft` names: its look refreshed, its page pictured.
+
+    `output_dir` is the render's own `--output-dir`, already confined to
+    `content/` by `render`: each figure's files go to its place below
+    the draft's directory, mirrored there, as the render copies it."""
+
+    def look_dir(figure: Path) -> Path | None:
+        # `draft_figures` admits only a figure inside the draft's
+        # directory, by the draft's own spelling, so this is relative.
+        return None if output_dir is None else output_dir / figure.parent.relative_to(draft.parent)
+
     try:
         found = draft_figures(draft)
     except (OSError, UnicodeDecodeError):
@@ -153,10 +177,10 @@ def refresh(draft: Path, pdf: Path) -> Refresh:
         return Refresh()
     if programs.resolve_program("pdftoppm") is None:
         for figure in found.values():
-            _drop_page(figure)
+            _drop_page(figure, look_dir(figure))
         return Refresh(skipped=f"pdftoppm not found on PATH ({_INSTALL})")
     marks = _marks(pdf)
-    figures = [_one(base, figure, pdf, marks) for base, figure in found.items()]
+    figures = [_one(base, figure, pdf, marks, look_dir(figure)) for base, figure in found.items()]
     skipped = "" if marks is not None else f"page PNGs: pdfinfo not found on PATH ({_INSTALL})"
     return Refresh(figures, skipped)
 
