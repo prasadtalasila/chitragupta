@@ -223,14 +223,14 @@ def _symbols_of(mapping: "dict[str, str]") -> "frozenset[str]":
     symbol -- one letter, a capital in it (`SoC`, `EC`), or a Greek
     name. Lowercase words are left out, since a key such as
     `level + h * (pump_flow - demand) / area` would otherwise make every
-    `level` in the prose a gap.
+    `level` in the prose a gap. The same rule keeps a citekey-shaped key
+    from contributing anything, since a citekey is lowercase.
     """
     symbols: set[str] = set()
     for ascii_, latex in mapping.items():
         symbols.update(_SYMBOL_RE.findall(latex))
         symbols.update(g for g in _GREEK_RE.findall(latex) if g in _GREEK_NAMES)
-        if not _CITEKEY_RE.match(ascii_):
-            symbols.update(n for n in _ASCII_NAME_RE.findall(ascii_) if _symbol_like(n))
+        symbols.update(n for n in _ASCII_NAME_RE.findall(ascii_) if _symbol_like(n))
     return frozenset(symbols)
 
 

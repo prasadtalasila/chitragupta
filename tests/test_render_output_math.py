@@ -792,3 +792,8 @@ class TestTheIssuesReproductions:
             "-0.074",
         ):
             assert f"[math] `{span}` looks like a quantity" in err
+
+
+def test_a_citekey_shaped_key_contributes_no_names():
+    # Lowercase throughout, so the symbol-like filter drops it whole.
+    assert _math._symbols_of({"zech_digital-twins-as--service_2024": "12"}) == frozenset()

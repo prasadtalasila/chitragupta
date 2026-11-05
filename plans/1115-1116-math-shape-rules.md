@@ -145,7 +145,8 @@ look like a symbol: one letter, a capital letter in the name (`SoC`,
 `EC`, `OCV`), or a Greek name. Lowercase words are dropped. A key like
 `level + h * (pump_flow - demand) / area` would otherwise make ``
 `level` `` and `` `demand` `` warn, and `mean` and `time` already occur
-as code spans in these drafts. Citekey-shaped keys contribute nothing.
+as code spans in these drafts. A citekey-shaped key contributes nothing,
+being lowercase.
 
 ### 2. `findings()` uses it
 
