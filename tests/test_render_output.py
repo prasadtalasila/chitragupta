@@ -228,6 +228,7 @@ class TestRenderMarkdown:
     not (pandoc_available and lualatex_available), reason="pandoc/lualatex not installed"
 )
 class TestRenderReal:
+    @pytest.mark.slow
     def test_renders_markdown_with_citation_to_pdf(self, isolated_config, tmp_path):
         con = ledger.connect()
         add_citable(con, "smith_2024", title="An Example Paper", year="2024")
@@ -243,6 +244,7 @@ class TestRenderReal:
         assert out_path.exists()
         assert out_path == isolated_config.RENDERED_DIR / "draft.pdf"
 
+    @pytest.mark.slow
     def test_a_bib_field_cannot_make_the_engine_read_outside_the_draft(
         self, isolated_config, tmp_path
     ):
@@ -271,6 +273,7 @@ class TestRenderReal:
         assert "NOT-FOR-THE-PDF" not in text
         assert "\\input{" in text
 
+    @pytest.mark.slow
     def test_tex_in_the_draft_still_cannot_input_a_file_outside_it(self, isolated_config, tmp_path):
         # #823's fence, on the engine #996 moved to and in the form #1037
         # gave it: TeX's own `\input` of an absolute path is refused, so
@@ -304,6 +307,7 @@ class TestRenderReal:
         with pytest.raises(render_output.MissingBinary, match="TMPDIR"):
             render_output.render(str(draft), output_format="pdf")
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("output_format", ["tex", "pdf"])
     def test_every_pandoc_format_lands_beside_the_draft(self, isolated_config, output_format):
         # The `md` format is covered without pandoc above; these two are
@@ -456,6 +460,7 @@ class TestRenderReal:
         out_path = render_output.render(str(draft), output_format="tex")
         assert out_path.exists()
 
+    @pytest.mark.slow
     def test_local_image_embeds_when_input_is_a_relative_path(
         self, isolated_config, tmp_path, monkeypatch
     ):
@@ -569,6 +574,7 @@ class TestRenderReal:
         assert not (isolated_config.RENDERED_DIR / "secret.png").exists()
         assert not (isolated_config.RENDERED_DIR.parent / "secret.png").exists()
 
+    @pytest.mark.slow
     @pytest.mark.skipif(
         not (pandoc_available and lualatex_available and tikz_available),
         reason="pandoc/lualatex/tikz.sty not installed",
@@ -746,6 +752,7 @@ class TestFigurePairRenderReal:
     point of the pair is that each output format gets the form it can
     actually draw, and only a real render proves that."""
 
+    @pytest.mark.slow
     @pytest.mark.skipif(
         not (pandoc_available and lualatex_available and tikz_available),
         reason="pandoc/lualatex/tikz.sty not installed",
@@ -964,6 +971,7 @@ class TestWideCodeBlockRenderReal:
         assert "Overfull \\hbox" not in compiled.stdout
 
 
+@pytest.mark.slow
 class TestWideTableCaptionRenderReal:
     """`\\LTcapwidth`, end to end against a real `pdflatex` and measured on
     the page rather than in the `.tex`. `longtable.sty` initialises that

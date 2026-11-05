@@ -188,6 +188,7 @@ class TestUnderLuaLaTeX:
         assert "holds Figure 1" not in log
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(
     not (pandoc_available and lualatex_available and pdftotext_available),
     reason="pandoc/lualatex/poppler not installed",

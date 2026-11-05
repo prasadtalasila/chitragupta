@@ -264,6 +264,7 @@ class TestDraftRender:
         assert "[figure-look]" not in captured.err
 
 
+@pytest.mark.slow
 @needs_poppler
 @pytest.mark.skipif(
     not (pandoc_available and lualatex_available and tikz_available),
@@ -292,6 +293,7 @@ def test_a_real_pdf_render_leaves_every_figure_looked_at(isolated_config, capsys
     assert _look_draft._png_size(out / "flow.page.png") == (2481, 3508)
 
 
+@pytest.mark.slow
 @needs_poppler
 @pytest.mark.skipif(
     not (pandoc_available and lualatex_available and tikz_available),

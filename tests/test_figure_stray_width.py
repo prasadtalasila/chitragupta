@@ -47,6 +47,7 @@ def test_the_scaffolds_are_found():
     assert "pipeline" in SCAFFOLDS
 
 
+@pytest.mark.slow
 @needs_tikz
 @pytest.mark.parametrize("name", SCAFFOLDS)
 def test_a_library_loaded_inside_the_box_adds_a_blank_band(name, monkeypatch):

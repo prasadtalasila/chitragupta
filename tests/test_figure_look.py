@@ -260,6 +260,7 @@ class TestCli:
         assert "resolves outside content" in capsys.readouterr().err
 
 
+@pytest.mark.slow
 @needs_tikz
 @needs_poppler
 class TestRealCompile:

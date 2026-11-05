@@ -151,6 +151,7 @@ class TestEverySourceProperty:
         assert "\\usepackage" not in example
 
 
+@pytest.mark.slow
 @needs_tikz
 class TestEveryGeometryProperty:
     """The half that needs a real `pdflatex`."""
@@ -170,6 +171,7 @@ class TestEveryGeometryProperty:
         assert figure_layout.protrudes(figure_layout.node_boxes(example_figure)) is False
 
 
+@pytest.mark.slow
 @needs_tikz
 class TestThroughTheDocumentedCommand:
     """The example checked the way an author actually reaches it.

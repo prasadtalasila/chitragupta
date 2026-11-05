@@ -40,6 +40,7 @@ def _check_file(rule: str, variant: str) -> _check.CheckResult:
     return _check.check(EXAMPLES / rule / f"{variant}.tex", _check.DEFAULT_WIDTH_PT)
 
 
+@pytest.mark.slow
 @needs_tikz
 @pytest.mark.parametrize("rule", EXAMPLE_RULES)
 def test_the_faulty_figure_breaks_its_rule_and_no_other(rule):
@@ -52,6 +53,7 @@ def test_the_faulty_figure_breaks_its_rule_and_no_other(rule):
         assert {f.rule for f in result.findings} == {rule}
 
 
+@pytest.mark.slow
 @needs_tikz
 @pytest.mark.parametrize("rule", EXAMPLE_RULES)
 def test_the_fixed_figure_breaks_nothing_and_everything_was_measured(rule):

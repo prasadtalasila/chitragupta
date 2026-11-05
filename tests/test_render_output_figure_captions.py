@@ -214,6 +214,7 @@ class TestWarnings:
         assert not any("non-blank line" in w for w in warnings)
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(
     not (pandoc_available and lualatex_available and tikz_available and pdftotext_available),
     reason="needs pandoc, lualatex with tikz.sty, and pdftotext",

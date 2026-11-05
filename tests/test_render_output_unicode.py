@@ -110,6 +110,7 @@ class TestPreambleFiles:
         assert len(_unicode.preamble_files("☃", "pdf", False, tmp_path, out)) == 1
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(
     not (pandoc_available and lualatex_available and pdftotext_available),
     reason="pandoc/lualatex/pdftotext not installed",

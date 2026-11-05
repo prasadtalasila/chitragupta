@@ -75,6 +75,7 @@ def _compile(directory: Path, body: str) -> tuple[subprocess.CompletedProcess, s
     return result, log
 
 
+@pytest.mark.slow
 @needs_lualatex
 class TestARealEngine:
     def test_a_document_with_the_render_s_fonts_compiles(self, tmp_path):

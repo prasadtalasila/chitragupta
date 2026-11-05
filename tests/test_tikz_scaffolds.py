@@ -358,12 +358,14 @@ class TestTheReferenceRangesAreMeasured:
     def test_counts_match_the_source(self):
         assert [m for m in map(_count_mismatch, _all_range_rows()) if m] == []
 
+    @pytest.mark.slow
     @needs_tikz
     def test_a_doctored_extent_is_caught(self):
         row = _all_range_rows()[0]
 
         assert _extent_mismatch(row._replace(slack=row.slack + 0.1)) is not None
 
+    @pytest.mark.slow
     @needs_tikz
     def test_extents_match_the_probe(self):
         assert [m for m in map(_extent_mismatch, _all_range_rows()) if m] == []
@@ -442,6 +444,7 @@ class TestEverySourceProperty:
         assert max(len(line) for line in text.splitlines()) <= 72
 
 
+@pytest.mark.slow
 @needs_tikz
 class TestEveryGeometryProperty:
     """The half that needs a real `lualatex`."""
@@ -465,6 +468,7 @@ class TestEveryGeometryProperty:
         assert figure_layout.protrudes(figure_layout.node_boxes(scaffold)) is False
 
 
+@pytest.mark.slow
 @needs_tikz
 class TestThroughTheDocumentedCommand:
     """One scaffold checked the way an author actually reaches it.
@@ -570,6 +574,7 @@ class TestALoopKeepsTheHouseArrow:
         assert "every loop/.style={}" in cg
 
 
+@pytest.mark.slow
 @needs_tikz
 class TestTheBlockTypesetsNothing:
     """`\\input` of the block adds no material to the page, and `\\input`
@@ -706,6 +711,7 @@ def _floor_ratios(floor: float, glyphs: list[_Glyph]) -> list[float]:
     ]
 
 
+@pytest.mark.slow
 @needs_tikz
 class TestTheTypeFloor:
     """Nothing in a figure prints smaller than the paragraph beside it,
@@ -895,6 +901,7 @@ class TestEveryPicFitsItsWell:
         assert "CGCOL=cgFlow" in result.stdout
 
 
+@pytest.mark.slow
 @needs_tikz
 class TestDrawnAtFinalWidth:
     """Every scaffold fits the article class's text width as drawn, so it

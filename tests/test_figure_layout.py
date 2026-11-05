@@ -720,6 +720,7 @@ class TestProbeTexHardening:
         assert f"--lua={tex_engine.READ_FENCE}" in cmd
 
 
+@pytest.mark.slow
 @needs_tikz
 class TestProbeAgainstRealLualatex:
     """The one assumption everything else rests on, pinned against a real
@@ -1041,6 +1042,7 @@ class TestCheckDraft:
         assert results[0].boxes is None
         assert "lualatex" in results[0].skipped
 
+    @pytest.mark.slow
     @needs_tikz
     def test_a_broken_figure_does_not_stop_the_others(self, tmp_path):
         """The failure policy that matters: one bad figure is a finding,
@@ -1058,6 +1060,7 @@ class TestCheckDraft:
         assert results["fine"].failed is None
         assert results["fine"].boxes is not None
 
+    @pytest.mark.slow
     @needs_tikz
     def test_overlapping_nodes_are_found_end_to_end(self, tmp_path):
         """The roadmap's own probe, reproduced by the suite rather than
@@ -1156,6 +1159,7 @@ class TestMeasurability:
 
         assert figure_layout.check_draft(draft)[0].declared == ["a", "b"]
 
+    @pytest.mark.slow
     @needs_tikz
     def test_an_anonymous_figure_is_reported_as_unmeasurable_end_to_end(self, tmp_path):
         """The #393 shape, against a real compile: a picture drawn from
@@ -1777,6 +1781,7 @@ class TestCheckFigure:
         assert result.boxes is None and result.input_width is None
         assert result.skipped == "no lualatex here"
 
+    @pytest.mark.slow
     @needs_tikz
     def test_an_unboxed_check_measures_no_input_width(self, tmp_path):
         path = tmp_path / "fig.tex"
@@ -1788,6 +1793,7 @@ class TestCheckFigure:
 
         assert "a" in result.boxes and result.input_width is None
 
+    @pytest.mark.slow
     @needs_tikz
     def test_a_tight_figures_box_is_as_wide_as_its_picture(self, tmp_path):
         path = tmp_path / "fig.tex"
@@ -1802,6 +1808,7 @@ class TestCheckFigure:
         x1, _, x2, _ = result.boxes[figure_layout.BBOX_NAME]
         assert result.input_width == pytest.approx(x2 - x1, abs=0.5)
 
+    @pytest.mark.slow
     @needs_tikz
     def test_a_line_end_outside_the_picture_widens_the_box(self, tmp_path):
         """A line ending without `%` is a space in horizontal mode: what
@@ -1818,6 +1825,7 @@ class TestCheckFigure:
         x1, _, x2, _ = result.boxes[figure_layout.BBOX_NAME]
         assert result.input_width > (x2 - x1) + 1.0
 
+    @pytest.mark.slow
     @needs_tikz
     def test_a_line_end_after_the_picture_widens_the_box_too(self, tmp_path):
         """The usual stray: `\\end{tikzpicture}` with no `%`. A box that
@@ -1830,6 +1838,7 @@ class TestCheckFigure:
         x1, _, x2, _ = result.boxes[figure_layout.BBOX_NAME]
         assert result.input_width > (x2 - x1) + 1.0
 
+    @pytest.mark.slow
     @needs_tikz
     def test_a_matrix_compiles_inside_the_box(self, tmp_path):
         """A `matrix` changes the catcode of `&`, which a macro argument
@@ -1848,6 +1857,7 @@ class TestCheckFigure:
 
         assert result.failed is None and {"a", "b"} <= set(result.boxes)
 
+    @pytest.mark.slow
     @needs_tikz
     def test_a_figure_that_does_not_compile_is_a_finding(self, tmp_path):
         path = tmp_path / "fig.tex"
@@ -1857,6 +1867,7 @@ class TestCheckFigure:
 
         assert result.failed and result.boxes is None
 
+    @pytest.mark.slow
     @needs_tikz
     def test_a_loop_named_node_is_reported_unmeasured_not_broken(self, tmp_path):
         """#1072, end to end: the sample book's `run-modes.tex` names its

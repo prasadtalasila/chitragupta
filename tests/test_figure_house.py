@@ -351,6 +351,7 @@ class TestHouseCheck:
         assert [f.rule for f in findings] == ["does-not-compile", "unnamed-pic"]
 
 
+@pytest.mark.slow
 @needs_tikz
 class TestAgainstRealLualatex:
     """Each fixture fires exactly its rule; the clean ones fire none of
