@@ -82,7 +82,10 @@ class InlineScanner:
         if closing is None or self._runs[closing][0] >= end:
             return start + length
         stop = self._runs[closing][0] + length
-        if not _RAW_TEX_RE.match(self._box.text, stop):
+        raw = _RAW_TEX_RE.match(self._box.text, stop)
+        if raw:
+            self._box.mark_raw_tex(start, raw.end(), block=False)
+        else:
             self._box.mark(start, stop, code=True)
         return stop
 

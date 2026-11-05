@@ -1454,6 +1454,12 @@ a link reference) and emits the bibliography as `:::` fenced divs full
 of `[...]{.csl-left-margin}` spans. None of that renders anywhere except
 pandoc.
 
+Raw LaTeX in the draft is dropped from this `.md`, as pandoc's `docx`
+and `html` writers drop it: a ```` ```{=latex} ```` or `{=tex}` block,
+and an inline `` `...`{=latex} `` span. The `tex` and `pdf` renders still
+apply it, so an `\arraystretch` pair around a table keeps working there
+without showing up as a box of LaTeX in a Markdown viewer.
+
 The draft itself is never modified: it keeps its `[@citekey]` markers,
 which are what `citation_gate` verifies and what `--citeproc` resolves
 when rendering. A `.tex` input still goes through pandoc for `md`, since
