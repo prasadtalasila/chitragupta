@@ -237,6 +237,10 @@ class TestGlossarySpans:
 
     def test_none_without_a_scope_or_a_glossary(self, isolated_config):
         assert _math_symbols.glossary_spans(_draft(MAPPING)) == frozenset()
+        no_glossary = _draft(MAPPING)
+        scope = config.DOSSIERS_DIR / "dt" / "tank" / "scope.md"
+        scope.write_text("# Scope\n\n## Reader\n\n`m_t` here is not a glossary.\n")
+        assert _math_symbols.glossary_spans(no_glossary) == frozenset()
         assert _math_symbols.glossary_spans(config.REVIEW_DIR / "r.md") == frozenset()
 
     def test_the_section_reader_keeps_the_files_line_numbers(self):
