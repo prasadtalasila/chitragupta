@@ -120,7 +120,7 @@ def test_each_conditional_section_points_at_its_reference(name, heading, referen
 # Both chapter genres read the mathematical-prose rules on every run
 # (#1135): the sentences around a symbol, which no check sees.
 _MATH_PROSE = ".claude/skills-common/references/mathematical-prose.md"
-_MATH_PROSE_GENRES = ("textbook-chapter-writer",)
+_MATH_PROSE_GENRES = ("textbook-chapter-writer", "thesis-chapter-writer")
 
 
 @pytest.mark.parametrize("name", _MATH_PROSE_GENRES)
