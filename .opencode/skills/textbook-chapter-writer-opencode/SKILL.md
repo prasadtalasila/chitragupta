@@ -122,7 +122,9 @@ both.
 ## Prose standards
 
 `docs/WRITING-STANDARDS.md` holds the cross-genre rules and all of them apply.
-The genre-specific additions are below.
+The genre-specific additions are below. Read
+`.claude/skills-common/references/mathematical-prose.md` now and follow it:
+it governs the sentences around every symbol and derivation.
 
 Where this genre departs from `tutorial-writer-opencode`: explanation is welcome
 here and belongs here. Digression into *why* is a feature of a textbook chapter
@@ -554,8 +556,8 @@ Beyond `docs/WRITING-STANDARDS.md` §4:
 - Prefer a concrete instance over an abstract statement of the general case,
   then generalize from it -- students build the general rule from instances,
   not the reverse. This matters more here than in any other genre.
-- Notation is introduced once, with a worked instance beside it, and never
-  silently reused with a changed meaning in a later section.
+- Notation follows the mathematical-prose reference read under Prose standards,
+  with a worked instance beside each new symbol.
 
 ## Sources
 
