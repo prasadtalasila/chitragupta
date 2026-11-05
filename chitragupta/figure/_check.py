@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta._tex_comments import strip_comments
+from chitragupta.page import ARTICLE
 from chitragupta.figure._advisory import advise
 from chitragupta.figure._allow import Allow, Malformed, parse_allows, settle
 
@@ -40,11 +41,6 @@ from chitragupta.review.figure_layout import (
     FigureResult,
     check_figure,
 )
-
-# The render's text width: A4 (8.27in) less two 1in margins, at
-# 72.27pt/in, for `render_output.render`'s `a4` and `1in` defaults. A
-# test pins it to those defaults. Part X (output targets) replaces it.
-DEFAULT_WIDTH_PT = 453.0
 
 _HFUZZ_PT = 0.1
 _STRAY_PT = 0.5
@@ -102,15 +98,19 @@ class CheckResult:
     layout: str = ""
 
 
-def check(path: Path, width_pt: float, layout: str = "") -> CheckResult:
+def check(
+    path: Path, width_pt: float, layout: str = "", height_pt: float = ARTICLE.text_height_pt
+) -> CheckResult:
     """Compile `path` once, unless it has no picture to measure, and
-    report every rule. The caller has already established that this
-    host has `lualatex` and `tikz.sty`, and that `path` reads as UTF-8."""
+    report every rule on a `width_pt` by `height_pt` page (#1140). The caller
+    has established that `lualatex`, `tikz.sty` and a UTF-8 `path` exist."""
     source = path.read_text(encoding="utf-8")  # pragma: no cover-windows
     skipped = "" if _pictures(source) else NO_PICTURE  # pragma: no cover-windows
     figure = check_figure(path, skipped, boxed=True)  # pragma: no cover-windows
     twin = _twin_text(path)  # pragma: no cover-windows
-    return apply(path, width_pt, figure, source, layout, twin)  # pragma: no cover-windows
+    return apply(
+        path, width_pt, figure, source, layout, twin, height_pt
+    )  # pragma: no cover-windows
 
 
 def _twin_text(path: Path) -> str | None:
@@ -129,6 +129,7 @@ def apply(
     source: str,
     layout: str = "",
     twin: str | None = None,
+    height_pt: float = ARTICLE.text_height_pt,
 ) -> CheckResult:
     """Every rule over an already-checked figure, with its allows applied.
 
@@ -140,9 +141,8 @@ def apply(
     fired, not_measured = evaluate(source, figure, width_pt, layout)
     paired, unpaired = agree(source, twin, path.with_suffix(".txt").name)
     fired, not_measured = _in_rule_order(fired + paired), not_measured + unpaired
-    advisory, unmeasured = advise(
-        figure, source, layout, reference(layout), _unmeasurable(source, figure)
-    )
+    rows, unmeasurable = reference(layout), _unmeasurable(source, figure)
+    advisory, unmeasured = advise(figure, source, layout, rows, unmeasurable, height_pt=height_pt)
     advisory += wording_rules(source)[1]
     allows = parse_allows(source)
     settled = settle(allows.wellformed, fired, not_measured, layout, _names(figure))

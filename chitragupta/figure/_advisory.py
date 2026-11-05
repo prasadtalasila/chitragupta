@@ -28,10 +28,6 @@ from chitragupta.review.figure_layout import (
     leaves,
 )
 
-# The render's text height: the 12pt A4 1in page the layout reference
-# tables already divide by (`tests/test_tikz_scaffolds.py`).
-TEXT_HEIGHT_PT = 700.0
-
 # An arrow under 3mm reads as a tick, not a direction (the v3 plan's
 # threshold). Measured edge to edge; benched over the scaffolds, the
 # exemplars and the reference book's 49 figures in plans/1057.
@@ -58,20 +54,23 @@ def advise(
     layout: str,
     rows: list[RangeRow] | None,
     unmeasurable: str,
+    *,
+    height_pt: float,
 ) -> tuple[list[Finding], list[tuple[str, str]]]:
     """`(reports, not_measured)` for one figure, in registry order.
 
     `source` is the figure file's text, `layout` the name it declared (or
     `--layout` gave), `rows` that layout's reference rows or `None` where
     it has none, and `unmeasurable` why the boxes cannot be read, or `""`
-    where they can. The counts are read from source, so they print
-    either way."""
+    where they can. `height_pt` is the page's text height, which
+    `size-height` reports a share of (`page.Page`). The counts are read
+    from source, so they print either way."""
     reports: list[Finding] = []
     not_measured: list[tuple[str, str]] = []
     if unmeasurable:
         not_measured += [(rule, unmeasurable) for rule in GEOMETRY]
     else:
-        reports, not_measured = _measured(figure, layout, rows)
+        reports, not_measured = _measured(figure, layout, rows, height_pt)
         not_measured += _squash(figure, ambiguous_edges(source), reports)
     nodes, edges = len(figure.declared), len(figure.edges)
     reports.append(
@@ -88,7 +87,7 @@ def advise(
 
 
 def _measured(
-    figure: FigureResult, layout: str, rows: list[RangeRow] | None
+    figure: FigureResult, layout: str, rows: list[RangeRow] | None, height_pt: float
 ) -> tuple[list[Finding], list[tuple[str, str]]]:
     """Height, slack and squash, from boxes known to be there."""
     boxes = figure.boxes
@@ -100,7 +99,7 @@ def _measured(
     if width <= 0 or height <= 0:
         not_measured += [("size-height", NO_AREA), ("size-slack", NO_AREA)]
     else:
-        share = height / TEXT_HEIGHT_PT
+        share = height / height_pt
         reports.append(
             Finding(
                 "size-height",

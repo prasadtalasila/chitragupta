@@ -309,7 +309,12 @@ an assembled book. Arrived at by measurement rather than taste: the
 `\the\oddsidemargin`), a 119pt mean, which is generous enough that a
 15-chapter book ran to 546 pages. A third of that was tried first and
 read too tight for a book meant to be printed -- 80pt is that doubled,
-and is the number to keep unless someone measures a better one.
+and is the number to keep unless someone measures a better one. It
+leaves a text block of 437.5pt by 685pt, narrower than a survey's 453pt,
+and `figure check` measures every figure under the book's drafts
+directory against it. `chitragupta/page.py` records that page, and a test
+fails if these two skeleton lines and that record part, so change both
+together.
 
 **The bibliography points at the user's own `.bib` file**, the same one
 `python -m chitragupta.corpus sync` read -- not a copy, and never a file this

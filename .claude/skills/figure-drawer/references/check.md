@@ -6,6 +6,7 @@ it breaks:
 
 ```text
 figures/flow.tex
+page     article (453.0pt x 700.5pt), not under content/drafts
   size-width            figure     475.2pt wide, target 453.0pt
   node-overlap          legend+pot boxes intersect
 advisory (read; never resolved, allowed or capped)
@@ -20,8 +21,12 @@ figure check: 2 findings, 0 allowed, 0 stale, 0 unchecked, 0 malformed
 Each line is `<rule-id> <target> <measurement>`. It exits 0 whatever it
 finds; exit 2 means it checked nothing (a usage error, or no `lualatex`
 or `tikz.sty`), so report that to the caller instead of reading it as
-clean. `--width PT` sets a narrower target when the caller has one (a
-column, a thesis text block); `--layout NAME` reads the advisory
+clean. The `page` line names the page it measured against: a figure in
+a book's drafts directory is checked against the book's 437.5pt text
+block, every other figure against the article's 453pt, with no flag
+needed. `--page article|book` overrides that choice. `--width PT` sets
+a narrower target when the caller has one (a column, a thesis text
+block); `--layout NAME` reads the advisory
 reports against another layout than the figure's own `% cg-layout:`
 line; `--json` prints the same report as data.
 

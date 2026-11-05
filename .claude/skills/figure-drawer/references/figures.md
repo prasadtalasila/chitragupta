@@ -279,7 +279,8 @@ floats, captions and neighbouring text, where labels wrap and the gaps
 between layers close differently.
 
 `python -m chitragupta.figure look figures/<name>.tex` sets the figure
-alone on the render's own page (12pt, its fonts, its text width),
+alone on the page it prints on (the render's 12pt article, or a book
+unit's book page; the render's fonts; that page's text width),
 cropped to the figure, as `<name>.look.png` at 300 dpi and
 `<name>.look.pdf`, with a red line at the text width if the figure is
 wider. Once the draft carries the figure's marker, `--draft <draft>`
