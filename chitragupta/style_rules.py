@@ -9,6 +9,7 @@ other.
 """
 
 from chitragupta.style_acronym_drift import findings as acronym_drift_findings
+from chitragupta.style_bare_citekeys import findings as bare_citekey_findings
 from chitragupta.style_equations import findings as equation_findings
 from chitragupta.style_figures import findings as figure_findings
 from chitragupta.style_headings import findings as heading_findings
@@ -30,6 +31,7 @@ PYTHON_CHECKS = (
     equation_findings,
     typeset_findings,
     heading_findings,
+    bare_citekey_findings,
 )
 
 # Which rule to keep for a given BCP-47 tag. Everything not named here is
