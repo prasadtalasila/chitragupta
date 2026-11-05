@@ -1,6 +1,6 @@
 # One home for a unit's symbols: `math.md`'s `## Symbols`
 
-Status: **designed, unbuilt.** Written 2026-11-05, for
+Status: **designed, reviewed, unbuilt.** Written 2026-11-05, for
 [issue 1143](https://github.com/prasadtalasila/chitragupta/issues/1143),
 with [issue 1142](https://github.com/prasadtalasila/chitragupta/issues/1142)
 folded into the same pull request. Part of
@@ -88,7 +88,8 @@ already clash).
 ```
 
 **Sections.** `## Symbols` runs from its heading to the next `## `
-heading or the end of the file. `mapping_rows()` and `not_math()` read
+heading or the end of the file, so it may sit before or after
+`## Not mathematics`. `mapping_rows()` and `not_math()` read
 the file with that section removed, so a free-text meaning written as a
 backticked span (`` | `f_s` | `1 / T_s` | ``) is never read as a mapping
 row. The other two tables keep their #1146 behaviour exactly.
@@ -96,22 +97,34 @@ row. The other two tables keep their #1146 behaviour exactly.
 **Rows.** `| `<symbol>` | <meaning> |`; the header row has no backticked
 first cell and is skipped. The meaning is matched in this order:
 `see <unit-id>`; `**<term>**` then optionally `,` and a note; anything
-else is free text. An empty meaning is malformed.
+else is free text. An empty meaning is malformed, and so is a symbol
+with two rows. A `|` inside a meaning is written `\|`, as the
+registry's own tables escape it.
 
-**Which mapping keys need a meaning.** A *bare symbol*: an identifier
-(`m`, `T_oil`, `omega_r`, `x_hat`, `C_build`), optionally with an
-argument list whose arguments are identifiers (`r(t)`, `OCV(SoC)`).
-`m(0)`, `T_c = 6`, `10^9`, `h^2` and `1 / T_s` are expressions and are
-skipped.
+**Which mapping keys need a meaning.** A *bare symbol*: an identifier,
+letters and digits with optional `_` subscripts (`m`, `T_oil`,
+`omega_r`, `x_hat`, `C_build`). Anything else is an expression and is
+skipped: `T_c = 6`, `10^9`, `h^2`, `1 / T_s`, and every function
+application (`m(0)`, `f(T_k)`, `P(A)`; design review: an "identifier
+arguments" rule had no principled line in appendix A). A `## Symbols`
+row may still name any mapping key, so chapter 1 records
+`` | `r(t)` | **Residual** | `` and the List of Symbols prints it; the
+completeness finding just does not ask for one.
 
 **Code.** A new stdlib-only module
 `chitragupta/render_output/_math_symbols.py` (`_math.py` is at 207 of
 C2's 250 lines): `symbols_section(text)`, `load_symbols(text)` returning
 `{symbol: Meaning(kind, text, note, line)}` with `kind` in
-`link`/`see`/`text`, `is_bare_symbol(key)`, and `glossary_spans(draft)`,
-which reads the `## Glossary` section of `scope.md` beside `math.md`
-(HTML comments blanked) and returns its backticked spans. It may not
-import `chitragupta/dossier/`, the same boundary `_math.py` keeps.
+`link`/`see`/`text`, `is_bare_symbol(key)`, `glossary_section(text)` and
+`glossary_spans(draft)`. It may not import `chitragupta/dossier/`, the
+same boundary `_math.py` keeps. **One section reader:**
+`glossary_section(text)` (heading to next `## `, HTML comments blanked,
+line numbers kept) moves here from `dossier/_glossary._section`, which
+calls it (dossier -> render_output is the allowed direction).
+`glossary_spans` reads `scope.md` beside `math.md` through it. The
+`- draft digest:` line `dossier stamp` appends inside `## Glossary`
+needs no exclusion here: its hex span is never a mapping key and is not
+maths-shaped.
 
 ## 2. Findings
 
@@ -119,12 +132,14 @@ import `chitragupta/dossier/`, the same boundary `_math.py` keeps.
 
 A mapping row is used when:
 
-- **an expression key** appears exactly as a span or displayed block in
-  the draft, *or* as a span in the glossary;
-- **a bare-symbol key** occurs as a whole token
-  (`(?<![A-Za-z0-9_])key(?![A-Za-z0-9_])`) in any span or block body of
-  the draft or any glossary span. So `T_r` is used through `T_r = 10`,
-  and becomes an orphan again once the last formula holding it goes.
+- **any key** appears exactly as a span or displayed block in the
+  draft, *or* as a span in the glossary;
+- **a bare-symbol key** also when it occurs as a whole token
+  (`(?<![A-Za-z0-9_])` + `re.escape(key)` + `(?![A-Za-z0-9_])`) inside a
+  **mapped** span or block, of the draft or the glossary. So `T_r` is
+  used through `T_r = 10`, and becomes an orphan again once the last
+  formula holding it goes; a code span such as `range(n)` or
+  `sleep(t)` keeps no single-letter row alive (design review).
 
 A `## Symbols` row does **not** count as a use; if it did, a symbol
 deleted from the draft would keep both rows alive forever.
@@ -141,7 +156,11 @@ not desync.
 | `unmapped` | `` `T_r` has a meaning in ## Symbols but no row in the mapping table, so it cannot be typeset `` |
 | `malformed` | `` ## Symbols row `x` has no meaning `` / `` `x` has two ## Symbols rows `` |
 
-`dossier status` keeps selecting `orphan` only.
+`dossier status` keeps selecting `orphan` only. These print wherever
+`[math]` findings print today, `_checked_math_mapping`, which runs for
+the formats that reach pandoc (pdf, tex, docx, html), not for
+`--format md`; "every draft" in decision 8 means standalone drafts as
+well as units, not every format.
 
 ### `registry check`: `[notation]` and `[glossary]`, exits 0
 
@@ -153,8 +172,10 @@ not desync.
   (no chains: a pointer must land on a link or free-text row);
 - the existing "`x` names different things" and "`x` is typeset
   differently" findings, now over the resolved Symbols rows: the meaning
-  is the linked term's `term_key` or the free text lowercased, the note
-  ignored; LaTeX is each unit's own mapping;
+  is the linked term's `term_key` or the free text lowercased, **plus
+  the lowercased note**, the same key the List of Symbols groups rows
+  by, so the page and the check cannot disagree; LaTeX is each unit's
+  own mapping;
 - **glossary maths**: a glossary span with no row in its own unit's
   mapping, not in its "Not mathematics" table, that
   `_math_shapes.rule_for(span, symbols, True)` calls mathematics:
@@ -169,8 +190,10 @@ not desync.
 ### `registry build --glossary/--notation` refuse on
 
 any `[glossary]` problem (as today, now including retired spellings),
-an unresolved link or pointer, and an `unmapped` symbol (it would print
-as code). A missing meaning does **not** refuse: the symbol is absent
+an unresolved link or pointer, an `unmapped` symbol (it would print as
+code), and a `malformed` row (with two rows, which meaning prints is
+undefined). A pointer to a unit not yet accepted therefore refuses
+until it is; WRITE-A-BOOK's migration note says so. A missing meaning does **not** refuse: the symbol is absent
 from the List of Symbols and `check` has said so.
 
 ## 3. The pages
@@ -189,17 +212,30 @@ above, and is where `_terms`' notation findings move.
   (or there is one definition), they print once in the heading:
   `Moisture thresholds (m_lo, m_hi)`. Otherwise each numbered
   definition starts with its own: `1. (r(t)) the difference ...
-  (Chapter 1)`, `2. (r) in this chapter ... (Chapter 2)`. A unit that
+  (Chapter 1)`, `2. (r) in this chapter ... (Chapter 2)`. Identical
+  definitions merged across units carry the union of their units'
+  symbols, in outline order. A unit that
   links a term without defining it adds nothing to the Glossary. A term
   no row links to prints as it does today.
-- **List of Symbols.** One row per (symbol, meaning, note), in the
-  existing order; units are every unit that defines, links or points at
-  it, in outline order; the symbol is typeset from the first defining
+- **List of Symbols.** One row per (symbol, meaning key), in the
+  existing order; its units are the units holding a `## Symbols` row
+  for that symbol whose resolved meaning key matches (link, free text
+  or pointer), in outline order. A unit that only defines the term in
+  its glossary contributes nothing: chapter 1 is listed under `r(t)`,
+  not under `r`; the symbol is typeset from the first defining
   unit's mapping; the label is the term as the glossary spells it, plus
   `, note`, or the free text through its unit's mapping. A symbol with
   two meanings gets two rows, as today, and is reported.
 - **`registry excerpt`** also returns the other units' resolved Symbols
   rows, so a unit being drafted sees the notation already settled.
+
+**`dossier/_glossary.py`.** `_GLOSSARY_TERM` and `_entry` keep matching
+all three spellings, so `_reason` can quote the replacement row and
+`registry._prose()` still drops definition bullets from the claim
+register; only `Entry.symbol` goes from the public shape. The
+glossary-maths rule (`rule_for` over glossary spans) lives in
+`registry/_symbols.py`, keeping `_math_findings.py` (179 code lines)
+clear of C2 once the token rule is added.
 
 ## 4. Skills and docs
 
@@ -263,3 +299,15 @@ In `chitragupta-drafts`, per unit: slots and symbol bullets become
 pointer; missing meanings, `unmapped` rows and glossary-maths rows are
 added; the pages are rebuilt. Unit 3's draft is not touched; its
 `scope.md` and `math.md` may be. A lessons comment goes on #1143.
+
+## Design review
+
+Reviewed 2026-11-05 by an independent agent; verdict "changes required",
+fourteen findings, none reopening a decision. All are folded in above:
+the token rule counts only mapped spans and escapes the key; function
+applications are expressions; the clash key includes the note;
+`malformed` refuses `build`; the render path's format scope is stated;
+List of Symbols units are defined by `## Symbols` rows; one glossary
+section reader; `_GLOSSARY_TERM` keeps matching the slot; ordering of
+`## Symbols`, `\|` escaping, pointers to unaccepted units and merged
+definitions' symbols are stated.
