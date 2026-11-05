@@ -22,11 +22,15 @@ mention below the threshold) is the report's, `registry/_index_report.py`.
 import hashlib
 import json
 import re
+import string
 
 from chitragupta.registry._terms import _TRAILING_ABBREVIATION, term_key
 from chitragupta.registry._index_toml import settings
 
 TERMS_JSON = "index-terms.json"
+
+# What the filter strips from a word's edges: ASCII punctuation and quotes.
+_EDGES = string.punctuation + "\u201c\u201d\u2018\u2019\u00ab\u00bb"
 
 # A trailing "(DT)": an abbreviation, which gets a "see" entry. Capitals
 # and digits only (a plural `s` allowed), so "(also called X)" is not one.
@@ -42,9 +46,17 @@ def term_id(key: str) -> str:
 
 
 def spelling(text: str) -> str:
-    """A spelling as the filter tokenises prose: lowercase, a hyphen or
-    en dash is a space, spacing collapsed."""
-    return " ".join(re.sub(r"[-–]", " ", text.lower()).split())
+    """A spelling as `assets/pandoc/index_terms.lua` tokenises prose:
+    each word loses a possessive and its edge punctuation, a hyphen or
+    dash splits it, and it is lowercased. The two must agree word for
+    word, or a term never matches."""
+    words = []
+    for raw in text.split():
+        for part in re.split(r"[-\u2013\u2014]", re.sub(r"[\u2019']s$", "", raw)):
+            word = part.strip(_EDGES)
+            if word:
+                words.append(word.lower())
+    return " ".join(words)
 
 
 def _glossary_terms(rows: "list[dict]") -> "dict[str, dict]":

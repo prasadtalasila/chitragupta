@@ -220,3 +220,20 @@ def test_a_term_defined_twice_in_one_chapter_lists_the_chapter_once():
     model = entry(data, "model")
     assert model["defined_in"] == [CH1]
     assert data["see"] == {"M": term_id("model")}
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("Euler's step", "euler step"),
+        ("Heun’s step", "heun step"),
+        ("derived (augmented) state", "derived augmented state"),
+        ("time–series — data", "time series data"),
+        ("“quoted” term.", "quoted term"),
+    ],
+)
+def test_a_spelling_is_tokenised_as_the_filter_tokenises_prose(text, expected):
+    """assets/pandoc/index_terms.lua drops a possessive and edge
+    punctuation and splits on dashes; a spelling that kept them could
+    never match (found on the digital-twins book: "Euler's step")."""
+    assert _index_terms.spelling(text) == expected

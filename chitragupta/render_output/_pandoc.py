@@ -17,7 +17,7 @@ from pathlib import Path
 from chitragupta import config, install, pdf_fonts, programs, tex_engine
 from chitragupta.render_output._csl import _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, _require
-from chitragupta.render_output import _floats, _unit_labels
+from chitragupta.render_output import _floats, _index_terms, _unit_labels
 from chitragupta.render_output._tables import _LATEX_BOUND
 from chitragupta.render_output._tikz_libraries import header_include, preamble_libraries
 from chitragupta.render_output._unicode import font_header_path
@@ -127,6 +127,7 @@ def _pandoc_command(
     fragment: bool = False,
     has_code_block: bool = False,
     preamble_files: list[Path] | None = None,
+    index_terms: Path | None = None,
 ) -> tuple[list[str], dict[str, str] | None]:
     """The pandoc argv and the environment to run it in."""
     # A fragment is for `\input` into a larger document, so it gets no
@@ -158,6 +159,7 @@ def _pandoc_command(
         str(safe_md),
         *shape,
         *_unit_labels.pandoc_args(input_path, fragment),
+        *_index_terms.pandoc_args(input_path, index_terms, out_path.parent),
         # Local image references (`![...](figure.png)`) in the draft are
         # relative to input_path's own directory, not whatever directory
         # this CLI happened to be invoked from. Without this, pandoc's
