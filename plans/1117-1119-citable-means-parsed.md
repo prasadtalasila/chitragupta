@@ -269,7 +269,7 @@ shrink, so the splits are decided above: `ledger_citable.py`,
    false: `grep -rn "known_citekeys\|metadata-only\|findable" docs
    AGENTS.md chitragupta` and the `repair-missing-citekey.md` wording
    ("left the ledger" now also means "no longer parsed").
-7. **Version** 6.159.0 in `pyproject.toml` (and wherever the release
+7. **Version** 6.160.0 in `pyproject.toml` (and wherever the release
    check reads it), the full local check list from DEVELOPER-AGENTS.md,
    then the PR.
 
@@ -290,7 +290,8 @@ reads `parsed_path` with no status guard (the #490 class).
 
 ## Version
 
-MINOR, **6.159.0**: a new style rule. The stricter gate is a bug fix
+MINOR, **6.160.0** (6.159.0 went to #1147, merged first): a new style
+rule. The stricter gate is a bug fix
 restoring the documented invariant, but the release notes say plainly
 that a draft citing an unparsed key now fails and that every dossier
 shows corpus drift once.

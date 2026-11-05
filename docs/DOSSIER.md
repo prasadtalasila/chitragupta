@@ -629,7 +629,7 @@ two skills that produce both write both.
 draft was written, plus a 12-character digest of that set. Only `parsed`
 rows count: an entry whose PDF never parsed is not citable, so it is no
 part of the corpus a draft is measured against. A fingerprint recorded
-before 6.159.0 counted every row, so it mismatches once:
+before 6.160.0 counted every row, so it mismatches once:
 
 ```text
 - corpus: 501 citekeys, digest `a1b2c3d4e5f6`
