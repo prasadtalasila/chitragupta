@@ -76,12 +76,10 @@ def book(signed_book):
     return signed_book
 
 
-def test_a_two_chapter_book_prints_its_index(book, capsys):
-    accept(book, "ch-model", MODEL, glossary=GLOSSARY)
-    accept(book, "ch-data", DATA)
-    (spec.spec_dir(book) / "index.toml").write_text(
-        '[parent]\n"stage" = ["stage 0", "stage 1"]\n', encoding="utf-8"
-    )
+def build(book, capsys):
+    """The book track for an indexed book: term table, fragments through
+    the filter, two passes, `registry index`, the last pass. Returns the
+    rendered directory."""
     rendered = None
     for unit in ("ch-model", "ch-data"):
         draft = book / f"{unit}.md"
@@ -98,6 +96,16 @@ def test_a_two_chapter_book_prints_its_index(book, capsys):
     assert registry.main(["index", str(book), "--idx", str(rendered / "book.idx")]) == 0
     assert "index: " in capsys.readouterr().out
     lualatex(rendered)
+    return rendered
+
+
+def test_a_two_chapter_book_prints_its_index(book, capsys):
+    accept(book, "ch-model", MODEL, glossary=GLOSSARY)
+    accept(book, "ch-data", DATA)
+    (spec.spec_dir(book) / "index.toml").write_text(
+        '[parent]\n"stage" = ["stage 0", "stage 1"]\n', encoding="utf-8"
+    )
+    rendered = build(book, capsys)
 
     ind = (rendered / "book.ind").read_text(encoding="utf-8")
     for printed in ("C++", "R\\&D", "50\\% rule", "Markov chain", "digital twin"):

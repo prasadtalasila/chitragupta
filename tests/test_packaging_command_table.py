@@ -51,7 +51,7 @@ DRAFT_SUBCOMMANDS = {
     },
     "spec": {"init", "show", "sign", "status", "align", "seed"},
     "unit": {"contract", "accept", "status"},
-    "registry": {"build", "check", "excerpt"},
+    "registry": {"build", "check", "excerpt", "index"},
     "tldr": {"write", "show"},
 }
 DRAFT_FLAT_VERBS = {"gate", "references", "evidence", "render", "style", "figures"}

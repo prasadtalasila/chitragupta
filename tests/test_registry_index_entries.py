@@ -29,14 +29,37 @@ def term(glossary, **extra):
         ("Decision", {"decision": 5}, "decision"),
         ("Markov chain", {"Markov chain": 3, "markov chain": 1}, "Markov chain"),
         ("digital twin", {"Digital Twin": 2}, "Digital Twin"),
-        ("Value metric", {}, "Value metric"),
-        ("Value metric", {"value metric": 1, "Value metric": 1}, "Value metric"),
+        ("Value metric", {}, "value metric"),
+        ("Value metric", {"value metric": 1, "Value metric": 1}, "value metric"),
         ("I2C", {"i2c": 0, "I2C": 4}, "I2C"),
-        ("State model", {"state space model": 3}, "State model"),
+        ("State model", {"state space model": 3}, "state model"),
+        ("Black-box model", {"black box model": 2}, "black-box model"),
+        ("Grey-box Model", {"grey box Model": 2}, "grey-box Model"),
+        ("MODBUS RTU", {}, "MODBUS RTU"),
+        ("RS-485", {}, "RS-485"),
+        ("Stage 0", {}, "stage 0"),
     ],
 )
 def test_casing_follows_the_books_own_prose(glossary, midsentence, expected):
+    """With no mid-sentence evidence, or a tie, a plainly capitalised first
+    word is the glossary line's sentence capital and is lowercased
+    (Chicago's default); found on the digital-twins book, where 48 of 289
+    entries kept it, most because a hyphen made the counts disagree."""
     assert entries.cased(glossary, midsentence) == expected
+
+
+@pytest.mark.parametrize(
+    "glossary, midsentence, expected",
+    [
+        ("Kalman filter", {}, True),
+        ("Value metric", {"value metric": 1, "Value metric": 1}, True),
+        ("Decision", {"decision": 2}, False),
+        ("MODBUS RTU", {}, False),
+        ("digital twin", {}, False),
+    ],
+)
+def test_a_guessed_casing_is_known(glossary, midsentence, expected):
+    assert entries.guessed(glossary, midsentence) is expected
 
 
 # --- printed form and sort key -----------------------------------------
@@ -99,10 +122,10 @@ def test_a_child_repeats_its_parents_whole_key_and_drops_the_parents_word():
         {**term("Lean digital twin", parents=["twin, kinds of"]), "key": "lean digital twin"},
     )
     keys, _ = entries.keys(data, {}, identity)
-    assert keys[term_id("stage 0")] == ["stage 0@Stage 0", "stage@stage!0@0"]
+    assert keys[term_id("stage 0")] == ["stage 0@stage 0", "stage@stage!0@0"]
     assert keys[term_id("lean digital twin")] == [
-        "lean digital twin@Lean digital twin",
-        "twin, kinds of@twin, kinds of!lean digital twin@Lean digital twin",
+        "lean digital twin@lean digital twin",
+        "twin, kinds of@twin, kinds of!lean digital twin@lean digital twin",
     ]
 
 
@@ -126,8 +149,8 @@ def test_printed_forms_are_converted_once_each():
 
     data = table({**term("A!b"), "key": "a!b"}, {**term("Model"), "key": "model"})
     keys, _ = entries.keys(data, {term_id("model"): {"model": 1}}, convert)
-    assert keys[term_id("a!b")] == ['a"!b@<A"!b>']
-    assert len(seen) == 1 and sorted(seen[0]) == ["A!b", "model"]
+    assert keys[term_id("a!b")] == ['a"!b@<a"!b>']
+    assert len(seen) == 1 and sorted(seen[0]) == ["a!b", "model"]
 
 
 # --- cross-references ---------------------------------------------------

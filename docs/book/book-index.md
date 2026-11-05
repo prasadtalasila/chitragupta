@@ -99,8 +99,11 @@ a mention of *digital twin* and not of *twin*. An irregular plural
 - **Casing is the book's own.** A glossary line starts with a capital
   ("Decision"); the index prints a word the way most of its
   mid-sentence mentions do, so "decision" but "Markov chain". A tie, or
-  no mid-sentence mention, keeps the glossary's form; `[print]`
-  overrides both.
+  no mid-sentence mention, lowercases a first word that is just a
+  capital and lowercase letters ("Ecological twin", not "MODBUS RTU"),
+  and the report names each such guess, since a proper noun the prose
+  never uses mid-sentence ("Kalman filter") is the one it gets wrong.
+  `[print]` overrides all of it.
 - **A leading article is inverted**: "The four criteria" prints as
   "four criteria, the" and sorts under F.
 - **Symbols** follow the term, as in the Glossary: "state vector (*x*)".
@@ -193,6 +196,7 @@ Nothing in it blocks anything:
 | `generic` | the term has pages in at least three quarters of the chapters | `[drop]` or `[restrict]` |
 | `below-threshold` | a chapter mentions it, but fewer than `min_mentions` times | `[always]` |
 | `mixed-case` | its mid-sentence mentions are capitalised more than one way | `[print]` |
+| `casing-guessed` | no mid-sentence mention, so its first word was lowercased on no evidence | `[print]`, if it is a proper noun |
 | `family` | three or more terms share a first or last word | `[parent]` |
 | `unused` | an `index.toml` spelling or `[always]` chapter matched nothing | remove it |
 | `not-indexable` | the glossary term holds maths, which prose cannot match | `[variants]` |

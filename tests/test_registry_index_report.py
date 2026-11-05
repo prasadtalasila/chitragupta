@@ -18,6 +18,7 @@ def term(key, glossary=None, **extra):
         "defined_in": [],
         "always": [],
         "parents": [],
+        "print": None,
         **extra,
     }
 
@@ -121,7 +122,12 @@ def test_maths_with_no_plain_spelling_and_dangling_see_are_reported():
 def test_write_puts_both_files_beside_the_other_registries(tmp_path):
     twin = term_id("digital twin")
     table = data(term("digital twin", "Digital twin", defined_in=["ch-1"]))
-    side = sidecars(**{"ch-1": {twin: mention(2, True)}, "ch-2": {twin: mention(1, False)}})
+    side = sidecars(
+        **{
+            "ch-1": {twin: mention(2, True, {"digital twin": 2})},
+            "ch-2": {twin: mention(1, False)},
+        }
+    )
     found = report.findings(table, side, {}, UNITS, [])
     md, js = report.write(tmp_path, table, side, found, entries=7)
     text = md.read_text(encoding="utf-8")
@@ -142,3 +148,15 @@ def test_summary_line():
         == "index: 523 entries, 7 findings -> x/index.md (+ .json)"
     )
     assert report.summary(1, 1, "i.md") == "index: 1 entry, 1 finding -> i.md (+ .json)"
+
+
+def test_a_capital_lowercased_on_no_evidence_is_named_with_its_fix():
+    """Right for "Ecological twin", wrong for a proper noun the prose
+    never uses mid-sentence: the report names each guess."""
+    kalman = term_id("kalman filter")
+    side = sidecars(**{"ch-1": {kalman: mention(2, True)}})
+    found = report.findings(data(term("kalman filter", "Kalman filter")), side, {}, UNITS, [])
+    assert kinds(found) == ["casing-guessed"]
+    assert found[0]["fix"] == '[print] "kalman filter" = "Kalman filter"  # if it is a proper noun'
+    printed = data(term("kalman filter", "Kalman filter", print="Kalman filter"))
+    assert report.findings(printed, side, {}, UNITS, []) == []

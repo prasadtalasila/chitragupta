@@ -116,7 +116,7 @@ def test_ids_become_printed_entries_and_encaps_and_pages_survive(tmp_path):
     assert result.problems == []
     written = (tmp_path / "book-index.idx").read_text(encoding="utf-8")
     assert "\\indexentry{digital twin@digital twin|hyperxindexformat{\\textbf}}{3}" in written
-    assert "\\indexentry{model@Model|hyperpage}{5}" in written
+    assert "\\indexentry{model@model|hyperpage}{5}" in written
     assert "\\indexentry{dt@DT|see{digital twin}}{3}" in written
     assert result.entries == 3
     assert idx.read_text(encoding="utf-8") == IDX
@@ -215,10 +215,10 @@ def test_the_real_upmendex_sorts_quotes_and_nests(tmp_path):
     result = finish.finish(idx, UNITS, identity)
     assert result.problems == []
     ind = (tmp_path / "book.ind").read_text(encoding="utf-8")
-    assert "\\item A!b, \\hyperpage{4}" in ind
-    assert ind.count("\\item stage") == 1
+    assert "\\item a!b, \\hyperpage{4}" in ind
+    assert ind.count("\\item stage\n") == 1
     assert "\\subitem 0, \\hyperpage{6}" in ind
-    assert "\\item DT, \\see{Digital twin}{3}" in ind
+    assert "\\item DT, \\see{digital twin}{3}" in ind
 
 
 def test_upmendex_exiting_zero_without_an_ind_is_a_failure(tmp_path):

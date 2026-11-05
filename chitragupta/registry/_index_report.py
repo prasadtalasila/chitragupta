@@ -16,7 +16,7 @@ import math
 from pathlib import Path
 
 from chitragupta.registry import _pages
-from chitragupta.registry._index_entries import ARTICLES
+from chitragupta.registry._index_entries import ARTICLES, guessed
 from chitragupta.registry._index_terms import spelling, term_id
 from chitragupta.registry._terms import term_key
 
@@ -31,6 +31,7 @@ _ORDER = (
     "generic",
     "below-threshold",
     "mixed-case",
+    "casing-guessed",
     "family",
     "unused",
     "not-indexable",
@@ -82,14 +83,24 @@ def _term_findings(term: dict, seen: "dict[str, dict]", units: list, minimum: in
                 f'[always] "{key}" = {json.dumps(below)}',
             )
         )
-    return found + _casing(key, seen)
+    return found + _casing(term, seen)
 
 
-def _casing(key: str, seen: "dict[str, dict]") -> list:
-    counts: dict[str, int] = {}
+def _casing(term: dict, seen: "dict[str, dict]") -> list:
+    key, counts = term["key"], {}
     for entry in seen.values():
         for surface, count in entry["midsentence"].items():
             counts[surface] = counts.get(surface, 0) + count
+    if term["print"] is None and guessed(term["glossary"], counts):
+        return [
+            _finding(
+                "casing-guessed",
+                key,
+                f'"{term["glossary"]}" is never cased mid-sentence, so its first '
+                "word prints lowercase.",
+                f'[print] "{key}" = "{term["glossary"]}"  # if it is a proper noun',
+            )
+        ]
     patterns = {tuple(word[:1].isupper() for word in surface.split()) for surface in counts}
     if len(patterns) < 2:
         return []
@@ -219,7 +230,9 @@ def _cell(chapters: dict, indexed: bool) -> str:
     )
 
 
-def write(directory: Path, data: dict, sidecars: dict, found: list, entries: int):
+def write(
+    directory: Path, data: dict, sidecars: dict, found: list, entries: int
+) -> "tuple[Path, Path]":
     """`index.md` and `index.json` under `directory`; both paths."""
     rows = _rows(data, _chapters(sidecars))
     lines = [

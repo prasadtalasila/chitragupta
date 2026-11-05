@@ -9,8 +9,9 @@ only an opaque id in `\\index{}`.
 - **Casing** is the book's own: a word is lowercased or capitalised when
   most of its mid-sentence mentions are, because a glossary line always
   starts with a capital ("Decision") that the prose does not use. A tie,
-  or no mid-sentence mention, keeps the glossary's form; `[print]`
-  overrides both.
+  or no mid-sentence mention, lowercases a plainly capitalised first
+  word and keeps the rest; the report names each such guess, and
+  `[print]` overrides all of it.
 - **A leading article** is inverted, Chicago-style: "four criteria, the".
 - **Sort keys** are plain lowercase text: maths delimiters dropped, Greek
   spelled out, the article left out, so "ε-greedy" files under E.
@@ -28,26 +29,54 @@ ARTICLES = ("the", "a", "an")
 _LATEX_NAME = re.compile(r"\\(?:var)?([a-z]+)")
 
 
-def cased(glossary: str, midsentence: "dict[str, int]") -> str:
-    """`glossary`, each word cased as most of its mid-sentence mentions
-    are. A mention of a different length (another spelling) casts no
-    vote."""
-    words = glossary.split()
-    votes = [[0, 0] for _ in words]
+# A word as the filter splits prose: spaces, hyphens and dashes separate.
+_TOKEN = re.compile(r"[^\s\-\u2013\u2014]+")
+
+
+def _votes(
+    glossary: str, midsentence: "dict[str, int]"
+) -> "tuple[list[re.Match], list[list[int]]]":
+    """`glossary`'s words, and for each `[lowercase, capitalised]`
+    mid-sentence counts. A mention of a different length (another
+    spelling) casts no vote."""
+    tokens = list(_TOKEN.finditer(glossary))
+    votes = [[0, 0] for _ in tokens]
     for surface, count in midsentence.items():
         parts = surface.split()
-        if len(parts) == len(words):
+        if len(parts) == len(tokens):
             for index, part in enumerate(parts):
                 votes[index][part[:1].isupper()] += count
-    return " ".join(_cased_word(word, *vote) for word, vote in zip(words, votes))
+    return tokens, votes
 
 
-def _cased_word(word: str, lower: int, upper: int) -> str:
-    if lower > upper:
-        return word[:1].lower() + word[1:]
-    if upper > lower:
-        return word[:1].upper() + word[1:]
-    return word
+def _plain(word: str) -> bool:
+    """A capital and then lowercase: "Stage", not "MODBUS" or "I2C"."""
+    return len(word) > 1 and word[0].isupper() and word[1:] == word[1:].lower()
+
+
+def cased(glossary: str, midsentence: "dict[str, int]") -> str:
+    """`glossary`, each word cased as most of its mid-sentence mentions
+    are. With no evidence, or a tie, a plainly capitalised first word is
+    the glossary line's sentence capital, and is lowercased."""
+    tokens, votes = _votes(glossary, midsentence)
+    chars = list(glossary)
+    for index, (token, (lower, upper)) in enumerate(zip(tokens, votes)):
+        first = token.start()
+        if lower > upper:
+            chars[first] = chars[first].lower()
+        elif upper > lower:
+            chars[first] = chars[first].upper()
+        elif index == 0 and _plain(token.group()):
+            chars[first] = chars[first].lower()
+    return "".join(chars)
+
+
+def guessed(glossary: str, midsentence: "dict[str, int]") -> bool:
+    """Whether `cased` lowercased the first word on no evidence: right
+    for "Ecological twin", wrong for a proper noun such as "Kalman
+    filter", so the report names each one."""
+    tokens, votes = _votes(glossary, midsentence)
+    return bool(tokens) and votes[0][0] == votes[0][1] and _plain(tokens[0].group())
 
 
 def inverted(text: str) -> str:
