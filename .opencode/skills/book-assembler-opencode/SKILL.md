@@ -81,8 +81,9 @@ or in the unit through `draft-reviser-opencode` -- never by this skill.
    python -m chitragupta.draft registry check content/drafts/<book>
    ```
 
-   If `build` exits 1 on `[glossary]` bullets, **stop** and report them:
-   the fix is `draft-reviser-opencode` on that unit's `scope.md`, never yours.
+   If `build` exits 1 on `[glossary]` bullets or `[notation]` symbol
+   rows, **stop** and report them: the fix is `draft-reviser-opencode` on that
+   unit's `scope.md` or `math.md`, never yours.
 
    `check` exits 0 whatever it finds -- it is a machine's reading of
    prose, and `docs/ARCHITECTURE.md`'s "Layer 4" is why it may not

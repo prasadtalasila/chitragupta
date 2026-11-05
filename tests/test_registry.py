@@ -75,18 +75,34 @@ DECLARED = {
 MODEL_GLOSSARY = "- **digital twin** -- a model paired with a live data link"
 
 
-def accept(book, unit_id, body, glossary=None):
+def accept(book, unit_id, body, glossary=None, math=None, symbols=()):
     """Accept `body` as `unit_id`'s prose, under the headings its outline
     declares so the chapter stays aligned, with `glossary` (bullets) as
-    its dossier's `## Glossary` when given."""
+    its dossier's `## Glossary` when given, and `math` (ASCII -> LaTeX)
+    plus `symbols` (symbol, meaning cell) as its `math.md` when given."""
     headings = "".join(f"## {heading}\n\n" for heading in DECLARED.get(unit_id, ()))
     path = book / f"{unit_id}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"# {unit_id}\n\n{headings}{body}", encoding="utf-8")
     if glossary is not None:
         write_glossary(path, glossary)
+    if math is not None:
+        write_math(path, math, symbols)
     assert unit.main(["accept", str(book), unit_id]) == 0
     return path
+
+
+def write_math(path, mapped, symbols=()):
+    """`mapped` as `path`'s math.md mapping table, `symbols` as its
+    `## Symbols` (#1143)."""
+    math = dossier.dossier_dir(path) / "math.md"
+    math.parent.mkdir(parents=True, exist_ok=True)
+    lines = ["| ASCII | LaTeX |", "| --- | --- |"]
+    lines += [f"| `{ascii_}` | `{latex}` |" for ascii_, latex in mapped.items()]
+    if symbols:
+        lines += ["", "## Symbols", "", "| Symbol | Meaning |", "| --- | --- |"]
+        lines += [f"| `{symbol}` | {meaning} |" for symbol, meaning in symbols]
+    math.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def write_glossary(path, bullets):
@@ -106,7 +122,7 @@ def xref_findings(book):
 def test_a_term_is_read_from_the_units_glossary(book):
     accept(book, "ch-model", MODEL_UNIT, glossary=MODEL_GLOSSARY)
     (row,) = registry.build(book)["terms"]
-    assert (row["term"], row["kind"], row["unit"]) == ("digital twin", "term", "ch-model")
+    assert (row["term"], row["unit"]) == ("digital twin", "ch-model")
     assert row["definition"] == "a model paired with a live data link"
 
 
@@ -116,16 +132,30 @@ def test_a_definition_bullet_in_the_prose_is_not_a_term(book):
     assert registry.build(book)["terms"] == []
 
 
-def test_a_backticked_term_is_notation_rather_than_terminology(book):
+def test_a_bullet_that_is_only_a_symbol_is_no_term_and_a_finding(book):
     accept(book, "ch-model", MODEL_UNIT, glossary="- **`x_t`** -- the state at time t")
-    (row,) = registry.build(book)["terms"]
-    assert (row["term"], row["symbol"], row["kind"]) == ("`x_t`", "x_t", "notation")
+    built = registry.build(book)
+    assert built["terms"] == []
+    assert any(kind == "glossary" and "math.md" in text for kind, text in registry.findings(built))
 
 
-def test_a_symbol_is_read_beside_its_term(book):
-    accept(book, "ch-model", MODEL_UNIT, glossary="- **Baseline** (`M_0`) -- the present value")
-    (row,) = registry.build(book)["terms"]
-    assert (row["term"], row["symbol"], row["kind"]) == ("Baseline", "M_0", "term")
+def test_a_symbol_is_read_from_math_md_and_linked_to_its_term(book):
+    accept(
+        book,
+        "ch-model",
+        MODEL_UNIT,
+        glossary="- **Baseline** -- the present value",
+        math={"M_0": "M_0"},
+        symbols=[("M_0", "**Baseline**")],
+    )
+    (row,) = registry.build(book)["symbols"]
+    assert (row["symbol"], row["kind"], row["text"], row["unit"]) == (
+        "M_0",
+        "link",
+        "Baseline",
+        "ch-model",
+    )
+    assert (row["key"], row["label"]) == ("baseline|", "Baseline")
 
 
 def test_a_claim_is_a_sentence_that_cites_something():
@@ -209,10 +239,20 @@ def test_a_term_defined_twice_in_one_unit_is_a_finding(book):
 
 
 def test_a_symbol_naming_two_terms_in_two_units_is_a_finding(book):
-    accept(book, "ch-model", MODEL_UNIT, glossary="- **Gain** (`k`) -- the controller's gain")
-    accept(book, "ch-data", "", glossary="- **Rate constant** (`k`) -- how fast heat leaves")
+    accept(
+        book,
+        "ch-model",
+        MODEL_UNIT,
+        glossary="- **Gain** -- the controller's gain",
+        math={"k": "k"},
+        symbols=[("k", "**Gain**")],
+    )
+    accept(book, "ch-data", "", glossary="", math={"k": "k"}, symbols=[("k", "rate constant")])
     findings = registry.findings(registry.build(book))
-    assert any(kind == "notation" and "names different things" in text for kind, text in findings)
+    assert (
+        "notation",
+        "`k` names different things: Gain (ch-model); rate constant (ch-data)",
+    ) in findings
 
 
 def test_one_symbol_with_one_meaning_in_two_units_is_not_a_finding(book):
@@ -223,14 +263,10 @@ def test_one_symbol_with_one_meaning_in_two_units_is_not_a_finding(book):
 
 
 def test_a_symbol_typeset_two_ways_is_a_finding(book):
-    for unit_id, latex in (("ch-model", r"m_\mathrm{t}"), ("ch-data", "m_t")):
-        path = book / f"{unit_id}.md"
-        math = dossier.dossier_dir(path) / "math.md"
-        math.parent.mkdir(parents=True, exist_ok=True)
-        math.write_text(f"| ASCII | LaTeX |\n| --- | --- |\n| `m_t` | `{latex}` |\n")
-    glossary = "- **Target moisture** (`m_t`) -- the target"
-    accept(book, "ch-model", MODEL_UNIT, glossary=glossary)
-    accept(book, "ch-data", "", glossary=glossary)
+    glossary = "- **Target moisture** -- the target"
+    meaning = [("m_t", "**Target moisture**")]
+    accept(book, "ch-model", MODEL_UNIT, glossary, {"m_t": r"m_\mathrm{t}"}, meaning)
+    accept(book, "ch-data", "", glossary, {"m_t": "m_t"}, [("m_t", "see ch-model")])
     findings = registry.findings(registry.build(book))
     assert any(kind == "notation" and "typeset differently" in text for kind, text in findings)
 
@@ -347,13 +383,20 @@ def test_an_excerpt_is_what_a_later_unit_should_be_given(book, capsys):
     assert "ch-model" in out
 
 
-def test_an_excerpt_carries_a_terms_symbol(book, capsys):
-    accept(book, "ch-model", MODEL_UNIT, glossary="- **Baseline** (`M_0`) -- the present value")
+def test_an_excerpt_carries_the_other_units_symbols(book, capsys):
+    accept(
+        book,
+        "ch-model",
+        MODEL_UNIT,
+        glossary="- **Baseline** -- the present value",
+        math={"M_0": "M_0"},
+        symbols=[("M_0", "**Baseline**")],
+    )
     capsys.readouterr()
     registry.main(["excerpt", str(book), "ch-data"])
-    assert "- **Baseline** (`M_0`) (term, in ch-model) -- the present value" in (
-        capsys.readouterr().out
-    )
+    out = capsys.readouterr().out
+    assert "- **Baseline** (in ch-model) -- the present value" in out
+    assert "- `M_0` (in ch-model) -- **Baseline**" in out
 
 
 def test_an_excerpt_leaves_out_the_units_own_definitions(book, capsys):

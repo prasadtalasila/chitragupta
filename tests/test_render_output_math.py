@@ -346,7 +346,8 @@ class TestCheckedMathMapping:
         # mapping matching this text exactly -- the fuller MAPPING would
         # report four orphans here, which is the orphan check being right.
         draft = _draft(
-            mapping="| ASCII | LaTeX |\n| --- | --- |\n| `tau` | `\\tau` |\n",
+            mapping="| ASCII | LaTeX |\n| --- | --- |\n| `tau` | `\\tau` |\n"
+            "\n## Symbols\n\n| `tau` | time constant |\n",
             text="a mapped `tau` and the field `as_of`\n",
         )
         render_output._checked_math_mapping(draft.read_text(encoding="utf-8"), draft)
@@ -473,7 +474,7 @@ class TestFindingsCarryTheirKind:
         monkeypatch.setattr(
             _math_findings,
             "findings",
-            lambda text, mapping, found_file: [
+            lambda text, mapping, found_file, **_: [
                 _math_findings.MathFinding("gap", "`h = 9` looks like a quantity, no row"),
                 _math_findings.MathFinding("orphan", "`tau` has a row but is unused"),
             ],

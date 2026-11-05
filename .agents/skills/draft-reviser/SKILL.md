@@ -141,7 +141,7 @@ on an unanswered one:
 | an `evidence.md` block for a citekey no longer cited | offer `python -m chitragupta.draft dossier prune <draft> --citekey <key> --apply`, the repair primitive that now exists for this (dry-run without `--apply`) -- or note that the citation belongs back in the draft. Log the run in `revisions.md`: the command deliberately does not, being a primitive, exactly as `dossier sections --citekeys --write` does not |
 | a heading with no row in `sections.md` | run `dossier sections --citekeys --write`, the repair primitive that already exists for this |
 | a `sections.md` row with no matching heading | the same command; a rename and a deletion both show up here |
-| a `math.md` row appearing nowhere in the draft | update the row's key to the reworded span, or drop it if the quantity was cut |
+| a `math.md` row appearing nowhere in the draft or its glossary | update the row's key to the reworded span, or drop it (and its `## Symbols` row) if the quantity was cut |
 
 A `not recorded` fingerprint means this draft has never been stamped --
 say so once, and don't treat it as drift to chase. Note what that does
@@ -306,7 +306,8 @@ Update only what actually changed:
   dated. This is the part with nowhere else to live; skipping it is how
   the next session loses the thread.
 - `math.md` -- **only if the draft has one.** Any edit that adds, removes
-  or rewords a quantity desyncs it:
+  or rewords a quantity desyncs it, and a new symbol needs a meaning in
+  its `## Symbols`:
   `.claude/skills-common/references/figures-tables-equations.md` §6, then run
   step 7 and read
   its `[math]` warnings.

@@ -6,8 +6,9 @@ Three registries, all derived by a deterministic post-pass over
 **accepted units only** (#138):
 
 - **terminology and notation** -- read from each unit's `scope.md`
-  glossary since #1138 (chitragupta/registry/_terms.py): a term is
-  defined once, and a symbol means one thing;
+  glossary since #1138 (chitragupta/registry/_terms.py) and its
+  `math.md` `## Symbols` since #1143 (chitragupta/registry/_symbols.py):
+  a term is defined once, and a symbol means one thing;
 - **the claim register** -- what has been asserted, in which unit, with
   which citation;
 - **the cross-reference graph** -- which unit points at what, and whether
@@ -49,7 +50,7 @@ from chitragupta import spec, unit
 from chitragupta.acronyms import _REFERENCES_HEADING
 from chitragupta.dossier._glossary import _GLOSSARY_TERM
 from chitragupta.citation_gate import extract_citekeys_from_line, is_latex
-from chitragupta.registry import _terms
+from chitragupta.registry import _symbols, _terms
 from chitragupta.sentences import split as split_sentences
 
 # `[text](#some-id)` -- the Markdown cross-reference. Anchored on the
@@ -142,6 +143,7 @@ def _read_unit(book, unit_id: str, built: dict, anchors: set[str]) -> None:
     path = unit.draft_path(book, unit_id)
     text = path.read_text(encoding="utf-8")
     _terms.read_unit(unit_id, path, built)
+    _symbols.read_unit(unit_id, path, built)
     for claim, citekeys in claims(text, latex=is_latex(path)):
         built["claims"].append({"claim": claim, "unit": unit_id, "citekeys": citekeys})
     for target in references(text):
@@ -167,6 +169,9 @@ def build(book) -> dict:
         "xrefs": [],
         "glossary": [],
         "no_glossary": [],
+        "symbols": [],
+        "math": [],
+        "glossary_maths": [],
     }
     # Every id in the outline, not only the sections: "see Chapter 1" is
     # an ordinary cross-reference, and reporting it unresolved because a
@@ -185,6 +190,8 @@ def build(book) -> dict:
     for edge in built["xrefs"]:
         edge["resolves"] = edge["target"] in anchors
     built["anchors"] = sorted(anchors)
+    # After every unit, since a link may name a term a later unit defines.
+    built["unresolved_symbols"] = _symbols.resolve(built)
     return built
 
 
@@ -205,7 +212,7 @@ def findings(built: dict) -> list[tuple[str, str]]:
     Evidence for a human judgement, never a verdict -- which is why the
     caller prints these and exits 0 regardless. See docs/WRITE-A-BOOK.md.
     """
-    found = _terms.findings(built)
+    found = _terms.findings(built) + _symbols.findings(built)
     for rows in _repeats(
         [{**row, "key": claim_key(row["claim"])} for row in built["claims"]], "key"
     ).values():
@@ -226,8 +233,9 @@ def findings(built: dict) -> list[tuple[str, str]]:
 def excerpt(book, unit_id: str) -> dict:
     """What a unit's generation should be told about the rest of the book.
 
-    The terminology the *other* accepted units already settled, and the
-    ids available to point at. A unit is not told to conform to itself.
+    The terminology and notation the *other* accepted units already
+    settled (a `## Symbols` row that does not resolve has settled
+    nothing), and the ids available to point at. A unit is not told to conform to itself.
 
     Deliberately **not** part of `unit.contract`'s input digest: a
     registry grows with every acceptance, so hashing it in would mark
@@ -238,6 +246,7 @@ def excerpt(book, unit_id: str) -> dict:
     built = build(book)
     return {
         "terms": [row for row in built["terms"] if row["unit"] != unit_id],
+        "symbols": [row for row in built["symbols"] if row["unit"] != unit_id and "key" in row],
         "anchors": built["anchors"],
     }
 

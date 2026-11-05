@@ -181,7 +181,12 @@ a `<!-- math -->` marker with no row, and one with no `math.md` at all.
 The second is what renaming a draft looks like, because a dossier is
 found by path alone. Heuristic gaps print `[math]` warnings and carry on,
 except for a file that can have no `math.md` (a review report), which
-prints none.
+prints none. So do the `## Symbols` findings (#1143): a mapped symbol
+with no meaning, a meaning with no mapping row, a malformed row. The
+`## Symbols` section is cut out before the mapping is read, and the
+dossier's glossary spans count as uses of a row, though substitution
+never touches the glossary: the book's pages apply each unit's mapping
+to it themselves.
 
 ## 🗂 Five places a rendered bibliography can live
 

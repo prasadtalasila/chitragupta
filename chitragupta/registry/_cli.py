@@ -15,7 +15,7 @@ from pathlib import Path
 
 from chitragupta import spec
 from chitragupta.unit import UnitError
-from chitragupta.registry import _pages, _terms, build, excerpt, findings, registry_dir
+from chitragupta.registry import _pages, _symbols, _terms, build, excerpt, findings, registry_dir
 from chitragupta.render_output._errors import ConversionError, MissingBinary
 from chitragupta.render_output._pandoc import markdown_to_latex
 
@@ -31,7 +31,8 @@ _BANNER = (
 )
 
 _FILES = {
-    "terms.md": ("term", "symbol", "kind", "defined in", "definition"),
+    "terms.md": ("term", "defined in", "definition"),
+    "symbols.md": ("symbol", "meaning", "defined in"),
     "claims.md": ("claim", "unit", "citekeys"),
     "xrefs.md": ("from", "target", "resolves"),
 }
@@ -51,15 +52,23 @@ def _table(headers, rows) -> str:
 
 def _rows(name: str, built: dict) -> list[tuple]:
     if name == "terms.md":
-        return [
-            (row["term"], row["symbol"] or "", row["kind"], row["unit"], row["definition"])
-            for row in built["terms"]
-        ]
+        return [(row["term"], row["unit"], row["definition"]) for row in built["terms"]]
+    if name == "symbols.md":
+        return [(row["symbol"], meaning_cell(row), row["unit"]) for row in built["symbols"]]
     if name == "claims.md":
         return [(row["claim"], row["unit"], " ".join(row["citekeys"])) for row in built["claims"]]
     return [
         (row["from"], row["target"], "yes" if row["resolves"] else "no") for row in built["xrefs"]
     ]
+
+
+def meaning_cell(row: dict) -> str:
+    """A `## Symbols` row's meaning as its `math.md` writes it."""
+    if row["kind"] == "link":
+        return f"**{row['text']}**" + (f", {row['note']}" if row["note"] else "")
+    if row["kind"] == "see":
+        return f"see {row['text']}"
+    return row["text"]
 
 
 def _coverage(built: dict) -> str:
@@ -102,17 +111,18 @@ def _write_pages(built: dict, args) -> int:
     """The Glossary and List of Symbols, or a refusal that writes neither.
 
     A *build* refusing, not a check blocking: `registry check` reports
-    the same `[glossary]` bullets and exits 0. A page built over them
-    would silently leave terms out, so this stops and says which, as
-    `render` stops on an unmapped `<!-- math -->` marker (SOUL.md,
-    "Atomic, or not at all").
+    the same `[glossary]` bullets and `[notation]` rows and exits 0. A
+    page built over them would silently leave terms out or print a
+    symbol as code, so this stops and says which, as `render` stops on an
+    unmapped `<!-- math -->` marker (SOUL.md, "Atomic, or not at all").
     """
-    problems = _terms.problem_findings(built)
+    problems = _terms.problem_findings(built) + _symbols.blocking(built)
     if problems:
         for kind, message in problems:
             print(f"  [{kind}] {message}", file=sys.stderr)
         print(
-            f"\n  {len(problems)} glossary bullet(s) cannot be printed; no page written.",
+            f"\n  {len(problems)} glossary bullet(s) or symbol row(s) cannot be printed; "
+            "no page written.",
             file=sys.stderr,
         )
         return 1
@@ -166,11 +176,13 @@ def _cmd_excerpt(args) -> int:
     print(f"# What the rest of {args.book} already settled")
     print("\n## Terminology already defined elsewhere\n")
     for row in slice_["terms"]:
-        symbol = f" (`{row['symbol']}`)" if row["symbol"] and row["kind"] == "term" else ""
-        print(
-            f"- **{row['term']}**{symbol} ({row['kind']}, in {row['unit']}) -- {row['definition']}"
-        )
+        print(f"- **{row['term']}** (in {row['unit']}) -- {row['definition']}")
     if not slice_["terms"]:
+        print("- nothing yet.")
+    print("\n## Symbols already settled elsewhere\n")
+    for row in slice_["symbols"]:
+        print(f"- `{row['symbol']}` (in {row['unit']}) -- {meaning_cell(row)}")
+    if not slice_["symbols"]:
         print("- nothing yet.")
     print("\n## Ids this unit may point at\n")
     print("\n".join(f"- {anchor}" for anchor in slice_["anchors"]))

@@ -49,7 +49,7 @@ from chitragupta import citation_gate
 from chitragupta.dossier import SCOPE_MD, dossier_dir, draft_relpath
 from chitragupta.dossier._citekeys import citekeys_by_section, evidence_blocks
 from chitragupta.dossier._sections import sections
-from chitragupta.render_output import _math, _math_findings
+from chitragupta.render_output import _math, _math_findings, _math_symbols
 
 # `- draft digest: `a1b2c3d4e5f6`` or `- draft digest: not recorded (...)`
 # in scope.md -- one field over from `dossier._CORPUS_LINE`'s corpus
@@ -155,7 +155,9 @@ def _math_desync(draft: Path, text: str) -> "list[str]":
     has_mapping_file = mapping_file is not None and mapping_file.is_file()
     return [
         finding.message
-        for finding in _math_findings.findings(text, mapping, has_mapping_file)
+        for finding in _math_findings.findings(
+            text, mapping, has_mapping_file, glossary=_math_symbols.glossary_spans(draft)
+        )
         if finding.kind == "orphan"
     ]
 

@@ -247,7 +247,9 @@ It is the reading copy for anyone who is not building LaTeX.
 **Glossary and List of Symbols: generated, never written.** Step 3's
 `registry build --glossary --notation` writes `glossary.tex` and
 `notation.tex` beside `book.tex` from the accepted units' `scope.md`
-glossaries; each carries its own `\chapter*` and `\addcontentsline`, so
+glossaries and `math.md` `## Symbols` tables (a symbol's meaning
+lives in `math.md` since #1143, never in the glossary); each carries
+its own `\chapter*` and `\addcontentsline`, so
 `book.tex` holds one `\input` each, under `\backmatter`, glossary first,
 before the bibliography. A page step 3 did not write (no terms, or no
 symbols) gets no `\input`. The layout, for checking the PDF:
@@ -258,8 +260,16 @@ symbols) gets no `\input`. The layout, for checking the PDF:
   "Chapter 3" only because step 4 puts `\label{<unit-id>}` right after
   each `\chapter`; cleveref names an appendix unit "Chapter A", as it
   does for any `\Cref` to one in this book;
+- a term's symbols are the `## Symbols` rows linking to it, in its
+  heading, or before each numbered definition when the units use
+  different ones;
 - the List of Symbols is one `longtable` for the book, a row per symbol
-  and meaning.
+  and meaning, listing every unit with a `## Symbols` row for it.
+
+The build refuses, writing neither page, on a glossary bullet it cannot
+print (a leftover symbol slot included), a link or `see` pointer that
+does not resolve, and a `## Symbols` row with no mapping row or that is
+empty, half bold or repeated; `registry check` lists each.
 
 What neither page can catch is a qualifier inside a term or a definition
 that only says "as before"; both print as written, which is why the
