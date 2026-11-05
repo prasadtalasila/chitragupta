@@ -1,6 +1,11 @@
 # 1115/1116: which backtick spans are mathematics
 
-Status: **designed, unbuilt; reviewed.** Written 2026-11-05, for
+Status: **built, in [PR 1146](https://github.com/prasadtalasila/chitragupta/pull/1146)
+(v6.158.0).** Changed on the way: `index-step` takes a one-character
+subscript only, `number-list` needs a space after each comma and
+`vector` two or more numbers (the branch review's `plant_id+1`,
+`1,000` and `[1]`); `mapping_rows` and `not_math` parse text, so a
+render reads `math.md` once. Written 2026-11-05, for
 [issue 1115](https://github.com/prasadtalasila/chitragupta/issues/1115)
 and [issue 1116](https://github.com/prasadtalasila/chitragupta/issues/1116),
 fixed together at the user's request because both change the same test.
