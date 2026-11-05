@@ -113,6 +113,8 @@ it renders as (`docs/WRITING-STANDARDS.md` §12), keyed on the exact span
 text, so any edit that adds, removes or *rewords* a quantity desyncs it.
 Add a row for a new one, drop the row for a deleted one, and change the
 key when you reword one. `render` reports what you missed -- `[math]`
-warnings for a gap or an orphan, and a hard failure for a
-`<!-- math -->` marker it cannot resolve -- so render and read its
-output rather than trusting this list.
+warnings for a gap, an orphan or a key with two different LaTeX rows,
+and a hard failure for a `<!-- math -->` marker it cannot resolve -- so
+render and read its output rather than trusting this list. A gap that
+is really code (`404`) gets a row in the file's one-column
+"Not mathematics" table, never a LaTeX row.

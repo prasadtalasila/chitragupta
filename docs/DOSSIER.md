@@ -62,7 +62,7 @@ only.
 | `steering.md` | what the user asked for in chat that the draft doesn't show |
 | `revisions.md` | append-only log of what changed and why |
 | `retrieval.md` | every retrieval call and the size of what it returned |
-| `math.md` | ASCII in the draft -> the LaTeX it renders as ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12) |
+| `math.md` | ASCII in the draft -> the LaTeX it renders as ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12), plus an optional one-column "Not mathematics" table of spans that are code; it is the only one-cell table the file may hold, since a mapping row whose LaTeX cell was forgotten would read as one |
 | `outline.md` | the human's own per-section brief/claim/declared queries |
 
 Four filled dossiers are committed to read alongside this page:

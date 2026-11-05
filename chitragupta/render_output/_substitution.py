@@ -42,14 +42,24 @@ def _checked_math_mapping(draft_text: str, input_path: Path) -> "dict[str, str]"
     `check` raises rather than warning, for the two conditions that are
     certain rather than heuristic -- see `_math.check`. The gaps below it
     print and carry on, the way a figure problem does.
+
+    A file that can have no `math.md` -- a review report, anything outside
+    `content/drafts/` -- prints none of them (#1115): each asks for a row
+    nobody can add, and a report's header quoting the draft's path is
+    otherwise read as arithmetic. `check` still runs there, being certain.
     """
-    mapping = _math.load_mapping(input_path)
+    text = _math.mapping_text(input_path)
+    rows = _math.mapping_rows(text)
+    mapping = dict(rows)
     path = _math.mapping_path(input_path)
     _math.check(draft_text, input_path, mapping)
-    for warning in _math_findings.warnings(
-        draft_text, mapping, path is not None and path.is_file()
+    if path is None:
+        return mapping
+    not_math = _math.not_math(text)
+    for found in _math_findings.duplicates(rows, not_math) + _math_findings.findings(
+        draft_text, mapping, path.is_file(), not_math
     ):
-        print(f"[math] {warning}", file=sys.stderr)
+        print(f"[math] {found.message}", file=sys.stderr)
     return mapping
 
 

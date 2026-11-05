@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from chitragupta import config, render_output
-from chitragupta.render_output import _math, _math_findings
+from chitragupta.render_output import _math, _math_findings, _math_shapes
 
 
 MAPPING = """\
@@ -169,7 +169,7 @@ class TestConvergesOnTheDollarConvention:
 class TestWarnings:
     def test_a_math_shaped_span_with_no_row_is_a_gap(self, isolated_config):
         found = _math_findings.warnings("the value `h = 9` here", {}, False)
-        assert found == ["`h = 9` looks like a quantity but has no row in math.md"]
+        assert found == ["`h = 9` looks like a quantity (relation) but has no row in math.md"]
 
     def test_a_bare_symbol_the_equations_use_is_a_gap(self, isolated_config):
         # The case the operator heuristic cannot see, and the dominant
@@ -393,6 +393,19 @@ class TestImportBoundary:
     def test_imports_stay_inside_the_bare_python_set(self):
         allowed = {"chitragupta.config", "chitragupta.citation_gate", "chitragupta.references"}
         source = Path(_math.__file__).read_text(encoding="utf-8")
+        self._assert_imports_within(source, allowed, "chitragupta.config", "_math.py")
+
+    def test_the_shape_rules_import_only_math(self):
+        # #1115/#1116: the shapes judge, `_math` resolves; the dependency
+        # runs one way, and adds nothing to the bare-python set.
+        source = Path(_math_shapes.__file__).read_text(encoding="utf-8")
+        allowed = {"chitragupta.render_output._math"}
+        self._assert_imports_within(
+            source, allowed, "chitragupta.render_output._math", "_math_shapes.py"
+        )
+
+    @staticmethod
+    def _assert_imports_within(source, allowed, expected, name):
         imported = set()
         for node in ast.walk(ast.parse(source)):
             if isinstance(node, ast.Import):
@@ -404,13 +417,13 @@ class TestImportBoundary:
                 )
         # Non-vacuous guard: an AST walk that matched nothing would make
         # the assertion below pass forever, for the wrong reason.
-        assert "chitragupta.config" in imported, (
+        assert expected in imported, (
             "the import scan found no chitragupta imports at all, so it is not "
-            "checking anything -- has _math.py's import style changed?"
+            f"checking anything -- has {name}'s import style changed?"
         )
         offenders = {n for n in imported if n.startswith("chitragupta")} - allowed
         assert offenders == set(), (
-            f"_math.py imports {offenders}, outside the set _paths.py commits this "
+            f"{name} imports {offenders}, outside the set _paths.py commits this "
             "package to. Locate the dossier with config.mirrored_dir() instead."
         )
 
@@ -469,3 +482,332 @@ class TestFindingsCarryTheirKind:
         monkeypatch.setattr(_math, "mapping_path", lambda draft: None)
         found = _draft_fingerprint._math_desync(Path("draft.md"), "no maths here")
         assert found == ["`tau` has a row but is unused"]
+
+
+class TestShapeRules:
+    """#1116: quantities the single operator regex could not see, and the
+    near misses each new rule must leave alone. One rule per case, so a
+    false alarm names the rule to fix."""
+
+    @pytest.mark.parametrize(
+        "span, rule",
+        [
+            ("h = 9", "relation"),
+            ("3 - 1", "digit-op-digit"),
+            ("-1", "signed-number"),
+            ("-0.074", "signed-number"),
+            ("[1 0]", "vector"),
+            ("[120.0, 1.5]", "vector"),
+            ("[118.5, 1.5]", "vector"),
+            ("[1; -1]", "vector"),
+            ("[a, b; c, d]", "matrix"),
+            ("A * P_est * A^T + Q", "star-caret"),
+            ("A^T", "star-caret"),
+            ("t + h", "spaced-op"),
+            ("a / b", "spaced-op"),
+            ("dT/dt", "derivative"),
+            ("d^2x/dt^2", "derivative"),
+            ("dV/dSoC", "derivative"),
+            ("P(A | B)", "conditional"),
+            ("p(x_k | z_{1:k})", "conditional"),
+            ("sigma_2", "greek-subscript"),
+            ("Pi_ij", "greek-subscript"),
+            ("mu_i", "greek-subscript"),
+            ("T_k+1", "index-step"),
+            ("x_{k+1}", "index-step"),
+            ("1e-12", "sci-number"),
+            ("1.44e6", "sci-number"),
+            ("0, 3", "number-list"),
+            ("0.65, 0.3, 0.05", "number-list"),
+        ],
+    )
+    def test_each_rule_names_itself(self, span, rule):
+        assert _math_shapes.rule_for(span, frozenset(), False) == rule
+
+    @pytest.mark.parametrize(
+        "span",
+        [
+            "-m",
+            "--write",
+            "Ctrl+C",
+            "PI",
+            "[DIGITAL MODEL]",
+            "plant-1",
+            "*.md",
+            "12:30",
+            "192.168.1.1",
+            "as_of",
+            "sleep(5)",
+            "N(118.5, 9.25)",
+            "pip install -e .",
+            # An undated citekey: `_CITEKEY_RE` wants a four-digit year.
+            "noauthor_digital_nodate-1",
+            # A thousands separator, a reference number, snake_case code.
+            "1,000",
+            "[1]",
+            "plant_id+1",
+        ],
+    )
+    def test_near_misses_stay_code(self, span):
+        assert _math_shapes.rule_for(span, frozenset(), False) is None
+
+
+class TestNotMathematicsIsBlankedFirst:
+    """#1115: a token that is plainly a path, a file name, a URL query, a
+    placeholder, a date or a version is not read as arithmetic."""
+
+    @pytest.mark.parametrize(
+        "span",
+        [
+            "02-02-math-model-solution.md",
+            "code/02-01-create-mock-physical-twin/",
+            "/home/u/content/drafts/zz/02-01-s.md",
+            "python -m chitragupta.review uncited /x/content/drafts/zz/02-01-s.md --write",
+            "?limit=",
+            "?since_timestamp=",
+            "GET /sensing/plant_1/moisture?limit=1",
+            "<unit>_<parameter>",
+            "2026-02-01",
+            "6.157.0",
+            "fastapi-0.115.12",
+        ],
+    )
+    def test_is_not_a_quantity(self, span):
+        assert _math_shapes.rule_for(span, frozenset(), True) is None
+
+    def test_a_relation_beside_a_file_name_still_is(self):
+        assert _math_shapes.rule_for("x = 02-01-a.md", frozenset(), False) == "relation"
+
+    def test_a_derivative_is_judged_before_it_could_be_blanked(self):
+        # `dV/dSoC` is path-shaped (a slash and a three-letter run).
+        assert _math_shapes.rule_for("dV/dSoC", frozenset(), False) == "derivative"
+
+
+class TestTheDraftsOwnMathematics:
+    """Context rules: decided on what the draft's `math.md` declares."""
+
+    def test_single_letters_bare_numbers_and_greek_need_a_mapping_file(self):
+        for span, rule in (("t", "single-letter"), ("0.5", "bare-number"), ("Pi", "greek")):
+            assert _math_shapes.rule_for(span, frozenset(), True) == rule
+            assert _math_shapes.rule_for(span, frozenset(), False) is None
+
+    def test_names_from_the_ascii_column_are_known(self):
+        symbols = _math._symbols_of({"EC - EC_0": "x", "V_t = OCV(SoC) - R_0 * I": "y"})
+        assert {"EC", "OCV", "SoC", "V", "R", "I"} <= symbols
+
+    def test_lowercase_words_in_the_ascii_column_are_not_names(self):
+        symbols = _math._symbols_of({"level + h * (pump_flow - demand) / area": "x"})
+        assert "level" not in symbols and "demand" not in symbols and "h" in symbols
+
+    @pytest.mark.parametrize(
+        "span, rule",
+        [
+            ("SoC", "symbol"),
+            ("EC_0", "symbol-built"),
+            ("-k", "symbol-built"),
+            ("OCV(SoC)", "symbol-built"),
+            ("f(T_k)", "symbol-built"),
+            ("N(mu, 9.25)", "symbol-built"),
+            ("(A, B, C)", "symbol-built"),
+        ],
+    )
+    def test_a_span_built_from_known_names(self, span, rule):
+        symbols = frozenset({"SoC", "EC", "k", "OCV", "f", "T", "N", "mu", "A", "B", "C"})
+        assert _math_shapes.rule_for(span, symbols, False) == rule
+
+    def test_a_function_of_numbers_alone_is_code(self):
+        assert _math_shapes.rule_for("sleep(5)", frozenset({"k"}), True) is None
+
+    def test_a_function_counts_by_its_own_name_not_its_argument(self):
+        assert _math_shapes.rule_for("print(k)", frozenset({"k"}), False) is None
+
+    def test_a_tuple_needs_every_member_known_or_numeric(self):
+        assert _math_shapes.rule_for("(A, foo)", frozenset({"A"}), False) is None
+
+    def test_no_known_names_means_no_symbol_rule(self):
+        assert _math_shapes.rule_for("SoC", frozenset(), False) is None
+
+
+class TestGapMessagesNameTheirRule:
+    def test_a_signed_number(self):
+        assert _math_findings.warnings("the sign is `-1` here", {}, False) == [
+            "`-1` looks like a quantity (signed-number) but has no row in math.md"
+        ]
+
+    def test_a_built_symbol(self):
+        found = _math_findings.warnings("the `EC_0` value", {"EC - EC_0 = 1": "x"}, False)
+        assert found == [
+            "`EC_0` is built from symbols this draft's own equations use, but has no row in math.md"
+        ]
+
+    def test_an_untagged_fence_with_an_identifier_expression(self):
+        assert _math_findings.warnings("```\nx = A * x\n```\n", {}, False) != []
+
+    def test_an_untagged_fence_holding_a_path_is_code(self):
+        assert _math_findings.warnings("```\nls code/02-01-x/\n```\n", {}, False) == []
+
+
+NOT_MATH_TABLE = """\
+| ASCII in the draft | LaTeX |
+| --- | --- |
+| `tau` | `\\tau` |
+
+## Not mathematics
+
+| Code in the draft |
+| --- |
+| `404` |
+| `21.4` |
+"""
+
+
+class TestTheNotMathematicsTable:
+    def test_it_is_read_and_never_enters_the_mapping(self, isolated_config):
+        draft = _draft(mapping=NOT_MATH_TABLE, text="`tau` `404` `21.4`")
+        assert _math.not_math(_math.mapping_text(draft)) == frozenset({"404", "21.4"})
+        assert _math.load_mapping(draft) == {"tau": "\\tau"}
+
+    def test_a_listed_span_is_not_a_gap(self):
+        text = "the `tau` and `404` and `21.4` here"
+        found = _math_findings.warnings(
+            text, {"tau": "\\tau"}, True, not_math=frozenset({"404", "21.4"})
+        )
+        assert found == []
+
+    def test_without_the_table_the_bare_number_warns(self):
+        found = _math_findings.warnings("status `404` here", {"tau": "\\tau"}, True)
+        assert "`404` looks like a quantity (bare-number)" in found[0]
+
+    def test_a_listed_span_appearing_nowhere_is_reported(self):
+        found = _math_findings.findings("no code", {}, True, not_math=frozenset({"404"}))
+        assert found == [
+            _math_findings.MathFinding(
+                "unused-code",
+                "`404` is listed as not mathematics in math.md but appears nowhere in the draft",
+            )
+        ]
+
+    def test_the_orphan_filter_ignores_a_stale_code_row(self, isolated_config):
+        from chitragupta.dossier import _draft_fingerprint
+
+        draft = _draft(mapping=NOT_MATH_TABLE, text="`tau`")
+        assert _draft_fingerprint._math_desync(draft, "`tau`") == []
+
+
+DUPLICATE_ROWS = """\
+| ASCII in the draft | LaTeX |
+| --- | --- |
+| `eps_k = y^T * S^-1 * y` | `\\epsilon_k = y^\\top S^{-1} y` |
+| `eps_k = y^T * S^-1 * y` | `\\varepsilon_k = y^\\top S^{-1} y` |
+| `K = P * H^T` | `K = P H^\\top` |
+| `K = P * H^T` | `K = P H^\\top` |
+"""
+
+
+class TestDuplicateRows:
+    """#1116: `load_mapping` builds a dict, so a repeated key's last row
+    wins with nothing said."""
+
+    def test_rows_keep_file_order_and_the_last_row_still_wins(self, isolated_config):
+        draft = _draft(mapping=DUPLICATE_ROWS)
+        assert len(_math.mapping_rows(_math.mapping_text(draft))) == 4
+        assert _math.load_mapping(draft)["eps_k = y^T * S^-1 * y"].startswith("\\varepsilon")
+
+    def test_differing_latex_is_reported_with_both_values(self, isolated_config):
+        rows = _math.mapping_rows(_math.mapping_text(_draft(mapping=DUPLICATE_ROWS)))
+        found = _math_findings.duplicates(rows)
+        assert found == [
+            _math_findings.MathFinding(
+                "duplicate",
+                "`eps_k = y^T * S^-1 * y` has 2 rows in math.md with different LaTeX: "
+                "`\\epsilon_k = y^\\top S^{-1} y`, `\\varepsilon_k = y^\\top S^{-1} y`; "
+                "the last is rendered",
+            )
+        ]
+
+    def test_a_span_both_mapped_and_listed_is_reported(self):
+        found = _math_findings.duplicates([("404", "404")], frozenset({"404"}))
+        assert found == [
+            _math_findings.MathFinding(
+                "duplicate",
+                "`404` has a row in math.md and is also listed as not mathematics; "
+                "the row is rendered",
+            )
+        ]
+
+
+class TestWhereNoMappingCanExist:
+    """#1115: a review report is rendered through `render` too, and its
+    header quotes the draft's path and the command line. It can have no
+    `math.md`, so a gap there asks for a row nobody can add."""
+
+    def test_a_review_report_prints_no_math_findings(self, isolated_config, capsys):
+        from chitragupta.render_output import _substitution
+
+        report = config.REVIEW_DIR / "02-01-s.uncited.md"
+        _substitution._checked_math_mapping("the value `h = 9` here", report)
+        assert "[math]" not in capsys.readouterr().err
+
+    def test_the_same_text_in_a_draft_still_warns(self, isolated_config, capsys):
+        from chitragupta.render_output import _substitution
+
+        _substitution._checked_math_mapping("the value `h = 9` here", _draft(mapping=None))
+        assert "[math] `h = 9` looks like a quantity" in capsys.readouterr().err
+
+    def test_a_marker_in_a_report_is_still_refused(self, isolated_config):
+        from chitragupta.render_output import _substitution
+
+        report = config.REVIEW_DIR / "r.md"
+        with pytest.raises(_math.MathMappingError):
+            _substitution._checked_math_mapping("<!-- math -->\n```\nx = 1\n```\n", report)
+
+    def test_duplicates_are_printed(self, isolated_config, capsys):
+        from chitragupta.render_output import _substitution
+
+        draft = _draft(mapping=DUPLICATE_ROWS, text="`eps_k = y^T * S^-1 * y` `K = P * H^T`")
+        _substitution._checked_math_mapping(draft.read_text(encoding="utf-8"), draft)
+        assert "[math] `eps_k = y^T * S^-1 * y` has 2 rows" in capsys.readouterr().err
+
+
+class TestTheIssuesReproductions:
+    def test_1115_file_and_directory_names(self, isolated_config, capsys):
+        from chitragupta.render_output import _substitution
+
+        text = (
+            "The solution is in `02-02-math-model-solution.md`, and the code is in "
+            "`code/02-01-create-mock-physical-twin/`.\n"
+        )
+        _substitution._checked_math_mapping(text, _draft(mapping=None, text=text))
+        assert "[math]" not in capsys.readouterr().err
+
+    def test_1116_six_unmapped_quantities(self, isolated_config, capsys):
+        from chitragupta.render_output import _substitution
+
+        mapping = (
+            "| ASCII | LaTeX |\n| --- | --- |\n"
+            "| `eps_k = y_inn^T * S^-1 * y_inn` | `\\epsilon_k = y^\\top S^{-1} y` |\n"
+            "| `K = P * H^T` | `K = P H^\\top` |\n"
+        )
+        text = (
+            "The statistic is `eps_k = y_inn^T * S^-1 * y_inn`, and the gain is `K = P * H^T`.\n\n"
+            "The output matrix is `[1 0]` and the noise sign flips to `-1`.\n"
+            "The state starts at `[120.0, 1.5]` and moves to `[118.5, 1.5]`.\n"
+            "The predicted covariance is `A * P_est * A^T + Q`.\n"
+            "The innovation is `-0.074`.\n"
+        )
+        _substitution._checked_math_mapping(text, _draft(mapping=mapping, text=text))
+        err = capsys.readouterr().err
+        for span in (
+            "[1 0]",
+            "-1",
+            "[120.0, 1.5]",
+            "[118.5, 1.5]",
+            "A * P_est * A^T + Q",
+            "-0.074",
+        ):
+            assert f"[math] `{span}` looks like a quantity" in err
+
+
+def test_a_citekey_shaped_key_contributes_no_names():
+    # Lowercase throughout, so the symbol-like filter drops it whole.
+    assert _math._symbols_of({"zech_digital-twins-as--service_2024": "12"}) == frozenset()
