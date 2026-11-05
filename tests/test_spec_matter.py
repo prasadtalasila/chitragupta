@@ -217,3 +217,11 @@ def test_show_prints_the_author_under_the_title(book_dir, capsys):
     capsys.readouterr()
     spec.main(["show", str(book_dir)])
     assert capsys.readouterr().out.startswith("Composable Twins\n  author: Jane Doe\n")
+
+
+def test_the_year_is_the_calendar_year_the_sign_off_runs_in():
+    import datetime
+
+    from chitragupta.spec import _scaffold
+
+    assert _scaffold._this_year() == datetime.date.today().year
