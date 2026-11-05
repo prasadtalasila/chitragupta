@@ -126,10 +126,10 @@ or in the unit through `draft-reviser-opencode` -- never by this skill.
    pandoc invocation restated here. A unit already drafted as `.tex` by
    `thesis-chapter-writer-opencode` needs no conversion.
 
-   Then add the outline's ids as labels: pandoc emits its own `\label{}`
-   from the heading text, and `\label{<unit-id>}` (plus the chapter's
-   `\label{ch-NN}`) goes immediately after that, so a label binds to the
-   chapter counter rather than to whatever sectioning command follows.
+   Then add the outline's ids as labels: pandoc labels a heading with no
+   `{#id}` as `<unit-id>-<heading-text>`, and `\label{<unit-id>}` (plus
+   `\label{ch-NN}`) goes immediately after the chapter's, so it binds to
+   the chapter counter rather than to whatever sectioning command follows.
 
 5. **Compose the book.** Write `content/rendered/<book>/book.tex` and
    `content/rendered/<book>/book.md` from the conventions above, in

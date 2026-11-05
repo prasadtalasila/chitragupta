@@ -17,7 +17,7 @@ from pathlib import Path
 from chitragupta import config, install, pdf_fonts, programs, tex_engine
 from chitragupta.render_output._csl import _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import ConversionError, MissingBinary, _require
-from chitragupta.render_output import _floats
+from chitragupta.render_output import _floats, _unit_labels
 from chitragupta.render_output._tables import _LATEX_BOUND
 from chitragupta.render_output._tikz_libraries import header_include, preamble_libraries
 from chitragupta.render_output._unicode import font_header_path
@@ -155,6 +155,7 @@ def _pandoc_command(
         "pandoc",
         str(safe_md),
         *shape,
+        *_unit_labels.pandoc_args(input_path, fragment),
         # Local image references (`![...](figure.png)`) in the draft are
         # relative to input_path's own directory, not whatever directory
         # this CLI happened to be invoked from. Without this, pandoc's
