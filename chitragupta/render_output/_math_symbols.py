@@ -142,7 +142,9 @@ def _malformed(symbols: "list[tuple[str, Meaning]]") -> "list[MathFinding]":
     found = []
     for symbol, meaning in symbols:
         if meaning.kind == "malformed" and not meaning.text:
-            found.append(MathFinding("malformed", f"`{symbol}` has a ## Symbols row with no meaning"))
+            found.append(
+                MathFinding("malformed", f"`{symbol}` has a ## Symbols row with no meaning")
+            )
         elif meaning.kind == "malformed":
             found.append(
                 MathFinding(

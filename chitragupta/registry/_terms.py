@@ -1,5 +1,5 @@
 """The terminology registry's half of `registry build`/`check`: each
-accepted unit's `scope.md` glossary, read into rows, and the three kinds
+accepted unit's `scope.md` glossary, read into rows, and the two kinds
 of finding those rows make possible (#1138).
 
 The source is the dossier's `## Glossary`, not the unit's prose. Before
@@ -7,7 +7,8 @@ The source is the dossier's `## Glossary`, not the unit's prose. Before
 draft, and the one real book it was measured on held none, so it was
 empty; the glossary is where every genre skill already pins its terms.
 Parsing is chitragupta/dossier/_glossary.py's, shared with the acronym
-checks.
+checks. Symbols are not here since #1143: they live in `math.md`'s
+`## Symbols`, read by chitragupta/registry/_symbols.py.
 
 Split from chitragupta/registry/__init__.py, which holds the claim and
 cross-reference halves, to keep both under docs/CODE-STANDARDS.md's C2
@@ -31,13 +32,6 @@ def term_key(term: str) -> str:
     return " ".join(_TRAILING_ABBREVIATION.sub("", term).lower().split())
 
 
-def _kind(entry) -> str:
-    """`notation` for an entry that is only a symbol, the distinction the
-    registry has drawn since #138. A term written as `$...$` maths is a
-    `[glossary]` problem instead: it has no symbol to typeset."""
-    return "notation" if entry.name is None else "term"
-
-
 def read_unit(unit_id: str, draft: Path, built: dict) -> None:
     """Fold one accepted unit's glossary into `built`."""
     try:
@@ -54,18 +48,12 @@ def read_unit(unit_id: str, draft: Path, built: dict) -> None:
         built["terms"].append(
             {
                 "term": entry.term,
-                "symbol": entry.symbol,
-                "kind": _kind(entry),
                 "unit": unit_id,
                 "line": entry.line,
                 "definition": definition,
-                "typeset": mapping.get(entry.symbol) if entry.symbol else None,
                 # The unit's own math.md applied here, per unit, so the
                 # pages can convert a whole book in one pandoc call.
                 "markdown": _math.substitute(definition, mapping),
-                "symbol_markdown": _math.substitute(f"`{entry.symbol}`", mapping)
-                if entry.symbol
-                else None,
             }
         )
     for problem in _glossary.glossary_problems(draft):
@@ -79,7 +67,7 @@ def _grouped(rows, key) -> "dict[str, list[dict]]":
     return grouped
 
 
-def _units(rows) -> str:
+def units_counted(rows) -> str:
     """`a, b (2x)`: each unit once, with a count where it repeats."""
     counts: dict[str, int] = {}
     for row in rows:
@@ -87,34 +75,12 @@ def _units(rows) -> str:
     return ", ".join(f"{u} ({n}x)" if n > 1 else u for u, n in sorted(counts.items()))
 
 
-def meaning(row: dict) -> str:
-    """What a symbol stands for: its term, or for a bare symbol its
-    definition."""
-    return term_key(row["term"]) if row["kind"] == "term" else row["definition"].lower()
-
-
 def _term_findings(built: dict) -> "list[tuple[str, str]]":
-    named = [row for row in built["terms"] if row["kind"] == "term"]
     return [
-        ("term", f"`{rows[0]['term']}` is defined more than once: {_units(rows)}")
-        for rows in _grouped(named, lambda row: term_key(row["term"])).values()
+        ("term", f"`{rows[0]['term']}` is defined more than once: {units_counted(rows)}")
+        for rows in _grouped(built["terms"], lambda row: term_key(row["term"])).values()
         if len(rows) > 1
     ]
-
-
-def _notation_findings(built: dict) -> "list[tuple[str, str]]":
-    found = []
-    with_symbol = [row for row in built["terms"] if row["symbol"]]
-    for symbol, rows in _grouped(with_symbol, lambda row: row["symbol"]).items():
-        meanings = _grouped(rows, meaning)
-        if len({row["unit"] for row in rows}) > 1 and len(meanings) > 1:
-            listed = "; ".join(f"{m} ({_units(r)})" for m, r in meanings.items())
-            found.append(("notation", f"`{symbol}` names different things: {listed}"))
-        typesets = _grouped(rows, lambda row: row["typeset"] or row["symbol"])
-        if len(typesets) > 1:
-            listed = "; ".join(f"{t} ({_units(r)})" for t, r in typesets.items())
-            found.append(("notation", f"`{symbol}` is typeset differently: {listed}"))
-    return found
 
 
 def problem_findings(built: dict) -> "list[tuple[str, str]]":
@@ -138,5 +104,5 @@ def _glossary_findings(built: dict) -> "list[tuple[str, str]]":
 
 
 def findings(built: dict) -> "list[tuple[str, str]]":
-    """`[term]`, `[notation]` and `[glossary]` findings, in that order."""
-    return _term_findings(built) + _notation_findings(built) + _glossary_findings(built)
+    """`[term]` and `[glossary]` findings; `_symbols` has the `[notation]` ones."""
+    return _term_findings(built) + _glossary_findings(built)

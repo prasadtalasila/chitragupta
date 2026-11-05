@@ -178,7 +178,8 @@ def test_a_paragraph_is_not_a_bullet(draft):
 def test_a_well_formed_glossary_has_no_problems(draft):
     write_glossary(
         draft,
-        "- **Sensor** -- a component.\n- **Baseline** -- a value.\n- **Digital twin (DT)** -- a DO.",
+        "- **Sensor** -- a component.\n- **Baseline** -- a value.\n"
+        "- **Digital twin (DT)** -- a DO.",
     )
     assert _glossary.glossary_problems(draft) == []
 
