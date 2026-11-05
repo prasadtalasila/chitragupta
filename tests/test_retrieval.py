@@ -20,7 +20,7 @@ from chitragupta import (
     retrieval_tables,
 )
 
-from tests.conftest import make_reference, parsed_file, retrieval_cost, run_python
+from tests.conftest import add_citable, make_reference, parsed_file, retrieval_cost, run_python
 
 
 class TestTokenize:
@@ -173,16 +173,9 @@ class TestSearch:
         third title where the literal word "what" is what would win the
         ranking pre-fix, so this is red before _query_terms is wired in,
         not vacuously green."""
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Structural Health Monitoring")
-        )
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="b2024", title="Unrelated Paper About Cats")
-        )
-        ledger.upsert_reference(
-            ledger_con,
-            make_reference(citekey="c2024", title="What Is Wrong With Benchmarks What What"),
-        )
+        add_citable(ledger_con, "a2024", title="Structural Health Monitoring")
+        add_citable(ledger_con, "b2024", title="Unrelated Paper About Cats")
+        add_citable(ledger_con, "c2024", title="What Is Wrong With Benchmarks What What")
         keyword_hits = [r.citekey for r in retrieval.search("structural health monitoring")]
         question_hits = [
             r.citekey for r in retrieval.search("what is structural health monitoring")
@@ -198,12 +191,8 @@ class TestSearch:
         returned `[]` here, because `_query_terms` dropped "5g" and a
         query with no terms at all short-circuits.
         """
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="5G Network Slicing")
-        )
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="b2024", title="Unrelated Paper About Cats")
-        )
+        add_citable(ledger_con, "a2024", title="5G Network Slicing")
+        add_citable(ledger_con, "b2024", title="Unrelated Paper About Cats")
         assert [r.citekey for r in retrieval.search("5g")] == ["a2024"]
 
     def test_an_acronym_reaches_a_paper_that_only_spells_it_out(
@@ -218,12 +207,8 @@ class TestSearch:
         returns nothing.
         """
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="A Digital Twin Of A Greenhouse")
-        )
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="b2024", title="Unrelated Paper About Cats")
-        )
+        add_citable(ledger_con, "a2024", title="A Digital Twin Of A Greenhouse")
+        add_citable(ledger_con, "b2024", title="Unrelated Paper About Cats")
         monkeypatch.setattr(config, "ACRONYM_EXPANSION", False)
         assert retrieval.search("DT") == []
         monkeypatch.setattr(config, "ACRONYM_EXPANSION", True)
@@ -240,7 +225,7 @@ class TestSearch:
             ("b2024", "Twin Studies In Psychology"),
             ("c2024", "DT And Nothing Else"),
         ):
-            ledger.upsert_reference(ledger_con, make_reference(citekey=citekey, title=title))
+            add_citable(ledger_con, citekey, title=title)
         monkeypatch.setattr(config, "ACRONYM_EXPANSION", False)
         bare = [(r.citekey, r.score) for r in retrieval.search("DT twin", k=5)]
 
@@ -261,8 +246,8 @@ class TestSearch:
         and the two tie here rather than ordering by how the query was
         spelled."""
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "twin"})
-        ledger.upsert_reference(ledger_con, make_reference(citekey="typed2024", title="DT Study"))
-        ledger.upsert_reference(ledger_con, make_reference(citekey="added2024", title="Twin Study"))
+        add_citable(ledger_con, "typed2024", title="DT Study")
+        add_citable(ledger_con, "added2024", title="Twin Study")
         scores = {r.citekey: r.score for r in retrieval.search("DT", k=5)}
         assert set(scores) == {"typed2024", "added2024"}
         assert scores["typed2024"] == pytest.approx(scores["added2024"])
@@ -277,20 +262,14 @@ class TestSearch:
         parsed.write_text(
             "opening matter " * 60 + "the digital twin of the greenhouse was calibrated"
         )
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Greenhouse"))
+        add_citable(ledger_con, "a2024", title="Greenhouse")
         ledger.mark_parsed(ledger_con, "a2024", parsed)
         assert "calibrated" in retrieval.search("DT", k=1)[0].snippet
 
     def test_ranks_by_term_overlap_descending(self, ledger_con):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Digital Twin Digital")
-        )
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="b2024", title="Digital Twin Overview")
-        )
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="c2024", title="Unrelated Paper About Cats")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Digital Twin Digital")
+        add_citable(ledger_con, "b2024", title="Digital Twin Overview")
+        add_citable(ledger_con, "c2024", title="Unrelated Paper About Cats")
 
         results = retrieval.search("digital twin", k=5)
         assert [r.citekey for r in results] == ["a2024", "b2024"]
@@ -298,11 +277,25 @@ class TestSearch:
 
     def test_top_k_truncation(self, ledger_con):
         for i in range(5):
-            ledger.upsert_reference(
-                ledger_con, make_reference(citekey=f"item{i}_2024", title="Digital Twin Paper")
-            )
+            add_citable(ledger_con, f"item{i}_2024", title="Digital Twin Paper")
         results = retrieval.search("digital twin", k=2)
         assert len(results) == 2
+
+    @pytest.mark.parametrize("status", ["no_pdf", "discovered", "parse_failed"])
+    def test_search_never_returns_an_unparsed_row(self, ledger_con, status):
+        """#1118: a row whose PDF never parsed is not citable, so search
+        must not offer it -- a `no_pdf` web page matched on its title was
+        how one reached a draft. The parsed row still comes back."""
+        add_citable(ledger_con, "parsed_2024", title="Robotics In Practice")
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="web_2024", title="Robotics web page")
+        )
+        ledger_con.execute("UPDATE items SET status = ? WHERE citekey = 'web_2024'", (status,))
+        ledger_con.commit()
+
+        after = retrieval.search("robotics")
+        assert [r.citekey for r in after] == ["parsed_2024"]
+        assert after[0].score != 0
 
     def test_uses_parsed_text_when_available(self, ledger_con, tmp_path):
         parsed = parsed_file("a2024")
@@ -347,7 +340,7 @@ class TestSearch:
         into the word `nave`, which this document does not contain."""
         parsed = parsed_file("a2024")
         parsed.write_bytes(b"a na\xefve reading of robotics")
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Robotics"))
+        add_citable(ledger_con, "a2024", title="Robotics")
         ledger.mark_parsed(ledger_con, "a2024", parsed)
         assert retrieval.search("nave") == []
         assert "�" in retrieval._full_text(ledger.all_items(ledger_con)[0])
@@ -386,9 +379,7 @@ class TestSearch:
         assert retrieval.search("blockchain") == []
 
     def test_no_matching_terms_excludes_item(self, ledger_con):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Completely unrelated")
-        )
+        add_citable(ledger_con, "a2024", title="Completely unrelated")
         assert retrieval.search("nonexistentterm12345") == []
 
     def test_length_normalization_prevents_long_docs_from_winning_structurally(
@@ -410,18 +401,16 @@ class TestSearch:
             "irrelevant filler word " * 400 + "blockchain mentioned twice blockchain here"
         )
 
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="short2024", title="Short Paper")
-        )
+        add_citable(ledger_con, "short2024", title="Short Paper")
         ledger.mark_parsed(ledger_con, "short2024", short_parsed)
-        ledger.upsert_reference(ledger_con, make_reference(citekey="long2024", title="Long Paper"))
+        add_citable(ledger_con, "long2024", title="Long Paper")
         ledger.mark_parsed(ledger_con, "long2024", long_parsed)
 
         results = retrieval.search("blockchain")
         assert [r.citekey for r in results] == ["short2024", "long2024"]
 
     def test_score_is_a_float(self, ledger_con):
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+        add_citable(ledger_con, "a2024", title="Digital Twin")
         results = retrieval.search("digital")
         assert isinstance(results[0].score, float)
 
@@ -432,10 +421,7 @@ class TestSearch:
         identical documents, so nothing about content or score is what
         keeps them distinct in the result, only the citekey."""
         for i in range(4):
-            ledger.upsert_reference(
-                ledger_con,
-                make_reference(citekey=f"item{i}_2024", title="Digital Twin Digital Twin"),
-            )
+            add_citable(ledger_con, f"item{i}_2024", title="Digital Twin Digital Twin")
 
         results = retrieval.search("digital twin", k=10)
 
@@ -451,7 +437,7 @@ class TestIndexCaching:
     def test_cache_file_is_created_on_first_search(self, ledger_con, tmp_path):
         parsed = parsed_file("a2024")
         parsed.write_text("digital twin content")
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+        add_citable(ledger_con, "a2024", title="Digital Twin")
         ledger.mark_parsed(ledger_con, "a2024", parsed)
 
         assert not config.RETRIEVAL_INDEX_PATH.exists()
@@ -466,11 +452,9 @@ class TestIndexCaching:
         loser_parsed = parsed_file("loser2024")
         loser_parsed.write_text("nothing related to the query at all, just filler text")
 
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="winner2024", title="Digital Twin")
-        )
+        add_citable(ledger_con, "winner2024", title="Digital Twin")
         ledger.mark_parsed(ledger_con, "winner2024", winner_parsed)
-        ledger.upsert_reference(ledger_con, make_reference(citekey="loser2024", title="Unrelated"))
+        add_citable(ledger_con, "loser2024", title="Unrelated")
         ledger.mark_parsed(ledger_con, "loser2024", loser_parsed)
 
         retrieval.search("digital twin", k=1)  # builds the cache
@@ -493,7 +477,7 @@ class TestIndexCaching:
     def test_changed_parsed_file_content_triggers_reindex(self, ledger_con, tmp_path):
         parsed = parsed_file("a2024")
         parsed.write_text("nothing about the topic here")
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Some Title"))
+        add_citable(ledger_con, "a2024", title="Some Title")
         ledger.mark_parsed(ledger_con, "a2024", parsed)
         assert retrieval.search("blockchain") == []
 
@@ -504,7 +488,7 @@ class TestIndexCaching:
     def test_corrupt_cache_file_is_rebuilt_not_fatal(self, ledger_con, tmp_path):
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
         config.RETRIEVAL_INDEX_PATH.write_text("{not valid json")
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+        add_citable(ledger_con, "a2024", title="Digital Twin")
 
         results = retrieval.search("digital")
         assert [r.citekey for r in results] == ["a2024"]
@@ -519,7 +503,7 @@ class TestIndexCaching:
                 }
             )
         )
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+        add_citable(ledger_con, "a2024", title="Digital Twin")
 
         results = retrieval.search("digital")
         assert [r.citekey for r in results] == ["a2024"]
@@ -532,7 +516,7 @@ class TestIndexCaching:
         # crash on that .get() call instead of being treated as a cache miss.
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
         config.RETRIEVAL_INDEX_PATH.write_text(json.dumps([1, 2, 3]))
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+        add_citable(ledger_con, "a2024", title="Digital Twin")
 
         results = retrieval.search("digital")
         assert [r.citekey for r in results] == ["a2024"]
@@ -545,7 +529,7 @@ class TestIndexCaching:
         config.RETRIEVAL_INDEX_PATH.write_text(
             json.dumps({"version": 1, "items": ["not", "a", "dict"]})
         )
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+        add_citable(ledger_con, "a2024", title="Digital Twin")
 
         results = retrieval.search("digital")
         assert [r.citekey for r in results] == ["a2024"]
@@ -558,7 +542,7 @@ class TestIndexCaching:
         config.RETRIEVAL_INDEX_PATH.write_text(
             json.dumps({"version": 1, "items": {"a2024": "not-a-dict"}})
         )
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+        add_citable(ledger_con, "a2024", title="Digital Twin")
 
         results = retrieval.search("digital")
         assert [r.citekey for r in results] == ["a2024"]
@@ -569,7 +553,7 @@ class TestIndexCaching:
         # reused as-is and crash _bm25_scores's entry["length"] read with
         # a raw KeyError -- against this module's own documented promise
         # that any unexpected shape is a cache miss, not a crash.
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+        add_citable(ledger_con, "a2024", title="Digital Twin")
         with ledger.connection() as con:
             item = ledger.all_items(con)[0]
         fp = retrieval_cache._fingerprint(item)
@@ -582,7 +566,7 @@ class TestIndexCaching:
         assert [r.citekey for r in results] == ["a2024"]
 
     def test_removed_citekey_is_dropped_from_the_cache(self, ledger_con):
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+        add_citable(ledger_con, "a2024", title="Digital Twin")
         retrieval.search("digital")
         with open(config.RETRIEVAL_INDEX_PATH) as f:
             assert "a2024" in json.load(f)["items"]
@@ -791,7 +775,7 @@ class TestEvidence:
     def _seed(self, con, tmp_path, text, citekey="a2024"):
         parsed = parsed_file(citekey)
         parsed.write_text(text)
-        ledger.upsert_reference(con, make_reference(citekey=citekey, title="A Paper"))
+        add_citable(con, citekey, title="A Paper")
         ledger.mark_parsed(con, citekey, parsed)
 
     def test_returns_the_supporting_passages(self, ledger_con, tmp_path):
@@ -813,20 +797,23 @@ class TestEvidence:
         self._seed(ledger_con, tmp_path, "some text")
         assert retrieval_cli.evidence("a2024", "the of and") == []
 
-    def test_a_citekey_with_no_parsed_text_is_not_an_error(self, ledger_con):
+    def test_a_citekey_whose_pdf_never_parsed_is_refused(self, ledger_con):
+        # #1118: it has no text to quote and may not be cited, so asking
+        # for its evidence is the caller error a missing key is.
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Robotics"))
-        assert retrieval_cli.evidence("a2024", "quantum entanglement") == []
+        with pytest.raises(KeyError, match=r"a2024 has no parsed PDF \(status no_pdf\)"):
+            retrieval_cli.evidence("a2024", "quantum entanglement")
 
     def test_parse_failed_status_does_not_serve_stale_parsed_text(self, ledger_con, tmp_path):
-        # #490, same read boundary as retrieval.search's regression above.
+        # #490, same read boundary as retrieval.search's regression above;
+        # since #1118 the row is refused outright rather than read as empty.
         self._seed(ledger_con, tmp_path, "simulation time must follow wall clock time")
         ledger.mark_parse_failed(ledger_con, "a2024", "corrupt pdf")
-        assert retrieval_cli.evidence("a2024", "wall clock") == []
+        with pytest.raises(KeyError, match=r"status parse_failed"):
+            retrieval_cli.evidence("a2024", "wall clock")
 
     def test_the_title_alone_can_carry_a_match(self, ledger_con):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Robotics And Control")
-        )
+        add_citable(ledger_con, "a2024", title="Robotics And Control")
         assert retrieval_cli.evidence("a2024", "robotics", chars=40) != []
 
     def test_an_unknown_citekey_raises(self, ledger_con):
@@ -866,7 +853,7 @@ class TestOneQueryOneSetOfTerms:
         parsed.write_text(
             "opening matter " * 60 + "the digital twin of the greenhouse was calibrated"
         )
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Greenhouse"))
+        add_citable(ledger_con, "a2024", title="Greenhouse")
         ledger.mark_parsed(ledger_con, "a2024", parsed)
         return ledger_con
 
@@ -954,7 +941,7 @@ class TestCli:
     def _seed(self, con, tmp_path):
         parsed = parsed_file("a2024")
         parsed.write_text("padding " * 50 + "digital twin architecture patterns catalog")
-        ledger.upsert_reference(con, make_reference(citekey="a2024", title="Twin Patterns"))
+        add_citable(con, "a2024", title="Twin Patterns")
         ledger.mark_parsed(con, "a2024", parsed)
 
     def test_search_prints_candidates_and_points_at_evidence(self, ledger_con, tmp_path, capsys):
@@ -1031,7 +1018,7 @@ class TestCli:
             )
             + " what appears alone over here"
         )
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Patterns"))
+        add_citable(ledger_con, "a2024", title="Patterns")
         ledger.mark_parsed(ledger_con, "a2024", parsed)
 
         with_question = retrieval_cli.evidence("a2024", "what are architecture patterns", windows=2)
@@ -1055,7 +1042,7 @@ class TestCli:
         that is the run the count used to be invisible on. On stderr:
         stdout is the contract the genre skills parse."""
         self._seed(ledger_con, tmp_path)
-        ledger.upsert_reference(ledger_con, make_reference(citekey="b2024", title="Twin Gone"))
+        add_citable(ledger_con, "b2024", title="Twin Gone")
         ledger.mark_parsed(ledger_con, "b2024", parsed_file("b2024"))  # never written
         for _ in range(2):
             assert retrieval.main(["search", "digital twin", *extra]) == 0
@@ -1263,9 +1250,7 @@ class TestCli:
         self._seed(ledger_con, tmp_path)
         greenhouse = parsed_file("b2024")
         greenhouse.write_text("padding " * 50 + "greenhouse actuator calibration drifted")
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="b2024", title="Greenhouse Actuator")
-        )
+        add_citable(ledger_con, "b2024", title="Greenhouse Actuator")
         ledger.mark_parsed(ledger_con, "b2024", greenhouse)
 
         assert (
@@ -1403,7 +1388,7 @@ class TestLogNeverFailsTheSearch:
     def _seed(self, con, tmp_path):
         parsed = parsed_file("a2024")
         parsed.write_text("padding " * 50 + "digital twin architecture patterns")
-        ledger.upsert_reference(con, make_reference(citekey="a2024", title="Twin Patterns"))
+        add_citable(con, "a2024", title="Twin Patterns")
         ledger.mark_parsed(con, "a2024", parsed)
 
     def test_an_oserror_while_logging_is_reported_not_raised(
@@ -1439,7 +1424,7 @@ class TestTheIndexIsParsedOncePerProcess:
     def test_a_second_load_does_not_reread_the_file(self, ledger_con, tmp_path, monkeypatch):
         parsed = parsed_file("a2024")
         parsed.write_text("digital twin content", encoding="utf-8")
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+        add_citable(ledger_con, "a2024", title="Digital Twin")
         ledger.mark_parsed(ledger_con, "a2024", parsed)
         retrieval.search("digital")
 

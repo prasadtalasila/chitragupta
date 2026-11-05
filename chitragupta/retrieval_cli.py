@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from chitragupta import ledger, retrieval_cache, retrieval_expansion, retrieval_iterative
+from chitragupta.ledger_citable import PARSED
 from chitragupta.retrieval import (
     SearchResult,
     _full_text,
@@ -53,9 +54,10 @@ def evidence(
     A lookup for one document you already care about, not a stage
     anything is obliged to run: use it when a `search` snippet is not
     enough to judge a source you are minded to cite. Returns more text
-    per document than a snippet, chosen for the query. Returns `[]` for a
-    citekey with no parsed text: a source the corpus layer could not read
-    is a real answer, not an error.
+    per document than a snippet, chosen for the query. A citekey whose
+    PDF never parsed raises `KeyError`, as a missing one does (#1118): it
+    has no text to read and may not be cited, so `search` never offers
+    it. A parsed row whose text file is gone still returns `[]`.
 
     Deliberately reads `parsed_path` rather than going through
     `chitragupta/passages.py`: this ranks the same text BM25 ranked, so what
@@ -77,6 +79,8 @@ def evidence(
         con.row_factory = None
     if row is None:
         raise KeyError(f"{citekey} is not in the ledger")
+    if row["status"] != PARSED:  # not citable, and no text to read (#1118)
+        raise KeyError(f"{citekey} has no parsed PDF (status {row['status']})")
     # `search`'s own terms, acronym expansion included (#953): a paper
     # ranked on "digital twin" for `DT` must have a window for `DT` too.
     terms = set(query_terms(query)[0])

@@ -24,7 +24,7 @@ import logging
 import re
 from typing import Any
 
-from chitragupta import chroma_paging, config, logging_setup
+from chitragupta import chroma_paging, config, ledger_citable, logging_setup
 from chitragupta.enrich import _index_reader, _rerank
 from chitragupta.enrich.corpus import CorpusDoc
 from chitragupta.enrich.embed_text import chunk_text, get_text, hash_text, strip_image_refs
@@ -267,13 +267,11 @@ def search(query: str, k: "int | None" = None, snippet_chars: int = 500) -> list
     what restricting the corpus to the bibliography buys (see corpus.py)
     -- there is no longer any such thing as a hit a draft may not cite.
 
-    The two do not cover quite the same *documents*, though, and a caller
-    choosing between them should know which way it cuts. BM25 indexes
-    each item's title whether or not it has parsed text, so a
-    metadata-only entry is still findable there; `build_index` skips any
-    document `get_text` returns nothing for, because there is nothing to
-    embed. A bib entry whose PDF is missing or failed to parse is
-    therefore searchable by title and not by meaning.
+    Neither offers a bib entry whose PDF is missing or failed to parse
+    (#1118): such a row is not citable. BM25 ranks only `parsed` rows,
+    `build_index` skips any document `get_text` returns nothing for, and
+    the hits below drop any citekey the ledger holds as unparsed -- an
+    index built before a row's status changed still has its chunks.
 
     At most `config.EMBED_MAX_PASSAGES_PER_SOURCE` of the k results come
     from any one citekey (issue #305), out of a pool of
@@ -330,6 +328,11 @@ def search(query: str, k: "int | None" = None, snippet_chars: int = 500) -> list
             raw["documents"][0], raw["metadatas"][0], raw["distances"][0]
         )
     ]
+    # A row whose PDF never parsed is not citable (#1118), but its chunks
+    # outlive a status change until the next build, so they are dropped
+    # here, before the reranker spends anything on them.
+    unparsed = ledger_citable.unparsed_on_this_host()
+    hits = [hit for hit in hits if hit["citekey"] not in unparsed]
     if config.RERANK:
         hits = _rerank.rerank(query, hits)
 

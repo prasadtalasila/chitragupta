@@ -12,9 +12,7 @@ def _seed_every_status(ledger_con, tmp_path):
     ledger.mark_parse_failed(ledger_con, "failed_c_2024", "corrupt pdf")
     pdf = tmp_path / "found.pdf"
     pdf.write_bytes(b"%PDF-1.4 dummy")
-    ledger.upsert_reference(
-        ledger_con, make_reference(citekey="found_d_2024", pdf_path=str(pdf))
-    )
+    ledger.upsert_reference(ledger_con, make_reference(citekey="found_d_2024", pdf_path=str(pdf)))
 
 
 class TestCitable:

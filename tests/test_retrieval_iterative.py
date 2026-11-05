@@ -4,7 +4,7 @@ model generation the paper calls y_{t-1} -- FEATURE-ROADMAP.md's E4."""
 
 from chitragupta import ledger, retrieval, retrieval_iterative
 
-from tests.conftest import make_reference, parsed_file
+from tests.conftest import add_citable, make_reference, parsed_file
 
 
 class TestBoundYPrev:
@@ -45,7 +45,7 @@ class TestBoundYPrev:
 
 class TestSearchIterative:
     def test_blank_y_prev_skips_round_two_and_matches_plain_search(self, ledger_con):
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+        add_citable(ledger_con, "a2024", title="Digital Twin")
         plain = retrieval.search("digital twin")
         found, truncated = retrieval_iterative.search_iterative("digital twin", "   ")
         assert [r.citekey for r in found] == [r.citekey for r in plain]
@@ -55,27 +55,21 @@ class TestSearchIterative:
         """A query with no terms must not fall through to a round-2
         search on y_prev alone -- that would be prose-only retrieval
         with no sub-theme anchor, not what E4 describes."""
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+        add_citable(ledger_con, "a2024", title="Digital Twin")
         found, truncated = retrieval_iterative.search_iterative("", "digital twin prose")
         assert found == []
         assert truncated is False
 
     def test_round_two_surfaces_a_citekey_round_one_missed(self, ledger_con):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Overview")
-        )
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="b2024", title="Greenhouse Actuator Calibration")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Overview")
+        add_citable(ledger_con, "b2024", title="Greenhouse Actuator Calibration")
         found, _ = retrieval_iterative.search_iterative(
             "digital twin", "the greenhouse actuator calibration drifted", k=5
         )
         assert {"a2024", "b2024"} <= {r.citekey for r in found}
 
     def test_a_citekey_in_both_rounds_is_not_duplicated(self, ledger_con):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a2024", title="Digital Twin Digital Twin")
-        )
+        add_citable(ledger_con, "a2024", title="Digital Twin Digital Twin")
         found, _ = retrieval_iterative.search_iterative(
             "digital twin", "digital twin appears in the draft prose too"
         )
@@ -84,16 +78,14 @@ class TestSearchIterative:
 
     def test_result_is_capped_at_k_even_after_merging_two_rounds(self, ledger_con):
         for i in range(8):
-            ledger.upsert_reference(
-                ledger_con, make_reference(citekey=f"item{i}_2024", title="Digital Twin Paper")
-            )
+            add_citable(ledger_con, f"item{i}_2024", title="Digital Twin Paper")
         found, _ = retrieval_iterative.search_iterative(
             "digital twin", "digital twin architecture prose", k=3
         )
         assert len(found) == 3
 
     def test_truncated_flag_reflects_bound_y_prev(self, ledger_con):
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+        add_citable(ledger_con, "a2024", title="Digital Twin")
         long_prose = "digital twin " * 300
         _, truncated = retrieval_iterative.search_iterative("digital twin", long_prose)
         assert truncated is True
@@ -105,7 +97,7 @@ class TestSearchIterative:
         so round 2's score for it is strictly higher than round 1's."""
         parsed = parsed_file("a2024")
         parsed.write_text("digital twin " * 3 + "greenhouse actuator " * 20)
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Twin Paper"))
+        add_citable(ledger_con, "a2024", title="Twin Paper")
         ledger.mark_parsed(ledger_con, "a2024", parsed)
 
         round1 = retrieval.search("digital twin", k=1)
@@ -126,7 +118,7 @@ class TestSearchIterative:
         not be dropped or corrupted by the second, non-improving pass."""
         parsed = parsed_file("a2024")
         parsed.write_text("digital twin architecture patterns")
-        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Twin Paper"))
+        add_citable(ledger_con, "a2024", title="Twin Paper")
         ledger.mark_parsed(ledger_con, "a2024", parsed)
 
         round1 = retrieval.search("digital twin", k=1)

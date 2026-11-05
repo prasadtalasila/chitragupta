@@ -58,6 +58,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Any
 
+from chitragupta.ledger_citable import PARSED
 from chitragupta import (
     _reference_cut,
     _tokens,
@@ -365,8 +366,12 @@ def search(
     if not terms:
         return []
 
+    # Only parsed rows are ranked at all: a row whose PDF never parsed is
+    # not citable (#1118), so it is never offered however well its title
+    # matches, and it takes no part in any IDF. `search` is the one writer
+    # of the BM25 cache, so the cache holds exactly this set.
     with ledger.reading() as con:
-        items = ledger.all_items(con)
+        items = [item for item in ledger.all_items(con) if item["status"] == PARSED]
 
     index = retrieval_cache._load_index(items, _tokenize_item)
     scores = _bm25_scores(index, terms)
