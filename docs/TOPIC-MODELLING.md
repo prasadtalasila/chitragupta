@@ -267,7 +267,8 @@ measured instead of assumed.
 - `bench/bench_topic_depth.py`: the granularity sweep behind
   `topic_min_cluster_size` and its siblings.
 - `bench/bench_topic_membership.py`: the five-mechanism comparison
-  behind HDBSCAN soft clustering.
+  behind descriptor-cosine memberships, which replaced HDBSCAN soft
+  clustering.
 
   **A correction worth keeping, because it bit twice.** An early version
   of this comparison scored HDBSCAN's own soft clustering at 1%

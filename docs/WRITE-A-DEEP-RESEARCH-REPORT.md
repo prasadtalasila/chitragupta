@@ -312,7 +312,7 @@ is left out):
 
 - Draft: `content/drafts/deep-research-fidelity.md`
 - Command: `chitragupta review agenda content/drafts/deep-research-fidelity.md`
-- chitragupta 6.155.0
+- chitragupta 6.166.1
 
 ## Sources
 

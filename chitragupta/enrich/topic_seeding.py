@@ -186,11 +186,10 @@ def run_stage(docs: list[CorpusDoc], seed_phrases: tuple) -> dict:
     """`run_topic_seeding()` shaped as an enrichment-stage result.
 
     The status vocabulary lives here rather than in
-    chitragupta/enrich/__main__.py, where the other three stages shape
-    their own: that module sits four code lines under docs/CODE-STANDARDS.md's
-    250-line ceiling with three stages, so a fourth cannot be spelled out
-    there without pushing the orchestrator past a boundary this feature
-    has no business moving. The wrapper it keeps is two lines.
+    chitragupta/enrich/stages.py, where docling, embed and bertopic shape
+    their own. The placement was made when the stages lived in
+    enrich/__main__.py at docs/CODE-STANDARDS.md's 250-line ceiling, and
+    every later stage followed it (docs/TECHNICAL-DEBT.md, R14).
 
     `skipped` rather than an error for an empty phrase list, because that
     is the ordinary state of this stage: most libraries have no seed

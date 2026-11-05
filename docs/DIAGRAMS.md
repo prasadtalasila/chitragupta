@@ -322,7 +322,7 @@ flowchart TB
   end
 
   %% ─────────────── 5 · GATE ───────────────
-  GATE{{"<b>THE CITATION GATE</b> · <code>chitragupta draft gate</code><br/>Is every citekey in this draft present in the ledger?<br/><small>run twice: by the PostToolUse hook on every write under content/drafts/,<br/>and by the skill itself before it shows you anything</small>"}}
+  GATE{{"<b>THE CITATION GATE</b> · <code>chitragupta draft gate</code><br/>Is every citekey in this draft in the ledger as a parsed source?<br/><small>run twice: by the PostToolUse hook on every write under content/drafts/,<br/>and by the skill itself before it shows you anything</small>"}}
   BLOCK["<b>REFUSED</b> · exit 1<br/><small>the write is blocked and the chain stops</small>"]
   ITER["<b>the skill fixes it and re-runs — itself</b><br/><small>“Fix and re-run until <code>OK</code>. Never present a draft that hasn't<br/>passed.” — every SKILL.md carries this instruction.<br/>It swaps the bad key for one retrieval actually returned, or drops<br/>the claim. You are shown nothing until the gate is green.</small>"]
 
@@ -1079,7 +1079,7 @@ sequenceDiagram
     rect rgba(254,242,242,0.7)
     Note over Hook,Gate: VERIFY — enforced mechanically, twice
     Hook->>Gate: every Write/Edit under content/drafts/
-    Gate->>Led: are these citekeys in the ledger?
+    Gate->>Led: are these citekeys in the ledger, each with a parsed PDF?
     loop until the gate exits 0 — you are shown nothing before that
         alt any citekey unresolved
             Led-->>Gate: no

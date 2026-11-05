@@ -8,7 +8,7 @@ on a small/CPU-only host. Output is Markdown, written per-doc so a
 failure on one document doesn't lose progress on the others.
 
 Not the same thing as `[parser].backend = "docling"`, and not made
-redundant by it. That setting points chitragupta/pdf_text.py at the same library
+redundant by it. That setting points chitragupta/pdf_text/ at the same library
 to produce one .txt per citekey for BM25; this stage produces structured
 Markdown plus the `<doc>.passages.json` sidecar for the whole corpus,
 always, whatever that setting says.
@@ -206,7 +206,7 @@ def _convert(doc: CorpusDoc, converter) -> "object":
     if converter is None:
         converter = _build_converter()
     result = converter.convert(doc.pdf_path)
-    # Same hole chitragupta/pdf_text.py closed in v1.2.0, on the other call site:
+    # Same hole chitragupta/pdf_text/ closed in v1.2.0, on the other call site:
     # convert(raises_on_error=True) raises only on FAILURE, so a
     # PARTIAL_SUCCESS would otherwise be written to
     # content/docling/<doc>.md as though complete -- and that .md feeds

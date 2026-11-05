@@ -417,12 +417,13 @@ produces evidence for a human judgement, never a verdict, and each exits
 | `review digest` | how much of a verbatim digest is not the sources' own words, and what each such sentence is. The one aid over a genre of its own, and the one the agenda never reads |
 
 Why they are not gates: the gate answers a question with one correct
-answer (is this citekey in the ledger?), so it can be automatic and
-absolute. Eight of the eleven answer questions of judgement, where a
-machine verdict would be either wrong often enough to be ignored, or
-trusted more than it deserves. `quotation` is binary and deterministic
-and still not a gate, because what it is measured against is the parse
-rather than the ledger ([ARCHITECTURE.md](ARCHITECTURE.md) has it).
+answer (is this citekey in the ledger, with a parsed PDF?), so it can
+be automatic and absolute. Eight of the eleven answer questions of
+judgement, where a machine verdict would be either wrong often enough
+to be ignored, or trusted more than it deserves. `quotation` is binary
+and deterministic and still not a gate, because what it is measured
+against is the parse rather than the ledger
+([ARCHITECTURE.md](ARCHITECTURE.md) has it).
 `union` is the second such case and is no more a gate for it: set
 arithmetic over what a unit recorded, which decides nothing about
 whether the assembly is right to have dropped a source. `agenda` asks no

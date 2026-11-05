@@ -145,7 +145,7 @@ disable=raw-checker-failed,
 
         # Everything below is a decision this repository has already
         # taken, not an oversight, and each was measured before being
-        # switched off -- see docs/TECHNICAL-DEBT.md's 5.2 for the
+        # switched off -- see docs/TECHNICAL-DEBT.md's 5.1 for the
         # baseline these came from. They are disabled here rather than
         # inline so that the disable list and the debt register stay one
         # list instead of two (CODE-STANDARDS.md's build order, item 2).
@@ -413,7 +413,7 @@ good-names=i,
            # `with pipeline_lock(...)` / `with interrupt_guard(...)`,
            # where PascalCase would read as a class being constructed
            # rather than a block being entered. Named in
-           # docs/TECHNICAL-DEBT.md's 5.2 baseline as belonging here
+           # docs/TECHNICAL-DEBT.md's 5.1 baseline as belonging here
            # rather than being a finding to fix.
            pipeline_lock,
            interrupt_guard

@@ -1,6 +1,7 @@
 """The corpus layer's single entry point: `python -m chitragupta.corpus <verb>`.
 
-Two commands over one subject -- the ledger and the parsed text beside it:
+Four commands over one subject -- the ledger, the parsed text beside it,
+and the topics found in them:
 
     python -m chitragupta.corpus sync [--reparse] [--remove-stale]
         bib file -> ledger -> PDF text. Deterministic, idempotent,
@@ -8,6 +9,12 @@ Two commands over one subject -- the ledger and the parsed text beside it:
 
     python -m chitragupta.corpus ledger [--list|--status S|--citekey K]
         read-only view of what that run recorded.
+
+    python -m chitragupta.corpus topics
+        read-only view of which papers each seed topic matched.
+
+    python -m chitragupta.corpus discover [PHRASE]
+        resolve a phrase to a topic and walk its papers and neighbours.
 
 **One entry point, one level deep**, like `python -m chitragupta.draft <verb>`
 for the drafting layer and `python -m chitragupta.review <aid>` for review.

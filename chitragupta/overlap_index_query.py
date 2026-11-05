@@ -50,7 +50,7 @@ def postings_for_gram(index: CorpusIndex, gram_hash: int) -> list[tuple[str, int
     then page/position order).
 
     Unlike `pages_for_gram`, this keeps every occurrence rather than
-    collapsing to distinct pages: `chitragupta/review/verbatim_check.py`'s `scan`
+    collapsing to distinct pages: `chitragupta/review/verbatim_check/`'s `scan`
     mode needs `token_position` to align a run across consecutive draft
     positions, which a deduplicated page list would throw away.
     """

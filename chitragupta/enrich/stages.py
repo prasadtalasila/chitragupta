@@ -71,8 +71,8 @@ def stage_bertopic(docs, args) -> dict:
     }
 
 
-# Its ok/skipped shaping lives in keyword_extract.run_stage(), for the
-# same ceiling reason stage_seed_topics states below. Before seed-topics
+# Its ok/skipped shaping lives in keyword_extract.run_stage(), as
+# stage_seed_topics' does below. Before seed-topics
 # in the order, because the extracted phrases exist to be unioned into
 # that stage's seed list (#605).
 def stage_extract_keywords(docs, args) -> dict:
@@ -97,12 +97,11 @@ def _seed_phrases() -> tuple:
     return tuple(merged)
 
 
-# Unlike the three above, this stage's ok/skipped shaping lives in
-# topic_seeding.run_stage() rather than here. Not a style break for its
-# own sake: this module is four code lines under docs/CODE-STANDARDS.md's
-# 250-line ceiling with three stages, so spelling a fourth out in the
-# local idiom would push the orchestrator over a boundary that adding a
-# stage is no reason to move. The seed list is read here, though, because
+# Unlike docling, embed and bertopic, this stage's ok/skipped shaping
+# lives in topic_seeding.run_stage(), a placement made when the stages
+# still lived in enrich/__main__.py at the 250-line ceiling; every later
+# stage followed it (docs/TECHNICAL-DEBT.md, R14). The seed list is read
+# here, though, because
 # "is there a seed file" is the question that decides whether the stage
 # runs at all, and that is this file's decision to make.
 def stage_seed_topics(docs, args) -> dict:

@@ -14,7 +14,7 @@ is generative, no genre skill runs it, and every artefact it writes
 reading of the same papers -- which is also why chitragupta/enrich/__main__.py takes
 the same write lock as sync.
 
-`chitragupta/render_output.py` is deliberately not here. It is the drafting
+`chitragupta/render_output/` is deliberately not here. It is the drafting
 layer's publish step, needs no package from this group, and runs on the
 bare system python3 -- what a module costs to install is a different
 axis from which layer it belongs to.

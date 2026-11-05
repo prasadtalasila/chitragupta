@@ -67,7 +67,7 @@ LAYERS = {
     ),
     "enrich": (
         "chitragupta.enrich.__main__",
-        "Docling -> embeddings/Chroma -> BERTopic, over the whole corpus",
+        "Docling -> embeddings/Chroma -> BERTopic -> topic graph: seven stages, whole corpus",
     ),
 }
 
@@ -85,8 +85,8 @@ COMMANDS = {
     ),
     "doctor": (
         "chitragupta.doctor",
-        "probe and report: OS binaries, the enrich extra, torch "
-        "vs. the GPU driver, a competing distribution",
+        "probe and report: OS binaries, the enrich extra, torch vs. the GPU "
+        "driver, a competing distribution, hook launchers, OpenCode skills, pdf fonts",
     ),
     "install": (
         "chitragupta.install",

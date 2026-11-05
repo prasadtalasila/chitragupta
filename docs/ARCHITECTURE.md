@@ -135,7 +135,7 @@ the ledger, and none takes the write lock:
 | Command | What it does |
 | --- | --- |
 | `chitragupta init [DIR]` | scaffolds a project directory: `config.toml`, `.claude/`, `papers/`, `content/` and the prose docs |
-| `chitragupta doctor` | probes the OS binaries, the `enrich` extra and torch against the GPU driver, and reports; it installs nothing |
+| `chitragupta doctor` | probes the OS binaries, the `enrich` extra, torch against the GPU driver, a competing install, the hook launchers, the OpenCode skill copies and the pdf fonts, and reports; it installs nothing |
 | `chitragupta install <stage>` | runs the two `install_full_pipeline.sh` stages pip cannot: `os-deps` and `gpu-torch` |
 | `chitragupta figure sync\|check\|new\|look` | `chitragupta/figure/`: starts a figure from a scaffold, checks it against the figure rules, renders how it will print, and keeps the house style block current. The `figure-drawer` skill drives it ([docs/figure-checks/README.md](figure-checks/README.md)) |
 

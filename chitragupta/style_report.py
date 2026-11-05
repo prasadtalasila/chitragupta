@@ -1,7 +1,7 @@
 """What a prose-conformance report looks like: the lines, not the findings.
 
 Split from `chitragupta/style_check.py` for the reason `chitragupta/review/__init__.py` is
-split from the three aids it serves -- what a report *says* is a separate
+split from the aids it serves -- what a report *says* is a separate
 concern from what produced it, and keeping them together pushed one module
 past the 250-line limit docs/CODE-STANDARDS.md sets.
 

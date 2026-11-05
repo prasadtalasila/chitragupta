@@ -86,7 +86,7 @@ ACCEPTABLE = (
 
 # `<stem>.accepted.json`, not `<stem>.<aid>.json`: `review.report_path`
 # refuses any name outside `review.AIDS`, and rightly -- this is not an
-# aid's report, and adding a tenth key to that registry to file it would
+# aid's report, and adding a key to that registry to file it would
 # claim a report nothing writes.
 SUFFIX = "accepted"
 

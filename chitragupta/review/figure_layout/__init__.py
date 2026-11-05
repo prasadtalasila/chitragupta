@@ -1,10 +1,8 @@
 """TikZ layout check: what a figure's own geometry says about it.
 
-One of the seven aids in the **review layer**, with
-chitragupta/review/citation_provenance.py, chitragupta/review/citation_coverage.py,
-chitragupta/review/verbatim_check/, chitragupta/review/synthesis.py,
-chitragupta/review/uncited_prose.py and chitragupta/review/quotation.py --
-read over a finished draft, by a person or by a driver, never a gate, and
+One of the review layer's aids (`chitragupta/review/_registry.py`'s
+`AIDS` names them all) -- read over a
+finished draft, by a person or by a driver, never a gate, and
 never holding the write lock. It reports and exits 0 whatever it finds.
 
 docs/TIKZ-STYLE.md is the standard a figure is written against; this is

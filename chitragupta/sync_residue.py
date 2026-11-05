@@ -246,7 +246,7 @@ def _scan_chroma(citekeys: list[str]) -> tuple[dict[str, Hit], "str | None"]:
     # `content/chroma/` is checked for existence *before* the stack is
     # probed, and the collection is read through `overlap_chroma`, which
     # never creates one. A corpus embedded under a different
-    # `[embedding].model` lives in a differently named collection and
+    # `[enrich].embedding_model` lives in a differently named collection and
     # reads as zero here; that is a true statement about the collection
     # this configuration would use, not a miscount.
     if not config.CHROMA_DIR.is_dir():

@@ -140,7 +140,7 @@ def render_markdown(report, command: str, found) -> str:
 
 def finding_id(citekey: str, quote: str) -> str:
     """A finding's name, stable across runs and position-free -- the same
-    convention the other six aids' `finding_id` use.
+    convention every other aid's `finding_id` uses.
 
     Keyed on the pair whose truth is in question, so both halves hold and
     both are wanted. Editing an unrelated block renames nothing, and

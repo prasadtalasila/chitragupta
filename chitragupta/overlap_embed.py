@@ -142,7 +142,7 @@ def align_draft(
 
     Everything is returned, unranked and undeduplicated -- `report`
     below is what turns this into what a reader sees. The two are
-    separate because `chitragupta/review/verbatim_check.py` needs the full list
+    separate because `chitragupta/review/verbatim_check/` needs the full list
     to work out which citekeys matched where before it narrows
     (`_cites_source`: a passage several corpus papers each state can be
     cited to any one of them, and a narrowed list has already thrown

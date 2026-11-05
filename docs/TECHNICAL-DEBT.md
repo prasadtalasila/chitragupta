@@ -160,9 +160,10 @@ deletes its entry, in the PR that pays it.
 - **R14.** **Four enrich stages hand-build the same result dict.** `run_stage`
   in `enrich/keyword_extract.py`, `topic_converge.py`, `topic_graph.py`
   and `topic_seeding.py` each spell out `{"status", "detail"}`.
-  `topic_seeding.py`'s docstring says the code lives there because
-  `enrich/__main__.py` is four lines under C2. *Refactor:* a
-  `StageResult` constructor, which also frees the orchestrator.
+  The placement was forced when the stages lived in `enrich/__main__.py`
+  at the C2 ceiling. They have since moved to `enrich/stages.py` (72 code
+  lines), so nothing still forces it. *Refactor:* a `StageResult`
+  constructor, with every stage's shaping in `stages.py`.
 - **R15.** **`tests/conftest.py`'s `isolated_config` restates config's paths
   by hand:** 24 entries, `CONTENT_DIR` and the 23 paths derived from it in
   `config.py` and `config_enrich.py`, "diffable by eye". A path added
@@ -188,7 +189,7 @@ deletes its entry, in the PR that pays it.
   `review/verbatim_check/__init__.py`, `render_output/_pandoc.py`,
   `figure/__main__.py` and `dossier/_outline.py`. Another 77 are
   between 200 and 249. The cost is already visible: R14's
-  misplaced code, and `tests/conftest.py`'s table, which exists to dodge C1.
+  scattered code, and `tests/conftest.py`'s table, which exists to dodge C1.
 - **R18.** **`render_output/__init__.py` is the hub of the render path:** 247
   code lines, `render` at 25 statements and 10 parameters, and 50
   private names imported from its own siblings. *Refactor:* a

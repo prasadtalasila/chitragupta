@@ -149,7 +149,7 @@ def mirrored_dir(path: Path, source_root: Path, target_root: Path) -> "Path | No
     that is a separate decision each one makes for itself, before it gets
     here (`render_output` and `references` confine reads to `content/`
     with `require_inside_content`, and `review.require_reviewable` does
-    the same for the three review aids).
+    the same for every review aid).
 
     Only the part of `path` *below* `source_root` is ever carried over,
     and both sides are resolved before being compared, so the result can
@@ -158,7 +158,7 @@ def mirrored_dir(path: Path, source_root: Path, target_root: Path) -> "Path | No
     `source_root` and `target_root` are configuration, and a symlinked
     one can land outside without any argument being at fault.
 
-    Lives here rather than in either caller because `chitragupta/render_output.py`
+    Lives here rather than in either caller because `chitragupta/render_output/`
     is committed to stdlib plus `config`/`citation_gate`/`references` so a
     genre skill can render under bare `python` -- it cannot import
     `chitragupta/dossier/`, and before this the rule was written out three times

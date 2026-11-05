@@ -37,7 +37,7 @@ from chitragupta.citekey_safety import citekey_path
 
 DEFAULT_N = 8
 
-# Mirrors chitragupta/review/verbatim_check.py's WORD/norm -- see
+# Mirrors chitragupta/review/verbatim_check/'s WORD/norm -- see
 # chitragupta/overlap_index.py's module docstring.
 WORD = re.compile(r"[a-z0-9]+")
 
@@ -99,7 +99,7 @@ def gram_hashes(words: list[str], n: int) -> list[int]:
 
 
 def _pages_from_parsed_text(parsed_path: str) -> list[str]:
-    """Same convention as `chitragupta/review/verbatim_check.py::pages`'s fallback:
+    """Same convention as `chitragupta/review/verbatim_check/_corpus.py::pages`'s fallback:
     strip stray control bytes, split on the form-feed page boundary."""
     raw = Path(parsed_path).read_text(encoding="utf-8", errors="replace")
     return re.sub(r"[\x00-\x08\x0e-\x1f]", " ", raw).split("\f")

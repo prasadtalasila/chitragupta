@@ -167,7 +167,7 @@ def build_index(docs: list[CorpusDoc]) -> dict[str, int]:
 
     Same `  [done/total] <citekey>` shape chitragupta/sync.py and
     docling_parse.py already use for their own per-document progress, and
-    flushed for the reason pdf_text.py flushes its interrupt notice:
+    flushed for the reason pdf_text/ flushes its interrupt notice:
     stdout is block-buffered when it isn't a terminal, and the tail of an
     interrupted run is exactly the part worth keeping.
     """

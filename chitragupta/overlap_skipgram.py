@@ -54,7 +54,7 @@ under the same `config.OVERLAP_DIR`.
 
 Advisory only for now (discussion #115: "start advisory, promote with
 evidence") -- nothing in this module or in
-`chitragupta/review/verbatim_check.py`'s tier-2 finder decides gate-eligibility;
+`chitragupta/review/verbatim_check/`'s tier-2 finder decides gate-eligibility;
 that is a later, separate decision (issue #130), unlike tier 3
 (embedding), which docs/PLAGIARISM-DESIGN.md rules out from ever gating, by
 construction.
@@ -174,7 +174,7 @@ def stem_filter(words: list[str]) -> tuple[list[str], list[int]]:
     Whole-stream, not family-split -- used where robustness to a
     substitution elsewhere in the text does not matter, e.g. normalizing
     a short allowlisted phrase for masking (see
-    `chitragupta/review/verbatim_check.py`'s tier-2 allowlist handling), not for
+    `chitragupta/review/verbatim_check/`'s tier-2 allowlist handling), not for
     generating skip-grams themselves (`skipgram_postings`, below, which
     needs the family split for the reason the module docstring gives).
     """
@@ -223,7 +223,7 @@ def skipgram_postings(words: list[str], n: int) -> list[tuple[int, int, int]]:
     -- a document fingerprint's postings only ever need a position to
     align a diagonal against, never their own span, since a run's extent
     is always measured on the draft side. A draft-side caller
-    (`chitragupta/review/verbatim_check.py`'s tier-2 finder) needs both, to
+    (`chitragupta/review/verbatim_check/`'s tier-2 finder) needs both, to
     report where a match starts and ends in the draft actually scanned.
 
     A window at least `MAX_NUMERIC_SHARE` of whose stems are bare

@@ -671,9 +671,9 @@ fresh, the way the paragraph below states. Run all four before you push
 command rather than a detail: a narrower glob is how a tree stops being
 checked without anyone deciding it should. `ruff format --check`'s roots
 are wider than the other three's, deliberately: `tests/` and `bench/`
-are formatted though neither is linted, see
-[docs/TECHNICAL-DEBT.md](docs/TECHNICAL-DEBT.md)'s 5.5 for why narrowing
-to match would only relocate the gap:
+are formatted though neither is linted. Indentation and wrapping are
+cheap to enforce and disruptive to leave inconsistent, so narrowing the
+roots to match would only relocate the gap, not close it:
 
 ```bash
 pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
@@ -713,8 +713,8 @@ reports `tail`'s status, so a real finding passes for a clean run.
 number, and a score can improve while the thing you cared about gets
 worse. The tree is at zero for all four, which is this file's own rule
 that **a check that has not been made to pass must not ship.**
-[docs/TECHNICAL-DEBT.md](docs/TECHNICAL-DEBT.md)'s 5.2 and 5.5 record
-how each adoption got there.
+[docs/TECHNICAL-DEBT.md](docs/TECHNICAL-DEBT.md)'s 5.1, 5.2 and 5.4
+record how each adoption got there.
 
 The configuration decisions that still bind, so a later reader does not
 have to re-derive them:

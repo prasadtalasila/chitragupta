@@ -51,9 +51,8 @@ one safe to publish. So the report says which answer it gave
 or quotes checked -- and a run that checked nothing does not read as
 one that checked and found it clean.
 
-One of the seven commands in the **review layer**, beside
-citation_provenance.py, citation_coverage.py, verbatim_check/,
-synthesis.py, figure_layout/ and uncited_prose.py -- read over a
+One of the review layer's aids (`chitragupta/review/_registry.py`'s
+`AIDS` names them all) -- read over a
 finished draft, by a person or by a driver, never a gate, and never
 holding the write lock.
 

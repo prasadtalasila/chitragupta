@@ -376,7 +376,7 @@ out):
 
 - Draft: `content/drafts/course/ch3-state-estimation.md`
 - Command: `chitragupta review agenda content/drafts/course/ch3-state-estimation.md`
-- chitragupta 6.155.0
+- chitragupta 6.166.1
 
 ## Sources
 

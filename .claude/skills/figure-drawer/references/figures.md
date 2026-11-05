@@ -183,7 +183,7 @@ width, wider than the scaffolds' 345pt, and carry one paper's content.
 What its parts are for:
 
 - **The house block, left byte-identical.** Everything between
-  `% >>> chitragupta figure style v1 ... <<<` and
+  `% >>> chitragupta figure style vN ... <<<` and
   `% >>> end chitragupta figure style <<<` is a verbatim copy of
   `assets/tikz/cg-figstyle.tex`. It travels inside the figure file
   because the renderer injects only `\usepackage{tikz}` and a thesis
