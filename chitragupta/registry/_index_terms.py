@@ -22,7 +22,6 @@ mention below the threshold) is the report's, `registry/_index_report.py`.
 import hashlib
 import json
 import re
-from pathlib import Path
 
 from chitragupta.registry._terms import _TRAILING_ABBREVIATION, term_key
 from chitragupta.registry._index_toml import settings
@@ -73,7 +72,9 @@ def _names(doc: dict) -> "list[tuple[str, str]]":
     """`(table, term)` for every term an `index.toml` table names."""
     names = [(table, name) for table in _TERM_LISTS + ("print",) for name in doc.get(table, {})]
     names += [(name, term) for name in ("drop",) for term in doc.get(name, {}).get("terms", [])]
-    names += [("see_also", term) for targets in doc.get("see_also", {}).values() for term in targets]
+    names += [
+        ("see_also", term) for targets in doc.get("see_also", {}).values() for term in targets
+    ]
     names += [("parent", term) for children in doc.get("parent", {}).values() for term in children]
     names += [("see", target) for target in doc.get("see", {}).values()]
     return names
@@ -84,7 +85,7 @@ def _reference_problems(doc: dict, glossary: dict, accepted: "list[str]") -> "li
     known = set(glossary) | added
     dropped = {term_key(term) for term in doc.get("drop", {}).get("terms", [])}
     problems = [
-        f"`[{table}]` names \"{name}\", which is in no glossary and not in `[add]`."
+        f'`[{table}]` names "{name}", which is in no glossary and not in `[add]`.'
         for table, name in _names(doc)
         if term_key(name) not in known
     ]
@@ -146,9 +147,7 @@ def _clash_problems(spellings: "dict[str, list[str]]") -> "list[str]":
 
 
 def _entry(key: str, base: dict, doc: dict, linked: dict) -> dict:
-    symbols = [
-        symbol for unit in base["defined_in"] for symbol in linked.get((unit, key), [])
-    ]
+    symbols = [symbol for unit in base["defined_in"] for symbol in linked.get((unit, key), [])]
     return {
         "key": key,
         "glossary": base["glossary"],
@@ -169,15 +168,15 @@ def _see(doc: dict, glossary: dict, indexed: "set[str]") -> "dict[str, str]":
     see = {
         base["abbreviation"]: term_id(key)
         for key, base in glossary.items()
-        if key in indexed
-        and base["abbreviation"]
-        and term_key(base["abbreviation"]) not in indexed
+        if key in indexed and base["abbreviation"] and term_key(base["abbreviation"]) not in indexed
     }
     see.update({source: term_id(term_key(target)) for source, target in doc.get("see", {}).items()})
     return dict(sorted(see.items()))
 
 
-def table(rows: "list[dict]", linked: dict, accepted: "list[str]", doc: dict) -> "tuple[dict, list[str]]":
+def table(
+    rows: "list[dict]", linked: dict, accepted: "list[str]", doc: dict
+) -> "tuple[dict, list[str]]":
     """The term table `index-terms.json` holds, and every problem that
     refuses it. `rows` are the registry's glossary rows in outline order,
     `linked` maps `(unit, term key)` to the symbols that unit links to the
@@ -185,7 +184,9 @@ def table(rows: "list[dict]", linked: dict, accepted: "list[str]", doc: dict) ->
     glossary = _glossary_terms(rows)
     problems = _reference_problems(doc, glossary, accepted)
     for term in doc.get("add", {}).get("terms", []):
-        glossary.setdefault(term_key(term), {"glossary": term, "defined_in": [], "abbreviation": None})
+        glossary.setdefault(
+            term_key(term), {"glossary": term, "defined_in": [], "abbreviation": None}
+        )
     dropped = {term_key(term) for term in doc.get("drop", {}).get("terms", [])}
     indexed = set(glossary) - dropped
     spellings = {key: _spellings(key, doc) for key in sorted(indexed)}

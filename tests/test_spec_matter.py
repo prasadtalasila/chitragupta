@@ -72,10 +72,10 @@ def test_generated_pages_are_named_as_such():
 
 
 def test_the_index_belongs_to_the_back_matter_only():
-    text = FULL.replace("### Preface {#preface}\n\n", "### Preface {#preface}\n\n### Index {#index}\n\n")
-    assert any(
-        "`index`" in problem and "back matter" in problem for problem in _problems(text)
+    text = FULL.replace(
+        "### Preface {#preface}\n\n", "### Preface {#preface}\n\n### Index {#index}\n\n"
     )
+    assert any("`index`" in problem and "back matter" in problem for problem in _problems(text))
 
 
 def test_front_matter_after_a_part_is_a_problem():

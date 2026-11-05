@@ -51,9 +51,7 @@ def test_rebuilding_unchanged_units_writes_the_same_bytes(book, tmp_path):
 
 def test_a_bad_index_toml_refuses_and_writes_nothing(book, tmp_path, capsys):
     accept(book, "ch-model", "", glossary="- **Model** -- a description.")
-    (spec.spec_dir(book) / "index.toml").write_text(
-        '[variants]\nghost = ["x"]\n', encoding="utf-8"
-    )
+    (spec.spec_dir(book) / "index.toml").write_text('[variants]\nghost = ["x"]\n', encoding="utf-8")
     code, target = build_index(book, tmp_path)
     assert code == 1 and not target.exists()
     err = capsys.readouterr().err

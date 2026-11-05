@@ -18,7 +18,7 @@ from chitragupta.unit import UnitError
 from chitragupta.registry import _index_terms, _index_toml, _pages, _symbols, _terms
 from chitragupta.registry import build, excerpt, findings, registry_dir
 from chitragupta.render_output._errors import ConversionError, MissingBinary
-from chitragupta.render_output._pandoc import markdown_to_latex
+from chitragupta.render_output._markdown_to_latex import markdown_to_latex
 
 _BOOK_HELP = "The book's directory under content/drafts/"
 

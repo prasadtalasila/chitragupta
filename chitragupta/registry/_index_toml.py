@@ -34,7 +34,6 @@ _SHAPES = {
 }
 
 
-
 def read(specs: Path) -> "tuple[dict, list[str]]":
     """`index.toml` from `specs`, and every problem with its shape. A
     missing file is no exceptions, not a problem."""
