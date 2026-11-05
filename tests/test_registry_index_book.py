@@ -103,7 +103,7 @@ def test_a_two_chapter_book_prints_its_index(book, capsys):
     for printed in ("C++", "R\\&D", "50\\% rule", "Markov chain", "digital twin"):
         assert f"\\item {printed}," in ind, printed
     assert "\\item DT, \\see{digital twin}" in ind
-    assert ind.count("\\item stage\\n") == 1 and "\\subitem 0," in ind
+    assert ind.count("\\item stage\n") == 1 and "\\subitem 0," in ind
     assert "\\textbf" in ind
     text = subprocess.run(
         ["pdftotext", str(rendered / "book.pdf"), "-"], capture_output=True, text=True
