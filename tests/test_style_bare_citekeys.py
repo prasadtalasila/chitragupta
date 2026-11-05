@@ -85,6 +85,12 @@ class TestWhatAReaderNeverSees:
         draft = draft_with("See doe_2024-1 here.\n", tmp_path)
         assert found(draft) == [(1, "doe_2024-1", "edit")]
 
+    def test_an_emphasised_key_is_still_reported(self, corpus, tmp_path):
+        # PANDOC_KEY may open with `*`, so `*doe_2024*` matched as
+        # `*doe_2024` and was never looked up (final review).
+        draft = draft_with("Emphasis *doe_2024* and **gil_survey_2024**.\n", tmp_path)
+        assert found(draft) == [(1, "doe_2024", "edit"), (1, "gil_survey_2024", "edit")]
+
     def test_a_word_that_only_starts_like_a_key_is_not_one(self, corpus, tmp_path):
         assert found(draft_with("The doe_2024_draft file.\n", tmp_path)) == []
 

@@ -106,17 +106,12 @@ def _unknown_sources(built: dict, known: "set[str]", unparsed: "dict[str, str]")
     # A real .bib entry whose PDF never parsed is refused too (#1118), and
     # said so: "not in the ledger" would send someone to re-export a bib
     # that already holds it.
-    never_parsed = [
-        f"{s} has no parsed PDF (status {unparsed[s]})" for s in unknown if s in unparsed
-    ]
-    if never_parsed:
-        return (
-            "; ".join(never_parsed)
-            + ", so it cannot be recorded as a source this unit is grounded in."
-        )
+    reasons = [f"{s} has no parsed PDF (status {unparsed[s]})" for s in unknown if s in unparsed]
+    absent = [source for source in unknown if source not in unparsed]
+    if absent:
+        reasons.append(f"{', '.join(absent)} is not in the ledger")
     return (
-        f"{', '.join(unknown)} is not in the ledger, so it cannot be "
-        "recorded as a source this unit is grounded in. "
+        "; ".join(reasons) + ", so it cannot be recorded as a source this unit is grounded in. "
         "`python -m chitragupta.corpus sync` picks up a newly exported .bib."
     )
 

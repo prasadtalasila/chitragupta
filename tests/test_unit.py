@@ -563,6 +563,18 @@ def test_accept_refuses_a_source_whose_pdf_never_parsed(book, example_ledger, ca
     assert not unit.record_path(book, "ch-model").exists()
 
 
+def test_accept_names_an_absent_source_beside_an_unparsed_one(book, example_ledger, capsys):
+    ledger.upsert_reference(example_ledger, make_reference(citekey="web_page_2024"))
+    sign_off(book)
+    write_unit_draft(book, "ch-model")
+    capsys.readouterr()
+    argv = ["accept", str(book), "ch-model", "--source", "web_page_2024"]
+    assert unit.main([*argv, "--source", "invented_source_2030"]) == 1
+    err = capsys.readouterr().err
+    assert "web_page_2024 has no parsed PDF (status no_pdf)" in err
+    assert "invented_source_2030 is not in the ledger" in err
+
+
 def test_accept_names_every_unknown_source_not_just_the_first(book, example_ledger, capsys):
     sign_off(book)
     write_unit_draft(book, "ch-model")

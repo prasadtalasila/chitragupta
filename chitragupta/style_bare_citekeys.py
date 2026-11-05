@@ -118,9 +118,12 @@ def _finding(key: str, line: int, where: str, unparsed: dict, latex: bool) -> di
 def _tokens(scan: str, pattern: "re.Pattern", keys: set) -> "list[tuple[int, str]]":
     found = []
     for match in pattern.finditer(scan):
-        key = match.group(0).replace("\\_", "_")
+        # PANDOC_KEY may open with `*`, so `*doe_2024*` (emphasis) matches
+        # as `*doe_2024`; the key itself starts after the asterisks.
+        token = match.group(0)
+        key = token.lstrip("*").replace("\\_", "_")
         if key in keys:
-            found.append((match.start(), key))
+            found.append((match.start() + len(token) - len(token.lstrip("*")), key))
     return found
 
 
