@@ -48,21 +48,24 @@ draft, its dossier and its rendered `.md`/`.tex`/`.pdf` together
 what lets `dossier export <topic> --with-rendered` find the renders at
 all: it matches them by their path relative to `content/rendered/`.
 
-There are nine files, seven required and two optional, each answering a
-question the draft itself cannot. Without the dossier, none of this
+`dossier init` writes eight files: `README.md` and the seven core files
+below. Two more are optional, `math.md` and `outline.md`, and the only
+two whose absence is not a defect. Each answers a question the draft
+itself cannot. Without the dossier, none of this
 survives the session that wrote the draft: it lives in the transcript
 only.
 
 | File | What it holds |
 | --- | --- |
-| `scope.md` | genre, reader, dialect (`language:`), what the draft covers and excludes, glossary, corpus fingerprint, draft fingerprint |
+| `README.md` | what the directory is and how to back it up; for a person, parsed by nothing |
+| `scope.md` | genre, reader, dialect (`language:`), what the draft covers and excludes, glossary (terms only), corpus fingerprint, draft fingerprint |
 | `evidence.md` | each kept citekey, why it was kept, and its claim |
 | `rejected.md` | candidates retrieved and turned down, with the reason |
 | `sections.md` | section heading -> the citekeys cited under it, and while a run is still going, the ones it plans to cite |
 | `steering.md` | what the user asked for in chat that the draft doesn't show |
 | `revisions.md` | append-only log of what changed and why |
 | `retrieval.md` | every retrieval call and the size of what it returned |
-| `math.md` | ASCII in the draft -> the LaTeX it renders as ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12), plus an optional one-column "Not mathematics" table of spans that are code; it is the only one-cell table the file may hold, since a mapping row whose LaTeX cell was forgotten would read as one |
+| `math.md` | ASCII in the draft -> the LaTeX it renders as ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12), an optional "Not mathematics" table of spans that are code, and `## Symbols`, what each mapped symbol means |
 | `outline.md` | the human's own per-section brief/claim/declared queries |
 
 Four filled dossiers are committed to read alongside this page:
@@ -89,123 +92,258 @@ says nothing about staleness; kept for the
 integration theme instead`). A reviser months later reads that before
 re-offering the same paper.
 
-**`math.md` and `outline.md` are the two optional files**, and the only
-two whose absence is not a defect. A draft with no mathematics has none
-of the first, and most dossiers have none of the second: it exists only
-when a human ran `dossier init --outline` (or added it later) to declare
-a structure before drafting. §12's inline `$…$` form also needs no
-`math.md`. `render` reads `math.md` for every format that reaches pandoc
-and ignores it for `--format md`, which is what keeps the draft's own
-text ASCII. Two consequences are worth knowing before you rename
-anything:
+## 📁 Every file, one by one
 
-- A draft and its dossier are tied by **path alone**, and there is no
-  `dossier rename`. Moving a draft orphans its mapping, and every
-  equation in it silently reverts to typewriter text on the next render.
-  `render` refuses outright when a `<!-- math -->` marker has no mapping
-  to resolve, so that case at least stops the render.
-- Because it is keyed on the exact span text, a revision that *rewords*
-  an equation desyncs it. Each of `draft-reviser`, `corpus-reviser` and
-  `agenda-reviser` carries the step that fixes it, and the four Markdown
-  genre writers create the file.
+Each section says who writes the file and who reads it, its format, what
+a drafting step may and may not do with it, and what goes wrong when it
+is missing or stale. `evidence.md` and `sections.md` have longer
+sections of their own further down
+([the claim contract](#-evidencemds-claimquote-contract-a2),
+[derived, not maintained](#-sectionsmd-is-derived-not-maintained)).
 
-**`scope.md`: the boundary.** Genre, the reader the draft is written
-for, the dialect it is written in (`language:`, so an en-GB draft stays
-en-GB through a revision six weeks later), what the draft covers, what it
-deliberately excludes, and a glossary of the terms it commits to. It also
-records a **corpus fingerprint**: how many citekeys the ledger held and a
-digest of that set. That last line makes drift *detectable*:
-`draft dossier status` recomputes it, and a mismatch means the corpus
-moved under the draft. Without `scope.md` a reviser has no way to tell an
-omission from an exclusion, and will helpfully add back the section you
-asked to leave out.
+### `README.md`: the label on the folder
 
-**`evidence.md`: what was kept, and why.** One block per kept citekey.
-Where a later pass or a hand edit has written two under the same
-citekey, the **first** is the block every reader gets, with the rest
-reported by `check-evidence`, so a second block never silently
-displaces the evidence a drafting run was already handed.
-Each block carries `relevance:` (why this source bears on the
+**Written** by `dossier init`, once, naming the draft and its genre;
+**read** by a person who opens the directory. Nothing parses it. It is a
+short table of the core files plus the export and restore commands, and
+`init` never rewrites it, so a dossier made before a file existed keeps
+the older table. A drafting step leaves it alone. Missing, nothing
+breaks: `init` writes it back on its next run, and every command finds
+the dossier by path, not by this file.
+
+### `scope.md`: the boundary
+
+**Written** by `dossier init` (genre, draft, date, the corpus
+fingerprint), then by the genre skill as it settles the draft with you:
+the reader, the dialect (`language:`, so an en-GB draft stays en-GB
+through a revision six weeks later), what the draft covers, what it
+deliberately excludes, any House style it commits to, and a glossary.
+`dossier stamp` writes the draft digest line. **Read** by every reviser
+before any edit; by `dossier status`, which recomputes both
+fingerprints; by the acronym checks and `draft style`, which read the
+glossary; by a book's `registry` (terms, the Glossary page); and by
+`render`, which counts the glossary's maths spans as uses of `math.md`
+rows.
+
+```markdown
+# Scope
+
+- genre: survey
+- language: en-GB
+- corpus: 5 citekeys, digest `ded95cf5e89c`
+- draft digest: `02a5914a9d6e`
+
+## Reader
+
+An engineer joining a digital-twin project who has read none of the corpus.
+
+## Covers
+## Does not cover
+## Glossary
+
+- **Digital shadow (DS)** -- an automated flow from PT to DO, and a
+  return flow that exists but is carried by a person.
+```
+
+**The glossary** is one bullet per term, `- **Term** -- definition`,
+with a wrapped definition indented. A trailing abbreviation in brackets
+belongs to the term (`**Digital twin (DT)**`). `registry check` reports
+and `registry build --glossary` refuses a bullet in any other shape: a
+colon instead of ` -- `, two terms in one bullet, a definition that
+cites, or **a symbol**. The symbol slot (`**Baseline** (`M_0`)`), its
+spelling inside the bold and the symbol-only bullet (`**`x_k`**`) were
+read in v6.157.0 and are retired since #1143: a symbol and its meaning
+live in `math.md`'s `## Symbols` (below), linked to its term as
+``| `M_0` | **Baseline** |``. Each finding names the row to write. A
+book's Glossary prints every unit's bullets as written
+([WRITE-A-BOOK.md](WRITE-A-BOOK.md#-the-glossary-and-the-list-of-symbols)),
+so a definition holds the definition only: no "as before", no drafting
+note. A note moved out of one belongs in `steering.md`.
+
+**May:** a reviser changes the scope statement only when you agreed to
+the change, and keeps the glossary in step with the prose. **May not:**
+edit the two digest lines by hand; only `stamp` and a re-grounding pass
+rewrite them. **Missing or stale:** without it a reviser cannot tell an
+omission from an exclusion, and helpfully adds back the section you
+asked to leave out. A stale corpus line is what drift detection reads,
+so it is never "refreshed" to silence `status`
+([the corpus fingerprint](#-the-corpus-fingerprint)).
+
+### `evidence.md`: what was kept, and why
+
+One block per kept citekey. Where a later pass or a hand edit has
+written two under the same citekey, the **first** is the block every
+reader gets, with the rest reported by `check-evidence`, so a second
+block never silently displaces the evidence a drafting run was already
+handed. Each block carries `relevance:` (why this source bears on the
 sub-theme), `claim:` (what it establishes, in the drafter's own words)
 and an optional `quote:` (its exact wording). **Only `claim:` may be
 drafted prose from** (the verbatim digest,
 [VERBATIM-DIGEST.md](VERBATIM-DIGEST.md), is the one genre that copies
 its `quote:`s into the draft, each with its citation and no quotation
-marks). The rule works through ordering: `claim:` is
-written at the moment the evidence is judged, before any sentence of the
-draft exists, so it cannot be a lightly edited copy of the passage.
-`quote:` is absent by default and is captured only when a quotation is
-intended, since retrieval should not leave one behind as a side effect.
-It is also what the evidence sidecar renders. An older block
-may carry a single `support:` field instead; it is never rewritten, and
-the two shapes coexist (see below).
+marks). The rule works through ordering: `claim:` is written at the
+moment the evidence is judged, before any sentence of the draft exists,
+so it cannot be a lightly edited copy of the passage. `quote:` is absent
+by default and is captured only when a quotation is intended, since
+retrieval should not leave one behind as a side effect. It is also what
+the evidence sidecar renders. An older block may carry a single
+`support:` field instead; it is never rewritten, and the two shapes
+coexist (see below).
 
-**`rejected.md`: the candidates turned down, with the reason.** Without
-it, the next
-revision retrieves the same papers, re-reads them, and re-reaches the
-same judgement, paying the full cost of a decision already made. A
-reviser is required to honour it: a candidate listed here with a reason
-is not retrieved and re-judged. It is also the largest file in the
-dossier, which is why the dossier is several files and not one: a
-revision loads only what it needs, and this one is needed only when a
-change reopens a sub-theme for searching.
+### `rejected.md`: the candidates turned down, with the reason
 
-**`sections.md`: which citekeys are cited under which heading.**
+**Written** by the genre skill and every reviser, one row per candidate
+retrieved, read and turned down; **read** by every later reviser and by
+a re-grounding pass, which needs the sentence and not only the citekey.
+
+```markdown
+| citekey | query that surfaced it | why rejected |
+|---|---|---|
+| `sample_std_interop_2021` | digital twin synchronisation staleness | surfaced for this query but says nothing about staleness; kept for the integration theme instead |
+```
+
+"Turned down because the corpus had nothing better" and "turned down
+because it is about a different field" age differently, and only the
+first is worth revisiting when the corpus grows. **May:** add rows;
+move a citekey to `evidence.md` when a change genuinely reopens it, and
+say why in `revisions.md`. **May not:** retrieve and re-judge a listed
+candidate as though it were new: a reviser is required to honour it.
+**Missing:** the next revision retrieves the same papers, re-reads them
+and re-reaches the same judgement, paying the full cost of a decision
+already made. It is also the largest file, which is why the dossier is
+several files and not one: a revision loads it only when a change
+reopens a sub-theme for searching.
+
+### `sections.md`: which citekeys are cited under which heading
+
 Derived, not maintained: a heading owns a line range, a citekey is cited
 on a line, and the relation falls out of the intersection.
 `draft dossier sections --citekeys --write` rebuilds it from the draft,
 skipping fenced code and LaTeX verbatim so a `# Step 1` comment in an
 example listing is neither a heading nor a citation. A hand-maintained
 version that disagreed with the draft would hand a reviser the wrong
-section for a citation. `deep-research` is the one exception, and
-only for timing: it writes *planned* rows before the sections exist, and
+section for a citation. `deep-research` is the one exception, and only
+for timing: it writes *planned* rows before the sections exist, and
 replaces them with what the finished report cites.
 
-**`steering.md`: what you asked for that the prose cannot show.**
+### `steering.md`: what you asked for that the prose cannot show
+
+**Written** by the genre skill and every reviser: one dated entry per
+instruction you gave in chat. **Read** by every reviser before it edits.
+
+```markdown
+- Keep it under 1,000 words -- this is a documentation sample.
+- British English.
+- Close with gaps, not a summary of summaries.
+```
+
 "Don't lead with tooling." "Shorter." "Drop the adoption angle." This
-guidance shaped the draft and is invisible in it, so without this file it
-survives only in a chat log nobody will reread. In practice it stops a
-revision months later from silently undoing a decision you made deliberately,
-which is the commonest way a revised draft comes back subtly wrong.
+guidance shaped the draft and is invisible in it. It is also where a
+drafting note goes when it is moved out of somewhere that prints it,
+under a dated heading such as `## Moved from the glossary (2026-11-04)`:
+a glossary definition is printed in a book, and a note to the next
+drafter must not be. **May:** append. **May not:** rewrite or drop an earlier entry
+because a later revision went another way; add the new instruction
+instead. **Missing:** the guidance survives only in a chat log nobody
+will reread, and a revision months later silently undoes a decision you
+made deliberately, the commonest way a revised draft comes back subtly
+wrong.
 
-**`revisions.md`: an append-only log of what changed and why**,
-including the attempts that failed. A repair tried and reverted is
-logged too: without the record, the next session re-tries it, re-discovers
-the same problem, and reverts again. `agenda-reviser` logs every attempt
-here, refusals and reverts included, and a copy-edit pass leaves one
-entry naming the convention it applied. It is append-only because the
-value is the sequence, not the current state.
+### `revisions.md`: an append-only log of what changed and why
 
-**`retrieval.md`: every retrieval call, and the size of what came back.**
-It lets you compare one run's retrieval cost against another's on a real
-corpus, and, more importantly, it **bounds re-grounding**: when a draft
-has to be brought back into line after the corpus moved, the candidates
-come from the queries already recorded here, so that pass cannot invent a
-new search and silently become a full re-draft. It records the *character
-payload* of each call, not tokens, and nothing records what the drafting
-turns themselves cost. That is enough to compare two runs, but not enough
-to price a whole draft.
+**Written** by every reviser: one entry per revision session, newest
+last, naming what changed, which sections and why, including attempts
+that failed. `agenda-reviser` logs every attempt, refusals and reverts
+included, and a copy-edit pass leaves one entry naming the convention
+it applied. **Read** by the next reviser, and by you.
 
-**`outline.md`: the human's own structure, declared instead of
-guessed.** Per section: a `##`-or-deeper heading (a level-1 line is the
-file's own title, and is passed over instead of becoming a section with
-nothing under it), a `brief:` (steering, consumed once, never appears in
-the draft) and/or one or more `claim:` blocks (the human's own prose,
-rewritten; every sentence that can't be grounded is reported instead of
-shipped), and optional declared
-`queries:` a genre skill runs verbatim instead of inventing sub-themes.
+```markdown
+## 2026-09-02 -- first complete draft
+
+Drafted from the five kept evidence blocks; all three declared queries
+answered. Gate passed on first run.
+```
+
+**May:** append. **May not:** edit history; the value is the sequence,
+not the current state. `dossier prune` and `dossier sections --write`
+are primitives and log nothing, so the step that runs one logs it here.
+**Missing:** a repair tried and reverted is tried again by the next
+session, which re-discovers the same problem and reverts again.
+
+### `retrieval.md`: every retrieval call, and the size of what came back
+
+**Written** only by commands: `python -m chitragupta.draft retrieve ...
+--log <draft>` appends a row per call, and `dossier mark-revision`
+appends a `revision` marker row at the start of each reviser pass.
+Never by hand. **Read** by `dossier status` (cost per revision, whether
+the draft ran its outline's declared queries), by a re-grounding pass,
+and by `bench/bench_retrieval_live_logs.py`'s replay.
+
+One table, one row per call. A row of the sample survey's, written
+before the `expanded`, `k1` and `b` columns existed, holds:
+
+```text
+date        2026-09-02
+mode        search
+query       anomaly detection state stream
+asked       5
+results     3
+chars       1247
+collection  (empty: corpus-wide)
+origin      declared
+```
+
+The template's own comment documents every column. It lets you compare
+one run's retrieval cost against another's on a real corpus, and, more
+importantly, it **bounds re-grounding**: when a draft has to be brought
+back into line after the corpus moved, the candidates come from the
+queries already recorded here, so that pass cannot invent a new search
+and silently become a full re-draft. It records the *character payload*
+of each call, not tokens, and nothing records what the drafting turns
+themselves cost: enough to compare two runs, not enough to price a
+whole draft. A row written before a column existed reads that column as
+empty. **Missing or edited:** re-grounding has no recorded queries to
+bound it, and `status` cannot say whether the outline was followed.
+
+### `outline.md`: the human's own structure, declared instead of guessed
+
+**Optional.** **Written** by you, after `dossier init --outline` (or
+added later), before drafting; **read** by `dossier outline`, by the
+genre skill, which drafts from it, and by `dossier status`. Per section:
+a `##`-or-deeper heading (a level-1 line is the file's own title, and is
+passed over instead of becoming a section with nothing under it), a
+`brief:` (steering, consumed once, never appears in the draft) and/or
+one or more `claim:` blocks (your own prose, rewritten; every sentence
+that can't be grounded is reported instead of shipped), and optional
+declared `queries:` a genre skill runs verbatim instead of inventing
+sub-themes.
+
+```markdown
+## Failure modes of co-simulation
+
+brief: Focus on timestep mismatch and solver divergence; skip
+FMI-specific tooling.
+
+queries:
+- failure modes co-simulation
+- timestep mismatch solver divergence
+```
+
 `dossier outline <draft> --check` validates it without printing the
 sections; `dossier outline <draft>` prints them. Reading and validating
-is all this file does on its own; deciding what's kept and writing
-`sections.md`/`evidence.md` stays the genre skill's job, unchanged.
-`retrieval.md`'s `origin` column (`declared`, `extended` or
-`reground`) is what
-`dossier status` reads to answer "did this draft follow its outline?"
-from the record instead of from trust.
+is all this file does on its own; deciding what is kept and writing
+`sections.md`/`evidence.md` stays the genre skill's job. **May:** a
+skill adds an `--origin extended` query when a declared section came up
+thin; it is logged as such. **May not:** a skill rewrites your outline.
+`retrieval.md`'s `origin` column (`declared`, `extended` or `reground`)
+is what `dossier status` reads to answer "did this draft follow its
+outline?" from the record instead of from trust. **Missing:** most
+dossiers have none, and that is not a defect; the skill chooses the
+sub-themes itself.
 
 **A declared query that came back empty counts as run but not
-answered.** `status` reads the `results` column too, and reports
-a query it issued that returned nothing separately from the ones that
+answered.** `status` reads the `results` column too, and reports a
+query it issued that returned nothing separately from the ones that
 returned candidates. Such a query is counted in the same "run" figure,
 since the call did happen, and named underneath:
 
@@ -217,11 +355,66 @@ Outline: 2 declared queries run (1 with no evidence), 1 not, 0 extended, 0 regro
 
 This is advisory, like everything else in this block, and **binary**
 instead of a coverage score: evidence came back for that query or it
-did not.
-Where the same query was searched twice, once for nothing and once for
-four after a reformulation, it counts as answered: the rows are folded
-together before the query is deduplicated, so a gap the draft's own
-history closed is not reported as still open.
+did not. Where the same query was searched twice, once for nothing and
+once for four after a reformulation, it counts as answered: the rows are
+folded together before the query is deduplicated, so a gap the draft's
+own history closed is not reported as still open.
+
+### `math.md`: how the draft's mathematics is set, and what each symbol means
+
+**Optional.** A draft with no mathematics has none, and §12's inline
+`$…$` form needs none either. **Written** by the four Markdown genre
+writers when a draft first has mathematics, and kept in step by every
+reviser (`draft-reviser`, `corpus-reviser`, `agenda-reviser`). **Read**
+by `render` for every format that reaches pandoc (it is ignored for
+`--format md`, which is what keeps the draft's own text ASCII); by
+`dossier status`, which reports a row the draft no longer uses; and by
+a book's `registry` for the List of Symbols. Up to three tables, rules
+in [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12:
+
+```markdown
+| ASCII in the draft | LaTeX |
+| --- | --- |
+| `m_t` | `m_\mathrm{t}` |
+| `T_r = 10` | `T_\mathrm{r} = 10` |
+
+## Not mathematics
+
+| Code in the draft |
+| --- |
+| `404` |
+
+## Symbols
+
+| Symbol | Meaning |
+| --- | --- |
+| `m_t` | **Target moisture** |
+| `T_r` | see 02-plant-demonstrator |
+```
+
+- **The mapping table**, keyed on the exact span text in the draft or
+  in `scope.md`'s glossary: the only place a symbol's LaTeX lives.
+- **"Not mathematics"**, one column: spans the shape rules call a
+  quantity and which are code. It is the only one-cell table the file
+  may hold, since a mapping row whose LaTeX cell was forgotten would
+  read as one.
+- **`## Symbols`** (#1143): what each mapped symbol means, as a bold
+  link to the glossary term that defines it (optionally with a note
+  after a comma), `see <unit>` to reuse another unit's row, or words.
+  It is cut out before the other two tables are read.
+
+**May:** add a row for a new quantity, change a key when the span is
+reworded, drop a row and its meaning when the quantity is cut. **May
+not:** borrow another unit's row; each unit's maths resolves through its
+own mapping. **Missing or stale:** a draft and its dossier are tied by
+**path alone**, and there is no `dossier rename`, so moving a draft
+orphans its mapping and every equation in it silently reverts to
+typewriter text on the next render; `render` refuses outright when a
+`<!-- math -->` marker has no mapping to resolve, so that case at least
+stops the render. Keyed on the exact span text, a revision that
+*rewords* an equation desyncs it, and `render` lists the gaps, the
+orphans, the symbols with no meaning and the meanings with no mapping
+row among its `[math]` warnings.
 
 ## 🔑 Which tokens count as a citekey, and why the rule has two halves
 

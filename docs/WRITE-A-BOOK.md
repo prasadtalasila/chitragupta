@@ -581,7 +581,7 @@ deterministic pass over **accepted units only**:
 
 | Registry | Written from | Flags |
 | --- | --- | --- |
-| terminology and notation | each unit's `scope.md` `## Glossary` (`- **Term** -- definition`, optionally `- **Term** (`sym`) -- definition`) | a term defined more than once, a symbol naming two things or typeset two ways, a glossary bullet in another shape, a unit with no glossary |
+| terminology and notation | each unit's `scope.md` `## Glossary` (`- **Term** -- definition`) and its `math.md` `## Symbols` table | a term defined more than once, a symbol naming two things or typeset two ways, a symbol link or `see` pointer that resolves to nothing, a mapped symbol with no meaning, a glossary span that is mathematics with no row, a glossary bullet in another shape, a unit with no glossary |
 | claims | every sentence that cites something | the same claim made in more than one unit |
 | cross-references | `[text](#id)` and `\ref{id}`/`\cref{id}` | a reference no unit or outline entry defines |
 
@@ -591,7 +591,8 @@ Three properties hold for all of them:
   the ones it could not see. A registry over half a book is not the same
   claim as one over all of it.
 - **Nothing here is written by an LLM.** They are a deterministic reading
-  of accepted units and their dossiers' glossaries, which is why they
+  of accepted units and their dossiers' glossaries and `math.md`
+  files, which is why they
   can be trusted: the same standing
   `chitragupta/ledger.py` has as a reading of a real bib file.
 - **The conventions are borrowed.** The glossary parser is the one
@@ -624,19 +625,40 @@ chitragupta draft registry build content/drafts/<book> \
     --notation content/rendered/<book>/notation.tex
 ```
 
-Both are read from the units' `scope.md` glossaries and nothing else, so
-every word on them is a definition a unit's author pinned. A symbol
-sits in the bullet beside its term, `- **Baseline** (`M_0`) -- ...`,
-or alone, `- **`x_k`** -- ...`; the template `dossier init` writes shows
-all three shapes.
+Both are read from the units' `scope.md` glossaries and `math.md`
+`## Symbols` tables and nothing else, so every word on them is a
+definition or meaning a unit's author pinned. Since #1143 a symbol
+lives only in `math.md`, the file that already says how to typeset it:
+
+```markdown
+## Symbols
+
+| Symbol | Meaning |
+| --- | --- |
+| `M_0`  | **Baseline** |
+| `m_lo` | **Moisture thresholds**, lower |
+| `T_c`  | see 02-plant-demonstrator |
+| `x_k`  | the state at step k |
+```
+
+A bold term links to the glossary entry that defines it, in any
+accepted unit; text after a comma tells two symbols of one term apart;
+`see <unit>` reuses that unit's row for the same symbol, and must
+typeset it the same way; anything else is the meaning in words.
+[WRITING-STANDARDS.md §12](WRITING-STANDARDS.md#-symbols-what-each-mapped-symbol-means)
+has the rules.
 
 - **Glossary:** alphabetical. A term with several definitions prints
   each, numbered, in outline order; each definition ends with its
   chapter as `\Cref{<unit-id>}`; identical definitions print once with
-  every chapter.
+  every chapter. A term's symbols are the `## Symbols` rows linking to
+  it from the unit whose definition it is: in the heading,
+  "Moisture thresholds (*m*<sub>lo</sub>, *m*<sub>hi</sub>)", or before
+  each numbered definition when units use different ones (`r(t)` in one
+  chapter, `r` in another).
 - **List of Symbols:** one table for the whole book. A symbol with one
-  meaning is one row listing its chapters; a symbol naming different
-  things gets a row per meaning.
+  meaning is one row listing every chapter with a `## Symbols` row for
+  it; a symbol naming different things gets a row per meaning.
 - **Typesetting:** each definition and symbol goes through its own
   unit's `math.md` mapping, then pandoc, so `M_0` looks the same on the
   page as in the chapter.
@@ -645,11 +667,25 @@ all three shapes.
 and `--notation` write the three registries, then refuse (exit 1, no
 page written) if any accepted unit's glossary holds a bullet they cannot
 print: `**Term**:` instead of `**Term** --`, several terms in one
-bullet, a definition that is empty or carries a citekey. `check` reports
-the same bullets and still exits 0. That is a build refusing to write a
+bullet, a definition that is empty or carries a citekey, or a symbol in
+the bullet. So does a `## Symbols` row whose link or pointer resolves
+to nothing (a pointer to a unit not yet accepted included), that has no
+mapping row and would print as code, or that is empty or repeated. A
+mapped symbol with no meaning does not stop it: it is missing from the
+List of Symbols, and `check` says so. `check` reports all of these and
+still exits 0. That is a build refusing to write a
 page it would have to leave terms out of, the way `render` refuses an
 unmapped `<!-- math -->` marker, not a check blocking; the fix is the
 unit's `scope.md`, through `draft-reviser`.
+
+**Moving a book written before #1143.** The glossary symbol slot
+(`- **Baseline** (`M_0`) -- ...`, `- **Baseline (`M_0`)** -- ...`) and
+the symbol-only bullet (`- **`x_k`** -- ...`) are retired. `registry
+check` names each with the row to write instead; move it into the
+unit's `math.md` `## Symbols`, add a mapping row for any symbol that has
+none, and give every other mapped symbol a meaning. A symbol list kept
+in `scope.md`'s House style is no longer read by anything: move it into
+the table too and leave a one-line pointer.
 
 **What the pages cannot catch:** a qualifier inside a well-formed term
 (`**Digital twin (DT), working definition for Part I** -- ...`) and a

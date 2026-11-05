@@ -52,7 +52,7 @@ already clash).
    by the note. **One term with different symbols in different units**
    (B1): each numbered definition carries its own unit's symbols.
 6. **The glossary symbol slot is retired with a finding**, all three of
-   #1141's spellings: `**Term** (`s`)`, `**Term `s`**` and the
+   #1141's spellings: ``**Term** (`s`)``, ``**Term `s`**`` and the
    symbol-only bullet `**`s`** -- ...`. `registry check` reports;
    `registry build --glossary/--notation` refuse.
 7. **House style symbol inventories** are dropped in the content pass
@@ -87,14 +87,14 @@ already clash).
 | `e_q` | quantisation error |
 ```
 
-**Sections.** `## Symbols` runs from its heading to the next `## `
+**Sections.** `## Symbols` runs from its heading to the next `##`
 heading or the end of the file, so it may sit before or after
 `## Not mathematics`. `mapping_rows()` and `not_math()` read
 the file with that section removed, so a free-text meaning written as a
 backticked span (`` | `f_s` | `1 / T_s` | ``) is never read as a mapping
 row. The other two tables keep their #1146 behaviour exactly.
 
-**Rows.** `| `<symbol>` | <meaning> |`; the header row has no backticked
+**Rows.** ``| `<symbol>` | <meaning> |``; the header row has no backticked
 first cell and is skipped. The meaning is matched in this order:
 `see <unit-id>`; `**<term>**` then optionally `,` and a note; anything
 else is free text. An empty meaning is malformed, and so is a symbol
@@ -118,7 +118,7 @@ C2's 250 lines): `symbols_section(text)`, `load_symbols(text)` returning
 `link`/`see`/`text`, `is_bare_symbol(key)`, `glossary_section(text)` and
 `glossary_spans(draft)`. It may not import `chitragupta/dossier/`, the
 same boundary `_math.py` keeps. **One section reader:**
-`glossary_section(text)` (heading to next `## `, HTML comments blanked,
+`glossary_section(text)` (heading to next `##`, HTML comments blanked,
 line numbers kept) moves here from `dossier/_glossary._section`, which
 calls it (dossier -> render_output is the allowed direction).
 `glossary_spans` reads `scope.md` beside `math.md` through it. The
@@ -168,8 +168,8 @@ well as units, not every format.
 
 - the per-unit `meaning`, `unmapped` and `malformed` findings, prefixed
   with the unit id;
-- `03 math.md `r` links to **Residuall**, which no glossary in the book defines`;
-- `03 math.md `m_lo` points at 02-plant-demonstrator, which ...`: is not
+- ``03 math.md `r` links to **Residuall**, which no glossary in the book defines``;
+- ``03 math.md `m_lo` points at 02-plant-demonstrator, which ...``: is not
   an accepted unit / has no ## Symbols row for it / points on itself
   (no chains: a pointer must land on a link or free-text row);
 - the existing "`x` names different things" and "`x` is typeset
@@ -181,12 +181,12 @@ well as units, not every format.
 - **glossary maths**: a glossary span with no row in its own unit's
   mapping, not in its "Not mathematics" table, that
   `_math_shapes.rule_for(span, symbols, True)` calls mathematics:
-  `01 glossary span `(M_0 - M_1) * c` looks like a quantity (...) but has
-  no row in 01's math.md, so it prints as code`. No new rule; rows are
+  ``01 glossary span `(M_0 - M_1) * c` looks like a quantity (...) but has
+  no row in 01's math.md, so it prints as code``. No new rule; rows are
   never borrowed from another unit;
 - `[glossary]` for a retired spelling, with the replacement row:
-  `05 scope.md:19 `- **Event time** (`t_e`) -- ...` -- symbols live in
-  math.md now: add | `t_e` | **Event time** | under ## Symbols` (for a
+  ``05 scope.md:19 `- **Event time** (`t_e`) -- ...` -- symbols live in
+  math.md now: add | `t_e` | **Event time** | under ## Symbols`` (for a
   symbol-only bullet: as free text, and drop the bullet).
 
 ### `registry build --glossary/--notation` refuse on
@@ -195,8 +195,9 @@ any `[glossary]` problem (as today, now including retired spellings),
 an unresolved link or pointer, an `unmapped` symbol (it would print as
 code), and a `malformed` row (with two rows, which meaning prints is
 undefined). A pointer to a unit not yet accepted therefore refuses
-until it is; WRITE-A-BOOK's migration note says so. A missing meaning does **not** refuse: the symbol is absent
-from the List of Symbols and `check` has said so.
+until it is; WRITE-A-BOOK's migration note says so. A missing meaning
+does **not** refuse: the symbol is absent from the List of Symbols and
+`check` has said so.
 
 ## 3. The pages
 

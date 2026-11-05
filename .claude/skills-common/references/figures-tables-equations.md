@@ -118,3 +118,31 @@ and a hard failure for a `<!-- math -->` marker it cannot resolve -- so
 render and read its output rather than trusting this list. A gap that
 is really code (`404`) gets a row in the file's one-column
 "Not mathematics" table, never a LaTeX row.
+
+**Every mapped symbol gets a meaning, in `math.md`'s `## Symbols`**
+(#1143), and nowhere else: not in the glossary (a `(`sym`)` slot or a
+`**`sym`**` bullet is reported, with the row to write instead) and not
+as a list in `scope.md`'s House style. One row per bare symbol
+(`m`, `T_oil`, `x_hat`; an expression such as `r(t)` or `T_c = 6` may
+have one but needs none), with a meaning in one of three forms:
+
+```markdown
+## Symbols
+
+| Symbol | Meaning |
+| --- | --- |
+| `m_t`  | **Target moisture** |
+| `m_lo` | **Moisture thresholds**, lower |
+| `T_c`  | see 02-plant-demonstrator |
+| `e_q`  | quantisation error |
+```
+
+A bold term links to the glossary entry that defines it, in this draft
+or, in a book, any accepted unit, so the definition is written once;
+text after a comma tells two symbols of one term apart. `see <unit>`
+reuses another unit's row for the same symbol, and its LaTeX must match
+there. Anything else is the meaning in words. The symbol's LaTeX stays
+in the mapping table: a meaning with no mapping row is `unmapped`, and
+a mapped symbol with no meaning is `meaning`, both in `render`'s
+`[math]` warnings. A glossary span that is mathematics needs its own
+mapping row too; that row is used by the glossary, not an orphan.

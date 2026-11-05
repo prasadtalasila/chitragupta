@@ -829,6 +829,60 @@ post-render grep for math-shaped `\texttt{}` is what reported this book
 clean while a `\begin{verbatim}` equation sat in it, because a fence
 never becomes a `\texttt{}`.
 
+### 📖 Symbols: what each mapped symbol means
+
+The mapping says how a symbol is set; `math.md`'s `## Symbols` says
+what it means, and since #1143 it is the only place a symbol's meaning
+is written. The glossary keeps terms, never symbols, and a symbol list
+in `scope.md`'s House style is read by nothing.
+
+```markdown
+## Symbols
+
+| Symbol | Meaning |
+| --- | --- |
+| `m_t`  | **Target moisture** |
+| `m_lo` | **Moisture thresholds**, lower |
+| `T_c`  | see 02-plant-demonstrator |
+| `e_q`  | quantisation error |
+```
+
+- **A bold term is a link** to the glossary entry that defines it, so
+  the definition is written once. In a book it may name a term any
+  accepted unit defines. Text after a comma is a note, telling two
+  symbols of one term apart.
+- **`see <unit>` reuses another unit's row** for the same symbol, which
+  is how a book's chapters share notation. The other unit must have a
+  row that is a link or words (never another pointer), and the two
+  units must map the symbol to the same LaTeX.
+- **Anything else is the meaning in words.** Write a `|` inside it as
+  `\|`.
+
+The table runs from its heading to the next `##` heading, so it may come before
+or after the "Not mathematics" table, and nothing under it is read as a
+mapping row.
+
+**Every bare symbol the mapping table holds needs a row**: a name of
+letters and digits with `_` subscripts, such as `m`, `T_oil` or
+`x_hat`. An expression, `T_c = 6`, `h^2` or a function application such
+as `r(t)`, may have a row and needs none. The symbol's LaTeX stays in
+the mapping table, so a meaning with no mapping row cannot be typeset.
+`render` reports both, among its `[math]` warnings: a mapped symbol with
+no meaning (one summary line for a `math.md` with no `## Symbols` at
+all), a meaning with no mapping row, and a row that is empty, half bold
+or repeated. A book's `registry check` adds the cross-unit half: a link
+no glossary defines, a pointer that does not land, a symbol naming two
+things or set two ways, and a glossary span that is mathematics with no
+mapping row in its own unit, which would print as code.
+
+**Glossary spans use rows too.** A definition such as "the reciprocal of
+the sampling interval, `1 / T_s`" is typeset through the unit's own
+mapping, so `1 / T_s` needs a row even when the draft never writes it,
+and that row is not an orphan. A bare symbol is also used when it is a
+whole token inside a mapped span or block (`T_r` inside `T_r = 10`), so
+a symbol only ever written inside formulas can have the row its meaning
+needs. Only *mapped* spans count: `range(n)` keeps no `n` row alive.
+
 ### 🔢 A number for a chosen few, not for every displayed equation
 
 A table or a figure gets a number by existing; a displayed equation

@@ -221,8 +221,9 @@ apart in ways a single-author draft doesn't:
   goes in a code span as ASCII with a row in the dossier's `math.md`, so
   the pdf sets it as mathematics and the `.md` stays readable. Section
   writers are dispatched in parallel and each sees only its own slice, so
-  **collect their rows into one `math.md` at synthesis**, and reconcile a
-  symbol two sections spelled differently rather than keeping both.
+  **collect their rows into one `math.md` at synthesis**, `## Symbols`
+  meanings included, and reconcile a symbol two sections spelled
+  differently rather than keeping both.
   **Number sparingly, and only at synthesis.** §12's numbering rule --
   standalone, the final step of a derivation, or reused elsewhere --
   rarely fires within one section writer's slice; it is more likely to
