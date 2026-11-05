@@ -129,14 +129,14 @@ def _png_size(path: Path) -> tuple[int, int]:
     return width, height
 
 
-def _paths(figure: Path) -> tuple[Path, Path, Path]:
-    out = _output_dir(figure)
+def _paths(figure: Path, out_dir: Path | None) -> tuple[Path, Path, Path]:
+    out = _output_dir(figure) if out_dir is None else out_dir
     return tuple(out / f"{figure.stem}.look.{suffix}" for suffix in ("pdf", "png", "json"))
 
 
-def _current(figure: Path, key: str) -> Look | None:
+def _current(figure: Path, key: str, out_dir: Path | None) -> Look | None:
     """The recorded look, if it was built from `key` and is all there."""
-    pdf, png, record = _paths(figure)
+    pdf, png, record = _paths(figure, out_dir)
     try:
         data = json.loads(record.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -156,9 +156,9 @@ def _current(figure: Path, key: str) -> Look | None:
     return Look(pdf, png, record, "current", *sizes, (int(columns), int(rows)))
 
 
-def _failed(figure: Path, detail: str) -> Look:
+def _failed(figure: Path, detail: str, out_dir: Path | None) -> Look:
     """A failure, with every old `.look.*` gone so none outlives it."""
-    paths = _paths(figure)
+    paths = _paths(figure, out_dir)
     for path in paths:
         path.unlink(missing_ok=True)
     return Look(*paths, "failed", detail=detail)
@@ -179,7 +179,7 @@ def _engine(tmp: Path, program: str, *args: str) -> CompletedProcess[str]:
     )
 
 
-def _build(figure: Path, source: str, key: str) -> Look:
+def _build(figure: Path, source: str, key: str, out_dir: Path | None) -> Look:
     """Compile and rasterize in a temporary directory, then move both in."""
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
@@ -188,14 +188,14 @@ def _build(figure: Path, source: str, key: str) -> Look:
         result = _engine(work, "lualatex", *tex_engine.engine_opts(), *opts)
         match = _LOOK_RE.search(result.stdout)
         if result.returncode != 0 or match is None:
-            return _failed(figure, _compile_error_detail(result.stdout))
+            return _failed(figure, _compile_error_detail(result.stdout), out_dir)
         raster = _engine(
             work, "pdftoppm", "-r", str(DPI), "-png", "-singlefile", "look.pdf", "look"
         )
         if raster.returncode != 0:
-            return _failed(figure, f"pdftoppm: {raster.stderr.strip()}")
+            return _failed(figure, f"pdftoppm: {raster.stderr.strip()}", out_dir)
         sizes = (float(match["wd"]), float(match["ht"]) + float(match["dp"]), float(match["tw"]))
-        pdf, png, record = _paths(figure)
+        pdf, png, record = _paths(figure, out_dir)
         pdf.parent.mkdir(parents=True, exist_ok=True)
         write_atomically(pdf, (work / "look.pdf").read_bytes())
         write_atomically(png, (work / "look.png").read_bytes())
@@ -205,8 +205,13 @@ def _build(figure: Path, source: str, key: str) -> Look:
     return Look(pdf, png, record, "wrote", *sizes, pixels)
 
 
-def look(figure: Path) -> Look:
+def look(figure: Path, out_dir: Path | None = None) -> Look:
     """`figure`'s look, rebuilt only if anything it is built from changed.
+
+    It is written to `out_dir`, or by default to the figure's mirrored
+    rendered directory. Each directory holds its own look, so a render
+    into another directory (#1114) never touches the default one. The
+    caller confines `out_dir`, as `render` confines `--output-dir`.
 
     Raises `OSError` or `UnicodeDecodeError` for a figure it cannot read,
     and `render_output.OutsideContentDir` where the rendered directory
@@ -214,7 +219,7 @@ def look(figure: Path) -> Look:
     """
     source = figure.read_text(encoding="utf-8")
     key = digest(source)
-    return _current(figure, key) or _build(figure, source, key)
+    return _current(figure, key, out_dir) or _build(figure, source, key, out_dir)
 
 
 def lines(result: Look, figure: Path) -> list[str]:

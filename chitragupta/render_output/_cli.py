@@ -144,7 +144,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-dir",
         default=None,
-        help="Write the output here instead of content/rendered/<mirrored path>. "
+        help="Write the output here instead of content/rendered/<mirrored path>, "
+        "a pdf's figure looks included. "
         "A book's fragments need no override -- they mirror to the same "
         "directory book.tex is composed into. Confined to content/ like "
         "every other path this writes",
@@ -253,15 +254,17 @@ def _rendered(args: argparse.Namespace) -> Path | None:
         return None
 
 
-def _report_looks(draft: Path, pdf: Path) -> None:
+def _report_looks(draft: Path, pdf: Path, output_dir: str | None) -> None:
     """Refresh the looks and page pictures of `draft`'s figures (#1052),
-    as `[figure-look]` notes. After the render succeeded, and never a
-    reason it fails: see `figure/_look_draft.py`."""
+    as `[figure-look]` notes, under `output_dir` when the render had one
+    (#1114). After the render succeeded, and never a reason it fails:
+    see `figure/_look_draft.py`."""
     # Deferred for the reason `_rendered`'s imports are: `figure` imports
     # from this package, so a module-scope import back would be a cycle.
     from chitragupta.figure._look_draft import notes, refresh
 
-    for line in notes(refresh(draft, pdf)):
+    target = None if output_dir is None else Path(output_dir)
+    for line in notes(refresh(draft, pdf, target)):
         print(line, file=sys.stderr)
 
 
@@ -280,6 +283,6 @@ def main(argv: list[str] | None = None) -> int:
     if out_path is None:
         return 1
     if args.output_format == "pdf":
-        _report_looks(Path(args.input), out_path)
+        _report_looks(Path(args.input), out_path, args.output_dir)
     print(str(out_path))
     return 0

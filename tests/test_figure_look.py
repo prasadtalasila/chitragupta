@@ -117,6 +117,22 @@ class TestLook:
         loose.write_text(NARROW, encoding="utf-8")
         assert _look.look(loose).png == rendered("loose.look.png")
 
+    def test_a_named_directory_takes_every_file_and_the_mirror_none(self, fake, flow):
+        scratch = config.CONTENT_DIR / "scratch-out" / "figures"
+        result = _look.look(flow, scratch)
+        assert {result.pdf, result.png, result.record} == {
+            scratch / "flow.look.pdf",
+            scratch / "flow.look.png",
+            scratch / "flow.look.json",
+        }
+        assert not rendered("rag", "figures").exists()
+
+    def test_a_named_directory_is_its_own_cache(self, fake, flow):
+        scratch = config.CONTENT_DIR / "scratch-out" / "figures"
+        _look.look(flow)
+        assert _look.look(flow, scratch).action == "wrote"
+        assert _look.look(flow, scratch).action == "current" and fake.compiles == 2
+
     def test_an_unchanged_figure_is_not_compiled_again(self, fake, flow):
         _look.look(flow)
         again = _look.look(flow)

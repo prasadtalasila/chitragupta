@@ -314,7 +314,8 @@ What that table implies, and what sits beside it in the preamble:
   (`render_output/_figure_anchor.py`): no ink, no bookmark, and no word
   moved, which a test checks. `draft render` then reads the marks with
   `pdfinfo -dests` and writes each figure's `figure look` pictures and a
-  PNG of its page under `content/rendered/`, as `[figure-look]` notes
+  PNG of its page beside the PDF (`content/rendered/`, or the render's
+  `--output-dir`), as `[figure-look]` notes
   that never fail the render. A `.tex` draft gets no mark: pandoc's
   LaTeX reader would print one as text.
 

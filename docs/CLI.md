@@ -1440,7 +1440,7 @@ does not cover.
 | `--csl PATH` | `assets/csl/ieee.csl` | CSL style for citations and the bibliography. A relative path is looked for under the current directory first (like `<input>`), then the project directory, then the shipped assets, so both your own style and the vendored one are found from anywhere |
 | `--no-collapse-citations` | off | Render a run as `[3], [4], [5], [6]` instead of `[3]–[6]`, i.e. leave the style exactly as it is on disk |
 | `--fragment` | off | Emit an `\input`-able LaTeX fragment (no preamble) whose top heading is a chapter, for assembling a book; see [below](#-assembling-a-book---fragment-and---output-dir) |
-| `--output-dir DIR` | mirrored | Write here instead of `content/rendered/<mirrored path>`; confined to `content/` |
+| `--output-dir DIR` | mirrored | Write here instead of `content/rendered/<mirrored path>`, a `pdf`'s figure looks included; confined to `content/` |
 
 `--format md` on a **Markdown** draft is a special case, and the one
 output you can read without a PDF viewer. It writes a `.md` beside the
@@ -1534,7 +1534,11 @@ After a `pdf` render succeeds, every figure the draft references gets
 the pictures [`figure look`](#-chitragupta-figure-look) writes: its
 `.look.pdf` and `.look.png`, rebuilt only where the figure changed, and
 a 300 dpi `.page.png` of the page it printed on, rebuilt every time.
-They are notes on stderr, after the render, and never a reason it
+They go where the PDF went, below the figure's place in the draft's
+directory: `content/rendered/<mirrored path>/figures/` by default, and
+`DIR/figures/` with `--output-dir DIR`, so a scratch render never
+writes over the default render's looks. The render reports them as
+notes on stderr, after it finishes, and they are never a reason it
 fails; with no `pdftoppm` or `pdfinfo` the notes say what was skipped:
 
 ```text

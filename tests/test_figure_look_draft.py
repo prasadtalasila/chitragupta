@@ -42,8 +42,8 @@ def rendered(*parts: str) -> Path:
     return config.RENDERED_DIR.joinpath(*parts)
 
 
-def fake_look(figure: Path) -> Look:
-    out = rendered("rag", "figures")
+def fake_look(figure: Path, out_dir: Path | None = None) -> Look:
+    out = out_dir or rendered("rag", "figures")
     return Look(
         out / f"{figure.stem}.look.pdf",
         out / f"{figure.stem}.look.png",
@@ -122,6 +122,26 @@ class TestRefresh:
         _look_draft.refresh(draft, Path("survey.pdf"))
         assert not stale.exists()
 
+    def test_a_named_output_directory_takes_the_looks_and_pages(self, draft, tools, monkeypatch):
+        # #1114: a render into --output-dir wrote its looks over the
+        # canonical ones in content/rendered/.
+        asked = []
+        monkeypatch.setattr(
+            _look_draft,
+            "look",
+            lambda figure, out_dir=None: asked.append(out_dir) or fake_look(figure),
+        )
+        canonical = rendered("rag", "figures", "stack.page.png")
+        canonical.parent.mkdir(parents=True)
+        canonical.write_bytes(b"canonical")
+        scratch = config.CONTENT_DIR / "scratch-out"
+        flow, stack = _look_draft.refresh(draft, scratch / "survey.pdf", scratch).figures
+        assert asked == [scratch / "figures", scratch / "figures"]
+        assert flow.page.png == scratch / "figures" / "flow.page.png"
+        assert flow.page.png.is_file() and stack.note == _look_draft.NO_MARK
+        assert canonical.read_bytes() == b"canonical"
+        assert sorted(p.name for p in rendered("rag", "figures").iterdir()) == ["stack.page.png"]
+
     def test_a_draft_with_no_figures_or_no_file_says_nothing(self, draft, tools):
         draft.write_text("No figures.\n", encoding="utf-8")
         assert _look_draft.notes(_look_draft.refresh(draft, Path("x.pdf"))) == []
@@ -178,7 +198,7 @@ class TestRefresh:
         assert flow.page is None and flow.note == "no page PNG: pdftoppm: bad page"
 
     def test_a_look_that_cannot_read_its_figure_is_a_note(self, draft, tools, monkeypatch):
-        def unreadable(figure):
+        def unreadable(figure, _out_dir=None):
             raise OSError(f"{figure.name}: gone")
 
         monkeypatch.setattr(_look_draft, "look", unreadable)
@@ -186,7 +206,7 @@ class TestRefresh:
         assert flow.look is None and flow.note == "no look: flow.tex: gone"
 
     def test_the_notes_count_and_name_failures(self, draft, tools, monkeypatch):
-        def failing(figure):
+        def failing(figure, _out_dir=None):
             detail = "! Undefined control sequence."
             return dataclasses.replace(fake_look(figure), action="failed", detail=detail)
 
@@ -198,7 +218,7 @@ class TestRefresh:
         assert f"[figure-look] {stack}: {_look_draft.NO_MARK}" in notes
 
     def test_a_figure_with_no_look_at_all_still_counts_its_page(self, draft, tools, monkeypatch):
-        monkeypatch.setattr(_look_draft, "look", lambda f: (_ for _ in ()).throw(OSError("x")))
+        monkeypatch.setattr(_look_draft, "look", lambda *_: (_ for _ in ()).throw(OSError("x")))
         assert _look_draft.notes(_look_draft.refresh(draft, Path("x.pdf")))[0] == (
             "[figure-look] no looks; 1 page PNGs"
         )
@@ -220,6 +240,13 @@ class TestDraftRender:
         captured = capsys.readouterr()
         assert captured.out == f"{pdf}\n"
         assert captured.err.startswith("[figure-look] 2 wrote; 1 page PNGs\n")
+
+    def test_output_dir_reaches_the_looks(self, draft, tools, monkeypatch, capsys):
+        scratch = config.CONTENT_DIR / "scratch-out"
+        monkeypatch.setattr(render_output, "render", lambda *a, **k: scratch / "survey.pdf")
+        assert _cli.main([str(draft), "--format", "pdf", "--output-dir", str(scratch)]) == 0
+        assert (scratch / "figures" / "flow.page.png").is_file()
+        assert not rendered("rag", "figures").exists()
 
     def test_another_format_refreshes_nothing(self, draft, tools, monkeypatch, capsys):
         monkeypatch.setattr(render_output, "render", lambda *a, **k: Path("out.tex"))
@@ -263,6 +290,32 @@ def test_a_real_pdf_render_leaves_every_figure_looked_at(isolated_config, capsys
     }
     # A4 at 300 dpi, rounded up as pdftoppm rounds: 595.28pt is 2480.3 px.
     assert _look_draft._png_size(out / "flow.page.png") == (2481, 3508)
+
+
+@needs_poppler
+@pytest.mark.skipif(
+    not (pandoc_available and lualatex_available and tikz_available),
+    reason="needs pandoc and lualatex with tikz.sty",
+)
+def test_a_real_render_into_output_dir_leaves_rendered_alone(isolated_config, capsys):
+    # #1114's reproduction: the looks follow --output-dir.
+    isolated_config.BIB_FILE_PATH.write_text("")
+    draft = content_draft(isolated_config, "drafts/scratch/s.md")
+    (draft.parent / "figures").mkdir()
+    picture = "\\begin{tikzpicture}\\node[draw] {Parse};\\end{tikzpicture}%\n"
+    (draft.parent / "figures" / "good.tex").write_text(picture, encoding="utf-8")
+    (draft.parent / "figures" / "good.txt").write_text("[ Parse ]\n", encoding="utf-8")
+    draft.write_text("Text.\n\n<!-- figure: figures/good -->\n\nMore.\n", encoding="utf-8")
+    scratch = isolated_config.CONTENT_DIR / "scratch-out"
+    assert _cli.main([str(draft), "--format", "pdf", "--output-dir", str(scratch)]) == 0
+    assert "[figure-look] 1 wrote; 1 page PNGs" in capsys.readouterr().err
+    assert {p.name for p in (scratch / "figures").iterdir()} >= {
+        "good.look.pdf",
+        "good.look.png",
+        "good.look.json",
+        "good.page.png",
+    }
+    assert not rendered("scratch").exists()
 
 
 class TestLookDraftCli:
