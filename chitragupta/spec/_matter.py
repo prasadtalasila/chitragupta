@@ -3,17 +3,18 @@
 A textbook is more than its chapters: a preface and a copyright page
 before them, appendices and the reference pages after them (BCcampus,
 *Self-Publishing Guide*, "Textbook Outline"). The outline names these the
-way it names everything else, by `{#id}`, and three part ids and four
-chapter ids are reserved for them (#1137):
+way it names everything else, by `{#id}`, and three part ids and five
+chapter ids are reserved for them (#1137, #1168):
 
 - `{#front}`, `{#appendices}` and `{#back}` are parts that print no
   `\\part` page. Each has one legal position, because the `book` class's
   `\\frontmatter`, `\\appendix` and `\\backmatter` are switches, not
   containers: a `{#back}` in the middle would turn every later chapter
   into an unnumbered one.
-- `glossary`, `symbols`, `figures` and `tables` are pages the assembler
-  generates. Nobody writes them, so they are no unit, carry no sections,
-  and belong only to the front or back matter.
+- `glossary`, `symbols`, `figures`, `tables` and `index` are pages the
+  assembler generates. Nobody writes them, so they are no unit, carry no
+  sections, and belong only to the front or back matter -- the index to
+  the back matter alone, since it prints after the bibliography.
 
 Split from `chitragupta/spec/__init__.py`, which holds the parse itself,
 to keep it under docs/CODE-STANDARDS.md's C2 limit. Nothing here imports
@@ -28,7 +29,8 @@ BACK = "back"
 _PARTS = (FRONT, APPENDICES, BACK)
 
 # In the order `spec init` writes them under `{#back}`.
-GENERATED = ("glossary", "symbols", "figures", "tables")
+GENERATED = ("glossary", "symbols", "figures", "tables", "index")
+INDEX = "index"
 
 # `- author: Prasad Talasila` under the book's `#` title, beside the
 # `- reader:` and `- scope:` lines the default outline already carries.
@@ -89,6 +91,11 @@ def _misplaced_id(entry: dict) -> str | None:
                 f"`{entry['id']}` names a page the assembler generates, so it must be "
                 f"a `###` chapter of `{FRONT}` or `{BACK}`: `{entry['title']}` is not."
             )
+    if entry["id"] == INDEX and matter(entry) != BACK:
+        return (
+            f"`{INDEX}` is the book's index, which prints last, after the bibliography, "
+            f"so it must be a `###` chapter of `{BACK}`, the back matter."
+        )
     if entry["kind"] == "section" and entry["ancestors"][-1] in GENERATED:
         return (
             f"`{entry['ancestors'][-1]}` is a generated page and has no sections: "

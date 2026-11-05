@@ -1,0 +1,59 @@
+# The index's exceptions: yours to edit (docs/book/book-index.md).
+#
+# The index is built from the book's glossary terms, every assembly. This
+# file holds only what the glossary cannot say. Each assembly writes
+# content/specs/<book>/registries/index.md, whose findings each end with
+# the line to paste here. Terms are named the way the glossary matches
+# them: case-insensitive, spacing collapsed, a trailing "(DT)" dropped.
+# Chapters are named by their outline id.
+#
+# Editing this file after the outline is signed does not need a new
+# sign-off: the index changes no prose.
+
+[settings]
+# Outside the chapter that defines a term, a chapter gets a page number
+# only if the term occurs there at least this often.
+min_mentions = 2
+# "word" (word by word, the Chicago default) or "letter".
+sort = "word"
+# true prints a bold A, B, C between letter groups instead of a gap.
+letter_headings = false
+# No page numbers from sections with these headings.
+skip_sections = ["Exercises", "Solutions"]
+
+# Extra spellings that count as the term. Hyphens and case need none.
+# [variants]
+# "analysis" = ["analyses"]
+
+# An everyday word: count only these phrases, never the word alone.
+# [restrict]
+# "service" = ["digital twin service", "twin service"]
+
+# Chapters that get a page number below min_mentions.
+# [always]
+# "staleness" = ["a1-the-mathematics-you-need"]
+
+# The printed form, when the book's own casing is not the one wanted.
+# [print]
+# "i2c" = "I²C"
+
+# Sub-entries. Each child keeps its own entry too, unless its parent is
+# listed in [parent_only].
+# [parent]
+# "stage" = ["stage 0", "stage 1", "stage 2", "stage 3"]
+# [parent_only]
+# "stage" = true
+
+# Entries with no page numbers of their own.
+# [see]
+# "shadow" = "digital shadow"
+# [see_also]
+# "digital shadow" = ["digital model", "digital twin"]
+
+# Glossary terms to keep out of the index.
+# [drop]
+# terms = ["two-question test"]
+
+# Terms in no glossary, indexed like glossary terms.
+# [add]
+# terms = ["Kalman filter"]

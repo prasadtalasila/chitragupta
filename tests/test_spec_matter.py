@@ -68,7 +68,14 @@ def test_each_entry_knows_which_matter_it_belongs_to():
 
 
 def test_generated_pages_are_named_as_such():
-    assert spec.GENERATED == ("glossary", "symbols", "figures", "tables")
+    assert spec.GENERATED == ("glossary", "symbols", "figures", "tables", "index")
+
+
+def test_the_index_belongs_to_the_back_matter_only():
+    text = FULL.replace("### Preface {#preface}\n\n", "### Preface {#preface}\n\n### Index {#index}\n\n")
+    assert any(
+        "`index`" in problem and "back matter" in problem for problem in _problems(text)
+    )
 
 
 def test_front_matter_after_a_part_is_a_problem():
@@ -156,7 +163,7 @@ def test_init_writes_an_outline_with_the_matter_and_the_two_files_the_author_own
     assert parsed["author"] == "Jane Doe"
     ids = [entry["id"] for entry in parsed["units"]]
     assert ids[:2] == ["front", "preface"]
-    assert ids[-5:] == ["back", "glossary", "symbols", "figures", "tables"]
+    assert ids[-6:] == ["back", "glossary", "symbols", "figures", "tables", "index"]
 
     preface = book_dir / "preface.md"
     copyright_page = spec.spec_dir(book_dir) / "copyright.tex"
@@ -165,6 +172,9 @@ def test_init_writes_an_outline_with_the_matter_and_the_two_files_the_author_own
     out = capsys.readouterr().out
     assert f"Wrote {preface}: the preface is yours to write." in out
     assert f"Wrote {copyright_page}: the copyright page is yours to edit." in out
+    index_toml = spec.spec_dir(book_dir) / "index.toml"
+    assert "min_mentions = 2" in index_toml.read_text(encoding="utf-8")
+    assert f"Wrote {index_toml}: the index's exceptions are yours to edit." in out
 
 
 def test_init_without_an_author_writes_no_author_line(book_dir):
@@ -178,7 +188,9 @@ def test_init_never_overwrites_a_preface_or_copyright_page_already_there(book_di
     copyright_page = spec.spec_dir(book_dir) / "copyright.tex"
     copyright_page.parent.mkdir(parents=True, exist_ok=True)
     copyright_page.write_text("Mine.\n", encoding="utf-8")
+    (copyright_page.parent / "index.toml").write_text("# mine\n", encoding="utf-8")
     assert spec.main(["init", str(book_dir)]) == 0
+    assert (copyright_page.parent / "index.toml").read_text(encoding="utf-8") == "# mine\n"
     assert (book_dir / "preface.md").read_text(encoding="utf-8") == "# Preface\n\nMine.\n"
     assert copyright_page.read_text(encoding="utf-8") == "Mine.\n"
     assert "yours to" not in capsys.readouterr().out
@@ -237,7 +249,7 @@ def test_align_and_status_treat_a_generated_page_as_a_page(book_dir, capsys):
     assert "preface" in out
     assert not [name for name in spec.GENERATED if f"  {name} " in out]
     spec.main(["status", str(book_dir)])
-    assert "3 parts, 2 chapters, 1 section, 4 generated pages" in capsys.readouterr().out
+    assert "3 parts, 2 chapters, 1 section, 5 generated pages" in capsys.readouterr().out
 
 
 def test_a_generated_page_is_no_cross_reference_target(signed_book_with_matter):

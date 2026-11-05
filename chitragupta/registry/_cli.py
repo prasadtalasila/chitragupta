@@ -15,7 +15,8 @@ from pathlib import Path
 
 from chitragupta import spec
 from chitragupta.unit import UnitError
-from chitragupta.registry import _pages, _symbols, _terms, build, excerpt, findings, registry_dir
+from chitragupta.registry import _index_terms, _index_toml, _pages, _symbols, _terms
+from chitragupta.registry import build, excerpt, findings, registry_dir
 from chitragupta.render_output._errors import ConversionError, MissingBinary
 from chitragupta.render_output._pandoc import markdown_to_latex
 
@@ -102,8 +103,35 @@ def _cmd_build(args) -> int:
     for path in _write(args.book, built):
         print(f"Wrote {path}.")
     print(f"  {_coverage(built)}")
+    code = 0
+    if args.index:
+        code = _write_index(args.book, built, Path(args.index))
     if args.glossary or args.notation:
-        return _write_pages(built, args)
+        code = max(code, _write_pages(built, args))
+    return code
+
+
+def _write_index(book, built: dict, target: Path) -> int:
+    """`index-terms.json`, or a refusal that writes nothing (#1168): an
+    `index.toml` naming a term that does not exist would otherwise index
+    something other than what its author asked for."""
+    doc, problems = _index_toml.read(spec.spec_dir(book))
+    if not problems:
+        # `_linked` is the Glossary page's own reading of which symbols a
+        # unit links to a term, so the index and the page cannot disagree.
+        data, problems = _index_terms.table(
+            built["terms"], _pages._linked(built), built["accepted"], doc
+        )
+    if problems:
+        for problem in problems:
+            print(f"  [index] {problem}", file=sys.stderr)
+        print(
+            f"\n  {len(problems)} problem(s) in index.toml; no {target.name} written.",
+            file=sys.stderr,
+        )
+        return 1
+    _pages.write(target, _index_terms.dumps(data))
+    print(f"Wrote {target}.")
     return 0
 
 
@@ -205,6 +233,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_build.add_argument(
         "--notation", metavar="PATH", help="Also write the book's List of Symbols as LaTeX to PATH"
+    )
+    p_build.add_argument(
+        "--index",
+        metavar="PATH",
+        help="Also write the index's term table (index-terms.json) to PATH",
     )
     p_build.set_defaults(func=_cmd_build)
 

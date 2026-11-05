@@ -44,9 +44,10 @@ _TEMPLATE = """# {title}
      registries resolve against, so they must survive a reworded heading.
 
      `- author:` is the name on the title and copyright pages. The parts
-     `front`, `appendices` and `back` are reserved, and so are the four
+     `front`, `appendices` and `back` are reserved, and so are the five
      pages under `back`, which the assembler generates: delete a line to
-     drop a page, or move it under `front`.
+     drop a page, or move it under `front` (the index excepted: it
+     prints last). content/specs/<book>/index.toml tunes the index.
 
      Approve it with `python -m chitragupta.draft spec sign <book>` once it says
      what you want written. Nothing generates prose from an unsigned
@@ -78,6 +79,8 @@ What this section must establish, and what it leaves to another.
 ### List of Figures {#figures}
 
 ### List of Tables {#tables}
+
+### Index {#index}
 """
 
 
