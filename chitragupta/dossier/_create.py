@@ -96,18 +96,18 @@ settled with the reader; docs/WRITING-STANDARDS.md section 8
 
 ## Glossary
 
-<!-- Each recurring term or symbol with the one definition the whole
-     draft uses, one bullet each, in exactly one of these shapes:
+<!-- Each recurring term with the one definition the whole draft
+     uses, one bullet each, in this shape:
 
      - **Digital shadow (DS)** -- an automated flow from PT to DO, and a
        return flow from DO to PT that exists but is carried by a person.
-     - **Baseline** (`M_0`) -- the measured present-day value of the value
+     - **Baseline** -- the measured present-day value of the value
        metric, before anything is built.
-     - **`x_k`** -- the state at step k.
 
-     The term in bold, its symbol in backticks and brackets if it has
-     one, a space, two hyphens, a space, then the definition. Continue a
-     long definition on indented lines. The definition only: no "working
+     The term in bold, a space, two hyphens, a space, then the
+     definition. Continue a long definition on indented lines. A symbol
+     is not written here: it goes in math.md's ## Symbols, linked to its
+     term as | `M_0` | **Baseline** |. The definition only: no "working
      definition for Part I", no "as before". A book's glossary and list
      of symbols print this text as written, and never a citation. -->
 """

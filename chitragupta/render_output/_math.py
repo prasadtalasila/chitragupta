@@ -62,6 +62,18 @@ _ROW_RE = re.compile(r"^\|\s*`(?P<ascii>[^`]+)`\s*\|\s*`(?P<latex>[^`]+)`\s*\|\s
 # never read each other's rows.
 _NOT_MATH_ROW_RE = re.compile(r"^\|\s*`(?P<ascii>[^`]+)`\s*\|\s*$", re.M)
 
+# `## Symbols` (#1143): what each mapped symbol means, read by
+# `_math_symbols`. From its heading to the next `## ` heading, so it may
+# sit before or after the "not mathematics" table. Cut out before either
+# table above is read: a meaning written as a backticked span,
+# `| `f_s` | `1 / T_s` |`, is otherwise a mapping row.
+SYMBOLS_SECTION_RE = re.compile(r"^## Symbols[ \t]*$.*?(?=^## |\Z)", re.M | re.S)
+
+# A key that is one symbol rather than an expression: letters and digits
+# with `_` subscripts (`m`, `T_oil`, `x_hat`). A function application,
+# `r(t)` or `f(T_k)`, is an expression, so it needs no meaning (#1143).
+_BARE_SYMBOL_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)*$")
+
 # An inline code span. Deliberately single-line: a span never spans a
 # blank line, and allowing it to would let one stray backtick swallow a
 # paragraph.
@@ -181,7 +193,20 @@ def mapping_rows(text: str) -> "list[tuple[str, str]]":
     The rows rather than a dict, so a key written twice is still visible
     to `_math_findings.duplicates()` (#1116).
     """
+    text = without_symbols(text)
     return [(m.group("ascii").strip(), m.group("latex").strip()) for m in _ROW_RE.finditer(text)]
+
+
+def without_symbols(text: str) -> str:
+    """A `math.md`'s `text` with its `## Symbols` section blanked, line
+    count kept."""
+    return SYMBOLS_SECTION_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
+
+
+def is_bare_symbol(key: str) -> bool:
+    """Whether a mapping key is one symbol, which `## Symbols` should give
+    a meaning, rather than an expression."""
+    return _BARE_SYMBOL_RE.match(key) is not None
 
 
 def load_mapping(draft: Path) -> "dict[str, str]":
@@ -198,7 +223,8 @@ def load_mapping(draft: Path) -> "dict[str, str]":
 
 def not_math(text: str) -> "frozenset[str]":
     """The spans a `math.md`'s `text` lists as not mathematics."""
-    return frozenset(m.group("ascii").strip() for m in _NOT_MATH_ROW_RE.finditer(text))
+    rows = _NOT_MATH_ROW_RE.finditer(without_symbols(text))
+    return frozenset(m.group("ascii").strip() for m in rows)
 
 
 def _symbols_of(mapping: "dict[str, str]") -> "frozenset[str]":

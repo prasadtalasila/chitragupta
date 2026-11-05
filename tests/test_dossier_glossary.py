@@ -1,5 +1,6 @@
-"""`scope.md`'s `## Glossary`, read as entries with their symbols, and the
-bullets that are not in the shape (#1138).
+"""`scope.md`'s `## Glossary`, read as entries, and the bullets that are
+not in the shape (#1138); since #1143 a symbol in a bullet is one of
+them, since symbols live in `math.md`.
 
 Every off-format fixture below is a bullet the real digital-twins book's
 dossiers hold, quoted from them rather than invented: the colon form, a
@@ -34,36 +35,48 @@ def write_glossary(draft, body: str) -> None:
 # --- the shapes that are read -------------------------------------------
 
 
-def test_a_term_with_no_symbol(draft):
+def test_a_term(draft):
     write_glossary(draft, "- **Sensor** -- a component that turns a quantity into a number.")
     (entry,) = _glossary.glossary_entries(draft)
-    assert (entry.term, entry.symbol) == ("Sensor", None)
+    assert entry.term == "Sensor"
     assert entry.definition == "a component that turns a quantity into a number."
-
-
-def test_a_term_with_a_symbol_in_the_slot(draft):
-    write_glossary(draft, "- **Baseline** (`M_0`) -- the measured present-day value.")
-    (entry,) = _glossary.glossary_entries(draft)
-    assert (entry.term, entry.symbol) == ("Baseline", "M_0")
-
-
-def test_the_symbol_inside_the_bold_is_still_read(draft):
-    write_glossary(draft, "- **Baseline (`M_0`)** -- the measured present-day value.")
-    (entry,) = _glossary.glossary_entries(draft)
-    assert (entry.term, entry.symbol) == ("Baseline", "M_0")
-
-
-def test_a_symbol_on_its_own(draft):
-    write_glossary(draft, "- **`x_k`** -- the state at step k.")
-    (entry,) = _glossary.glossary_entries(draft)
-    assert entry.symbol == "x_k"
-    assert entry.name is None
 
 
 def test_an_abbreviation_in_brackets_is_part_of_the_name(draft):
     write_glossary(draft, "- **Digital shadow (DS)** -- an automated flow from PT to DO.")
     (entry,) = _glossary.glossary_entries(draft)
-    assert (entry.term, entry.symbol) == ("Digital shadow (DS)", None)
+    assert entry.term == "Digital shadow (DS)"
+
+
+# --- the retired symbol spellings (#1143) ---------------------------------
+
+
+@pytest.mark.parametrize(
+    "bullet",
+    [
+        "- **Baseline** (`M_0`) -- the measured present-day value.",
+        "- **Baseline (`M_0`)** -- the measured present-day value.",
+    ],
+)
+def test_a_symbol_beside_a_term_is_a_problem_naming_its_row(draft, bullet):
+    write_glossary(draft, bullet)
+    (problem,) = _glossary.glossary_problems(draft)
+    assert problem.reason == (
+        "symbols live in math.md now: add | `M_0` | **Baseline** | under its "
+        "## Symbols and drop the symbol here"
+    )
+    (entry,) = _glossary.glossary_entries(draft)
+    assert entry.term == "Baseline"
+
+
+def test_a_bullet_that_is_only_a_symbol_is_a_problem_and_no_entry(draft):
+    write_glossary(draft, "- **`x_k`** -- the state at step k.")
+    (problem,) = _glossary.glossary_problems(draft)
+    assert problem.reason == (
+        "symbols live in math.md now: add | `x_k` | <its meaning in words> | under its "
+        "## Symbols and drop this bullet"
+    )
+    assert _glossary.glossary_entries(draft) == []
 
 
 def test_a_definition_wraps_onto_indented_lines(draft):
@@ -165,7 +178,7 @@ def test_a_paragraph_is_not_a_bullet(draft):
 def test_a_well_formed_glossary_has_no_problems(draft):
     write_glossary(
         draft,
-        "- **Sensor** -- a component.\n- **Baseline** (`M_0`) -- a value.\n- **`x_k`** -- a state.",
+        "- **Sensor** -- a component.\n- **Baseline** -- a value.\n- **Digital twin (DT)** -- a DO.",
     )
     assert _glossary.glossary_problems(draft) == []
 
@@ -195,7 +208,8 @@ def test_the_shipped_template_has_a_glossary_and_no_entries_or_problems(draft):
 
 def test_the_template_shows_the_shape_it_asks_for(draft):
     scope = (dossier.dossier_dir(draft) / "scope.md").read_text(encoding="utf-8")
-    assert "- **Baseline** (`M_0`) -- " in scope
+    assert "- **Baseline** -- " in scope and "(`M_0`)" not in scope
+    assert "| `M_0` | **Baseline** |" in scope
     assert 'no "as before"' in scope
 
 
@@ -246,7 +260,7 @@ def test_a_definition_continued_at_the_margin_is_a_problem(draft):
 def test_a_maths_term_is_a_problem_rather_than_vanishing(draft):
     write_glossary(draft, "- **$x$** -- a maths term.")
     (problem,) = _glossary.glossary_problems(draft)
-    assert "backticks" in problem.reason
+    assert "math.md's ## Symbols" in problem.reason
 
 
 @pytest.mark.parametrize("marker", ["*", "+"])

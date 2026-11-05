@@ -1,5 +1,5 @@
-"""A draft's `## Glossary` in `scope.md`: its entries, the symbol each one
-names, and the bullets that are not in the shape.
+"""A draft's `## Glossary` in `scope.md`: its entries, and the bullets
+that are not in the shape.
 
 Split out of chitragupta/dossier/_citekeys.py (#1138), which was at its
 C2 line limit. Three readers share this one parser rather than each
@@ -12,11 +12,13 @@ book's terminology registry, glossary and list of symbols
 The shape, which `dossier init`'s template shows by example:
 
     - **Term** -- definition
-    - **Term** (`symbol`) -- definition
-    - **`symbol`** -- definition
 
-plus, read for compatibility, the symbol inside the bold:
-``- **Baseline (`M_0`)** -- ...``. A bullet is `-`, `*` or `+` at the
+A symbol is not written here since #1143: it lives in `math.md`'s
+`## Symbols`, as `| `M_0` | **Baseline** |`. The three spellings #1141
+read are still *recognised*, so each is a problem naming the row to
+write instead: ``- **Baseline** (`M_0`) -- ...``, the symbol inside the
+bold ``- **Baseline (`M_0`)** -- ...``, and a bullet that is only a
+symbol, ``- **`x_k`** -- ...``. A bullet is `-`, `*` or `+` at the
 margin; its definition is the rest of that line and every following line
 indented by at least one space, and it ends at a blank line or a line at
 the margin. So an off-format bullet is never read as part of the
@@ -37,19 +39,18 @@ from typing import NamedTuple
 from chitragupta.citation_gate import extract_citekeys_from_line
 from chitragupta.dossier import SCOPE_MD, dossier_dir
 from chitragupta.dossier._draft_fingerprint import _DRAFT_DIGEST_LINE
-
-_GLOSSARY_HEADING = re.compile(r"^## Glossary[ \t]*$", re.MULTILINE)
-_NEXT_HEADING = re.compile(r"^## ", re.MULTILINE)
-_HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
+from chitragupta.render_output._math_symbols import glossary_section
 
 # Every bullet the pre-#1138 pattern matched still matches: the symbol
-# group is optional and sits between the bold and the ` -- `. Also used
-# line by line by chitragupta/registry/__init__.py's `_prose()`.
+# group is optional and sits between the bold and the ` -- `. Kept after
+# #1143 retired the slot, so the slot can be reported with its
+# replacement row, and so chitragupta/registry/__init__.py's `_prose()`,
+# which uses it line by line, still drops every definition bullet.
 _GLOSSARY_TERM = re.compile(
     r"^-\s*\*\*(?P<term>[^*]+)\*\*(?:\s*\(`(?P<symbol>[^`]+)`\))?\s*--\s*", re.MULTILINE
 )
 
-# A bold term ending in a backticked parenthetical: the compatible
+# A bold term ending in a backticked parenthetical: the other retired
 # spelling of a symbol, `**Baseline (`M_0`)**`.
 _BOLD_SYMBOL = re.compile(r"^(?P<name>.*?)\s*\(`(?P<symbol>[^`]+)`\)$")
 
@@ -65,17 +66,18 @@ _SHAPE = "not in the `- **Term** -- definition` shape"
 
 
 class Entry(NamedTuple):
-    """One glossary bullet. `term` is the bold text minus any symbol;
-    `name` is `None` for a bullet that is only a symbol."""
+    """One glossary bullet: the bold term (minus a retired symbol slot),
+    its definition and its line in `scope.md`."""
 
     term: str
-    symbol: "str | None"
     definition: str
     line: int
 
-    @property
-    def name(self) -> "str | None":
-        return None if self.term.startswith("`") else self.term
+
+class _Parsed(NamedTuple):
+    entry: Entry
+    # A retired spelling's symbol, kept only to name its replacement row.
+    symbol: "str | None"
 
 
 class Problem(NamedTuple):
@@ -85,21 +87,15 @@ class Problem(NamedTuple):
 
 
 def _section(draft: Path) -> "tuple[int, str] | None":
-    """`(line of the first body line, body)` of `## Glossary`, or `None`.
+    """`(line of the heading, body)` of `## Glossary`, or `None`.
 
-    HTML comments are blanked rather than removed, so line numbers stay
-    the file's own: the template's worked example is in one.
+    The section reader is `render_output._math_symbols`', shared so the
+    glossary spans `render` counts as `math.md` uses are this section's.
     """
     scope = dossier_dir(draft) / SCOPE_MD
     if not scope.is_file():
         return None
-    text = _HTML_COMMENT.sub(lambda m: "\n" * m.group(0).count("\n"), scope.read_text("utf-8"))
-    heading = _GLOSSARY_HEADING.search(text)
-    if not heading:
-        return None
-    end = _NEXT_HEADING.search(text, heading.end())
-    first_line = text.count("\n", 0, heading.end()) + 1
-    return first_line, text[heading.end() + 1 : end.start() if end else len(text)]
+    return glossary_section(scope.read_text("utf-8"))
 
 
 def has_glossary(draft: Path) -> bool:
@@ -141,7 +137,7 @@ def _bullets(draft: Path) -> "list[_Bullet]":
     return [_Bullet(line, "\n".join(lines), lazy) for line, lines, lazy in found]
 
 
-def _entry(line: int, text: str) -> "Entry | None":
+def _parse(line: int, text: str) -> "_Parsed | None":
     match = _GLOSSARY_TERM.match(text)
     if match is None:
         return None
@@ -151,24 +147,45 @@ def _entry(line: int, text: str) -> "Entry | None":
         term, symbol = inner.group("name"), inner.group("symbol")
     if symbol is None and term.startswith("`") and term.endswith("`"):
         symbol = term.strip("`")
-    return Entry(term, symbol, text[match.end() :].strip(), line)
+    return _Parsed(Entry(term, text[match.end() :].strip(), line), symbol)
+
+
+def _is_symbol_only(parsed: _Parsed) -> bool:
+    return parsed.entry.term.startswith("`")
 
 
 def glossary_entries(draft: Path) -> "list[Entry]":
-    """Every well-formed bullet with a definition, in file order."""
-    entries = (_entry(bullet.line, bullet.text) for bullet in _bullets(draft))
-    return [entry for entry in entries if entry is not None and entry.definition]
+    """Every term bullet with a definition, in file order. A bullet that
+    is only a symbol names no term, so it is a problem and not here."""
+    parsed = (_parse(bullet.line, bullet.text) for bullet in _bullets(draft))
+    return [
+        found.entry
+        for found in parsed
+        if found is not None and found.entry.definition and not _is_symbol_only(found)
+    ]
+
+
+def _retired(parsed: _Parsed) -> str:
+    """The `## Symbols` row a retired symbol spelling becomes (#1143)."""
+    if _is_symbol_only(parsed):
+        row = f"| `{parsed.symbol}` | <its meaning in words> |"
+        return f"symbols live in math.md now: add {row} under its ## Symbols and drop this bullet"
+    row = f"| `{parsed.symbol}` | **{parsed.entry.term}** |"
+    return f"symbols live in math.md now: add {row} under its ## Symbols and drop the symbol here"
 
 
 def _reason(bullet: _Bullet) -> "str | None":
     """Why `bullet` cannot be printed, or `None` if it can."""
-    entry = _entry(bullet.line, bullet.text)
+    parsed = _parse(bullet.line, bullet.text)
     if bullet.text[:1] != "-":
         return "a glossary bullet starts with `-`"
-    if entry is None:
+    if parsed is None:
         return _SHAPE
+    entry = parsed.entry
     if entry.term[:1] == "$":
-        return "write a symbol in backticks, `- **`x`** -- ...`, not as maths"
+        return "a symbol is not a glossary term: give it a row in math.md's ## Symbols"
+    if parsed.symbol is not None:
+        return _retired(parsed)
     if not entry.definition:
         return "has no definition"
     if bullet.lazy:

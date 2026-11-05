@@ -17,6 +17,7 @@ from chitragupta.render_output import (
     _figure_style,
     _math,
     _math_findings,
+    _math_symbols,
     _paths,
     _raw_tex,
     _tables,
@@ -56,10 +57,12 @@ def _checked_math_mapping(draft_text: str, input_path: Path) -> "dict[str, str]"
     if path is None:
         return mapping
     not_math = _math.not_math(text)
-    for found in _math_findings.duplicates(rows, not_math) + _math_findings.findings(
-        draft_text, mapping, path.is_file(), not_math
-    ):
-        print(f"[math] {found.message}", file=sys.stderr)
+    glossary = _math_symbols.glossary_spans(input_path)
+    found = _math_findings.duplicates(rows, not_math) + _math_findings.findings(
+        draft_text, mapping, path.is_file(), not_math, glossary
+    )
+    for finding in found + _math_symbols.findings(rows, text):
+        print(f"[math] {finding.message}", file=sys.stderr)
     return mapping
 
 

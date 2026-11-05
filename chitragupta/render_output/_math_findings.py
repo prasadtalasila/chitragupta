@@ -15,6 +15,7 @@ through a re-export: a re-export would need `_math` to import this, and
 the cycle is the thing the split is for.
 """
 
+import re
 from typing import NamedTuple
 
 from chitragupta.render_output._math import (
@@ -27,6 +28,7 @@ from chitragupta.render_output._math import (
     _SPAN_RE,
     _body_of,
     _symbols_of,
+    is_bare_symbol,
 )
 from chitragupta.render_output._math_shapes import rule_for, shape_rule
 
@@ -89,6 +91,7 @@ def findings(
     mapping: "dict[str, str]",
     found_file: bool,
     not_math: "frozenset[str]" = frozenset(),
+    glossary: "frozenset[str]" = frozenset(),
 ) -> "list[MathFinding]":
     """Every gap and orphan in `text`, each tagged with its kind.
 
@@ -113,7 +116,10 @@ def findings(
     author who keeps a `math.md` has asked for.
 
     `not_math` is that file's "not mathematics" table: spans the author
-    has said are code, never reported as gaps.
+    has said are code, never reported as gaps. `glossary` is the spans
+    of the dossier's `## Glossary`, which use rows as the draft does
+    (#1143) but are never reported as gaps here: the book's
+    `registry check` does that.
     """
     masked = _BLOCK_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
     found = [MathFinding("fence", message) for message in _fence_gaps(masked)]
@@ -131,9 +137,29 @@ def findings(
             found.extend(_span_finding(span, rule_for(span, symbols, found_file)))
 
     if found_file:
-        used = spans | {_body_of(m) for m in _BLOCK_RE.finditer(text)}
-        found.extend(_unused_rows(set(mapping) - used, not_math - spans))
+        blocks = {_body_of(m) for m in _BLOCK_RE.finditer(text)}
+        used = _used(spans | glossary | blocks, mapping)
+        found.extend(_unused_rows(set(mapping) - used, not_math - spans - glossary))
     return found
+
+
+def _used(bodies: "set[str]", mapping: "dict[str, str]") -> "set[str]":
+    """The mapping keys `bodies` (spans and blocks) use.
+
+    A key is used when a body is exactly it, and since #1143 a bare
+    symbol also when it is a whole token inside a *mapped* body: `T_r`
+    through `T_r = 10`, so a symbol only ever written inside formulas
+    can have the row its meaning needs. Mapped bodies only, so a code
+    span such as `range(n)` keeps no single-letter row alive, and the
+    row is an orphan again once the last formula holding it goes.
+    """
+    used = set(bodies)
+    mapped = [body for body in bodies if body in mapping]
+    for key in set(mapping) - used:
+        token = re.compile(rf"(?<![A-Za-z0-9_]){re.escape(key)}(?![A-Za-z0-9_])")
+        if is_bare_symbol(key) and any(token.search(body) for body in mapped):
+            used.add(key)
+    return used
 
 
 def _span_finding(span: str, rule: "str | None") -> "list[MathFinding]":
@@ -223,6 +249,8 @@ def warnings(
     mapping: "dict[str, str]",
     has_mapping_file: bool,
     not_math: "frozenset[str]" = frozenset(),
+    glossary: "frozenset[str]" = frozenset(),
 ) -> "list[str]":
     """`findings()` as lines a caller can print, in the same order."""
-    return [found.message for found in findings(text, mapping, has_mapping_file, not_math)]
+    found = findings(text, mapping, has_mapping_file, not_math, glossary)
+    return [finding.message for finding in found]
