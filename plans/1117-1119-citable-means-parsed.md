@@ -1,6 +1,7 @@
 # 1117/1118/1119: a citable key is a parsed one, and a cited key is a marker
 
-Status: **designed, unbuilt.** Written 2026-11-05, for
+Status: **designed, unbuilt; signed off by a Fable review with seven
+changes, folded in below.** Written 2026-11-05, for
 [issue 1117](https://github.com/prasadtalasila/chitragupta/issues/1117),
 [issue 1118](https://github.com/prasadtalasila/chitragupta/issues/1118)
 and [issue 1119](https://github.com/prasadtalasila/chitragupta/issues/1119),
@@ -64,7 +65,8 @@ Over `chitragupta-freja/content` (77 drafts, ledger 497 `parsed` + 145
 
 ### 1. `ledger`: one definition of citable
 
-`chitragupta/ledger.py`:
+A new `chitragupta/ledger_citable.py` (`ledger.py` is at 247 of 250
+code lines):
 
 - `PARSED = "parsed"`.
 - `citable_citekeys(con) -> set[str]`: `status = 'parsed'` rows.
@@ -77,7 +79,9 @@ Over `chitragupta-freja/content` (77 drafts, ledger 497 `parsed` + 145
 ### 2. The gate and its two in-process callers
 
 `citation_gate.check_text(path, text, citable: set[str], unparsed:
-"Mapping[str, str] | None" = None)`, `check_document` likewise.
+"Mapping[str, str] | None" = None)`, `check_document` likewise. The
+parameter is renamed from `known_citekeys`, so the four keyword calls in
+`tests/test_citation_gate.py` (570, 579, 590, 597) are edited with it.
 `GateResult` gains `unparsed: dict[str, str]`, the status of each
 unresolved key that has a row. `unknown` keeps every unresolved
 `(line, key)`, so `ok` and every existing assertion stand.
@@ -88,6 +92,11 @@ unresolved key that has a row. `unknown` keeps every unresolved
   (unchanged)
 - a row: `@k is in the ledger but has no parsed PDF (status no_pdf) --
   attach its PDF in Zotero and run sync again`
+
+`report()` moves to a new `chitragupta/citation_gate_report.py`
+(`citation_gate.py` is at 249 of 250), imported back into
+`citation_gate` so `citation_gate.report` keeps working for render and
+`unit accept`.
 
 `run()`: the empty-ledger warning fires when `citable` is empty; when
 `unparsed` is not, it says the ledger holds no parsed source rather than
@@ -100,10 +109,17 @@ source that is not citable, with the same wording.
 - `retrieval.search()`: scores are filtered to `parsed` rows *after*
   BM25, the way `collection` already is and for the reason its docstring
   gives (narrowing the index would change every IDF and split the
-  cache). `search_iterative` and `discover` go through `search`.
+  cache). One comprehension does both filters, so `retrieval.py` (248 of
+  250) does not grow. `retrieval_cache._fingerprint` already carries
+  status, so the cache is untouched. `search_iterative` and `discover` go through `search`.
 - `retrieval_cli.evidence()`: an unparsed row raises `KeyError("k has no
   parsed PDF (status s), so it has no text and cannot be cited")`,
-  printed by the existing `[error]` path.
+  printed by the existing `[error]` path. This inverts a pinned
+  contract: `tests/test_retrieval.py`'s
+  `test_a_citekey_with_no_parsed_text_is_not_an_error` and
+  `test_parse_failed_status_does_not_serve_stale_parsed_text` (the
+  `evidence` one) become refusal tests, and the `evidence` docstring
+  line saying an unparsed key is not an error is rewritten.
 - `enrich.embed_index.search()`: hits filtered to `citable_citekeys`
   (`build_corpus` ignores status, so a `parse_failed` row's stale text
   can be embedded). Docstring paragraph on metadata-only entries
@@ -114,7 +130,9 @@ source that is not citable, with the same wording.
 
 `dossier._corpus_rows()` selects `WHERE status = 'parsed'`. That makes
 `dossier.known_citekeys()`, `Corpus`, the `scope.md` fingerprint,
-`missing`, `unconsidered` and candidates all parsed-only. A cited key
+`missing`, `unconsidered` and candidates all parsed-only.
+`agenda`'s `missing-citekey` class reads `drift.missing`, so a row that
+went `no_pdf` becomes an unattended de-cite there, which is right. A cited key
 whose row stops being parsed is reported missing. **Every existing
 dossier's recorded digest stops matching once**, a one-off drift the
 release notes state.
@@ -128,6 +146,14 @@ known)` already returns. The loose `cited` set stays for what it is
 used for now: `mentioned` and the cited-beats-rejected tie in
 `reconsider`.
 
+**One accepted regression.** A key cited only in an `evidence.md` body,
+under a heading that does not open with the key, is no longer reported
+missing. Hand-written dossiers are a supported input, but that shape is
+the very prose #1117 is about, and a key heading is the format every
+skill writes. #506/M-28 still holds: `Doe2024` declared by a heading is
+in `declared_citekeys`. A test pins the regression so it is not later
+"repaired" back.
+
 ### 6. #1119: `chitragupta.BareCitekey`
 
 New `chitragupta/style_bare_citekeys.py` with
@@ -139,25 +165,34 @@ is untouched (DEVELOPER-AGENTS.md bars a second gate).
   read-only; no ledger, or one that cannot be read, gives `[]`. Only
   keys with a digit, `_` or `:` are looked for: a pure-letter key
   (`smith`) is an ordinary word in prose.
+- **Tokens** are `re.finditer` over `_pandoc_cites.PANDOC_KEY`, whole
+  tokens only, so `doe_2024` is never found inside `doe_2024-1` or
+  `smith` inside `smith:2024`; a token is kept when the character before
+  it is not `@`, a word character or key punctuation and it equals a
+  ledger key.
 - **What is scanned, Markdown:** the References section blanked
   (`references_section.section_start`/`section_end` over
-  `splitlines(keepends=True)`), every citation-command match blanked
-  (`citation_gate._LATEX_CITE_RE`). Then:
+  `splitlines(keepends=True)`). Every citation blanked by its span:
+  `_pandoc_cites.citations(...)` returns `(start, end, key)`, which
+  covers `[@k]`, `@k`, `[-@k]` and braced `@{k}`; plus the
+  `citation_gate._LATEX_CITE_RE` matches. Then:
   - *prose:* `citation_gate.markdown_prose(text)[0]` (code, comments,
-    link targets, raw blocks already blanked); a key-shaped token on a
-    word boundary, not preceded by `@`, that equals a ledger key.
+    link targets, raw blocks already blanked), tokenised as above.
   - *code span:* an inline code span (from
     `_markdown_inert.non_prose_spans(text, code_only=True)`, one line)
     whose whole content is a ledger key. A fenced block is code, not a
     mention, and is skipped.
 - **What is scanned, `.tex`:** `citation_gate._blank_code(text,
-  latex=True)` (comments, verbatim) with `\cite`-family matches blanked;
-  `\_` read as `_` for the lookup. `\texttt{key}` is the code-span case.
+  latex=True)` (comments, verbatim) with `\cite`-family matches blanked.
+  The token pattern accepts `\\?_`, and the lookup strips the
+  backslashes from the matched token only; the text is never rewritten,
+  so `line_of` on the blanked text gives the right line.
+  `\texttt{key}` is the code-span case.
 - **Findings,** one per occurrence, line-numbered:
 
   | Where | Key | `repair` | Message says |
   | --- | --- | --- | --- |
-  | prose | parsed | `edit` | replace with `[@k]` (`\cite{k}` in `.tex`), IEEE's numbered citation used as a noun: "In [@k], the authors..." |
+  | prose | parsed | `edit` | replace with `[@k]` (`\citep{k}` in `.tex`, the form `thesis-chapter-writer` writes), IEEE's numbered citation used as a noun: "In [@k], the authors..." |
   | prose | unparsed | `review` | it cannot be cited (no parsed PDF, status s); reword without it |
   | code span | any | `review` | a reader cannot resolve a key; a note about the corpus goes in the dossier's `revisions.md`; to cite it, write `[@k]` |
 
@@ -180,9 +215,12 @@ is untouched (DEVELOPER-AGENTS.md bars a second gate).
 
 ## Module sizes (C2: 250 code lines)
 
-`citation_gate.py` and `retrieval.py` grow by a few lines each; check
-with the repo's size test after each task. The new rule module is its
-own file.
+Measured with `scripts/code_standards.code_lines`: `citation_gate.py`
+249, `retrieval.py` 248, `ledger.py` 247, `retrieval_cli.py` 245,
+`embed_index.py` 243, `dossier/_drift.py` 233. The register may only
+shrink, so the splits are decided above: `ledger_citable.py`,
+`citation_gate_report.py`, and a merged filter in `search()`.
+`retrieval_cli.py` has room for its two lines.
 
 ## Tasks (test-first; each test red before its code)
 
@@ -194,19 +232,24 @@ own file.
    `no_pdf`; `run()` exits 1, output has `has no parsed PDF (status
    no_pdf)`); the same for `discovered` and `parse_failed` (parametrize);
    a missing key keeps its old line; `test_a_ledger_of_only_unparsed_rows_warns_no_parsed_source`.
-   Render: `tests/test_render_output*` case where `gated_warnings`
-   raises `UngatedDraft` for a `no_pdf` citation. Unit: `unit accept`
-   refuses a `no_pdf` source. Existing set-passing calls keep working.
+   Render: `tests/test_render_output_gate.py`, where `gated_warnings`
+   raises `UngatedDraft` for a `no_pdf` citation. Unit:
+   `tests/test_unit.py`, where `unit accept` refuses a `no_pdf` source.
+   Existing set-passing calls keep working; the four keyword calls are
+   renamed.
 3. **retrieval.** `tests/test_retrieval.py`:
    `test_search_never_returns_an_unparsed_row` (the probe above, plus a
    parsed row that must still come back with an unchanged score);
-   `evidence` on a `no_pdf` key raises with the status;
+   `evidence` on a `no_pdf` or `parse_failed` key raises with the
+   status (the two tests named in section 3 rewritten);
    `tests/test_enrich_embed_index.py`: a `parse_failed` hit is dropped.
 4. **dossier.** `tests/test_dossier*.py`: the corpus digest and count
    are over parsed rows; a cited key whose row is `no_pdf` is in
    `missing`; the issue's `` `tutorial-writer` `` preamble reports
    nothing missing; a declared heading key and a `sections.md` key that
-   left the ledger still do.
+   left the ledger still do;
+   `test_a_key_cited_only_in_an_evidence_body_is_not_missing` pins the
+   accepted regression.
 5. **BareCitekey.** `tests/test_style_bare_citekeys.py`: the issue's
    two lines (one `edit` at line 3 saying `[@gil_survey_2024]`-shaped,
    one `review` at line 5); negatives: a `` [n] entry `key` `` References
@@ -225,6 +268,9 @@ own file.
 7. **Version** 6.159.0 in `pyproject.toml` (and wherever the release
    check reads it), the full local check list from DEVELOPER-AGENTS.md,
    then the PR.
+
+Found on the way and left for its own issue: `passages._ledger_row`
+reads `parsed_path` with no status guard (the #490 class).
 
 ## Review Focus
 
