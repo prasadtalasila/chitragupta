@@ -1,6 +1,8 @@
 # X-1, X-3, X-5 (reduced): the book's page, measured once and checked against
 
-Status: **designed, unbuilt.** Written 2026-11-05, for
+Status: **built** in
+[PR 1155](https://github.com/prasadtalasila/chitragupta/pull/1155),
+2026-11-05. Written 2026-11-05, for
 [epic 1140](https://github.com/prasadtalasila/chitragupta/issues/1140),
 items X-1, X-3 and X-5 in their reduced form. X-2, X-4, X-6, X-7 and X-8
 are parked on the epic.
