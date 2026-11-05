@@ -55,3 +55,12 @@ for example `\DeclareUnicodeCharacter{2603}{\ensuremath{\ast}}`. That
 file reaches a render behind a shim that defines
 `\DeclareUnicodeCharacter` on `newunicodechar` where the engine lacks it,
 so the same line also works in chitragupta's own LuaLaTeX pdf render.
+
+## `chitragupta-index.ist`
+
+The `upmendex` style for a book's index (#1168). `python -m
+chitragupta.draft registry index` writes it beside `book.tex` as
+`book.ist`, with `headings_flag` set from `index.toml`'s
+`letter_headings`, and runs `upmendex` with it. Its only other choices
+are the bold letter heading and the names of the symbol and number
+groups. See [docs/book/book-index.md](../../docs/book/book-index.md).
