@@ -61,7 +61,59 @@ def test_the_skeleton_is_an_asset_the_conventions_name():
 def test_the_skeleton_keeps_its_placeholders_for_the_model_to_fill():
     skeleton = SKELETON.read_text(encoding="utf-8")
     assert "<the outline's own title>" in skeleton
-    assert "<ask the user; never invent one>" in skeleton
+    assert "<the outline's - author: line; else ask the user, never invent one>" in skeleton
+
+
+def test_the_author_comes_from_the_outline_and_is_never_invented():
+    """#1137: the title page's author is the outline's `- author:` line,
+    so it is written once rather than asked for on every assembly."""
+    body = _body()
+    assert "The author is the outline's `- author:` line" in body
+    assert "ask the user only if it has none, never invent one" in body
+
+
+def test_the_skeleton_has_a_slot_for_each_kind_of_matter():
+    """#1137: front matter after the contents, appendices lettered by
+    `\\appendix`, back matter in outline order before the bibliography,
+    and the author's copyright page right after the title page."""
+    skeleton = SKELETON.read_text(encoding="utf-8")
+    order = [
+        r"\maketitle",
+        r"\input{copyright}",
+        r"\tableofcontents",
+        "{#front}'s entries",
+        r"\mainmatter",
+        r"\appendix",
+        r"\backmatter",
+        "{#back}'s entries",
+        r"\bibliography{bibliography}",
+    ]
+    document = skeleton[skeleton.index(r"\begin{document}") :]
+    positions = [document.index(marker) for marker in order]
+    assert positions == sorted(positions)
+    for macro in (
+        r"\newcommand{\BookTitle}",
+        r"\newcommand{\BookAuthor}",
+        r"\newcommand{\BuildLine}",
+    ):
+        assert macro in skeleton
+
+
+def test_the_conventions_place_every_reserved_id_and_keep_old_books_working():
+    body = _body()
+    for entry in (
+        "{#front}",
+        "{#appendices}",
+        "{#back}",
+        "{#glossary}",
+        "{#symbols}",
+        "{#figures}",
+        "{#tables}",
+    ):
+        assert entry in body
+    assert "**An outline with none of the three reserved parts** is one" in body
+    assert "Never edit it: its wording, licence and year are the author's." in body
+    assert "only if it has something to show" in body
 
 
 def test_the_assembler_runs_the_consistency_check():
@@ -202,7 +254,7 @@ def test_the_brace_protection_requirement_is_documented():
     not, so the same entry is right in one artefact and wrong in the
     other. The pipeline deliberately does not rewrite a human's titles to
     fix it, which makes saying so the whole mitigation."""
-    book_doc = (Path(__file__).resolve().parent.parent / "docs" / "WRITE-A-BOOK.md").read_text(
+    book_doc = (Path(__file__).resolve().parent.parent / "docs" / "book" / "assemble.md").read_text(
         encoding="utf-8"
     )
     assert "Brace-protect acronyms" in book_doc

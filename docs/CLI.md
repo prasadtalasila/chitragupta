@@ -1680,7 +1680,7 @@ that reads a `.tex` draft and nothing else:
 
 | Rule | What it means |
 | --- | --- |
-| `chitragupta.ChapterSelfNumbered` | A `\chapter{}` states its own chapter number (`Chapter 1: …`), so the document it is `\input` into prints it a second time, at the chapter opening and in the table of contents. Reported only for a `.tex` unit, which `book-assembler` assembles as written; a Markdown unit's `--fragment` render drops the prefix from the `\chapter{}` it emits, so there is nothing left to repair and nothing is reported |
+| `chitragupta.ChapterSelfNumbered` | A `\chapter{}` states its own chapter number or appendix letter (`Chapter 1: …`, `Appendix A: …`), so the document it is `\input` into prints it a second time, at the chapter opening and in the table of contents. Reported only for a `.tex` unit, which `book-assembler` assembles as written; a Markdown unit's `--fragment` render drops the prefix from the `\chapter{}` it emits, so there is nothing left to repair and nothing is reported |
 
 §14's third rule (prefer a breakable form for a very long token) is
 deliberately **not** checked. TeX hyphenates long English words
@@ -1752,7 +1752,7 @@ Stdlib only, no venv needed. Writes only under `content/specs/`, mirroring
 the book's own directory under `content/drafts/`.
 
 ```bash
-chitragupta draft spec init content/drafts/<book> --title "<title>"
+chitragupta draft spec init content/drafts/<book> --title "<title>" [--author "<name>"]
 chitragupta draft spec show content/drafts/<book>
 chitragupta draft spec show content/drafts/<book> --unit sec-1
 chitragupta draft spec sign content/drafts/<book> --by "<name>"
@@ -1763,9 +1763,9 @@ chitragupta draft spec seed   content/drafts/<book> --genre <genre> [--dry-run]
 
 | Command | Does | Exit |
 | --- | --- | --- |
-| `init` | write an outline skeleton (refuses to overwrite one) | 1 if a spec is already there |
-| `show` | the outline as a tree, or `--unit <id>` for one unit's slice | 1 on an unknown unit or a spec that does not parse |
-| `sign` | record that a human approved this outline, by whole-file digest and one per chapter | 1 on a spec that does not parse |
+| `init` | write an outline skeleton with front and back matter, a preface template (`content/drafts/<book>/preface.md`) and a copyright page template (`content/specs/<book>/copyright.tex`); `--author` writes the outline's `- author:` line. Never overwrites the two templates | 1 if a spec is already there |
+| `show` | the outline as a tree, under its title and `author:` line, or `--unit <id>` for one unit's slice | 1 on an unknown unit or a spec that does not parse |
+| `sign` | record that a human approved this outline, by whole-file digest and one per chapter; and, while `copyright.tex` still holds its `<year>` placeholder, write the current year over it (in practice once, at the first sign-off) | 1 on a spec that does not parse |
 | `status` | what the outline holds, whether it is signed off, and which chapters moved | 1 when unsigned or changed since sign-off |
 | `align` | whether each authored chapter still matches the sections the outline declares | 1 on any finding, or on a chapter file symlinked out of its book |
 | `seed` | write each chapter's declared sections into its dossier `outline.md`, as bare headings | 1 on an unsigned or unparseable outline, or on a chapter file symlinked out of its book |
@@ -1776,10 +1776,19 @@ headings inside it. Every part, chapter and section needs an explicit
 `{#id}`, because a derived id changes when someone rewords a heading and
 orphans the units written against it.
 
+Three part ids are reserved, `{#front}` (first part), `{#appendices}`
+(after every ordinary part) and `{#back}` (last part), and four chapter
+ids name pages the assembler generates, allowed only under `{#front}` or
+`{#back}`: `{#glossary}`, `{#symbols}`, `{#figures}`, `{#tables}`. An
+outline that puts one in the wrong place does not parse. The workflows
+are [front matter](book/front-matter.md), [appendices](book/appendices.md)
+and [back matter](book/back-matter.md).
+
 `status`'s exit code is **not a gate**. It reads back a record of a
 person's decision (did a human approve this outline?) rather than
 judging any draft's content, and nothing it says can refuse a write.
-[WRITE-A-BOOK.md](WRITE-A-BOOK.md#-what-statuss-exit-code-is-and-is-not) has that
+[the book design notes](book/design-notes.md#-what-statuss-exit-code-is-and-is-not)
+has that
 reconciliation against [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4".
 
 ### 🧱 `chitragupta draft unit`
@@ -1800,12 +1809,17 @@ chitragupta draft unit status   content/drafts/<book>
 | --- | --- | --- |
 | `contract` | the inputs one unit is generated from, and their digest | 1 on an unknown unit, a part/chapter, or a spec that does not parse |
 | `accept` | record a generated unit, once the citation gate passes on it | 1 if the unit's own chapter is unsigned or misaligned, the draft is missing, a `--source` is not in the ledger, or the gate refuses it |
-| `status` | where every unit stands, and what its dossier says about the same prose (`--json`) | 1 while any unit is not accepted and current |
+| `status` | where every unit stands, and what its dossier says about the same prose (`--json`); then any acceptance record whose unit has left the outline, as `accepted, but no longer in the outline: <ids>` (`"orphaned"` in `--json`), deleting nothing | 1 while any unit is not accepted and current; orphaned records do not count |
 
 `--source` is repeatable and is part of the input digest, so grounding a
 unit in a different set of papers is a different unit to generate. The
 digest covers the inputs only, never the unit's own prose, which is why
 it can answer "does this need regenerating?".
+
+A unit is a chapter the outline describes at section level, the single
+section of a chapter described only at chapter level, or a chapter that
+declares no sections at all (a preface, an appendix). The four generated
+pages are not units.
 
 `accept` **invokes the citation gate, it does not replace it**: a unit
 the gate refuses cannot be accepted, and nothing here is a second gate.
@@ -1835,7 +1849,7 @@ whether a *human decided* something; this reports a *machine's reading of
 prose*, which is judgement however mechanical the arithmetic. There is no
 flag that makes it block (`build --glossary` refusing is a build declining
 to write an incomplete page, and `check` reports the same bullets);
-[WRITE-A-BOOK.md](WRITE-A-BOOK.md#-why-registry-check-exits-0-when-the-two-status-commands-do-not)
+[the book design notes](book/design-notes.md#-why-registry-check-exits-0-when-the-two-status-commands-do-not)
 has the argument, and [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" the
 rule behind it.
 

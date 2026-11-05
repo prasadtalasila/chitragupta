@@ -72,7 +72,10 @@ out they were missing background.
 
 *Source: Google, Technical Writing One (short sentences, active voice,
 consistent terms, defining terms once); Last, TWE §2.2 "Communicating with
-Precision" and §7.7 "Writing Style" on the passive-voice failure.*
+Precision" and §7.7 "Writing Style" on the passive-voice failure. The
+concrete-instance rule, which `textbook-chapter-writer` leans on hardest,
+is Wilson's, TTT "Expertise and Memory", and the Carpentries' (a worked
+example before the exercise that practises it).*
 
 In a verbatim digest ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) these
 rules bind the drafter's connecting sentences only; copied text keeps
@@ -1216,8 +1219,11 @@ be cited at all), is left to a person.
 
 ## 📖 Sources and attribution
 
-Three openly licensed works supply the principles above. All three require
-attribution under their licences; this section is that attribution.
+Three openly licensed works supply the principles above, and three more
+supply the pedagogy of `textbook-chapter-writer` and the book structure of
+`book-assembler`. All six require attribution under their licences; this
+section is that attribution. A seventh work, Wilkes's, supplies ideas only
+and is credited after them.
 
 1. **Daniele Procida, *Diátaxis: A systematic approach to technical
    documentation authoring***. <https://diataxis.fr/>; source repository
@@ -1250,6 +1256,40 @@ attribution under their licences; this section is that attribution.
    use and then not reverting; short sentences with one idea each; active
    voice with a named actor; leading a paragraph with its point.
 
+4. **Greg Wilson, *Teaching Tech Together***, online edition.
+   <https://teachtogether.tech/>; source repository
+   <https://github.com/gvwilson/teachtogether.tech>. Licensed
+   CC-BY-NC 4.0, not CC-BY: the NonCommercial clause binds copies and
+   adaptations of the text, so this pipeline takes the ideas only and none
+   of the text (see "What is original here" below).
+   Supplies, for `textbook-chapter-writer`: backward design (objectives
+   and assessments before content); learner personas; chunking to 7±2,
+   or 4±1, items; concept maps; worked examples, then faded ones, with
+   labelled subgoals; a formative check every 10 to 15 minutes; the
+   catalogue of exercise types; the expertise-reversal effect; concrete
+   instances before the general rule ("Expertise and Memory").
+
+5. **The Carpentries, *Lesson Development Training***.
+   <https://carpentries.github.io/lesson-development-training/>; source
+   repository <https://github.com/carpentries/lesson-development-training>.
+   Licensed CC-BY 4.0 ("Materials licensed under CC-BY 4.0 by the
+   authors"). It replaces the retired *Curriculum Development Handbook*.
+   Supplies, for `textbook-chapter-writer`: the lesson-design procedure;
+   objectives written with an observable verb, two to four per episode;
+   the questions-and-key-points frame around an episode; a worked example
+   before the exercise that practises it; a check after every 15 to 20
+   minutes of teaching; the accessibility checks.
+
+6. **Lauri M. Aesoph, *Self-Publishing Guide***, BCcampus, 2018, chapter
+   "Textbook Outline".
+   <https://opentextbc.ca/selfpublishguide/chapter/textbook-outline/>.
+   Licensed CC BY 4.0. The page notes that its front- and back-matter
+   tables draw partly on Wikipedia's "Book design" (CC BY-SA 3.0), which
+   is therefore credited transitively.
+   Supplies, for `book-assembler` and `textbook-chapter-writer`: the
+   front-matter, chapter-element and back-matter tables, which are where
+   a book's front matter, appendices and back matter (#1137) come from.
+
 **Ideas, not text, from one further work.** Gareth Wilkes, *A Brief
 Guide to Mathematical Writing*, Department of Pure Mathematics and
 Mathematical Statistics, University of Cambridge, revised 2023-10-08.
@@ -1264,13 +1304,15 @@ never overloading one (§2 "Notation and definitions"); writing the
 before applying it, and keeping diagrams for objects (§1 "General
 tips"); stating the claim before a proof and a concluding sentence
 after, one step per paragraph (§3 "Formatting and structuring
-proofs").
+proofs"). `textbook-chapter-writer` reads that reference for a
+maths-heavy chapter, so its symbol-definition and notation discipline is
+Wilkes's too.
 
 ### 💡 What is original here
 
 The prose in this file, in every `.claude/skills/*/SKILL.md` and in
 `.claude/skills-common/references/` is written from scratch. A verbatim
-n-gram check against the three licensed sources above
+n-gram check against the first three licensed sources above
 (107,272 words of source; the algorithm is `chitragupta/review/verbatim_check/_overlap.py`'s
 `cmd_overlap`) reports **0% overlap at an 8-word threshold**, and nothing
 above five consecutive shared words anywhere. What is borrowed is the
@@ -1283,3 +1325,21 @@ Wilkes's guide (about 5,700 words) was checked the same way against this
 file and `mathematical-prose.md` on 2026-11-05: no run of seven or more
 words is shared with either, and the only six-word run is the guide's
 own title, cited above.
+
+Sources 4 to 6, and Wilkes's guide again, were checked on 2026-11-05
+(#1129) against this file, `textbook-chapter-writer`'s and
+`book-assembler`'s `SKILL.md`, `book-assembler`'s `references/` and
+`assets/`, and every file in `.claude/skills-common/references/`. The
+method is `cmd_overlap`'s: lowercase, keep `[a-z0-9]+` runs as words,
+and compare 8-word shingles, here as the share of this side's 28,527
+shingles found in the source. *Teaching Tech Together* was read from the
+English LaTeX source in its repository (commit `0abb340`, commands
+stripped; 72,644 words), *Lesson Development Training* from its
+repository's episodes and index (commit `2bc8daf`; 26,408 words), and
+"Textbook Outline" from the published page (1,755 words with its page
+navigation). Every source reports **0% at the 8-word threshold**. The
+longest shared run is six words for *Teaching Tech Together* and for
+Wilkes, and both are citations in this section: the repository URL and
+the guide's title. The other two sources share no run longer than five
+words, and those are stock phrases ("at the end of the") or licence
+names.

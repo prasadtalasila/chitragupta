@@ -51,6 +51,16 @@ class TestChapterSelfNumbered:
             "chitragupta.ChapterSelfNumbered",
         ]
 
+    def test_an_appendix_stating_its_own_letter_is_reported(self, tmp_path):
+        """#1137: under `\\appendix` the class letters the chapter, so a
+        `.tex` appendix that states its letter prints it twice."""
+        draft = tex_with("\\chapter{Appendix A: The Mathematics You Need}\n", tmp_path)
+
+        found = style_headings.findings(draft)
+
+        assert rules(found) == ["chitragupta.ChapterSelfNumbered"]
+        assert "appendix letter" in found[0]["message"]
+
     def test_a_title_that_merely_begins_with_the_word_is_not_reported(self, tmp_path):
         draft = tex_with("\\chapter{Chapters and Verses}\n", tmp_path)
 

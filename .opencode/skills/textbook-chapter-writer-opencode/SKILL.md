@@ -562,9 +562,9 @@ Beyond `docs/WRITING-STANDARDS.md` §4:
 ## Sources
 
 The principles in this file are not original to this project. Full
-citations, licences and a per-principle attribution table are in
+citations, licences and what each work supplies are in
 [`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution).
-In short: the genre model is Procida's Diátaxis, the audience and
-clarity discipline is Google's Technical Writing courses and Last's
-*Technical Writing Essentials*. All three are openly licensed and require
-attribution.
+In short: the pedagogy is Wilson's *Teaching Tech Together* and the
+Carpentries' *Lesson Development Training*; the chapter elements are
+BCcampus's *Self-Publishing Guide*; notation is Wilkes's guide to
+mathematical writing.

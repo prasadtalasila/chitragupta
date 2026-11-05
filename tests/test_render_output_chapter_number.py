@@ -42,6 +42,20 @@ class TestUnnumbered:
 
         assert _chapter_number.unnumbered(text) == "\\chapter{Why Anyone Pays}\n\nBody.\n"
 
+    def test_an_appendix_loses_the_letter_it_states_itself(self):
+        """#1137: under `\\appendix` the class prints "Appendix A" above
+        the title, so `Appendix A: The Mathematics You Need` doubled it,
+        as the digital-twins book did. A word after `Appendix` that is
+        not a single letter and a separator is an ordinary title."""
+        text = "# Appendix A: The Mathematics You Need\n\nBody.\n"
+
+        assert _chapter_number.unnumbered(text) == "# The Mathematics You Need\n\nBody.\n"
+        assert _chapter_number.unnumbered("\\chapter{Appendix B -- Proofs}\n", latex=True) == (
+            "\\chapter{Proofs}\n"
+        )
+        untouched = "# Appendix Alpha: Notes\n\n# Appendices and Errata\n"
+        assert _chapter_number.unnumbered(untouched) == untouched
+
     def test_a_title_that_merely_begins_with_the_word_is_untouched(self):
         """The pattern fires on a heading that *already states a number*,
         which is the whole of the duplicating case. A title beginning with

@@ -128,7 +128,9 @@ def acceptance_units(book: Path) -> list[dict]:
     level **is** the unit. A chapter described only at chapter level
     declares no structure of its own, so its single section stays the
     unit -- that is every book retrofitted from prose written before this
-    track, where the section id is the filename.
+    track, where the section id is the filename. A chapter with no
+    sections at all is its own unit: a preface declares none, and before
+    #1137 it was silently no unit, so it could never be accepted.
 
     The asymmetry is load-bearing. Alignment only has content while the
     outline is finer than the file: collapse them and "did you write what
@@ -142,10 +144,12 @@ def acceptance_units(book: Path) -> list[dict]:
     _, parsed = _parsed_spec(book)
     found: list[dict] = []
     for chapter, declared in chapters(parsed):
-        if section_described(chapter, declared):
-            found.append(chapter)
-        else:
-            found.extend(declared)
+        # A generated page (#1137) is written by nobody, so it is no unit.
+        if chapter["id"] in spec.GENERATED:
+            continue
+        found.extend(
+            [chapter] if section_described(chapter, declared) or not declared else declared
+        )
     return found
 
 

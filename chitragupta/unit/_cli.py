@@ -18,6 +18,7 @@ from chitragupta.dossier import dossier_dir
 from chitragupta.dossier._draft_fingerprint import recorded_draft_digest
 from chitragupta.spec._align import align
 from chitragupta.unit import (
+    UNITS_DIRNAME,
     UnitError,
     chapter_of,
     contract,
@@ -210,8 +211,21 @@ def _fingerprint(book, unit_id: str) -> str:
     return "agrees" if recorded == spec.digest(draft.read_text(encoding="utf-8")) else "disagrees"
 
 
+def _orphaned(book: Path, found: list[dict]) -> list[str]:
+    """Acceptance records whose unit the outline no longer holds.
+
+    Listed, never deleted (#1137): the prose is the author's, and the
+    record is the evidence a person approved it. Taking a unit out of the
+    outline already takes it out of the next assembly.
+    """
+    units = spec.spec_dir(book) / UNITS_DIRNAME
+    held = {entry["id"] for entry in found}
+    return sorted(path.stem for path in units.glob("*.json") if path.stem not in held)
+
+
 def _cmd_status(args) -> int:
     found = acceptance_units(args.book)
+    orphaned = _orphaned(args.book, found)
     rows = [
         {
             "id": entry["id"],
@@ -222,11 +236,17 @@ def _cmd_status(args) -> int:
     ]
     accepted = sum(1 for row in rows if row["state"] == "accepted")
     if args.json:
-        print(json.dumps({"units": rows, "accepted": accepted}, indent=2, sort_keys=True))
+        report = {"units": rows, "accepted": accepted, "orphaned": orphaned}
+        print(json.dumps(report, indent=2, sort_keys=True))
         return 0 if accepted == len(found) else 1
     for row in rows:
         print(f"  {row['id']:<24} {row['state']:<38} dossier: {row['fingerprint']}")
     print(f"\n  {accepted} of {len(found)} unit(s) accepted and current.")
+    if orphaned:
+        print(
+            f"  accepted, but no longer in the outline: {', '.join(orphaned)} "
+            "(records and prose are left on disk)"
+        )
     return 0 if accepted == len(found) else 1
 
 

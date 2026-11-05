@@ -34,7 +34,7 @@ _LATER = "#1091: shrinks to its target in its own PR"
 # skill: (cap in bytes, why the cap is above the target, or None)
 BUDGET = {
     "agenda-reviser": (28_000, _LATER),
-    "book-assembler": (21_000, _LATER),
+    "book-assembler": (20_000, _LATER),
     "corpus-reviser": (13_000, _LATER),
     "deep-research": (41_000, _LATER),
     "draft-reviser": (29_000, _LATER),

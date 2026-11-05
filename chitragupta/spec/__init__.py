@@ -55,6 +55,8 @@ from chitragupta.citekey_safety import citekey_problem
 # across the two packages is the lesser evil against a second copy of
 # the same three-state loop.
 from chitragupta.dossier._sections import _prose_lines
+from chitragupta.spec import _matter
+from chitragupta.spec._matter import BACK, FRONT, GENERATED, matter
 
 SPEC_MD = "spec.md"
 
@@ -263,7 +265,7 @@ def _missing(title: str | None, units: list[dict]) -> list[str]:
 
 
 def parse(text: str) -> dict:
-    """`{"title", "units", "problems"}` for a spec's text.
+    """`{"title", "author", "units", "problems"}` for a spec's text.
 
     Every problem is collected rather than raised on the first one: a
     human editing an outline wants the whole list, not one round trip per
@@ -271,6 +273,7 @@ def parse(text: str) -> dict:
     units that *are* returned are always well-formed.
     """
     title = None
+    author = None
     units: list[dict] = []
     problems: list[str] = []
     seen: set[str] = set()
@@ -279,6 +282,7 @@ def parse(text: str) -> dict:
         if head["level"] == 1:
             if title is None:
                 title = head["title"]
+                author = _matter.author(head["brief"])
             else:
                 problems.append(
                     f"more than one book title: `{head['title']}` is a "
@@ -293,7 +297,13 @@ def parse(text: str) -> dict:
         units.append(_unit(head, stack))
         stack.append(head)
         seen.add(head["id"])
-    return {"title": title, "units": units, "problems": problems + _missing(title, units)}
+    problems += _matter.problems(units)
+    return {
+        "title": title,
+        "author": author,
+        "units": units,
+        "problems": problems + _missing(title, units),
+    }
 
 
 # Re-exported so `from chitragupta import spec` reaches the entry point by the

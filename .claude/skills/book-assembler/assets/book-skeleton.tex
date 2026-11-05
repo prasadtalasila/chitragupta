@@ -1,8 +1,8 @@
 % The document skeleton for an assembled book, in order. A template, not
 % a file that compiles: copy it into content/rendered/<book>/book.tex,
-% replace each <...> placeholder, keep the \input{preamble} line only if
-% the book has a content/specs/<book>/preamble.tex, and put the parts and
-% chapters where the \mainmatter comment says. Each "latex-conventions.md"
+% replace each <...> placeholder, keep the \input{preamble} and
+% \input{copyright} lines only if the book has those files under
+% content/specs/<book>/, and put each outline entry where its comment says. Each "latex-conventions.md"
 % comment names the section of
 % .claude/skills/book-assembler/references/latex-conventions.md that
 % explains the line.
@@ -26,22 +26,30 @@
 \setcounter{tocdepth}{1}                     % chapters and sections only
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
-\title{<the outline's own title>}
-\author{<ask the user; never invent one>}
+\newcommand{\BookTitle}{<the outline's own title>}
+\newcommand{\BookAuthor}{<the outline's - author: line; else ask the user, never invent one>}
+\newcommand{\BuildLine}{Built <YYYY-MM-DD> \textperiodcentered{} outline <digest> \textperiodcentered{} chitragupta <version>}
+\title{\BookTitle}                            % latex-conventions.md, "The copyright page"
+\author{\BookAuthor}
 \date{}
 \input{preamble}                             % only if the book has one
 
 \begin{document}
 \frontmatter
 \maketitle
+\input{copyright}                            % only if the book has one
 \tableofcontents
+% {#front}'s entries, in outline order        % latex-conventions.md, "Front matter, appendices and back matter"
 
 \mainmatter
 % \part / \input, in outline order
 
+\appendix\crefalias{chapter}{appendix}       % only if the outline has {#appendices}
+% {#appendices}'s \input, in outline order
+
 \backmatter
-\input{glossary}                             % latex-conventions.md, "Glossary and List of Symbols"
-\input{notation}                             % the same; each only if registry build wrote it
+% {#back}'s entries, in outline order: units, \input{glossary}, \input{notation},
+% the lists -- each generated page only if it has something to show
 \bibliographystyle{IEEEtran}
 \addcontentsline{toc}{chapter}{Bibliography}
 \bibliography{bibliography}                  % the .bib render wrote here

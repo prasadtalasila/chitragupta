@@ -18,6 +18,7 @@ from collections import Counter
 from pathlib import Path
 
 from chitragupta.spec import (
+    GENERATED,
     _KINDS,
     SpecError,
     chapter_digests,
@@ -27,7 +28,7 @@ from chitragupta.spec import (
     signoff_path,
     spec_path,
 )
-from chitragupta.spec import _align, _seed
+from chitragupta.spec import _align, _scaffold, _seed
 from chitragupta.spec._read import read_spec, report_problems
 
 _BOOK_HELP = "The book's directory under content/drafts/ (it need not exist yet)"
@@ -38,16 +39,27 @@ _BOOK_HELP = "The book's directory under content/drafts/ (it need not exist yet)
 _TEMPLATE = """# {title}
 
 <!-- The outline this book is generated from. Planned top-down; generated
-     bottom-up, one section at a time. Every part, chapter and section
+     bottom-up, one chapter at a time. Every part, chapter and section
      needs an explicit `{#id}` -- ids are what units, cross-references and
      registries resolve against, so they must survive a reworded heading.
+
+     `- author:` is the name on the title and copyright pages. The parts
+     `front`, `appendices` and `back` are reserved, and so are the four
+     pages under `back`, which the assembler generates: delete a line to
+     drop a page, or move it under `front`.
 
      Approve it with `python -m chitragupta.draft spec sign <book>` once it says
      what you want written. Nothing generates prose from an unsigned
      outline. -->
 
-- reader: who this book is for, and what they already know
+{author}- reader: who this book is for, and what they already know
 - scope: what it covers, and what it deliberately leaves out
+
+## Front matter {#front}
+
+### Preface {#preface}
+
+Why this book exists and who it is for. You write this page yourself.
 
 ## Part I {#part-i}
 
@@ -56,6 +68,16 @@ _TEMPLATE = """# {title}
 #### First section {#sec-1}
 
 What this section must establish, and what it leaves to another.
+
+## Back matter {#back}
+
+### Glossary {#glossary}
+
+### List of Symbols {#symbols}
+
+### List of Figures {#figures}
+
+### List of Tables {#tables}
 """
 
 
@@ -70,16 +92,22 @@ def _cmd_init(args) -> int:
         return 1
     path.parent.mkdir(parents=True, exist_ok=True)
     title = args.title or Path(args.book).name
-    path.write_text(_TEMPLATE.replace("{title}", title), encoding="utf-8")
+    author = f"- author: {args.author}\n" if args.author else ""
+    text = _TEMPLATE.replace("{title}", title).replace("{author}", author)
+    path.write_text(text, encoding="utf-8")
     print(
         f"Wrote {path}. Edit it, then approve it with "
         f"`python -m chitragupta.draft spec sign {args.book}`."
     )
+    for line in _scaffold.scaffold(args.book, path.parent):
+        print(line)
     return 0
 
 
 def _show_tree(parsed: dict) -> None:
     print(parsed["title"])
+    if parsed["author"]:
+        print(f"  author: {parsed['author']}")
     for unit in parsed["units"]:
         print(f"{'  ' * (len(unit['ancestors']) + 1)}[{unit['id']}] {unit['title']}")
 
@@ -153,6 +181,9 @@ def _cmd_sign(args) -> int:
     path.write_text(_signoff_text(text, parsed, args.by), encoding="utf-8")
     print(f"Signed off {len(parsed['units'])} unit(s) at digest {digest(text)}.")
     print(f"Wrote {path}.")
+    stamped = _scaffold.stamp_year(path.parent)
+    if stamped:
+        print(stamped)
     return 0
 
 
@@ -184,9 +215,13 @@ def _cmd_status(args) -> int:
     text, parsed = read_spec(args.book)
     if parsed["problems"]:
         return report_problems(parsed, args.book)
-    counts = Counter(unit["kind"] for unit in parsed["units"])
+    # A generated page is counted as one, not as a chapter someone writes.
+    counts = Counter(
+        "generated page" if unit["id"] in GENERATED else unit["kind"] for unit in parsed["units"]
+    )
     print(f"{spec_path(args.book)}: {parsed['title']}")
-    print("  " + ", ".join(_plural(counts[kind], kind) for kind in _KINDS.values()))
+    kinds = [*_KINDS.values(), "generated page"] if counts["generated page"] else _KINDS.values()
+    print("  " + ", ".join(_plural(counts[kind], kind) for kind in kinds))
     recorded = recorded_digest(args.book)
     if recorded is None:
         print("  not signed off: nobody has approved this outline yet.")
@@ -220,6 +255,7 @@ def _parser() -> argparse.ArgumentParser:
     p_init = sub.add_parser("init", help="Write an outline skeleton for a book")
     p_init.add_argument("book", help=_BOOK_HELP)
     p_init.add_argument("--title", help="The book's title (default: the directory's name)")
+    p_init.add_argument("--author", help="The name on the title and copyright pages")
     p_init.set_defaults(func=_cmd_init)
 
     p_show = sub.add_parser("show", help="The outline as a tree, or one unit's slice")

@@ -43,13 +43,15 @@ import re
 from chitragupta import citation_gate
 
 # `Chapter 1:`, `Chapter 1 --`, `Chapter 1.`, and the two dashes a
-# typographic draft uses in place of `--`. Unanchored, because the two
+# typographic draft uses in place of `--`. `Appendix A:` is the same
+# clash one `\appendix` later (#1137): the class prints "Appendix A"
+# above a title that already says so. Unanchored, because the two
 # call sites below anchor it differently (after a `# ` marker, after a
 # `\chapter{`) and `chitragupta/style_headings.py` anchors it with
 # `.match()` against a title it has already extracted -- one pattern,
 # three anchorings, so a heading this drops is a heading that check
 # reports and vice versa.
-SELF_NUMBERED_TITLE = re.compile(r"Chapter\s+\d+\s*(?::|\.|--|[–—])\s*")
+SELF_NUMBERED_TITLE = re.compile(r"(?:Chapter\s+\d+|Appendix\s+[A-Z])\s*(?::|\.|--|[–—])\s*")
 
 # A level-1 Markdown heading only: `--top-level-division=chapter` makes a
 # `#` the book's chapter and leaves every deeper heading a section. The
