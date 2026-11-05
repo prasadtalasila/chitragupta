@@ -264,4 +264,5 @@ named rather than discovered.
 ## Version
 
 MINOR: a new module and a new optional CLI flag, nothing removed or
-renamed. 6.160.1 became 6.162.0: `main` moved to 6.161.0 (#1152) first.
+renamed. 6.160.1 became 6.163.0: `main` moved to 6.161.0 (#1152) and 6.162.0
+(#1154) first.
