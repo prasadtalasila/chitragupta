@@ -28,7 +28,7 @@ single `bibtex` pass over a composed book
 - [Figure numbering: a caption wraps the marker, in two passes](#-figure-numbering-a-caption-wraps-the-marker-in-two-passes)
 - [Table numbering: four cases, and pandoc numbers in only one](#-table-numbering-four-cases-and-pandoc-numbers-in-only-one)
 - [Equation numbering: the one pass that reads what `_math` left behind](#-equation-numbering-the-one-pass-that-reads-what-_math-left-behind)
-- [Two rewrites only a fragment gets](#-two-rewrites-only-a-fragment-gets)
+- [Three rewrites only a fragment gets](#-three-rewrites-only-a-fragment-gets)
 - [Open gaps](#-open-gaps)
 
 ## 🔀 The two paths through `render()`
@@ -476,7 +476,7 @@ refers to, or an id problem, the same way `style_tables.py`/
 the way those two do, because an equation's own marked block is itself a
 fence (see that module's docstring).
 
-## ✂ Two rewrites only a fragment gets
+## ✂ Three rewrites only a fragment gets
 
 `_substituted` (`chitragupta/render_output/_substitution.py`) makes two
 changes to the temp copy of a `--fragment` render, never to the draft on
@@ -498,6 +498,22 @@ disk:
 
 Both sit in `_substituted` rather than at the call site because that
 function is the one answer to "what does the writer actually see".
+
+The third happens inside pandoc, because the labels it changes do not
+exist until pandoc's reader has run:
+
+- **A derived heading label is prefixed with the unit id** (#1122,
+  `assets/pandoc/unit_labels.lua`, loaded by
+  `chitragupta/render_output/_unit_labels.py`). pandoc labels a heading
+  that has no `{#id}` from its text alone, so book units that each have a
+  "Summary" section all define `\label{summary}`, and a `\ref` to it
+  resolves to whichever chapter LaTeX read last. `u1.md`'s Summary
+  becomes `u1-summary`, and an in-unit link to it follows. A label the
+  author wrote (`{#id}` or `\label{id}`) is left alone, because that is
+  what the outline and the registry resolve against. pandoc's own
+  `--id-prefix` would be the obvious tool, but its LaTeX writer ignores
+  it. Measured on a seven-chapter book: 10 labels defined in more than
+  one unit before, none after.
 
 ## 🕳 Open gaps
 

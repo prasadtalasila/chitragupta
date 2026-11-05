@@ -13,7 +13,7 @@ import re
 import sys
 import threading
 import types
-from concurrent.futures import Future
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -1393,13 +1393,18 @@ class TestParseCorpusParallel:
     def test_biggest_document_is_submitted_first(
         self, isolated_config, fake_docling, tmp_path, monkeypatch
     ):
+        """Recorded at `submit`, not inside `parse_one`: four worker
+        threads start concurrently, so the order they *begin* in is the
+        scheduler's, and on one busy core it came out `d4, d3, d0, d1, d2`
+        every time. Submission order is what biggest-first decides."""
         submitted = []
-        real_parse_one = _docling_pool.parse_one
-        monkeypatch.setattr(
-            _docling_pool,
-            "parse_one",
-            lambda job: submitted.append(job[0].citekey) or real_parse_one(job),
-        )
+
+        class Recording(ThreadPoolExecutor):
+            def submit(self, fn, job, /):
+                submitted.append(job[0].citekey)
+                return super().submit(fn, job)
+
+        monkeypatch.setattr(_docling_pool, "_executor_for", lambda workers: Recording(workers))
         docling_parse.parse_corpus(self._docs(tmp_path))
         assert submitted == ["d4", "d3", "d2", "d1", "d0"]
 
@@ -1419,21 +1424,23 @@ class TestParseCorpusParallel:
         twice, those two futures are guaranteed already fully processed
         there -- gating on a flag set from inside a *worker* thread's
         callable races the main thread's bookkeeping for the same
-        future and is not reliably ordered.
+        future and is not reliably ordered. It waits for all four of the
+        others, not two: released after two, d4 raced the last small
+        document and could finish before it under CI's parallel load.
         """
         real_parse_one = _docling_pool.parse_one
         real_save_cache = _docling_pool._save_cache
-        two_saved = threading.Event()
+        others_saved = threading.Event()
 
         def counting_save(cache):
             real_save_cache(cache)
-            if len(cache) >= 2:
-                two_saved.set()
+            if len(cache) >= 4:
+                others_saved.set()
 
         def gated(job):
             doc, _threads = job
             if doc.citekey == "d4":
-                assert two_saved.wait(5), "the smaller docs' cache saves never landed"
+                assert others_saved.wait(5), "the smaller docs' cache saves never landed"
             return real_parse_one(job)
 
         monkeypatch.setattr(_docling_pool, "parse_one", gated)

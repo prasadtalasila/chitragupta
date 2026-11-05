@@ -35,3 +35,13 @@ rewrites the entries and not citeproc's output because citeproc merges a
 citation's prefix and suffix, which the author typed, into the same Cite
 node as the `.bib` text: walking that node turned an author's
 `[\emph{cf.} @key]` into visible `\emph{cf.}` (#1022).
+
+`unit_labels.lua` (#1122) is loaded on a `--fragment` render only, via
+`chitragupta/render_output/_unit_labels.py`, which passes the draft's
+stem plus a hyphen as `chitragupta-label-prefix` metadata. It prefixes
+every heading label pandoc derived from the heading's text, and every
+in-unit link to one, so two book units that both have a "Summary"
+section no longer both define `\label{summary}`. An id the author wrote,
+as a Markdown `{#id}` or a LaTeX `\label{id}`, is read from the source
+file and left alone. Order against the other filters does not matter:
+neither of them reads or writes an identifier.
