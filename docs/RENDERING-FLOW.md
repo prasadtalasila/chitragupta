@@ -42,7 +42,13 @@ decided by `output_format` and the draft's own suffix:
   IEEE list in place, because pandoc's own Markdown writer would escape
   every marker to `\[1\]` and wrap the bibliography in `::: {#refs}`
   fenced divs that render as literal punctuation anywhere that isn't
-  pandoc.
+  pandoc. With no pandoc to drop them, this path also drops the draft's
+  raw LaTeX itself (`_raw_tex.py`, #1144): each ```` ```{=latex} ```` or
+  `{=tex}` block and each `` `...`{=latex} `` span, the way pandoc's
+  `docx` and `html` writers do, with no stray blank line or double
+  space left behind. A raw block shown inside a longer code fence is an
+  example and stays, and `{=html}` is kept, since a Markdown viewer
+  renders it.
 - **Every other combination goes through pandoc**, against
   `config.BIB_FILE_PATH`, and (for `pdf`) LuaLaTeX. The rest of this
   document covers this path, including a `.tex` fragment rendered to
@@ -416,6 +422,11 @@ mathematics, then equations, for two reasons. A figure substitution can
 insert a fenced ASCII block, and `_math`'s displayed-equation rule reads
 fences; and equation numbering has to run *after* mathematics, for the
 reason the next section states.
+
+On the `--format md` path for a Markdown draft, one more pass runs
+after all four: `_raw_tex.dropped` removes the raw LaTeX that path has
+no pandoc to drop. None of the four emits a raw span for `md`, but last
+is where it would catch one if a pass ever did.
 
 ## 🔢 Equation numbering: the one pass that reads what `_math` left behind
 

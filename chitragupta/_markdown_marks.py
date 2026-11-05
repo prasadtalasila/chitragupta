@@ -20,10 +20,13 @@ class Found:
     `spans` are (start, end, code) document offsets pandoc does not read
     as prose, `code` saying whether code-only callers blank them too.
     `labels` are the example-list labels the document defines.
+    `raw_tex` are (start, end, block) offsets of each raw LaTeX block or
+    inline span, which none of `spans` covers.
     """
 
     spans: list = field(default_factory=list)
     labels: set = field(default_factory=set)
+    raw_tex: list = field(default_factory=list)
 
 
 class ContainerText:
@@ -58,6 +61,17 @@ class ContainerText:
             if row == len(self.lines):
                 break
             start = self.offsets[row]
+
+    def mark_raw_tex(self, start: int, end: int, *, block: bool) -> None:
+        """Record container text [start, end) as raw LaTeX, whole."""
+        first, last = self.row_of(start), self.row_of(end - 1)
+        self.found.raw_tex.append(
+            (
+                self.lines[first].start - self.offsets[first] + start,
+                self.lines[last].start - self.offsets[last] + end,
+                block,
+            )
+        )
 
     def mark_rows(self, first: int, last: int, *, code: bool) -> None:
         for row in range(first, last + 1):

@@ -18,6 +18,7 @@ from chitragupta.render_output import (
     _math,
     _math_findings,
     _paths,
+    _raw_tex,
     _tables,
 )
 from chitragupta.render_output._citeproc import drop_manual_refs
@@ -151,4 +152,11 @@ def _substituted(
     with_refs = substitute_refs(with_captions, output_format, declared)
     with_figures = _with_figures_for(with_refs, input_path, output_format)
     mathed = _math.substitute(_tables.substitute(with_figures, output_format), math_mapping)
-    return _equation_captions.substitute(mathed, output_format)
+    numbered = _equation_captions.substitute(mathed, output_format)
+    # The Markdown-to-Markdown path -- the only one these two conditions
+    # reach -- has no pandoc to drop raw LaTeX the way its other writers
+    # do (#1144). Last in the chain, so it would catch a raw span any pass
+    # above emitted too; none does today, for `md`.
+    if output_format == "md" and input_path.suffix.lower() in _paths._MARKDOWN_SUFFIXES:
+        return _raw_tex.dropped(numbered)
+    return numbered

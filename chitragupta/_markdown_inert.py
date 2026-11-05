@@ -199,7 +199,9 @@ class _Container(ContainerText):
         end = self.fence_at(row)
         if end is None:
             return None
-        if not _RAW_TEX_RE.search(self.lines[row].text):
+        if _RAW_TEX_RE.search(self.lines[row].text):
+            self.mark_raw_tex(self.offsets[row], self.line_end(end), block=True)
+        else:
             self.mark_rows(row, end, code=True)
         return end + 1
 
@@ -322,6 +324,14 @@ def prose(text: str) -> tuple[str, set[str]]:
     `@label` in the file from the gate (#1021)."""
     found = _scan(text)
     return _blanked(text, [(start, end) for start, end, _ in found.spans]), found.labels
+
+
+def raw_tex_spans(text: str) -> list[tuple[int, int, bool]]:
+    """Every (start, end, block) offset range of `text` that pandoc reads
+    as raw LaTeX, in document order: a complete ```` ```{=latex} ```` or
+    `{=tex}` fence, opener through closer (`block`), or an inline
+    `` `...`{=latex} `` span, attribute included. Never one inside code."""
+    return sorted(_scan(text).raw_tex)
 
 
 def _blanked(text: str, spans: list[tuple[int, int]]) -> str:

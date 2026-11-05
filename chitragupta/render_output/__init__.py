@@ -259,6 +259,9 @@ def render(
         # thesis fragment's `\citep{...}` into Markdown genuinely is a
         # format conversion, and that fragment deliberately carries no
         # reference list of its own.
+        #
+        # With no pandoc here, `_substituted` also drops the draft's raw
+        # LaTeX, which pandoc's non-LaTeX writers would have (#1144).
         _copy_local_assets(input_path, out_dir)
         return references.write_numbered(
             input_path, out_dir, _substituted(draft_text, input_path, output_format, {})
