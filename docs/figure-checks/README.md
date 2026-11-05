@@ -267,8 +267,8 @@ To check one pair, or re-render its pictures after changing it:
 
 ```bash
 chitragupta figure check docs/figure-checks/examples/node-overlap/faulty.tex
-chitragupta figure look docs/figure-checks/examples/node-overlap/faulty.tex
-cp content/rendered/faulty.look.png docs/figure-checks/examples/node-overlap/faulty.png
+chitragupta figure look docs/figure-checks/examples/node-overlap/faulty.tex --output-dir content/scratch
+cp content/scratch/faulty.look.png docs/figure-checks/examples/node-overlap/faulty.png
 ```
 
 After a change to the house style block, refresh every example's copy

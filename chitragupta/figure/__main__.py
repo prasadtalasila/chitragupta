@@ -2,17 +2,20 @@
 `python -m chitragupta figure check <figure.tex> [--width PT] [--layout NAME]
 [--json]` (#1053, #1057) and `python -m chitragupta figure new
 <figures-dir> <name> --layout ID` and `python -m chitragupta figure look
-<figure.tex> [--draft DRAFT]` (#1052).
+<figure.tex> [--draft DRAFT] [--output-dir DIR]` (#1052, #1123).
 
 `figure new` exits 0 once it has written the figure, and 2 for anything
 it refused (a name with a path in it, a file already there, an unknown
 layout) or could not read from the install; it never writes half.
 `figure look` exits 0 whatever the figure does, a failed compile
 included, and 2 only for an unreadable figure, a missing `lualatex`,
-`tikz.sty` or `pdftoppm` (and `pandoc`, with `--draft`), or a rendered
-directory outside the content directory: the cases where it looked at
-nothing. A draft that does not render is reported and is not one of
-them: the figure's own look is still written.
+`tikz.sty` or `pdftoppm` (and `pandoc`, with `--draft`), a rendered
+directory outside the content directory, or a figure outside
+`content/drafts/` with no `--output-dir`: the cases where it looked at
+nothing. The last has no mirrored place of its own, and a look written
+loose into `content/rendered/` would overwrite any other figure's of the
+same name (#1123). A draft that does not render is reported and is not
+one of them: the figure's own look is still written.
 
 `figure check` exits 0 whatever it finds: an objective finding is the
 skill's to resolve or allow, never an exit code's to enforce. 2 is a
@@ -42,8 +45,8 @@ from chitragupta.figure._block import House, load_house
 from chitragupta.figure._check import DEFAULT_WIDTH_PT, check
 from chitragupta.figure._check_report import format_text, payload
 from chitragupta.figure._layout import layout_names
-from chitragupta.figure._look import lines, look
-from chitragupta.figure._look_draft import notes, page_line, refresh
+from chitragupta.figure._look import NoHome, lines, look, require_home
+from chitragupta.figure._look_draft import look_dir, notes, page_line, refresh
 from chitragupta.figure._new import Refused, new_figure
 from chitragupta.figure._sync import Outcome, run
 from chitragupta.config_path import OutsideContentDir
@@ -83,6 +86,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--draft",
         type=Path,
         help="also render this draft to pdf and picture the page that holds the figure",
+    )
+    figure_look.add_argument(
+        "--output-dir",
+        type=Path,
+        help="write the look here instead of content/rendered/<mirrored path>; with --draft, "
+        "the render too. Required for a figure outside content/drafts/. Confined to content/",
     )
     figure_check = verbs.add_parser("check", help="report every rule one figure file breaks")
     figure_check.add_argument("figure", type=Path, help="the figure's .tex file")
@@ -157,6 +166,11 @@ def _look(args: argparse.Namespace) -> int:
         print(f"figure look: {args.figure} is not a readable UTF-8 file: {exc}", file=sys.stderr)
         return 2
     try:
+        require_home(args.figure, args.output_dir)
+    except (NoHome, OutsideContentDir) as exc:
+        print(f"figure look: {exc} Nothing was written.", file=sys.stderr)
+        return 2
+    try:
         _require("lualatex")
         _require_tikz()  # pragma: no cover-windows
         _require("pdftoppm")  # pragma: no cover-windows
@@ -170,8 +184,8 @@ def _look(args: argparse.Namespace) -> int:
         return 2
     try:  # pragma: no cover-windows
         if args.draft:
-            return _look_in_draft(args.figure, args.draft)
-        print("\n".join(lines(look(args.figure), args.figure)))
+            return _look_in_draft(args.figure, args.draft, args.output_dir)
+        print("\n".join(lines(look(args.figure, args.output_dir), args.figure)))
     except (OutsideContentDir, OSError) as exc:  # pragma: no cover-windows
         # Nowhere to write the look is the host's problem, not the figure's.
         print(f"figure look: {exc}", file=sys.stderr)
@@ -179,21 +193,24 @@ def _look(args: argparse.Namespace) -> int:
     return 0  # pragma: no cover-windows
 
 
-def _look_in_draft(figure: Path, draft: Path) -> int:
-    """Render `draft` to pdf as `draft render` does, then report
-    `figure`'s look and the page it printed on."""
-    pdf = _rendered(_render_parser().parse_args([str(draft), "--format", "pdf"]))
+def _look_in_draft(figure: Path, draft: Path, output_dir: Path | None) -> int:
+    """Render `draft` to pdf as `draft render` does, into `output_dir`
+    when given, then report `figure`'s look and the page it printed on."""
+    elsewhere = [] if output_dir is None else ["--output-dir", str(output_dir)]
+    argv = [str(draft), "--format", "pdf", *elsewhere]
+    pdf = _rendered(_render_parser().parse_args(argv))
+    own = look_dir(draft, figure, output_dir)
     if pdf is None:
         # The render printed why; the figure's own look still stands.
-        print("\n".join(lines(look(figure), figure)))
+        print("\n".join(lines(look(figure, own), figure)))
         return 0
-    refreshed = refresh(draft, pdf)
+    refreshed = refresh(draft, pdf, output_dir)
     for line in notes(refreshed):
         print(line, file=sys.stderr)
     print(f"wrote    {pdf}")
     mine = [item for item in refreshed.figures if item.figure.resolve() == figure.resolve()]
     if not mine:
-        print("\n".join(lines(look(figure), figure)))
+        print("\n".join(lines(look(figure, own), figure)))
         print(f"note     {figure}: no figure marker in {draft} names it, so no page PNG")
         return 0
     item = mine[0]

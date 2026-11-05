@@ -103,6 +103,25 @@ class TestDraftFigures:
         assert list(_look_draft.draft_figures(tex)) == ["figures/flow"]
 
 
+class TestLookDir:
+    def test_a_figure_keeps_its_place_below_the_draft(self, draft):
+        out = config.CONTENT_DIR / "scratch-out"
+        flow = draft.parent / "figures" / "flow.tex"
+        assert _look_draft.look_dir(draft, flow, out) == out / "figures"
+        assert _look_draft.look_dir(draft, flow, None) is None
+
+    def test_the_figure_s_spelling_does_not_move_it(self, draft, monkeypatch):
+        # `figure look figures/flow.tex --draft /abs/survey.md` from the
+        # draft's own directory: the same place the render's refresh uses.
+        monkeypatch.chdir(draft.parent)
+        out = config.CONTENT_DIR / "scratch-out"
+        assert _look_draft.look_dir(draft, Path("figures/flow.tex"), out) == out / "figures"
+
+    def test_a_figure_outside_the_draft_goes_to_the_directory_itself(self, draft, tmp_path):
+        out = config.CONTENT_DIR / "scratch-out"
+        assert _look_draft.look_dir(draft, tmp_path / "elsewhere.tex", out) == out
+
+
 class TestRefresh:
     def test_each_figure_gets_its_look_and_a_marked_one_its_page(self, draft, tools):
         _present, poppler = tools
@@ -344,7 +363,7 @@ class TestLookDraftCli:
         page = _look_draft.Page(rendered("rag", "figures", "flow.page.png"), 4, (2481, 3508))
         refreshed = _look_draft.Refresh([_look_draft.DraftFigure(flow, fake_look(flow), page)])
         monkeypatch.setattr(figure_cli, "_rendered", lambda args: pdf)
-        monkeypatch.setattr(figure_cli, "refresh", lambda d, p: refreshed)
+        monkeypatch.setattr(figure_cli, "refresh", lambda d, p, _o: refreshed)
         assert self.run(figure_cli, flow, draft) == 0
         captured = capsys.readouterr()
         assert captured.out.splitlines() == [
@@ -362,6 +381,32 @@ class TestLookDraftCli:
         self.run(figure_cli, draft.parent / "figures" / "flow.tex", draft)
         assert (seen[0].input, seen[0].output_format) == (str(draft), "pdf")
 
+    def test_output_dir_reaches_the_render_and_the_look(
+        self, figure_cli, draft, monkeypatch, capsys
+    ):
+        # #1123: `--draft` passes `--output-dir` on to the render, and a
+        # look written without one lands where the render's would.
+        flow = draft.parent / "figures" / "flow.tex"
+        out = config.CONTENT_DIR / "scratch-out"
+        seen = []
+        monkeypatch.setattr(figure_cli, "_rendered", lambda args: seen.append(args))
+        argv = ["look", str(flow), "--draft", str(draft), "--output-dir", str(out)]
+        assert figure_cli.main(argv) == 0
+        assert seen[0].output_dir == str(out)
+        expected = lines(fake_look(flow, out / "figures"), flow)
+        assert capsys.readouterr().out.splitlines() == expected
+
+    def test_output_dir_reaches_the_refresh(self, figure_cli, draft, monkeypatch):
+        out = config.CONTENT_DIR / "scratch-out"
+        asked = []
+        monkeypatch.setattr(figure_cli, "_rendered", lambda args: out / "survey.pdf")
+        monkeypatch.setattr(
+            figure_cli, "refresh", lambda d, p, o: asked.append(o) or _look_draft.Refresh()
+        )
+        flow = draft.parent / "figures" / "flow.tex"
+        figure_cli.main(["look", str(flow), "--draft", str(draft), "--output-dir", str(out)])
+        assert asked == [out]
+
     def test_a_draft_that_does_not_render_still_writes_the_look(
         self, figure_cli, draft, monkeypatch, capsys
     ):
@@ -376,7 +421,7 @@ class TestLookDraftCli:
         loose = draft.parent / "figures" / "loose.tex"
         loose.write_text("\\begin{tikzpicture}\\end{tikzpicture}", encoding="utf-8")
         monkeypatch.setattr(figure_cli, "_rendered", lambda args: Path("survey.pdf"))
-        monkeypatch.setattr(figure_cli, "refresh", lambda d, p: _look_draft.Refresh())
+        monkeypatch.setattr(figure_cli, "refresh", lambda d, p, _o: _look_draft.Refresh())
         assert self.run(figure_cli, loose, draft) == 0
         assert capsys.readouterr().out.splitlines()[-1] == (
             f"note     {loose}: no figure marker in {draft} names it, so no page PNG"
@@ -398,7 +443,7 @@ class TestLookDraftCli:
         fields = {"look": fake_look(flow), **item}
         refreshed = _look_draft.Refresh([_look_draft.DraftFigure(flow, **fields)], skipped)
         monkeypatch.setattr(figure_cli, "_rendered", lambda args: Path("survey.pdf"))
-        monkeypatch.setattr(figure_cli, "refresh", lambda d, p: refreshed)
+        monkeypatch.setattr(figure_cli, "refresh", lambda d, p, _o: refreshed)
         self.run(figure_cli, flow, draft)
         out = capsys.readouterr().out.splitlines()
         assert out[-1] == f"note     {flow}: {note}"

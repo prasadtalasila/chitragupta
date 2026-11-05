@@ -157,18 +157,28 @@ def _one(
     return DraftFigure(figure, result, page, "; ".join(notes))
 
 
+def look_dir(draft: Path, figure: Path, output_dir: Path | None) -> Path | None:
+    """Where `figure`'s look and page go for a render of `draft` into
+    `output_dir`: its place below the draft's directory, mirrored there
+    as the render copies it, or `output_dir` itself for a figure outside
+    that directory. `None`, the mirrored default, without one.
+
+    Both are made absolute, not resolved, so `figures/flow.tex` given
+    from the draft's own directory lands where the render's refresh puts
+    it, and a symlink's spelling is kept as the render keeps it."""
+    if output_dir is None:
+        return None
+    try:
+        return output_dir / figure.absolute().parent.relative_to(draft.absolute().parent)
+    except ValueError:
+        return output_dir
+
+
 def refresh(draft: Path, pdf: Path, output_dir: Path | None = None) -> Refresh:
     """Every figure `draft` names: its look refreshed, its page pictured.
 
     `output_dir` is the render's own `--output-dir`, already confined to
-    `content/` by `render`: each figure's files go to its place below
-    the draft's directory, mirrored there, as the render copies it."""
-
-    def look_dir(figure: Path) -> Path | None:
-        # `draft_figures` admits only a figure inside the draft's
-        # directory, by the draft's own spelling, so this is relative.
-        return None if output_dir is None else output_dir / figure.parent.relative_to(draft.parent)
-
+    `content/` by `render`; see `look_dir` for where below it."""
     try:
         found = draft_figures(draft)
     except (OSError, UnicodeDecodeError):
@@ -177,10 +187,13 @@ def refresh(draft: Path, pdf: Path, output_dir: Path | None = None) -> Refresh:
         return Refresh()
     if programs.resolve_program("pdftoppm") is None:
         for figure in found.values():
-            _drop_page(figure, look_dir(figure))
+            _drop_page(figure, look_dir(draft, figure, output_dir))
         return Refresh(skipped=f"pdftoppm not found on PATH ({_INSTALL})")
     marks = _marks(pdf)
-    figures = [_one(base, figure, pdf, marks, look_dir(figure)) for base, figure in found.items()]
+    figures = [
+        _one(base, figure, pdf, marks, look_dir(draft, figure, output_dir))
+        for base, figure in found.items()
+    ]
     skipped = "" if marks is not None else f"page PNGs: pdfinfo not found on PATH ({_INSTALL})"
     return Refresh(figures, skipped)
 

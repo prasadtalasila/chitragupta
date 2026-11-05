@@ -22,7 +22,10 @@ is, so the read fence has no second file to admit.
 something `_require_tikz` checks for (the probe's reason too). A figure
 wider than the text width gets a hairline at the text width, measured
 from the figure's left edge, which is where a too-wide figure in a
-centred float starts to stick out; one that fits gets none.
+centred float starts to stick out; one that fits gets none. The border
+is 10pt, not the 1pt it was, because the house soft shadow is drawn
+outside TikZ's bounding box and a 1pt crop cut it off at the bottom and
+right (#1127).
 
 **Only what changed is rebuilt.** `<stem>.look.json` records a digest
 of every input and what was measured, so an unchanged figure costs a
@@ -42,18 +45,19 @@ from subprocess import run as _run
 from dataclasses import dataclass
 from pathlib import Path
 
-from chitragupta import pdf_fonts, programs, tex_engine
+from chitragupta import config, pdf_fonts, programs, tex_engine
 from chitragupta._atomic_write import write_atomically
+from chitragupta.render_output import _target_dir
 from chitragupta.render_output._paths import _output_dir
 from chitragupta.render_output._tikz_libraries import libraries_in
 from chitragupta.review.figure_layout._probe import _compile_error_detail
 
 DPI = 300
-BORDER_PT = 1.0
+BORDER_PT = 10.0
 
 # Part of the digest: raise it when `document()` changes what it draws,
 # so every look built by the old document is rebuilt.
-DOCUMENT_VERSION = 1
+DOCUMENT_VERSION = 2
 
 # The document's one line of output, among everything else TeX prints.
 _LOOK_RE = re.compile(
@@ -115,6 +119,25 @@ def document(source: str) -> str:
         "\\shipout\\vbox{\\kern\\cgborder\\moveright\\cgborder\\box\\cgfigbox}%\n"
         "\\end{document}\n"
     )
+
+
+class NoHome(ValueError):
+    """A figure whose look has no place of its own: nothing was written."""
+
+
+def require_home(figure: Path, output_dir: Path | None) -> None:
+    """Raises `NoHome` for a figure outside `content/drafts/` with no
+    `output_dir`, and `OutsideContentDir` for an `output_dir` outside
+    `content/`. Such a figure has no mirror, and the flat
+    `content/rendered/` it fell back to mixed scratch looks in with the
+    drafts' and let two figures named alike overwrite each other (#1123)."""
+    if output_dir is not None:
+        _target_dir(figure, output_dir)
+    elif not config.resolves_inside(figure, config.DRAFTS_DIR):
+        raise NoHome(
+            f"{figure} is not under {config.DRAFTS_DIR}, so its look has no mirrored place "
+            "in content/rendered/. Pass --output-dir DIR, a directory under content/."
+        )
 
 
 def digest(source: str) -> str:
