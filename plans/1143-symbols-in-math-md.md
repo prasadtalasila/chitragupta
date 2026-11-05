@@ -1,6 +1,13 @@
 # One home for a unit's symbols: `math.md`'s `## Symbols`
 
-Status: **designed, signed off, unbuilt.** Written 2026-11-05, for
+Status: **built, in [PR 1147](https://github.com/prasadtalasila/chitragupta/pull/1147)
+(v6.159.0).** Changed on the way, from the implementation review: the
+List of Symbols typesets a row as its defining unit does, never as a
+unit pointing at it; a table line under `## Symbols` that is no row is
+`malformed`; the glossary-maths rule runs the context rules only for a
+unit that has a `math.md`; `excerpt` passes on resolved rows only. No
+`CHANGELOG.md` exists, so the migration note is in the release body.
+Written 2026-11-05, for
 [issue 1143](https://github.com/prasadtalasila/chitragupta/issues/1143),
 with [issue 1142](https://github.com/prasadtalasila/chitragupta/issues/1142)
 folded into the same pull request. Part of
