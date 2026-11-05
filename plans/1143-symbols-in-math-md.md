@@ -1,6 +1,6 @@
 # One home for a unit's symbols: `math.md`'s `## Symbols`
 
-Status: **designed, reviewed, unbuilt.** Written 2026-11-05, for
+Status: **designed, signed off, unbuilt.** Written 2026-11-05, for
 [issue 1143](https://github.com/prasadtalasila/chitragupta/issues/1143),
 with [issue 1142](https://github.com/prasadtalasila/chitragupta/issues/1142)
 folded into the same pull request. Part of
@@ -122,9 +122,11 @@ same boundary `_math.py` keeps. **One section reader:**
 line numbers kept) moves here from `dossier/_glossary._section`, which
 calls it (dossier -> render_output is the allowed direction).
 `glossary_spans` reads `scope.md` beside `math.md` through it. The
-`- draft digest:` line `dossier stamp` appends inside `## Glossary`
-needs no exclusion here: its hex span is never a mapping key and is not
-maths-shaped.
+`- draft digest:` line `dossier stamp` appends inside `## Glossary` is
+dropped by `glossary_spans`: an all-digit or `1e5`-shaped digest would
+otherwise read as a quantity on some stamps and not others. The pattern
+is duplicated from `_draft_fingerprint._DRAFT_DIGEST_LINE`, which this
+module may not import, with a comment naming its owner.
 
 ## 2. Findings
 
@@ -311,3 +313,6 @@ List of Symbols units are defined by `## Symbols` rows; one glossary
 section reader; `_GLOSSARY_TERM` keeps matching the slot; ordering of
 `## Symbols`, `\|` escaping, pointers to unaccepted units and merged
 definitions' symbols are stated.
+
+Re-review the same day: **sign-off**, with one should-fix folded in
+(`glossary_spans` drops the `- draft digest:` line).
