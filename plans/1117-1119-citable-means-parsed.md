@@ -1,7 +1,12 @@
 # 1117/1118/1119: a citable key is a parsed one, and a cited key is a marker
 
-Status: **designed, unbuilt; signed off by a Fable review with seven
-changes, folded in below.** Written 2026-11-05, for
+Status: **built, in the pull request that closes all three issues
+(v6.160.0).** Signed off by a Fable review with seven changes, folded in
+below. Changed on the way: `search()` drops unparsed rows before the
+BM25 index rather than after ranking, and the embedding search drops
+hits the ledger holds as unparsed (both in section 3); the final review
+added a bare key in `*emphasis*` and a `unit accept` refusal naming an
+absent source beside an unparsed one. Written 2026-11-05, for
 [issue 1117](https://github.com/prasadtalasila/chitragupta/issues/1117),
 [issue 1118](https://github.com/prasadtalasila/chitragupta/issues/1118)
 and [issue 1119](https://github.com/prasadtalasila/chitragupta/issues/1119),
