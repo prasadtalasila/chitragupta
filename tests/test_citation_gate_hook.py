@@ -44,7 +44,7 @@ import pytest
 
 from chitragupta import ledger
 
-from tests.conftest import _IS_COVERAGE_BOOTSTRAP, add_citable, make_reference
+from tests.conftest import _IS_COVERAGE_BOOTSTRAP, add_citable
 from tests.ledger_faults import leave_hot_journal
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
