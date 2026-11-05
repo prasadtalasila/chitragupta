@@ -78,13 +78,15 @@ or in the unit through `draft-reviser` -- never by this skill.
    ```bash
    python -m chitragupta.draft registry build content/drafts/<book> \
        --glossary content/rendered/<book>/glossary.tex \
-       --notation content/rendered/<book>/notation.tex
+       --notation content/rendered/<book>/notation.tex \
+       --index content/rendered/<book>/index-terms.json   # only with {#index}
    python -m chitragupta.draft registry check content/drafts/<book>
    ```
 
    If `build` exits 1 on `[glossary]` bullets or `[notation]` symbol
    rows, **stop** and report them: the fix is `draft-reviser` on that
-   unit's `scope.md` or `math.md`, never yours.
+   unit's `scope.md` or `math.md`, never yours. On `[index]` problems
+   the fix is the author's, in `index.toml`.
 
    `check` exits 0 whatever it finds -- it is a machine's reading of
    prose, and `docs/ARCHITECTURE.md`'s "Layer 4" is why it may not
@@ -107,6 +109,9 @@ or in the unit through `draft-reviser` -- never by this skill.
    python -m chitragupta.draft render content/drafts/<book>/<unit-id>.md \
        --format tex --fragment
    ```
+
+   With `{#index}`, add `--index-terms content/rendered/<book>/index-terms.json`
+   for every chapter and appendix (never front or back matter).
 
    **A unit's mathematics resolves per unit, and that is why this works.**
    Each unit has its own dossier, so `render` reads *its* `math.md`
@@ -149,10 +154,8 @@ or in the unit through `draft-reviser` -- never by this skill.
    exists**, and `\input` it as the last line of the generated preamble.
    If it does not exist, write no `\input` and say nothing about it --
    most books have none, and reporting its absence would read as a
-   finding. Copy it rather than `\input` it across directories: the
-   `\input` paths in `book.tex` are all relative to the book's own
-   directory, and one that reached out of it would break the moment the
-   book was built anywhere else. `copyright.tex` is copied the same way.
+   finding. Copy it, never `\input` it across directories (the
+   conventions say why); `copyright.tex` likewise.
    The author is the outline's `- author:` line, which `spec show`
    prints; ask the user only if it has none, never invent one.
 
@@ -202,9 +205,8 @@ or in the unit through `draft-reviser` -- never by this skill.
    finding at a time, in the unit that owns the wording, and only if the
    user asks.
 
-   Report the per-unit results as one table rather than a wall: the book
-   has fifteen chapters, and fifteen separate scan reports is how a real
-   finding gets skimmed past.
+   Report the per-unit results as one table: fifteen separate scan
+   reports is how a real finding gets skimmed past.
 
 9. **Build the PDF, if the toolchain is there.** From the book's own
    directory, because the `\input` paths are relative to it:
@@ -215,17 +217,19 @@ or in the unit through `draft-reviser` -- never by this skill.
    bibtexu book
    lualatex -interaction=nonstopmode book.tex
    lualatex -interaction=nonstopmode book.tex
+   # only with {#index}:
+   (cd - >/dev/null && python -m chitragupta.draft registry index \
+       content/drafts/<book> --idx content/rendered/<book>/book.idx)
+   lualatex -interaction=nonstopmode book.tex
    ```
 
-   **LuaLaTeX and `bibtexu`, the engine the pdf render uses** (#1037).
-   Measured on the reference book (287 pages): the four passes take
-   about 86 s against pdflatex's 26 s, and two things pdflatex got
-   wrong come out right. Classic `bibtex` abbreviates a first name by
-   its first *byte*, so `Ö. Babur` and `É. Poirier` lost their initials
-   under pdflatex and are an invalid-UTF-8 error under LuaLaTeX;
-   `bibtexu` abbreviates by character. It exits 1 when the `.bib` has
-   only warnings (an empty `booktitle`); read `book.blg` for an
-   `error`, not the exit code.
+   Tell the user the line `registry index` prints; its report's fixes go
+   in `index.toml`. Exit 1 is a stale build: re-run steps 3 and 4.
+
+   **LuaLaTeX and `bibtexu`, the engine the pdf render uses** (#1037;
+   the conventions say why, and what it costs). `bibtexu` exits 1 when
+   the `.bib` has only warnings (an empty `booktitle`); read `book.blg`
+   for an `error`, not the exit code.
 
    **Four passes, and the `bibtexu` one is not optional.** The first
    `lualatex` records which keys the document cites; `bibtexu` turns
@@ -244,10 +248,7 @@ or in the unit through `draft-reviser` -- never by this skill.
    ```
 
    Anything but `[]` means a citekey did not reach the bibliography --
-   go back to the conversion step, do not hand over the PDF. This check
-   became load-bearing when the bibliography moved to the end of the
-   book: before that, citeproc had already resolved every citation and
-   there was nothing for this warning to report.
+   go back to the conversion step, do not hand over the PDF.
 
    **Then report any figure that landed on a float-only page.** The same
    log names each one (#1065):
