@@ -97,10 +97,26 @@ def problem_findings(built: dict) -> "list[tuple[str, str]]":
 
 
 def _glossary_findings(built: dict) -> "list[tuple[str, str]]":
+    # A hand-written preface has no dossier, so its missing glossary is no
+    # finding; a term it *does* define is one, since its `\Cref` has no
+    # chapter number to print (#1137).
+    unnumbered = set(built.get("unnumbered", ()))
     missing = [
-        ("glossary", f"{unit} has no ## Glossary in scope.md") for unit in built["no_glossary"]
+        ("glossary", f"{unit} has no ## Glossary in scope.md")
+        for unit in built["no_glossary"]
+        if unit not in unnumbered
     ]
-    return missing + problem_findings(built)
+    misplaced = [
+        (
+            "glossary",
+            f"{row['unit']} is front or back matter, which LaTeX does not number, so a "
+            "glossary definition's \\Cref to it prints no chapter: define "
+            f"`{row['term']}` in a numbered chapter or appendix",
+        )
+        for row in built["terms"]
+        if row["unit"] in unnumbered
+    ]
+    return missing + misplaced + problem_findings(built)
 
 
 def findings(built: dict) -> "list[tuple[str, str]]":

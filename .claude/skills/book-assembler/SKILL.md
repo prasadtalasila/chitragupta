@@ -18,7 +18,7 @@ that one is why the procedure is shaped this way.
 
 | Situation | Action |
 | --- | --- |
-| A unit named in the outline has no prose | Stop. Say which. Drafting it is `thesis-chapter-writer`'s job (or another genre's), not this skill's |
+| A unit named in the outline has no prose | Stop. Say which. Drafting it is `thesis-chapter-writer`'s job (or another genre's; a preface is the author's), not this skill's |
 | A unit exists but nobody accepted it | Stop. `python -m chitragupta.draft unit accept` is a human's call, made per unit |
 | The user wants a unit's wording changed | `draft-reviser`. Never edit a unit while assembling it |
 | The outline itself is wrong | `python -m chitragupta.draft spec` and a fresh sign-off. Never rewrite an outline here |
@@ -139,9 +139,9 @@ or in the unit through `draft-reviser` -- never by this skill.
    else, and step 4's fragments are already here beside what you are
    about to write.
 
-   `\input` `glossary` then `notation` under `\backmatter`, before the
-   bibliography, each only if step 3 wrote it; say nothing of one it did
-   not.
+   The front matter, appendices and back matter go where the outline
+   puts them, as the conventions say; a generated page with nothing to
+   show is left out, and said nothing of.
 
    **Copy `content/specs/<book>/preamble.tex` beside `book.tex` if it
    exists**, and `\input` it as the last line of the generated preamble.
@@ -150,9 +150,9 @@ or in the unit through `draft-reviser` -- never by this skill.
    finding. Copy it rather than `\input` it across directories: the
    `\input` paths in `book.tex` are all relative to the book's own
    directory, and one that reached out of it would break the moment the
-   book was built anywhere else. Ask the user
-   for the author line rather than choosing for them; everything else is
-   mechanical.
+   book was built anywhere else. `copyright.tex` is copied the same way.
+   The author is the outline's `- author:` line, which `spec show`
+   prints; ask the user only if it has none, never invent one.
 
 6. **Run the gate on what you composed.** Every unit passed it already;
    the assembled document is a new file, and the gate is this layer's
@@ -347,34 +347,9 @@ or in the unit through `draft-reviser` -- never by this skill.
    Before you start", and worse further in ("10.1510.14"). Which
    numbering a book shows is a composition decision and belongs to the
    book; renumbering the author's headings does not, and is
-   `draft-reviser`'s call rather than this skill's.
-
-   **A self-numbered *chapter title* is a different clash, and this is
-   the wrong lever for it** (#804). A unit headed `# Chapter 1: Why
-   Anyone Pays` is numbered twice by the `book` class, but
-   `secnumdepth{-2}` pays a document-level price for a chapter-level
-   problem. Measured on one real book, four passes each:
-
-   | | `secnumdepth{2}` (the skeleton) | `secnumdepth{-2}` |
-   | --- | --- | --- |
-   | Chapter opening | `Chapter 1` / `Chapter 1: Why Anyone Pays` | correct |
-   | ToC chapter line | `1 Chapter 1: Why Anyone Pays` | correct |
-   | ToC section lines | `1.1`, `1.2`, ... `1.10` | **all numbers lost** |
-   | Table captions | `Table 1.1`, `2.1`, ... | `Table 1`, `2`, ... flat |
-
-   **Nothing is asked of you here: step 4's render drops the prefix
-   already.** `draft render --fragment` emits `\chapter{Why Anyone
-   Pays}` from that heading, so the number comes from the class alone
-   and sections, tables and figures keep theirs. The authored `.md` is
-   untouched, every unit stays `accepted`, and the unit's own standalone
-   pdf keeps the prefix that titles it. If a book already carries
-   `secnumdepth{-2}` for this reason, **remove it** -- it is now costing
-   the section and table numbering for a clash that no longer exists.
-
-   A unit drafted as `.tex` is the exception, because step 4 never
-   converts it: there the prefix is in the file you `\input`, and
-   `draft style` reports it as `chitragupta.ChapterSelfNumbered` in step
-   3 for the author to delete.
+   `draft-reviser`'s call rather than this skill's. A self-numbered
+   *chapter title* is a different case (#804), and the conventions say
+   why `secnumdepth{-2}` is the wrong lever for it.
 
    Without TeX Live, say so plainly and stop there rather than working
    around it -- the `.tex` is the deliverable either way.

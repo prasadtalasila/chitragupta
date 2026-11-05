@@ -13,6 +13,7 @@ bottom-up from what has been accepted.
 | `## Part {#part-i}` | `\part{...}` | `\label{part-i}` |
 | `### Chapter {#ch-1}` | `\input{ch-1.tex}`, the unit, whose own `#` heading becomes `\chapter{...}` | `\label{ch-1}` |
 | `#### Section {#sec-1}` | a heading inside `ch-1.tex`, never a file of its own | `\label{sec-1}` |
+| `## Front matter {#front}`, `## Appendices {#appendices}`, `## Back matter {#back}` | no `\part`: see "Front matter, appendices and back matter" | -- |
 
 A chapter the outline describes only at chapter level (a book
 retrofitted from older prose) has a single section, and that section is
@@ -27,10 +28,11 @@ the way through.
 The document skeleton is
 `.claude/skills/book-assembler/assets/book-skeleton.tex`. Copy it into
 `book.tex` rather than retyping it: replace each `<...>` placeholder
-(the outline's own title; an author you ask the user for and never
-invent), keep the `\input{preamble}` line only if the book has one (see
-"An authored preamble" below), and put the parts and chapters where its
-`\mainmatter` comment says. Each line's comment names the section below
+(the outline's own title; its `- author:` line, or an author you ask
+the user for and never invent; the build line), keep the
+`\input{preamble}` line only if the book has one (see "An authored
+preamble" below), and put each outline entry where "Front matter,
+appendices and back matter" below says. Each line's comment names the section below
 that explains it.
 
 **The two `\setcounter` lines, and which is which.** `secnumdepth{2}` is
@@ -41,6 +43,84 @@ is numbered twice. `tocdepth{1}` is the real setting: the class defaults
 to 2, which lists every subsection, and a book's table of contents stops
 at the section. Subsections are still numbered and still `\cref`-able;
 they are simply not listed.
+
+**A self-numbered *chapter title* is a different clash, and this is
+the wrong lever for it** (#804). A unit headed `# Chapter 1: Why
+Anyone Pays` is numbered twice by the `book` class, but
+`secnumdepth{-2}` pays a document-level price for a chapter-level
+problem. Measured on one real book, four passes each:
+
+| | `secnumdepth{2}` (the skeleton) | `secnumdepth{-2}` |
+| --- | --- | --- |
+| Chapter opening | `Chapter 1` / `Chapter 1: Why Anyone Pays` | correct |
+| ToC chapter line | `1 Chapter 1: Why Anyone Pays` | correct |
+| ToC section lines | `1.1`, `1.2`, ... `1.10` | **all numbers lost** |
+| Table captions | `Table 1.1`, `2.1`, ... | `Table 1`, `2`, ... flat |
+
+**Nothing is asked of you here: SKILL.md's step 4 render drops the
+prefix already.** `draft render --fragment` emits `\chapter{Why Anyone
+Pays}` from that heading, so the number comes from the class alone
+and sections, tables and figures keep theirs. The authored `.md` is
+untouched, every unit stays `accepted`, and the unit's own standalone
+pdf keeps the prefix that titles it. If a book already carries
+`secnumdepth{-2}` for this reason, **remove it** -- it is now costing
+the section and table numbering for a clash that no longer exists.
+
+A unit drafted as `.tex` is the exception, because SKILL.md's step 4
+never converts it: there the prefix is in the file you `\input`, and
+`draft style` reports it as `chitragupta.ChapterSelfNumbered` in
+SKILL.md's step 7 for the author to delete.
+
+**Front matter, appendices and back matter** (#1137). Three part ids
+are reserved, and `spec` refuses an outline that puts one out of
+place: `{#front}` is the first part, `{#appendices}` follows every
+other part, `{#back}` is the last. None of them prints a `\part` page;
+each switches the `book` class into a mode instead:
+
+| Outline | In `book.tex` |
+| --- | --- |
+| `## Front matter {#front}` | its entries, in outline order, after `\tableofcontents` and still under `\frontmatter`: roman page numbers, unnumbered chapters |
+| `## Part ... {#part-i}` and its chapters | under `\mainmatter`, as the table above says |
+| `## Appendices {#appendices}` | `\appendix\crefalias{chapter}{appendix}` after the last main-matter chapter, then each appendix's `\input` and labels exactly as a chapter's: they number A, B, ..., and `\Cref` prints "Appendix A" (without the alias cleveref says "Chapter A") |
+| `## Back matter {#back}` | `\backmatter`, then its entries in outline order, then the bibliography, which is always last |
+
+A front- or back-matter chapter the author wrote (a preface, "About the
+author") is a unit like any other: converted in step 4 and `\input`
+where it stands. Four chapter ids are **generated pages** instead: no
+file, no unit, nothing to convert. Each prints where the outline puts
+it, only if it has something to show; one with nothing is left out and
+said nothing of:
+
+| Entry | Prints | Only if |
+| --- | --- | --- |
+| `### Glossary {#glossary}` | `\input{glossary}` | step 3 wrote `glossary.tex` |
+| `### List of Symbols {#symbols}` | `\input{notation}` | step 3 wrote `notation.tex` |
+| `### List of Figures {#figures}` | `\cleardoublepage\phantomsection\addcontentsline{toc}{chapter}{\listfigurename}\listoffigures` | a fragment holds `\begin{figure}` with a `\caption` |
+| `### List of Tables {#tables}` | the same with `\listtablename` and `\listoftables` | a fragment holds a `longtable` with a `\caption` |
+
+`\cleardoublepage` before `\phantomsection` puts the contents entry on
+the list's own page; `\listoffigures` adds none of its own.
+
+**An outline with no `{#back}` part** is one written before #1137, and
+assembles as it always did: `\input{glossary}` then `\input{notation}`
+under `\backmatter`, each only if step 3 wrote it, then the
+bibliography, and no list of figures or tables.
+
+**The copyright page is the author's file**, `content/specs/<book>/copyright.tex`,
+which `spec init` copies from `assets/book/copyright.tex`. If it
+exists, copy it beside `book.tex` as you copy `preamble.tex`, and
+`\input{copyright}` right after `\maketitle`; if it does not, write no
+`\input` and say nothing. Never edit it: its wording, licence and year
+are the author's. It uses three macros the skeleton defines:
+
+- `\BookTitle`: the outline's `#` heading, which `\title` uses too;
+- `\BookAuthor`: the outline's `- author:` line (`spec show` prints it),
+  which `\author` uses too;
+- `\BuildLine`: `Built <today, YYYY-MM-DD> \textperiodcentered{} outline
+  <digest> \textperiodcentered{} chitragupta <version>`, the digest from
+  `python -m chitragupta.draft spec status` ("signed off at digest ...")
+  and the version from `chitragupta --version`. It names the approved
+  outline and the tool that built it; it is not a copyright date.
 
 **An authored preamble, if the book has one.** If
 `content/specs/<book>/preamble.tex` exists, copy it beside `book.tex` and
@@ -250,16 +330,16 @@ It is the reading copy for anyone who is not building LaTeX.
 glossaries and `math.md` `## Symbols` tables (a symbol's meaning
 lives in `math.md` since #1143, never in the glossary); each carries
 its own `\chapter*` and `\addcontentsline`, so
-`book.tex` holds one `\input` each, under `\backmatter`, glossary first,
-before the bibliography. A page step 3 did not write (no terms, or no
-symbols) gets no `\input`. The layout, for checking the PDF:
+`book.tex` holds one `\input` each, where the outline's `{#glossary}`
+and `{#symbols}` entries put them (below). A page step 3 did not write
+(no terms, or no symbols) gets no `\input`. The layout, for checking the PDF:
 
 - a term with several definitions prints each, numbered, in outline
   order; identical definitions print once;
 - every definition ends with `\Cref{<unit-id>}`, which resolves to
   "Chapter 3" only because step 4 puts `\label{<unit-id>}` right after
-  each `\chapter`; cleveref names an appendix unit "Chapter A", as it
-  does for any `\Cref` to one in this book;
+  each `\chapter`; an appendix unit reads "Appendix A", through the
+  skeleton's `\crefalias`;
 - a term's symbols are the `## Symbols` rows linking to it, in its
   heading, or before each numbered definition when the units use
   different ones;

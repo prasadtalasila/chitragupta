@@ -172,6 +172,7 @@ def build(book) -> dict:
         "symbols": [],
         "math": [],
         "glossary_maths": [],
+        "unnumbered": [],
     }
     # Every id in the outline, not only the sections: "see Chapter 1" is
     # an ordinary cross-reference, and reporting it unresolved because a
@@ -183,6 +184,10 @@ def build(book) -> dict:
     # rather than a file of its own, and only a file is ever accepted.
     # `anchors` above stays the whole outline, for the reason stated there.
     for entry in unit.acceptance_units(book):
+        # A front- or back-matter chapter prints no number (#1137), which
+        # the glossary's `\Cref` to its defining unit depends on.
+        if spec.matter(entry) in (spec.FRONT, spec.BACK):
+            built["unnumbered"].append(entry["id"])
         state = unit.state(book, entry["id"])
         built["accepted" if state == "accepted" else "skipped"].append(entry["id"])
     for unit_id in built["accepted"]:

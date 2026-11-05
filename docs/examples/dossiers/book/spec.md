@@ -5,6 +5,14 @@ the preamble: it belongs to no heading, is never handed to a generator,
 and exists for whoever opens the file next. Audience: practising
 engineers who have built one twin and are now asked for five.
 
+- author: Prasad Talasila
+
+## Front matter {#front}
+
+### Preface {#preface}
+
+Why this book exists and who it is for. You write this page yourself.
+
 ## Part I: Foundations {#part-i}
 
 ### What a twin is, and is not {#ch-what}
@@ -70,3 +78,13 @@ twin nobody trusts" and pays it off.
 
 Short. Open problems, with the validation gap named as the largest.
 No new vocabulary.
+
+## Back matter {#back}
+
+### Glossary {#glossary}
+
+### List of Symbols {#symbols}
+
+### List of Figures {#figures}
+
+### List of Tables {#tables}
