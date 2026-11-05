@@ -3057,9 +3057,10 @@ one-line summary.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
-| `--width PT` | `453` | Target text width in pt for `size-width`: the render's A4 page less 1in margins |
+| `--page article\|book` | `book` for a figure under a book's drafts directory (one with a `content/specs/<book>/spec.md`), else `article` | The page to check against. `article` is `draft render`'s page, 453pt by 700.5pt; `book` is `book-assembler`'s, 437.5pt by 685pt. Its text width is `size-width`'s target, and its text height is what `size-height` reports a share of. The report's second line names the page and why it was chosen |
+| `--width PT` | the page's text width | Target text width in pt for `size-width`, overriding the page's alone: the height stays the page's |
 | `--layout NAME` | the figure's `% cg-layout:` line | Read the advisory size reports against this layout's reference ranges. One of the layouts with a file under `.claude/skills/figure-drawer/references/layouts/`; any other name is a usage error |
-| `--json` | off | The same report as JSON: `layout` (or `null`), `findings` and `advisory` (each with `rule`, `class`, `scope`, `target`, `measurement`), `allowed` (each with the `measurement` it set aside), `stale` and `unchecked` (each with `why`), `malformed`, `not_measured` and `diagnostics` |
+| `--json` | off | The same report as JSON: `width_pt`, `page` (`name`, `text_width_pt`, `text_height_pt`, `why`), `layout` (or `null`), `findings` and `advisory` (each with `rule`, `class`, `scope`, `target`, `measurement`), `allowed` (each with the `measurement` it set aside), `stale` and `unchecked` (each with `why`), `malformed`, `not_measured` and `diagnostics` |
 
 | Exit | When |
 | --- | --- |
@@ -3105,9 +3106,11 @@ figure sync: 1 current
 
 Shows one figure as it will print, for the defects no rule measures: a
 label that wrapped badly, an arrow through a zone title, a figure that
-reads as cramped. It sets the figure alone on the render's own page,
-`article` at 12pt with the render's fonts and its 453pt text width,
-with the figure's TikZ libraries loaded in the preamble as the renderer
+reads as cramped. It sets the figure alone on the page it prints on,
+in the render's fonts: `draft render`'s `article` at 12pt with a 453pt
+text width, or for a figure under a book's drafts directory the book's
+11pt page with a 437.5pt one (the page `figure check` picks), with
+the figure's TikZ libraries loaded in the preamble as the renderer
 loads them, and writes:
 
 | File | What it is |

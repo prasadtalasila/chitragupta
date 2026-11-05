@@ -6,7 +6,6 @@ every host. The end-to-end cases under `TestAgainstRealLualatex` compile
 real fixture figures and self-skip where TeX is missing.
 """
 
-import inspect
 import json
 import os
 from pathlib import Path
@@ -15,8 +14,8 @@ import pytest
 
 from chitragupta.figure import __main__ as cli
 from chitragupta.figure import _advisory, _check, _check_report, _connector_check, _house
+from chitragupta import page
 from chitragupta.figure._focal import cgkey_nodes
-from chitragupta.render_output import render
 from chitragupta.render_output import MissingBinary
 from chitragupta.review.figure_layout import BBOX_NAME, Drawn, FigureResult, measure
 from tests.conftest import needs_tikz, run_python
@@ -51,16 +50,6 @@ def _evaluate(source=ONE_PICTURE, figure=None, width_pt=453.0):
 
 def _rules(findings):
     return [finding.rule for finding in findings]
-
-
-class TestDefaultWidth:
-    def test_it_is_the_renders_a4_text_width_with_1in_margins(self):
-        """453pt is (8.27in - 2in) * 72.27pt/in; pinned to the render's
-        own defaults so a change to either is caught here."""
-        defaults = inspect.signature(render).parameters
-        assert defaults["papersize"].default == "a4"
-        assert defaults["margin"].default == "1in"
-        assert _check.DEFAULT_WIDTH_PT == pytest.approx((210 / 25.4 - 2) * 72.27, abs=0.5)
 
 
 class TestSizeWidth:
@@ -354,13 +343,13 @@ class TestAgainstRealLualatex:
         [("wide", "size-width"), ("stray", "size-stray"), ("two-keys", "focal-count")],
     )
     def test_the_firing_fixture_fires(self, fixture, rule):
-        result = _check.check(FIXTURES / f"{fixture}.tex", _check.DEFAULT_WIDTH_PT)
+        result = _check.check(FIXTURES / f"{fixture}.tex", page.ARTICLE.text_width_pt)
 
         assert _rules(result.findings) == [rule]
 
     @pytest.mark.parametrize("fixture", ["narrow", "tight", "one-key", "two-pictures"])
     def test_the_clean_fixture_is_clean(self, fixture):
-        result = _check.check(FIXTURES / f"{fixture}.tex", _check.DEFAULT_WIDTH_PT)
+        result = _check.check(FIXTURES / f"{fixture}.tex", page.ARTICLE.text_width_pt)
 
         assert result.findings == []
 
@@ -369,7 +358,7 @@ class TestAgainstRealLualatex:
         path.write_text("\\tikz \\draw (0,0) -- (1,1);%\n", encoding="utf-8")
         path.with_suffix(".txt").write_text("o-------o\n", encoding="utf-8")
 
-        result = _check.check(path, _check.DEFAULT_WIDTH_PT)
+        result = _check.check(path, page.ARTICLE.text_width_pt)
 
         assert result.findings == []
         assert [rule for rule, _ in result.not_measured] == [
@@ -385,7 +374,7 @@ class TestAgainstRealLualatex:
             encoding="utf-8",
         )
 
-        result = _check.check(path, _check.DEFAULT_WIDTH_PT)
+        result = _check.check(path, page.ARTICLE.text_width_pt)
 
         assert ("size-width", _check.NO_EXTENT) in result.not_measured
 
@@ -393,7 +382,7 @@ class TestAgainstRealLualatex:
         path = tmp_path / "fig.tex"
         path.write_text((FIXTURES / "narrow.tex").read_text(encoding="utf-8"), encoding="utf-8")
 
-        result = _check.check(path, _check.DEFAULT_WIDTH_PT)
+        result = _check.check(path, page.ARTICLE.text_width_pt)
 
         assert _rules(result.findings) == ["twin-missing"]
         assert result.findings[0].measurement == "no fig.txt beside the figure"
@@ -403,12 +392,12 @@ class TestAgainstRealLualatex:
         path.write_text((FIXTURES / "narrow.tex").read_text(encoding="utf-8"), encoding="utf-8")
         path.with_suffix(".txt").write_text("[ Left ] --> [ Rite ]\n", encoding="utf-8")
 
-        result = _check.check(path, _check.DEFAULT_WIDTH_PT)
+        result = _check.check(path, page.ARTICLE.text_width_pt)
 
         assert [(f.rule, f.target) for f in result.findings] == [("t1-labels", "right")]
 
     def test_two_pictures_say_why_stray_was_not_measured(self):
-        result = _check.check(FIXTURES / "two-pictures.tex", _check.DEFAULT_WIDTH_PT)
+        result = _check.check(FIXTURES / "two-pictures.tex", page.ARTICLE.text_width_pt)
 
         assert [rule for rule, _ in result.not_measured] == [
             "size-stray",
@@ -421,20 +410,20 @@ class TestAgainstRealLualatex:
         assert _rules(result.advisory) == ["budget-nodes", "budget-edges"]
 
     def test_an_allowed_overflow_is_listed_not_found(self):
-        result = _check.check(FIXTURES / "allowed-wide.tex", _check.DEFAULT_WIDTH_PT)
+        result = _check.check(FIXTURES / "allowed-wide.tex", page.ARTICLE.text_width_pt)
 
         assert result.findings == []
         assert [allow.rule for allow, _ in result.allowed] == ["size-width"]
 
     def test_an_allowed_overlap_is_set_aside_for_its_pair_only(self):
-        result = _check.check(FIXTURES / "allowed-overlap.tex", _check.DEFAULT_WIDTH_PT)
+        result = _check.check(FIXTURES / "allowed-overlap.tex", page.ARTICLE.text_width_pt)
 
         assert [(f.rule, f.target) for f in result.findings] == [("node-overlap", "note+pot")]
         assert [allow.target for allow, _ in result.allowed] == ["pot+legend"]
         assert result.stale == [] and result.unchecked == []
 
     def test_an_allow_for_a_node_that_is_gone_is_stale(self):
-        result = _check.check(FIXTURES / "stale-overlap.tex", _check.DEFAULT_WIDTH_PT)
+        result = _check.check(FIXTURES / "stale-overlap.tex", page.ARTICLE.text_width_pt)
 
         assert result.findings == [] and result.allowed == []
         assert [why for _, why in result.stale] == ["no node named legend"]
@@ -467,7 +456,7 @@ class TestAgainstRealLualatex:
     )
     def test_every_scaffold_compiles_boxed_with_one_focal_node_and_no_stray(self, name):
         result = _check.check(
-            REPO_ROOT / "assets" / "tikz" / f"{name}.tex", _check.DEFAULT_WIDTH_PT
+            REPO_ROOT / "assets" / "tikz" / f"{name}.tex", page.ARTICLE.text_width_pt
         )
 
         assert not {
@@ -698,6 +687,96 @@ class TestCli:
         assert "No findings" in result.stdout
 
 
+class TestPage:
+    """#1140: a book unit's figure is checked against the book's page.
+
+    The compile is stubbed with the figure it would measure, a 445pt
+    picture: narrower than the article's text width, wider than the
+    book's, so only the page decides whether `size-width` fires."""
+
+    @pytest.fixture
+    def checked(self, monkeypatch):
+        calls = []
+
+        def _check_stub(path, width_pt, layout="", height_pt=0.0):
+            calls.append((width_pt, height_pt))
+            figure = _measured(width=445.0)
+            return _check.apply(path, width_pt, figure, ONE_PICTURE, layout, ONE_TWIN, height_pt)
+
+        monkeypatch.setattr(cli, "_require", lambda binary: None)
+        monkeypatch.setattr(cli, "_require_tikz", lambda: None)
+        monkeypatch.setattr(cli, "check", _check_stub)
+        return calls
+
+    @staticmethod
+    def _book_figure(config):
+        (config.SPECS_DIR / "twins").mkdir(parents=True)
+        (config.SPECS_DIR / "twins" / "spec.md").write_text("# Twins\n", encoding="utf-8")
+        figure = config.DRAFTS_DIR / "twins" / "figures" / "flow.tex"
+        figure.parent.mkdir(parents=True)
+        figure.write_text(ONE_PICTURE, encoding="utf-8")
+        return figure
+
+    def test_a_book_units_figure_too_wide_for_the_book_is_reported(
+        self, isolated_config, checked, capsys
+    ):
+        assert cli.main(["check", str(self._book_figure(isolated_config))]) == 0
+
+        out = capsys.readouterr().out
+        assert "size-width            figure     445.0pt wide, target 437.5pt" in out
+        spec_md = isolated_config.SPECS_DIR / "twins" / "spec.md"
+        assert out.splitlines()[1] == f"page     book (437.5pt x 685.0pt), from {spec_md}"
+        assert checked == [(page.BOOK.text_width_pt, page.BOOK.text_height_pt)]
+
+    def test_the_same_figure_outside_a_book_fits_the_article(self, tmp_path, checked, capsys):
+        figure = tmp_path / "flow.tex"
+        figure.write_text(ONE_PICTURE, encoding="utf-8")
+
+        assert cli.main(["check", str(figure)]) == 0
+
+        out = capsys.readouterr().out
+        assert "size-width" not in out
+        assert out.splitlines()[1].startswith("page     article (453.0pt x 700.5pt), not under ")
+        assert checked == [(page.ARTICLE.text_width_pt, page.ARTICLE.text_height_pt)]
+
+    def test_page_names_the_page_over_the_path(self, isolated_config, checked, capsys):
+        figure = self._book_figure(isolated_config)
+
+        assert cli.main(["check", str(figure), "--page", "article"]) == 0
+
+        out = capsys.readouterr().out
+        assert "size-width" not in out
+        assert out.splitlines()[1] == "page     article (453.0pt x 700.5pt), --page"
+
+    def test_width_overrides_the_pages_width_alone(self, isolated_config, checked, capsys):
+        figure = self._book_figure(isolated_config)
+
+        assert cli.main(["check", str(figure), "--width", "500"]) == 0
+
+        assert "size-width" not in capsys.readouterr().out
+        assert checked == [(500.0, page.BOOK.text_height_pt)]
+
+    def test_json_carries_the_page(self, isolated_config, checked, capsys):
+        figure = self._book_figure(isolated_config)
+
+        assert cli.main(["check", str(figure), "--width", "500", "--json"]) == 0
+
+        body = json.loads(capsys.readouterr().out)
+        assert body["width_pt"] == 500.0
+        assert body["page"] == {
+            "name": "book",
+            "text_width_pt": page.BOOK.text_width_pt,
+            "text_height_pt": page.BOOK.text_height_pt,
+            "why": f"from {isolated_config.SPECS_DIR / 'twins' / 'spec.md'}, width from --width",
+        }
+
+    def test_an_unknown_page_is_a_usage_error(self, tmp_path):
+        with pytest.raises(SystemExit) as exit_info:
+            cli.main(["check", str(tmp_path / "fig.tex"), "--page", "a6"])
+
+        assert exit_info.value.code == 2
+
+
 class TestAdvisorySizeReports:
     """#1057: the size reports ride beside the findings, never in them."""
 
@@ -808,7 +887,7 @@ class TestAdvisoryAgainstRealLualatex:
     )
     def test_every_scaffold_reads_its_own_reference_and_squashes_nothing(self, name):
         result = _check.check(
-            REPO_ROOT / "assets" / "tikz" / f"{name}.tex", _check.DEFAULT_WIDTH_PT
+            REPO_ROOT / "assets" / "tikz" / f"{name}.tex", page.ARTICLE.text_width_pt
         )
 
         assert result.layout == name
@@ -816,7 +895,7 @@ class TestAdvisoryAgainstRealLualatex:
         assert all(f"{name} reference" in r.measurement for r in result.advisory)
 
     def test_a_short_arrow_squashes(self):
-        result = _check.check(FIXTURES / "squash.tex", _check.DEFAULT_WIDTH_PT)
+        result = _check.check(FIXTURES / "squash.tex", page.ARTICLE.text_width_pt)
 
         squashed = [r for r in result.advisory if r.rule == "size-squash"]
         assert [r.target for r in squashed] == ["a+b"]
@@ -907,7 +986,7 @@ class TestConnectorRulesAgainstRealLualatex:
     def test_the_dangling_fixture_fires_c7_and_c2(self):
         """`paper-twin-loop.tex`'s defects, cut down: an arrow stopping
         beside the box it points at, and a tag set on its line."""
-        result = _check.check(FIXTURES / "dangling.tex", _check.DEFAULT_WIDTH_PT)
+        result = _check.check(FIXTURES / "dangling.tex", page.ARTICLE.text_width_pt)
 
         rules = _rules(result.findings)
         assert "c7-dangling-tip" in rules and "c2-tag-clearance" in rules
@@ -923,7 +1002,7 @@ class TestConnectorRulesAgainstRealLualatex:
         assert {"c4-attach", "c5-transit"} <= set(as_pipeline)
 
     def test_a_clean_two_node_figure_fires_no_connector_rule(self):
-        result = _check.check(FIXTURES / "narrow.tex", _check.DEFAULT_WIDTH_PT)
+        result = _check.check(FIXTURES / "narrow.tex", page.ARTICLE.text_width_pt)
 
         assert not set(_check.CONNECTOR) & set(_rules(result.findings))
         # Only the palette rules, which need a house block it lacks.
@@ -940,7 +1019,7 @@ class TestTurnedAndCoveringNodesAgainstRealLualatex:
 
     @staticmethod
     def _overlaps(name):
-        result = _check.check(FIXTURES / name, _check.DEFAULT_WIDTH_PT)
+        result = _check.check(FIXTURES / name, page.ARTICLE.text_width_pt)
         return {f.target for f in result.findings if f.rule == "node-overlap"}
 
     def test_turned_labels_that_collide_fire_node_overlap(self):
@@ -950,7 +1029,7 @@ class TestTurnedAndCoveringNodesAgainstRealLualatex:
         assert any("band-card" in target and "-n" in target for target in targets)
 
     def test_turned_labels_clear_of_each_other_fire_nothing(self):
-        result = _check.check(FIXTURES / "turned-clean.tex", _check.DEFAULT_WIDTH_PT)
+        result = _check.check(FIXTURES / "turned-clean.tex", page.ARTICLE.text_width_pt)
 
         assert not {"node-overlap", "content-protrusion"} & set(_rules(result.findings))
 
@@ -1073,7 +1152,7 @@ def test_colliding_unnamed_titles_are_found_in_a_real_figure(tmp_path):
         encoding="utf-8",
     )
 
-    result = _check.check(path, _check.DEFAULT_WIDTH_PT)
+    result = _check.check(path, page.ARTICLE.text_width_pt)
 
     assert [f.rule for f in result.findings if f.rule == "node-overlap"] == ["node-overlap"]
 
@@ -1094,7 +1173,7 @@ def test_a_node_tikz_named_itself_is_never_shown_by_that_name(tmp_path):
         encoding="utf-8",
     )
 
-    findings = _check.check(path, _check.DEFAULT_WIDTH_PT).findings
+    findings = _check.check(path, page.ARTICLE.text_width_pt).findings
 
     (transit,) = [f for f in findings if f.rule == "c5-transit"]
     assert transit.target.startswith("(") and transit.target.endswith(")->b")

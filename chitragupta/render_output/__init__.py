@@ -65,11 +65,6 @@ checks its input; `_output_dir` checks where the output would land. That
 one directory is then the whole record of the work, which is what makes
 `dossier export` or a copy of it complete.
 
-Every render also passes documentclass/fontsize/papersize/geometry
-variables so a tex/pdf output always opens with a 12pt, a4paper article
-class and 1-inch margins via the geometry package -- overridable per
-call, but those are the project's fixed defaults.
-
 `python -m chitragupta.draft render <file> --format tex|pdf|...` runs standalone
 with bare `python` (no enrich group) -- it depends only on stdlib plus
 `chitragupta.config`/`chitragupta.citation_gate`/`chitragupta.references` (all three stdlib-only,
@@ -85,6 +80,7 @@ import tempfile
 from pathlib import Path
 
 from chitragupta import config, references
+from chitragupta.page import ARTICLE
 from chitragupta.render_output._assets import (
     _MD_IMAGE_RE,
     _URI_SCHEME_RE,
@@ -188,10 +184,13 @@ def _copy_local_assets(input_path: Path, dest_dir: Path, fragment: bool = False)
 def render(
     input_path: str,
     output_format: str = "pdf",
-    documentclass: str = "article",
-    fontsize: str = "12pt",
-    papersize: str = "a4",
-    margin: str = "1in",
+    # Every tex/pdf render passes these to pandoc as documentclass,
+    # fontsize, papersize and geometry, so the output opens on the
+    # article page (`page.ARTICLE`) unless a caller names another.
+    documentclass: str = ARTICLE.documentclass,
+    fontsize: str = ARTICLE.fontsize,
+    papersize: str = ARTICLE.papersize,
+    margin: str = ARTICLE.margin,
     csl: str | Path | None = None,
     collapse_citations: bool | None = None,
     output_dir: str | Path | None = None,

@@ -816,16 +816,25 @@ inherits the rasterisation path instead of building its own.
 
 **Small, and it unblocks two other items.**
 
+**Partly built (epic #1140).** The two pages this repository already
+sets are recorded once, measured, in `chitragupta/page.py`: `draft
+render`'s A4 article and `book-assembler`'s A4 book. `figure check` and
+`figure look` measure a figure under a book's drafts directory against
+the book's 437.5pt text block, and every other figure against the
+article's 453pt.
+Named targets beyond those two (A5, A6, letter, two-column, slide), a
+project setting and a per-draft target are parked on the epic.
+
 ### The gap in output targets
 
-Several checks want to know the size at which a figure will be
-printed, and no artefact holds that number. VI.2 cannot report an
-effective type size without a column width. `figure check`'s width
-finding takes its target from `--width`, defaulting to the render's
-453pt. Part XI's PNG branch needs
-a width and a resolution before it can rasterise anything. Each of those
-items has independently parked on "where does the target width come
-from", which is a sign the answer belongs in one place, not three.
+Several checks want to know the size at which a figure will be printed,
+and no artefact holds that number. VI.2 cannot report an effective type
+size without a column width. `figure check`'s width finding takes its
+target from `--width`, defaulting to the text width of the figure's
+page, the article's 453pt or a book's 437.5pt. Part XI's PNG branch
+needs a width and a resolution before it can rasterise anything. Each of
+those items has independently parked on "where does the target width
+come from", which is a sign the answer belongs in one place, not three.
 
 ### The proposal
 
@@ -872,7 +881,7 @@ alongside the twin in the non-PDF outputs.
 
 ### Most of the plumbing already exists
 
-- `figure look` already compiles each figure on the render's own page
+- `figure look` already compiles each figure on the page it prints on
   and writes it as a cropped PDF and a 300 dpi PNG.
 - `pypdfium2` is already declared in the `enrich` extra.
 - `_pandoc.py` already sets `--resource-path` so the PDF and DOCX writers

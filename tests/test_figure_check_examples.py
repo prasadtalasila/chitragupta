@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 
+from chitragupta.page import ARTICLE
 from chitragupta.figure import _check
 from chitragupta.figure._rules import RULES
 from tests.conftest import needs_tikz
@@ -37,7 +38,7 @@ def test_every_rule_with_something_to_break_has_an_example():
 
 
 def _check_file(rule: str, variant: str) -> _check.CheckResult:
-    return _check.check(EXAMPLES / rule / f"{variant}.tex", _check.DEFAULT_WIDTH_PT)
+    return _check.check(EXAMPLES / rule / f"{variant}.tex", ARTICLE.text_width_pt)
 
 
 @pytest.mark.slow

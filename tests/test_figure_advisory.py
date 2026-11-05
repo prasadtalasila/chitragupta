@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from chitragupta import page
 from chitragupta.figure import _advisory
 from chitragupta.figure._layout import RangeRow
 from chitragupta.figure._rules import RULES
@@ -38,8 +39,17 @@ def _figure(boxes=None, edges=(), declared=None, picture=(0.0, 0.0, 200.0, 70.0)
     )
 
 
-def _advise(figure=None, layout="pipeline", rows=ROWS, unmeasurable="", source=""):
-    return _advisory.advise(figure or _figure(), source, layout, rows, unmeasurable)
+def _advise(
+    figure=None,
+    layout="pipeline",
+    rows=ROWS,
+    unmeasurable="",
+    source="",
+    height_pt=page.ARTICLE.text_height_pt,
+):
+    return _advisory.advise(
+        figure or _figure(), source, layout, rows, unmeasurable, height_pt=height_pt
+    )
 
 
 def _by_rule(reports):
@@ -131,6 +141,13 @@ class TestSlack:
         reports = _by_rule(_advise(_figure(boxes=boxes, picture=(0.0, 0.0, 100.0, 70.0)))[0])
 
         assert reports["size-slack"].measurement.startswith(f"{1 - 800 / 7000:.2f};")
+
+    @pytest.mark.parametrize("on", [page.ARTICLE, page.BOOK], ids=["article", "book"])
+    def test_height_is_a_share_of_the_pages_text_height(self, on):
+        reports = _by_rule(_advise(height_pt=on.text_height_pt)[0])
+
+        share = f"{70.0 / on.text_height_pt:.2f} of the text height (70pt)"
+        assert reports["size-height"].measurement.startswith(share)
 
     def test_a_figure_with_no_nodes_has_no_slack(self):
         reports, not_measured = _advise(_figure(boxes={}, declared=[]))
