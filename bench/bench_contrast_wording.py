@@ -32,6 +32,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from bench.bench_connector_rules import figure_files  # noqa: E402
+from chitragupta import page  # noqa: E402
 from chitragupta.figure import _check  # noqa: E402
 
 OBJECTIVE = ("k1-stroke", "k2-text", "w4-pictograph")
@@ -44,7 +45,7 @@ _PAIR_RE = re.compile(r"^(?:border|line|text) (?P<colour>.+?) on (?:\S+'s )?(?P<
 
 def measure_one(item: tuple[str, Path, str]) -> dict:
     kind, path, label = item
-    result = _check.check(path, _check.DEFAULT_WIDTH_PT)
+    result = _check.check(path, page.ARTICLE.text_width_pt)
     return {
         "kind": kind,
         "file": label,

@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from chitragupta import page
 from chitragupta.figure import _check, _house
 from chitragupta.figure._colour import mix
 from chitragupta.figure._connectors import MM
@@ -373,13 +374,13 @@ class TestAgainstRealLualatex:
         ],
     )
     def test_the_firing_fixture_fires(self, fixture, rule):
-        result = _check.check(FIXTURES / f"{fixture}.tex", _check.DEFAULT_WIDTH_PT)
+        result = _check.check(FIXTURES / f"{fixture}.tex", page.ARTICLE.text_width_pt)
 
         assert set(_ours(result)) == {rule}
 
     @pytest.mark.parametrize("fixture", ["subscript", "well-pic", "two-row-zones", "band-tints"])
     def test_the_clean_fixture_is_clean(self, fixture):
-        result = _check.check(FIXTURES / f"{fixture}.tex", _check.DEFAULT_WIDTH_PT)
+        result = _check.check(FIXTURES / f"{fixture}.tex", page.ARTICLE.text_width_pt)
 
         assert _ours(result) == []
 
@@ -392,7 +393,7 @@ class TestAgainstRealLualatex:
         ids=lambda p: p.stem,
     )
     def test_no_shipped_figure_breaks_the_house_vocabulary(self, path):
-        result = _check.check(path, _check.DEFAULT_WIDTH_PT)
+        result = _check.check(path, page.ARTICLE.text_width_pt)
 
         assert not set(_house.HOUSE) & set(_ours(result))
         assert "unnamed-pic" not in _ours(result)

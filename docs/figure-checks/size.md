@@ -31,8 +31,11 @@ outside it; every file also carries the house style block above it.
 ### `size-width`
 
 **Catches.** A picture wider than the target text width. The target
-is 453pt by default, the text width of the render's A4 page at 1in
-margins, or the number given with `--width`. The target is `figure`,
+is the text width of the page the figure prints on: 453pt for
+`draft render`'s A4 article page at 1in margins, 437.5pt for a book
+unit's figure on `book-assembler`'s page at 80pt margins, or the number
+given with `--width`. A figure between the two fits a survey and not a
+book. The target is `figure`,
 and the measurement is the picture's width beside the target. Several
 pictures in one file are measured together, since they print side by
 side.
@@ -224,8 +227,12 @@ extent.
 
 ### `size-height`
 
-**Catches.** The picture's height as a share of the 700pt text height,
-with the height in points, beside the layout's reference range.
+**Catches.** The picture's height as a share of the page's text height
+(700.5pt for an article, 685pt for a book unit's figure), with the
+height in points, beside the layout's reference range. The reference
+ranges were measured on the article page, so a book figure's share
+reads about 2% higher against them than the same figure's would in a
+survey.
 
 **Why it matters.** A figure that takes far more of the page than its
 layout's usual figures often has a row that should wrap the other way,

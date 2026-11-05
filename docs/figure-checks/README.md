@@ -30,9 +30,14 @@ chitragupta figure check content/drafts/rag/figures/flow.tex
 It compiles the figure once, in the render's fonts at 12pt, and reads
 back where TikZ put everything. Flags:
 
-- `--width PT` sets the target width. The default is 453pt, the text
-  width of the render's A4 page at 1in margins. Use a smaller number for
-  a column or a thesis text block.
+- `--page article|book` names the page to check against. By default a
+  figure under a book's drafts directory, one with a
+  `content/specs/<book>/spec.md`, is checked against the book's page
+  (437.5pt by 685pt), and any other figure against `draft render`'s A4
+  article page (453pt by 700.5pt). The report's second line names the
+  page and why.
+- `--width PT` sets the target width alone, over the page's. Use a
+  smaller number for a column or a thesis text block.
 - `--layout NAME` reads the advisory reports against another layout
   than the one the figure's `% cg-layout:` line names.
 - `--json` prints the same report as data.
@@ -51,6 +56,7 @@ it finds. The only gate in this project is
 
 ```text
 figures/flow.tex
+page     article (453.0pt x 700.5pt), not under content/drafts
   size-width            figure     475.2pt wide, target 453.0pt
   node-overlap          legend+pot boxes intersect
 advisory (read; never resolved, allowed or capped)
@@ -109,7 +115,7 @@ line `figure check` prints for it, and the fixed figure.
 | --- | --- | --- | --- | --- |
 | `does-not-compile` | figure | objective | The figure's TikZ fails to compile, so nothing else can be measured. | [build](build.md#does-not-compile) |
 | `nothing-measurable` | figure | objective | The figure names no node, so the geometry rules had nothing to measure. | [build](build.md#nothing-measurable) |
-| `size-width` | figure | objective | The picture is wider than the text width it will print at (453pt by default). | [size](size.md#size-width) |
+| `size-width` | figure | objective | The picture is wider than the text width it will print at (453pt, or 437.5pt for a book unit's figure). | [size](size.md#size-width) |
 | `size-stray` | figure | objective | A line outside the picture that does not end in `%` adds a stray space beside the figure. | [size](size.md#size-stray) |
 | `focal-count` | figure | objective | More than one node is accented, so none of them stands out. | [nodes](nodes.md#focal-count) |
 | `content-protrusion` | figure | objective | An empty horizontal band taller than a third of the figure strands part of it. | [size](size.md#content-protrusion) |

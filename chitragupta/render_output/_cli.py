@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from chitragupta import config, ledger, reference_entries
+from chitragupta.page import ARTICLE
 from chitragupta.render_output._errors import ConversionError, MissingBinary, OutsideContentDir
 from chitragupta.render_output._figures import _figure_refs
 from chitragupta.render_output._math import MathMappingError
@@ -125,16 +126,25 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output format (default: pdf)",
     )
     parser.add_argument(
-        "--documentclass", default="article", help="LaTeX documentclass (default: article)"
+        "--documentclass",
+        default=ARTICLE.documentclass,
+        help=f"LaTeX documentclass (default: {ARTICLE.documentclass})",
     )
-    parser.add_argument("--fontsize", default="12pt", help="LaTeX font size (default: 12pt)")
+    parser.add_argument(
+        "--fontsize",
+        default=ARTICLE.fontsize,
+        help=f"LaTeX font size (default: {ARTICLE.fontsize})",
+    )
     parser.add_argument(
         "--papersize",
-        default="a4",
-        help='LaTeX paper size, without the "paper" suffix pandoc appends itself (default: a4)',
+        default=ARTICLE.papersize,
+        help='LaTeX paper size, without the "paper" suffix pandoc appends itself '
+        f"(default: {ARTICLE.papersize})",
     )
     parser.add_argument(
-        "--margin", default="1in", help="Page margin, passed to the geometry package (default: 1in)"
+        "--margin",
+        default=ARTICLE.margin,
+        help=f"Page margin, passed to the geometry package (default: {ARTICLE.margin})",
     )
     parser.add_argument(
         "--csl",

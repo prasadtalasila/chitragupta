@@ -139,7 +139,8 @@ its order.
    a bare article class, but the pipeline's own PDF is the draft's whole
    document, with its floats and neighbouring text, so labels can wrap
    and gaps close differently there. `python -m chitragupta.figure look`
-   sets the figure alone on the render's own page, cropped to it, as a
+   sets the figure alone on the page it prints on (the book's, for a
+   book unit's figure), cropped to it, as a
    PDF and a 300 dpi PNG; once the draft carries the marker, `--draft`
    renders the PDF too and writes a PNG of the page that holds the
    figure ([CLI.md](CLI.md#-chitragupta-figure-look)). The skill reads

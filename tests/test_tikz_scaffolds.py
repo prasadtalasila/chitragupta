@@ -51,8 +51,9 @@ from typing import NamedTuple
 
 import pytest
 
-from chitragupta.figure._advisory import TEXT_HEIGHT_PT, slack
-from chitragupta.figure._check import DEFAULT_WIDTH_PT, check
+from chitragupta.figure._advisory import slack
+from chitragupta.figure._check import check
+from chitragupta.page import ARTICLE
 from chitragupta.figure._layout import LAYOUT_DIR, RangeRow, declared_layout, range_rows
 from chitragupta.figure._twin import agree
 from chitragupta.review import figure_layout
@@ -215,8 +216,8 @@ _PATTERN_LINK_RE = re.compile(r"\]\(layouts/(?P<slug>[\w-]+)\.md\)")
 # What the fractions are of: the render's 12pt A4 1in page, the same
 # constants `figure check` divides by, so a reference row and a checked
 # figure are measured alike (#1057).
-_TEXT_WIDTH_PT = DEFAULT_WIDTH_PT
-_TEXT_HEIGHT_PT = TEXT_HEIGHT_PT
+_TEXT_WIDTH_PT = ARTICLE.text_width_pt
+_TEXT_HEIGHT_PT = ARTICLE.text_height_pt
 # Two decimals are written, and the probe's numbers move by a little with
 # the TeX installation; more than this is the source having changed.
 _FRACTION_TOLERANCE = 0.02
@@ -921,7 +922,7 @@ class TestDrawnAtFinalWidth:
 
     @pytest.mark.parametrize("exemplar", sorted(EXEMPLAR_DIR.glob("*.tex")), ids=lambda p: p.stem)
     def test_each_exemplar_fits_the_render_width(self, exemplar):
-        result = check(exemplar, DEFAULT_WIDTH_PT)
+        result = check(exemplar, ARTICLE.text_width_pt)
 
         assert [f.measurement for f in result.findings if f.rule == "size-width"] == []
         assert "size-width" not in dict(result.not_measured)

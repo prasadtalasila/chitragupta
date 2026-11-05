@@ -6,9 +6,10 @@ measures -- a label that wrapped badly, an arrow through a zone title, a
 figure that reads as cramped -- which only a look catches. So it writes
 a picture to look at, and measures only what it needs to say about it.
 
-**Set as the render sets it.** The document is `render()`'s house page,
-`article` at 12pt on A4 with 1in margins, so `\textwidth` is the 453pt
-the figure will be set in, with the fonts the probe sets
+**Set as the render sets it.** The document is the figure's own page
+(`page.page_for`, #1140): `render()`'s house page, `article` at 12pt on
+A4 with 1in margins, or the book's for a book unit's figure, so
+`\textwidth` is the 453pt or 437.5pt the figure will be set in, with the fonts the probe sets
 (`pdf_fonts.latex_fonts()`) and the figure's own TikZ libraries loaded
 in the preamble as the renderer loads them (#781). A library loaded
 inside the box would add stray width the render does not have (#1046).
@@ -46,6 +47,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from chitragupta import config, pdf_fonts, programs, tex_engine
+from chitragupta.page import ARTICLE, Page, page_for
 from chitragupta._atomic_write import write_atomically
 from chitragupta.render_output import _target_dir
 from chitragupta.render_output._paths import _output_dir
@@ -89,13 +91,11 @@ class Look:
         return self.width > self.text_width
 
 
-def document(source: str) -> str:
+def document(source: str, on: Page = ARTICLE) -> str:
     """The page `source` is set on: see this module's docstring."""
     libraries = libraries_in(source)
     return (
-        "\\documentclass[12pt,a4paper]{article}\n"
-        "\\usepackage[margin=1in]{geometry}\n"
-        "\\usepackage{fontspec}\n"
+        on.preamble + "\\usepackage{fontspec}\n"
         "\\usepackage{unicode-math}\n"
         f"{pdf_fonts.latex_fonts()}"
         "\\usepackage{tikz}\n"
@@ -140,9 +140,9 @@ def require_home(figure: Path, output_dir: Path | None) -> None:
         )
 
 
-def digest(source: str) -> str:
+def digest(source: str, on: Page = ARTICLE) -> str:
     """Everything a look is built from, in one hash."""
-    parts = (str(DOCUMENT_VERSION), str(DPI), pdf_fonts.latex_fonts(), source)
+    parts = (str(DOCUMENT_VERSION), str(DPI), pdf_fonts.latex_fonts(), on.preamble, source)
     return hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()
 
 
@@ -202,11 +202,11 @@ def _engine(tmp: Path, program: str, *args: str) -> CompletedProcess[str]:
     )
 
 
-def _build(figure: Path, source: str, key: str, out_dir: Path | None) -> Look:
+def _build(figure: Path, source: str, key: str, out_dir: Path | None, on: Page) -> Look:
     """Compile and rasterize in a temporary directory, then move both in."""
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
-        (work / "look.tex").write_text(document(source), encoding="utf-8")
+        (work / "look.tex").write_text(document(source, on), encoding="utf-8")
         opts = ("-interaction=nonstopmode", "-halt-on-error", "look.tex")
         result = _engine(work, "lualatex", *tex_engine.engine_opts(), *opts)
         match = _LOOK_RE.search(result.stdout)
@@ -228,7 +228,7 @@ def _build(figure: Path, source: str, key: str, out_dir: Path | None) -> Look:
     return Look(pdf, png, record, "wrote", *sizes, pixels)
 
 
-def look(figure: Path, out_dir: Path | None = None) -> Look:
+def look(figure: Path, out_dir: Path | None = None, page: Page | None = None) -> Look:
     """`figure`'s look, rebuilt only if anything it is built from changed.
 
     It is written to `out_dir`, or by default to the figure's mirrored
@@ -236,13 +236,19 @@ def look(figure: Path, out_dir: Path | None = None) -> Look:
     into another directory (#1114) never touches the default one. The
     caller confines `out_dir`, as `render` confines `--output-dir`.
 
+    It is set on `page`, or by default on the page the figure prints on
+    (`page.page_for`). Every caller takes the default, so a figure's one
+    record always holds one page and is not rebuilt each time a
+    different caller asks for it (#1140).
+
     Raises `OSError` or `UnicodeDecodeError` for a figure it cannot read,
     and `render_output.OutsideContentDir` where the rendered directory
     resolves outside the content directory: neither is a finding.
     """
     source = figure.read_text(encoding="utf-8")
-    key = digest(source)
-    return _current(figure, key, out_dir) or _build(figure, source, key, out_dir)
+    on = page or page_for(figure)[0]
+    key = digest(source, on)
+    return _current(figure, key, out_dir) or _build(figure, source, key, out_dir, on)
 
 
 def lines(result: Look, figure: Path) -> list[str]:

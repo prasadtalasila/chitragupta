@@ -19,6 +19,7 @@ drive to zero.
 from chitragupta.figure._allow import Allow
 from chitragupta.figure._check import FIGURE, CheckResult
 from chitragupta.figure._rules import RULES, Finding
+from chitragupta.page import Page
 from chitragupta.review.figure_layout import EMPTINESS_LABEL
 
 
@@ -134,3 +135,19 @@ def _finding(finding: Finding) -> dict:
 
 def _allow(allow: Allow) -> dict:
     return {"rule": allow.rule, "target": allow.target, "reason": allow.reason, "line": allow.line}
+
+
+def page_entry(on: Page, why: str) -> dict:
+    """The page a figure was checked against, and why that page (#1140)."""
+    return {
+        "name": on.name,
+        "text_width_pt": on.text_width_pt,
+        "text_height_pt": on.text_height_pt,
+        "why": why,
+    }
+
+
+def page_row(entry: dict) -> str:
+    """`page_entry`'s one line in the text report, under the path."""
+    size = f"{entry['text_width_pt']:.1f}pt x {entry['text_height_pt']:.1f}pt"
+    return f"page     {entry['name']} ({size}), {entry['why']}"

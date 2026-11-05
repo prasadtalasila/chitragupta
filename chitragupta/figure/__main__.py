@@ -1,6 +1,6 @@
 """`python -m chitragupta figure sync [PATH ...] [--check]` (#1013),
-`python -m chitragupta figure check <figure.tex> [--width PT] [--layout NAME]
-[--json]` (#1053, #1057) and `python -m chitragupta figure new
+`python -m chitragupta figure check <figure.tex> [--page article|book]
+[--width PT] [--layout NAME] [--json]` (#1053, #1057, #1140) and `python -m chitragupta figure new
 <figures-dir> <name> --layout ID` and `python -m chitragupta figure look
 <figure.tex> [--draft DRAFT] [--output-dir DIR]` (#1052, #1123).
 
@@ -42,14 +42,15 @@ from collections import Counter
 from pathlib import Path
 
 from chitragupta.figure._block import House, load_house
-from chitragupta.figure._check import DEFAULT_WIDTH_PT, check
-from chitragupta.figure._check_report import format_text, payload
+from chitragupta.figure._check import check
+from chitragupta.figure._check_report import format_text, page_entry, page_row, payload
 from chitragupta.figure._layout import layout_names
 from chitragupta.figure._look import NoHome, lines, look, require_home
 from chitragupta.figure._look_draft import look_dir, notes, page_line, refresh
 from chitragupta.figure._new import Refused, new_figure
 from chitragupta.figure._sync import Outcome, run
 from chitragupta.config_path import OutsideContentDir
+from chitragupta.page import PAGES, page_for
 from chitragupta.progname import prog_for
 from chitragupta.render_output._cli import _build_parser as _render_parser
 from chitragupta.render_output._cli import _rendered
@@ -96,10 +97,12 @@ def build_parser() -> argparse.ArgumentParser:
     figure_check = verbs.add_parser("check", help="report every rule one figure file breaks")
     figure_check.add_argument("figure", type=Path, help="the figure's .tex file")
     figure_check.add_argument(
-        "--width",
-        type=_points,
-        default=DEFAULT_WIDTH_PT,
-        help=f"target text width in pt (default: {DEFAULT_WIDTH_PT:g}, the render's A4 at 1in)",
+        "--page",
+        choices=list(PAGES),
+        help="the page to check against (default: book under a book's drafts, else article)",
+    )
+    figure_check.add_argument(
+        "--width", type=_points, help="target text width in pt (default: the page's)"
     )
     figure_check.add_argument(
         "--layout",
@@ -133,18 +136,25 @@ def _check(args: argparse.Namespace) -> int:
         return 2
     try:
         _require("lualatex")
-        _require_tikz()  # pragma: no cover-windows
+        _require_tikz()
     except MissingBinary as exc:
         print(
             f"figure check: {exc} Nothing was checked. `chitragupta doctor` checks the install.",
             file=sys.stderr,
         )
         return 2
-    result = check(args.figure, args.width, args.layout)  # pragma: no cover-windows
-    print(
-        json.dumps(payload(result), indent=2) if args.json else format_text(result)
-    )  # pragma: no cover-windows
-    return 0  # pragma: no cover-windows
+    on, why = (PAGES[args.page], "--page") if args.page else page_for(args.figure)
+    width = on.text_width_pt if args.width is None else args.width
+    if args.width is not None:
+        why += ", width from --width"
+    result = check(args.figure, width, args.layout, on.text_height_pt)
+    where = page_entry(on, why)
+    if args.json:
+        print(json.dumps({**payload(result), "page": where}, indent=2))
+    else:
+        path, _, rest = format_text(result).partition("\n")
+        print(f"{path}\n{page_row(where)}\n{rest}")
+    return 0
 
 
 def _print(outcomes: list[Outcome]) -> None:

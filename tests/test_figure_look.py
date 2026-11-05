@@ -11,10 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import config, pdf_fonts
+from chitragupta import config, page, pdf_fonts
 from chitragupta.figure import _look
 from chitragupta.figure import __main__ as cli
-from chitragupta.figure._check import DEFAULT_WIDTH_PT
 from chitragupta.render_output._errors import MissingBinary
 from tests.conftest import needs_tikz
 
@@ -104,6 +103,14 @@ class TestDocument:
 
     def test_the_hairline_is_drawn_only_past_the_text_width(self):
         assert "\\ifdim\\wd\\cgfigbox>\\textwidth" in _look.document(NARROW)
+
+    def test_a_book_figure_is_set_on_the_book_page(self):
+        doc = _look.document(NARROW, page.BOOK)
+        assert doc.startswith(page.BOOK.preamble)
+        assert "article" not in doc.split("\\begin{document}")[0]
+
+    def test_the_page_is_part_of_the_digest(self):
+        assert _look.digest(NARROW, page.BOOK) != _look.digest(NARROW)
 
 
 class TestLook:
@@ -200,6 +207,24 @@ class TestLook:
         monkeypatch.setattr(_look, "_run", no_png)
         result = _look.look(flow)
         assert result.action == "failed" and result.detail == "pdftoppm: Syntax Error"
+
+    def test_a_book_units_figure_is_looked_at_on_the_book(self, fake, flow, monkeypatch):
+        spec_md = config.SPECS_DIR / "rag" / "spec.md"
+        spec_md.parent.mkdir(parents=True)
+        spec_md.write_text("# A book\n", encoding="utf-8")
+        built = []
+        monkeypatch.setattr(_look, "document", lambda source, on: built.append(on) or source)
+
+        record = json.loads(_look.look(flow).record.read_text(encoding="utf-8"))
+
+        assert built == [page.BOOK]
+        assert record["digest"] == _look.digest(NARROW, page.BOOK)
+
+    def test_a_named_page_is_taken_over_the_figures_own(self, fake, flow, monkeypatch):
+        built = []
+        monkeypatch.setattr(_look, "document", lambda source, on: built.append(on) or source)
+        _look.look(flow, page=page.BOOK)
+        assert built == [page.BOOK]
 
     def test_the_record_says_what_was_built_from(self, fake, flow):
         record = json.loads(_look.look(flow).record.read_text(encoding="utf-8"))
@@ -365,4 +390,10 @@ class TestRealCompile:
         assert result.pixels == (math.ceil(width_bp / 72 * 300), math.ceil(height_bp / 72 * 300))
 
     def test_the_text_width_is_the_renders(self, flow):
-        assert _look.look(flow).text_width == pytest.approx(DEFAULT_WIDTH_PT, abs=0.05)
+        assert _look.look(flow).text_width == pytest.approx(page.ARTICLE.text_width_pt, abs=0.05)
+
+    def test_a_book_figures_text_width_is_the_books(self, flow):
+        spec_md = config.SPECS_DIR / "rag" / "spec.md"
+        spec_md.parent.mkdir(parents=True)
+        spec_md.write_text("# A book\n", encoding="utf-8")
+        assert _look.look(flow).text_width == pytest.approx(page.BOOK.text_width_pt, abs=0.05)
