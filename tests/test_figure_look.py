@@ -3,6 +3,7 @@ cropped to itself and rasterized (#1052)."""
 
 import json
 import math
+import re
 import shutil
 import struct
 import subprocess
@@ -20,6 +21,16 @@ from tests.conftest import needs_tikz
 FIXTURES = Path(__file__).parent / "fixtures" / "figure" / "check"
 NARROW = (FIXTURES / "narrow.tex").read_text(encoding="utf-8")
 WIDE = (FIXTURES / "wide.tex").read_text(encoding="utf-8")
+# #1127's figure: two house cards whose soft shadow falls outside TikZ's
+# bounding box, below and to the right.
+_PIPELINE = config.shipped("assets", "tikz", "pipeline.tex").read_text(encoding="utf-8")
+SHADOWED = _PIPELINE[: re.search(r"^\\usetikzlibrary\{[^}]*\}%\n", _PIPELINE, re.M).end()] + (
+    "\\begin{tikzpicture}[cg]\n"
+    "  \\node[cgbox] (a) {alpha};\n"
+    "  \\node[cgkey, right=of a] (b) {beta};\n"
+    "  \\draw[cgedge] (a) -- (b);\n"
+    "\\end{tikzpicture}%\n"
+)
 
 needs_poppler = pytest.mark.skipif(
     shutil.which("pdftoppm") is None or shutil.which("pdfinfo") is None,
@@ -251,6 +262,39 @@ class TestCli:
         assert cli.main(["look", str(flow)]) == 2
         assert "Permission denied" in capsys.readouterr().err
 
+    @pytest.mark.parametrize("where", ["content", "elsewhere"])
+    def test_a_figure_outside_the_drafts_needs_an_output_dir(
+        self, fake, isolated_config, tmp_path, capsys, where
+    ):
+        # #1123: it wrote loose into content/rendered/, where two scratch
+        # figures named alike overwrote each other.
+        base = config.CONTENT_DIR if where == "content" else tmp_path / "scratch"
+        loose = base / "figures" / "flow.tex"
+        loose.parent.mkdir(parents=True)
+        loose.write_text(NARROW, encoding="utf-8")
+        assert cli.main(["look", str(loose)]) == 2
+        assert "--output-dir" in capsys.readouterr().err
+        assert not config.RENDERED_DIR.exists() and fake.compiles == 0
+
+    def test_output_dir_takes_the_look(self, fake, isolated_config, tmp_path, capsys):
+        loose = tmp_path / "scratch" / "figures" / "flow.tex"
+        loose.parent.mkdir(parents=True)
+        loose.write_text(NARROW, encoding="utf-8")
+        out = config.CONTENT_DIR / "scratch-looks"
+        assert cli.main(["look", str(loose), "--output-dir", str(out)]) == 0
+        assert capsys.readouterr().out.startswith(f"wrote    {out / 'flow.look.pdf'}")
+        assert sorted(p.name for p in out.iterdir()) == [
+            "flow.look.json",
+            "flow.look.pdf",
+            "flow.look.png",
+        ]
+        assert not config.RENDERED_DIR.exists()
+
+    def test_output_dir_outside_content_exits_two(self, fake, flow, tmp_path, capsys):
+        assert cli.main(["look", str(flow), "--output-dir", str(tmp_path / "out")]) == 2
+        assert "outside the content directory" in capsys.readouterr().err
+        assert fake.compiles == 0
+
     def test_an_output_directory_outside_content_exits_two(self, fake, flow, monkeypatch, capsys):
         def outside(_path):
             raise cli.OutsideContentDir("content/rendered resolves outside content")
@@ -258,6 +302,27 @@ class TestCli:
         monkeypatch.setattr(_look, "_output_dir", outside)
         assert cli.main(["look", str(flow)]) == 2
         assert "resolves outside content" in capsys.readouterr().err
+
+
+def ink_gaps(pdf: Path, tmp: Path) -> dict[str, int]:
+    """White pixels between the ink and each edge of `pdf` at 300 dpi,
+    read from a greyscale PGM so no image library is needed."""
+    root = tmp / "page"
+    subprocess.run(
+        ["pdftoppm", "-r", "300", "-gray", "-singlefile", str(pdf), str(root)], check=True
+    )
+    data = root.with_suffix(".pgm").read_bytes()
+    magic, width, height, _maxval, pixels = data.split(maxsplit=4)
+    assert magic == b"P5"
+    columns, rows = int(width), int(height)
+    inked = [(i % columns, i // columns) for i, v in enumerate(pixels[: columns * rows]) if v < 235]
+    xs, ys = [x for x, _ in inked], [y for _, y in inked]
+    return {
+        "top": min(ys),
+        "bottom": rows - 1 - max(ys),
+        "left": min(xs),
+        "right": columns - 1 - max(xs),
+    }
 
 
 @pytest.mark.slow
@@ -274,15 +339,24 @@ class TestRealCompile:
         return float(width), float(height)
 
     @pytest.mark.parametrize("source", [NARROW, WIDE], ids=["narrow", "wide"])
-    def test_the_page_is_the_figure_plus_a_one_point_border(self, flow, source):
+    def test_the_page_is_the_figure_plus_a_ten_point_border(self, flow, source):
         flow.write_text(source, encoding="utf-8")
         result = _look.look(flow)
         assert result.action == "wrote", result.detail
         width_bp, height_bp = self.page_size(result.pdf)
         # pdfinfo reports PostScript points (1/72in); TeX's pt is 1/72.27in.
-        assert width_bp * 72.27 / 72 == pytest.approx(result.width + 2, abs=0.05)
-        assert height_bp * 72.27 / 72 == pytest.approx(result.height + 2, abs=0.05)
+        assert width_bp * 72.27 / 72 == pytest.approx(result.width + 20, abs=0.05)
+        assert height_bp * 72.27 / 72 == pytest.approx(result.height + 20, abs=0.05)
         assert result.past_text_width == (source is WIDE)
+
+    def test_a_soft_shadow_is_inside_the_picture(self, flow, tmp_path):
+        # #1127: at a 1pt border the `cgsoft` shadow was cut at the
+        # bottom and right edges, its ink touching both.
+        flow.write_text(SHADOWED, encoding="utf-8")
+        result = _look.look(flow)
+        assert result.action == "wrote", result.detail
+        gaps = ink_gaps(result.pdf, tmp_path)
+        assert min(gaps.values()) > 20, gaps
 
     def test_the_png_is_the_page_at_300_dpi(self, flow):
         result = _look.look(flow)

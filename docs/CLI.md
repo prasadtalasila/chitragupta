@@ -3112,7 +3112,7 @@ loads them, and writes:
 
 | File | What it is |
 | --- | --- |
-| `<name>.look.pdf` | The page, cropped to the figure plus 1pt. A figure wider than the text width gets a red line at the text width, measured from its left edge |
+| `<name>.look.pdf` | The page, cropped to the figure plus 10pt on every side, so the house soft shadow, drawn outside the figure's bounding box, is not cut off. A figure wider than the text width gets a red line at the text width, measured from its left edge |
 | `<name>.look.png` | That page at 300 dpi, never scaled, so pixel size is proportional to the figure's real size |
 | `<name>.look.json` | A digest of what the look was built from, and what was measured |
 | `<name>.page.png` | With `--draft`: the draft's page that holds the figure, at 300 dpi |
@@ -3120,18 +3120,25 @@ loads them, and writes:
 All of them go where the render puts output, under `content/rendered/`
 with the figure's place under `content/drafts/` mirrored:
 `content/drafts/rag/figures/flow.tex` looks to
-`content/rendered/rag/figures/`. A figure whose source, fonts and
-document have not changed since its last look is not compiled again.
+`content/rendered/rag/figures/`. `--output-dir DIR` puts them in `DIR`
+instead (with `--draft`, the render goes there too, and the figure's
+files below it as the render places them). A figure outside
+`content/drafts/` has no mirrored place, so it needs `--output-dir`:
+without one, `figure look` writes nothing and exits 2, rather than mix
+the look in with the drafts' and overwrite any other figure of the same
+name. A figure whose source, fonts and document have not changed since
+its last look is not compiled again.
 
 ```bash
 chitragupta figure look content/drafts/rag/figures/flow.tex
 chitragupta figure look content/drafts/rag/figures/flow.tex --draft content/drafts/rag/survey.md
+chitragupta figure look ~/scratch/figures/flow.tex --output-dir content/scratch
 ```
 
 ```text
 wrote    content/rendered/rag/survey.pdf
 current  content/rendered/rag/figures/flow.look.pdf   (336 x 114pt; text width 453pt)
-current  content/rendered/rag/figures/flow.look.png   (1405 x 484 px at 300 dpi)
+current  content/rendered/rag/figures/flow.look.png   (1488 x 567 px at 300 dpi)
 wrote    content/rendered/rag/figures/flow.page.png   (page 1 of survey.pdf; 2481 x 3508 px)
 ```
 
@@ -3147,11 +3154,12 @@ and its old look files are deleted so none passes for current.
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `--draft DRAFT` | none | Also render this draft and write `<name>.page.png` |
+| `--output-dir DIR` | mirrored | Write the look (and with `--draft`, the render) here instead of `content/rendered/<mirrored path>`; required for a figure outside `content/drafts/`; confined to `content/` |
 
 | Exit | When |
 | --- | --- |
 | **0** | after any look, a figure that does not compile and a draft that does not render included |
-| **2** | a figure that is not a readable UTF-8 file, no `lualatex`, `tikz.sty` or `pdftoppm` (or `pandoc`, with `--draft`), or a rendered directory that resolves outside the content directory. Nothing is written (`chitragupta doctor`) |
+| **2** | a figure that is not a readable UTF-8 file, no `lualatex`, `tikz.sty` or `pdftoppm` (or `pandoc`, with `--draft`), a rendered directory or `--output-dir` that resolves outside the content directory, or a figure outside `content/drafts/` with no `--output-dir`. Nothing is written (`chitragupta doctor`) |
 
 ### 🧠 `chitragupta enrich`
 
