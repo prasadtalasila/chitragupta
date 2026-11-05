@@ -70,8 +70,19 @@ DESCRIPTION = (
 # What `draft render`/`draft style` and `review figure` (lualatex, for
 # its layout probe) already probe for themselves, per call, plus the two
 # poppler tools `figure look` and a pdf render's figure pictures use
-# (pdftoppm, pdfinfo; #1052). Doctor probes them once, up front.
-BINARIES = ("pandoc", "lualatex", "pdftotext", "pdftoppm", "pdfinfo", "vale")
+# (pdftoppm, pdfinfo; #1052), and the two a book's build runs between its
+# LuaLaTeX passes: bibtexu for the bibliography, upmendex for the index
+# (#1168). Doctor probes them once, up front.
+BINARIES = (
+    "pandoc",
+    "lualatex",
+    "pdftotext",
+    "pdftoppm",
+    "pdfinfo",
+    "vale",
+    "bibtexu",
+    "upmendex",
+)
 
 THIS_DISTRIBUTION = "chitragupta-cli"
 CONSOLE_SCRIPTS = ("chitragupta", "cg")
