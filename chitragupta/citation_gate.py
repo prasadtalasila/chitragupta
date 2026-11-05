@@ -41,6 +41,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta import _code_regions, _markdown_inert, _pandoc_cites, config, gate_liveness, ledger
+from chitragupta.citation_gate_report import report
+from chitragupta.ledger_citable import citable_citekeys, unparsed_citekeys
 
 # Matches the command name by substring ("contains cite/Cite") rather than
 # an explicit list of the standard cite/citep/citet/... names -- an earlier,
@@ -216,6 +218,9 @@ class GateResult:
     path: Path
     unknown: list[tuple[int, str]] = field(default_factory=list)  # (line_no, citekey)
     total_citations: int = 0
+    # citekey -> status, for each unresolved key that has a ledger row but
+    # no parsed PDF (#1118); an unresolved key absent from it has no row.
+    unparsed: dict[str, str] = field(default_factory=dict)
 
     @property
     def ok(self) -> bool:
@@ -332,8 +337,14 @@ def extract_citekeys(text: str, *, latex: bool = False) -> list[tuple[int, str]]
     return keys
 
 
-def check_text(path: Path, text: str, known_citekeys: set[str]) -> GateResult:
+def check_text(
+    path: Path, text: str, citable: set[str], unparsed: "dict[str, str] | None" = None
+) -> GateResult:
     """Gate `text`, attributed to `path` for reporting.
+
+    `citable` is `ledger_citable.citable_citekeys`: a key passes only when
+    its PDF parsed. `unparsed` (`unparsed_citekeys`) is read only to say
+    why a key with a ledger row still failed.
 
     Split from `check_document` so a caller that must gate and then *act
     on* the same bytes can hold them: `unit accept` gated the file and
@@ -348,29 +359,15 @@ def check_text(path: Path, text: str, known_citekeys: set[str]) -> GateResult:
     # two quoted phrases (see _blank_code).
     for line_no, key in extract_citekeys_for(path, text):
         result.total_citations += 1
-        if key not in known_citekeys:
+        if key not in citable:
             result.unknown.append((line_no, key))
+            if unparsed and key in unparsed:
+                result.unparsed[key] = unparsed[key]
     return result
 
 
-def check_document(path: Path, known_citekeys: set[str]) -> GateResult:
-    return check_text(path, path.read_text(encoding="utf-8"), known_citekeys)
-
-
-def report(label: str, result: GateResult) -> None:
-    """Print one document's verdict in the gate's own PASS/FAIL shape.
-
-    One printer, so a caller gating a document it already holds in memory
-    reports it identically to `run()` rather than paraphrasing it.
-    """
-    if result.ok:
-        print(
-            f"OK    {label}: {result.total_citations} citation(s), all verified against the ledger."
-        )
-        return
-    print(f"FAIL  {label}: {len(result.unknown)} unresolved citekey(s):")
-    for line_no, key in result.unknown:
-        print(f"        {label}:{line_no}: @{key} not found in ledger -- not sourced from bib sync")
+def check_document(path: Path, citable: set[str], unparsed=None) -> GateResult:
+    return check_text(path, path.read_text(encoding="utf-8"), citable, unparsed)
 
 
 def run(paths: list[str]) -> int:
@@ -394,12 +391,14 @@ def run(paths: list[str]) -> int:
     # is the same answer, from a page the first read did not reach.
     try:
         with ledger.reading() as con:
-            known = ledger.known_citekeys(con)
+            known, unparsed = citable_citekeys(con), unparsed_citekeys(con)
         problem = "ledger is empty -- run `python -m chitragupta.corpus sync` first."
+        if unparsed:
+            problem = "the ledger holds no parsed source -- no PDF has been parsed yet."
     except (ledger.StaleLedger, ledger.UnreadableLedger, sqlite3.Error) as exc:
         return _could_not_read(exc)
     except ledger.NoLedger as exc:
-        known = set()
+        known, unparsed = set(), {}
         problem = " ".join(str(exc).split("\n"))
 
     if not known:
@@ -422,7 +421,7 @@ def run(paths: list[str]) -> int:
             all_ok = False
             print(f"FAIL  {p}: {exc}")
             continue
-        result = check_document(checked, known)
+        result = check_document(checked, known, unparsed)
         all_ok = all_ok and result.ok
         report(p, result)
 
@@ -444,7 +443,8 @@ def _could_not_read(exc: Exception) -> int:
 
 USAGE = """usage: python -m chitragupta.draft gate <file> [<file> ...]
 
-Fail if a draft cites a citekey the ledger doesn't hold. Exit 0 = every
+Fail if a draft cites a citekey the ledger doesn't hold as a parsed
+source: in the .bib, and its PDF parsed. Exit 0 = every
 citation verified, 1 = at least one unresolved citekey, 2 = bad usage,
 3 = the ledger could not be read, so nothing was checked.
 

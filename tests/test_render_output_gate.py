@@ -10,14 +10,13 @@ import pytest
 
 from chitragupta import ledger
 from chitragupta.render_output import _gate
-from tests.conftest import content_draft, make_reference
+from tests.conftest import add_citable, content_draft, make_reference
 
 
 def _known(*keys):
     con = ledger.connect()
     for key in keys:
-        ledger.upsert_reference(con, make_reference(citekey=key))
-    con.commit()
+        add_citable(con, key)
     con.close()
 
 
@@ -35,6 +34,18 @@ class TestGatedWarnings:
         _known("smith2024")
         draft = content_draft(isolated_config, "drafts/x.md")
         assert _gate.gated_warnings("Fine [@smith2024].\n", draft) == []
+
+    def test_a_key_whose_pdf_never_parsed_is_refused_naming_its_status(self, isolated_config):
+        # #1118: in the .bib is not enough; render refuses what the gate does.
+        con = ledger.connect()
+        ledger.upsert_reference(con, make_reference(citekey="web_page_2024"))
+        con.close()
+        draft = content_draft(isolated_config, "drafts/x.md")
+        with pytest.raises(_gate.UngatedDraft) as exc:
+            _gate.gated_warnings("A page [@web_page_2024].\n", draft)
+        assert "@web_page_2024 is in the ledger but has no parsed PDF (status no_pdf)" in str(
+            exc.value
+        )
 
     def test_a_citation_free_draft_needs_no_ledger(self, isolated_config):
         draft = content_draft(isolated_config, "drafts/x.md")

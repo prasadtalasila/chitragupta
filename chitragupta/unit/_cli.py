@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from chitragupta import citation_gate, ledger, spec
+from chitragupta.ledger_citable import citable_citekeys, unparsed_citekeys
 from chitragupta.dossier import dossier_dir
 from chitragupta.dossier._draft_fingerprint import recorded_draft_digest
 from chitragupta.spec._align import align
@@ -88,7 +89,7 @@ def _refusal_before_the_ledger(args, built: dict, draft: Path) -> "str | None":
     return None
 
 
-def _unknown_sources(built: dict, known: "set[str]") -> "str | None":
+def _unknown_sources(built: dict, known: "set[str]", unparsed: "dict[str, str]") -> "str | None":
     """Why `--source` may not be recorded, or None if it may.
 
     `--source` names the papers this unit claims to be grounded in, and
@@ -102,6 +103,17 @@ def _unknown_sources(built: dict, known: "set[str]") -> "str | None":
     unknown = [source for source in built["sources"] if source not in known]
     if not unknown:
         return None
+    # A real .bib entry whose PDF never parsed is refused too (#1118), and
+    # said so: "not in the ledger" would send someone to re-export a bib
+    # that already holds it.
+    never_parsed = [
+        f"{s} has no parsed PDF (status {unparsed[s]})" for s in unknown if s in unparsed
+    ]
+    if never_parsed:
+        return (
+            "; ".join(never_parsed)
+            + ", so it cannot be recorded as a source this unit is grounded in."
+        )
     return (
         f"{', '.join(unknown)} is not in the ledger, so it cannot be "
         "recorded as a source this unit is grounded in. "
@@ -117,8 +129,8 @@ def _cmd_accept(args) -> int:
         return _refuse(refusal)
 
     with ledger.reading() as con:
-        known = ledger.known_citekeys(con)
-    refusal = _unknown_sources(built, known)
+        known, unparsed = citable_citekeys(con), unparsed_citekeys(con)
+    refusal = _unknown_sources(built, known, unparsed)
     if refusal:
         return _refuse(refusal)
 
@@ -129,7 +141,7 @@ def _cmd_accept(args) -> int:
     # had never seen (#506/m-69). The gate's own PASS/FAIL shape is kept
     # by calling its reporter rather than paraphrasing it here.
     text = draft.read_text(encoding="utf-8")
-    result = citation_gate.check_text(draft, text, known)
+    result = citation_gate.check_text(draft, text, known, unparsed)
     citation_gate.report(str(draft), result)
     if not result.ok:
         return _refuse(

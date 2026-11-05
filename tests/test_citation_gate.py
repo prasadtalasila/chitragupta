@@ -9,7 +9,7 @@ import pytest
 
 from chitragupta import citation_gate, ledger
 
-from tests.conftest import content_draft, make_reference, run_python
+from tests.conftest import add_citable, content_draft, make_reference, run_python
 from tests.ledger_faults import damage_past_the_header, leave_hot_journal
 
 
@@ -567,7 +567,7 @@ class TestCheckDocument:
     def test_reports_unknown_with_correct_line_numbers(self, tmp_path):
         path = tmp_path / "draft.md"
         path.write_text("Line one [@known2024].\nLine two [@unknown2024].\n")
-        result = citation_gate.check_document(path, known_citekeys={"known2024"})
+        result = citation_gate.check_document(path, citable={"known2024"})
 
         assert result.total_citations == 2
         assert result.unknown == [(2, "unknown2024")]
@@ -576,7 +576,7 @@ class TestCheckDocument:
     def test_all_known_is_ok(self, tmp_path):
         path = tmp_path / "draft.md"
         path.write_text("[@a2024] and [@b2024]\n")
-        result = citation_gate.check_document(path, known_citekeys={"a2024", "b2024"})
+        result = citation_gate.check_document(path, citable={"a2024", "b2024"})
         assert result.ok is True
         assert result.total_citations == 2
 
@@ -587,14 +587,14 @@ class TestCheckDocument:
         # OK on exactly this document.
         path = tmp_path / "draft.md"
         path.write_text("Claim [@smith:2020].\n")
-        result = citation_gate.check_document(path, known_citekeys={"smith"})
+        result = citation_gate.check_document(path, citable={"smith"})
         assert result.unknown == [(1, "smith:2020")]
         assert result.ok is False
 
     def test_no_citations_is_ok_with_zero_total(self, tmp_path):
         path = tmp_path / "draft.md"
         path.write_text("Just prose, no citations at all.\n")
-        result = citation_gate.check_document(path, known_citekeys=set())
+        result = citation_gate.check_document(path, citable=set())
         assert result.ok is True
         assert result.total_citations == 0
 
@@ -615,7 +615,7 @@ class TestRun:
 
     def test_known_citekey_passes(self, isolated_config, tmp_path, capsys):
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="smith2024"))
+        add_citable(con, "smith2024")
         con.close()
 
         path = content_draft(isolated_config, "draft.md")
@@ -629,7 +629,7 @@ class TestRun:
 
     def test_multiple_files_mixed_result(self, isolated_config, tmp_path, capsys):
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="smith2024"))
+        add_citable(con, "smith2024")
         con.close()
 
         good = content_draft(isolated_config, "good.md")
@@ -643,6 +643,65 @@ class TestRun:
         assert rc == 1
         assert f"OK    {good}" in out
         assert f"FAIL  {bad}" in out
+
+
+class TestUnparsedRowsAreNotCitable:
+    """#1118: a key must be in the `.bib` *and* parsed from a real PDF. A
+    row that never parsed is a real bib entry with nothing behind it, and
+    fails exactly as an absent key does -- but says which it is."""
+
+    @pytest.mark.parametrize("status", ["no_pdf", "discovered", "parse_failed"])
+    def test_an_unparsed_key_fails_naming_its_status(
+        self, isolated_config, tmp_path, capsys, status
+    ):
+        con = ledger.connect()
+        add_citable(con, "smith2024")
+        con.execute("UPDATE items SET status = ? WHERE citekey = 'smith2024'", (status,))
+        con.commit()
+        con.close()
+        path = content_draft(isolated_config, "draft.md")
+        path.write_text("Intro.\n\nA web page describes the tool [@smith2024].\n")
+
+        rc = citation_gate.run([str(path)])
+        out = capsys.readouterr().out
+
+        assert rc == 1
+        assert (
+            f"{path}:3: @smith2024 is in the ledger but has no parsed PDF (status {status})" in out
+        )
+        assert "not found in ledger" not in out
+
+    def test_an_absent_key_keeps_its_own_message(self, isolated_config, capsys):
+        con = ledger.connect()
+        ledger.upsert_reference(con, make_reference(citekey="smith2024"))
+        con.close()
+        path = content_draft(isolated_config, "draft.md")
+        path.write_text("[@smith2024] and [@fabricated2024]\n")
+
+        assert citation_gate.run([str(path)]) == 1
+        out = capsys.readouterr().out
+        assert "@fabricated2024 not found in ledger -- not sourced from bib sync" in out
+        assert "@smith2024 is in the ledger but has no parsed PDF (status no_pdf)" in out
+        assert "2 unresolved citekey(s)" in out
+
+    def test_a_ledger_of_only_unparsed_rows_warns_no_parsed_source(self, isolated_config, capsys):
+        con = ledger.connect()
+        ledger.upsert_reference(con, make_reference(citekey="smith2024"))
+        con.close()
+        path = content_draft(isolated_config, "draft.md")
+        path.write_text("[@smith2024]\n")
+
+        assert citation_gate.run([str(path)]) == 1
+        err = capsys.readouterr().err
+        assert "ledger holds no parsed source" in err
+        assert "ledger is empty" not in err
+
+    def test_check_text_records_the_status_of_an_unparsed_key(self, tmp_path):
+        result = citation_gate.check_text(
+            tmp_path / "d.md", "[@a2024] [@b2024]\n", {"a2024"}, {"b2024": "no_pdf"}
+        )
+        assert result.unknown == [(1, "b2024")]
+        assert result.unparsed == {"b2024": "no_pdf"}
 
 
 class TestLedgerItCannotRead:
@@ -666,7 +725,7 @@ class TestLedgerItCannotRead:
 
     def test_a_hot_journal_exits_3_with_its_cause(self, isolated_config, capsys):
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="smith2024"))
+        add_citable(con, "smith2024")
         con.close()
         journal = leave_hot_journal(isolated_config.LEDGER_PATH)
         rc, captured = self._gate(isolated_config, "[@someFabricatedKey2099]\n", capsys)
@@ -690,7 +749,7 @@ class TestLedgerItCannotRead:
     def test_a_ledger_damaged_past_its_header_exits_3(self, isolated_config, capsys):
         # The schema version reads; the citekey query is what fails.
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="smith2024"))
+        add_citable(con, "smith2024")
         con.close()
         damage_past_the_header(isolated_config.LEDGER_PATH)
         rc, captured = self._gate(isolated_config, "[@smith2024]\n", capsys)
@@ -718,7 +777,7 @@ class TestDeadLauncherWarning:
         """A draft that passes, against a ledger with something in it -- so
         the only thing that can reach stderr is the launcher warning."""
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="smith2024"))
+        add_citable(con, "smith2024")
         con.close()
         path = content_draft(cfg, "draft.md")
         path.write_text("A claim [@smith2024].\n", encoding="utf-8")
@@ -773,7 +832,7 @@ class TestCliEntrypoint:
         """AGENTS.md's hard requirement: citation_gate must run with the
         bare system interpreter, no bibtexparser/venv needed."""
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="smith2024"))
+        add_citable(con, "smith2024")
         con.close()
 
         draft = content_draft(isolated_config, "draft.md")
@@ -816,7 +875,7 @@ class TestInputsAreConfinedToContent:
         # run() reports on every path it is given; a refusal is one more
         # per-document result, not an abort.
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="a_2024"))
+        add_citable(con, "a_2024")
         con.close()
         good = isolated_config.CONTENT_DIR / "drafts" / "good.md"
         good.parent.mkdir(parents=True)
@@ -836,7 +895,7 @@ class TestInputsAreConfinedToContent:
         # is "under content/" -- a scratch note or a content/review/ report
         # is checked the same way.
         con = ledger.connect()
-        ledger.upsert_reference(con, make_reference(citekey="a_2024"))
+        add_citable(con, "a_2024")
         con.close()
         scratch = isolated_config.CONTENT_DIR / "scratch" / "notes.md"
         scratch.parent.mkdir(parents=True)
