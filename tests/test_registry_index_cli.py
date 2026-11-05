@@ -84,7 +84,9 @@ def typeset(book, tmp_path, monkeypatch):
     written and a `book.idx` holding one entry, as a typeset book would."""
     from chitragupta.registry import _index_finish
 
-    monkeypatch.setattr("chitragupta.registry._index_cli.markdown_to_latex", lambda texts: list(texts))
+    monkeypatch.setattr(
+        "chitragupta.registry._index_cli.markdown_to_latex", lambda texts: list(texts)
+    )
     monkeypatch.setattr(_index_finish.programs, "resolve_program", lambda name: f"/bin/{name}")
     monkeypatch.setattr(_index_finish.subprocess, "run", FakeUpmendex())
     accept(book, "ch-model", "", glossary="- **Digital twin** -- a model paired with a link.")
