@@ -98,7 +98,7 @@ _FENCE_RE = re.compile(
 # An underscore identifier: `as_of`, `predicted_next`, `sensor_id`. Code,
 # never a quantity -- the same distinction §12 draws for spans, applied
 # to a whole fence body. It is what keeps a tutorial's captured output
-# and an untagged SQL query quiet, both of which the operator heuristic
+# and an untagged SQL query quiet, both of which the shape rules
 # alone reads as mathematics. The cost is an ASCII subscript (`k_day`)
 # in an *unmarked* fence, which goes unreported.
 _SNAKE_CASE_RE = re.compile(r"\w_\w")
@@ -106,7 +106,7 @@ _SNAKE_CASE_RE = re.compile(r"\w_\w")
 # A displayed equation is short, and that is the whole discriminator
 # against the other thing a bare fence holds: an ASCII figure. A box
 # border is not math-shaped, but a `->` arrow inside a 26-line diagram
-# is, and the operator heuristic reads the body rather than the line.
+# is, and one matching line is enough to call the whole body an equation.
 #
 # Measured over every untagged fence in this project's own drafts: the
 # genuine equations run 1 to 4 lines, and the shortest false positive --
@@ -167,7 +167,7 @@ def mapping_path(draft: Path) -> "Path | None":
     return target
 
 
-def _mapping_text(draft: Path) -> str:
+def mapping_text(draft: Path) -> str:
     """`draft`'s `math.md`, or "" if it has none or can have none."""
     path = mapping_path(draft)
     if path is None or not path.is_file():
@@ -175,16 +175,13 @@ def _mapping_text(draft: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def mapping_rows(draft: Path) -> "list[tuple[str, str]]":
-    """Every ASCII -> LaTeX row of `draft`'s `math.md`, in file order.
+def mapping_rows(text: str) -> "list[tuple[str, str]]":
+    """Every ASCII -> LaTeX row of a `math.md`'s `text`, in file order.
 
     The rows rather than a dict, so a key written twice is still visible
     to `_math_findings.duplicates()` (#1116).
     """
-    return [
-        (m.group("ascii").strip(), m.group("latex").strip())
-        for m in _ROW_RE.finditer(_mapping_text(draft))
-    ]
+    return [(m.group("ascii").strip(), m.group("latex").strip()) for m in _ROW_RE.finditer(text)]
 
 
 def load_mapping(draft: Path) -> "dict[str, str]":
@@ -196,14 +193,12 @@ def load_mapping(draft: Path) -> "dict[str, str]":
     those two apart, through the `has_mapping_file` flag it takes. A key
     written twice keeps its last row.
     """
-    return dict(mapping_rows(draft))
+    return dict(mapping_rows(mapping_text(draft)))
 
 
-def not_math(draft: Path) -> "frozenset[str]":
-    """The spans `draft`'s `math.md` lists as not mathematics."""
-    return frozenset(
-        m.group("ascii").strip() for m in _NOT_MATH_ROW_RE.finditer(_mapping_text(draft))
-    )
+def not_math(text: str) -> "frozenset[str]":
+    """The spans a `math.md`'s `text` lists as not mathematics."""
+    return frozenset(m.group("ascii").strip() for m in _NOT_MATH_ROW_RE.finditer(text))
 
 
 def _symbols_of(mapping: "dict[str, str]") -> "frozenset[str]":

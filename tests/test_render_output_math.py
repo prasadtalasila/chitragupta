@@ -542,6 +542,10 @@ class TestShapeRules:
             "pip install -e .",
             # An undated citekey: `_CITEKEY_RE` wants a four-digit year.
             "noauthor_digital_nodate-1",
+            # A thousands separator, a reference number, snake_case code.
+            "1,000",
+            "[1]",
+            "plant_id+1",
         ],
     )
     def test_near_misses_stay_code(self, span):
@@ -614,6 +618,15 @@ class TestTheDraftsOwnMathematics:
     def test_a_function_of_numbers_alone_is_code(self):
         assert _math_shapes.rule_for("sleep(5)", frozenset({"k"}), True) is None
 
+    def test_a_function_counts_by_its_own_name_not_its_argument(self):
+        assert _math_shapes.rule_for("print(k)", frozenset({"k"}), False) is None
+
+    def test_a_tuple_needs_every_member_known_or_numeric(self):
+        assert _math_shapes.rule_for("(A, foo)", frozenset({"A"}), False) is None
+
+    def test_no_known_names_means_no_symbol_rule(self):
+        assert _math_shapes.rule_for("SoC", frozenset(), False) is None
+
 
 class TestGapMessagesNameTheirRule:
     def test_a_signed_number(self):
@@ -651,7 +664,7 @@ NOT_MATH_TABLE = """\
 class TestTheNotMathematicsTable:
     def test_it_is_read_and_never_enters_the_mapping(self, isolated_config):
         draft = _draft(mapping=NOT_MATH_TABLE, text="`tau` `404` `21.4`")
-        assert _math.not_math(draft) == frozenset({"404", "21.4"})
+        assert _math.not_math(_math.mapping_text(draft)) == frozenset({"404", "21.4"})
         assert _math.load_mapping(draft) == {"tau": "\\tau"}
 
     def test_a_listed_span_is_not_a_gap(self):
@@ -697,11 +710,12 @@ class TestDuplicateRows:
 
     def test_rows_keep_file_order_and_the_last_row_still_wins(self, isolated_config):
         draft = _draft(mapping=DUPLICATE_ROWS)
-        assert len(_math.mapping_rows(draft)) == 4
+        assert len(_math.mapping_rows(_math.mapping_text(draft))) == 4
         assert _math.load_mapping(draft)["eps_k = y^T * S^-1 * y"].startswith("\\varepsilon")
 
     def test_differing_latex_is_reported_with_both_values(self, isolated_config):
-        found = _math_findings.duplicates(_math.mapping_rows(_draft(mapping=DUPLICATE_ROWS)))
+        rows = _math.mapping_rows(_math.mapping_text(_draft(mapping=DUPLICATE_ROWS)))
+        found = _math_findings.duplicates(rows)
         assert found == [
             _math_findings.MathFinding(
                 "duplicate",

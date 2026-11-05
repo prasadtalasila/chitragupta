@@ -48,13 +48,14 @@ def _checked_math_mapping(draft_text: str, input_path: Path) -> "dict[str, str]"
     nobody can add, and a report's header quoting the draft's path is
     otherwise read as arithmetic. `check` still runs there, being certain.
     """
-    rows = _math.mapping_rows(input_path)
+    text = _math.mapping_text(input_path)
+    rows = _math.mapping_rows(text)
     mapping = dict(rows)
     path = _math.mapping_path(input_path)
     _math.check(draft_text, input_path, mapping)
     if path is None:
         return mapping
-    not_math = _math.not_math(input_path)
+    not_math = _math.not_math(text)
     for found in _math_findings.duplicates(rows, not_math) + _math_findings.findings(
         draft_text, mapping, path.is_file(), not_math
     ):

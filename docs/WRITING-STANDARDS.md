@@ -782,13 +782,13 @@ A file that can have no `math.md`, such as a review report or anything
 outside `content/drafts/`, gets none of these warnings, since each asks
 for a row nobody can add. A `<!-- math -->` marker in one still fails.
 
-The third names both remedies, because a bare fence leaves the question
-open in both directions: mark it if it is an equation, tag it if it is
-code. It fires on a fence of **at most four lines** holding an operator
-and no underscore identifier. `as_of` and `predicted_next` are code,
-and length is what separates an equation from the other thing a bare
-fence holds, an [§10 figure](#-10-figures), whose box borders are not
-math-shaped but whose `->` arrows are. Measured over every untagged
+The fence warning names both remedies, because a bare fence leaves the
+question open in both directions: mark it if it is an equation, tag it
+if it is code. It fires on a fence of **at most four lines** matching a
+shape rule and no underscore identifier. `as_of` and `predicted_next`
+are code, and length is what separates an equation from the other thing
+a bare fence holds, an [§10 figure](#-10-figures), whose box borders are
+not math-shaped but whose `->` arrows are. Measured over every untagged
 fence in this repository's own drafts, the genuine equations run one to
 four lines and the shortest false positive is a seven-line pseudocode
 listing.

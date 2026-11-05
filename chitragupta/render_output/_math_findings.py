@@ -95,9 +95,10 @@ def findings(
     `warnings()` is this reduced to the message strings, for the callers
     that only print. Read this one to *select* a kind.
 
-    A *gap* is a span that should have a row and has not: math-shaped, or
-    equal to a symbol the mapping's own LaTeX already uses -- or, since
-    #406, an untagged fence holding an equation nobody marked. A *orphan*
+    A *gap* is a span that should have a row and has not: one a
+    `_math_shapes` rule calls a quantity, or one that is, or is built
+    from, a name the mapping already uses -- or, since #406, an untagged
+    fence holding an equation nobody marked. A *orphan*
     is a row matching nothing, the tell that a revision reworded or
     deleted the sentence it belonged to.
 
@@ -126,38 +127,57 @@ def findings(
     symbols = _symbols_of(mapping)
 
     for span in sorted(spans - set(mapping) - not_math):
-        if _CITEKEY_RE.match(span):
-            continue
-        rule = rule_for(span, symbols, found_file)
-        if rule == "symbol":
-            used_by = (
-                f"`{span}` is a symbol this draft's own equations use, "
-                f"but has no row in {MAPPING_FILENAME}"
-            )
-            found.append(MathFinding("symbol", used_by))
-        elif rule == "symbol-built":
-            built = (
-                f"`{span}` is built from symbols this draft's own equations use, "
-                f"but has no row in {MAPPING_FILENAME}"
-            )
-            found.append(MathFinding("symbol", built))
-        elif rule:
-            gap = f"`{span}` looks like a quantity ({rule}) but has no row in {MAPPING_FILENAME}"
-            found.append(MathFinding("gap", gap))
+        if not _CITEKEY_RE.match(span):
+            found.extend(_span_finding(span, rule_for(span, symbols, found_file)))
 
     if found_file:
         used = spans | {_body_of(m) for m in _BLOCK_RE.finditer(text)}
-        for orphan in sorted(set(mapping) - used):
-            gone = f"`{orphan}` has a row in {MAPPING_FILENAME} but appears nowhere in the draft"
-            found.append(MathFinding("orphan", gone))
-        # Its own kind, not `orphan`: `_math_desync` reads an orphan as the
-        # mathematics having moved, and a stale code row says nothing of it.
-        for unused in sorted(not_math - spans):
-            listed = (
-                f"`{unused}` is listed as not mathematics in {MAPPING_FILENAME} "
-                "but appears nowhere in the draft"
+        found.extend(_unused_rows(set(mapping) - used, not_math - spans))
+    return found
+
+
+def _span_finding(span: str, rule: "str | None") -> "list[MathFinding]":
+    """The finding `rule` makes of `span`: none, a symbol, or a gap."""
+    if rule is None:
+        return []
+    if rule == "symbol":
+        return [
+            MathFinding(
+                "symbol",
+                f"`{span}` is a symbol this draft's own equations use, "
+                f"but has no row in {MAPPING_FILENAME}",
             )
-            found.append(MathFinding("unused-code", listed))
+        ]
+    if rule == "symbol-built":
+        return [
+            MathFinding(
+                "symbol",
+                f"`{span}` is built from symbols this draft's own equations use, "
+                f"but has no row in {MAPPING_FILENAME}",
+            )
+        ]
+    gap = f"`{span}` looks like a quantity ({rule}) but has no row in {MAPPING_FILENAME}"
+    return [MathFinding("gap", gap)]
+
+
+def _unused_rows(orphans: "set[str]", unused_code: "frozenset[str]") -> "list[MathFinding]":
+    """`math.md` rows matching nothing in the draft, of either table."""
+    found = [
+        MathFinding(
+            "orphan", f"`{orphan}` has a row in {MAPPING_FILENAME} but appears nowhere in the draft"
+        )
+        for orphan in sorted(orphans)
+    ]
+    # Its own kind, not `orphan`: `_math_desync` reads an orphan as the
+    # mathematics having moved, and a stale code row says nothing of it.
+    found.extend(
+        MathFinding(
+            "unused-code",
+            f"`{unused}` is listed as not mathematics in {MAPPING_FILENAME} "
+            "but appears nowhere in the draft",
+        )
+        for unused in sorted(unused_code)
+    )
     return found
 
 

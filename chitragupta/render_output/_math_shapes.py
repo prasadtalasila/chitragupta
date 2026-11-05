@@ -47,7 +47,8 @@ _ANCHORED = (
     # Numbers only: `-m` and `-v` are command-line flags.
     ("signed-number", re.compile(r"^[-+]\s*\d")),
     # Numbers only: `[DIGITAL MODEL]` is a label.
-    ("vector", re.compile(r"^\[\s*[-+]?\d[\d.eE]*(\s*[,;]?\s*[-+]?\d[\d.eE]*)*\s*\](\^T)?$")),
+    # Two or more: `[1]` is a reference number.
+    ("vector", re.compile(r"^\[\s*[-+]?\d[\d.eE]*(\s*[,;]?\s*[-+]?\d[\d.eE]*)+\s*\](\^T)?$")),
     # A `;` row separator is matrix syntax, never Python's.
     ("matrix", re.compile(r"^\[[^\]]*;[^\]]*\](\^T)?$")),
     ("derivative", re.compile(r"^d\^?\d?[A-Za-z]\w*/d[A-Za-z]\w*(\^\d)?$")),
@@ -55,11 +56,12 @@ _ANCHORED = (
     # A subscript is what makes a Greek name mathematics in any draft;
     # a bare one is step 5's.
     ("greek-subscript", re.compile(rf"^({_GREEK})_\{{?[\w:,+-]+\}}?$")),
-    # A short subscript on a plain name: `plant-1` is a name, and
-    # `noauthor_digital_nodate-1` an undated citekey.
-    ("index-step", re.compile(r"^[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9]{1,3}[+-]1|_?\{\w+[+-]1\})$")),
+    # A one-character subscript on a plain name: `plant-1` is a name,
+    # `plant_id+1` code, and `noauthor_digital_nodate-1` an undated citekey.
+    ("index-step", re.compile(r"^[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9][+-]1|_?\{\w+[+-]1\})$")),
     ("sci-number", re.compile(r"^[-+]?\d+(\.\d+)?e[-+]?\d+$")),
-    ("number-list", re.compile(r"^[-+]?\d[\d.]*(\s*,\s*[-+]?\d[\d.]*)+$")),
+    # A space after each comma: `1,000` is one number.
+    ("number-list", re.compile(r"^[-+]?\d[\d.]*(\s*,\s+[-+]?\d[\d.]*)+$")),
 )
 
 # Step 3. A whole whitespace-separated token, made of path characters.
