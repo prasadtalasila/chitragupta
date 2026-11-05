@@ -185,3 +185,15 @@ def test_see_also_with_no_target_left_prints_nothing():
         data, printed, {term_id("digital twin"): "3"}, identity
     )
     assert lines == [] and dangling == ["shadow"]
+
+
+def test_a_parent_that_is_a_term_shares_its_printed_key():
+    """Otherwise upmendex sees two parents: "digital twin" from the term's
+    own line and "Digital twin" from the raw `[parent]` name."""
+    data = table(
+        {**term("Digital twin"), "key": "digital twin"},
+        {**term("Lean digital twin", parents=["Digital twin"]), "key": "lean digital twin"},
+    )
+    keys, _ = entries.keys(data, {term_id("digital twin"): {"digital twin": 3}}, identity)
+    assert keys[term_id("digital twin")] == ["digital twin@digital twin"]
+    assert keys[term_id("lean digital twin")][1] == "digital twin@digital twin!lean@lean"

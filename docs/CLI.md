@@ -1850,7 +1850,7 @@ chitragupta draft registry index   content/drafts/<book> --idx content/rendered/
 | `check` | what the registries disagree on | **always 0** |
 | `excerpt` | what one unit's generation should be told the rest of the book settled | 1 only if the book has no readable outline |
 | `build --index PATH` | also write the index's term table, `index-terms.json`, from the glossaries and `content/specs/<book>/index.toml` | 1 if `index.toml` is malformed or names a term, chapter or target that does not exist, and then nothing is written |
-| `index` | after the book's third `lualatex` pass: turn `book.idx` into `book.ind` through `upmendex`, and write `index.md` and `index.json` beside the other registries, each finding with the `index.toml` line that fixes it | 1 on a stale build (a chapter rendered without, or against an older, term table), a missing `upmendex` or pandoc, or an `upmendex` failure; nothing is written then |
+| `index` | after the book's third `lualatex` pass: turn `book.idx` into `book.ind` through `upmendex`, and write `index.md` and `index.json` beside the other registries, each finding with the `index.toml` line that fixes it | 1 on a stale build (a chapter rendered without, or against an older, term table), a `book.idx` older than the table or a sidecar, a missing `upmendex` or pandoc, or an `upmendex` failure; no `book.ind` and no report are written then |
 
 **`check` is a review aid and exits 0 whatever it finds**, like every
 `chitragupta.review` aid and unlike `spec status`/`unit status`. Those two report

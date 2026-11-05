@@ -233,3 +233,24 @@ def test_no_upmendex_is_a_missing_binary(tmp_path, monkeypatch):
     monkeypatch.setattr(finish.programs, "resolve_program", lambda name: None)
     result = finish.finish(book(tmp_path, IDX), UNITS, identity, run=Ran())
     assert any(problem.startswith("[missing-binary] upmendex") for problem in result.problems)
+
+
+def test_no_entries_skips_upmendex_and_leaves_an_empty_ind(tmp_path):
+    """upmendex exits 255 on an empty .idx ("Nothing written"), which read
+    as a failure on a book whose terms all fell below the threshold."""
+    ran = Ran()
+    result = finish.finish(book(tmp_path, "", see={}), UNITS, identity, run=ran)
+    assert result.problems == [] and result.entries == 0
+    assert ran.argv is None
+    assert (tmp_path / "book.ind").read_text(encoding="utf-8") == ""
+
+
+def test_an_idx_older_than_a_sidecar_must_be_typeset_again(tmp_path):
+    import os
+
+    idx = book(tmp_path, IDX)
+    sidecar = tmp_path / "ch-two.index.json"
+    os.utime(idx, (1_000_000, 1_000_000))
+    os.utime(sidecar, (2_000_000, 2_000_000))
+    result = finish.finish(idx, UNITS, identity, run=Ran())
+    assert any("typeset the book again" in problem for problem in result.problems)

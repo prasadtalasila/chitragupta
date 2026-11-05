@@ -124,12 +124,38 @@ def _reference_problems(doc: dict, glossary: dict, accepted: "list[str]") -> "li
         for child in children
         if term_key(child) in dropped
     ]
+    parents = {term_key(name) for name in doc.get("parent", {})}
     problems += [
         f'`[parent_only]` names "{name}", which is not a `[parent]`.'
         for name in doc.get("parent_only", {})
-        if name not in doc.get("parent", {})
+        if term_key(name) not in parents
+    ]
+    problems += [
+        f'`[{table}]` "{name}": "{text}" leaves no word to match.'
+        for table in ("variants", "restrict")
+        for name, texts in doc.get(table, {}).items()
+        for text in texts
+        if not spelling(text)
     ]
     return problems
+
+
+def _target_problems(doc: dict, unholdable: "set[str]") -> "list[str]":
+    """A see or see-also target with no entry of its own to point at."""
+    targets = [("see", target) for target in doc.get("see", {}).values()]
+    targets += [("see_also", t) for names in doc.get("see_also", {}).values() for t in names]
+    return [
+        f'`[{table}]` target "{target}" is dropped or has no plain spelling, '
+        "so it has no entry to point at."
+        for table, target in targets
+        if term_key(target) in unholdable
+    ]
+
+
+def _parent_only(doc: dict) -> "list[str]":
+    """`[parent_only]`'s parents, each named as `[parent]` writes it."""
+    wanted = {term_key(name) for name in doc.get("parent_only", {})}
+    return sorted(name for name in doc.get("parent", {}) if term_key(name) in wanted)
 
 
 def _spellings(key: str, doc: dict) -> "list[str]":
@@ -203,6 +229,7 @@ def table(
     indexed = set(glossary) - dropped
     spellings = {key: _spellings(key, doc) for key in sorted(indexed)}
     problems += _clash_problems(spellings)
+    problems += _target_problems(doc, dropped | {key for key in indexed if not spellings[key]})
     terms = {
         term_id(key): {**_entry(key, glossary[key], doc, linked), "spellings": spellings[key]}
         for key in sorted(indexed)
@@ -216,7 +243,7 @@ def table(
             term_id(term_key(name)): sorted(term_id(term_key(target)) for target in targets)
             for name, targets in sorted(doc.get("see_also", {}).items())
         },
-        "parent_only": sorted(doc.get("parent_only", {})),
+        "parent_only": _parent_only(doc),
         "not_indexable": sorted(key for key in indexed if not spellings[key]),
         "dropped": sorted(dropped),
     }, problems

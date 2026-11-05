@@ -84,7 +84,7 @@ def typeset(book, tmp_path, monkeypatch):
     written and a `book.idx` holding one entry, as a typeset book would."""
     from chitragupta.registry import _index_finish
 
-    monkeypatch.setattr("chitragupta.registry._cli.markdown_to_latex", lambda texts: list(texts))
+    monkeypatch.setattr("chitragupta.registry._index_cli.markdown_to_latex", lambda texts: list(texts))
     monkeypatch.setattr(_index_finish.programs, "resolve_program", lambda name: f"/bin/{name}")
     monkeypatch.setattr(_index_finish.subprocess, "run", FakeUpmendex())
     accept(book, "ch-model", "", glossary="- **Digital twin** -- a model paired with a link.")
@@ -132,7 +132,7 @@ def test_index_without_pandoc_is_a_missing_binary(typeset, monkeypatch, capsys):
     def missing(texts):
         raise MissingBinary("pandoc not found")
 
-    monkeypatch.setattr("chitragupta.registry._cli.markdown_to_latex", missing)
+    monkeypatch.setattr("chitragupta.registry._index_cli.markdown_to_latex", missing)
     book, idx = typeset
     assert registry.main(["index", str(book), "--idx", str(idx)]) == 1
     assert "[missing-binary] pandoc not found" in capsys.readouterr().err
@@ -144,7 +144,16 @@ def test_index_with_a_failing_conversion_says_so(typeset, monkeypatch, capsys):
     def failing(texts):
         raise ConversionError("lost a text")
 
-    monkeypatch.setattr("chitragupta.registry._cli.markdown_to_latex", failing)
+    monkeypatch.setattr("chitragupta.registry._index_cli.markdown_to_latex", failing)
     book, idx = typeset
     assert registry.main(["index", str(book), "--idx", str(idx)]) == 1
     assert "[conversion] pandoc could not convert the index: lost a text" in capsys.readouterr().err
+
+
+def test_index_warns_about_an_index_toml_edited_since_the_build(typeset, capsys):
+    """The report reads `index.toml` again; a problem there is said, not
+    swallowed, though the build already refused or accepted the table."""
+    book, idx = typeset
+    (spec.spec_dir(book) / "index.toml").write_text("[variant]\n", encoding="utf-8")
+    assert registry.main(["index", str(book), "--idx", str(idx)]) == 0
+    assert "[index] warning: `index.toml` has no table `[variant]`." in capsys.readouterr().err

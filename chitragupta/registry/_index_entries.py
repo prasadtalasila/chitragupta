@@ -22,6 +22,8 @@ only an opaque id in `\\index{}`.
 import re
 import unicodedata
 
+from chitragupta.registry._index_terms import term_id
+from chitragupta.registry._terms import term_key
 from chitragupta.render_output._math import _GREEK_NAMES
 
 ARTICLES = ("the", "a", "an")
@@ -152,8 +154,17 @@ def keys(
         for tid, term in terms.items()
         for parent in term["parents"]
     }
-    parents = sorted({parent for _, parent in under})
-    texts = list(dict.fromkeys([*own.values(), *parents, *under.values()]))
+    # A parent that is itself a term prints as that term does, or upmendex
+    # would see two parents: the term's own line and the raw name.
+    heads = {}
+    for parent in sorted({parent for _, parent in under}):
+        pid = term_id(term_key(parent))
+        heads[parent] = (
+            (own[pid], _sort_of(terms[pid])) if pid in terms else (parent, sort_key(parent))
+        )
+    texts = list(
+        dict.fromkeys([*own.values(), *(text for text, _ in heads.values()), *under.values()])
+    )
     plain = dict(zip(texts, convert(texts)))
     latex = {text: quote(out) for text, out in plain.items()}
     found = {}
@@ -164,7 +175,7 @@ def keys(
             else [f"{quote(_sort_of(term))}@{latex[own[tid]]}"]
         )
         lines += [
-            f"{quote(sort_key(parent))}@{latex[parent]}!"
+            f"{quote(heads[parent][1])}@{latex[heads[parent][0]]}!"
             f"{quote(sort_key(under[tid, parent]))}@{latex[under[tid, parent]]}"
             for parent in term["parents"]
         ]

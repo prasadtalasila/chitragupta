@@ -69,8 +69,8 @@ Three stages, each talking to the next only through a file:
    `<unit>.index.json`: the counts, which terms it placed, and how each
    mention was capitalised.
 3. **The index.** LuaLaTeX writes each `\index{}` to `book.idx` with
-   its page. After the pages have settled (the fourth pass, once the
-   bibliography and cross-references are in), `registry index` turns
+   its page. After the pages have settled (the third `lualatex` pass,
+   once the bibliography and cross-references are in), `registry index` turns
    each id into the printed entry, writes `book-index.idx` and
    `book.ist`, and runs `upmendex`, which sorts and groups them into
    `book.ind`. A last `lualatex` pass prints it. The same step writes
@@ -172,7 +172,9 @@ nothing, when:
 - one spelling belongs to two terms;
 - an `[always]` chapter is not an accepted unit;
 - a `[see]` source is itself an indexed term (a *see* entry has no page
-  numbers, *Chicago* 15.16), or a target does not exist;
+  numbers, *Chicago* 15.16), or a target does not exist, is dropped or
+  has no plain spelling;
+- a `[variants]` or `[restrict]` spelling is punctuation alone;
 - a `[parent]` child is dropped, or `[parent_only]` names no parent.
 
 ## 📋 The report
@@ -202,10 +204,14 @@ Nothing in it blocks anything:
 | `not-indexable` | the glossary term holds maths, which prose cannot match | `[variants]` |
 | `dangling-see` | a cross-reference points at a term with no page | fix or remove it |
 
-`registry index` refuses, writing nothing, on a stale build: a chapter
-rendered without `--index-terms`, or against an older term table, or a
-`book.idx` holding an id the table no longer has. Rebuilding the table
-and re-rendering the chapters (the assembler's steps 3 and 4) fixes it.
+`registry index` refuses, writing no `book.ind` and no report, on a
+stale build: a chapter rendered without `--index-terms` or against an
+older term table, a `book.idx` holding an id the table no longer has,
+or a `book.idx` older than the table or a chapter's sidecar. Rebuilding
+the table, re-rendering the chapters (the assembler's steps 3 and 4)
+and typesetting again fixes it. An index with no entries at all is not
+an error: `book.ind` is left empty and prints nothing. A problem in
+`index.toml` since the term table was built is printed as a warning.
 
 ## ✂ Turning it off
 

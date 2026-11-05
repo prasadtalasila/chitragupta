@@ -287,7 +287,8 @@ unit, through the revising skill the step that sent you here names.
 
 **Build the book with LuaLaTeX** (#1037): `lualatex`, `bibtexu`, then
 `lualatex` twice, from the book's own directory, as SKILL.md's step 9
-gives them; with `{#index}`, then `registry index` and a fifth pass.
+gives them; with `{#index}`, then `registry index` and one more
+`lualatex` pass.
 Measured on the reference book (287 pages): the four passes take about
 86 s against pdflatex's 26 s, and two things pdflatex got wrong come out
 right. Classic `bibtex` abbreviates a first name by its first *byte*, so
@@ -392,7 +393,8 @@ build is the four passes above.
   missing.
 - **Order:** `registry index` reads `book.idx` after the third
   `lualatex` pass, once citations, cross-references and the contents
-  have settled the page breaks, and writes `book.ind` for the fifth.
+  have settled the page breaks, and writes `book.ind` for one more
+  `lualatex` pass.
   The index adds pages only after the bibliography, so it moves no page
   number it lists.
 - **What it writes:** `book-index.idx` (each id turned into its printed

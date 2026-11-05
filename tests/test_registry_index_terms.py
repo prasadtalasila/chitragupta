@@ -237,3 +237,37 @@ def test_a_spelling_is_tokenised_as_the_filter_tokenises_prose(text, expected):
     punctuation and splits on dashes; a spelling that kept them could
     never match (found on the digital-twins book: "Euler's step")."""
     assert _index_terms.spelling(text) == expected
+
+
+# --- found by review (#1168) ------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "doc, expected",
+    [
+        (
+            {"drop": {"terms": ["shadow"]}, "see_also": {"model": ["shadow"]}},
+            '"shadow" is dropped or has no plain spelling',
+        ),
+        (
+            {"drop": {"terms": ["shadow"]}, "see": {"s": "shadow"}},
+            '"shadow" is dropped or has no plain spelling',
+        ),
+        ({"see_also": {"model": ["`x` vector"]}}, '"`x` vector" is dropped or has no plain'),
+        ({"variants": {"model": ["---"]}}, '"---" leaves no word to match'),
+        ({"restrict": {"model": ["“”"]}}, '"“”" leaves no word to match'),
+    ],
+)
+def test_a_target_or_spelling_the_index_cannot_hold_refuses(doc, expected):
+    """A dropped or maths-only cross-reference target crashed `registry
+    index`, and a spelling of punctuation alone crashed the filter."""
+    _, problems = build([row("Model"), row("Shadow"), row("`x` vector")], doc)
+    assert any(expected in problem for problem in problems), problems
+
+
+def test_parent_names_match_whatever_their_case():
+    doc = {"parent": {"Stage": ["stage 0"]}, "parent_only": {"stage": True}}
+    data, problems = build([row("Stage 0")], doc)
+    assert problems == []
+    assert data["parent_only"] == ["Stage"]
+    assert entry(data, "stage 0")["parents"] == ["Stage"]

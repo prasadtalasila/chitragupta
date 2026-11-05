@@ -116,6 +116,12 @@ def _inputs(idx: Path, units: "list[str]", result: Result) -> "list[tuple[str, s
         return []
     result.data = json.loads(terms.read_text(encoding="utf-8"))
     result.sidecars, result.problems = _sidecars(idx.parent, units, digest(terms))
+    inputs = [terms, *(sidecar_path(idx.parent, unit) for unit in result.sidecars)]
+    if idx.stat().st_mtime < max(path.stat().st_mtime for path in inputs):
+        result.problems.append(
+            f"{idx.name} is older than {TERMS_JSON} or a chapter's sidecar: "
+            "typeset the book again before `registry index`."
+        )
     entries = parse(idx.read_text(encoding="utf-8"))
     result.problems += [
         f"{idx.name} holds {ident}, which {TERMS_JSON} does not: rebuild the term "
@@ -173,8 +179,14 @@ def finish(idx: Path, units: "list[str]", convert, run=None) -> Result:
     for ident, _, page in entries:
         pages.setdefault(ident, page)
     more, result.dangling = _index_entries.cross_references(result.data, printed, pages, convert)
+    result.entries = len(entries)
+    if not lines + more:
+        # upmendex exits 255 on an empty .idx ("Nothing written"); an
+        # empty .ind is what it would have meant, and \printindex prints
+        # nothing from one.
+        idx.with_suffix(".ind").write_text("", encoding="utf-8")
+        return result
     rewritten = idx.with_name(f"{idx.stem}-index.idx")
     rewritten.write_text("\n".join(lines + more) + "\n", encoding="utf-8")
-    result.entries = len(entries)
     _upmendex(idx, rewritten, result.data, run, result)
     return result

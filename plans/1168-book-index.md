@@ -109,7 +109,7 @@ its bare key. A glossary term whose text holds maths is left out unless
 ### `<output-dir>/<unit>.index.json` (sidecar, one per rendered chapter)
 
 ```json
-{"unit": "04-digital-twin-architecture", "terms_digest": "<sha256 of index-terms.json>",
+{"unit": "04-digital-twin-architecture", "terms_digest": "<sha1 of index-terms.json>",
  "terms": {"t017": {"count": 2, "indexed": true,
                     "midsentence": {"digital twin": 2}}}}
 ```

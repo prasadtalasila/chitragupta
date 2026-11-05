@@ -48,6 +48,12 @@ def _chapters(sidecars: dict) -> "dict[str, dict[str, dict]]":
     return found
 
 
+def _q(text: str) -> str:
+    """`text` as a TOML string: JSON's escaping is TOML's, so a key holding
+    `\\` or `"` (a maths term) still pastes as valid `index.toml`."""
+    return json.dumps(text, ensure_ascii=False)
+
+
 def _finding(kind: str, key: str, message: str, fix: str) -> dict:
     return {"kind": kind, "term": key, "message": message, "fix": fix}
 
@@ -61,7 +67,7 @@ def _term_findings(term: dict, seen: "dict[str, dict]", units: list, minimum: in
                 "no-locator",
                 key,
                 f'"{key}" occurs nowhere in the indexed chapters.',
-                f'[drop] terms = ["{key}"]  # or a [variants] spelling',
+                f"[drop] terms = [{_q(key)}]  # or a [variants] spelling",
             )
         )
     if len(indexed) >= max(3, math.ceil(0.75 * len(units))):
@@ -70,7 +76,7 @@ def _term_findings(term: dict, seen: "dict[str, dict]", units: list, minimum: in
                 "generic",
                 key,
                 f'"{key}" has page numbers in {len(indexed)} of {len(units)} chapters.',
-                f'[drop] terms = ["{key}"]  # or [restrict] "{key}" = ["..."]',
+                f'[drop] terms = [{_q(key)}]  # or [restrict] {_q(key)} = ["..."]',
             )
         )
     below = sorted(unit for unit, entry in seen.items() if not entry["indexed"])
@@ -80,7 +86,7 @@ def _term_findings(term: dict, seen: "dict[str, dict]", units: list, minimum: in
                 "below-threshold",
                 key,
                 f'"{key}" is mentioned fewer than {minimum} times in {", ".join(below)}.',
-                f'[always] "{key}" = {json.dumps(below)}',
+                f"[always] {_q(key)} = {json.dumps(below, ensure_ascii=False)}",
             )
         )
     return found + _casing(term, seen)
@@ -98,7 +104,7 @@ def _casing(term: dict, seen: "dict[str, dict]") -> list:
                 key,
                 f'"{term["glossary"]}" is never cased mid-sentence, so its first '
                 "word prints lowercase.",
-                f'[print] "{key}" = "{term["glossary"]}"  # if it is a proper noun',
+                f"[print] {_q(key)} = {_q(term['glossary'])}  # if it is a proper noun",
             )
         ]
     patterns = {tuple(word[:1].isupper() for word in surface.split()) for surface in counts}
@@ -110,7 +116,7 @@ def _casing(term: dict, seen: "dict[str, dict]") -> list:
             "mixed-case",
             key,
             f'"{key}" is cased several ways mid-sentence: {", ".join(sorted(counts))}.',
-            f'[print] "{key}" = "{common}"',
+            f"[print] {_q(key)} = {_q(common)}",
         )
     ]
 
@@ -128,7 +134,7 @@ def _families(data: dict) -> list:
             "family",
             word,
             f'{len(keys)} terms share "{word}": {", ".join(sorted(keys))}.',
-            f'[parent] "{word}" = {json.dumps(sorted(keys))}',
+            f"[parent] {_q(word)} = {json.dumps(sorted(keys), ensure_ascii=False)}",
         )
         for word, keys in sorted(groups.items())
         if len(keys) >= 3
@@ -182,7 +188,7 @@ def findings(data: dict, sidecars: dict, doc: dict, units: list, dangling: list)
             "not-indexable",
             key,
             f'"{key}" holds maths, which prose matching cannot find.',
-            f'[variants] "{key}" = ["a plain spelling"]',
+            f'[variants] {_q(key)} = ["a plain spelling"]',
         )
         for key in data["not_indexable"]
     ]

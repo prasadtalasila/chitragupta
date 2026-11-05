@@ -145,8 +145,9 @@ the entries exist. Skip it and every citation renders `[?]` while
 `lualatex` still exits 0.
 
 **With an index, two more steps** ([the index](book-index.md)): once the
-fourth pass has settled the page breaks, `registry index` turns
-`book.idx` into `book.ind`, and a fifth pass prints it:
+third `lualatex` pass has settled the page breaks, `registry index`
+turns `book.idx` into `book.ind`, and a fourth `lualatex` pass prints
+it:
 
 ```bash
 (cd - >/dev/null && chitragupta draft registry index \

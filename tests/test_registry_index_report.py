@@ -160,3 +160,16 @@ def test_a_capital_lowercased_on_no_evidence_is_named_with_its_fix():
     assert found[0]["fix"] == '[print] "kalman filter" = "Kalman filter"  # if it is a proper noun'
     printed = data(term("kalman filter", "Kalman filter", print="Kalman filter"))
     assert report.findings(printed, side, {}, UNITS, []) == []
+
+
+def test_every_fix_line_is_valid_toml_even_for_a_key_holding_latex():
+    import tomllib
+
+    key = "$\\varepsilon$-greedy"
+    found = report.findings(data(not_indexable=[key]), {}, {}, UNITS, [])
+    found += report.findings(data(term('a "quoted" term')), {}, {}, UNITS, [])
+    for finding in found:
+        line = finding["fix"].split("  #")[0]
+        if line.startswith("["):
+            table, _, rest = line.partition("] ")
+            tomllib.loads(f"{table}]\n{rest}\n")
