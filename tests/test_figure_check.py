@@ -343,6 +343,7 @@ class TestAllows:
         assert [bad.problem for bad in result.malformed] == ["no reason"]
 
 
+@pytest.mark.slow
 @needs_tikz
 class TestAgainstRealLualatex:
     """The fixtures under tests/fixtures/figure/check/, a firing and a
@@ -672,11 +673,13 @@ class TestCli:
 
         assert exit_info.value.code == 2
 
+    @pytest.mark.slow
     @needs_tikz
     def test_it_exits_0_whatever_it_finds(self, capsys):
         assert cli.main(["check", str(FIXTURES / "wide.tex")]) == 0
         assert "size-width" in capsys.readouterr().out
 
+    @pytest.mark.slow
     @needs_tikz
     def test_json_and_a_narrower_target_are_honoured(self, capsys):
         assert cli.main(["check", str(FIXTURES / "narrow.tex"), "--width", "100", "--json"]) == 0
@@ -684,6 +687,7 @@ class TestCli:
         assert body["width_pt"] == 100.0
         assert [finding["rule"] for finding in body["findings"]] == ["size-width"]
 
+    @pytest.mark.slow
     @needs_tikz
     def test_the_front_door_reaches_it(self):
         result = run_python(
@@ -776,12 +780,14 @@ class TestLayoutFlag:
 
         assert exit_info.value.code == 2
 
+    @pytest.mark.slow
     @needs_tikz
     def test_it_reaches_the_report(self, capsys):
         assert cli.main(["check", str(FIXTURES / "tight.tex"), "--layout", "map"]) == 0
         assert "map reference" in capsys.readouterr().out
 
 
+@pytest.mark.slow
 @needs_tikz
 class TestAdvisoryAgainstRealLualatex:
     @pytest.mark.parametrize(
@@ -895,6 +901,7 @@ class TestConnectorRules:
         assert _check_report.payload(result)["diagnostics"]["lines_not_between_nodes"] is None
 
 
+@pytest.mark.slow
 @needs_tikz
 class TestConnectorRulesAgainstRealLualatex:
     def test_the_dangling_fixture_fires_c7_and_c2(self):
@@ -923,6 +930,7 @@ class TestConnectorRulesAgainstRealLualatex:
         assert [rule for rule, _ in result.not_measured] == list(_house.HOUSE[1:])
 
 
+@pytest.mark.slow
 @needs_tikz
 class TestTurnedAndCoveringNodesAgainstRealLualatex:
     """A label turned a quarter, and a title over a coordinate, are
@@ -1052,6 +1060,7 @@ class TestOverlapOfEveryDrawnNode:
         assert [f.target for f in findings if f.rule == "node-overlap"] == ["a+b"]
 
 
+@pytest.mark.slow
 @needs_tikz
 def test_colliding_unnamed_titles_are_found_in_a_real_figure(tmp_path):
     path = tmp_path / "fig.tex"
@@ -1069,6 +1078,7 @@ def test_colliding_unnamed_titles_are_found_in_a_real_figure(tmp_path):
     assert [f.rule for f in result.findings if f.rule == "node-overlap"] == ["node-overlap"]
 
 
+@pytest.mark.slow
 @needs_tikz
 def test_a_node_tikz_named_itself_is_never_shown_by_that_name(tmp_path):
     """An unnamed node followed by `edge` is `tikz@f@1` inside TikZ. The

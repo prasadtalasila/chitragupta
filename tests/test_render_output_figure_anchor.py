@@ -108,6 +108,7 @@ def _words(pdf) -> str:
     return html[html.index("<body>") :]
 
 
+@pytest.mark.slow
 @needs_pdf_render
 class TestRealRender:
     def test_each_mark_names_the_page_its_figure_printed_on(self, isolated_config):

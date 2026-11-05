@@ -79,6 +79,7 @@ def test_the_font_block_names_the_whole_chain():
         assert f'"{spec}"' in block
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(
     not (pandoc_available and lualatex_available), reason="pandoc/lualatex not installed"
 )

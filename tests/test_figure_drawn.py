@@ -311,6 +311,7 @@ class TestColours:
         assert node.text_written == "cgInk"
 
 
+@pytest.mark.slow
 @needs_tikz
 class TestAgainstRealLualatex:
     def test_the_boxed_probe_reports_drawn_lines(self, tmp_path):
@@ -424,6 +425,7 @@ class TestVisibilityAndRotation:
         assert drawn.nodes["t"].rotated
 
 
+@pytest.mark.slow
 @needs_tikz
 class TestVisibilityAndRotationAgainstRealLualatex:
     def test_a_sloped_tag_is_rotated_and_a_bare_fit_is_unframed(self, tmp_path):
@@ -472,6 +474,7 @@ class TestNamesWithSpaces:
         assert drawn.nodes["data store"].box == (0.0, 0.0, 10.0, 10.0)
 
 
+@pytest.mark.slow
 @needs_tikz
 def test_spaced_shape_and_node_names_compile_and_measure(tmp_path):
     path = tmp_path / "fig.tex"

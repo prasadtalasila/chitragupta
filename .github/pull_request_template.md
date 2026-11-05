@@ -49,8 +49,9 @@ if there is none.]
 What was actually run, not what was intended (see DEVELOPER-AGENTS.md,
 "Before claiming a task complete"):
 
-- [ ] Full suite with coverage: `.venv-full/bin/python -m pytest --cov
-      --cov-report=term-missing` -- still 100% line and branch
+- [ ] Full suite with coverage: `.venv-full/bin/python -m pytest -n auto
+      --cov --cov-report=term-missing` -- still 100% line and branch.
+      CI skips the `slow` (TeX compile) tests, so this is their only run
 - [ ] CI's whole `lint` job: `bash scripts/check_local.sh` -- the
       version-bump check, pylint, both ruff checks, shellcheck,
       actionlint, markdownlint, the node tests and the Vale check, in

@@ -236,6 +236,14 @@ jobs:
       # resolver's real loaders; this catches any other path, as an
       # OSError naming huggingface.co, instead of a ~420 MB download
       # that turns a Hugging Face outage into a red build.
+      # -m "not slow": the Linux leg leaves out the tests that compile
+      # with a real TeX engine, which were 85% of its pytest time (18-22
+      # minutes serial). A local run keeps them, so they are still
+      # checked before a PR, just not here. The lines only they reach are
+      # the ones Windows already cannot reach, so the Linux leg reads
+      # coveragerc-windows.toml too and still holds 100; marking a test
+      # `slow` that leaves anything else uncovered fails this step.
+      # -n auto spreads what is left over the runner's cores.
       - name: Run test suite with coverage
         shell: bash
         env:
@@ -243,10 +251,8 @@ jobs:
         run: |
           export VIRTUAL_ENV="$PWD/.venv-full"
           set -o pipefail
-          cov_config=()
-          [ "$RUNNER_OS" = "Linux" ] || cov_config=(--cov-config=coveragerc-windows.toml)
-          poetry run python -m pytest --cov --cov-report=term-missing \
-            --cov-report=xml --cov-fail-under=100 "${cov_config[@]}" -rf | tee pytest-output.txt
+          poetry run python -m pytest -n auto -m "not slow" --cov --cov-report=term-missing \
+            --cov-report=xml --cov-fail-under=100 --cov-config=coveragerc-windows.toml -rf | tee pytest-output.txt
 
       # Which test failed is the only actionable part of a red run.
       # This step mattered most while the Windows leg carried

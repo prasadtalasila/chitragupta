@@ -187,6 +187,7 @@ def test_a_draft_without_a_bibliography_is_left_alone(tmp_path):
     assert meta == {}
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(
     not (pandoc_available and lualatex_available and pdftotext_available),
     reason="pandoc/lualatex/pdftotext not installed",

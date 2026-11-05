@@ -499,7 +499,9 @@ Never report a task as done on the strength of a plan or a code read alone.
 Before saying so, run, in this repo:
 
 - The full test suite with coverage: `.venv-full/bin/python -m pytest
-  --cov --cov-report=term-missing`. Bare `--cov` deliberately: what is
+  -n auto --cov --cov-report=term-missing`. `-n auto` (pytest-xdist,
+  in the dev group) spreads it over every core: 15 minutes serial
+  became 5 on a 32-core host. Bare `--cov` deliberately: what is
   measured is declared once, by `[tool.coverage.run].source` in
   `pyproject.toml`, so a path added there cannot be missed by a command
   line that still names the old two. This repo maintains
@@ -517,6 +519,15 @@ Before saying so, run, in this repo:
   so a self-skipped render test and Windows code nothing reaches stay
   distinguishable. `tests/test_coverage_configs_agree.py` pins
   the two configs to one floor, and this sentence to it.
+
+  **This local run is the only one that compiles TeX.** CI's Linux leg
+  runs `-m "not slow"`, leaving out every test marked
+  `@pytest.mark.slow` (a real `lualatex`/`pdflatex` compile, 85% of the
+  suite's time), and reads `coveragerc-windows.toml` as well, since the
+  lines only those tests reach are the ones Windows cannot reach either.
+  So a green CI says nothing about the figure checks or the PDF render;
+  your local run does. Mark a new test `slow` only if it compiles: a
+  mark that leaves any other line uncovered fails CI's coverage step.
 - **CI's whole `lint` job, in one command**, with your dev venv active
   so `python`, `pylint` and `ruff` resolve to the pinned ones:
 
