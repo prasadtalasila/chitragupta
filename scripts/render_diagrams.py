@@ -138,6 +138,11 @@ def blocks(text: str) -> list[str]:
     return [match.group(2) for match in _BLOCK.finditer(text)]
 
 
+def _restamp(text: str, theme: tuple[str, str]) -> str:
+    """`text` with every fenced block carrying `theme`."""
+    return _BLOCK.sub(lambda m: m.group(1) + stamp(m.group(2), theme) + m.group(3), text)
+
+
 def sync() -> list[str]:
     """Stamp the current theme into every fenced block of every doc in
     `sources()` and copy each block into its `.mmd`, keeping the
@@ -157,8 +162,7 @@ def sync() -> list[str]:
                 f"docs/DIAGRAMS.md has {len(found)} fenced blocks but its 'Editing these' "
                 f"table lists {len(names)}. Add or remove the row with the diagram."
             )
-        stamped = iter([stamp(block, theme) for block in found])
-        text = _BLOCK.sub(lambda m: m.group(1) + next(stamped) + m.group(3), text)
+        text = _restamp(text, theme)
         path.write_text(text, encoding="utf-8")
         for name, block in zip(names, blocks(text)):
             mmd = DIAGRAMS / f"{name}.mmd"
