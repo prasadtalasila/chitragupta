@@ -3,9 +3,9 @@
 Status: **tutorial**, step 2 of [Write a book](../WRITE-A-BOOK.md).
 
 **Written for** the person who decides what the book is. **Assumed:**
-an outline that parses ([step 1](outline.md)). **Not covered here:**
+an outline that parses ([step 1](OUTLINE.md)). **Not covered here:**
 changing an outline someone already signed; that is
-[its own workflow](changing-the-outline.md).
+[its own workflow](CHANGING-THE-OUTLINE.md).
 
 ## ▶ Step 2: sign the outline off
 
@@ -35,10 +35,10 @@ Wrote the year 2026 into content/specs/twins/copyright.tex; change it there by h
 Every later `sign` leaves the file alone: a copyright year is the year
 the book was first published, not the year it was last rebuilt. Which
 year to print after that is your edit to make
-([front matter](front-matter.md#-the-copyright-page)).
+([front matter](FRONT-MATTER.md#-the-copyright-page)).
 
 `sign` records a twelve-hex digest of `spec.md` in a sibling file
-([why a sibling](design-notes.md#-why-sign-off-is-a-sibling-file)), so
+([why a sibling](DESIGN-NOTES.md#-why-sign-off-is-a-sibling-file)), so
 `status` can tell
 three states apart:
 
@@ -49,7 +49,7 @@ three states apart:
 | changed since sign-off | 1 | approved at one digest, now another |
 
 That non-zero exit is not a new gate
-([what it is](design-notes.md#-what-statuss-exit-code-is-and-is-not)).
+([what it is](DESIGN-NOTES.md#-what-statuss-exit-code-is-and-is-not)).
 
 It records **one digest per chapter as well**, and `status` names the
 chapters that moved. After a reword of `ch-cost`'s brief:
@@ -62,6 +62,6 @@ content/specs/twins/spec.md: Composable Twins
 ```
 
 Recording per chapter keeps a revision to one chapter from freezing the
-other fourteen ([why](design-notes.md#-why-sign-off-is-recorded-per-chapter)).
+other fourteen ([why](DESIGN-NOTES.md#-why-sign-off-is-recorded-per-chapter)).
 
-Next: [write and accept the chapters](chapters.md).
+Next: [write and accept the chapters](CHAPTERS.md).

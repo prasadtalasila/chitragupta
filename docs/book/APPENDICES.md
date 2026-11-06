@@ -4,9 +4,9 @@ Status: **workflow**, part of [Write a book](../WRITE-A-BOOK.md).
 
 **Written for** an author with material that supports the chapters but
 would interrupt them: an installation guide, a proof, a data set's
-description. **Assumed:** a working outline ([step 1](outline.md)).
+description. **Assumed:** a working outline ([step 1](OUTLINE.md)).
 **Not covered here:** reference pages such as the glossary, which are
-[back matter](back-matter.md), not appendices.
+[back matter](BACK-MATTER.md), not appendices.
 
 ## 🧭 Where appendices go
 
@@ -50,7 +50,7 @@ ordinary part or after `{#back}`, and `spec show` names the problem.
 
 ## ✍ Writing and accepting one
 
-Exactly as for any chapter ([steps 3 to 4](chapters.md)): hand it to a
+Exactly as for any chapter ([steps 3 to 4](CHAPTERS.md)): hand it to a
 genre skill with `unit contract`, or write it yourself, then
 
 ```bash

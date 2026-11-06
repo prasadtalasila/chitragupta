@@ -2,7 +2,7 @@
 
 The author's exceptions to an index built from the glossary. This module
 checks only that each table and value has the shape
-docs/book/book-index.md documents; whether the terms it names exist is
+docs/book/BOOK-INDEX.md documents; whether the terms it names exist is
 `registry/_index_terms.py`'s question, which needs the glossary.
 
 Split from that module to keep both under docs/CODE-STANDARDS.md's C2

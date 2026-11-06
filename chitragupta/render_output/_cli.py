@@ -171,7 +171,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         metavar="PATH",
         help="With --fragment: place the book index's entries, from the term "
-        "table `registry build --index` wrote (docs/book/book-index.md)",
+        "table `registry build --index` wrote (docs/book/BOOK-INDEX.md)",
     )
     parser.add_argument(
         "--no-collapse-citations",

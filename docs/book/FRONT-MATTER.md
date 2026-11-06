@@ -4,9 +4,9 @@ Status: **workflow**, part of [Write a book](../WRITE-A-BOOK.md).
 
 **Written for** an author setting up the pages before chapter 1.
 **Assumed:** an outline from `spec init`
-([step 1](outline.md)). **Not covered here:** the Glossary, List of
+([step 1](OUTLINE.md)). **Not covered here:** the Glossary, List of
 Symbols and the lists of figures and tables, which are
-[back matter](back-matter.md) by default.
+[back matter](BACK-MATTER.md) by default.
 
 Before chapter 1 a printed book carries, in order:
 
@@ -66,7 +66,7 @@ They print in outline order, after the table of contents.
 outline, and the whole `## Front matter {#front}` part if nothing is
 left in it. Re-sign the outline. `preface.md` stays on disk and
 `unit status` names it if you had accepted it
-([changing the outline](changing-the-outline.md)).
+([changing the outline](CHANGING-THE-OUTLINE.md)).
 
 **Lists in the front.** The List of Figures and List of Tables sit in
 the back matter by default. To print them after the table of contents
@@ -132,7 +132,7 @@ never invents one.
 
 **The year is written once.** The template holds a `<year>` placeholder,
 and the first `spec sign` replaces it with the current year
-([sign-off](sign-off.md)). From then on the file is never touched by any
+([sign-off](SIGN-OFF.md)). From then on the file is never touched by any
 command: a copyright year is the year of first publication, so a book
 rebuilt in 2027 still says 2026 until you change it.
 
@@ -162,5 +162,5 @@ printed.
 **Do not put the copyright page in the outline.** It is not a chapter:
 it has no heading and no line in the table of contents, which is why it
 is a LaTeX file beside the outline, the way
-[`preamble.tex`](assemble.md#-step-7-build-the-pdf) is, rather than an
+[`preamble.tex`](ASSEMBLE.md#-step-7-build-the-pdf) is, rather than an
 entry in it. Editing it needs no re-sign.

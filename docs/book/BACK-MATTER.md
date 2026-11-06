@@ -3,9 +3,9 @@
 Status: **workflow**, part of [Write a book](../WRITE-A-BOOK.md).
 
 **Written for** an author deciding which reference pages close the
-book. **Assumed:** a working outline ([step 1](outline.md)). **Not
+book. **Assumed:** a working outline ([step 1](OUTLINE.md)). **Not
 covered here:** what goes into the Glossary and List of Symbols, and how
-to fix an entry; that is [step 5](registries.md#-the-glossary-and-the-list-of-symbols).
+to fix an entry; that is [step 5](REGISTRIES.md#-the-glossary-and-the-list-of-symbols).
 
 ## 🧭 The default
 
@@ -26,7 +26,7 @@ to fix an entry; that is [step 5](registries.md#-the-glossary-and-the-list-of-sy
 ```
 
 The book prints them in that order, after the last chapter and any
-[appendices](appendices.md), with the bibliography after the lists and
+[appendices](APPENDICES.md), with the bibliography after the lists and
 the index after the bibliography: the index is always last.
 
 ## ⚙ Generated pages
@@ -40,7 +40,7 @@ not one you write:
 | `{#symbols}` | List of Symbols | `registry build --notation` wrote it: at least one `math.md` `## Symbols` row |
 | `{#figures}` | List of Figures | at least one chapter has a captioned figure |
 | `{#tables}` | List of Tables | at least one chapter has a captioned table |
-| `{#index}` | Index | always, once `registry build --index` wrote the term table; built from the glossary, tuned by `index.toml` ([the index](book-index.md)) |
+| `{#index}` | Index | always, once `registry build --index` wrote the term table; built from the glossary, tuned by `index.toml` ([the index](BOOK-INDEX.md)) |
 
 A generated page has **no file, no unit and no sections**: there is
 nothing to write or accept, `unit status` does not list it, and a
@@ -56,7 +56,7 @@ The outline is the switch:
   listing does without `### List of Figures {#figures}`.
 - **Reorder:** move the lines. The back matter prints in outline order.
 - **Move a page to the front:** put its line under `## Front matter
-  {#front}` ([front matter](front-matter.md)). Not the index, which
+  {#front}` ([front matter](FRONT-MATTER.md)). Not the index, which
   only `{#back}` may hold. The lists are the usual
   candidates; the *Chicago Manual of Style* puts them after the table of
   contents.
@@ -65,7 +65,7 @@ The outline is the switch:
   history"). It prints where you put it, unnumbered.
 
 Each is an edit to the outline, so re-sign it afterwards
-([changing the outline](changing-the-outline.md)).
+([changing the outline](CHANGING-THE-OUTLINE.md)).
 
 ## 🔢 Back-matter pages carry no number
 

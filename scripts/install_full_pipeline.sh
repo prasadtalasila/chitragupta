@@ -272,7 +272,7 @@ install_os_deps() {
     # and clobber the same cv2/ directory.
     # texlive-binaries also owns /usr/bin/upmendex and texlive-latex-extra
     # ships imakeidx.sty (both confirmed via `dpkg -S`): a book's index
-    # (#1168, docs/book/book-index.md) loads imakeidx and runs upmendex
+    # (#1168, docs/book/BOOK-INDEX.md) loads imakeidx and runs upmendex
     # between its LuaLaTeX passes. Both arrive with packages listed for
     # other reasons, so they are checked by name rather than trusted to
     # survive a later edit to the list above.

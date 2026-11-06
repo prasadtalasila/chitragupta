@@ -5,7 +5,7 @@ Status: **workflow**, part of [Write a book](../WRITE-A-BOOK.md).
 **Written for** someone whose chapters already exist, written without
 an outline. **Assumed:** the chapters sit in one directory under
 `content/drafts/`. **Not covered here:** the steps after the outline is
-signed, which are the same as for any book ([step 3 on](chapters.md)).
+signed, which are the same as for any book ([step 3 on](CHAPTERS.md)).
 
 A book whose chapters already exist can be brought under the track
 without rewriting a word. You derive the outline from the book:
@@ -29,5 +29,5 @@ has read is a record of the wrong thing.
 
 A retrofitted book can take front and back matter like any other: add
 `## Front matter {#front}` and `## Back matter {#back}` to its outline
-([the reserved parts](outline.md#-front-matter-appendices-and-back-matter)).
+([the reserved parts](OUTLINE.md#-front-matter-appendices-and-back-matter)).
 Until it does, it assembles as it always has.

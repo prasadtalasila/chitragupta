@@ -12,7 +12,7 @@ items. **It assumes** `docs/FIGURE-ROADMAP.md` Part X for the full
 output-targets design this is a slice of,
 `.claude/skills/book-assembler/references/latex-conventions.md`
 ("Margins") for why the book has 80pt margins, and
-`docs/figure-checks/size.md` for what `size-width` and `size-height`
+`docs/figure-checks/SIZE.md` for what `size-width` and `size-height`
 report.
 
 **Not covered here:**

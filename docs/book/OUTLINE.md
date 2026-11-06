@@ -5,7 +5,7 @@ Status: **tutorial**, step 1 of [Write a book](../WRITE-A-BOOK.md).
 **Written for** someone starting a book with this pipeline. **Assumed:**
 a synced corpus ([before you start](../WRITE-A-BOOK.md#-before-you-start)).
 **Not covered here:** writing the chapters; that is
-[step 3](chapters.md).
+[step 3](CHAPTERS.md).
 
 ## ▶ Step 1: write the outline
 
@@ -24,8 +24,8 @@ That writes three files, and never overwrites one that already exists:
 | File | What it is | Whose |
 | --- | --- | --- |
 | `content/specs/twins/spec.md` | the outline skeleton, with a front and back matter already in it ([below](#-front-matter-appendices-and-back-matter)) | yours to edit, then sign |
-| `content/drafts/twins/preface.md` | a preface template: a `# Preface` heading and a comment saying what goes there | yours to write ([front matter](front-matter.md)) |
-| `content/specs/twins/copyright.tex` | the copyright page, "All rights reserved" by default | yours to edit ([front matter](front-matter.md#-the-copyright-page)) |
+| `content/drafts/twins/preface.md` | a preface template: a `# Preface` heading and a comment saying what goes there | yours to write ([front matter](FRONT-MATTER.md)) |
+| `content/specs/twins/copyright.tex` | the copyright page, "All rights reserved" by default | yours to edit ([front matter](FRONT-MATTER.md#-the-copyright-page)) |
 
 `--author` is optional. It writes an `- author: Prasad Talasila` line at
 the top of the outline, which the title page and the copyright page
@@ -52,11 +52,11 @@ generator; it is the preamble for whoever opens the file.
 inside it.** The outline stops at the sections of a chapter; the
 sub-headings an author writes underneath are theirs, not the spec's.
 Choosing the chapter over the section is what lets `spec align` mean
-anything ([why](design-notes.md#-why-a-chapter-is-the-authored-document)).
+anything ([why](DESIGN-NOTES.md#-why-a-chapter-is-the-authored-document)).
 
 Every part, chapter and section needs an explicit `{#id}`, and a heading
 without one is refused rather than guessed at
-([why](design-notes.md#-why-an-id-is-required-on-every-heading)).
+([why](DESIGN-NOTES.md#-why-an-id-is-required-on-every-heading)).
 
 An id also becomes a filename: `unit accept` writes
 `content/specs/<book>/units/<id>.json`. It is held to the same rule a
@@ -210,7 +210,7 @@ Five chapter ids are reserved too: `{#glossary}`, `{#symbols}`,
 `{#figures}`, `{#tables}` and `{#index}` are **generated pages**. You
 write no file for them, `unit status` does not list them, and they take
 no `####` sections. They may sit only in `{#front}` or `{#back}`, and
-`{#index}` only in `{#back}` ([the index](book-index.md)).
+`{#index}` only in `{#back}` ([the index](BOOK-INDEX.md)).
 
 `spec show`, `spec sign` and `spec status` refuse an outline that breaks
 these rules, with every problem named at once, like any other parse
@@ -231,8 +231,8 @@ What each part holds, and how you write it:
 
 | Workflow | Page |
 | --- | --- |
-| the preface, the author line, the copyright page and its build line | [Front matter](front-matter.md) |
-| appendices | [Appendices](appendices.md) |
-| the Glossary, List of Symbols, List of Figures, List of Tables | [Back matter](back-matter.md) |
+| the preface, the author line, the copyright page and its build line | [Front matter](FRONT-MATTER.md) |
+| appendices | [Appendices](APPENDICES.md) |
+| the Glossary, List of Symbols, List of Figures, List of Tables | [Back matter](BACK-MATTER.md) |
 
-Next: [sign the outline off](sign-off.md).
+Next: [sign the outline off](SIGN-OFF.md).

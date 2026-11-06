@@ -156,7 +156,7 @@ read in v6.157.0 and are retired since #1143: a symbol and its meaning
 live in `math.md`'s `## Symbols` (below), linked to its term as
 ``| `M_0` | **Baseline** |``. Each finding names the row to write. A
 book's Glossary prints every unit's bullets as written
-([the Glossary and List of Symbols](book/registries.md#-the-glossary-and-the-list-of-symbols)),
+([the Glossary and List of Symbols](book/REGISTRIES.md#-the-glossary-and-the-list-of-symbols)),
 so a definition holds the definition only: no "as before", no drafting
 note. A note moved out of one belongs in `steering.md`.
 

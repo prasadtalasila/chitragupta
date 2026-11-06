@@ -44,6 +44,15 @@ NAMES = render_diagrams.export_names(DIAGRAMS_TEXT)
 _TITLE = re.compile(r"\A---\ntitle:.*?\n---\n", re.DOTALL)
 BLOCKS = render_diagrams.blocks(DIAGRAMS_TEXT)
 
+# Every diagram in the docs, DIAGRAMS.md's first: `(doc, name, block)`. A
+# block outside DIAGRAMS.md is named by the marker line above it.
+ALL = [
+    (path.relative_to(REPO_ROOT).as_posix(), name, block)
+    for path, names in render_diagrams.sources()
+    for name, block in zip(names, render_diagrams.blocks(path.read_text(encoding="utf-8")))
+]
+ALL_NAMES = [name for _, name, _ in ALL]
+
 
 def _body(name: str) -> str:
     """A `.mmd` export's Mermaid, without the title front matter the
@@ -54,13 +63,15 @@ def _body(name: str) -> str:
 class TestTheScanIsNotVacuous:
     def test_there_are_diagrams_to_check(self):
         assert len(BLOCKS) >= 10
+        assert len({doc for doc, _, _ in ALL}) > 1, "no diagram outside DIAGRAMS.md was found"
 
     def test_the_table_the_exports_and_the_blocks_agree(self):
         on_disk = sorted(p.stem for p in DIAGRAMS_DIR.glob("*.mmd"))
-        assert sorted(NAMES) == on_disk, (
-            "docs/DIAGRAMS.md's 'Editing these' table and docs/diagrams/*.mmd disagree. "
-            f"Only in the table: {sorted(set(NAMES) - set(on_disk))}; "
-            f"only on disk: {sorted(set(on_disk) - set(NAMES))}."
+        assert sorted(ALL_NAMES) == on_disk, (
+            "The docs' diagrams (DIAGRAMS.md's 'Editing these' table and every "
+            "`<!-- diagram: <name> -->` marker) and docs/diagrams/*.mmd disagree. "
+            f"Only in the docs: {sorted(set(ALL_NAMES) - set(on_disk))}; "
+            f"only on disk: {sorted(set(on_disk) - set(ALL_NAMES))}."
         )
         assert len(BLOCKS) == len(NAMES), (
             f"docs/DIAGRAMS.md has {len(BLOCKS)} fenced blocks but its 'Editing these' "
@@ -82,25 +93,24 @@ class TestTheNameListReadsTheTable:
 
 
 class TestEveryDiagramWearsTheHouseTheme:
-    """#1017: one theme, held in one place, in all thirteen. The test for
+    """#1017: one theme, held in one place, in every diagram in the docs. The test for
     the `.mmd` side is the block comparison below; this is the block side."""
 
     STYLE_TEXT = render_diagrams.STYLE_DOC.read_text(encoding="utf-8")
     THEME = render_diagrams.house_theme(render_diagrams.palette(STYLE_TEXT))
 
-    @pytest.mark.parametrize("index,name", list(enumerate(NAMES)))
-    def test_the_block_carries_the_current_theme(self, index, name):
-        assert BLOCKS[index] == render_diagrams.stamp(BLOCKS[index], self.THEME), (
-            f"The fenced block for {name} in docs/DIAGRAMS.md does not carry the current "
+    @pytest.mark.parametrize("doc,name,block", ALL, ids=ALL_NAMES)
+    def test_the_block_carries_the_current_theme(self, doc, name, block):
+        assert block == render_diagrams.stamp(block, self.THEME), (
+            f"The fenced block for {name} in {doc} does not carry the current "
             "house theme. Restamp every block and copy it to its .mmd:\n"
             "    python scripts/render_diagrams.py --sync"
         )
 
-    @pytest.mark.parametrize("index,name", list(enumerate(NAMES)))
-    def test_its_classes_are_the_four_roles(self, index, name):
+    @pytest.mark.parametrize("doc,name,block", ALL, ids=ALL_NAMES)
+    def test_its_classes_are_the_four_roles(self, doc, name, block):
         """A diagram-local classDef brings back a hue the palette does not
         have; a `class` line naming anything else styles nothing."""
-        block = BLOCKS[index]
         defined = set(re.findall(r"^\s*classDef (\w+)", block, re.MULTILINE))
         used = set(re.findall(r"^\s*class [\w,]+ (\w+)\s*$", block, re.MULTILINE))
         used |= set(re.findall(r":::(\w+)", block))
@@ -119,7 +129,7 @@ class TestEveryDiagramWearsTheHouseTheme:
         """The palette hexes come from docs/TIKZ-STYLE.md and nowhere else:
         every colour a block names is one the generated theme holds."""
         allowed = set(re.findall(r"#[0-9A-F]{6}", "\n".join(self.THEME)))
-        typed = {h.upper() for b in BLOCKS for h in re.findall(r"#[0-9A-Fa-f]{6}\b", b)}
+        typed = {h.upper() for _, _, b in ALL for h in re.findall(r"#[0-9A-Fa-f]{6}\b", b)}
         assert typed <= allowed, f"hexes outside the house theme: {sorted(typed - allowed)}"
 
     def test_the_theme_is_the_tikz_palette(self):
@@ -143,9 +153,9 @@ class TestEachSvgWasRenderedFromItsCurrentSource:
     MANIFEST = json.loads((DIAGRAMS_DIR / "svg" / "sources.json").read_text(encoding="utf-8"))
 
     def test_every_export_is_in_the_manifest(self):
-        assert sorted(self.MANIFEST) == sorted(NAMES)
+        assert sorted(self.MANIFEST) == sorted(ALL_NAMES)
 
-    @pytest.mark.parametrize("name", NAMES)
+    @pytest.mark.parametrize("name", ALL_NAMES)
     def test_the_svg_was_rendered_from_this_mmd(self, name):
         assert self.MANIFEST[name] == fingerprint(DIAGRAMS_DIR / f"{name}.mmd"), (
             f"docs/diagrams/{name}.mmd changed after docs/diagrams/svg/{name}.svg was "
@@ -154,16 +164,16 @@ class TestEachSvgWasRenderedFromItsCurrentSource:
 
 
 class TestEachExportMatchesItsFencedBlock:
-    @pytest.mark.parametrize("index,name", list(enumerate(NAMES)))
-    def test_the_mmd_is_the_block(self, index, name):
-        assert _body(name) == BLOCKS[index].strip(), (
-            f"docs/diagrams/{name}.mmd has drifted from its fenced block in "
-            "docs/DIAGRAMS.md. The block is the source of truth -- copy it over and "
-            f"re-render:\n"
-            f"    python scripts/render_diagrams.py {name}"
+    @pytest.mark.parametrize("doc,name,block", ALL, ids=ALL_NAMES)
+    def test_the_mmd_is_the_block(self, doc, name, block):
+        assert _body(name) == block.strip(), (
+            f"docs/diagrams/{name}.mmd has drifted from its fenced block in {doc}. "
+            "The block is the source of truth -- copy it over and re-render:\n"
+            f"    python scripts/render_diagrams.py --sync && "
+            f"python scripts/render_diagrams.py {name}"
         )
 
-    @pytest.mark.parametrize("name", NAMES)
+    @pytest.mark.parametrize("name", ALL_NAMES)
     def test_the_svg_export_exists(self, name):
         assert (DIAGRAMS_DIR / "svg" / f"{name}.svg").is_file()
 

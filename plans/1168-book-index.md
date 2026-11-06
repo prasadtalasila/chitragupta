@@ -7,7 +7,7 @@ encap, input discovery, the C2 split and the pass count are folded in.
 
 **Written for** whoever builds or reviews #1168. **It assumes**
 [docs/WRITE-A-BOOK.md](../docs/WRITE-A-BOOK.md) for the book track,
-[docs/book/back-matter.md](../docs/book/back-matter.md) for the
+[docs/book/BACK-MATTER.md](../docs/book/BACK-MATTER.md) for the
 generated pages, `.claude/skills/book-assembler/SKILL.md` for the
 assembly steps, and [tb-10-book-glossary.md](tb-10-book-glossary.md) for
 the glossary and List of Symbols this builds on.
@@ -29,7 +29,7 @@ user's decisions on the issue are not reopened here.
 | Editing | Hand edit; findings print the TOML that fixes them; no CLI |
 | Report | `content/specs/<book>/registries/index.md` and `index.json` |
 | Optional | Only when the outline has `### Index {#index}`; `spec init` writes it |
-| Docs | `docs/book/book-index.md`, with the data-flow diagram explained |
+| Docs | `docs/book/BOOK-INDEX.md`, with the data-flow diagram explained |
 | Split | One PR |
 | Architecture | Approach B below |
 

@@ -28,12 +28,13 @@ directive, and every flowchart closes with the same four role
 docs/TIKZ-STYLE.md gives the TikZ palette. Both are generated here, from
 that file's `\\definecolor` block, so no hex is typed twice and the two
 halves of the house style cannot drift. GitHub renders a fenced block as
-it stands and cannot include a shared file, so the text has to be in all
-thirteen blocks; `--sync` is what puts it there. It rewrites each fenced
-block in docs/DIAGRAMS.md to carry the current theme and copies the block
-into its `.mmd`, which is also the copy step that file used to ask for
-by hand. It renders nothing: run the script again, without `--sync`, on
-the names it prints.
+it stands and cannot include a shared file, so the text has to be in every
+block; `--sync` is what puts it there. It rewrites each fenced block in
+docs/DIAGRAMS.md, and each one elsewhere under docs/ that a
+`<!-- diagram: <name> -->` line names, to carry the current theme, and
+copies the block into its `.mmd`, which is also the copy step that file
+used to ask for by hand. It renders nothing: run the script again,
+without `--sync`, on the names it prints.
 """
 
 import argparse
@@ -46,7 +47,8 @@ from collections.abc import Callable
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DIAGRAMS = REPO_ROOT / "docs" / "diagrams"
+DOCS = REPO_ROOT / "docs"
+DIAGRAMS = DOCS / "diagrams"
 MANIFEST = DIAGRAMS / "svg" / "sources.json"
 DIAGRAMS_MD = REPO_ROOT / "docs" / "DIAGRAMS.md"
 STYLE_DOC = REPO_ROOT / "docs" / "TIKZ-STYLE.md"
@@ -55,6 +57,9 @@ EDITING_HEADING = "## ✏ Editing these"
 _NAME_ROW = re.compile(r"^\| [^|]+ \| `([\w-]+)` \|$", re.MULTILINE)
 _BLOCK = re.compile(r"(```mermaid\n)(.*?)(```)", re.DOTALL)
 _TITLE = re.compile(r"\A---\ntitle:.*?\n---\n", re.DOTALL)
+# The line naming a block outside DIAGRAMS.md, directly above its fence.
+MARKER = "<!-- diagram: {} -->"
+_MARKER = re.compile(r"<!-- diagram: ([a-z0-9][a-z0-9-]*) -->\n\Z")
 
 _PALETTE_HEADING = "## 🎨 The house palette"
 _DEFINECOLOR = re.compile(r"\\definecolor\{(cg\w+)\}\{HTML\}\{([0-9A-Fa-f]{6})\}")
@@ -94,6 +99,39 @@ def export_names(text: str) -> list[str]:
             "Rewording it is fine; teach _NAME_ROW the new shape in the same change."
         )
     return names
+
+
+def marked_names(text: str, where: str) -> list[str]:
+    """The export name of each fenced block in a doc other than
+    DIAGRAMS.md: the `<!-- diagram: <name> -->` line directly above it.
+    A block without one is refused, so no diagram goes unexported."""
+    names = []
+    for match in _BLOCK.finditer(text):
+        marker = _MARKER.search(text, 0, match.start())
+        if marker is None:
+            raise ValueError(
+                f"docs/{where} has a mermaid block with no {MARKER.format('<name>')} line "
+                "directly above it; add one naming its export in docs/diagrams/."
+            )
+        names.append(marker.group(1))
+    return names
+
+
+def sources() -> "list[tuple[Path, list[str]]]":
+    """Every doc holding diagrams, with each block's export name in block
+    order: DIAGRAMS.md from its 'Editing these' table, then every other
+    doc under docs/ from its marker lines. A name used twice is refused:
+    two blocks would overwrite one export."""
+    found = [(DIAGRAMS_MD, export_names(DIAGRAMS_MD.read_text(encoding="utf-8")))]
+    for path in sorted(DOCS.rglob("*.md")):
+        text = path.read_text(encoding="utf-8")
+        if path.resolve() != DIAGRAMS_MD.resolve() and "```mermaid" in text:
+            found.append((path, marked_names(text, path.relative_to(DOCS).as_posix())))
+    names = [name for _, listed in found for name in listed]
+    twice = sorted({name for name in names if names.count(name) > 1})
+    if twice:
+        raise ValueError(f"more than one diagram: {', '.join(twice)}; give each its own name.")
+    return found
 
 
 def blocks(text: str) -> list[str]:
@@ -186,31 +224,31 @@ def stamp(block: str, theme: tuple[str, str]) -> str:
 
 
 def sync() -> list[str]:
-    """Stamp the current theme into every fenced block of docs/DIAGRAMS.md
-    and copy each block into its `.mmd`, keeping the `.mmd`'s title
-    front matter. Returns the names whose `.mmd` changed: the ones that
-    need re-rendering."""
-    text = DIAGRAMS_MD.read_text(encoding="utf-8")
-    names = export_names(text)
-    found = blocks(text)
-    if len(found) != len(names):
-        raise ValueError(
-            f"docs/DIAGRAMS.md has {len(found)} fenced blocks but its 'Editing these' "
-            f"table lists {len(names)}. Add or remove the row with the diagram."
-        )
+    """Stamp the current theme into every fenced block of every doc in
+    `sources()` and copy each block into its `.mmd`, keeping the
+    `.mmd`'s title front matter. Returns the names whose `.mmd` changed:
+    the ones that need re-rendering."""
     theme = house_theme(palette(STYLE_DOC.read_text(encoding="utf-8")))
-    stamped = iter([stamp(block, theme) for block in found])
-    text = _BLOCK.sub(lambda m: m.group(1) + next(stamped) + m.group(3), text)
-    DIAGRAMS_MD.write_text(text, encoding="utf-8")
     changed = []
-    for name, block in zip(names, blocks(text)):
-        mmd = DIAGRAMS / f"{name}.mmd"
-        old = mmd.read_text(encoding="utf-8") if mmd.is_file() else ""
-        title = _TITLE.match(old)
-        new = (title.group(0) if title else "") + block
-        if new != old:
-            mmd.write_text(new, encoding="utf-8")
-            changed.append(name)
+    for path, names in sources():
+        text = path.read_text(encoding="utf-8")
+        found = blocks(text)
+        if len(found) != len(names):
+            raise ValueError(
+                f"docs/DIAGRAMS.md has {len(found)} fenced blocks but its 'Editing these' "
+                f"table lists {len(names)}. Add or remove the row with the diagram."
+            )
+        stamped = iter([stamp(block, theme) for block in found])
+        text = _BLOCK.sub(lambda m: m.group(1) + next(stamped) + m.group(3), text)
+        path.write_text(text, encoding="utf-8")
+        for name, block in zip(names, blocks(text)):
+            mmd = DIAGRAMS / f"{name}.mmd"
+            old = mmd.read_text(encoding="utf-8") if mmd.is_file() else ""
+            title = _TITLE.match(old)
+            new = (title.group(0) if title else "") + block
+            if new != old:
+                mmd.write_text(new, encoding="utf-8")
+                changed.append(name)
     return changed
 
 
@@ -267,7 +305,7 @@ def main(argv: "list[str] | None" = None) -> int:
     parser.add_argument(
         "--sync",
         action="store_true",
-        help="stamp the house theme into docs/DIAGRAMS.md's blocks and copy them to the .mmd files",
+        help="stamp the house theme into every doc's mermaid blocks and copy them to the .mmd files",
     )
     args = parser.parse_args(argv)
     if args.sync:

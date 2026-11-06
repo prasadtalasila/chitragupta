@@ -76,7 +76,7 @@ headings drift from the outline a human signed.
 
 It also matches the real book. `digital-twins-for-software-engineers`
 is one file per chapter, brought under the track by
-[retrofitting](retrofit.md) each
+[retrofitting](RETROFIT.md) each
 chapter as a single `####` section carrying the filename.
 
 **Alignment is scoped to chapters the outline describes at section
@@ -184,7 +184,7 @@ outright rather than leaving it to an argument about how precise the
 check is. `registry build --glossary` exiting 1 is not such a flag: it
 is a build declining to write a page with terms missing from it, and
 `check` reports the same bullets and still exits 0
-([the pages](registries.md#-the-glossary-and-the-list-of-symbols)).
+([the pages](REGISTRIES.md#-the-glossary-and-the-list-of-symbols)).
 
 What the registry proposal calls a "blocking global check" is therefore
 delivered as guaranteed invocation in step 6, ahead of the human sign-off

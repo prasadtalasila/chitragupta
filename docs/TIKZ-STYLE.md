@@ -184,7 +184,7 @@ times. Measured on a three-float document: 71.26pt, then 128.17pt, then
 185.07pt, with `pdflatex` exiting 0 and nothing but `Overfull \hbox` in
 the log. That is how figures that fit in their single-chapter PDF
 spilled off the page of this project's own assembled book. `figure
-check` reports one as [`loads-library-by-hand`](figure-checks/build.md).
+check` reports one as [`loads-library-by-hand`](figure-checks/BUILD.md).
 
 **A load while TeX is setting a line prints as blank width.**
 A library file's own line ends are spaces. Load it where the figure is
@@ -201,7 +201,7 @@ inside the library files. The fix is the same hoist: a document that
 sets a figure in a box loads the figure's libraries in its preamble,
 as the documents `figure check` and `figure look` compile do.
 `tests/test_figure_stray_width.py` pins the in-box half on every
-scaffold, and `figure check`'s [`size-stray`](figure-checks/size.md)
+scaffold, and `figure check`'s [`size-stray`](figure-checks/SIZE.md)
 the preloaded one.
 
 Before you reach for a library:
@@ -345,7 +345,7 @@ Concrete defects, not taste. Where `figure check` reports an item, the
 item links to the page that explains its rule.
 
 - **Occlusion and overlap:** no two nodes' boxes intersect
-  ([`node-overlap`](figure-checks/nodes.md)).
+  ([`node-overlap`](figure-checks/NODES.md)).
 - **A `fill` erases everything under it, not just the line you aimed
   it at.** Filling a label white and drawing it last is the standard
   way to make a line break at the text instead of striking through it,
@@ -368,11 +368,11 @@ item links to the page that explains its rule.
   is how a pipeline is normally drawn and is not a defect, because TikZ
   clips each path at the node's boundary so the head points at the node
   rather than at empty space
-  ([`stranded-arrowhead`](figure-checks/nodes.md)).
+  ([`stranded-arrowhead`](figure-checks/NODES.md)).
 - **Chaotic routing:** arrows should not cross unnecessarily or form
   spaghetti loops. The parts of this that geometry decides are the
   connector rules `c1` to `c7`
-  ([connectors](figure-checks/connectors.md)): slanted lines, a tag on
+  ([connectors](figure-checks/CONNECTORS.md)): slanted lines, a tag on
   its line, lines that share a stretch, an off-centre attach point, a
   line through a box, a covered tag and an arrow that lands on nothing.
   Whether the routing as a whole reads clearly stays a human judgement.
@@ -380,16 +380,16 @@ item links to the page that explains its rule.
   per role, held consistent across every node in the figure. See "Type
   and line weight" below for what size that should be. Text below the
   body size, and lines or words too pale for their ground, are reported
-  ([colour and type](figure-checks/colour-and-type.md)).
+  ([colour and type](figure-checks/COLOUR-AND-TYPE.md)).
 - **Inefficient non-rectangular composition:** LaTeX treats a figure
   as a rectangular box, so anything protruding above the main block
   forces the surrounding text to wrap around the highest point, wasting
   vertical space. Keep the picture's bounding box close to the union of
-  its node boxes ([`content-protrusion`](figure-checks/size.md)).
+  its node boxes ([`content-protrusion`](figure-checks/SIZE.md)).
 - **Conciseness:** a node whose text runs past 15 words is too long
   for a box; cut it or split the node. Shrinking the font to fit more
   words in is not a fix (see "Type and line weight" below)
-  ([`node-text-overload`](figure-checks/nodes.md)).
+  ([`node-text-overload`](figure-checks/NODES.md)).
 - **The figure's main point resting on colour alone.** Colour is
   house-standard here and carries meaning freely (see "The house
   palette" below). What it may not do is carry the *whole* point on its
@@ -424,7 +424,7 @@ document rather than something pasted in:
   up: at `\large\bfseries` a figure reads louder than the text around
   it, and a zone title grows past its zone into the next one.
   `figure check` reports text below the body size as
-  [`type-below-floor`](figure-checks/colour-and-type.md).
+  [`type-below-floor`](figure-checks/COLOUR-AND-TYPE.md).
 
   Shrinking type is never the fix for a box with too many words in it:
   that is the conciseness defect, and the fixes are fewer words or a
@@ -460,7 +460,7 @@ colours with a role each, and four more that a zoned figure needs. A
 figure that invents its own hues reads as imported from somewhere else,
 which a house palette exists to prevent. `figure check` reports one as
 `colour-off-palette`, and a card filled outside the band below as
-`tint-outside-band` ([colour and type](figure-checks/colour-and-type.md)).
+`tint-outside-band` ([colour and type](figure-checks/COLOUR-AND-TYPE.md)).
 
 ```latex
 \definecolor{cgInk}{HTML}{1A1A1A}     % borders, labels, default strokes
@@ -663,7 +663,7 @@ has no name, and two things break quietly without one. No rule measures
 a `pic`'s paths, so an icon colliding with a label reports clean. And a
 zone card can `fit` only named nodes, so an icon placed above a node
 pokes through the top of its own zone. `figure check` reports a `pic`
-outside a well as [`unnamed-pic`](figure-checks/nodes.md). `cgwell` is an
+outside a well as [`unnamed-pic`](figure-checks/NODES.md). `cgwell` is an
 invisible, fixed-size (10mm), named node that the `pic` is drawn into:
 
 ```latex

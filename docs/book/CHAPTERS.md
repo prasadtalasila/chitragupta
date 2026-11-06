@@ -4,7 +4,7 @@ Status: **tutorial**, steps 3, 3b and 4 of [Write a book](../WRITE-A-BOOK.md).
 
 **Written for** whoever writes the chapters: you, a co-author, or a
 genre skill working from a contract. **Assumed:** a signed outline
-([step 2](sign-off.md)). **Not covered here:** how each genre drafts a
+([step 2](SIGN-OFF.md)). **Not covered here:** how each genre drafts a
 chapter; the table in step 3 points at each genre's own tutorial.
 
 ## ▶ Step 3: hand each chapter to its author
@@ -104,10 +104,10 @@ The contract is explicit in both directions:
 
 `--source` is repeatable and is part of the input digest, so grounding a
 unit in a different set of papers is a different unit to generate
-([what else the digest covers](design-notes.md#-what-the-input-digest-covers-and-what-it-must-not)).
+([what else the digest covers](DESIGN-NOTES.md#-what-the-input-digest-covers-and-what-it-must-not)).
 Registry excerpts are handed to the generator but deliberately left out
 of that digest
-([why](design-notes.md#-why-a-registry-excerpt-is-not-hashed-into-a-units-contract)).
+([why](DESIGN-NOTES.md#-why-a-registry-excerpt-is-not-hashed-into-a-units-contract)).
 
 Then write the unit. This is the one step this track does not own: a
 genre skill drafts it (`thesis-chapter-writer` for a `.tex` fragment,
@@ -130,7 +130,7 @@ the units that do exist.
 | The outline says | The unit is | Its file |
 | --- | --- | --- |
 | a chapter with two or more sections, or one section titled differently from the chapter | the chapter | `<chapter-id>.md` |
-| a chapter with exactly one section carrying the chapter's own title (a [retrofitted](retrofit.md) book) | that section | `<section-id>.md` |
+| a chapter with exactly one section carrying the chapter's own title (a [retrofitted](RETROFIT.md) book) | that section | `<section-id>.md` |
 | a chapter with no sections (`ch-cost`, a preface, an appendix) | the chapter | `<chapter-id>.md` |
 | `{#glossary}`, `{#symbols}`, `{#figures}`, `{#tables}` | none: generated at assembly | none |
 | a part (`{#front}` and `{#back}` included) | none | none |
@@ -139,7 +139,7 @@ the units that do exist.
 acknowledgements page or an "about the author" page is in your own
 voice, so you write it by hand, and it is accepted exactly like a
 chapter: `unit accept` needs only the citation gate to pass, which a page
-citing nothing does. [Front matter](front-matter.md) has the workflow.
+citing nothing does. [Front matter](FRONT-MATTER.md) has the workflow.
 
 ## ▶ Step 4: accept the unit
 
@@ -175,7 +175,7 @@ writes and the outline does not.
 `align` **reads and refuses nothing**, and exits non-zero on a finding the
 way `spec status` does. It is silent on a chapter the outline describes
 only at chapter level; see
-[why a chapter is the authored document](design-notes.md#-why-a-chapter-is-the-authored-document)
+[why a chapter is the authored document](DESIGN-NOTES.md#-why-a-chapter-is-the-authored-document)
 for the scoping rule and what it is protecting against.
 
 ```bash
@@ -195,7 +195,7 @@ the draft. It refuses five ways, each for a stated reason:
    a unit against until a human has approved the structure. Asked of the
    unit's own chapter, not of the whole book, so revising chapter 7 does
    not stop you accepting a unit in chapter 3
-   ([why](design-notes.md#-why-sign-off-is-recorded-per-chapter)).
+   ([why](DESIGN-NOTES.md#-why-sign-off-is-recorded-per-chapter)).
 2. **The unit's chapter does not match the outline.** Acceptance
    records that a human approved *this prose against that outline*, and a
    chapter whose headings have drifted makes the record say something
@@ -277,7 +277,7 @@ after accepting it, and `unit status` adds a line after its summary:
 `--json` carries the same ids under `"orphaned"`. They do not count
 towards the exit code, and nothing deletes `units/ch-cost.json` or
 `ch-cost.md`: the prose is yours, and whether to keep it is your call.
-[Changing the outline after sign-off](changing-the-outline.md) has the
+[Changing the outline after sign-off](CHANGING-THE-OUTLINE.md) has the
 rest of that workflow.
 
-Next: [build the registries](registries.md).
+Next: [build the registries](REGISTRIES.md).

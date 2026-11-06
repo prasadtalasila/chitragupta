@@ -26,4 +26,4 @@ Copied to `content/specs/<book>/index.toml`. The index is built from the
 glossary; this file holds only its exceptions: spellings, chapters to
 force, printed forms, sub-entries, cross-references, terms to drop or
 add. Only `[settings]` is live in the sample. The full format is
-[docs/book/book-index.md](../../docs/book/book-index.md).
+[docs/book/BOOK-INDEX.md](../../docs/book/BOOK-INDEX.md).

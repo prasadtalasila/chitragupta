@@ -375,7 +375,7 @@ What neither page can catch is a qualifier inside a term or a definition
 that only says "as before"; both print as written, which is why the
 second sign-off reads them.
 
-**The index** (#1168, docs/book/book-index.md). Only when the outline
+**The index** (#1168, docs/book/BOOK-INDEX.md). Only when the outline
 has `### Index {#index}`; without it, none of this is written and the
 build is the four passes above.
 

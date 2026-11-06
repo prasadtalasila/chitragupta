@@ -27,7 +27,7 @@ carries the house style block above it.
 
 **Catches.** Two nodes whose boxes intersect. The target is the pair,
 `a+b`. A zone that contains its nodes is not an overlap, and neither is
-a tag on a line (that is [`c6-tag-covered`](connectors.md#c6-tag-covered))
+a tag on a line (that is [`c6-tag-covered`](CONNECTORS.md#c6-tag-covered))
 or a round node under 7mm, such as a step badge. Every node TikZ drew is
 measured, including an unnamed one, which the report names by its
 centre, `(x,y)` in mm.

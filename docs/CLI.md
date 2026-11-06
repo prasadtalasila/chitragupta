@@ -1446,7 +1446,7 @@ does not cover.
 | `--no-collapse-citations` | off | Render a run as `[3], [4], [5], [6]` instead of `[3]–[6]`, i.e. leave the style exactly as it is on disk |
 | `--fragment` | off | Emit an `\input`-able LaTeX fragment (no preamble) whose top heading is a chapter, for assembling a book; see [below](#-assembling-a-book---fragment-and---output-dir) |
 | `--output-dir DIR` | mirrored | Write here instead of `content/rendered/<mirrored path>`, a `pdf`'s figure looks included; confined to `content/` |
-| `--index-terms PATH` | off | With `--fragment` only: place the book index's entries from the term table `registry build --index` wrote, and write `<unit>.index.json` beside the fragment; see [the index](book/book-index.md) |
+| `--index-terms PATH` | off | With `--fragment` only: place the book index's entries from the term table `registry build --index` wrote, and write `<unit>.index.json` beside the fragment; see [the index](book/BOOK-INDEX.md) |
 
 `--format md` on a **Markdown** draft is a special case, and the one
 output you can read without a PDF viewer. It writes a `.md` beside the
@@ -1787,13 +1787,13 @@ ids name pages the assembler generates, allowed only under `{#front}` or
 `{#back}`: `{#glossary}`, `{#symbols}`, `{#figures}`, `{#tables}`, and
 `{#index}`, which only `{#back}` may hold. An outline that puts one in
 the wrong place does not parse. The workflows are
-[front matter](book/front-matter.md), [appendices](book/appendices.md),
-[back matter](book/back-matter.md) and [the index](book/book-index.md).
+[front matter](book/FRONT-MATTER.md), [appendices](book/APPENDICES.md),
+[back matter](book/BACK-MATTER.md) and [the index](book/BOOK-INDEX.md).
 
 `status`'s exit code is **not a gate**. It reads back a record of a
 person's decision (did a human approve this outline?) rather than
 judging any draft's content, and nothing it says can refuse a write.
-[the book design notes](book/design-notes.md#-what-statuss-exit-code-is-and-is-not)
+[the book design notes](book/DESIGN-NOTES.md#-what-statuss-exit-code-is-and-is-not)
 has that
 reconciliation against [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4".
 
@@ -1858,7 +1858,7 @@ whether a *human decided* something; this reports a *machine's reading of
 prose*, which is judgement however mechanical the arithmetic. There is no
 flag that makes it block (`build --glossary` refusing is a build declining
 to write an incomplete page, and `check` reports the same bullets);
-[the book design notes](book/design-notes.md#-why-registry-check-exits-0-when-the-two-status-commands-do-not)
+[the book design notes](book/DESIGN-NOTES.md#-why-registry-check-exits-0-when-the-two-status-commands-do-not)
 has the argument, and [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" the
 rule behind it.
 

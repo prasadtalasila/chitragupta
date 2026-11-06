@@ -4,9 +4,9 @@ Status: **tutorial**, step 5 of [Write a book](../WRITE-A-BOOK.md).
 
 **Written for** anyone about to assemble a book, or checking one that
 is half written. **Assumed:** at least one accepted unit
-([step 4](chapters.md#-step-4-accept-the-unit)). **Not covered here:**
+([step 4](CHAPTERS.md#-step-4-accept-the-unit)). **Not covered here:**
 why a registry finding never blocks; that is in the
-[design notes](design-notes.md#-why-registry-check-exits-0-when-the-two-status-commands-do-not).
+[design notes](DESIGN-NOTES.md#-why-registry-check-exits-0-when-the-two-status-commands-do-not).
 
 ## ▶ Step 5: build and read the registries
 
@@ -15,7 +15,7 @@ chitragupta draft registry build content/drafts/twins
 chitragupta draft registry check content/drafts/twins
 ```
 
-On the 15-chapter book described [below](assemble.md#-what-one-real-book-looked-like),
+On the 15-chapter book described [below](ASSEMBLE.md#-what-one-real-book-looked-like),
 `check` printed:
 
 ```text
@@ -62,9 +62,9 @@ pins that the citation gate reads neither supported reference syntax as a
 citekey.
 
 `check` exits 0 however much it finds
-([why](design-notes.md#-why-registry-check-exits-0-when-the-two-status-commands-do-not)),
+([why](DESIGN-NOTES.md#-why-registry-check-exits-0-when-the-two-status-commands-do-not)),
 and there are things it structurally cannot see
-([which](design-notes.md#-what-the-registries-cannot-see)).
+([which](DESIGN-NOTES.md#-what-the-registries-cannot-see)).
 
 ### 📖 The Glossary and the List of Symbols
 
@@ -78,7 +78,7 @@ chitragupta draft registry build content/drafts/<book> \
 
 `--index content/rendered/<book>/index-terms.json` writes a third thing
 from the same glossaries: the book index's term table
-([the index](book-index.md)).
+([the index](BOOK-INDEX.md)).
 
 Both pages are read from the units' `scope.md` glossaries and `math.md`
 `## Symbols` tables and nothing else, so every word on them is a
@@ -151,11 +151,11 @@ dossier at all), and one that *does* define terms is a `[glossary]`
 finding: move the term to the chapter that introduces it.
 
 Where these two pages print, and how to leave one out, is the outline's
-call: [back matter](back-matter.md).
+call: [back matter](BACK-MATTER.md).
 
 **What the pages cannot catch:** a qualifier inside a well-formed term
 (`**Digital twin (DT), working definition for Part I** -- ...`) and a
 definition that only says "as before". Both print as written, so read
 both pages before the second sign-off.
 
-Next: [assemble, build and sign off the book](assemble.md).
+Next: [assemble, build and sign off the book](ASSEMBLE.md).

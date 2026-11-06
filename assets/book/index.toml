@@ -1,4 +1,4 @@
-# The index's exceptions: yours to edit (docs/book/book-index.md).
+# The index's exceptions: yours to edit (docs/book/BOOK-INDEX.md).
 #
 # The index is built from the book's glossary terms, every assembly. This
 # file holds only what the glossary cannot say. Each assembly writes

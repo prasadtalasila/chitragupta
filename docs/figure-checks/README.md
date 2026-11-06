@@ -113,42 +113,42 @@ line `figure check` prints for it, and the fixed figure.
 
 | Id | Scope | Class | What it catches | Page |
 | --- | --- | --- | --- | --- |
-| `does-not-compile` | figure | objective | The figure's TikZ fails to compile, so nothing else can be measured. | [build](build.md#does-not-compile) |
-| `nothing-measurable` | figure | objective | The figure names no node, so the geometry rules had nothing to measure. | [build](build.md#nothing-measurable) |
-| `size-width` | figure | objective | The picture is wider than the text width it will print at (453pt, or 437.5pt for a book unit's figure). | [size](size.md#size-width) |
-| `size-stray` | figure | objective | A line outside the picture that does not end in `%` adds a stray space beside the figure. | [size](size.md#size-stray) |
-| `focal-count` | figure | objective | More than one node is accented, so none of them stands out. | [nodes](nodes.md#focal-count) |
-| `content-protrusion` | figure | objective | An empty horizontal band taller than a third of the figure strands part of it. | [size](size.md#content-protrusion) |
-| `loads-library-by-hand` | figure | objective | A TikZ library is loaded through an internal macro instead of `\usetikzlibrary`. | [build](build.md#loads-library-by-hand) |
-| `node-overlap` | element | objective | Two nodes' boxes intersect. | [nodes](nodes.md#node-overlap) |
-| `node-text-overload` | element | objective | A node's label runs past 15 words. | [nodes](nodes.md#node-text-overload) |
-| `stranded-arrowhead` | element | objective | A line drawn in pieces leaves an arrowhead in the middle of the line. | [nodes](nodes.md#stranded-arrowhead) |
-| `c1-orthogonal` | element | objective | A line between offset nodes cuts across on a slant or curve instead of turning a corner. | [connectors](connectors.md#c1-orthogonal) |
-| `c2-tag-clearance` | element | objective | A line's tag sits on the line or more than 3mm away from it. | [connectors](connectors.md#c2-tag-clearance) |
-| `c3-coincident` | element | objective | Two lines run on top of each other for more than 2mm. | [connectors](connectors.md#c3-coincident) |
-| `c4-attach` | element | objective | A line meets a side away from its midpoint, or several lines bunch on one side. | [connectors](connectors.md#c4-attach) |
-| `c5-transit` | element | objective | A line passes through a node that is neither of its ends. | [connectors](connectors.md#c5-transit) |
-| `c6-tag-covered` | element | objective | A line's tag lies over a node. | [connectors](connectors.md#c6-tag-covered) |
-| `c7-dangling-tip` | element | objective | An arrow ends in empty space instead of on a node or another line. | [connectors](connectors.md#c7-dangling-tip) |
-| `k1-stroke` | element | objective | A border or line is too pale against what is behind it (under 3:1). | [colour and type](colour-and-type.md#k1-stroke) |
-| `k2-text` | element | objective | Text is too pale against its fill (under 4.5:1, or 3:1 for large text). | [colour and type](colour-and-type.md#k2-text) |
-| `w4-pictograph` | element | objective | A label contains an emoji or pictograph that prints from a fallback font. | [wording](wording.md#w4-pictograph) |
-| `type-below-floor` | element | objective | Text is set smaller than the 12pt body size. | [colour and type](colour-and-type.md#type-below-floor) |
-| `colour-off-palette` | element | objective | A colour is used that the house block does not define. | [colour and type](colour-and-type.md#colour-off-palette) |
-| `tint-outside-band` | element | objective | A labelled node is filled with a tint outside the 6 to 12 band, or with a solid hue. | [colour and type](colour-and-type.md#tint-outside-band) |
-| `unnamed-pic` | element | objective | A house shape is placed at a coordinate instead of in a named `cgwell`, so nothing measures it. | [nodes](nodes.md#unnamed-pic) |
-| `twin-missing` | figure | objective | The figure has no ASCII twin, so the `md`, `html` and `docx` renders show nothing. | [twin](twin.md#twin-missing) |
-| `t1-labels` | element | objective | A node name, zone title or legend entry in the TikZ is missing from the twin. | [twin](twin.md#t1-labels) |
-| `t2-tags` | element | objective | A line's tag in the TikZ is missing from the twin. | [twin](twin.md#t2-tags) |
-| `t3-panels` | figure | objective | The panel letters in the TikZ and the twin differ. | [twin](twin.md#t3-panels) |
-| `size-height` | figure | advisory | The figure's height, as a share of the page, beside its layout's usual range. | [size](size.md#size-height) |
-| `size-slack` | figure | advisory | How much of the figure no node fills, beside its layout's usual range. | [size](size.md#size-slack) |
-| `size-squash` | element | advisory | Two joined nodes sit under 3mm apart, so the arrow between them is too short to read. | [size](size.md#size-squash) |
-| `budget-nodes` | figure | advisory | The number of named nodes, beside its layout's usual range; never a cap. | [size](size.md#budget-nodes) |
-| `budget-edges` | figure | advisory | The number of edges, beside its layout's usual range; never a cap. | [size](size.md#budget-edges) |
-| `w1-case` | element | advisory | A `\cglab` name is not in sentence case. | [wording](wording.md#w1-case) |
-| `w2-tag` | element | advisory | A line's tag is over three words or capitalised. | [wording](wording.md#w2-tag) |
-| `w3-gloss` | element | advisory | A `\cglab` gloss is over six words. | [wording](wording.md#w3-gloss) |
+| `does-not-compile` | figure | objective | The figure's TikZ fails to compile, so nothing else can be measured. | [build](BUILD.md#does-not-compile) |
+| `nothing-measurable` | figure | objective | The figure names no node, so the geometry rules had nothing to measure. | [build](BUILD.md#nothing-measurable) |
+| `size-width` | figure | objective | The picture is wider than the text width it will print at (453pt, or 437.5pt for a book unit's figure). | [size](SIZE.md#size-width) |
+| `size-stray` | figure | objective | A line outside the picture that does not end in `%` adds a stray space beside the figure. | [size](SIZE.md#size-stray) |
+| `focal-count` | figure | objective | More than one node is accented, so none of them stands out. | [nodes](NODES.md#focal-count) |
+| `content-protrusion` | figure | objective | An empty horizontal band taller than a third of the figure strands part of it. | [size](SIZE.md#content-protrusion) |
+| `loads-library-by-hand` | figure | objective | A TikZ library is loaded through an internal macro instead of `\usetikzlibrary`. | [build](BUILD.md#loads-library-by-hand) |
+| `node-overlap` | element | objective | Two nodes' boxes intersect. | [nodes](NODES.md#node-overlap) |
+| `node-text-overload` | element | objective | A node's label runs past 15 words. | [nodes](NODES.md#node-text-overload) |
+| `stranded-arrowhead` | element | objective | A line drawn in pieces leaves an arrowhead in the middle of the line. | [nodes](NODES.md#stranded-arrowhead) |
+| `c1-orthogonal` | element | objective | A line between offset nodes cuts across on a slant or curve instead of turning a corner. | [connectors](CONNECTORS.md#c1-orthogonal) |
+| `c2-tag-clearance` | element | objective | A line's tag sits on the line or more than 3mm away from it. | [connectors](CONNECTORS.md#c2-tag-clearance) |
+| `c3-coincident` | element | objective | Two lines run on top of each other for more than 2mm. | [connectors](CONNECTORS.md#c3-coincident) |
+| `c4-attach` | element | objective | A line meets a side away from its midpoint, or several lines bunch on one side. | [connectors](CONNECTORS.md#c4-attach) |
+| `c5-transit` | element | objective | A line passes through a node that is neither of its ends. | [connectors](CONNECTORS.md#c5-transit) |
+| `c6-tag-covered` | element | objective | A line's tag lies over a node. | [connectors](CONNECTORS.md#c6-tag-covered) |
+| `c7-dangling-tip` | element | objective | An arrow ends in empty space instead of on a node or another line. | [connectors](CONNECTORS.md#c7-dangling-tip) |
+| `k1-stroke` | element | objective | A border or line is too pale against what is behind it (under 3:1). | [colour and type](COLOUR-AND-TYPE.md#k1-stroke) |
+| `k2-text` | element | objective | Text is too pale against its fill (under 4.5:1, or 3:1 for large text). | [colour and type](COLOUR-AND-TYPE.md#k2-text) |
+| `w4-pictograph` | element | objective | A label contains an emoji or pictograph that prints from a fallback font. | [wording](WORDING.md#w4-pictograph) |
+| `type-below-floor` | element | objective | Text is set smaller than the 12pt body size. | [colour and type](COLOUR-AND-TYPE.md#type-below-floor) |
+| `colour-off-palette` | element | objective | A colour is used that the house block does not define. | [colour and type](COLOUR-AND-TYPE.md#colour-off-palette) |
+| `tint-outside-band` | element | objective | A labelled node is filled with a tint outside the 6 to 12 band, or with a solid hue. | [colour and type](COLOUR-AND-TYPE.md#tint-outside-band) |
+| `unnamed-pic` | element | objective | A house shape is placed at a coordinate instead of in a named `cgwell`, so nothing measures it. | [nodes](NODES.md#unnamed-pic) |
+| `twin-missing` | figure | objective | The figure has no ASCII twin, so the `md`, `html` and `docx` renders show nothing. | [twin](TWIN.md#twin-missing) |
+| `t1-labels` | element | objective | A node name, zone title or legend entry in the TikZ is missing from the twin. | [twin](TWIN.md#t1-labels) |
+| `t2-tags` | element | objective | A line's tag in the TikZ is missing from the twin. | [twin](TWIN.md#t2-tags) |
+| `t3-panels` | figure | objective | The panel letters in the TikZ and the twin differ. | [twin](TWIN.md#t3-panels) |
+| `size-height` | figure | advisory | The figure's height, as a share of the page, beside its layout's usual range. | [size](SIZE.md#size-height) |
+| `size-slack` | figure | advisory | How much of the figure no node fills, beside its layout's usual range. | [size](SIZE.md#size-slack) |
+| `size-squash` | element | advisory | Two joined nodes sit under 3mm apart, so the arrow between them is too short to read. | [size](SIZE.md#size-squash) |
+| `budget-nodes` | figure | advisory | The number of named nodes, beside its layout's usual range; never a cap. | [size](SIZE.md#budget-nodes) |
+| `budget-edges` | figure | advisory | The number of edges, beside its layout's usual range; never a cap. | [size](SIZE.md#budget-edges) |
+| `w1-case` | element | advisory | A `\cglab` name is not in sentence case. | [wording](WORDING.md#w1-case) |
+| `w2-tag` | element | advisory | A line's tag is over three words or capitalised. | [wording](WORDING.md#w2-tag) |
+| `w3-gloss` | element | advisory | A `\cglab` gloss is over six words. | [wording](WORDING.md#w3-gloss) |
 
 Two objective rules cannot be allowed: `does-not-compile`, because
 nothing else can be measured until it is fixed, and `twin-missing`,
@@ -206,7 +206,7 @@ Every scaffold in `assets/tikz/` starts with a line such as
   curve, so `c1-orthogonal` and `c4-attach` are not evaluated for
   `hub-and-spoke-network` and `state-machine`. A `sequence` is exempt
   from `c4-attach` and `c5-transit`. The full matrix is on the
-  [connectors page](connectors.md).
+  [connectors page](CONNECTORS.md).
 
 `--layout NAME` overrides the line for one run.
 

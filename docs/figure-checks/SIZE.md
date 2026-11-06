@@ -158,7 +158,7 @@ Fixed: the note sits 3mm above `index`.
 **Catches.** Two nodes joined by an edge that sit under 3mm apart,
 edge to edge, so the arrow between them is too short to read. The
 target is the pair, `a+b`. A pair that overlaps (that is
-[`node-overlap`](nodes.md#node-overlap)), a zone and its child, and a
+[`node-overlap`](NODES.md#node-overlap)), a zone and its child, and a
 bend coordinate are not measured. An edge on a path with an `edge`
 operator or a named node on it, or with an end built from two nodes
 (`b.north |- a`), is listed under "not measured" rather than guessed

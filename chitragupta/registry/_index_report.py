@@ -23,7 +23,7 @@ from chitragupta.registry._terms import term_key
 _BANNER = (
     "<!-- Derived from the typeset book by `registry index`. Evidence for a "
     "judgement, not a verdict: nothing here blocks anything. Each fix is a "
-    "line for content/specs/<book>/index.toml; see docs/book/book-index.md. -->"
+    "line for content/specs/<book>/index.toml; see docs/book/BOOK-INDEX.md. -->"
 )
 
 _ORDER = (

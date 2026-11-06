@@ -4,9 +4,9 @@ Status: **tutorial**, steps 6 to 8 of [Write a book](../WRITE-A-BOOK.md).
 
 **Written for** anyone turning accepted chapters into one PDF.
 **Assumed:** every unit accepted and the registries built
-([step 5](registries.md)). **Not covered here:** what goes in the front
+([step 5](REGISTRIES.md)). **Not covered here:** what goes in the front
 and back matter, which is the outline's call
-([front matter](front-matter.md), [back matter](back-matter.md)).
+([front matter](FRONT-MATTER.md), [back matter](BACK-MATTER.md)).
 
 ## ▶ Step 6: assemble the book
 
@@ -29,7 +29,7 @@ unchanged:
 | `## ... {#front}` | no `\part`; its chapters after `\tableofcontents`, under `\frontmatter` | each chapter's id |
 | `## ... {#appendices}` | no `\part`; `\appendix`, then its chapters, numbered A, B, ... | each chapter's id |
 | `## ... {#back}` | no `\part`; under `\backmatter`, its entries in outline order, then the bibliography | each chapter's id |
-| `### ... {#glossary}`, `{#symbols}`, `{#figures}`, `{#tables}` | a generated page, where the outline puts it ([back matter](back-matter.md)) | none |
+| `### ... {#glossary}`, `{#symbols}`, `{#figures}`, `{#tables}` | a generated page, where the outline puts it ([back matter](BACK-MATTER.md)) | none |
 
 So the assembled book reads, in order: title page, your copyright page,
 table of contents, front matter, the parts and their chapters, the
@@ -144,7 +144,7 @@ resolves `\cref`, the table of contents and the citation numbers now that
 the entries exist. Skip it and every citation renders `[?]` while
 `lualatex` still exits 0.
 
-**With an index, two more steps** ([the index](book-index.md)): once the
+**With an index, two more steps** ([the index](BOOK-INDEX.md)): once the
 third `lualatex` pass has settled the page breaks, `registry index`
 turns `book.idx` into `book.ind`, and a fourth `lualatex` pass prints
 it:

@@ -63,4 +63,4 @@ chitragupta.draft registry index` writes it beside `book.tex` as
 `book.ist`, with `headings_flag` set from `index.toml`'s
 `letter_headings`, and runs `upmendex` with it. Its only other choices
 are the bold letter heading and the names of the symbol and number
-groups. See [docs/book/book-index.md](../../docs/book/book-index.md).
+groups. See [docs/book/BOOK-INDEX.md](../../docs/book/BOOK-INDEX.md).
