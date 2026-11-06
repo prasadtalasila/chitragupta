@@ -66,6 +66,13 @@ theme:
     - navigation.top
     - navigation.tracking
 
+# The house colours for Mermaid diagrams. Material draws a diagram with its
+# own colour variables, which beat each block's init directive, so without
+# this an unclassed node took the theme's accent. Generated from the
+# palette by `python scripts/render_diagrams.py --sync`; never edit it.
+extra_css:
+  - docs/stylesheets/mermaid.css
+
 # Also matched to the parent, which serves /software.html rather than
 # /software/. One origin with two URL styles reads as two sites.
 use_directory_urls: false

@@ -5,9 +5,11 @@
     python scripts/render_diagrams.py --puppeteer-config pp.json
     python scripts/render_diagrams.py --sync          # stamp the theme, copy to .mmd
 
-Runs the command docs/DIAGRAMS.md documents,
-`mmdc -i <name>.mmd -o svg/<name>.svg -b white -w 1900`, for each
-`docs/diagrams/<name>.mmd`, then records the source's fingerprint in
+Runs the commands docs/DIAGRAMS.md documents for each
+`docs/diagrams/<name>.mmd`: `mmdc` to `svg/<name>.svg` at `-w 1900`, to
+`png/<name>.png` at `-w 1900 -s 2`, and to `pdf/<name>.pdf` with
+`--pdfFit`, all on white. Then
+it records the source's fingerprint in
 `docs/diagrams/svg/sources.json`. `tests/test_diagrams_in_sync.py` checks
 every export against that manifest, so an `.mmd` edited without a
 re-render fails with a message naming the source to re-render -- where
@@ -73,7 +75,7 @@ _THEME_SPEC = importlib.util.spec_from_file_location(
 _theme = importlib.util.module_from_spec(_THEME_SPEC)
 _THEME_SPEC.loader.exec_module(_theme)
 ROLES, palette, tint = _theme.ROLES, _theme.palette, _theme.tint
-house_theme, stamp = _theme.house_theme, _theme.stamp
+house_theme, stamp, mermaid_css = _theme.house_theme, _theme.stamp, _theme.mermaid_css
 
 
 def fingerprint(source: Path) -> str:
@@ -141,7 +143,11 @@ def sync() -> list[str]:
     `sources()` and copy each block into its `.mmd`, keeping the
     `.mmd`'s title front matter. Returns the names whose `.mmd` changed:
     the ones that need re-rendering."""
-    theme = house_theme(palette(STYLE_DOC.read_text(encoding="utf-8")))
+    colours = palette(STYLE_DOC.read_text(encoding="utf-8"))
+    theme = house_theme(colours)
+    stylesheet = DOCS / "stylesheets" / "mermaid.css"
+    stylesheet.parent.mkdir(parents=True, exist_ok=True)
+    stylesheet.write_text(mermaid_css(colours), encoding="utf-8")
     changed = []
     for path, names in sources():
         text = path.read_text(encoding="utf-8")
@@ -165,19 +171,33 @@ def sync() -> list[str]:
     return changed
 
 
-def _argv(name: str, puppeteer_config: "str | None") -> list[str]:
-    argv = [
-        "mmdc",
-        "-i",
-        str(DIAGRAMS / f"{name}.mmd"),
-        "-o",
-        str(DIAGRAMS / "svg" / f"{name}.svg"),
-        "-b",
-        "white",
-        "-w",
-        "1900",
+# Each export and the flags that make it. Mermaid writes an SVG's labels
+# as HTML in <foreignObject>, which only a browser draws: LaTeX, rsvg and
+# Inkscape show empty boxes. So the PDF (vector, cropped to the diagram, for
+# papers) and the PNG (for slides) come from the same browser render.
+FORMATS = {"svg": ["-w", "1900"], "pdf": ["--pdfFit"], "png": ["-w", "1900", "-s", "2"]}
+
+
+def _argvs(name: str, puppeteer_config: "str | None") -> "list[tuple[str, list[str]]]":
+    """`(format, argv)` for each of `name`'s exports."""
+    source = ["mmdc", "-i", str(DIAGRAMS / f"{name}.mmd"), "-b", "white"]
+    extra = ["-p", puppeteer_config] if puppeteer_config else []
+    return [
+        (fmt, [*source, "-o", str(DIAGRAMS / fmt / f"{name}.{fmt}"), *flags, *extra])
+        for fmt, flags in FORMATS.items()
     ]
-    return argv + ["-p", puppeteer_config] if puppeteer_config else argv
+
+
+def _rendered(name: str, run, puppeteer_config: "str | None") -> bool:
+    """Every format of `name` rendered; the first failure is printed."""
+    for fmt, argv in _argvs(name, puppeteer_config):
+        result = run(argv, capture_output=True, text=True, check=False)
+        if result.returncode != 0:
+            print(
+                f"{name}.{fmt}: mmdc exited {result.returncode}\n{result.stderr}", file=sys.stderr
+            )
+            return False
+    return True
 
 
 def render(
@@ -186,22 +206,24 @@ def render(
     run: Callable[..., subprocess.CompletedProcess] = subprocess.run,
     puppeteer_config: "str | None" = None,
 ) -> int:
-    """Render each of `names` and record the ones that rendered. Returns
-    0 when all did, 1 when any failed -- after recording the others, so a
-    second run only has the failures left to do."""
+    """Render each of `names` in every format and record the ones whose
+    every format rendered. Returns 0 when all did, 1 when any failed --
+    after recording the others, so a second run only has the failures
+    left to do."""
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8")) if MANIFEST.is_file() else {}
+    for fmt in FORMATS:
+        (DIAGRAMS / fmt).mkdir(parents=True, exist_ok=True)
     failed = 0
     for name in names:
         try:
-            result = run(_argv(name, puppeteer_config), capture_output=True, text=True, check=False)
+            ok = _rendered(name, run, puppeteer_config)
         except FileNotFoundError:
             print(
                 "mmdc is not on PATH: npm install -g @mermaid-js/mermaid-cli@11",
                 file=sys.stderr,
             )
             return 1
-        if result.returncode != 0:
-            print(f"{name}: mmdc exited {result.returncode}\n{result.stderr}", file=sys.stderr)
+        if not ok:
             failed = 1
             continue
         manifest[name] = fingerprint(DIAGRAMS / f"{name}.mmd")

@@ -1321,7 +1321,18 @@ one into a slide deck or a paper without copying it out of this document:
 | Path | What it is |
 | --- | --- |
 | `docs/diagrams/<name>.mmd` | the Mermaid source, with a title line |
-| `docs/diagrams/svg/<name>.svg` | the rendered export, ~1900px wide on a white background |
+| `docs/diagrams/svg/<name>.svg` | for the web: GitHub, the docs site, a browser. ~1900px wide on white |
+| `docs/diagrams/pdf/<name>.pdf` | for a paper: vector, one page cropped to the diagram, text selectable |
+| `docs/diagrams/png/<name>.png` | for slides: rendered at twice the scale, on white |
+
+**Use the SVG only where a browser draws it.** Mermaid writes a
+diagram's labels as HTML inside `<foreignObject>`, which every browser
+renders and LaTeX, Inkscape, `rsvg-convert` and most slide tools do not:
+they show the boxes and arrows with no text. The PDF and PNG come from the
+same browser render, so their labels survive anywhere. Turning
+`htmlLabels` off instead was tried and rejected: the labels' `<b>`, `<i>`,
+`<small>` and `<br/>` then print as literal tags and the spaces between
+words collapse.
 
 | Diagram | `<name>` |
 | --- | --- |
@@ -1381,8 +1392,11 @@ python scripts/render_diagrams.py v1-overview   # or no name, for all of them
 ```
 
 `--sync` prints the names whose `.mmd` changed, which are the ones to
-re-render. It touches no `.svg` itself. It stamps the house theme below
-into every block it exports, in whichever document the block lives.
+re-render. It touches no export itself. It stamps the house theme below
+into every block it exports, in whichever document the block lives, and
+writes `docs/stylesheets/mermaid.css`, which sets the docs site's own
+Mermaid colours to the same palette: mkdocs-material's colour variables
+otherwise override the theme, and an unclassed node turned amber.
 
 ### 🎨 The house theme
 
@@ -1412,8 +1426,10 @@ neither stands out. `--sync` adds the roles to flowcharts and state
 diagrams, the two types Mermaid lets a `classDef` style. A sequence
 diagram has no classes, and the directive alone gives it the palette.
 
-The script runs `mmdc -i <name>.mmd -o svg/<name>.svg -b white -w 1900`
-and records the fingerprint of each `.mmd` it rendered in
+The script runs `mmdc -i <name>.mmd -b white` three times, to
+`svg/<name>.svg` with `-w 1900`, to `png/<name>.png` with `-w 1900 -s 2`
+and to `pdf/<name>.pdf` with `--pdfFit`, and records the fingerprint of each
+`.mmd` whose three exports all rendered in
 `docs/diagrams/svg/sources.json`. `tests/test_diagrams_in_sync.py`
 checks every export against that file, so an `.mmd` edited without a
 re-render fails, naming the diagram to re-render. On a host that cannot

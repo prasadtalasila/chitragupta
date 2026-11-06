@@ -132,6 +132,18 @@ class TestEveryDiagramWearsTheHouseTheme:
         typed = {h.upper() for _, _, b in ALL for h in re.findall(r"#[0-9A-Fa-f]{6}\b", b)}
         assert typed <= allowed, f"hexes outside the house theme: {sorted(typed - allowed)}"
 
+    def test_the_sites_stylesheet_is_the_palette(self):
+        """mkdocs-material's own Mermaid colours beat the init directive;
+        docs/stylesheets/mermaid.css sets them from the same palette."""
+        css = REPO_ROOT / "docs" / "stylesheets" / "mermaid.css"
+        expected = render_diagrams.mermaid_css(render_diagrams.palette(self.STYLE_TEXT))
+        assert css.read_text(encoding="utf-8") == expected, (
+            "docs/stylesheets/mermaid.css does not match the house palette:\n"
+            "    python scripts/render_diagrams.py --sync"
+        )
+        mkdocs = (REPO_ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+        assert "- docs/stylesheets/mermaid.css" in mkdocs
+
     def test_the_theme_is_the_tikz_palette(self):
         """Read the palette again, independently of the script's parser, so
         a parser that silently found the wrong colours is caught too."""
@@ -173,9 +185,15 @@ class TestEachExportMatchesItsFencedBlock:
             f"python scripts/render_diagrams.py {name}"
         )
 
+    @pytest.mark.parametrize("fmt", render_diagrams.FORMATS)
     @pytest.mark.parametrize("name", ALL_NAMES)
-    def test_the_svg_export_exists(self, name):
-        assert (DIAGRAMS_DIR / "svg" / f"{name}.svg").is_file()
+    def test_every_export_exists(self, name, fmt):
+        """An SVG for the web, a PDF for papers, a PNG for slides: the SVG's
+        labels are HTML only a browser draws (docs/DIAGRAMS.md)."""
+        assert (DIAGRAMS_DIR / fmt / f"{name}.{fmt}").is_file(), (
+            f"docs/diagrams/{fmt}/{name}.{fmt} is missing. Render it:\n"
+            f"    python scripts/render_diagrams.py {name}"
+        )
 
 
 class TestTheReviewLayerIsDrawnCompletely:
