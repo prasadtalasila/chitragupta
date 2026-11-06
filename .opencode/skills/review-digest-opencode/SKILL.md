@@ -145,12 +145,14 @@ replaces it.
    `python -m chitragupta.draft retrieve search "<query>" --k 15 --log <draft>`,
    then read the candidates' parsed text.
 
-2. **Score every candidate, and record what you will copy as a
+2. **Score every candidate, and record its main passage as a
    `quote:`.** One block per citekey in `evidence.md` (`docs/DOSSIER.md`):
    `relevance:`, a `claim:` in your own words (what your `see`
-   sentences are drafted from), and a `quote:` holding each exact
-   passage you intend to copy. Every candidate you turn down goes in
-   `rejected.md` with why.
+   sentences are drafted from), and one `quote:` holding the passage you
+   lean on most from that source, verbatim, with no quotation marks and
+   no page. `review quotation` checks it; `review digest` checks every
+   other copied run where it stands. Every candidate you turn down goes
+   in `rejected.md` with why.
 
 3. **Re-search a thin theme** with a reformulated query before settling
    for a weak passage.

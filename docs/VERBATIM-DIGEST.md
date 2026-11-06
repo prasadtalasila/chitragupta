@@ -112,7 +112,7 @@ replaced where they stand, and the skill says so at each one:
 
 | Survey step | In the digest |
 | --- | --- |
-| The evidence packet: `claim:` in the drafter's words, a `quote:` only when a quotation is warranted, prose drafted from `claim:` alone | Every passage to be copied is recorded as a `quote:`, since every run is an intended quotation; `claim:` still says what the passage establishes, and is drafted from only for the drafter's own sentences |
+| The evidence packet: `claim:` in the drafter's words, a `quote:` only when a quotation is warranted, prose drafted from `claim:` alone | Each source's main passage is recorded as its one `quote:`, which `review quotation` checks; every other run is checked where it stands by `review digest`. `claim:` still says what the passage establishes, and is drafted from only for the drafter's own sentences |
 | Multi-source synthesis: a paragraph rests on two or more sources so it cannot be a transcription ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §11) | Kept, at the paragraph: one source per *run*, two or more runs from different papers per paragraph, `<!-- single-source: why -->` where one paper is genuinely the only source. `review synthesis` reports it |
 | The pre-gate critique against the evidence packet | Replaced by a read as someone who has opened none of the papers: terms before definitions, runs naming what the digest does not show, paragraphs that are one paper after another |
 | The verbatim scan | Replaced by `review digest`: the scan would flag every run, which is the design |
@@ -336,8 +336,8 @@ one line, and the digest is built from the prose alone.
 
 [SOUL.md](../SOUL.md) refuses to pass a source's wording off as the
 drafter's. A digest keeps that rule by construction: every copied run
-ends with the citation that names its source, the dossier records every
-copied passage as a `quote:`, and the digest is never a source for any
+ends with the citation that names its source, the dossier records each
+source's main passage as a `quote:`, and the digest is never a source for any
 other draft. [AGENTS.md](../AGENTS.md)'s statement that verbatim wording
 has one legitimate home outside the draft names the digest as the one
 genre that is that home, and [PLAGIARISM.md](PLAGIARISM.md)'s verbatim

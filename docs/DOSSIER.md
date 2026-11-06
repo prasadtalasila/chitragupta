@@ -487,8 +487,10 @@ quote: an optional verbatim span, quotable-only
   is off screen, cannot be a lightly edited copy of it.
 - **`quote:`** is optional, verbatim, and usable in a draft **only**
   inside quotation marks with an attribution, except in a verbatim
-  digest, where every copied run is a recorded `quote:` rendered in place
-  with its citation and `claim:` is drafted from only for the connecting
+  digest, whose body is copied runs rendered in place with their
+  citations: there each source's `quote:` records the passage the digest
+  leans on most, every other run is checked where it stands by `review
+  digest`, and `claim:` is drafted from only for the drafter's own
   sentences. It is absent by default: a
   captured quote is a quote in the drafter's context, which is the thing
   this contract removes, so one is captured only when a quotation is

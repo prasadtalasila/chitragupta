@@ -182,6 +182,10 @@ def resolve_standing(draft: Path, override: str | None = None) -> tuple[str, str
     return FALLBACK_STANDING, genre, "nothing"
 
 
+# A Markdown image on a line of its own: `![caption](path)`.
+_IMAGE = re.compile(r"^\s*!\[.*\]\([^)]*\)\s*$")
+
+
 def _declaration(lines: list[str]) -> str | None:
     """The reason a drafter stated for this unit resting on one source."""
     for line in lines:
@@ -234,15 +238,20 @@ def blocks(lines: list[str], offset: int = 1) -> list[tuple[int, list[str]]]:
 
 
 def _paragraph(start: int, lines: list[str], latex: bool) -> Unit | None:
-    """One paragraph, or None for a block that is only a marker.
+    """One paragraph, or None for a block that is only a marker or an image.
 
     A marker split off from its unit by a blank line becomes a block of
     its own, and counting it as an uncited unit would be worse than
     dropping it: the drafter's mistake would show up as prose that cites
     nothing rather than as a declaration that attached to nothing.
+
+    An image line is a figure, not a paragraph (#1172). A digest places
+    a source's figure with a caption ending in its cite string, so every
+    such line "rests on one source" by construction, and counting it
+    would ask the drafter to declare each figure as single-source.
     """
     prose = _prose(lines)
-    if not prose:
+    if not prose or all(_IMAGE.match(line) for line in lines if line.strip()):
         return None
     return Unit("paragraph", start, prose, _citekeys(lines, prose, latex), _declaration(lines), 0)
 

@@ -255,7 +255,7 @@ other draft.
 It runs `survey-writer`'s draft-and-render workflow step for step,
 keeps the survey's paragraph unit (two or more papers per paragraph,
 one per run), and replaces, in place, every step that exists to keep
-source wording out of a draft: every passage to be copied is recorded
+source wording out of a draft: each source's main passage is recorded
 as a `quote:` in the dossier, the pre-gate critique becomes a read as
 someone who has opened none of the papers, and the verbatim scan and
 the evidence sidecar are replaced by `python -m chitragupta.review

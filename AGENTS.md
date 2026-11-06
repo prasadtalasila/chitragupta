@@ -251,7 +251,7 @@ enrichment layer is optional and nothing above it needs it.
   the fact to make one appear, and never copy a span out of one back into
   body prose. One genre is the exception by construction: a verbatim
   digest (`review-digest`) *is* that wording, with a citation closing
-  every copied run, each passage recorded as a `quote:` in its dossier,
+  every copied run, each source's main passage recorded as a `quote:`,
   and never a source for any other draft; docs/VERBATIM-DIGEST.md carries
   its rule.
 
