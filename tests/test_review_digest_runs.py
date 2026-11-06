@@ -218,3 +218,21 @@ def test_a_table_rows_citekey_cell_attributes_the_cells_after_it():
 def test_an_uncited_table_row_stays_uncited():
     (run,) = runs_mod.runs("| Key | Idea |\n|---|---|\n| none | an idea |\n")
     assert run.own and run.citekeys == ()
+
+
+class TestInlineCode:
+    """#1172: a copied run carries a symbol in the house form, `T_h`,
+    and `_claims` blanks code -- so the symbol vanished from the run."""
+
+    def test_a_symbol_span_is_read_as_its_text(self):
+        (run,) = runs_mod.runs(f"where `T_h` is the heater temperature. [@{KEY}, p. 4]\n")
+        assert run.sentences == ("where  T_h  is the heater temperature.",)
+
+    def test_a_span_holding_an_at_sign_stays_code(self):
+        (run,) = runs_mod.runs(f"Write `[@{OTHER}]` like this. [@{KEY}]\n")
+        assert run.citekeys == (KEY,)
+        assert OTHER not in run.text
+
+    def test_a_fence_is_untouched(self):
+        text = f"```\nx = `a`\n```\n\nCopied. [@{KEY}]\n"
+        assert [r.sentences for r in runs_mod.runs(text)] == [("Copied.",)]

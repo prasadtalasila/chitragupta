@@ -385,3 +385,16 @@ def test_the_same_sentence_twice_on_one_line_counts_twice():
     match.check_run(run, a_lookup(), checked)
     assert checked.words_total == 6
     assert checked.words_flagged == 6
+
+
+def test_a_mapped_symbol_in_a_copied_run_matches_the_math_italic_source():
+    """The parse prints `𝑇 ℎ`; the digest writes `T_h`, mapped in math.md."""
+    from chitragupta.review import _digest_runs
+
+    source = "The value 𝑇 ℎ is the temperature of the heater (measured in ◦ C )."
+    (run,) = _digest_runs.runs(
+        f"The value `T_h` is the temperature of the heater (measured in °C). [@{KEY}]\n"
+    )
+    checked = match.Checked()
+    match.check_run(run, a_lookup(passage(4, source)), checked)
+    assert checked.findings == [] and checked.words_copied == checked.words_total

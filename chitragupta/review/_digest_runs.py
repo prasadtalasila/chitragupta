@@ -53,6 +53,15 @@ _OWN = re.compile(r"^\s*<!--\s*own:.*-->\s*$")
 _MATH_CLOSE = re.compile(r"^\s*(?:```|\$\$|\\\])\s*$")
 _MATH_OPEN = re.compile(r"^\s*<!--\s*math\s*-->\s*$")
 
+# An inline code span: in a digest, the house form of a symbol
+# (`T_h`, mapped in `math.md`), which a copied run carries where the
+# source printed the symbol. `_claims` blanks code, so the symbol would
+# vanish and the run read as a copy-mismatch (#1172). Its backticks are
+# turned to spaces before the blocks are read -- the same length, so no
+# offset moves. A span holding `@` stays code: a citekey shown as code
+# is not a citation.
+_INLINE_CODE = re.compile(r"(?<!`)`([^`\n@]+)`(?!`)")
+
 # A figure the digest shows, as its caption cites it: `Figure 3.5 of
 # [@key]` (review-digest's caption form). A run naming that figure of
 # that source points at something the reader can see.
@@ -163,7 +172,8 @@ def runs(text: str) -> list[Run]:
     """Every run of `text`, in document order."""
     found = []
     lines = text.splitlines()
-    for start, raw_block, block in _claims.claim_blocks(text):
+    readable = _INLINE_CODE.sub(lambda m: f" {m[1]} ", text)
+    for start, raw_block, block in _claims.claim_blocks(readable):
         own_block = _own_block(lines, start, raw_block)
         after_math = _after_math(lines, start)
         # A table row's citekey cell attributes the whole row, wherever
