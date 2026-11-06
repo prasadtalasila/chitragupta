@@ -254,7 +254,7 @@ def test_the_brace_protection_requirement_is_documented():
     not, so the same entry is right in one artefact and wrong in the
     other. The pipeline deliberately does not rewrite a human's titles to
     fix it, which makes saying so the whole mitigation."""
-    book_doc = (Path(__file__).resolve().parent.parent / "docs" / "book" / "assemble.md").read_text(
+    book_doc = (Path(__file__).resolve().parent.parent / "docs" / "book" / "ASSEMBLE.md").read_text(
         encoding="utf-8"
     )
     assert "Brace-protect acronyms" in book_doc
