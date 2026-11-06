@@ -6,9 +6,8 @@
     python scripts/render_diagrams.py --sync          # stamp the theme, copy to .mmd
 
 Runs the commands docs/DIAGRAMS.md documents for each
-`docs/diagrams/<name>.mmd`: `mmdc` to `svg/<name>.svg` at `-w 1900`, to
-`png/<name>.png` at `-w 1900 -s 2`, and to `pdf/<name>.pdf` with
-`--pdfFit`, all on white. Then
+`docs/diagrams/<name>.mmd`: `mmdc` to `svg/<name>.svg` at `-w 1900` and
+to `pdf/<name>.pdf` with `--pdfFit`, both on white. Then
 it records the source's fingerprint in
 `docs/diagrams/svg/sources.json`. `tests/test_diagrams_in_sync.py` checks
 every export against that manifest, so an `.mmd` edited without a
@@ -178,8 +177,8 @@ def sync() -> list[str]:
 # Each export and the flags that make it. Mermaid writes an SVG's labels
 # as HTML in <foreignObject>, which only a browser draws: LaTeX, rsvg and
 # Inkscape show empty boxes. So the PDF (vector, cropped to the diagram, for
-# papers) and the PNG (for slides) come from the same browser render.
-FORMATS = {"svg": ["-w", "1900"], "pdf": ["--pdfFit"], "png": ["-w", "1900", "-s", "2"]}
+# papers and slides) comes from the same browser render.
+FORMATS = {"svg": ["-w", "1900"], "pdf": ["--pdfFit"]}
 
 
 def _argvs(name: str, puppeteer_config: "str | None") -> "list[tuple[str, list[str]]]":

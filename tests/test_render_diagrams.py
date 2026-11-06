@@ -56,19 +56,18 @@ class TestFingerprint:
 
 class TestRender:
     def test_it_runs_the_documented_commands_for_each_source(self, tree):
-        """An SVG for the web, a PDF for papers and a PNG for slides: Mermaid
-        writes an SVG's labels as HTML, which only a browser draws, so the
-        two other formats come from the same browser render."""
+        """An SVG for the web and a PDF for papers and slides: Mermaid writes
+        an SVG's labels as HTML, which only a browser draws, so the PDF comes
+        from the same browser render."""
         calls, run = recorder()
         assert render_diagrams.render(["a", "b"], run=run) == 0
         source = ["mmdc", "-i", str(tree / "a.mmd"), "-b", "white"]
-        assert calls[:3] == [
+        assert calls[:2] == [
             [*source, "-o", str(tree / "svg" / "a.svg"), "-w", "1900"],
             [*source, "-o", str(tree / "pdf" / "a.pdf"), "--pdfFit"],
-            [*source, "-o", str(tree / "png" / "a.png"), "-w", "1900", "-s", "2"],
         ]
-        assert len(calls) == 6
-        assert (tree / "pdf").is_dir() and (tree / "png").is_dir()
+        assert len(calls) == 4
+        assert (tree / "pdf").is_dir()
 
     def test_it_records_each_rendered_sources_fingerprint(self, tree):
         _calls, run = recorder()
@@ -94,12 +93,12 @@ class TestRender:
 
     def test_a_source_is_fresh_only_once_every_format_rendered(self, tree, capsys):
         def run(argv, **kwargs):
-            failing = argv[argv.index("-o") + 1].endswith(".png")
-            return subprocess.CompletedProcess(argv, int(failing), stdout="", stderr="no png")
+            failing = argv[argv.index("-o") + 1].endswith(".pdf")
+            return subprocess.CompletedProcess(argv, int(failing), stdout="", stderr="no pdf")
 
         assert render_diagrams.render(["a"], run=run) == 1
         assert not (tree / "svg" / "sources.json").exists()
-        assert "a.png: mmdc exited 1" in capsys.readouterr().err
+        assert "a.pdf: mmdc exited 1" in capsys.readouterr().err
 
     def test_a_puppeteer_config_is_passed_through(self, tree):
         calls, run = recorder()

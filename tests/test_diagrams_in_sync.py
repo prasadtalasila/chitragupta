@@ -188,8 +188,8 @@ class TestEachExportMatchesItsFencedBlock:
     @pytest.mark.parametrize("fmt", render_diagrams.FORMATS)
     @pytest.mark.parametrize("name", ALL_NAMES)
     def test_every_export_exists(self, name, fmt):
-        """An SVG for the web, a PDF for papers, a PNG for slides: the SVG's
-        labels are HTML only a browser draws (docs/DIAGRAMS.md)."""
+        """An SVG for the web, a PDF for papers and slides: the SVG's labels
+        are HTML only a browser draws (docs/DIAGRAMS.md)."""
         assert (DIAGRAMS_DIR / fmt / f"{name}.{fmt}").is_file(), (
             f"docs/diagrams/{fmt}/{name}.{fmt} is missing. Render it:\n"
             f"    python scripts/render_diagrams.py {name}"
