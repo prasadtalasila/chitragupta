@@ -121,7 +121,7 @@ class TestEveryDiagramWearsTheHouseTheme:
         )
         assert used <= defined, (
             f"{name} uses {sorted(used - defined)} without defining them, so they style "
-            "nothing. scripts/render_diagrams.py's _TAKES_CLASSDEF decides which diagram "
+            "nothing. scripts/diagram_theme.py's TAKES_CLASSDEF decides which diagram "
             "types --sync adds the roles to."
         )
 

@@ -247,7 +247,7 @@ MiKTeX provides `upmendex` (verified, not assumed).
    awkward keys in body and footnote, `book.ind` asserted.
 7. `doctor` (widen `tests/test_doctor.py`'s binary fixture), install
    script check and its test.
-8. Skill, references, docs (`book-index.md`, `back-matter.md`,
+8. Skill, references, docs (`BOOK-INDEX.md`, `BACK-MATTER.md`,
    `WRITE-A-BOOK.md`, `WRITING-PROCESS.md`, `CLI.md`, `WINDOWS.md`,
    `PACKAGING.md`, `README.md`).
 9. Real-book check on the digital-twins book in a scratch directory;
