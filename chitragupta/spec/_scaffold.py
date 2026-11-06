@@ -1,5 +1,6 @@
-"""The two files a new book starts with that its author, not the
-outline, owns: a preface and a copyright page (#1137).
+"""The three files a new book starts with that its author, not the
+outline, owns: a preface and a copyright page (#1137), and the index's
+exceptions, `index.toml` (#1168).
 
 `spec init` copies each from `assets/book/` once and never overwrites
 it, so re-running anything here cannot cost an author their words.
@@ -19,6 +20,7 @@ from chitragupta import config
 
 PREFACE_MD = "preface.md"
 COPYRIGHT_TEX = "copyright.tex"
+INDEX_TOML = "index.toml"
 _YEAR = "<year>"
 
 
@@ -35,8 +37,9 @@ def _copy_once(source: Path, target: Path) -> bool:
 
 
 def scaffold(book: Path, specs: Path) -> list[str]:
-    """Copy the preface into `book` and the copyright page into `specs`,
-    skipping either that already exists; one line per file written."""
+    """Copy the preface into `book`, and the copyright page and the
+    index's exceptions into `specs`, skipping any that already exists;
+    one line per file written."""
     written = []
     preface = Path(book) / PREFACE_MD
     if _copy_once(config.shipped("assets", "book", PREFACE_MD), preface):
@@ -44,6 +47,9 @@ def scaffold(book: Path, specs: Path) -> list[str]:
     copyright_page = specs / COPYRIGHT_TEX
     if _copy_once(config.shipped("assets", "book", COPYRIGHT_TEX), copyright_page):
         written.append(f"Wrote {copyright_page}: the copyright page is yours to edit.")
+    index_toml = specs / INDEX_TOML
+    if _copy_once(config.shipped("assets", "book", INDEX_TOML), index_toml):
+        written.append(f"Wrote {index_toml}: the index's exceptions are yours to edit.")
     return written
 
 

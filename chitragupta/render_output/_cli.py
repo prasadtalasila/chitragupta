@@ -167,6 +167,13 @@ def _build_parser() -> argparse.ArgumentParser:
         "heading is a chapter, for assembling a book -- see docs/WRITE-A-BOOK.md",
     )
     parser.add_argument(
+        "--index-terms",
+        default=None,
+        metavar="PATH",
+        help="With --fragment: place the book index's entries, from the term "
+        "table `registry build --index` wrote (docs/book/BOOK-INDEX.md)",
+    )
+    parser.add_argument(
         "--no-collapse-citations",
         dest="collapse_citations",
         action="store_false",
@@ -204,6 +211,7 @@ def _rendered(args: argparse.Namespace) -> Path | None:
             args.collapse_citations,
             args.output_dir,
             fragment=args.fragment,
+            index_terms=args.index_terms,
         )
     except MissingBinary as exc:
         print(f"[missing-binary] {exc}")
@@ -288,7 +296,10 @@ def main(argv: list[str] | None = None) -> int:
     tex/pdf rendering of a draft should be able to run this with bare
     `python`, no enrich group required.
     """
-    args = _build_parser().parse_args(argv)
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+    if args.index_terms and not args.fragment:
+        parser.error("--index-terms needs --fragment: only a book's chapters carry index entries")
     out_path = _rendered(args)
     if out_path is None:
         return 1

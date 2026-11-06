@@ -254,7 +254,7 @@ def test_the_brace_protection_requirement_is_documented():
     not, so the same entry is right in one artefact and wrong in the
     other. The pipeline deliberately does not rewrite a human's titles to
     fix it, which makes saying so the whole mitigation."""
-    book_doc = (Path(__file__).resolve().parent.parent / "docs" / "book" / "assemble.md").read_text(
+    book_doc = (Path(__file__).resolve().parent.parent / "docs" / "book" / "ASSEMBLE.md").read_text(
         encoding="utf-8"
     )
     assert "Brace-protect acronyms" in book_doc
@@ -269,3 +269,19 @@ def test_the_book_loads_the_float_settings_and_reports_a_lone_figure():
     assert r"\input{chitragupta-floats}" in body
     assert "chitragupta float page:" in body, "the line the shipped file writes to book.log"
     assert "not a failure of the build" in body, "a tall figure is the author's call"
+
+
+def test_the_index_is_built_only_with_its_outline_entry_and_prints_last():
+    """#1168: the term table and the filter only with `{#index}`, the
+    index's preamble before hyperref, `\\printindex` after the
+    bibliography, and `registry index` between the third and last pass."""
+    body = _body()
+    assert "--index content/rendered/<book>/index-terms.json # only with {#index}" in body
+    assert "--index-terms content/rendered/<book>/index-terms.json" in body
+    assert "registry index \\ content/drafts/<book> --idx content/rendered/<book>/book.idx" in body
+    skeleton = SKELETON.read_text(encoding="utf-8")
+    assert skeleton.index(r"\makeindex[noautomatic,intoc]") < skeleton.index("{hyperref}")
+    assert skeleton.index(r"\bibliography{bibliography}") < skeleton.index(r"\printindex")
+    conventions = CONVENTIONS.read_text(encoding="utf-8")
+    assert "**The index** (#1168" in conventions
+    assert "Front and back matter" in conventions

@@ -83,11 +83,11 @@ each switches the `book` class into a mode instead:
 | `## Front matter {#front}` | its entries, in outline order, after `\tableofcontents` and still under `\frontmatter`: roman page numbers, unnumbered chapters |
 | `## Part ... {#part-i}` and its chapters | under `\mainmatter`, as the table above says |
 | `## Appendices {#appendices}` | `\appendix\crefalias{chapter}{appendix}` after the last main-matter chapter, then each appendix's `\input` and labels exactly as a chapter's: they number A, B, ..., and `\Cref` prints "Appendix A" (without the alias cleveref says "Chapter A") |
-| `## Back matter {#back}` | `\backmatter`, then its entries in outline order, then the bibliography, which is always last |
+| `## Back matter {#back}` | `\backmatter`, then its entries in outline order, then the bibliography, then the index if the outline has `{#index}`: the index is always last, the bibliography last before it |
 
 A front- or back-matter chapter the author wrote (a preface, "About the
 author") is a unit like any other: converted in step 4 and `\input`
-where it stands. Four chapter ids are **generated pages** instead: no
+where it stands. Five chapter ids are **generated pages** instead: no
 file, no unit, nothing to convert. Each prints where the outline puts
 it, only if it has something to show; one with nothing is left out and
 said nothing of:
@@ -98,6 +98,7 @@ said nothing of:
 | `### List of Symbols {#symbols}` | `\input{notation}` | step 3 wrote `notation.tex` |
 | `### List of Figures {#figures}` | `\cleardoublepage\phantomsection\addcontentsline{toc}{chapter}{\listfigurename}\listoffigures` | a fragment holds `\begin{figure}` with a `\caption` |
 | `### List of Tables {#tables}` | the same with `\listtablename` and `\listoftables` | a fragment holds a `longtable` with a `\caption` |
+| `### Index {#index}` | `\printindex`, after the bibliography wherever the outline lists it | step 3 wrote `index-terms.json`; see "The index" below |
 
 `\cleardoublepage` before `\phantomsection` puts the contents entry on
 the list's own page; `\listoffigures` adds none of its own.
@@ -124,7 +125,10 @@ are the author's. It uses three macros the skeleton defines:
   outline and the tool that built it; it is not a copyright date.
 
 **An authored preamble, if the book has one.** If
-`content/specs/<book>/preamble.tex` exists, copy it beside `book.tex` and
+`content/specs/<book>/preamble.tex` exists, copy it beside `book.tex`
+(copy, never `\input` across directories: every `\input` path in
+`book.tex` is relative to the book's own directory, and one that reached
+out of it would break the moment the book was built anywhere else) and
 `\input` it as the **last line of the preamble**, immediately before
 `\begin{document}`, so it overrides every default the skeleton sets. It has to
 land there rather than later in the document: a `\setcounter` after
@@ -283,7 +287,17 @@ unit, through the revising skill the step that sent you here names.
 
 **Build the book with LuaLaTeX** (#1037): `lualatex`, `bibtexu`, then
 `lualatex` twice, from the book's own directory, as SKILL.md's step 9
-gives them. The skeleton is written for that engine and no
+gives them; with `{#index}`, then `registry index` and one more
+`lualatex` pass.
+Measured on the reference book (287 pages): the four passes take about
+86 s against pdflatex's 26 s, and two things pdflatex got wrong come out
+right. Classic `bibtex` abbreviates a first name by its first *byte*, so
+`Ö. Babur` and `É. Poirier` lost their initials under pdflatex and are an
+invalid-UTF-8 error under LuaLaTeX; `bibtexu` abbreviates by character.
+Checking `book.log` for a dropped citation became load-bearing when the
+bibliography moved to the end of the book: before that, citeproc had
+already resolved every citation and there was nothing for the warning
+to report. The skeleton is written for that engine and no
 other: `fontspec` and `unicode-math` exist only under LuaLaTeX (and
 XeLaTeX), and the font header is LuaLaTeX's.
 
@@ -360,3 +374,34 @@ empty, half bold or repeated; `registry check` lists each.
 What neither page can catch is a qualifier inside a term or a definition
 that only says "as before"; both print as written, which is why the
 second sign-off reads them.
+
+**The index** (#1168, docs/book/BOOK-INDEX.md). Only when the outline
+has `### Index {#index}`; without it, none of this is written and the
+build is the four passes above.
+
+- **Preamble:** `\usepackage{imakeidx}` and
+  `\makeindex[noautomatic,intoc]`, both *before* `hyperref`, as the
+  skeleton places them. `noautomatic` because the pipeline's TeX runs
+  have no shell escape, so `imakeidx` cannot start the indexer itself;
+  `intoc` lists the index in the contents.
+- **Where:** `\printindex` after `\bibliography{...}`, under
+  `\backmatter`: the index is the book's last page.
+- **Which units carry entries:** every chapter and appendix, rendered in
+  step 4 with `--index-terms`. Front and back matter (a preface, "About
+  the author") are not indexed and are rendered without it; `registry
+  index` reads a sidecar for each numbered unit and refuses if one is
+  missing.
+- **Order:** `registry index` reads `book.idx` after the third
+  `lualatex` pass, once citations, cross-references and the contents
+  have settled the page breaks, and writes `book.ind` for one more
+  `lualatex` pass.
+  The index adds pages only after the bibliography, so it moves no page
+  number it lists.
+- **What it writes:** `book-index.idx` (each id turned into its printed
+  entry), `book.ist` (the `upmendex` style) and `book.ind`, beside
+  `book.tex`; and the report, `content/specs/<book>/registries/index.md`
+  and `index.json`. A stale build (a chapter rendered against an older
+  term table) refuses and writes nothing: re-run steps 3 and 4.
+- **Fixing an entry** is never this skill's job: every finding in the
+  report names the `index.toml` line that fixes it, and `index.toml` is
+  the author's.

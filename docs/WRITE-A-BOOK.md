@@ -34,25 +34,26 @@ the reasoning, and each step links to the part it rests on.
 
 | Page | Steps | What you do there |
 | --- | --- | --- |
-| [Plan the outline](book/outline.md) | 1 | write `spec.md`: parts, chapters, sections, and the front and back matter |
-| [Sign the outline off](book/sign-off.md) | 2 | the first human gate |
-| [Write and accept the chapters](book/chapters.md) | 3, 3b, 4 | hand each chapter to its author or genre skill, then accept it |
-| [Build the registries](book/registries.md) | 5 | terminology, claims, cross-references, the Glossary and List of Symbols |
-| [Assemble, build and sign off the book](book/assemble.md) | 6, 7, 7b, 8 | `book.tex`, the PDF, the one book-level review aid, the second human gate |
+| [Plan the outline](book/OUTLINE.md) | 1 | write `spec.md`: parts, chapters, sections, and the front and back matter |
+| [Sign the outline off](book/SIGN-OFF.md) | 2 | the first human gate |
+| [Write and accept the chapters](book/CHAPTERS.md) | 3, 3b, 4 | hand each chapter to its author or genre skill, then accept it |
+| [Build the registries](book/REGISTRIES.md) | 5 | terminology, claims, cross-references, the Glossary and List of Symbols |
+| [Assemble, build and sign off the book](book/ASSEMBLE.md) | 6, 7, 7b, 8 | `book.tex`, the PDF, the one book-level review aid, the second human gate |
 
 **The workflows**, for the parts of a book that are not ordinary
 chapters, and for the book changing under you:
 
 | Page | When you need it |
 | --- | --- |
-| [Front matter: preface and copyright page](book/front-matter.md) | writing the preface, setting the author and licence, the build line |
-| [Appendices](book/appendices.md) | material numbered A, B, ... after the last chapter |
-| [Back matter: glossary, symbols and lists](book/back-matter.md) | which reference pages print, in what order, and how to drop one |
-| [Changing the outline after sign-off](book/changing-the-outline.md) | adding, removing or moving a chapter once prose exists |
-| [Retrofitting a book drafted before this track](book/retrofit.md) | chapters that already exist, written without an outline |
+| [Front matter: preface and copyright page](book/FRONT-MATTER.md) | writing the preface, setting the author and licence, the build line |
+| [Appendices](book/APPENDICES.md) | material numbered A, B, ... after the last chapter |
+| [Back matter: glossary, symbols, lists and the index](book/BACK-MATTER.md) | which reference pages print, in what order, and how to drop one |
+| [The index](book/BOOK-INDEX.md) | how the index is built from the glossary, and how `index.toml` and its report tune it |
+| [Changing the outline after sign-off](book/CHANGING-THE-OUTLINE.md) | adding, removing or moving a chapter once prose exists |
+| [Retrofitting a book drafted before this track](book/RETROFIT.md) | chapters that already exist, written without an outline |
 
 **The reasoning** behind all of it is on one page:
-[Design notes](book/design-notes.md).
+[Design notes](book/DESIGN-NOTES.md).
 
 ## 🔑 The constraint everything here answers
 
@@ -75,16 +76,16 @@ sign-offs is mechanical.
 
 | Step | Command | Who runs it | Page |
 | --- | --- | --- | --- |
-| 1 | `spec init`, then edit `spec.md` | you | [outline](book/outline.md) |
-| 2 | `spec sign` | **you, and only you** | [sign-off](book/sign-off.md) |
-| 3 | `spec seed`, then fill in each chapter's `outline.md` | you | [chapters](book/chapters.md) |
-| 3b | `unit contract`, then a genre skill writes the chapter (you write the preface) | you, then skill | [chapters](book/chapters.md) |
-| 4 | `spec align`, then `unit accept` | you, per unit | [chapters](book/chapters.md) |
-| 5 | `registry build`, `registry check` | you or the assembler | [registries](book/registries.md) |
-| 6 | the `book-assembler` skill composes `book.tex` | skill | [assemble](book/assemble.md) |
-| 7 | `lualatex`, `bibtexu`, `lualatex` x2 | you or the assembler | [assemble](book/assemble.md) |
-| 7b | `review union` | you | [assemble](book/assemble.md) |
-| 8 | read it | **you, and only you** | [assemble](book/assemble.md) |
+| 1 | `spec init`, then edit `spec.md` | you | [outline](book/OUTLINE.md) |
+| 2 | `spec sign` | **you, and only you** | [sign-off](book/SIGN-OFF.md) |
+| 3 | `spec seed`, then fill in each chapter's `outline.md` | you | [chapters](book/CHAPTERS.md) |
+| 3b | `unit contract`, then a genre skill writes the chapter (you write the preface) | you, then skill | [chapters](book/CHAPTERS.md) |
+| 4 | `spec align`, then `unit accept` | you, per unit | [chapters](book/CHAPTERS.md) |
+| 5 | `registry build`, `registry check` | you or the assembler | [registries](book/REGISTRIES.md) |
+| 6 | the `book-assembler` skill composes `book.tex` | skill | [assemble](book/ASSEMBLE.md) |
+| 7 | `lualatex`, `bibtexu`, `lualatex` x2; with an index, `registry index` and one more `lualatex` | you or the assembler | [assemble](book/ASSEMBLE.md) |
+| 7b | `review union` | you | [assemble](book/ASSEMBLE.md) |
+| 8 | read it | **you, and only you** | [assemble](book/ASSEMBLE.md) |
 
 Steps 3b and 4 repeat per chapter. Steps 5 to 7 are what
 `.claude/skills/book-assembler/` does in one run.
@@ -149,7 +150,7 @@ the same rule `content/dossiers/`, `content/rendered/` and
 
 ## ➡ Where to start
 
-With a synced corpus, go to [Plan the outline](book/outline.md). If the
+With a synced corpus, go to [Plan the outline](book/OUTLINE.md). If the
 chapters already exist, start with
-[Retrofitting a book drafted before this track](book/retrofit.md)
+[Retrofitting a book drafted before this track](book/RETROFIT.md)
 instead.

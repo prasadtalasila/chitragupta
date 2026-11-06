@@ -1446,6 +1446,7 @@ does not cover.
 | `--no-collapse-citations` | off | Render a run as `[3], [4], [5], [6]` instead of `[3]–[6]`, i.e. leave the style exactly as it is on disk |
 | `--fragment` | off | Emit an `\input`-able LaTeX fragment (no preamble) whose top heading is a chapter, for assembling a book; see [below](#-assembling-a-book---fragment-and---output-dir) |
 | `--output-dir DIR` | mirrored | Write here instead of `content/rendered/<mirrored path>`, a `pdf`'s figure looks included; confined to `content/` |
+| `--index-terms PATH` | off | With `--fragment` only: place the book index's entries from the term table `registry build --index` wrote, and write `<unit>.index.json` beside the fragment; see [the index](book/BOOK-INDEX.md) |
 
 `--format md` on a **Markdown** draft is a special case, and the one
 output you can read without a PDF viewer. It writes a `.md` beside the
@@ -1767,7 +1768,7 @@ chitragupta draft spec seed   content/drafts/<book> --genre <genre> [--dry-run]
 
 | Command | Does | Exit |
 | --- | --- | --- |
-| `init` | write an outline skeleton with front and back matter, a preface template (`content/drafts/<book>/preface.md`) and a copyright page template (`content/specs/<book>/copyright.tex`); `--author` writes the outline's `- author:` line. Never overwrites the two templates | 1 if a spec is already there |
+| `init` | write an outline skeleton with front and back matter, a preface template (`content/drafts/<book>/preface.md`), a copyright page template (`content/specs/<book>/copyright.tex`) and the index's exceptions (`content/specs/<book>/index.toml`); `--author` writes the outline's `- author:` line. Never overwrites the three templates | 1 if a spec is already there |
 | `show` | the outline as a tree, under its title and `author:` line, or `--unit <id>` for one unit's slice | 1 on an unknown unit or a spec that does not parse |
 | `sign` | record that a human approved this outline, by whole-file digest and one per chapter; and, while `copyright.tex` still holds its `<year>` placeholder, write the current year over it (in practice once, at the first sign-off) | 1 on a spec that does not parse |
 | `status` | what the outline holds, whether it is signed off, and which chapters moved | 1 when unsigned or changed since sign-off |
@@ -1781,17 +1782,18 @@ headings inside it. Every part, chapter and section needs an explicit
 orphans the units written against it.
 
 Three part ids are reserved, `{#front}` (first part), `{#appendices}`
-(after every ordinary part) and `{#back}` (last part), and four chapter
+(after every ordinary part) and `{#back}` (last part), and five chapter
 ids name pages the assembler generates, allowed only under `{#front}` or
-`{#back}`: `{#glossary}`, `{#symbols}`, `{#figures}`, `{#tables}`. An
-outline that puts one in the wrong place does not parse. The workflows
-are [front matter](book/front-matter.md), [appendices](book/appendices.md)
-and [back matter](book/back-matter.md).
+`{#back}`: `{#glossary}`, `{#symbols}`, `{#figures}`, `{#tables}`, and
+`{#index}`, which only `{#back}` may hold. An outline that puts one in
+the wrong place does not parse. The workflows are
+[front matter](book/FRONT-MATTER.md), [appendices](book/APPENDICES.md),
+[back matter](book/BACK-MATTER.md) and [the index](book/BOOK-INDEX.md).
 
 `status`'s exit code is **not a gate**. It reads back a record of a
 person's decision (did a human approve this outline?) rather than
 judging any draft's content, and nothing it says can refuse a write.
-[the book design notes](book/design-notes.md#-what-statuss-exit-code-is-and-is-not)
+[the book design notes](book/DESIGN-NOTES.md#-what-statuss-exit-code-is-and-is-not)
 has that
 reconciliation against [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4".
 
@@ -1822,7 +1824,7 @@ it can answer "does this need regenerating?".
 
 A unit is a chapter the outline describes at section level, the single
 section of a chapter described only at chapter level, or a chapter that
-declares no sections at all (a preface, an appendix). The four generated
+declares no sections at all (a preface, an appendix). The five generated
 pages are not units.
 
 `accept` **invokes the citation gate, it does not replace it**: a unit
@@ -1836,9 +1838,10 @@ deterministic pass
 and written under `content/specs/<book>/registries/`.
 
 ```bash
-chitragupta draft registry build   content/drafts/<book> [--glossary PATH] [--notation PATH]
+chitragupta draft registry build   content/drafts/<book> [--glossary PATH] [--notation PATH] [--index PATH]
 chitragupta draft registry check   content/drafts/<book>
 chitragupta draft registry excerpt content/drafts/<book> <unit-id>
+chitragupta draft registry index   content/drafts/<book> --idx content/rendered/<book>/book.idx
 ```
 
 | Command | Does | Exit |
@@ -1846,6 +1849,8 @@ chitragupta draft registry excerpt content/drafts/<book> <unit-id>
 | `build` | rebuild `terms.md`, `claims.md`, `xrefs.md` from accepted units; with `--glossary`/`--notation`, also write the book's Glossary and List of Symbols as LaTeX from the units' `scope.md` glossaries | 1 if the book has no readable outline; with either flag, also 1 if a glossary bullet cannot be printed or pandoc is missing, and then no page is written |
 | `check` | what the registries disagree on | **always 0** |
 | `excerpt` | what one unit's generation should be told the rest of the book settled | 1 only if the book has no readable outline |
+| `build --index PATH` | also write the index's term table, `index-terms.json`, from the glossaries and `content/specs/<book>/index.toml` | 1 if `index.toml` is malformed or names a term, chapter or target that does not exist, and then nothing is written |
+| `index` | after the book's third `lualatex` pass: turn `book.idx` into `book.ind` through `upmendex`, and write `index.md` and `index.json` beside the other registries, each finding with the `index.toml` line that fixes it | 1 on a stale build (a chapter rendered without, or against an older, term table), a `book.idx` older than the table or a sidecar, a missing `upmendex` or pandoc, or an `upmendex` failure; no `book.ind` and no report are written then |
 
 **`check` is a review aid and exits 0 whatever it finds**, like every
 `chitragupta.review` aid and unlike `spec status`/`unit status`. Those two report
@@ -1853,7 +1858,7 @@ whether a *human decided* something; this reports a *machine's reading of
 prose*, which is judgement however mechanical the arithmetic. There is no
 flag that makes it block (`build --glossary` refusing is a build declining
 to write an incomplete page, and `check` reports the same bullets);
-[the book design notes](book/design-notes.md#-why-registry-check-exits-0-when-the-two-status-commands-do-not)
+[the book design notes](book/DESIGN-NOTES.md#-why-registry-check-exits-0-when-the-two-status-commands-do-not)
 has the argument, and [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" the
 rule behind it.
 

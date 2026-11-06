@@ -270,8 +270,30 @@ install_os_deps() {
     # Pinning opencv-python-headless instead does not work: rapidocr
     # requires opencv-python by distribution name, so both would install
     # and clobber the same cv2/ directory.
+    # texlive-binaries also owns /usr/bin/upmendex and texlive-latex-extra
+    # ships imakeidx.sty (both confirmed via `dpkg -S`): a book's index
+    # (#1168, docs/book/BOOK-INDEX.md) loads imakeidx and runs upmendex
+    # between its LuaLaTeX passes. Both arrive with packages listed for
+    # other reasons, so they are checked by name rather than trusted to
+    # survive a later edit to the list above.
 
+    check_book_index_tools
     install_vale
+}
+
+# What a book's index needs from TeX Live (#1168), named if missing.
+check_book_index_tools() {
+    local missing=()
+    if ! command -v upmendex >/dev/null 2>&1; then
+        missing+=("upmendex (texlive-binaries)")
+    fi
+    if ! command -v kpsewhich >/dev/null 2>&1 || ! kpsewhich imakeidx.sty >/dev/null 2>&1; then
+        missing+=("imakeidx.sty (texlive-latex-extra)")
+    fi
+    if ((${#missing[@]})); then
+        echo "error: a book's index needs ${missing[*]}, which os-deps did not install." >&2
+        return 1
+    fi
 }
 
 # Vale, the prose linter `python -m chitragupta.draft style` shells out to. Not in

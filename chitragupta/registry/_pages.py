@@ -164,7 +164,7 @@ def _notation_tex(rows, latex) -> str:
 def render(built: dict, convert) -> "tuple[str | None, str | None]":
     """The two pages as LaTeX, or `None` for one with nothing on it.
 
-    `convert` is `render_output._pandoc.markdown_to_latex`, passed in so
+    `convert` is `render_output._markdown_to_latex.markdown_to_latex`, passed in so
     the layout is testable without pandoc. Every Markdown text on both
     pages goes through it in one call.
     """

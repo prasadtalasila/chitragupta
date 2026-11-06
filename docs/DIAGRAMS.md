@@ -40,8 +40,8 @@ The fenced `mermaid` blocks below are the source of truth, and GitHub
 renders them inline, so a change to the pipeline and a change to its
 diagram land in the same diff. `docs/diagrams/` carries the same thirteen as
 standalone `.mmd` sources and `.svg` exports, for slides, a paper, or a
-viewer that doesn't render Mermaid; see [Editing these](#-editing-these)
-at the end.
+viewer that doesn't render Mermaid, and does the same for every diagram
+in the other documents; see [Editing these](#-editing-these) at the end.
 
 ---
 
@@ -1321,7 +1321,17 @@ one into a slide deck or a paper without copying it out of this document:
 | Path | What it is |
 | --- | --- |
 | `docs/diagrams/<name>.mmd` | the Mermaid source, with a title line |
-| `docs/diagrams/svg/<name>.svg` | the rendered export, ~1900px wide on a white background |
+| `docs/diagrams/svg/<name>.svg` | for the web: GitHub, the docs site, a browser. ~1900px wide on white |
+| `docs/diagrams/pdf/<name>.pdf` | for a paper or slides: vector, one page cropped to the diagram, text selectable |
+
+**Use the SVG only where a browser draws it.** Mermaid writes a
+diagram's labels as HTML inside `<foreignObject>`, which every browser
+renders and LaTeX, Inkscape, `rsvg-convert` and most slide tools do not:
+they show the boxes and arrows with no text. The PDF comes from the same
+browser render, so its labels survive anywhere. Turning
+`htmlLabels` off instead was tried and rejected: the labels' `<b>`, `<i>`,
+`<small>` and `<br/>` then print as literal tags and the spaces between
+words collapse.
 
 | Diagram | `<name>` |
 | --- | --- |
@@ -1339,8 +1349,40 @@ one into a slide deck or a paper without copying it out of this document:
 | Topic discovery: the resolution ladder | `t1-discovery-ladder` |
 | Topic discovery: the two graphs | `t2-topic-graphs` |
 
-Those are exports, not a second source. Edit the fenced block first, then
-sync and re-render, or the two drift apart:
+### 🗂 Diagrams in other documents
+
+A Mermaid block anywhere else under `docs/` is exported the same way. The
+line directly above its fence names it:
+
+```markdown
+<!-- diagram: book-index-flow -->
+```
+
+`--sync` refuses a block with no such line, and a name used twice, so no
+diagram in the documentation goes without an export or overwrites
+another's. There are sixteen:
+
+| Diagram | In | `<name>` |
+| --- | --- | --- |
+| The four layers | [ARCHITECTURE.md](ARCHITECTURE.md) | `architecture-layers` |
+| The four stages | [CORPUS-SEARCH.md](CORPUS-SEARCH.md) | `corpus-search-stages` |
+| Why the rerank sits where it does | [CORPUS-SEARCH.md](CORPUS-SEARCH.md) | `corpus-search-rerank` |
+| The guarantee everything else serves | [FEATURES.md](FEATURES.md) | `features-guarantee` |
+| The four layers | [FEATURES.md](FEATURES.md) | `features-layers` |
+| The dossier | [FEATURES.md](FEATURES.md) | `features-dossier` |
+| Where the stage sits | [GROBID-CITATION-GRAPH.md](GROBID-CITATION-GRAPH.md) | `grobid-stage` |
+| The citation graph | [GROBID-CITATION-GRAPH.md](GROBID-CITATION-GRAPH.md) | `grobid-citation-graph` |
+| The terms | [LADDERS.md](LADDERS.md) | `ladders-terms` |
+| The pipeline in one pass | [LADDERS.md](LADDERS.md) | `ladders-pipeline` |
+| The mapping | [LADDERS.md](LADDERS.md) | `ladders-mapping` |
+| A single-context skill | [PROMPTS.md](PROMPTS.md) | `prompts-single-context` |
+| The orchestrating context | [PROMPTS.md](PROMPTS.md) | `prompts-orchestrator` |
+| A dispatched subagent's context | [PROMPTS.md](PROMPTS.md) | `prompts-subagent` |
+| The short answer | [RETRIEVAL.md](RETRIEVAL.md) | `retrieval-short-answer` |
+| How the book index is built | [book/BOOK-INDEX.md](book/BOOK-INDEX.md) | `book-index-flow` |
+
+All twenty-nine are exports, not a second source. Edit the fenced block
+first, then sync and re-render, or the two drift apart:
 
 ```bash
 python scripts/render_diagrams.py --sync        # stamp the theme, copy blocks to .mmd
@@ -1349,7 +1391,11 @@ python scripts/render_diagrams.py v1-overview   # or no name, for all of them
 ```
 
 `--sync` prints the names whose `.mmd` changed, which are the ones to
-re-render. It touches no `.svg` itself.
+re-render. It touches no export itself. It stamps the house theme below
+into every block it exports, in whichever document the block lives, and
+writes `docs/stylesheets/mermaid.css`, which sets the docs site's own
+Mermaid colours to the same palette: mkdocs-material's colour variables
+otherwise override the theme, and an unclassed node turned amber.
 
 ### 🎨 The house theme
 
@@ -1379,8 +1425,10 @@ neither stands out. `--sync` adds the roles to flowcharts and state
 diagrams, the two types Mermaid lets a `classDef` style. A sequence
 diagram has no classes, and the directive alone gives it the palette.
 
-The script runs `mmdc -i <name>.mmd -o svg/<name>.svg -b white -w 1900`
-and records the fingerprint of each `.mmd` it rendered in
+The script runs `mmdc -i <name>.mmd -b white` twice, to
+`svg/<name>.svg` with `-w 1900` and to `pdf/<name>.pdf` with `--pdfFit`,
+and records the fingerprint of each `.mmd` whose two exports both
+rendered in
 `docs/diagrams/svg/sources.json`. `tests/test_diagrams_in_sync.py`
 checks every export against that file, so an `.mmd` edited without a
 re-render fails, naming the diagram to re-render. On a host that cannot

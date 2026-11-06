@@ -125,13 +125,8 @@ from chitragupta.render_output._figures import (
     _with_figures_for,
 )
 from chitragupta.render_output._cli import main
-from chitragupta.render_output._pandoc import (
-    _has_code_block,
-    _pandoc_command,
-    _render_csl,
-    _require_pdf_toolchain,
-    _run_pandoc,
-)
+from chitragupta.render_output._pandoc import _has_code_block, _pandoc_command, _render_csl
+from chitragupta.render_output._pandoc import _require_pdf_toolchain, _run_pandoc
 from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES, _output_dir
 from chitragupta.render_output._gate import gated_warnings
 from chitragupta.render_output._substitution import _checked_math_mapping, _substituted
@@ -195,6 +190,7 @@ def render(
     collapse_citations: bool | None = None,
     output_dir: str | Path | None = None,
     fragment: bool = False,
+    index_terms: str | Path | None = None,
 ) -> Path:
     """Renders `input_path` (Pandoc markdown) to `output_format` (pdf/tex/docx/...).
 
@@ -231,6 +227,10 @@ def render(
     `papersize`/`margin` default to this project's fixed house style --
     `\\documentclass[12pt,a4paper]{article}` plus
     `\\usepackage[margin=1in]{geometry}`.
+
+    `index_terms` names a book's `index-terms.json` (#1168); a fragment
+    rendered with it carries the book index's `\\index{}` entries and
+    leaves `<stem>.index.json` beside it.
     """
     input_path = config.require_inside_content(Path(input_path))
     out_dir = _target_dir(input_path, output_dir)
@@ -306,6 +306,7 @@ def render(
             fragment,
             _has_code_block(draft_text),
             _unicode.preamble_files(draft_text, output_format, fragment, Path(tmp), out_dir),
+            index_terms,
         )
         _run_pandoc(cmd, env)
 

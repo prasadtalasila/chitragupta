@@ -17,6 +17,8 @@
 \usepackage{tikz}
 \usetikzlibrary{positioning,fit}             % latex-conventions.md, "TikZ libraries"
 \input{chitragupta-floats}                    % latex-conventions.md, "Figure placement"
+\usepackage{imakeidx}                        % only if the outline has {#index}: before hyperref
+\makeindex[noautomatic,intoc]                % latex-conventions.md, "The index"
 \usepackage[hidelinks]{hyperref}
 \usepackage{cleveref}
 \usepackage{fvextra}                         % latex-conventions.md, "Wide code lines"
@@ -53,4 +55,5 @@
 \bibliographystyle{IEEEtran}
 \addcontentsline{toc}{chapter}{Bibliography}
 \bibliography{bibliography}                  % the .bib render wrote here
+\printindex                                  % only if the outline has {#index}: always last
 \end{document}

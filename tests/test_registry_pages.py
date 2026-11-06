@@ -11,7 +11,7 @@ import pytest
 
 from chitragupta import registry
 from chitragupta.registry import _pages
-from chitragupta.render_output import _pandoc
+from chitragupta.render_output import _markdown_to_latex
 from chitragupta.render_output._errors import ConversionError, MissingBinary
 from tests.conftest import pandoc_available
 
@@ -263,7 +263,7 @@ def test_the_real_conversion_escapes_and_typesets(book):
         math={"p": "p"},
         symbols=[("p", "**Share**")],
     )
-    glossary, notation = _pages.render(registry.build(book), _pandoc.markdown_to_latex)
+    glossary, notation = _pages.render(registry.build(book), _markdown_to_latex.markdown_to_latex)
     assert "50\\% of \\textbf{all} runs \\& more." in glossary
     assert "\\(p\\) & Share" in notation
 

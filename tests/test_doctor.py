@@ -52,6 +52,11 @@ class TestCheckBinaries:
         beside the pdftotext already here."""
         assert {"pdftotext", "pdftoppm", "pdfinfo"} <= set(doctor.BINARIES)
 
+    def test_the_book_builds_tools_are_checked(self):
+        """A book's build runs `bibtexu` for its bibliography and, since
+        #1168, `upmendex` for its index; both ship in texlive-binaries."""
+        assert {"bibtexu", "upmendex"} <= set(doctor.BINARIES)
+
 
 class TestCheckOptionalPdflatex:
     """pdflatex is no longer the pipeline's, but a thesis author whose

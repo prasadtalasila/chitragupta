@@ -1,0 +1,10 @@
+% upmendex style for a book's index (#1168). A template: `registry index`
+% writes it beside book.tex as book.ist, with @HEADINGS@ set from
+% index.toml's `letter_headings` (1: a bold letter between groups; 0: a
+% gap). Sorting is word by word unless index.toml says `sort = "letter"`,
+% which passes upmendex -l. docs/book/BOOK-INDEX.md has the rest.
+headings_flag @HEADINGS@
+heading_prefix "{\\bfseries "
+heading_suffix "}\\par\\nopagebreak\n"
+symhead_positive "Symbols"
+numhead_positive "Numbers"

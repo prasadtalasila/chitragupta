@@ -8,6 +8,7 @@ render records nothing, and what the manifest holds.
 """
 
 import json
+import re
 import subprocess
 
 import pytest
@@ -54,21 +55,19 @@ class TestFingerprint:
 
 
 class TestRender:
-    def test_it_runs_the_documented_command_for_each_source(self, tree):
+    def test_it_runs_the_documented_commands_for_each_source(self, tree):
+        """An SVG for the web and a PDF for papers and slides: Mermaid writes
+        an SVG's labels as HTML, which only a browser draws, so the PDF comes
+        from the same browser render."""
         calls, run = recorder()
         assert render_diagrams.render(["a", "b"], run=run) == 0
-        assert calls[0] == [
-            "mmdc",
-            "-i",
-            str(tree / "a.mmd"),
-            "-o",
-            str(tree / "svg" / "a.svg"),
-            "-b",
-            "white",
-            "-w",
-            "1900",
+        source = ["mmdc", "-i", str(tree / "a.mmd"), "-b", "white"]
+        assert calls[:2] == [
+            [*source, "-o", str(tree / "svg" / "a.svg"), "-w", "1900"],
+            [*source, "-o", str(tree / "pdf" / "a.pdf"), "--pdfFit"],
         ]
-        assert len(calls) == 2
+        assert len(calls) == 4
+        assert (tree / "pdf").is_dir()
 
     def test_it_records_each_rendered_sources_fingerprint(self, tree):
         _calls, run = recorder()
@@ -92,10 +91,19 @@ class TestRender:
         assert not (tree / "svg" / "sources.json").exists()
         assert "boom" in capsys.readouterr().err
 
+    def test_a_source_is_fresh_only_once_every_format_rendered(self, tree, capsys):
+        def run(argv, **kwargs):
+            failing = argv[argv.index("-o") + 1].endswith(".pdf")
+            return subprocess.CompletedProcess(argv, int(failing), stdout="", stderr="no pdf")
+
+        assert render_diagrams.render(["a"], run=run) == 1
+        assert not (tree / "svg" / "sources.json").exists()
+        assert "a.pdf: mmdc exited 1" in capsys.readouterr().err
+
     def test_a_puppeteer_config_is_passed_through(self, tree):
         calls, run = recorder()
         render_diagrams.render(["a"], run=run, puppeteer_config="pp.json")
-        assert calls[0][-2:] == ["-p", "pp.json"]
+        assert all(call[-2:] == ["-p", "pp.json"] for call in calls)
 
     def test_mmdc_missing_is_a_message_not_a_traceback(self, tree, capsys):
         def run(argv, **kwargs):
@@ -237,6 +245,8 @@ def docs(tree, tmp_path, monkeypatch):
     (tree / "a.mmd").write_text('---\ntitle: "A"\n---\nflowchart LR\n  A --> B\n', encoding="utf-8")
     monkeypatch.setattr(render_diagrams, "DIAGRAMS_MD", md)
     monkeypatch.setattr(render_diagrams, "STYLE_DOC", style)
+    # No other doc unless a test adds one: sync() reads every doc under DOCS.
+    monkeypatch.setattr(render_diagrams, "DOCS", tmp_path / "no-other-docs")
     return md
 
 
@@ -264,3 +274,73 @@ class TestSync:
         assert "render_diagrams.py a b" in capsys.readouterr().out
         assert render_diagrams.main(["--sync"]) == 0
         assert "already matches" in capsys.readouterr().out
+
+
+# --- diagrams outside DIAGRAMS.md --------------------------------------------
+
+
+@pytest.fixture
+def other(docs, tmp_path, monkeypatch):
+    """A second doc whose one block is named by its marker line."""
+    root = tmp_path / "docs-root"
+    (root / "book").mkdir(parents=True)
+    page = root / "book" / "PAGE.md"
+    page.write_text(
+        "# Page\n\n<!-- diagram: page-flow -->\n```mermaid\nflowchart TB\n  X --> Y\n```\n",
+        encoding="utf-8",
+    )
+    (root / "PLAIN.md").write_text("# No diagrams here\n", encoding="utf-8")
+    monkeypatch.setattr(render_diagrams, "DOCS", root)
+    return page
+
+
+class TestDiagramsOutsideDiagramsMd:
+    """Every Mermaid block in the docs gets an export, not only
+    DIAGRAMS.md's: a block elsewhere is named by the comment line above it."""
+
+    def test_sources_lists_diagrams_md_then_each_doc_with_blocks(self, other, docs):
+        assert render_diagrams.sources() == [(docs, ["a", "b"]), (other, ["page-flow"])]
+
+    def test_sync_stamps_and_exports_a_block_in_another_doc(self, other, tree):
+        assert render_diagrams.sync() == ["a", "b", "page-flow"]
+        block = render_diagrams.blocks(other.read_text(encoding="utf-8"))[0]
+        assert block == render_diagrams.stamp("flowchart TB\n  X --> Y\n", THEME)
+        assert (tree / "page-flow.mmd").read_text(encoding="utf-8") == block
+        assert "<!-- diagram: page-flow -->\n```mermaid\n" in other.read_text(encoding="utf-8")
+
+    def test_a_block_without_a_marker_is_refused(self, other):
+        other.write_text(
+            other.read_text(encoding="utf-8").replace("<!-- diagram: page-flow -->\n", ""),
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match=r"book/PAGE.md.*<!-- diagram: <name> -->"):
+            render_diagrams.sources()
+
+    def test_a_name_used_twice_is_refused(self, other):
+        other.write_text(
+            other.read_text(encoding="utf-8").replace("page-flow", "a"), encoding="utf-8"
+        )
+        with pytest.raises(ValueError, match="more than one diagram: a"):
+            render_diagrams.sources()
+
+
+class TestTheSiteStylesheet:
+    """mkdocs-material draws Mermaid with its own colour variables, which
+    beat the diagrams' init directive: an unclassed node came out in the
+    theme's amber accent on the site and house blue everywhere else."""
+
+    def test_it_sets_materials_mermaid_variables_from_the_palette(self):
+        css = render_diagrams.mermaid_css(render_diagrams.palette(PALETTE_DOC))
+        init, _ = THEME
+        assert '[data-md-color-scheme="default"]' in css
+        for variable in ("node-bg-color", "node-fg-color", "edge-color", "label-fg-color"):
+            assert f"--md-mermaid-{variable}:" in css
+        fill = re.search(r'"primaryColor": "(#[0-9A-F]{6})"', init).group(1)
+        assert f"--md-mermaid-node-bg-color: {fill};" in css
+
+    def test_sync_writes_it(self, docs, tmp_path):
+        render_diagrams.sync()
+        written = (tmp_path / "no-other-docs" / "stylesheets" / "mermaid.css").read_text(
+            encoding="utf-8"
+        )
+        assert written == render_diagrams.mermaid_css(render_diagrams.palette(PALETTE_DOC))

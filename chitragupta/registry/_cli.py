@@ -1,4 +1,4 @@
-"""`python -m chitragupta.draft registry`'s three commands, and the Markdown the
+"""`python -m chitragupta.draft registry`'s four commands, and the Markdown the
 registries are written as.
 
 Split from `chitragupta/registry/__init__.py` the way `chitragupta/spec/_cli.py` and
@@ -15,9 +15,10 @@ from pathlib import Path
 
 from chitragupta import spec
 from chitragupta.unit import UnitError
-from chitragupta.registry import _pages, _symbols, _terms, build, excerpt, findings, registry_dir
+from chitragupta.registry import _index_cli, _pages, _symbols, _terms
+from chitragupta.registry import build, excerpt, findings, registry_dir
 from chitragupta.render_output._errors import ConversionError, MissingBinary
-from chitragupta.render_output._pandoc import markdown_to_latex
+from chitragupta.render_output._markdown_to_latex import markdown_to_latex
 
 _BOOK_HELP = "The book's directory under content/drafts/"
 
@@ -102,9 +103,12 @@ def _cmd_build(args) -> int:
     for path in _write(args.book, built):
         print(f"Wrote {path}.")
     print(f"  {_coverage(built)}")
+    code = 0
+    if args.index:
+        code = _index_cli.write_index(args.book, built, Path(args.index))
     if args.glossary or args.notation:
-        return _write_pages(built, args)
-    return 0
+        code = max(code, _write_pages(built, args))
+    return code
 
 
 def _write_pages(built: dict, args) -> int:
@@ -206,7 +210,21 @@ def main(argv: list[str] | None = None) -> int:
     p_build.add_argument(
         "--notation", metavar="PATH", help="Also write the book's List of Symbols as LaTeX to PATH"
     )
+    p_build.add_argument(
+        "--index",
+        metavar="PATH",
+        help="Also write the index's term table (index-terms.json) to PATH",
+    )
     p_build.set_defaults(func=_cmd_build)
+
+    p_index = sub.add_parser(
+        "index", help="Turn a typeset book's .idx into its index, and report on it"
+    )
+    p_index.add_argument("book", help=_BOOK_HELP)
+    p_index.add_argument(
+        "--idx", required=True, metavar="PATH", help="The book's .idx, after its second pass"
+    )
+    p_index.set_defaults(func=_index_cli.cmd_index)
 
     p_check = sub.add_parser("check", help="What the registries disagree on (always exits 0)")
     p_check.add_argument("book", help=_BOOK_HELP)

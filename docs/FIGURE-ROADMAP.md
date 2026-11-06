@@ -58,7 +58,7 @@ duplicates one of these is not worth filing.
 | `figure sync` | Stamps and refreshes the house block in figure files, and refuses to touch a block edited by hand | [CLI.md](CLI.md#-chitragupta-figure-sync) |
 | `figure new` and `figure look` | Start a figure from a scaffold; see it alone on the render's page, or on the draft's own page | [CLI.md](CLI.md#-chitragupta-figure-new) |
 | `figure check` | 36 numbered rules (28 objective, 8 advisory) with reasoned `% cg-allow:` exceptions. It covers routing (was VI.5: `c1` to `c7`), contrast, the type floor, off-palette colours and tints, wording, and agreement between a figure and its twin | [figure-checks/README.md](figure-checks/README.md) |
-| Element counts (most of VI.3) | Node and edge counts, height and slack, reported beside each layout's reference range and never as a cap | [figure-checks/size.md](figure-checks/size.md) |
+| Element counts (most of VI.3) | Node and edge counts, height and slack, reported beside each layout's reference range and never as a cap | [figure-checks/SIZE.md](figure-checks/SIZE.md) |
 | Per-layout reference files (was II.0) | One file per layout with its anti-patterns and reference ranges, and a pattern-to-layout router, under `.claude/skills/figure-drawer/references/` rather than `docs/figures/` | [FIGURE-DRAWER.md](FIGURE-DRAWER.md#-what-the-skill-reads) |
 | Taste gate and anti-patterns (was VI.6) | Questions the skill answers before drawing anything, and a named anti-pattern list per layout | [FIGURE-DRAWER.md](FIGURE-DRAWER.md#-what-it-does-step-by-step) |
 | The `figure-drawer` skill | One skill that every genre hands a figure to | [FIGURE-DRAWER.md](FIGURE-DRAWER.md) |
@@ -623,7 +623,7 @@ targets supply it.
 `figure check` reports node and edge counts, height and slack beside the
 range each layout's scaffold and exemplars measure, as advisory reports
 that never cap a figure
-([figure-checks/size.md](figure-checks/size.md)). Distinct colours and
+([figure-checks/SIZE.md](figure-checks/SIZE.md)). Distinct colours and
 words of text are not counted.
 
 **To settle:** whether "distinct colours used" should count palette
@@ -700,7 +700,7 @@ model is not needed for the first two:
 
 - **Chaotic routing** is largely geometry. `figure check`'s connector
   rules `c1` to `c7` measure it
-  ([figure-checks/connectors.md](figure-checks/connectors.md)).
+  ([figure-checks/CONNECTORS.md](figure-checks/CONNECTORS.md)).
 - **Illegible type** is measured against the body size by
   `type-below-floor`, and becomes arithmetic at final scale once the
   output target is known. See VI.2 and Part X.

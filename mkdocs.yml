@@ -66,6 +66,13 @@ theme:
     - navigation.top
     - navigation.tracking
 
+# The house colours for Mermaid diagrams. Material draws a diagram with its
+# own colour variables, which beat each block's init directive, so without
+# this an unclassed node took the theme's accent. Generated from the
+# palette by `python scripts/render_diagrams.py --sync`; never edit it.
+extra_css:
+  - docs/stylesheets/mermaid.css
+
 # Also matched to the parent, which serves /software.html rather than
 # /software/. One origin with two URL styles reads as two sites.
 use_directory_urls: false
@@ -186,18 +193,19 @@ nav:
       - "Tutorial: write a deep-research report": docs/WRITE-A-DEEP-RESEARCH-REPORT.md
       - "Tutorial: write a book":
           - Overview: docs/WRITE-A-BOOK.md
-          - "1. Plan the outline": docs/book/outline.md
-          - "2. Sign the outline off": docs/book/sign-off.md
-          - "3. Write and accept the chapters": docs/book/chapters.md
-          - "4. Build the registries": docs/book/registries.md
-          - "5. Assemble, build and sign off": docs/book/assemble.md
+          - "1. Plan the outline": docs/book/OUTLINE.md
+          - "2. Sign the outline off": docs/book/SIGN-OFF.md
+          - "3. Write and accept the chapters": docs/book/CHAPTERS.md
+          - "4. Build the registries": docs/book/REGISTRIES.md
+          - "5. Assemble, build and sign off": docs/book/ASSEMBLE.md
           - Workflows:
-              - "Front matter: preface and copyright": docs/book/front-matter.md
-              - Appendices: docs/book/appendices.md
-              - "Back matter: glossary, symbols and lists": docs/book/back-matter.md
-              - Changing the outline after sign-off: docs/book/changing-the-outline.md
-              - Retrofitting an existing book: docs/book/retrofit.md
-          - Design notes: docs/book/design-notes.md
+              - "Front matter: preface and copyright": docs/book/FRONT-MATTER.md
+              - Appendices: docs/book/APPENDICES.md
+              - Back matter: docs/book/BACK-MATTER.md
+              - The index: docs/book/BOOK-INDEX.md
+              - Changing the outline after sign-off: docs/book/CHANGING-THE-OUTLINE.md
+              - Retrofitting an existing book: docs/book/RETROFIT.md
+          - Design notes: docs/book/DESIGN-NOTES.md
       - "Drawing a figure: figure-drawer": docs/FIGURE-DRAWER.md
       - "Study notes in the sources' words: review-digest": docs/VERBATIM-DIGEST.md
       - Iterating on a draft: docs/DRAFT-ITERATION.md
@@ -213,13 +221,13 @@ nav:
       - TikZ figure style: docs/TIKZ-STYLE.md
       - Figure checks:
           - Reading a report: docs/figure-checks/README.md
-          - Build and coverage: docs/figure-checks/build.md
-          - Size: docs/figure-checks/size.md
-          - Nodes: docs/figure-checks/nodes.md
-          - Connectors: docs/figure-checks/connectors.md
-          - Colour and type: docs/figure-checks/colour-and-type.md
-          - Wording: docs/figure-checks/wording.md
-          - The ASCII twin: docs/figure-checks/twin.md
+          - Build and coverage: docs/figure-checks/BUILD.md
+          - Size: docs/figure-checks/SIZE.md
+          - Nodes: docs/figure-checks/NODES.md
+          - Connectors: docs/figure-checks/CONNECTORS.md
+          - Colour and type: docs/figure-checks/COLOUR-AND-TYPE.md
+          - Wording: docs/figure-checks/WORDING.md
+          - The ASCII twin: docs/figure-checks/TWIN.md
   - Discovery:
       - Topic discovery: docs/TOPIC-DISCOVERY.md
       - Explore the graph, CLI: docs/EXPLORE-CLI.md
