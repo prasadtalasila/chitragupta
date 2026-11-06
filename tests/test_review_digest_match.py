@@ -276,3 +276,101 @@ class TestPageNote:
     )
     def test_notes_only_a_disagreement(self, cited, pages, expected):
         assert match.page_note(cited, pages) == expected
+
+
+def an_own_run(*sentences: str, citekeys=(KEY,), line=3) -> Run:
+    lines = tuple(range(line, line + len(sentences)))
+    return Run(line, lines, tuple(sentences), tuple(citekeys), None, True)
+
+
+class TestOwnRuns:
+    """#1172: the drafter's own words are checked for support, never for
+    copying, and never raise `unquoted-text`."""
+
+    def test_a_supported_own_sentence_raises_nothing_and_counts_as_own(self):
+        checked = match.Checked()
+        run = an_own_run(
+            "Layered twins separate the physical entity from its models, one layer each."
+        )
+        match.check_run(run, a_lookup(passage(4, SOURCE_P4)), checked)
+        assert checked.findings == [] and checked.spans == []
+        assert checked.words_own == run.words and checked.own_fraction == 1.0
+        assert checked.own[0].citekeys == (KEY,)
+
+    def test_an_unsupported_own_sentence_is_unsupported_text_only(self):
+        checked = match.Checked()
+        run = an_own_run("Quantum annealers schedule bakery deliveries.")
+        match.check_run(run, a_lookup(passage(4, SOURCE_P4)), checked)
+        assert [f.cls for f in checked.findings] == ["unsupported-text"]
+        assert checked.findings[0].detail == {"support_score": 0.0, "page": None}
+        assert checked.words_flagged == run.words and checked.words_own == 0
+
+    def test_an_uncited_own_run_is_declared_own(self):
+        checked = match.Checked()
+        lookup = a_lookup()
+        match.check_run(
+            an_own_run("The corpus says nothing on cost.", citekeys=()), lookup, checked
+        )
+        assert checked.findings == [] and checked.words_own == 6
+        assert lookup.calls == []
+
+    def test_page_level_passages_are_enough_for_support(self):
+        checked = match.Checked()
+        page_only = Passage(4, distinctive(SOURCE_P4))
+        run = an_own_run("Layered twins separate the physical entity from its models.")
+        match.check_run(run, a_lookup(page_only), checked)
+        assert checked.findings == [] and checked.words_own == run.words
+
+    def test_a_source_with_no_passages_at_all_is_not_checkable(self):
+        checked = match.Checked()
+        run = an_own_run("Layered twins separate things.")
+        match.check_run(run, a_lookup(reason="not parsed"), checked)
+        assert checked.unverifiable[0].reason == f"{KEY}: not parsed"
+        assert checked.words_unverifiable == run.words
+
+    def test_no_reason_still_says_why(self):
+        checked = match.Checked()
+        match.check_run(an_own_run("Layered twins."), a_lookup(), checked)
+        assert checked.unverifiable[0].reason == f"{KEY}: no passages"
+
+
+class TestDanglingInTheMatcher:
+    def test_a_dangling_copied_run_stays_copied_and_counts_in_no_fraction(self):
+        checked = match.Checked()
+        source = "Each layer exposes one interface to the next [2]."
+        match.check_run(
+            a_run("Each layer exposes one interface to the next [2]."),
+            a_lookup(passage(4, source)),
+            checked,
+        )
+        assert [f.cls for f in checked.findings] == ["dangling-reference"]
+        assert checked.words_flagged == 0
+        assert checked.words_copied == checked.words_total
+        assert checked.unsupported_fraction == 0.0
+
+    def test_the_four_shares_partition_the_digest(self):
+        checked = match.Checked()
+        lookup = a_lookup(passage(4, SOURCE_P4), passage(7, SOURCE_P7))
+        match.check_run(
+            a_run("Operators can start developing against the interface alone."), lookup, checked
+        )
+        match.check_run(
+            an_own_run("Quantum annealers schedule bakery deliveries."), lookup, checked
+        )
+        match.check_run(an_own_run("A gap nobody filled.", citekeys=()), lookup, checked)
+        match.check_run(an_own_run("Hidden.", citekeys=("gone",)), a_lookup(), checked)
+        total = (
+            checked.words_copied
+            + checked.words_own
+            + checked.words_flagged
+            + checked.words_unverifiable
+        )
+        assert total == checked.words_total
+
+
+def test_a_weakly_supported_own_sentence_names_the_nearest_page():
+    checked = match.Checked()
+    run = an_own_run("Layered stacks of bakery ovens and quantum annealers deliver bread nightly.")
+    match.check_run(run, a_lookup(passage(4, SOURCE_P4)), checked)
+    assert [f.cls for f in checked.findings] == ["unsupported-text"]
+    assert checked.findings[0].detail["page"] == 4

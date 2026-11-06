@@ -2575,25 +2575,28 @@ digest's genre is recorded in its dossier, not its name: any draft under
 `content/drafts/` can be given to this aid, and one that is not a digest
 will simply report most of its prose as not copied.
 
-The report leads with three fractions that account for the whole
-digest:
+The report leads with four shares that account for the whole digest:
 
 | Line | Counts | Direction |
 | --- | --- | --- |
-| Unsupported fraction | the words of every sentence carrying any finding, a sentence counted once, over all words | down: the headline |
+| Unsupported fraction | the words of every sentence carrying an `unsupported-text`, `copy-mismatch` or `unquoted-text` finding, a sentence counted once, over all words | down: the headline |
 | Copied fraction | the words of every verified copied span, over all words | up |
+| Own words, supported or declared | the words of the drafter's own sentences that raised nothing: closed by `[see @key]` and supported by it, or in an `<!-- own: why -->` paragraph or a table | as few as the argument needs |
 | Not checkable | the words of every run any of whose cited sources has no Docling sidecar; the reason names the source and the stage to run | a fact about the corpus |
 
 A run found whole in its source is one copied span and no finding; a
 run whose sentences are all found but not contiguously is one span
-noted *assembled from N places*. A run that breaks is split into
-sentences, each of which lands in one or two classes:
+noted *assembled from N places*. A run closed by `[see @key]`, under
+an `<!-- own: why -->` line, or in a table row is the drafter's own and
+is checked for support only. A run that breaks is split into sentences,
+each of which lands in one or two classes:
 
 | Class | Means | Repair |
 | --- | --- | --- |
 | `unsupported-text` | the drafter's own sentence, and either no citation covers it or the cited source does not lexically support it | cite it, replace it with the source's words, or delete it |
 | `copy-mismatch` | not found verbatim, but mostly on one page of the source; the item names the page and the missing words | restore the exact wording |
-| `unquoted-text` | the drafter's own sentence, lexically supported by the cited source | replace it with a copied passage, or delete it |
+| `dangling-reference` | names a figure, equation, section, table or chapter the digest does not show, keeps a `[2]` reference marker, or is a copied run opening on "where", "thus" or "these" with nothing before it from the same source. Counted in no fraction | show the item, substitute it in brackets, delete the marker, or move the run's start or end |
+| `unquoted-text` | the drafter's own sentence, not declared with `see` or `own` | close it with a `see` citation, replace it with a copied passage, or delete it |
 
 Every item is `[surfaced]`, with a stable twelve-character id and the
 section it sits in, the way [`review agenda`](#-chitragupta-review-agenda)

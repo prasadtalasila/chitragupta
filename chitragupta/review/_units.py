@@ -44,9 +44,10 @@ UNITS = {
     "deep-research": "paragraph",
     "textbook-chapter": "section",
     "tutorial": "document",
-    # A digest fuses nothing: every run is one source's own words, so
-    # the multi-source rule has no paragraph to bind at (#991).
-    "digest": "document",
+    # A digest is a survey in the sources' words (#1172): each run is one
+    # source's, and a paragraph braids runs from two or more, so the
+    # survey's unit binds there exactly as it does in a survey.
+    "digest": "paragraph",
 }
 
 KINDS = ("paragraph", "section", "document")
@@ -71,8 +72,9 @@ UNCITED_PROSE = {
     "deep-research": "exceptional",
     "textbook-chapter": "ordinary",
     "tutorial": "ordinary",
-    # A digest's connecting sentences carry no citation by design; the
-    # `digest` aid is what judges them, sentence by sentence (#991).
+    # A digest's own paragraphs -- scope, framing, gap analysis -- carry
+    # no citation by design; the `digest` aid is what judges its own
+    # sentences, one by one (#991, #1172).
     "digest": "ordinary",
 }
 

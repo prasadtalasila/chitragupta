@@ -119,6 +119,36 @@ class TestItems:
                 "lexical support 0.1 in the cited source",
             ),
             (match.Finding("unquoted-text", 5, "Own words.", (KEY,)), "not verified as copied"),
+            (
+                match.Finding(
+                    "dangling-reference",
+                    5,
+                    "See Fig. 2.",
+                    (KEY,),
+                    {"kind": "cross-reference", "match": "Fig. 2"},
+                ),
+                "names Fig. 2, which the digest does not contain",
+            ),
+            (
+                match.Finding(
+                    "dangling-reference",
+                    5,
+                    "Boxes [2].",
+                    (KEY,),
+                    {"kind": "reference-marker", "match": "[2]"},
+                ),
+                "keeps the source's reference marker [2]",
+            ),
+            (
+                match.Finding(
+                    "dangling-reference",
+                    5,
+                    "Thus it holds.",
+                    (KEY,),
+                    {"kind": "opener", "match": "Thus"},
+                ),
+                'opens on "Thus" with nothing before it from the same source',
+            ),
         ],
     )
     def test_each_class_has_its_own_summary_suffix(self, finding, suffix):
@@ -146,7 +176,13 @@ class TestPayload:
         assert data["unsupported_fraction"] == 0.48
         assert data["copied_fraction"] == 0.36
         assert data["unverifiable_fraction"] == 0.0 and data["words_unverifiable"] == 0
-        assert data["counts"] == {"unsupported-text": 2, "copy-mismatch": 0, "unquoted-text": 2}
+        assert data["counts"] == {
+            "unsupported-text": 2,
+            "copy-mismatch": 0,
+            "dangling-reference": 0,
+            "unquoted-text": 2,
+        }
+        assert data["own_fraction"] == 0.0 and data["words_own"] == 0
         assert data["spans"] == [
             {
                 "line": 5,
@@ -177,6 +213,8 @@ class TestMarkdown:
         unsupported = text.index("- Unsupported fraction: 0.48 (12 of 25 words)")
         assert unsupported < text.index("- Copied fraction: 0.36 (9 of 25 words)")
         assert text.index("- Not checkable: 0.0 (0 of 25 words, 0 runs)") > summary
+        assert "- Own words, supported or declared: 0.0 (0 of 25 words)" in text
+        assert "`dangling-reference` counts in no fraction" in text
         assert "- unsupported-text: 2" in text
 
     def test_item_lines_use_the_agendas_format(self):
@@ -285,6 +323,7 @@ class TestCompare:
         assert result["counts_after"] == {
             "unsupported-text": 0,
             "copy-mismatch": 1,
+            "dangling-reference": 0,
             "unquoted-text": 1,
         }
         assert result["fell"] is False

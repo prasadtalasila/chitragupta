@@ -1,11 +1,12 @@
 """How the verbatim digest aid prints and serialises what it found (#991).
 
 The report is the digest's own worklist. It leads with the unsupported
-fraction, the number a repair pass drives down, with the copied fraction
-and the not-checkable share beside it so the three account for the
-whole digest. Item lines use `agenda`'s format -- a stable 12-character
-id, `[surfaced]`, the section anchor, a one-line summary -- so a person
-who has read an agenda reads this without learning a second shape, and
+fraction, the number a repair pass drives down, with the copied
+fraction, the own-words share and the not-checkable share beside it so
+the four account for the whole digest (#1172). Item lines use
+`agenda`'s format -- a stable 12-character id, `[surfaced]`, the section
+anchor, a one-line summary -- so a person who has read an agenda reads
+this without learning a second shape, and
 so the ids survive a revision the way agenda's do: `_identity.item_id`
 hashes the sentence, never its line. Every item is `[surfaced]`:
 whether a source backs a sentence and which passage should replace it
@@ -34,8 +35,17 @@ def _excerpt(text: str) -> str:
     return text if len(text) <= _EXCERPT else text[: _EXCERPT - 3].rstrip() + "..."
 
 
+_DANGLING = {
+    "cross-reference": "names {match}, which the digest does not contain",
+    "reference-marker": "keeps the source's reference marker {match}",
+    "opener": 'opens on "{match}" with nothing before it from the same source',
+}
+
+
 def _summary(finding: Finding) -> str:
     quoted = f'"{_excerpt(finding.text)}"'
+    if finding.cls == "dangling-reference":
+        return f"{quoted} -- " + _DANGLING[finding.detail["kind"]].format(**finding.detail)
     if finding.cls == "copy-mismatch":
         missing = ", ".join(finding.detail["missing"]) or "(none)"
         return f"{quoted} -- nearly on p. {finding.detail['page']}; missing: {missing}"
@@ -79,10 +89,12 @@ def payload(draft: Path, command: str, checked: Checked, rows: list[dict]) -> di
         {
             "unsupported_fraction": checked.unsupported_fraction,
             "copied_fraction": checked.copied_fraction,
+            "own_fraction": checked.own_fraction,
             "unverifiable_fraction": checked.unverifiable_fraction,
             "words_total": checked.words_total,
             "words_flagged": checked.words_flagged,
             "words_copied": checked.words_copied,
+            "words_own": checked.words_own,
             "words_unverifiable": checked.words_unverifiable,
             "counts": _counts(rows),
             "items": rows,
@@ -112,6 +124,8 @@ def _summary_lines(checked: Checked, rows: list[dict]) -> list[str]:
         f"- Unsupported fraction: {checked.unsupported_fraction} "
         f"({checked.words_flagged} of {total} words)",
         f"- Copied fraction: {checked.copied_fraction} ({checked.words_copied} of {total} words)",
+        f"- Own words, supported or declared: {checked.own_fraction} "
+        f"({checked.words_own} of {total} words)",
         f"- Not checkable: {checked.unverifiable_fraction} "
         f"({checked.words_unverifiable} of {total} words, {len(checked.unverifiable)} runs)",
         f"- Copied spans: {len(checked.spans)}",
@@ -170,6 +184,8 @@ def render_markdown(draft: Path, command: str, checked: Checked, rows: list[dict
         "Every item is **[surfaced]**: whether a source backs a sentence, and",
         "which passage should replace it, are judgement calls. The unsupported",
         "fraction and the per-class counts are what a repair pass drives down.",
+        "`dangling-reference` counts in no fraction: the run is still the",
+        "source's words, it just points at something the digest lacks.",
         "",
     ]
     lines += _summary_lines(checked, rows)

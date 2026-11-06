@@ -69,8 +69,9 @@ def build_report(draft: Path) -> tuple[_digest_match.Checked, list[dict]]:
                 cache[citekey] = passages.source_passages(con, citekey)
             return cache[citekey]
 
+        shown = _digest_runs.shown_figures(text)
         for run in _digest_runs.runs(text):
-            _digest_match.check_run(run, lookup, checked)
+            _digest_match.check_run(run, lookup, checked, shown)
     return checked, _digest_render.items(checked, text)
 
 

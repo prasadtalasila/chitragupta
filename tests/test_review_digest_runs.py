@@ -133,3 +133,74 @@ class TestCitedPages:
         assert runs_mod.cited_pages("[@page2020web]") is None
         assert runs_mod.cited_pages("[@pages2021x; @p2019]") is None
         assert runs_mod.cited_pages("[@page2020web, p. 7]") == (7, 7)
+
+
+class TestOwnRuns:
+    """#1172: three ways a run is declared the drafter's own words."""
+
+    def test_a_see_prefixed_citation_closes_an_own_run(self):
+        found = runs_mod.runs(f"Copied. [@{KEY}] Both agree on this. [see @{KEY}; @{OTHER}]\n")
+        assert [(r.sentences, r.own) for r in found] == [
+            (("Copied.",), False),
+            (("Both agree on this.",), True),
+        ]
+
+    def test_see_also_counts_and_case_does_not_matter(self):
+        (run,) = runs_mod.runs(f"Mine. [See also @{KEY}]\n")
+        assert run.own and run.citekeys == (KEY,)
+
+    def test_an_own_marker_above_a_block_makes_every_run_in_it_own(self):
+        text = f"# T\n\n<!-- own: framing -->\nMine. [@{KEY}] Also mine.\n\nCopied. [@{KEY}]\n"
+        found = runs_mod.runs(text)
+        assert [(r.sentences, r.own, r.line) for r in found] == [
+            (("Mine.",), True, 4),
+            (("Also mine.",), True, 4),
+            (("Copied.",), False, 6),
+        ]
+
+    def test_an_own_marker_must_touch_its_block(self):
+        text = f"<!-- own: framing -->\n\nCopied. [@{KEY}]\n"
+        assert [r.own for r in runs_mod.runs(text)] == [False]
+
+    def test_a_table_row_is_own(self):
+        text = f"| Approach | Idea |\n|---|---|\n| Layers | Separate them [@{KEY}] |\n"
+        (run,) = runs_mod.runs(text)
+        assert run.own and run.citekeys == (KEY,)
+
+
+class TestContext:
+    def test_follows_is_the_previous_runs_keys_in_the_same_block(self):
+        text = f"One. [@{KEY}] Two. [@{OTHER}]\n\nThree. [@{KEY}]\n"
+        assert [r.follows for r in runs_mod.runs(text)] == [None, (KEY,), None]
+
+    def test_a_block_after_a_math_fence_is_after_math(self):
+        text = (
+            "Intro. [@k1]\n\n<!-- math -->\n```\nx = 1\n```\n\n"
+            f"where x is one. [@{KEY}]\n\nLater. [@{KEY}]\n"
+        )
+        assert [r.after_math for r in runs_mod.runs(text)] == [False, True, False]
+
+    def test_dollar_and_latex_display_close_count_too(self):
+        dollars = f"$$\nx = 1\n$$\n\nwhere x is one. [@{KEY}]\n"
+        latex = f"\\[\nx = 1\n\\]\n\nwhere x is one. [@{KEY}]\n"
+        assert runs_mod.runs(latex)[-1].after_math is True
+        assert runs_mod.runs(dollars)[-1].after_math is True
+
+    def test_a_code_fence_is_not_an_equation(self):
+        text = f"Intro.\n\n```\nprint(1)\n```\n\nwhere x is one. [@{KEY}]\n"
+        assert runs_mod.runs(text)[-1].after_math is False
+
+    def test_a_fence_at_the_top_of_the_file_is_not_an_equation(self):
+        text = f"```\n\n```\n\nwhere x is one. [@{KEY}]\n"
+        assert [r.after_math for r in runs_mod.runs(text)] == [False]
+
+    def test_nothing_above_is_not_after_math(self):
+        assert runs_mod.runs(f"where x is one. [@{KEY}]\n")[0].after_math is False
+
+
+def test_shown_figures_reads_the_digests_captions():
+    text = (
+        f"![Parts of a model: Figure 3.6 of [@{KEY}], p. 74](figures/a.png)\n\n"
+        f"![Another, Fig. 2 of [@{OTHER}]](figures/b.png)\n"
+    )
+    assert runs_mod.shown_figures(text) == {(KEY, "3.6"), (OTHER, "2")}
