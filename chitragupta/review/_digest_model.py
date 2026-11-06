@@ -44,8 +44,10 @@ class Finding:
     `detail` is the class's evidence: `copy-mismatch` carries `page`,
     `share` and `missing`; `unsupported-text` carries `support_score` and
     `page`; `dangling-reference` carries `kind` and `match`;
-    `unquoted-text` carries nothing. Two findings with the same
-    `(line, text)` are one sentence, which is how the fraction counts it.
+    `unquoted-text` carries nothing. `seq` numbers the sentence within
+    the digest, so two findings on one sentence share it and the same
+    sentence written twice on one line does not (#1172): the fraction
+    counts each distinct `(line, text, seq)` once.
     """
 
     cls: str
@@ -53,6 +55,7 @@ class Finding:
     text: str
     citekeys: tuple[str, ...]
     detail: dict = field(default_factory=dict)
+    seq: int = 0
 
     def __post_init__(self) -> None:
         if self.cls not in CLASSES:
@@ -98,6 +101,7 @@ class Checked:
     findings: list[Finding] = field(default_factory=list)
     unverifiable: list[Unverifiable] = field(default_factory=list)
     words_total: int = 0
+    sentences: int = 0
 
     @property
     def words_copied(self) -> int:
@@ -105,15 +109,15 @@ class Checked:
 
     @property
     def words_flagged(self) -> int:
-        """Words of every distinct flagged sentence. Keyed by line and
-        text so the same sentence written twice is two sentences and one
-        sentence with two classes is one."""
+        """Words of every distinct flagged sentence. Keyed by line, text
+        and `seq` so the same sentence written twice is two sentences and
+        one sentence with two classes is one."""
         flagged = {
-            (finding.line, finding.text)
+            (finding.line, finding.text, finding.seq)
             for finding in self.findings
             if finding.cls in FRACTION_CLASSES
         }
-        return sum(len(text.split()) for _, text in flagged)
+        return sum(len(text.split()) for _, text, _ in flagged)
 
     @property
     def words_own(self) -> int:

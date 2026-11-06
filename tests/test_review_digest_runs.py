@@ -204,3 +204,17 @@ def test_shown_figures_reads_the_digests_captions():
         f"![Another, Fig. 2 of [@{OTHER}]](figures/b.png)\n"
     )
     assert runs_mod.shown_figures(text) == {(KEY, "3.6"), (OTHER, "2")}
+
+
+def test_a_table_rows_citekey_cell_attributes_the_cells_after_it():
+    """#1172 review: with the citekey column first, the remaining cells
+    used to arrive as an uncited tail and skip the support check."""
+    text = f"| Key | Idea |\n|---|---|\n| [@{KEY}] | lumped parameter model |\n"
+    (run,) = runs_mod.runs(text)
+    assert run.own and run.citekeys == (KEY,)
+    assert "lumped parameter model" in run.text
+
+
+def test_an_uncited_table_row_stays_uncited():
+    (run,) = runs_mod.runs("| Key | Idea |\n|---|---|\n| none | an idea |\n")
+    assert run.own and run.citekeys == ()

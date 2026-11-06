@@ -197,9 +197,10 @@ replaces it.
      the corpus does not settle.
 
    Copy each run from `content/parsed/<citekey>.passages.json`, words and
-   numbers exactly, typography cleaned. Every equation a run introduces
-   or explains is typeset in a `<!-- math -->` display mapped in the
-   dossier's `math.md`, never left out and never written as text
+   numbers exactly, typography cleaned. Every equation, copied or your
+   own, is typeset in a `<!-- math -->` display mapped in the dossier's
+   `math.md`; one a run introduces or explains is never left out, and
+   none is ever written as text
    (`.claude/skills-common/references/digest-copying.md` §1 and §2). Read `.claude/skills-common/references/mathematical-prose.md`
    for your own sentences around a symbol.
 

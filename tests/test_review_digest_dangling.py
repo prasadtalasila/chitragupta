@@ -52,9 +52,14 @@ class TestCrossReferences:
         run = a_run("As Eq. 3.6 states.", follows=(KEY,))
         assert kinds(run, frozenset({(KEY, "3.6")})) == [("cross-reference", "Eq. 3.6")]
 
-    def test_own_text_is_read_too(self):
-        run = a_run("Chapter 7 of the book revisits this.", own=True)
-        assert kinds(run) == [("cross-reference", "Chapter 7")]
+    def test_own_text_may_point_into_the_digest(self):
+        """#1172 review: a framing paragraph says how the sections divide
+        the topic; "Section 2" there is the digest's own."""
+        run = a_run("Section 2 covers heaters and Table 1 compares them.", own=True)
+        assert kinds(run) == []
+
+    def test_own_text_still_has_its_reference_markers_read(self):
+        assert kinds(a_run("Boxes [2] compare.", own=True)) == [("reference-marker", "[2]")]
 
     def test_a_word_without_a_number_is_not_a_reference(self):
         assert kinds(a_run("The table and the figure agree.", follows=(KEY,))) == []
@@ -76,6 +81,11 @@ class TestOpeners:
     def test_after_another_sources_run_it_still_dangles(self):
         run = a_run("Thus the model is a hybrid.", follows=(OTHER,))
         assert kinds(run) == [("opener", "Thus")]
+
+    def test_after_an_own_sentence_citing_the_same_source_is_fine(self):
+        """#1172 review: the skill's own shape, a `see` sentence naming
+        both papers and then a run from one of them."""
+        assert kinds(a_run("Then the box cools.", follows=(OTHER, KEY))) == []
 
     def test_continuing_the_same_source_is_fine(self):
         assert kinds(a_run("Thus the model is a hybrid.", follows=(KEY,))) == []

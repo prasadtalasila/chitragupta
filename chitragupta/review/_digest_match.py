@@ -114,18 +114,26 @@ def _span(run: Run, line: int, text: str, tier: str, pages, extra: str | None = 
     return Span(line, run.citekeys, text, tier, tuple(pages), run.cited, "; ".join(notes) or None)
 
 
-def _own(run: Run, line: int, sentence: str, passages: list[Passage]) -> list[Finding]:
-    """`unquoted-text`, plus `unsupported-text` when nothing cites the
-    sentence or its cited sources do not lexically support it."""
-    found = [Finding("unquoted-text", line, sentence, run.citekeys)]
+def _unsupported(run: Run, at: tuple[int, int], sentence: str, passages) -> Finding | None:
+    """`unsupported-text` when nothing cites the sentence or its cited
+    sources do not lexically support it; `at` is `(line, seq)`."""
     score, passage = score_claim(sentence, passages) if run.citekeys else (0.0, None)
-    if score < config.PROVENANCE_WEAK_SCORE:
-        detail = {"support_score": round(score, 3), "page": passage.page if passage else None}
-        found.append(Finding("unsupported-text", line, sentence, run.citekeys, detail))
-    return found
+    if score >= config.PROVENANCE_WEAK_SCORE:
+        return None
+    detail = {"support_score": round(score, 3), "page": passage.page if passage else None}
+    return Finding("unsupported-text", at[0], sentence, run.citekeys, detail, at[1])
 
 
-def _mismatch(run: Run, line: int, sentence: str, quotable: list[Passage]) -> Finding | None:
+def _own(run: Run, at: tuple[int, int], sentence: str, passages: list[Passage]) -> list[Finding]:
+    """`unquoted-text`, plus `unsupported-text` where `_unsupported` says."""
+    unsupported = _unsupported(run, at, sentence, passages)
+    unquoted = Finding("unquoted-text", at[0], sentence, run.citekeys, {}, at[1])
+    return [unquoted] + ([unsupported] if unsupported else [])
+
+
+def _mismatch(
+    run: Run, at: tuple[int, int], sentence: str, quotable: list[Passage]
+) -> Finding | None:
     """A `copy-mismatch` finding, or None when the sentence is not mostly
     on any one page."""
     share, page = _quotation_match.near_miss(sentence, quotable)
@@ -137,7 +145,7 @@ def _mismatch(run: Run, line: int, sentence: str, quotable: list[Passage]) -> Fi
         "share": round(share, 3),
         "missing": sorted(distinctive(sentence) - on_page),
     }
-    return Finding("copy-mismatch", line, sentence, run.citekeys, detail)
+    return Finding("copy-mismatch", at[0], sentence, run.citekeys, detail, at[1])
 
 
 def _assembled(run: Run, spans: list[Span]) -> Span:
@@ -150,18 +158,29 @@ def _assembled(run: Run, spans: list[Span]) -> Span:
     return _span(run, run.line, run.text, "assembled", pages, note)
 
 
+def _sentences(run: Run, checked: Checked) -> list[tuple[tuple[int, int], str]]:
+    """`((line, seq), sentence)` per sentence of `run`, numbering them on
+    from the sentences `checked` has already seen."""
+    base = checked.sentences
+    checked.sentences += len(run.sentences)
+    return [
+        ((line, base + index), sentence)
+        for index, (line, sentence) in enumerate(zip(run.lines, run.sentences, strict=True))
+    ]
+
+
 def _sentence_level(
     run: Run, quotable: list[Passage], passages: list[Passage], checked: Checked
 ) -> None:
     """The diagnosis for a run not found whole."""
     spans, findings = [], []
-    for line, sentence in zip(run.lines, run.sentences, strict=True):
+    for at, sentence in _sentences(run, checked):
         located = _quotation_match.locate(sentence, quotable)
         if located is not None:
-            spans.append(_span(run, line, sentence, *located))
+            spans.append(_span(run, at[0], sentence, *located))
             continue
-        mismatch = _mismatch(run, line, sentence, quotable)
-        findings.extend([mismatch] if mismatch else _own(run, line, sentence, passages))
+        mismatch = _mismatch(run, at, sentence, quotable)
+        findings.extend([mismatch] if mismatch else _own(run, at, sentence, passages))
     if not findings and len(spans) > 1:
         spans = [_assembled(run, spans)]
     checked.spans.extend(spans)
@@ -198,15 +217,12 @@ def _check_own(run: Run, lookup: Lookup, checked: Checked) -> None:
             Unverifiable(run.line, run.citekeys, run.words, "; ".join(reasons))
         )
         return
-    for line, sentence in zip(run.lines, run.sentences, strict=True):
-        score, passage = score_claim(sentence, passages)
-        if score < config.PROVENANCE_WEAK_SCORE:
-            detail = {"support_score": round(score, 3), "page": passage.page if passage else None}
-            checked.findings.append(
-                Finding("unsupported-text", line, sentence, run.citekeys, detail)
-            )
+    for at, sentence in _sentences(run, checked):
+        unsupported = _unsupported(run, at, sentence, passages)
+        if unsupported:
+            checked.findings.append(unsupported)
         else:
-            checked.own.append(Own(line, run.citekeys, sentence))
+            checked.own.append(Own(at[0], run.citekeys, sentence))
 
 
 def check_run(
@@ -223,8 +239,8 @@ def check_run(
         _check_own(run, lookup, checked)
         return
     if not run.citekeys:
-        for line, sentence in zip(run.lines, run.sentences, strict=True):
-            checked.findings.extend(_own(run, line, sentence, []))
+        for at, sentence in _sentences(run, checked):
+            checked.findings.extend(_own(run, at, sentence, []))
         return
     passages, quotable, reasons = _sources(run, lookup)
     if reasons:

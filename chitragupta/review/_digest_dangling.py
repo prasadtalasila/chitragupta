@@ -14,11 +14,17 @@ pointer to nothing. Three shapes, each a `dangling-reference`:
   have.
 - **opener**: a copied run whose first word refers back -- "where",
   "thus", "this" -- with nothing before it from the same source: it
-  opens its paragraph, or follows another source's run. A paragraph
+  opens its paragraph, or follows a run that cites none of its sources.
+  A drafter's own `[see @a; @b]` sentence is a fine antecedent for a run
+  from `@b`. A paragraph
   right after a displayed equation may open on "where"; that is what
   the equation is for.
 
-The opener rule reads copied runs only. A sentence of the drafter's own
+Cross-references are read in copied runs only: a sentence of the
+drafter's own saying "Section 2 compares them" points into the digest,
+and nothing here can tell that from a pointer out of it (#1172 review).
+A reference marker is read everywhere. The opener rule reads copied
+runs only. A sentence of the drafter's own
 opening on "This" usually refers to the drafter's previous sentence, and
 nothing here can see which. The word list is the anaphors the sample
 digest of #1172 actually opened runs on, plus their obvious siblings; it
@@ -72,7 +78,7 @@ def _references(run: Run, shown: frozenset[tuple[str, str]]) -> list[tuple[int, 
     found = []
     for line, sentence in zip(run.lines, run.sentences, strict=True):
         for match in _XREF.finditer(sentence):
-            if not _shown(match["kind"], match["number"], run, shown):
+            if not run.own and not _shown(match["kind"], match["number"], run, shown):
                 found.append((line, sentence, {"kind": "cross-reference", "match": match[0]}))
         found += [
             (line, sentence, {"kind": "reference-marker", "match": match[0]})
@@ -82,7 +88,7 @@ def _references(run: Run, shown: frozenset[tuple[str, str]]) -> list[tuple[int, 
 
 
 def _opener(run: Run) -> list[tuple[int, str, dict]]:
-    if run.own or not run.citekeys or run.follows == run.citekeys:
+    if run.own or not run.citekeys or set(run.citekeys) <= set(run.follows or ()):
         return []
     if run.follows is None and run.after_math:
         return []

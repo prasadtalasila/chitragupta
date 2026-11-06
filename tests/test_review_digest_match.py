@@ -245,7 +245,7 @@ def test_a_run_with_one_unreadable_source_is_not_checkable_as_a_whole():
     assert checked.words_unverifiable == run.words
 
 
-def test_a_finding_outside_the_three_classes_is_refused_at_construction():
+def test_a_finding_outside_the_classes_is_refused_at_construction():
     with pytest.raises(ValueError, match="unknown digest class"):
         match.Finding("made-up", 1, "x", ())
 
@@ -374,3 +374,14 @@ def test_a_weakly_supported_own_sentence_names_the_nearest_page():
     match.check_run(run, a_lookup(passage(4, SOURCE_P4)), checked)
     assert [f.cls for f in checked.findings] == ["unsupported-text"]
     assert checked.findings[0].detail["page"] == 4
+
+
+def test_the_same_sentence_twice_on_one_line_counts_twice():
+    """#1172 review: the fraction keyed a sentence on (line, text), so a
+    repeated sentence on one line was counted once and the four shares
+    no longer summed to the total."""
+    checked = match.Checked()
+    run = Run(3, (3, 3), ("Yes it is.", "Yes it is."), (), None)
+    match.check_run(run, a_lookup(), checked)
+    assert checked.words_total == 6
+    assert checked.words_flagged == 6

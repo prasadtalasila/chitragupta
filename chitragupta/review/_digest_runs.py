@@ -166,13 +166,22 @@ def runs(text: str) -> list[Run]:
     for start, raw_block, block in _claims.claim_blocks(text):
         own_block = _own_block(lines, start, raw_block)
         after_math = _after_math(lines, start)
+        # A table row's citekey cell attributes the whole row, wherever
+        # the column sits: cells before or after it are not uncited.
+        row_keys = (
+            tuple(citation_gate.extract_citekeys_from_line(block))
+            if _blocks.TABLE_ROW.match(raw_block[0])
+            else ()
+        )
         follows: tuple[str, ...] | None = None
         for offset, segment, citation in _segments(block):
             spans = [(a, b) for a, b in sentences.spans(segment) if _HAS_WORD.search(segment[a:b])]
             if not spans:
                 continue
             at = tuple(_blocks.line_of_offset(start, raw_block, offset + a) for a, _ in spans)
-            keys = tuple(citation_gate.extract_citekeys_from_line(citation)) if citation else ()
+            keys = (
+                tuple(citation_gate.extract_citekeys_from_line(citation)) if citation else row_keys
+            )
             found.append(
                 Run(
                     at[0],

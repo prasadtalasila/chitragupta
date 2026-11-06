@@ -225,9 +225,10 @@ own words?** The one aid over a genre of its own. A digest
 survey whose body is copied from the corpus, each copied run closed by
 a citation. The aid finds
 each run in the source it cites with the quotation matcher, leads with
-the unsupported fraction (the words of every sentence that is not
-verified source text, over all words), and lists each such sentence as
-a `[surfaced]` item in the agenda's own line format, in four classes:
+the unsupported fraction (the words of every sentence that is neither
+verified source text nor the drafter's own words a cited source
+supports, over all words), and lists each such sentence as a
+`[surfaced]` item in the agenda's own line format, in four classes:
 `unsupported-text`, `copy-mismatch`, `dangling-reference` and
 `unquoted-text`. `--baseline`
 compares a run with an earlier one, so a repair pass is a number that

@@ -71,6 +71,12 @@ for, and the report knows it. Number an equation
 An equation is a display, never a run: the report does not match it,
 so get it from the `formula` passage, not from memory.
 
+**An equation of your own is set the same way.** A relation you write
+to compare two sources, or a symbol you define in a sentence of yours,
+is a `<!-- math -->` display or a mapped code span with its row in
+`math.md`, never plain text and never a bare code span: one digest, one
+way of setting mathematics.
+
 ## 3. Figures
 
 `python -m chitragupta.draft figures <citekey>` lists a kept source's

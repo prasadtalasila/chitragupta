@@ -112,7 +112,7 @@ replaced where they stand, and the skill says so at each one:
 
 | Survey step | In the digest |
 | --- | --- |
-| The evidence packet: `claim:` in the drafter's words, a `quote:` only when a quotation is warranted, prose drafted from `claim:` alone | Every passage to be copied is recorded as a `quote:`, since every run is an intended quotation; `claim:` still says what the passage establishes, and is drafted from only for the connecting sentences |
+| The evidence packet: `claim:` in the drafter's words, a `quote:` only when a quotation is warranted, prose drafted from `claim:` alone | Every passage to be copied is recorded as a `quote:`, since every run is an intended quotation; `claim:` still says what the passage establishes, and is drafted from only for the drafter's own sentences |
 | Multi-source synthesis: a paragraph rests on two or more sources so it cannot be a transcription ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §11) | Kept, at the paragraph: one source per *run*, two or more runs from different papers per paragraph, `<!-- single-source: why -->` where one paper is genuinely the only source. `review synthesis` reports it |
 | The pre-gate critique against the evidence packet | Replaced by a read as someone who has opened none of the papers: terms before definitions, runs naming what the digest does not show, paragraphs that are one paper after another |
 | The verbatim scan | Replaced by `review digest`: the scan would flag every run, which is the design |
@@ -173,9 +173,13 @@ only, and raises `unsupported-text` or nothing.
 
 `dangling-reference` is listed and counted, and moves no fraction: the
 run is still the source's words, it just points at something the reader
-cannot see. A figure the digest shows, captioned `Figure N of [@key]`,
-is not dangling for a run citing that key, and a paragraph directly
-after a displayed equation may open on "where". On the digest that
+cannot see. Cross-references are read in copied runs only, since a
+sentence of the drafter's own saying "Section 2 compares them" points
+into the digest; a reference marker is read everywhere. A figure the
+digest shows, captioned `Figure N of [@key]`, is not dangling for a run
+citing that key; a paragraph directly after a displayed equation may
+open on "where"; and a run right after a sentence citing its source,
+such as the drafter's own `[see @a; @b]`, has its antecedent. On the digest that
 prompted it, the class found 43 cross-references, 43 reference markers
 and 4 openers, every one a real pointer to nothing. Items are listed
 worst class first, then by line, in the agenda's own line format: a
@@ -310,7 +314,7 @@ one line, and the digest is built from the prose alone.
   part and an original part.
 - **Lexical support is weak evidence**, as the section above says.
 - **An item's id is its sentence**, as an agenda item's is, so the same
-  connecting sentence written twice in one section is one id, and a
+  sentence of the drafter's written twice in one section is one id, and a
   baseline comparison sees one item until both copies are gone.
 - **The opener test is a word list.** It reads the first word of a
   copied run that has nothing from the same source before it in its
