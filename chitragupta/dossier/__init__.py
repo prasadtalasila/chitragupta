@@ -39,7 +39,17 @@ SCOPE_MD = "scope.md"
 # otherwise be measured at the fallback in silence. `digest` (#991) is
 # the sixth: a verbatim digest, private study text in the sources' own
 # words, with its own review aid rather than a place on the agenda.
-GENRES = ("survey", "thesis-chapter", "textbook-chapter", "tutorial", "deep-research", "digest")
+# `research-paper` is the seventh: the author's own software and results,
+# with the literature as the other half of its evidence.
+GENRES = (
+    "survey",
+    "thesis-chapter",
+    "textbook-chapter",
+    "tutorial",
+    "deep-research",
+    "digest",
+    "research-paper",
+)
 
 
 EVIDENCE_MD = "evidence.md"
@@ -78,6 +88,12 @@ _REVISION_MARKER_MODE = "revision"
 # usually-absent file would misreport as a gap in every dossier that
 # never asked for one. See `_outline.py`.
 OUTLINE_MD = "outline.md"
+
+# `paper.md`: a research paper's paper-level inputs -- the software, the
+# venue, the message, the contributions -- which `outline.md`'s
+# per-section grammar has no room for. Written only for that genre, and
+# outside `FILES` for the reason `OUTLINE_MD` above gives. See `_paper.py`.
+PAPER_MD = "paper.md"
 
 
 # The files a dossier holds, in the order `init` writes them and `status`

@@ -276,7 +276,7 @@ mistake costs.
 ### 🗂 The dossier: why a draft is revisable months later
 
 Every drafting run writes `content/dossiers/<the draft's path minus its
-suffix>/`: Markdown, nine files (two of them optional), readable by a
+suffix>/`: Markdown, ten files (three of them optional), readable by a
 human or a model with no tooling at all.
 
 <!-- diagram: features-dossier -->

@@ -100,7 +100,7 @@ way to alter a paragraph would be to run Phase 1 through Phase 7 again.
 
 ## 🗂 The dossier
 
-The format moved to [DOSSIER.md](DOSSIER.md): the nine files, the
+The format moved to [DOSSIER.md](DOSSIER.md): the ten files, the
 `claim:`/`quote:` contract, why it is Markdown, why it is several files
 instead of one, how `sections.md` is derived, and the corpus
 fingerprint. That page is machine-facing documentation, because its
