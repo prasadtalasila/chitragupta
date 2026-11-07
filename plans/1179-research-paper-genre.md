@@ -1,6 +1,6 @@
 # Research paper: a seventh genre, grounded in a software artefact
 
-Status: **plan.** Written 2026-11-07 for epic #1179 (#1175 to #1178).
+Status: **plan.** Written 2026-11-07 for epic #1179 (#1175 to #1178, #1181).
 
 **Written for** whoever builds the `research-paper-writer` skill and the
 code it calls. **Assumed:** `thesis-chapter-writer`'s process, the
@@ -187,3 +187,9 @@ on it. `latexpand` is not installed here, so a flattened submission
 4. **#1178, the skill**, on all three harnesses, with the reference file,
    `docs/WRITE-A-RESEARCH-PAPER.md`, the `GENRE.md` entry and the sweep
    of every genre and skill count it moves.
+5. **#1181, an optional style learnt from example papers**, for every
+   genre: `dossier init --style-from <collection>` writes `style.md`,
+   measured by code and observed by the skill, with conflicts against
+   the writing standards recorded there and resolved to the standard
+   by default. Vale's vendored rules stay unchanged; the distributional
+   check is `draft style --profile`. The issue holds the design.
