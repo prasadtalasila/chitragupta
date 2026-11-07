@@ -44,6 +44,8 @@ _DANGLING = {
 
 def _summary(finding: Finding) -> str:
     quoted = f'"{_excerpt(finding.text)}"'
+    if finding.cls == "repeated-text":
+        return f"{quoted} -- already copied at line {finding.detail['first_line']}"
     if finding.cls == "dangling-reference":
         return f"{quoted} -- " + _DANGLING[finding.detail["kind"]].format(**finding.detail)
     if finding.cls == "copy-mismatch":
@@ -184,8 +186,9 @@ def render_markdown(draft: Path, command: str, checked: Checked, rows: list[dict
         "Every item is **[surfaced]**: whether a source backs a sentence, and",
         "which passage should replace it, are judgement calls. The unsupported",
         "fraction and the per-class counts are what a repair pass drives down.",
-        "`dangling-reference` counts in no fraction: the run is still the",
-        "source's words, it just points at something the digest lacks.",
+        "`dangling-reference` and `repeated-text` count in no fraction: the",
+        "run is still the source's words, it just points at something the",
+        "digest lacks, or says again what the digest already says.",
         "",
     ]
     lines += _summary_lines(checked, rows)

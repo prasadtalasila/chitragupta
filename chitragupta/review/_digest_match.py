@@ -29,9 +29,10 @@ fraction, the own-words share and the not-checkable share are kept
 beside it so the four partition the digest: `words_copied + words_own +
 words_flagged + words_unverifiable == words_total`, because `check_run`,
 the one writer, routes every sentence to exactly one of the four lists.
-`dangling-reference` (`_digest_dangling.py`) is listed beside them and
-counted in none: it faults where a copied run stops, not whether a
-source says it.
+`dangling-reference` (`_digest_dangling.py`) and `repeated-text`
+(`_digest_repeat.py`) are listed beside them and counted in none: they
+fault where a copied run stops and whether it was copied already, not
+whether a source says it.
 
 `MISMATCH_SHARE` is the one number here and it is not tuned: it is the
 share `near_miss` already reports, read as "most of the sentence is on

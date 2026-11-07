@@ -2596,6 +2596,7 @@ each of which lands in one or two classes:
 | `unsupported-text` | the drafter's own sentence, and either no citation covers it or the cited source does not lexically support it | cite it, replace it with the source's words, or delete it |
 | `copy-mismatch` | not found verbatim, but mostly on one page of the source; the item names the page and the missing words | restore the exact wording |
 | `dangling-reference` | names a figure, equation, section, table or chapter the digest does not show, keeps a `[2]` reference marker, or is a copied run opening on "where", "thus" or "these" with nothing before it from the same source. Counted in no fraction | show the item, substitute it in brackets, delete the marker, or move the run's start or end |
+| `repeated-text` | a sentence copied again from a source an earlier run already copied it from; names the first copy's line. Counted in no fraction | keep the first copy and point back to it |
 | `unquoted-text` | the drafter's own sentence, not declared with `see` or `own` | close it with a `see` citation, replace it with a copied passage, or delete it |
 
 Every item is `[surfaced]`, with a stable twelve-character id and the

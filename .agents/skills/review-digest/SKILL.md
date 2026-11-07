@@ -112,9 +112,9 @@ A paragraph that is wholly yours, such as the framing or the gap analysis.
   declares the whole paragraph yours: the framing, the gap analysis.
   Table rows are yours by construction. Use it for those, not to hide a
   run that failed to match.
-- Pandoc-style citations only. `.claude/skills-common/references/digest-copying.md`
-  says what "copied exactly" means and how a run carries an equation or
-  a figure; read it before step 6.
+- `.claude/skills-common/references/digest-copying.md` says what
+  "copied exactly" means and how a run carries an equation or a figure;
+  read it before step 6.
 
 ## Process
 
@@ -217,8 +217,7 @@ replaces it.
    python -m chitragupta.draft dossier sections content/drafts/<topic>/<name>.md --citekeys --write
    ```
 
-9. **No drawn figure.** A digest draws nothing of its own; its figures
-   are the sources', placed in step 4.
+9. **No drawn figure**: a digest's figures are the sources' (step 4).
 
 10. **Read it as someone who has opened none of the papers.** This
     replaces `survey-writer`'s step 10, which checks paraphrase a
@@ -300,8 +299,10 @@ replaces it.
     - `copy-mismatch`: open the source at the page named and restore
       the exact words.
     - `dangling-reference`: show the item, substitute it in brackets,
-      delete the marker, or move the run's start or end
-      (`.claude/skills-common/references/digest-copying.md` §4).
+      delete the marker, or move the run's start or end.
+    - `repeated-text`: keep the first copy, cut the later one, and point
+      back to it in a sentence of your own
+      (`.claude/skills-common/references/digest-copying.md` §4 and §5).
     - `unquoted-text`: close the sentence with a `see` citation, replace
       it with a copied passage that does its job, or delete it.
 

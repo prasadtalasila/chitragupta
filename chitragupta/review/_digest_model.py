@@ -13,7 +13,13 @@ from dataclasses import dataclass, field
 
 # Worst first: the order the report lists classes in, and the order a
 # repair pass works them.
-CLASSES = ("unsupported-text", "copy-mismatch", "dangling-reference", "unquoted-text")
+CLASSES = (
+    "unsupported-text",
+    "copy-mismatch",
+    "dangling-reference",
+    "repeated-text",
+    "unquoted-text",
+)
 
 # The classes whose words the unsupported fraction counts.
 FRACTION_CLASSES = ("unsupported-text", "copy-mismatch", "unquoted-text")
@@ -44,6 +50,7 @@ class Finding:
     `detail` is the class's evidence: `copy-mismatch` carries `page`,
     `share` and `missing`; `unsupported-text` carries `support_score` and
     `page`; `dangling-reference` carries `kind` and `match`;
+    `repeated-text` carries `first_line`;
     `unquoted-text` carries nothing. `seq` numbers the sentence within
     the digest, so two findings on one sentence share it and the same
     sentence written twice on one line does not (#1172): the fraction

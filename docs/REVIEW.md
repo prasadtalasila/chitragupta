@@ -228,9 +228,9 @@ each run in the source it cites with the quotation matcher, leads with
 the unsupported fraction (the words of every sentence that is neither
 verified source text nor the drafter's own words a cited source
 supports, over all words), and lists each such sentence as a
-`[surfaced]` item in the agenda's own line format, in four classes:
-`unsupported-text`, `copy-mismatch`, `dangling-reference` and
-`unquoted-text`. `--baseline`
+`[surfaced]` item in the agenda's own line format, in five classes:
+`unsupported-text`, `copy-mismatch`, `dangling-reference`,
+`repeated-text` and `unquoted-text`. `--baseline`
 compares a run with an earlier one, so a repair pass is a number that
 fell or did not. It is the digest's own worklist: the agenda never reads
 it, because its classes mean nothing for any other genre.

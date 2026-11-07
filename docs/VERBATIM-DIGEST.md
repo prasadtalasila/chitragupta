@@ -163,6 +163,7 @@ Only a run that breaks is split into sentences, and only to show where:
 | `unsupported-text` | a sentence of the drafter's own, and either no citation covers it or the cited source does not lexically support it | cite it correctly, replace it with the source's words, or delete it |
 | `copy-mismatch` | a sentence not found verbatim but mostly on one page of the source; the item names the page and the missing words | open the source at that page and restore the exact wording |
 | `dangling-reference` | a run naming a numbered figure, equation, section, table or chapter the digest does not show; a leftover reference marker such as `[2]`; or a copied run opening on a word that points back ("where", "thus", "these") with nothing before it from the same source | show the item, replace the mention with a bracketed editorial substitution, delete the marker, or move the run's start or end |
+| `repeated-text` | a sentence of a copied run that an earlier run already copied from the same source; the item names the line of the first copy. Counted in no fraction | keep the first copy, cut the later one, and point back to it |
 | `unquoted-text` | an undeclared sentence of the drafter's own: not closed by `see`, not in an `own` paragraph | close it with a `see` citation, replace it with a copied passage, or delete it |
 
 An undeclared sentence of the drafter's own carries `unquoted-text`
@@ -181,7 +182,14 @@ citing that key; a paragraph directly after a displayed equation may
 open on "where"; and a run right after a sentence citing its source,
 such as the drafter's own `[see @a; @b]`, has its antecedent. On the digest that
 prompted it, the class found 43 cross-references, 43 reference markers
-and 4 openers, every one a real pointer to nothing. Items are listed
+and 4 openers, every one a real pointer to nothing.
+
+`repeated-text` compares the copied spans with each other rather than
+with the source: a sentence (at least about eight words, flattened as
+every match is) copied again from the same citekey is reported on the
+later copy. On the survey-shaped digest that prompted it, it found three
+repeats a page-by-page read had missed. It reads copied text only, so a
+repeated equation display is not seen. Items are listed
 worst class first, then by line, in the agenda's own line format: a
 stable twelve-character id (a hash of the sentence, never its line, so
 an id survives an edit elsewhere), `[surfaced]`, the section, a one-line

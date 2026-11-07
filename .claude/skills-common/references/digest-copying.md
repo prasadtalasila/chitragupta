@@ -110,5 +110,18 @@ run points at nothing, as `dangling-reference`:
   Start the run one sentence earlier, so its antecedent comes with it,
   or start it one sentence later.
 
+## 5. Nothing twice
+
+A passage is copied once. When a later section needs it again, point
+back with a sentence of your own -- "the two heat balances set out under
+Models, Simulations and Simulators" -- and copy only what is new. A
+displayed equation is shown once too, under a label if a sentence of
+yours refers to it (`<!-- equation: id -->`); the label must also be
+referred to in its own section, or `draft style` reports it as referred
+to only from elsewhere. `review digest` reports a sentence copied again
+from the same source as `repeated-text`, naming the line of the first
+copy. It reads copied text only, so a repeated equation display is
+yours to catch on the read-through.
+
 None of this means "write fewer runs". It means each run is chosen to
 be read on its own, the way a quotation in a published survey is.

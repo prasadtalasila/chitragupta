@@ -149,6 +149,10 @@ class TestItems:
                 ),
                 'opens on "Thus" with nothing before it from the same source',
             ),
+            (
+                match.Finding("repeated-text", 9, "Copied again.", (KEY,), {"first_line": 5}),
+                "already copied at line 5",
+            ),
         ],
     )
     def test_each_class_has_its_own_summary_suffix(self, finding, suffix):
@@ -180,6 +184,7 @@ class TestPayload:
             "unsupported-text": 2,
             "copy-mismatch": 0,
             "dangling-reference": 0,
+            "repeated-text": 0,
             "unquoted-text": 2,
         }
         assert data["own_fraction"] == 0.0 and data["words_own"] == 0
@@ -214,7 +219,7 @@ class TestMarkdown:
         assert unsupported < text.index("- Copied fraction: 0.36 (9 of 25 words)")
         assert text.index("- Not checkable: 0.0 (0 of 25 words, 0 runs)") > summary
         assert "- Own words, supported or declared: 0.0 (0 of 25 words)" in text
-        assert "`dangling-reference` counts in no fraction" in text
+        assert "`dangling-reference` and `repeated-text` count in no fraction" in text
         assert "- unsupported-text: 2" in text
 
     def test_item_lines_use_the_agendas_format(self):
@@ -324,6 +329,7 @@ class TestCompare:
             "unsupported-text": 0,
             "copy-mismatch": 1,
             "dangling-reference": 0,
+            "repeated-text": 0,
             "unquoted-text": 1,
         }
         assert result["fell"] is False
