@@ -323,3 +323,16 @@ def a_draft(text: str, genre: str = "survey", name: str = "survey.md") -> Path:
     draft.write_text(text, encoding="utf-8")
     write_scope(draft, genre)
     return draft
+
+
+def test_an_image_line_is_not_a_paragraph():
+    """#1172: a digest's source figure ends its caption with one cite
+    string, so counted as a paragraph it rests on one source by
+    construction."""
+    text = (
+        "Two papers agree. [@k1; @k2]\n\n"
+        "![A model's parts, Figure 3 of [@k1], p. 7](figures/a.png)\n\n"
+        "A paragraph with a figure inline ![x](y.png) still counts. [@k1]\n"
+    )
+    found = _units.units(text, "paragraph")
+    assert [unit.citekeys for unit in found] == [("k1", "k2"), ("k1",)]

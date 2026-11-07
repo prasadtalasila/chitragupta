@@ -201,7 +201,7 @@ draws the figures the others hand it and presents no draft of its own.
 | `textbook-chapter-writer` | an undergraduate chapter of worked examples and exercises, for a reader who is studying |
 | `tutorial-writer` | a Diataxis lesson the reader follows at a keyboard to a working result, verified to run |
 | `deep-research` | a multi-perspective, corpus-grounded report, heavier and slower than the others by design |
-| `review-digest` | a verbatim digest: private study notes copied from the sources in their own words, never a deliverable, checked by `review digest` |
+| `review-digest` | a verbatim digest: a private study survey whose body is copied from the sources in their own words, never a deliverable, checked by `review digest` |
 | `draft-reviser` | a scoped edit to a draft that already exists, made from its dossier rather than the corpus; this includes repairing citations after a sync moved the corpus |
 | `corpus-reviser` | the same edit discipline over a full retrieval pass, when you ask for the whole corpus to be re-searched |
 | `agenda-reviser` | a repaired draft after a review agenda found unattended findings, one item at a time |

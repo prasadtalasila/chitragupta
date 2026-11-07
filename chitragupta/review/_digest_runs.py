@@ -18,6 +18,16 @@ the drafter's own tail -- and a block with no citation at all is one such
 run. A citation with nothing before it (two brackets in a row) covers
 nothing and is dropped.
 
+**A run is the drafter's own words, `own`, in three shapes (#1172)**,
+and `_digest_match.py` checks it for support rather than for copying:
+the citation closing it carries pandoc's `see` prefix (`[see @key]`);
+its block sits directly under an `<!-- own: why -->` line; or it is a
+table row, since a comparison table's cells are never a copied run.
+Each run also records what stands before it -- the citekeys of the run
+before it in the same block, and whether its block follows a displayed
+equation -- which is all `_digest_dangling.py` needs to tell a run that
+opens on "where" or "thus" from one that continues its own source.
+
 Stdlib only, interpreter tier 1 like the aid that reads it.
 """
 
@@ -30,6 +40,32 @@ from chitragupta.review import _blocks, _claims
 # A bracket holding at least one `@`. Whether it is a citation is the
 # extractor's call, not this pattern's.
 _BRACKET = re.compile(r"\[[^\[\]]*@[^\[\]]*\]")
+
+# Pandoc's prefix `see`, `see also`, before the first key: the sentence
+# it closes is the drafter's, pointing at where the sources say it.
+_SEE = re.compile(r"^\[\s*see\b", re.IGNORECASE)
+
+# The line directly above a block that declares it the drafter's own.
+_OWN = re.compile(r"^\s*<!--\s*own:.*-->\s*$")
+
+# What closes a displayed equation: the fence of a `<!-- math -->` block,
+# `$$`, or LaTeX's `\]`. A block right after one may open on "where".
+_MATH_CLOSE = re.compile(r"^\s*(?:```|\$\$|\\\])\s*$")
+_MATH_OPEN = re.compile(r"^\s*<!--\s*math\s*-->\s*$")
+
+# An inline code span: in a digest, the house form of a symbol
+# (`T_h`, mapped in `math.md`), which a copied run carries where the
+# source printed the symbol. `_claims` blanks code, so the symbol would
+# vanish and the run read as a copy-mismatch (#1172). Its backticks are
+# turned to spaces before the blocks are read -- the same length, so no
+# offset moves. A span holding `@` stays code: a citekey shown as code
+# is not a citation.
+_INLINE_CODE = re.compile(r"(?<!`)`([^`\n@]+)`(?!`)")
+
+# A figure the digest shows, as its caption cites it: `Figure 3.5 of
+# [@key]` (review-digest's caption form). A run naming that figure of
+# that source points at something the reader can see.
+_SHOWN = re.compile(r"\b(?:Figure|Fig\.)\s*(\d+(?:\.\d+)*)\s+of\s+\[@([^\s,;\]]+)")
 
 # `p. 4`, `pp. 4-5`, `page 4`, `pages 4–5`. The hint pandoc passes
 # through as a locator; the aid treats it as a hint and reports the page
@@ -64,6 +100,9 @@ class Run:
     sentences: tuple[str, ...]
     citekeys: tuple[str, ...]
     cited: tuple[int, int] | None
+    own: bool = False
+    follows: tuple[str, ...] | None = None
+    after_math: bool = False
 
     @property
     def text(self) -> str:
@@ -98,23 +137,72 @@ def _segments(block: str) -> list[tuple[int, str, str | None]]:
     return found
 
 
+def _before(lines: list[str], start: int) -> tuple[str, int]:
+    """The nearest non-blank line above line `start`, and its index."""
+    index = start - 2
+    while index >= 0 and not lines[index].strip():
+        index -= 1
+    return (lines[index], index) if index >= 0 else ("", -1)
+
+
+def _after_math(lines: list[str], start: int) -> bool:
+    """Whether the block at line `start` follows a displayed equation."""
+    line, index = _before(lines, start)
+    if not _MATH_CLOSE.match(line):
+        return False
+    if line.strip() != "```":
+        return True
+    opener = index - 1
+    while opener >= 0 and lines[opener].strip() != "```":
+        opener -= 1
+    return opener > 0 and bool(_MATH_OPEN.match(lines[opener - 1]))
+
+
+def _own_block(lines: list[str], start: int, raw_block: list[str]) -> bool:
+    above = lines[start - 2] if start >= 2 else ""
+    return bool(_OWN.match(above) or _blocks.TABLE_ROW.match(raw_block[0]))
+
+
+def shown_figures(text: str) -> frozenset[tuple[str, str]]:
+    """`(citekey, figure number)` for every source figure the digest shows."""
+    return frozenset((key, number) for number, key in _SHOWN.findall(text))
+
+
 def runs(text: str) -> list[Run]:
     """Every run of `text`, in document order."""
     found = []
-    for start, raw_block, block in _claims.claim_blocks(text):
+    lines = text.splitlines()
+    readable = _INLINE_CODE.sub(lambda m: f" {m[1]} ", text)
+    for start, raw_block, block in _claims.claim_blocks(readable):
+        own_block = _own_block(lines, start, raw_block)
+        after_math = _after_math(lines, start)
+        # A table row's citekey cell attributes the whole row, wherever
+        # the column sits: cells before or after it are not uncited.
+        row_keys = (
+            tuple(citation_gate.extract_citekeys_from_line(block))
+            if _blocks.TABLE_ROW.match(raw_block[0])
+            else ()
+        )
+        follows: tuple[str, ...] | None = None
         for offset, segment, citation in _segments(block):
             spans = [(a, b) for a, b in sentences.spans(segment) if _HAS_WORD.search(segment[a:b])]
             if not spans:
                 continue
-            lines = tuple(_blocks.line_of_offset(start, raw_block, offset + a) for a, _ in spans)
-            keys = tuple(citation_gate.extract_citekeys_from_line(citation)) if citation else ()
+            at = tuple(_blocks.line_of_offset(start, raw_block, offset + a) for a, _ in spans)
+            keys = (
+                tuple(citation_gate.extract_citekeys_from_line(citation)) if citation else row_keys
+            )
             found.append(
                 Run(
-                    lines[0],
-                    lines,
+                    at[0],
+                    at,
                     tuple(segment[a:b] for a, b in spans),
                     keys,
                     cited_pages(citation) if citation else None,
+                    own_block or bool(citation and _SEE.match(citation)),
+                    follows,
+                    after_math,
                 )
             )
+            follows = keys
     return found

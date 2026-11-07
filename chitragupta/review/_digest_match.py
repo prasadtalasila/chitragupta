@@ -12,14 +12,27 @@ when no citation covers it or the cited source does not support it
 lexically -- the provenance aid's own `score_claim` under the same
 `PROVENANCE_WEAK_SCORE` it bands on.
 
+**A run of the drafter's own words is checked for support, not for
+copying (#1172).** `Run.own` marks one: closed by `[see @key]`, under an
+`<!-- own: why -->` line, or a table row. Each sentence is scored with
+`score_claim` against its cited sources' passages, page-level ones
+included; a weak one is `unsupported-text` and any other is own text,
+raising nothing. An uncited sentence in a declared-own block is own
+text too: the drafter said so. Own text never raises `unquoted-text`,
+which is for words the drafter did not declare.
+
 **The headline is the unsupported fraction**: the words of every
-sentence carrying at least one finding, a sentence counted once however
-many classes it carries, over all words. It is the number a repair pass
-drives down. The copied fraction and the not-checkable share are kept
-beside it so the three partition the digest:
-`words_copied + words_flagged + words_unverifiable == words_total`,
-because `check_run`, the one writer, routes every run to exactly one of
-the three lists.
+sentence carrying a finding of the three source classes
+(`FRACTION_CLASSES`), a sentence counted once however many it carries,
+over all words. It is the number a repair pass drives down. The copied
+fraction, the own-words share and the not-checkable share are kept
+beside it so the four partition the digest: `words_copied + words_own +
+words_flagged + words_unverifiable == words_total`, because `check_run`,
+the one writer, routes every sentence to exactly one of the four lists.
+`dangling-reference` (`_digest_dangling.py`) and `repeated-text`
+(`_digest_repeat.py`) are listed beside them and counted in none: they
+fault where a copied run stops and whether it was copied already, not
+whether a source says it.
 
 `MISMATCH_SHARE` is the one number here and it is not tuned: it is the
 share `near_miss` already reports, read as "most of the sentence is on
@@ -34,21 +47,29 @@ refusal `quotation.py` makes, and never matched against the other
 sources alone, which would report text copied from the unreadable one
 as the drafter's own.
 
+The records it writes live in `_digest_model.py` and are re-exported
+here, where every caller has always found them.
+
 Stdlib only, interpreter tier 1.
 """
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
 
 from chitragupta import config
 from chitragupta.passages import Passage, distinctive
 from chitragupta.review import _quotation_match
+from chitragupta.review._digest_dangling import dangling
+from chitragupta.review._digest_model import (
+    CLASSES,
+    FRACTION_CLASSES,
+    Checked,
+    Finding,
+    Own,
+    Span,
+    Unverifiable,
+)
 from chitragupta.review._digest_runs import Run
 from chitragupta.review.citation_provenance import score_claim
-
-# Worst first: the order the report lists classes in, and the order a
-# repair pass works them.
-CLASSES = ("unsupported-text", "copy-mismatch", "unquoted-text")
 
 # A sentence `locate` cannot find, at least this share of whose
 # distinctive words sit on one page, is a copy that drifted rather than
@@ -60,105 +81,20 @@ _NO_READING_ORDER = (
     "so the source has a Docling sidecar to match against"
 )
 
+__all__ = [
+    "CLASSES",
+    "FRACTION_CLASSES",
+    "MISMATCH_SHARE",
+    "Checked",
+    "Finding",
+    "Own",
+    "Span",
+    "Unverifiable",
+    "check_run",
+    "page_note",
+]
+
 Lookup = Callable[[str], tuple[list[Passage], str | None]]
-
-
-@dataclass(frozen=True)
-class Span:
-    """Verified copied text: a whole run, or one sentence of a broken one.
-
-    `pages` is where the text was found; `cited` is the citation's hint;
-    `note` names a disagreement between the two, an assembled run, or
-    both, and is None when there is nothing to say.
-    """
-
-    line: int
-    citekeys: tuple[str, ...]
-    text: str
-    tier: str
-    pages: tuple[int, ...]
-    cited: tuple[int, int] | None
-    note: str | None
-
-
-@dataclass(frozen=True)
-class Finding:
-    """One sentence in one class of `CLASSES`, anchored to its own line.
-
-    `detail` is the class's evidence: `copy-mismatch` carries `page`,
-    `share` and `missing`; `unsupported-text` carries `support_score` and
-    `page`; `unquoted-text` carries nothing. Two findings with the same
-    `(line, text)` are one sentence, which is how the fraction counts it.
-    """
-
-    cls: str
-    line: int
-    text: str
-    citekeys: tuple[str, ...]
-    detail: dict = field(default_factory=dict)
-
-    def __post_init__(self) -> None:
-        if self.cls not in CLASSES:
-            raise ValueError(f"unknown digest class {self.cls!r}; expected one of {CLASSES}")
-
-
-@dataclass(frozen=True)
-class Unverifiable:
-    """A run the aid could not check, and why -- one reason per citekey
-    the ladder had no reading-ordered passages for."""
-
-    line: int
-    citekeys: tuple[str, ...]
-    words: int
-    reason: str
-
-
-def _fraction(part: int, whole: int) -> float:
-    # 0.0 for an empty digest: a number rather than a crash, and the
-    # report says "0 of 0 words" beside it.
-    return round(part / whole, 3) if whole else 0.0
-
-
-@dataclass
-class Checked:
-    """The accumulator `check_run` fills, one run at a time.
-
-    Mutable by design, the same shape as `quotation.py`'s: it is passed
-    by reference through the run loop and read whole afterwards.
-    """
-
-    spans: list[Span] = field(default_factory=list)
-    findings: list[Finding] = field(default_factory=list)
-    unverifiable: list[Unverifiable] = field(default_factory=list)
-    words_total: int = 0
-
-    @property
-    def words_copied(self) -> int:
-        return sum(len(span.text.split()) for span in self.spans)
-
-    @property
-    def words_flagged(self) -> int:
-        """Words of every distinct flagged sentence. Keyed by line and
-        text so the same sentence written twice is two sentences and one
-        sentence with two classes is one."""
-        flagged = {(finding.line, finding.text) for finding in self.findings}
-        return sum(len(text.split()) for _, text in flagged)
-
-    @property
-    def words_unverifiable(self) -> int:
-        return sum(run.words for run in self.unverifiable)
-
-    @property
-    def unsupported_fraction(self) -> float:
-        return _fraction(self.words_flagged, self.words_total)
-
-    @property
-    def copied_fraction(self) -> float:
-        return _fraction(self.words_copied, self.words_total)
-
-    @property
-    def unverifiable_fraction(self) -> float:
-        return _fraction(self.words_unverifiable, self.words_total)
 
 
 def page_note(cited: tuple[int, int] | None, pages: list[int] | tuple[int, ...]) -> str | None:
@@ -179,18 +115,26 @@ def _span(run: Run, line: int, text: str, tier: str, pages, extra: str | None = 
     return Span(line, run.citekeys, text, tier, tuple(pages), run.cited, "; ".join(notes) or None)
 
 
-def _own(run: Run, line: int, sentence: str, passages: list[Passage]) -> list[Finding]:
-    """`unquoted-text`, plus `unsupported-text` when nothing cites the
-    sentence or its cited sources do not lexically support it."""
-    found = [Finding("unquoted-text", line, sentence, run.citekeys)]
+def _unsupported(run: Run, at: tuple[int, int], sentence: str, passages) -> Finding | None:
+    """`unsupported-text` when nothing cites the sentence or its cited
+    sources do not lexically support it; `at` is `(line, seq)`."""
     score, passage = score_claim(sentence, passages) if run.citekeys else (0.0, None)
-    if score < config.PROVENANCE_WEAK_SCORE:
-        detail = {"support_score": round(score, 3), "page": passage.page if passage else None}
-        found.append(Finding("unsupported-text", line, sentence, run.citekeys, detail))
-    return found
+    if score >= config.PROVENANCE_WEAK_SCORE:
+        return None
+    detail = {"support_score": round(score, 3), "page": passage.page if passage else None}
+    return Finding("unsupported-text", at[0], sentence, run.citekeys, detail, at[1])
 
 
-def _mismatch(run: Run, line: int, sentence: str, quotable: list[Passage]) -> Finding | None:
+def _own(run: Run, at: tuple[int, int], sentence: str, passages: list[Passage]) -> list[Finding]:
+    """`unquoted-text`, plus `unsupported-text` where `_unsupported` says."""
+    unsupported = _unsupported(run, at, sentence, passages)
+    unquoted = Finding("unquoted-text", at[0], sentence, run.citekeys, {}, at[1])
+    return [unquoted] + ([unsupported] if unsupported else [])
+
+
+def _mismatch(
+    run: Run, at: tuple[int, int], sentence: str, quotable: list[Passage]
+) -> Finding | None:
     """A `copy-mismatch` finding, or None when the sentence is not mostly
     on any one page."""
     share, page = _quotation_match.near_miss(sentence, quotable)
@@ -202,7 +146,7 @@ def _mismatch(run: Run, line: int, sentence: str, quotable: list[Passage]) -> Fi
         "share": round(share, 3),
         "missing": sorted(distinctive(sentence) - on_page),
     }
-    return Finding("copy-mismatch", line, sentence, run.citekeys, detail)
+    return Finding("copy-mismatch", at[0], sentence, run.citekeys, detail, at[1])
 
 
 def _assembled(run: Run, spans: list[Span]) -> Span:
@@ -215,18 +159,29 @@ def _assembled(run: Run, spans: list[Span]) -> Span:
     return _span(run, run.line, run.text, "assembled", pages, note)
 
 
+def _sentences(run: Run, checked: Checked) -> list[tuple[tuple[int, int], str]]:
+    """`((line, seq), sentence)` per sentence of `run`, numbering them on
+    from the sentences `checked` has already seen."""
+    base = checked.sentences
+    checked.sentences += len(run.sentences)
+    return [
+        ((line, base + index), sentence)
+        for index, (line, sentence) in enumerate(zip(run.lines, run.sentences, strict=True))
+    ]
+
+
 def _sentence_level(
     run: Run, quotable: list[Passage], passages: list[Passage], checked: Checked
 ) -> None:
     """The diagnosis for a run not found whole."""
     spans, findings = [], []
-    for line, sentence in zip(run.lines, run.sentences, strict=True):
+    for at, sentence in _sentences(run, checked):
         located = _quotation_match.locate(sentence, quotable)
         if located is not None:
-            spans.append(_span(run, line, sentence, *located))
+            spans.append(_span(run, at[0], sentence, *located))
             continue
-        mismatch = _mismatch(run, line, sentence, quotable)
-        findings.extend([mismatch] if mismatch else _own(run, line, sentence, passages))
+        mismatch = _mismatch(run, at, sentence, quotable)
+        findings.extend([mismatch] if mismatch else _own(run, at, sentence, passages))
     if not findings and len(spans) > 1:
         spans = [_assembled(run, spans)]
     checked.spans.extend(spans)
@@ -247,12 +202,46 @@ def _sources(run: Run, lookup: Lookup) -> tuple[list[Passage], list[Passage], li
     return passages, quotable, reasons
 
 
-def check_run(run: Run, lookup: Lookup, checked: Checked) -> None:
-    """Verify one run and record the outcome on `checked`."""
-    checked.words_total += run.words
+def _check_own(run: Run, lookup: Lookup, checked: Checked) -> None:
+    """A run in the drafter's own words: supported, or `unsupported-text`."""
     if not run.citekeys:
-        for line, sentence in zip(run.lines, run.sentences, strict=True):
-            checked.findings.extend(_own(run, line, sentence, []))
+        checked.own += [Own(line, (), s) for line, s in zip(run.lines, run.sentences, strict=True)]
+        return
+    passages, reasons = [], []
+    for citekey in run.citekeys:
+        found, reason = lookup(citekey)
+        passages += found
+        if not found:
+            reasons.append(f"{citekey}: {reason or 'no passages'}")
+    if reasons:
+        checked.unverifiable.append(
+            Unverifiable(run.line, run.citekeys, run.words, "; ".join(reasons))
+        )
+        return
+    for at, sentence in _sentences(run, checked):
+        unsupported = _unsupported(run, at, sentence, passages)
+        if unsupported:
+            checked.findings.append(unsupported)
+        else:
+            checked.own.append(Own(at[0], run.citekeys, sentence))
+
+
+def check_run(
+    run: Run, lookup: Lookup, checked: Checked, shown: frozenset[tuple[str, str]] = frozenset()
+) -> None:
+    """Verify one run and record the outcome on `checked`. `shown` is
+    `_digest_runs.shown_figures` of the whole digest."""
+    checked.words_total += run.words
+    checked.findings += [
+        Finding("dangling-reference", line, sentence, run.citekeys, detail)
+        for line, sentence, detail in dangling(run, shown)
+    ]
+    if run.own:
+        _check_own(run, lookup, checked)
+        return
+    if not run.citekeys:
+        for at, sentence in _sentences(run, checked):
+            checked.findings.extend(_own(run, at, sentence, []))
         return
     passages, quotable, reasons = _sources(run, lookup)
     if reasons:

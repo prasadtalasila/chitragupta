@@ -48,7 +48,14 @@ import sys
 from pathlib import Path
 
 from chitragupta import config, ledger, passages, review
-from chitragupta.review import _digest_match, _digest_recheck, _digest_render, _digest_runs, _emit
+from chitragupta.review import (
+    _digest_match,
+    _digest_recheck,
+    _digest_render,
+    _digest_repeat,
+    _digest_runs,
+    _emit,
+)
 
 AID = "digest"
 
@@ -69,8 +76,10 @@ def build_report(draft: Path) -> tuple[_digest_match.Checked, list[dict]]:
                 cache[citekey] = passages.source_passages(con, citekey)
             return cache[citekey]
 
+        shown = _digest_runs.shown_figures(text)
         for run in _digest_runs.runs(text):
-            _digest_match.check_run(run, lookup, checked)
+            _digest_match.check_run(run, lookup, checked, shown)
+    checked.findings += _digest_repeat.repeats(checked.spans)
     return checked, _digest_render.items(checked, text)
 
 

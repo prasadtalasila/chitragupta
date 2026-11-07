@@ -96,6 +96,16 @@ INLINE_EQUATION_REF = re.compile(r"[ \t]*<!--[ \t]*equationref:[ \t]*\S+?[ \t]*-
 # not making an assertion.
 COMMENT = re.compile(r"^\s*(?:<!--|%)")
 
+# A marker that declares something about the paragraph it touches:
+# `<!-- single-source: why -->` (LaTeX: `% single-source: why`) and the
+# digest's `<!-- own: why -->`. One written directly above or below a
+# paragraph, with no blank line between, is part of that paragraph's
+# block, and `COMMENT` matching the block's first line used to drop the
+# paragraph with it (#1172). Peeled off the block's edges instead, so the
+# prose stays a claim. Only these two: a `<!-- figure: ... -->` marker
+# above its caption is meant to take the caption out with it.
+MARKER_LINE = re.compile(r"^\s*(?:<!--\s*(?:single-source|own):.*-->|%\s*single-source:.*)\s*$")
+
 # The rule booktabs draws *above* a LaTeX table's header row, and so the
 # only marker that tells that row apart from a body row. It is the
 # counterpart of markdown's `|---|` separator, which sits below its
@@ -198,10 +208,26 @@ def claim_blocks(text: str) -> list[tuple[int, list[str], str]]:
     found = []
     for start, end, block in _blocks.spans(lines):
         after = lines[end] if end < len(lines) else ""
-        raw_block = lines[start - 1 : end]
+        first, raw_block = _without_markers(start, lines[start - 1 : end])
+        if not raw_block:
+            continue
+        if len(raw_block) != end - start + 1:
+            block = _blocks.text_of(raw_block)
         if block.strip() and not _excluded(raw_block, after):
-            found.append((start, raw_block, block))
+            found.append((first, raw_block, block))
     return found
+
+
+def _without_markers(start: int, raw_block: list[str]) -> tuple[int, list[str]]:
+    """The block's first line and lines once whole-line markers are
+    peeled off both edges; an empty list when the block was only
+    markers."""
+    first, last = 0, len(raw_block)
+    while first < last and MARKER_LINE.match(raw_block[first]):
+        first += 1
+    while last > first and MARKER_LINE.match(raw_block[last - 1]):
+        last -= 1
+    return start + first, raw_block[first:last]
 
 
 def claim_sentences(text: str) -> list[Sentence]:

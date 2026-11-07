@@ -260,6 +260,23 @@ class TestTheExclusions:
         )
         assert found_text(draft) == []
 
+    @pytest.mark.parametrize(
+        "marker",
+        [
+            "<!-- single-source: only paper on X -->",
+            "<!-- own: framing -->",
+            "% single-source: only paper on X",
+        ],
+    )
+    def test_a_marker_touching_a_paragraph_does_not_hide_it(self, isolated_config, marker):
+        """#1172: written directly above or below its paragraph, the
+        marker was the block's first line and took the paragraph out
+        with it."""
+        above = a_draft(f"{marker}\nOne reading path.\n")
+        below = a_draft(f"One reading path.\n{marker}\n", name="below.md")
+        assert found_text(above) == ["One reading path."]
+        assert found_text(below) == ["One reading path."]
+
     def test_a_figure_caption_is_excluded(self, isolated_config):
         """Issue 411's caption line has no self-identifying prefix, unlike
         a table's `:`-led one -- so this needs the block-membership check

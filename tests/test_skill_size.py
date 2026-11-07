@@ -39,7 +39,7 @@ BUDGET = {
     "deep-research": (41_000, _LATER),
     "draft-reviser": (29_000, _LATER),
     "figure-drawer": (7_000, None),
-    "review-digest": (19_000, _LATER),
+    "review-digest": (17_000, _LATER),
     "survey-writer": (32_000, _LATER),
     "textbook-chapter-writer": (33_000, _LATER),
     "thesis-chapter-writer": (34_000, _LATER),

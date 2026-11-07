@@ -218,8 +218,9 @@ enrichment layer is optional and nothing above it needs it.
   passes and the `python -m chitragupta.review agenda --baseline`
   recheck lists it as resolved with no new objective finding. Never
   re-run a genre skill to change an existing draft; see docs/DRAFT-ITERATION.md.
-  A **verbatim digest** (`review-digest`) is private study text in the
-  sources' own words, a citation closing every copied run, checked by
+  A **verbatim digest** (`review-digest`) is private study text, a
+  survey whose body is the sources' own words, a citation closing every
+  copied run, checked by
   `python -m chitragupta.review digest` (docs/VERBATIM-DIGEST.md); it is
   never a source for any other draft, `draft-reviser` is still the way
   to change one, and `agenda-reviser` is never run on one.
@@ -250,7 +251,7 @@ enrichment layer is optional and nothing above it needs it.
   the fact to make one appear, and never copy a span out of one back into
   body prose. One genre is the exception by construction: a verbatim
   digest (`review-digest`) *is* that wording, with a citation closing
-  every copied run, each passage recorded as a `quote:` in its dossier,
+  every copied run, each source's main passage recorded as a `quote:`,
   and never a source for any other draft; docs/VERBATIM-DIGEST.md carries
   its rule.
 

@@ -100,7 +100,7 @@ document that fails at both.
 | `textbook-chapter-writer` | `content/drafts/<slug>.md` | sparse: background only | none | one run |
 | `tutorial-writer` | `content/drafts/<slug>.md` | closing section only | none | one run, plus running the lesson |
 | `deep-research` | `content/drafts/deep-research-<slug>.md` | every claim | 6 interviewers, N writers, 4 reviewers | heaviest by design |
-| `review-digest` | `content/drafts/<topic>/<name>.md`, mostly the sources' own words | every copied run | none | one run, plus `review digest` |
+| `review-digest` | `content/drafts/<topic>/<name>.md`, a survey whose body is the sources' own words | every copied run | none | one run, plus `review digest` |
 | `draft-reviser` | edits an existing draft in place | inherits the draft's | none | cheapest path there is |
 | `corpus-reviser` | edits an existing draft in place | inherits the draft's | none | a full retrieval pass, by request only |
 | `agenda-reviser` | edits an existing draft in place | inherits the draft's | none | one agenda run, then one edit per unattended item |
@@ -243,20 +243,25 @@ remaining thing that could reduce it, is
 ### 📋 `review-digest`
 
 The sixth genre reverses the first rule of the other five. A
-verbatim digest is private study text: most of it is copied exactly from
-parsed PDFs in the corpus, each copied run ends with a citation, there
-are no quotation marks, and a few short sentences of the drafter's own
-connect the runs. Its reader is the user, studying. It is never a
-deliverable and never a source for any other draft.
+verbatim digest is a survey written in the sources' words: a survey's
+reader and scope, framing, theme sections, comparison table, visible
+disagreement and gap analysis, with a body copied exactly from parsed
+PDFs in the corpus, each copied run closed by its citation, no
+quotation marks, equations typeset, and the drafter's own sentences few
+and closed by a `see` citation. It reads on its own. Its reader is the
+user, studying. It is never a deliverable and never a source for any
+other draft.
 
-It runs `survey-writer`'s draft-and-render workflow step for step and
-inverts, in place, every step that exists to keep source wording out of
-a draft: every passage to be copied is recorded as a `quote:` in the
-dossier, one source per run replaces multi-source synthesis, and the
-pre-gate critique, the verbatim scan and the evidence sidecar are
-replaced by `python -m chitragupta.review digest`, which leads with the
-unsupported fraction and lists every sentence that is not verified
-source text. It does run the prose check, reporting and fixing nothing.
+It runs `survey-writer`'s draft-and-render workflow step for step,
+keeps the survey's paragraph unit (two or more papers per paragraph,
+one per run), and replaces, in place, every step that exists to keep
+source wording out of a draft: each source's main passage is recorded
+as a `quote:` in the dossier, the pre-gate critique becomes a read as
+someone who has opened none of the papers, and the verbatim scan and
+the evidence sidecar are replaced by `python -m chitragupta.review
+digest`, which leads with the unsupported fraction and lists every
+sentence no source backs and every run that points at something the
+digest does not show. It does run the prose check, reporting and fixing nothing.
 It is also the one genre that may place a source's figure in the draft,
 beside the copied run it belongs to, where the Docling stage extracted
 one. [VERBATIM-DIGEST.md](VERBATIM-DIGEST.md) has the whole of it,

@@ -221,13 +221,16 @@ disk, so a report cannot be misread as covering prose it never opened.
 
 **`review digest`: how much of a verbatim digest is not the sources'
 own words?** The one aid over a genre of its own. A digest
-([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) is private study text copied
-from the corpus, each copied run closed by a citation. The aid finds
+([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) is private study text, a
+survey whose body is copied from the corpus, each copied run closed by
+a citation. The aid finds
 each run in the source it cites with the quotation matcher, leads with
-the unsupported fraction (the words of every sentence that is not
-verified source text, over all words), and lists each such sentence as
-a `[surfaced]` item in the agenda's own line format, in three classes:
-`unsupported-text`, `copy-mismatch` and `unquoted-text`. `--baseline`
+the unsupported fraction (the words of every sentence that is neither
+verified source text nor the drafter's own words a cited source
+supports, over all words), and lists each such sentence as a
+`[surfaced]` item in the agenda's own line format, in five classes:
+`unsupported-text`, `copy-mismatch`, `dangling-reference`,
+`repeated-text` and `unquoted-text`. `--baseline`
 compares a run with an earlier one, so a repair pass is a number that
 fell or did not. It is the digest's own worklist: the agenda never reads
 it, because its classes mean nothing for any other genre.

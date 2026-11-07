@@ -13,22 +13,33 @@ normalisations, which are
 `plans/c3-quotation-integrity.md`'s, and the review layer's reasons for
 never gating, which are [ARCHITECTURE.md](ARCHITECTURE.md)'s.
 
-A verbatim digest is **private study text**. Most of it is copied
+A verbatim digest is **a survey written in the sources' words**. It
+has a survey's shape -- a reader and a scope, a framing, one section
+per theme, a comparison table, the disagreements made visible, a gap
+analysis -- and a survey's paragraph, which braids passages from two or
+more papers around what they agree and disagree on. Its body is copied
 exactly from parsed PDFs in the corpus; each copied run ends with a
-citation; there are no quotation marks; and a few short sentences of
-the drafter's own connect the runs. One person reads it to learn a
-topic. It is not a deliverable, and it is never a source for drafting a
-survey, a chapter or anything else, because its wording is the corpus's
-own.
+citation; there are no quotation marks; equations are typeset; and the
+drafter's own sentences are few, short, and there to compare, contrast
+or define. It reads on its own: someone who has opened none of the
+papers can follow it. One person reads it to learn a topic. It is not a
+deliverable, and it is never a source for drafting a survey, a chapter
+or anything else, because its wording is the corpus's own.
 
 Three goals, in this order:
 
-1. **Maximise copied text.**
-2. **Surface unsupported text.** Every sentence that is not verified
-   source text is listed for a person to judge.
-3. **Minimise unsupported text.** Each repair pass leaves fewer such
-   words than the one before, and a baseline recheck makes that a
+1. **A self-sufficient survey** the reader can learn the topic from.
+2. **As much of the body as possible in the sources' exact words.**
+3. **Surface and minimise unsupported text.** Every sentence no source
+   backs is listed for a person to judge; each repair pass leaves fewer
+   such words than the one before, and a baseline recheck makes that a
    number.
+
+The order is #1172's correction. The first digest the skill produced
+put "maximise copied text" first and scored 0.88 copied: 248 runs of
+about forty words each, in thirty subsections, with the parser's noise
+kept on purpose and the equations the runs explained left out. It was
+faithful and unreadable. Copying is the means; the survey is the end.
 
 A digest is a draft like any other. The user names it,
 `content/drafts/<topic>/<name>.md`; its dossier's `scope.md` records
@@ -50,13 +61,37 @@ it out of git without a rule of its own.
 
 ## ✍ Writing one: `review-digest`
 
-The format is plain prose plus a closing citation:
+The format is plain prose plus a closing citation, with two ways of
+marking the drafter's own words:
 
 ```markdown
-Sentence one. Sentence two. Sentence three. [@key, p. 4-5]
-A connecting sentence of your own.
-Another copied sentence. [@other, p. 12]
+Copied one. Copied two. [@key, p. 4-5] A sentence of your own comparing
+the two papers. [see @key; @other] Another copied sentence.
+[@other, p. 12]
+
+<!-- own: gap analysis -->
+A paragraph that is wholly the drafter's, such as the framing or the gap
+analysis.
 ```
+
+- A citation with pandoc's `see` prefix (`[see @key]`, `[see also
+  @a; @b]`) closes a sentence in the drafter's own words. The report
+  checks it for support against the sources it names, never for
+  copying.
+- `<!-- own: why -->` on the line directly above a paragraph declares
+  the whole paragraph the drafter's. A table row is the drafter's by
+  construction: a comparison table's cells are short phrases, not
+  copied runs.
+
+"Copied exactly" means every letter and digit in the source's order.
+The matcher compares letters and digits only and drops the source's
+reference markers, so the drafter cleans the parse's typography --
+spacing, run-together words, math italics, `◦ C` -- without losing a
+match, and typesets the equations a run explains in the house math form
+([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12) from the source's
+`formula` passages. The skill's shared reference,
+`.claude/skills-common/references/digest-copying.md`, has the table and
+the worked equation.
 
 **A citation covers every sentence back to the previous citation, or
 to the start of the paragraph.** One citation can therefore cover a
@@ -64,20 +99,22 @@ sentence, several sentences or a whole paragraph, and a sentence of the
 drafter's own placed *inside* a run, before its citation, is read as
 part of the run and reported as not copied. The skill copies from one
 paper per run, closes each run with its citation and a page, and keeps
-its own sentences short, few and between runs.
+its own sentences short, few, between runs and closed by a `see`
+citation.
 
 The skill follows `survey-writer`'s draft-and-render workflow step for
 step: dossier, retrieval per sub-theme, gate, references, render to
 `tex`/`pdf`/`md`, a read as the reader, steering, the prose check, the
-fingerprint stamp. A survey minimises copying and a digest maximises it,
-so the survey's steps that exist to keep source wording out of the
-draft are inverted where they stand, and the skill says so at each one:
+fingerprint stamp, and the survey's structure and paragraph unit. A
+survey keeps source wording out of its body and a digest's body is
+source wording, so the survey's steps that exist to keep it out are
+replaced where they stand, and the skill says so at each one:
 
 | Survey step | In the digest |
 | --- | --- |
-| The evidence packet: `claim:` in the drafter's words, a `quote:` only when a quotation is warranted, prose drafted from `claim:` alone | Every passage to be copied is recorded as a `quote:`, since every run is an intended quotation; `claim:` still says what the passage establishes, and is drafted from only for the connecting sentences |
-| Multi-source synthesis: a paragraph rests on two or more sources so it cannot be a transcription ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §11) | One source per run, a transcription by design. The unit is the whole document |
-| The pre-gate critique against the evidence packet | Replaced by `review digest`: a digest is not drafted from the packet |
+| The evidence packet: `claim:` in the drafter's words, a `quote:` only when a quotation is warranted, prose drafted from `claim:` alone | Each source's main passage is recorded as its one `quote:`, which `review quotation` checks; every other run is checked where it stands by `review digest`. `claim:` still says what the passage establishes, and is drafted from only for the drafter's own sentences |
+| Multi-source synthesis: a paragraph rests on two or more sources so it cannot be a transcription ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §11) | Kept, at the paragraph: one source per *run*, two or more runs from different papers per paragraph, `<!-- single-source: why -->` where one paper is genuinely the only source. `review synthesis` reports it |
+| The pre-gate critique against the evidence packet | Replaced by a read as someone who has opened none of the papers: terms before definitions, runs naming what the digest does not show, paragraphs that are one paper after another |
 | The verbatim scan | Replaced by `review digest`: the scan would flag every run, which is the design |
 | The evidence sidecar | Not rendered: the digest *is* the sources' words, attributed where they stand |
 | The prose check | Run and reported, nothing fixed; copied text keeps its source's style |
@@ -95,13 +132,14 @@ python -m chitragupta.review digest content/drafts/<topic>/<name>.md
 
 The report is filed at `content/review/<topic>/<name>.digest.md` with
 its `.json` beside it, on every run, because the `.json` is the next
-pass's baseline. It opens with three fractions that together account
-for the whole digest, in the order a reader should take them:
+pass's baseline. It opens with four shares that together account for
+the whole digest, in the order a reader should take them:
 
 | Line | Counts | Direction |
 | --- | --- | --- |
-| Unsupported fraction | the words of every sentence carrying any finding, a sentence counted once however many classes it carries, over all words | down: the headline, the number a repair pass drives |
-| Copied fraction | the words of every verified copied span, over all words | up |
+| Unsupported fraction | the words of every sentence carrying a finding of the three source classes below, a sentence counted once however many it carries, over all words | down: the headline, the number a repair pass drives |
+| Copied fraction | the words of every verified copied span, over all words | up, short of crowding out the argument |
+| Own words, supported or declared | the words of every own-words sentence that raised nothing: a `see` sentence the cited sources support, or a sentence in an `own` paragraph or a table | as few as the argument needs |
 | Not checkable | the words of every run whose cited source has no reading-ordered passages: no Docling sidecar. The reason names the stage to run | a fact about the corpus, not the digest |
 
 Each run is matched whole against the cited source, with the same
@@ -124,11 +162,34 @@ Only a run that breaks is split into sentences, and only to show where:
 | --- | --- | --- |
 | `unsupported-text` | a sentence of the drafter's own, and either no citation covers it or the cited source does not lexically support it | cite it correctly, replace it with the source's words, or delete it |
 | `copy-mismatch` | a sentence not found verbatim but mostly on one page of the source; the item names the page and the missing words | open the source at that page and restore the exact wording |
-| `unquoted-text` | a sentence of the drafter's own that the cited source does lexically support | replace it with a copied passage, or delete it |
+| `dangling-reference` | a run naming a numbered figure, equation, section, table or chapter the digest does not show; a leftover reference marker such as `[2]`; or a copied run opening on a word that points back ("where", "thus", "these") with nothing before it from the same source | show the item, replace the mention with a bracketed editorial substitution, delete the marker, or move the run's start or end |
+| `repeated-text` | a sentence of a copied run that an earlier run already copied from the same source; the item names the line of the first copy. Counted in no fraction | keep the first copy, cut the later one, and point back to it |
+| `unquoted-text` | an undeclared sentence of the drafter's own: not closed by `see`, not in an `own` paragraph | close it with a `see` citation, replace it with a copied passage, or delete it |
 
-A sentence of the drafter's own carries `unquoted-text` always, and
-`unsupported-text` as well when the support test fails, so one sentence
-can be two items; the fraction counts its words once. Items are listed
+An undeclared sentence of the drafter's own carries `unquoted-text`
+always, and `unsupported-text` as well when the support test fails, so
+one sentence can be two items; the fraction counts its words once. A
+declared one -- `see`, `own`, a table row -- is checked for support
+only, and raises `unsupported-text` or nothing.
+
+`dangling-reference` is listed and counted, and moves no fraction: the
+run is still the source's words, it just points at something the reader
+cannot see. Cross-references are read in copied runs only, since a
+sentence of the drafter's own saying "Section 2 compares them" points
+into the digest; a reference marker is read everywhere. A figure the
+digest shows, captioned `Figure N of [@key]`, is not dangling for a run
+citing that key; a paragraph directly after a displayed equation may
+open on "where"; and a run right after a sentence citing its source,
+such as the drafter's own `[see @a; @b]`, has its antecedent. On the digest that
+prompted it, the class found 43 cross-references, 43 reference markers
+and 4 openers, every one a real pointer to nothing.
+
+`repeated-text` compares the copied spans with each other rather than
+with the source: a sentence (at least about eight words, flattened as
+every match is) copied again from the same citekey is reported on the
+later copy. On the survey-shaped digest that prompted it, it found three
+repeats a page-by-page read had missed. It reads copied text only, so a
+repeated equation display is not seen. Items are listed
 worst class first, then by line, in the agenda's own line format: a
 stable twelve-character id (a hash of the sentence, never its line, so
 an id survives an edit elsewhere), `[surfaced]`, the section, a one-line
@@ -252,17 +313,23 @@ one line, and the digest is built from the prose alone.
   whose bracket also names a source that does have one (matching
   against the readable source alone would report text copied from the
   other as the drafter's own); the report names the stage to run.
-  Within a sidecar, parse quality still bounds matching: a faithful
-  copy of a mangled passage matches, a copy made
-  from the PDF that the parse mangled shows as `copy-mismatch`. Copy
-  from the sidecar's text, not the PDF.
+  Within a sidecar, parse quality still bounds matching: a word the
+  parse dropped or garbled is missing from what the run is matched
+  against, so a copy made from the PDF there shows as `copy-mismatch`.
+  Copy from the sidecar's words, cleaning only their typography.
 - **A half-copied sentence is reported whole**, as a `copy-mismatch`
   naming the words that are not on the page, not split into a copied
   part and an original part.
 - **Lexical support is weak evidence**, as the section above says.
 - **An item's id is its sentence**, as an agenda item's is, so the same
-  connecting sentence written twice in one section is one id, and a
+  sentence of the drafter's written twice in one section is one id, and a
   baseline comparison sees one item until both copies are gone.
+- **The opener test is a word list.** It reads the first word of a
+  copied run that has nothing from the same source before it in its
+  paragraph. It cannot tell "This paper proposes" (which the citation
+  resolves) from "This model" (which needs an antecedent), and it does
+  not read the drafter's own sentences, whose "This" usually means the
+  sentence before.
 - **A citation closes a run wherever it sits.** The format puts it
   after the last copied sentence; a narrative citation mid-sentence
   (`[-@key]`, or `@key` in prose) splits the sentence across two runs
@@ -277,8 +344,8 @@ one line, and the digest is built from the prose alone.
 
 [SOUL.md](../SOUL.md) refuses to pass a source's wording off as the
 drafter's. A digest keeps that rule by construction: every copied run
-ends with the citation that names its source, the dossier records every
-copied passage as a `quote:`, and the digest is never a source for any
+ends with the citation that names its source, the dossier records each
+source's main passage as a `quote:`, and the digest is never a source for any
 other draft. [AGENTS.md](../AGENTS.md)'s statement that verbatim wording
 has one legitimate home outside the draft names the digest as the one
 genre that is that home, and [PLAGIARISM.md](PLAGIARISM.md)'s verbatim

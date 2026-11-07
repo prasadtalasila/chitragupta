@@ -261,7 +261,7 @@ one ([GENRE.md](GENRE.md)).
 | `textbook-chapter-writer` | undergraduate chapter with worked examples | a student studying, not typing |
 | `tutorial-writer` | a hands-on lesson to a working result | a learner at a keyboard |
 | `deep-research` | multi-perspective report, heaviest by design | someone who needs perspectives reconciled |
-| `review-digest` | a verbatim digest: the papers' own words, a citation on every run, checked by `review digest` | someone studying privately ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) |
+| `review-digest` | a verbatim digest: a survey whose body is the papers' own words, a citation on every run, checked by `review digest` | someone studying privately ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) |
 | `draft-reviser` | edits an existing draft, from its dossier | (the cheap, default path for any change) |
 | `corpus-reviser` | edits an existing draft, re-searching everything | (by explicit request only) |
 | `agenda-reviser` | repairs the unattended findings a review agenda found | (one item at a time) |
