@@ -48,6 +48,8 @@ UNITS = {
     # source's, and a paragraph braids runs from two or more, so the
     # survey's unit binds there exactly as it does in a survey.
     "digest": "paragraph",
+    # Related work fuses sources as a thesis chapter's does (plans/1179-research-paper-genre.md).
+    "research-paper": "paragraph",
 }
 
 KINDS = ("paragraph", "section", "document")
@@ -76,6 +78,8 @@ UNCITED_PROSE = {
     # no citation by design; the `digest` aid is what judges its own
     # sentences, one by one (#991, #1172).
     "digest": "ordinary",
+    # Design and evaluation describe the author's own software, uncited by design.
+    "research-paper": "ordinary",
 }
 
 STANDINGS = ("exceptional", "ordinary")

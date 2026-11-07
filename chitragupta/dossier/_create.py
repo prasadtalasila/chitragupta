@@ -12,6 +12,7 @@ from chitragupta import config
 from chitragupta.dossier import (
     EVIDENCE_MD,
     OUTLINE_MD,
+    PAPER_MD,
     REJECTED_MD,
     RETRIEVAL_MD,
     REVISIONS_MD,
@@ -25,6 +26,7 @@ from chitragupta.dossier import (
     draft_relpath,
     known_citekeys,
 )
+from chitragupta.dossier import _paper
 
 
 def _readme(name: str, draft: Path, genre: str) -> str:
@@ -293,6 +295,8 @@ def init(draft: Path, genre: str, outline: bool = False) -> list[Path]:
     }
     if outline:
         contents[OUTLINE_MD] = _OUTLINE_TEMPLATE
+    if genre == _paper.GENRE:
+        contents[PAPER_MD] = _paper.PAPER_TEMPLATE
     for name, body in contents.items():
         path = target / name
         if path.exists():

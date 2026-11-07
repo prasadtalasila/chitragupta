@@ -548,7 +548,7 @@ rather than a default.
 
 | Genre | Unit | What that means |
 | --- | --- | --- |
-| `survey`, `thesis-chapter`, `deep-research` | paragraph | A body paragraph closes on more than one citekey |
+| `survey`, `thesis-chapter`, `deep-research`, `research-paper` | paragraph | A body paragraph closes on more than one citekey. In a research paper that binds the related work; a paragraph about the author's own software cites nothing and is not a finding |
 | `textbook-chapter` | section | A section's citations span two or more citekeys, *and do not arrive in blocks* (see below). Individual paragraphs are free to be single-source; multi-source paragraphs are a distraction in a genre whose job is explanation |
 | `tutorial` | document | The body carries no citations at all, by design. The floor is on the lesson's derivation: it must not be a walkthrough of one source's procedure, and two or more distinct citekeys in "Where to go next" are the evidence that it is not |
 | `digest` | paragraph | As in a survey: a body paragraph braids copied runs from two or more papers. Each *run* is one source's own words, closed by its citation ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)), so the paragraph is where a digest stops being a transcription of one paper |

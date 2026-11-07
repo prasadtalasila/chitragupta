@@ -1203,7 +1203,7 @@ chitragupta draft dossier outline content/drafts/survey.md --check
 
 | Flag | Applies to | What it does |
 | --- | --- | --- |
-| `--genre GENRE` | `init` | Required: `survey`, `thesis-chapter`, `textbook-chapter`, `tutorial`, `deep-research` |
+| `--genre GENRE` | `init` | Required: `survey`, `thesis-chapter`, `textbook-chapter`, `tutorial`, `deep-research`, `digest`, `research-paper`. `research-paper` also gets a `paper.md` for the paper-level inputs |
 | `--outline` | `init` | Also create `outline.md`. Opt-in, since most dossiers don't have one |
 | `--all` | `status` | Report every dossier instead of one draft. Mutually exclusive with a draft path |
 | `--json` | `status` | Emit the drift report as JSON, for `draft-reviser` rather than a terminal |
@@ -2360,7 +2360,7 @@ The unit comes from the genre recorded in the draft's dossier
 
 | Genre | Unit |
 | --- | --- |
-| `survey`, `thesis-chapter`, `deep-research` | paragraph |
+| `survey`, `thesis-chapter`, `deep-research`, `research-paper` | paragraph |
 | `textbook-chapter` | section: its paragraphs are free to be single-source, its *consecutive* paragraphs are not free to be the same single source |
 | `tutorial` | document: the body carries no citations by design, so the floor is on the lesson's derivation |
 
@@ -2446,14 +2446,14 @@ table that attributes rows that way rests on nothing.
 | Genre | Uncited prose is | Findings |
 | --- | --- | --- |
 | `survey`, `thesis-chapter`, `deep-research` | exceptional | one per uncited sentence |
-| `textbook-chapter`, `tutorial` | ordinary: most prose is original by design, per [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §11 | none. The counts are still reported |
+| `textbook-chapter`, `tutorial`, `research-paper` | ordinary: most prose is original by design, per [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §11 | none. The counts are still reported |
 | not recorded in `scope.md` | exceptional | raised, and the report says the genre was not recorded |
 
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The draft to check |
-| `--genre {deep-research,survey,textbook-chapter,thesis-chapter,tutorial}` | from `scope.md` | Read the draft under this genre instead. For a draft with no dossier, or to read one strictly on purpose |
+| `--genre {deep-research,digest,research-paper,survey,textbook-chapter,thesis-chapter,tutorial}` | from `scope.md` | Read the draft under this genre instead. For a draft with no dossier, or to read one strictly on purpose |
 | `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
 | `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default |
 | `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
