@@ -49,8 +49,8 @@ what lets `dossier export <topic> --with-rendered` find the renders at
 all: it matches them by their path relative to `content/rendered/`.
 
 `dossier init` writes eight files: `README.md` and the seven core files
-below. Two more are optional, `math.md` and `outline.md`, and the only
-two whose absence is not a defect. Each answers a question the draft
+below. Three more are optional, `math.md`, `outline.md` and `paper.md`,
+and the only three whose absence is not a defect. Each answers a question the draft
 itself cannot. Without the dossier, none of this
 survives the session that wrote the draft: it lives in the transcript
 only.
@@ -67,6 +67,7 @@ only.
 | `retrieval.md` | every retrieval call and the size of what it returned |
 | `math.md` | ASCII in the draft -> the LaTeX it renders as ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12), an optional "Not mathematics" table of spans that are code, and `## Symbols`, what each mapped symbol means |
 | `outline.md` | the human's own per-section brief/claim/declared queries |
+| `paper.md` | a research paper's paper-level inputs: the software, venue, message, contributions and the evidence for each. Written by `init` for that genre only (#1175) |
 
 Four filled dossiers are committed to read alongside this page:
 `docs/examples/sample-project/content/dossiers/dt-overview/` holds one per
