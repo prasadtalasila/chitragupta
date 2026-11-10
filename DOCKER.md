@@ -120,7 +120,8 @@ python -c "import sentence_transformers, chromadb, bertopic, docling; print('enr
 ## 🤖 The agent container (`docker/Dockerfile.claude`)
 
 A second, much thinner image. Its job is to host one long-lived
-`claude remote-control` session with this pipeline installed; it does
+`claude remote-control` session with this pipeline installed, kept alive by
+`rc-daemon.sh` (see [below](#-the-supervisor-rc-daemonsh)); it does
 not build the toolchain. It installs the *published* `chitragupta-cli`
 package from PyPI into `/opt/venv` and copies no part of this repository
 in. That is the whole difference from the toolchain image: an image built
@@ -245,6 +246,9 @@ developer's home directory and no release number. Set these in
 | `CHITRAGUPTA_PROJECT_NAME` | `chitragupta` | Compose's project name, which prefixes the network. Set it per workspace to run two of these side by side |
 | `CHITRAGUPTA_IMAGE_TAG` | `latest` | Which tag to run. This is how you point one workspace at a `:tmp` build without disturbing the `:latest` everything else uses |
 | `CHITRAGUPTA_CLAUDE_HOME` | `./claude` | Host directory for `/home/$CHITRAGUPTA_USER/.claude`. This is what persists the login, so a restart is not a re-authentication |
+| `RC_NAME` / `RC_PREFIX` | container name | The agent's name in the remote-control UI, and the prefix for sessions it spawns |
+| `RC_PERMISSION_MODE` | `bypassPermissions` | Permission mode `claude remote-control` runs with. The container is the isolation boundary |
+| `RC_VENV` | none (`/opt/venv`) | A venv inside the container to run the agent from instead of `/opt/venv` |
 | `CHITRAGUPTA_PAPERS` | `$CHITRAGUPTA_WORKSPACE/papers` | Host directory of PDFs, mounted **read-only** at `/workspace/papers`. Point it elsewhere to share one corpus across workspaces |
 | `COMPOSE_PROFILES` | none | `cpu` or `gpu`; see below. Compose's own variable, not one of ours |
 | `CHITRAGUPTA_USER` | **required** | The unprivileged account inside the image: your own login name (`id -un`). A **build** arg as well as a runtime setting, so changing it needs `docker compose build`, not just a restart |
@@ -272,6 +276,30 @@ lives at
 `/usr/local/bin/entrypoint.sh` rather than in the home directory for the
 same reason.
 
+### 🛡 The supervisor: `rc-daemon.sh`
+
+`claude remote-control` gives up after 10 minutes of persistent errors,
+and that limit is hardcoded in Claude Code. The entrypoint therefore runs
+the agent under `docker/rc-daemon.sh`, which restarts it with backoff
+(5 seconds, doubling to 5 minutes, reset after a healthy run) inside the
+`claude` tmux session. Both it and `rc-daemon.env` are installed in
+`/usr/local/bin`, and the agent runs from the image's `/opt/venv`, which
+it inherits from `ENV PATH`.
+
+Every setting in `rc-daemon.env` is overridable from the environment, so
+nothing needs editing in a running container. Set `RC_NAME`, `RC_PREFIX`,
+`RC_PERMISSION_MODE` or `RC_VENV` in `docker/.env`. `RC_VENV` points at
+another venv *inside the container*, for example one in the workspace;
+`/opt/venv` is the default. The entrypoint also records the workspace
+trust and the Remote Control consent in the container's `~/.claude.json`,
+because the supervisor will not start without them.
+
+```bash
+docker exec chitragupta-claude rc-daemon.sh status    # also the healthcheck
+docker exec chitragupta-claude rc-daemon.sh restart   # retry at once, e.g. after /login
+docker exec chitragupta-claude tail -f /home/$CHITRAGUPTA_USER/rc-daemon.log
+```
+
 ### 🚀 First run
 
 The container deliberately starts before it can do anything useful. Set
@@ -279,7 +307,7 @@ it up in this order:
 
 ```bash
 docker exec -it chitragupta-claude claude   # then /login
-docker compose restart                      # the agent picks up the login
+docker exec chitragupta-claude rc-daemon.sh restart   # the agent picks up the login at once
 docker exec -it chitragupta-claude bash
 chitragupta install os-deps                 # TeX Live, Pandoc, poppler, Vale
 chitragupta init                            # scaffold /workspace
@@ -324,16 +352,20 @@ immediately if the mounted `.claude` carries no login. `entrypoint.sh`
 reports that in `docker logs` rather than leaving it silent:
 
 ```text
-entrypoint: WARNING -- the agent exited immediately. Its output was:
-entrypoint:   Remote Control is only available with claude.ai subscriptions.
-entrypoint:   Pane is dead (status 1, ...)
-entrypoint: the container stays up so you can fix this in place:
-entrypoint:   docker exec -it chitragupta-claude claude   # then /login, then restart
+entrypoint: agent supervised as 'chitragupta-claude'
+entrypoint: last output from the agent:
+entrypoint:   Error: You must be logged in to use Remote Control.
+entrypoint:   claude remote-control exited with code 1 after 0s
+entrypoint:   restarting in 10s
 ```
 
-It reports rather than exiting non-zero on purpose: the fix needs a
-running container to `docker exec` into, and a crash loop would take
-that away. `docker logs <name>` is therefore the first thing to read
+The supervisor keeps retrying, so once you `/login` the agent comes up
+on its own within the backoff (at most 5 minutes);
+`rc-daemon.sh restart` skips the wait. The entrypoint does not exit
+non-zero on purpose: the fix needs a running container to `docker exec`
+into, and a crash loop would take that away. The compose healthcheck
+reports `unhealthy` only if the supervisor itself is gone, not for a
+missing login. `docker logs <name>` is therefore the first thing to read
 when the remote-control UI does not list your agent, not `docker ps`,
 which will say `Up` either way.
 

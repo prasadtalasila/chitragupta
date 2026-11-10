@@ -26,7 +26,8 @@
 # builds this one. So a break here is caught by hand or not at all.
 # Re-verify with the build and the checks in DOCKER.md's "Verify the
 # container" after changing this file or entrypoint.sh -- shellcheck
-# docker/*.sh in the lint job reaches entrypoint.sh and nothing else.
+# docker/*.sh in the lint job reaches entrypoint.sh and rc-daemon.sh and
+# nothing else.
 #
 # Build (a temporary tag, so an existing :latest survives a failed try):
 #   docker build -t chitragupta-claude:tmp -f docker/Dockerfile.claude docker/
@@ -74,8 +75,8 @@ RUN : "${CG_USER:?required: set CHITRAGUPTA_USER in docker/.env, or pass --build
     : "${CG_UID:?required: set CHITRAGUPTA_UID in docker/.env (your `id -u`), or pass --build-arg CG_UID=<uid>}" && \
     : "${CG_GID:?required: set CHITRAGUPTA_GID in docker/.env (your `id -g`), or pass --build-arg CG_GID=<gid>}"
 
-# tmux is load-bearing, not a convenience: entrypoint.sh runs the agent
-# inside a detached tmux session so `docker attach` is not the only way
+# tmux is load-bearing, not a convenience: entrypoint.sh runs rc-daemon.sh,
+# and through it the agent, inside a detached tmux session so `docker attach` is not the only way
 # back to it, and a dropped connection doesn't kill the run. sudo is
 # here for `chitragupta install os-deps` (see the sudoers rule below).
 # python3-venv is what answers PEP 668, as the install step explains.
@@ -137,11 +138,29 @@ RUN npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
 # path is baked into ENTRYPOINT below, and a path under /home/<user>
 # would make it depend on CG_USER -- exactly the coupling the build args
 # above exist to remove.
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY entrypoint.sh rc-daemon.sh rc-daemon.env /usr/local/bin/
 # 0755 explicitly, not `chmod +x`: COPY preserves the host file's mode,
 # so a repo checkout with a group-writable umask would put a
 # group-writable PID 1 in the image.
-RUN chmod 0755 /usr/local/bin/entrypoint.sh
+#
+# rc-daemon.sh is what entrypoint.sh runs the agent under: it restarts
+# `claude remote-control` after the CLI's hardcoded 10-minute give-up.
+# rc-daemon.env has to sit beside it, because the script sources
+# `<its own name>.env`. It is root-owned and read-only on purpose: every
+# setting in it is overridable from the environment (docker-compose.yml's
+# `environment:` block), so nobody needs to edit it in a running container.
+# The agent runs from /opt/venv, set below: rc-daemon inherits PATH from
+# ENV, so no venv handling is needed in the daemon itself.
+RUN chmod 0755 /usr/local/bin/entrypoint.sh /usr/local/bin/rc-daemon.sh && \
+    chmod 0644 /usr/local/bin/rc-daemon.env
+
+# The tmux session rc-daemon.sh supervises, as an ENV rather than an export
+# in entrypoint.sh: `docker exec <c> rc-daemon.sh status|restart` and the
+# compose healthcheck are separate processes that inherit the image's ENV,
+# not PID 1's, and with a different name they look for a session that is
+# not there. "claude" keeps `tmux attach -t claude`, as DOCKER.md has
+# always documented it.
+ENV TMUX_SESSION=claude
 
 
 # One venv on PATH, the same shape docker/Dockerfile uses for /opt/venv,

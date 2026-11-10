@@ -21,7 +21,7 @@ So a break in the toolchain image's *build* is caught automatically; a
 break in anything it does at runtime is not, and nothing about the agent
 image is. `shellcheck docker/*.sh` in the `lint` job is the only other
 automated check that reaches this directory, and it sees `entrypoint.sh`
-alone.
+and `rc-daemon.sh`.
 
 Because CI only builds the `cpu` variant, the toolchain image is also
 verified by hand: `docker build` with both `TORCH_VARIANT` values, and
