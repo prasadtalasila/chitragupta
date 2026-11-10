@@ -337,7 +337,7 @@ logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups
 .opencode/                OpenCode's copy of each SKILL.md (-opencode suffix), its gate plugin, and
                           opencode.json's deny list for the unsuffixed names (docs/HARNESS.md)
 docker/                   Dockerfile (TeX Live/Pandoc/Poetry), Dockerfile.claude + docker-compose.yml +
-                          entrypoint.sh + .env.example (the Claude Code agent container, cpu/gpu profiles)
+                          entrypoint.sh + rc-daemon.sh/.env + .env.example (the Claude Code agent container, cpu/gpu profiles)
                           -- CI builds docker/Dockerfile (cpu variant) but never runs it, and does not
                           build Dockerfile.claude; see DOCKER-DEVELOPER.md
 ```

@@ -65,6 +65,18 @@ x-claude: &claude
   hostname: ${CHITRAGUPTA_CONTAINER_NAME:-chitragupta-claude}
   environment:
     CLAUDE_AGENT_NAME: ${CHITRAGUPTA_CONTAINER_NAME:-chitragupta-claude}
+    # The workspace path inside the container, which rc-daemon.sh runs the
+    # agent from and which entrypoint.sh marks trusted. It is the mount
+    # target below, so the two are one value and cannot drift. Everything
+    # else rc-daemon reads (RC_NAME, RC_PREFIX, RC_PERMISSION_MODE, RC_VENV)
+    # is optional. Compose passes an unset one as an empty string, which
+    # rc-daemon.env's `${VAR:-default}` treats as unset, so its default
+    # applies.
+    RC_DIR: /workspace
+    RC_NAME: ${RC_NAME:-}
+    RC_PREFIX: ${RC_PREFIX:-}
+    RC_PERMISSION_MODE: ${RC_PERMISSION_MODE:-bypassPermissions}
+    RC_VENV: ${RC_VENV:-}
 
   volumes:
     # `:?` rather than a default: a missing workspace is a mistake to
@@ -82,6 +94,19 @@ x-claude: &claude
   # `tail -f /dev/null`, so the container only exits on a real failure
   # or an explicit `docker compose down`.
   restart: unless-stopped
+
+  # `Up` has never meant the agent is there: the container is PID 1 on a
+  # `tail`. rc-daemon.sh's status is true while its tmux supervisor lives,
+  # and the supervisor restarts the agent itself, so this catches the one
+  # case it cannot -- tmux or the supervisor dying -- and `docker ps` then
+  # says `unhealthy` instead of a bare `Up`. It does not detect a missing
+  # login: the supervisor is alive and retrying then, see `docker logs`.
+  healthcheck:
+    test: ["CMD", "rc-daemon.sh", "status"]
+    interval: 60s
+    timeout: 5s
+    retries: 3
+    start_period: 20s
 
 services:
   # For a host with no NVIDIA stack, or one where you simply don't want
