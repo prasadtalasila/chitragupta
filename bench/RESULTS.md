@@ -7721,3 +7721,34 @@ and these labels are 12pt.
 k2 measurement is read back as its colour pair. Record:
 `bench/results/2026-10-29-contrast-wording/contrast_wording.json`
 (figure paths are relative to `--drafts` or to the repository).
+
+## 2026-11-10 (#1183): Vale 3.9.1 to 3.26.0, over the shipped drafts
+
+**The question.** `assets/vale/README.md` asks for the shipped drafts to be
+re-run before the Vale pin moves, because a release can change how a
+format is scoped and the exemptions are what move first. #1183 needs
+Vale >= 3.22 (the Journals package does not load on 3.9.1: `E201: has
+invalid keys: 'tests'`); 3.26.0 is the latest release.
+
+**The corpus.** The 22 `.md` and `.tex` drafts under this host's
+`content/drafts/` (the fifteen-chapter book and its table of contents, a
+survey, a deep-research report, a thesis chapter, tutorials), checked
+twice with `python -m chitragupta.draft style --json`, once as `en-GB`
+and once as `en-US`, and once more with bare `vale --output=line` against
+the vendored `vale.ini` with every rule enabled, to compare positions.
+
+**Result: no finding gained or lost.** Keyed by draft, rule and message,
+the two versions report the same set; `scripts/check_style_exemptions.sh`
+still reports 0 findings in both fixtures. What moved:
+
+| Change | Count | Read |
+| --- | --- | --- |
+| More occurrences of an existing finding | 7 | `DT` (47 to 49), `modelling` (9 to 10), `centre` (2 to 3), `MODBUS` (13 to 14), `ROI` (12 to 13); each is real prose 3.9.1 missed: inside a hyphenated compound (`plant-modelling`, `three-centre`, `standards-to-ROI`), a list item, or a `.tex` table row |
+| An existing finding reported at a different place | 3 | 3.9.1 placed `visualisation` inside the citekey `[@bohlbro_visualisation_2024]` and 3.26.0 on the prose word after it; one `modeling` moved along its line the same way; `GET` moved from a fenced block to an inline code span, wrong in both versions (the finding predates this change) |
+
+So `draft style`'s counts can rise slightly on an existing draft, and no
+agenda item appears or disappears.
+
+**Reproducing.** Run `draft style --json --language en-GB` (and `en-US`)
+over the same files with each binary first on `PATH`, and compare
+`(draft, rule, message)` sets and `count` values.
