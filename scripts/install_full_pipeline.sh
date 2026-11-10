@@ -319,13 +319,25 @@ check_book_index_tools() {
 ACTIONLINT_VERSION="1.7.12"
 ACTIONLINT_SHA256="8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
 
-VALE_VERSION="3.9.1"
-VALE_SHA256="fbc2eb47d0b8c50220ed1a2c5c611fbe0904ed567d638143d482016a18fd2db0"
+VALE_VERSION="3.26.0"
+VALE_SHA256="22aa69a556558e4a9dfc63c17030777383d8d3c48dcdfad655fa98e839d666ed"
 
 install_vale() {
+    # Skipped only at the pinned version. An older Vale this script put in
+    # /usr/local/bin is replaced, so moving the pin reaches a host that
+    # installed the previous one; a Vale installed some other way is left
+    # alone and named, since replacing it is not this script's call.
     if command -v vale >/dev/null 2>&1; then
-        echo "vale already installed: $(vale --version)"
-        return 0
+        if [ "$(vale --version)" = "vale version ${VALE_VERSION}" ]; then
+            echo "vale already installed: $(vale --version)"
+            return 0
+        fi
+        if [ "$(command -v vale)" != /usr/local/bin/vale ]; then
+            echo "WARNING: $(command -v vale) is $(vale --version), not the pinned ${VALE_VERSION};" >&2
+            echo "         leaving it in place. Remove it and re-run to install the pin." >&2
+            return 0
+        fi
+        echo "replacing $(vale --version) with the pinned ${VALE_VERSION}"
     fi
     case "$(uname -m)" in
         x86_64|amd64) vale_arch="64-bit" ;;
@@ -336,7 +348,7 @@ install_vale() {
             ;;
     esac
     vale_tmp="$(mktemp -d)"
-    vale_url="https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_${vale_arch}.tar.gz"
+    vale_url="https://github.com/vale-cli/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_${vale_arch}.tar.gz"
     if ! curl -fsSL -o "${vale_tmp}/vale.tar.gz" "$vale_url"; then
         echo "WARNING: could not download Vale from $vale_url; skipping." >&2
         rm -rf "$vale_tmp"

@@ -7,8 +7,8 @@ two directions.
 
 ## Provenance
 
-- **Vale**, <https://vale.sh>, [errata-ai/vale](https://github.com/errata-ai/vale),
-  MIT. Pinned to **v3.9.1**; `scripts/install_full_pipeline.sh` fetches
+- **Vale**, <https://vale.sh>, [vale-cli/vale](https://github.com/vale-cli/vale) (formerly errata-ai/vale),
+  MIT. Pinned to **v3.26.0**; `scripts/install_full_pipeline.sh` fetches
   that exact release and verifies it against a recorded sha256.
 - **The rules in `styles/chitragupta/` are original to this repository.**
   No third-party Vale style package is vendored, adapted or copied --
@@ -124,9 +124,9 @@ Vale refuses to run.
 ## Re-fetching or upgrading Vale
 
 ```bash
-VALE_VERSION=3.9.1
+VALE_VERSION=3.26.0
 curl -sLo vale.tar.gz \
-  "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz"
+  "https://github.com/vale-cli/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz"
 sha256sum vale.tar.gz   # must match the pin in scripts/install_full_pipeline.sh
 ```
 
@@ -134,3 +134,6 @@ On an upgrade, re-run the checks over the shipped drafts and compare
 against `bench/results/` before moving the pin: a Vale release can change
 how a format is scoped, and the exemptions above are the part most likely
 to move under you.
+The last move, 3.9.1 to 3.26.0, is recorded in
+`bench/RESULTS.md` (2026-11-10): no finding gained
+or lost, seven more occurrences of existing ones, three placed better.
