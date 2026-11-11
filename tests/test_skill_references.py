@@ -32,7 +32,13 @@ def neutral_files() -> list:
         CLAUDE / "skills-common",
         *(CLAUDE / "skills" / s / d for s in SKILLS for d in NEUTRAL_DIRS),
     ]
-    return sorted(p for root in roots if root.is_dir() for p in root.rglob("*") if p.is_file())
+    return sorted(
+        p
+        for root in roots
+        if root.is_dir()
+        for p in root.rglob("*")
+        if p.is_file() and "__pycache__" not in p.parts
+    )
 
 
 def every_skill_md() -> list:

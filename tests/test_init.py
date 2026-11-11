@@ -508,6 +508,24 @@ class TestAgents:
         assert (tmp_path / ".opencode" / "skills" / "survey-writer-opencode" / "SKILL.md").is_file()
         assert (tmp_path / ".opencode" / "opencode.json").is_file()
 
+    def test_no_harness_gets_a_developer_only_skill(self, source, tmp_path):
+        """#1188: in an editable install SOURCE_ROOT is the checkout, so
+        the wheel leaving the skill out does not keep it out of a project."""
+        marked = "---\nname: {}\nmetadata:\n  audience: developer\n---\n"
+        for rel in (
+            ".claude/skills/demo-recorder",
+            ".agents/skills/demo-recorder",
+            ".opencode/skills/demo-recorder-opencode",
+        ):
+            (source / rel / "scripts").mkdir(parents=True)
+            (source / rel / "SKILL.md").write_text(marked.format(Path(rel).name), encoding="utf-8")
+            (source / rel / "scripts" / "tour.sh").write_text("#!", encoding="utf-8")
+        project = tmp_path / "project"
+        report = init.scaffold(project, agents=("claude", "codex", "opencode"))
+        assert not any("demo-recorder" in line for line in report)
+        assert not any("demo-recorder" in p.as_posix() for p in project.rglob("*"))
+        assert (project / ".agents" / "skills" / "survey-writer" / "SKILL.md").is_file()
+
     def test_no_other_harness_gets_the_codex_copy(self, source, tmp_path):
         init.scaffold(tmp_path, agents=("claude", "opencode"))
         assert not (tmp_path / ".agents").exists()

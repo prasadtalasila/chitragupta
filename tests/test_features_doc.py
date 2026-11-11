@@ -26,12 +26,14 @@ import pytest
 
 from chitragupta import review
 from chitragupta.draft import VERBS as DRAFT_VERBS
+from tests.test_skill_harness_copies import USER_SKILLS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FEATURES = REPO_ROOT / "docs" / "FEATURES.md"
 FEATURES_TEXT = FEATURES.read_text(encoding="utf-8")
 
-SKILLS = sorted(p.name for p in (REPO_ROOT / ".claude" / "skills").iterdir() if p.is_dir())
+# Developer-only skills (#1188) are not features a user is offered.
+SKILLS = USER_SKILLS
 
 _NUMBER_WORDS = {
     1: "One",

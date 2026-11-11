@@ -17,7 +17,7 @@
 # pyproject.toml's on the one axis it is meant to.
 
 [tool.coverage.run]
-source = ["chitragupta", "scripts", ".claude/hooks"]
+source = ["chitragupta", "scripts", ".claude/hooks", ".claude/skills/demo-recorder/scripts"]
 branch = true
 omit = [
     "*/enrich/__init__.py",

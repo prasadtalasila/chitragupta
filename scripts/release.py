@@ -18,7 +18,10 @@ already handled) except:
 
   **Every prose document ships** -- README.md, docs/, SOUL.md, AGENTS.md,
   DEVELOPER-AGENTS.md and DEVELOPER.md -- as does `.claude/` and its genre
-  skills. Those skills cite AGENTS.md by name for the citekey invariant,
+  skills, but not a skill marked developer-only (#1188): `demo-recorder`
+  is this repository's own machinery, like `tests/`, and
+  `chitragupta/developer_skills.py` finds it in every harness folder.
+  Those genre skills cite AGENTS.md by name for the citekey invariant,
   and the docs cross-reference each other freely, so excluding any one of
   them leaves dangling references in the rest. Someone who unzips a
   release to work on the pipeline needs the developer docs as much as
@@ -59,6 +62,7 @@ Usage:
     python3 scripts/release.py
 """
 
+import importlib.util
 import re
 import shutil
 import subprocess
@@ -67,6 +71,17 @@ import zipfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# Loaded by path, not imported: this file runs both as
+# `python3 scripts/release.py` and as `scripts.release`, which put
+# different directories on `sys.path` (scripts/merge_pr.py loads its
+# sibling the same way). The module is stdlib-only, so this stays a
+# bare-`python3` script.
+_DEV_SPEC = importlib.util.spec_from_file_location(
+    "developer_skills", REPO_ROOT / "chitragupta" / "developer_skills.py"
+)
+developer_skills = importlib.util.module_from_spec(_DEV_SPEC)
+_DEV_SPEC.loader.exec_module(developer_skills)
 
 # Developer-only / this-repo-only material a release doesn't need to ship
 # -- everything else git-tracks is fair game (see module docstring).
@@ -136,9 +151,9 @@ def get_repository() -> str:
 
 
 def tracked_files() -> list[str]:
-    """Every git-tracked path relative to REPO_ROOT, minus EXCLUDE_TOP_LEVEL
-    and EMPTY_TOP_LEVEL (the latter ships as an empty directory instead --
-    see build_release)."""
+    """Every git-tracked path relative to REPO_ROOT, minus EXCLUDE_TOP_LEVEL,
+    EMPTY_TOP_LEVEL (the latter ships as an empty directory instead --
+    see build_release) and the developer-only skills (#1188)."""
     result = subprocess.run(
         ["git", "-C", str(REPO_ROOT), "ls-files", "-z"],
         capture_output=True,
@@ -146,7 +161,12 @@ def tracked_files() -> list[str]:
     )
     paths = [p for p in result.stdout.decode().split("\0") if p]
     skip = EXCLUDE_TOP_LEVEL | EMPTY_TOP_LEVEL
-    return [p for p in paths if p.split("/", 1)[0] not in skip]
+    dev = developer_skills.developer_skills(REPO_ROOT)
+    return [
+        p
+        for p in paths
+        if p.split("/", 1)[0] not in skip and not developer_skills.is_developer_only(p, dev)
+    ]
 
 
 def build_release() -> tuple[Path, int]:

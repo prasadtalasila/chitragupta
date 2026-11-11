@@ -19,7 +19,7 @@
 # checkout, Docker and CI.
 [tool.poetry]
 name = "chitragupta-cli"
-version = "6.169.2"
+version = "6.170.0"
 packages = [{ include = "chitragupta" }]
 # Everything below is not Python, so `packages` above doesn't reach it --
 # `poetry build` includes only what `packages`/`include` name. Each entry
@@ -32,11 +32,57 @@ packages = [{ include = "chitragupta" }]
 # the five root `.md` files from the same sibling location.
 include = [
     { path = "assets", format = ["sdist", "wheel"] },
-    { path = ".claude", format = ["sdist", "wheel"] },
+    # `.claude/`, `.agents/` and `.opencode/` are listed entry by entry,
+    # never as whole folders: a developer-only skill (#1188, e.g.
+    # `demo-recorder`) sits in each, and Poetry's `exclude` cannot take a
+    # path back out of an `include`d folder -- measured, poetry-core 2.3.1.
+    # A new user-facing skill therefore needs one line per harness here;
+    # tests/test_developer_skills.py fails, naming the files, until it has
+    # them. Listing entries also keeps a local build from shipping
+    # `.claude/worktrees/`, which the whole-folder entry did (an explicit
+    # include beats .gitignore).
+    { path = ".claude/agents", format = ["sdist", "wheel"] },
+    { path = ".claude/hooks", format = ["sdist", "wheel"] },
+    { path = ".claude/settings.json", format = ["sdist", "wheel"] },
+    { path = ".claude/skills-common", format = ["sdist", "wheel"] },
+    { path = ".claude/skills/agenda-reviser", format = ["sdist", "wheel"] },
+    { path = ".claude/skills/book-assembler", format = ["sdist", "wheel"] },
+    { path = ".claude/skills/corpus-reviser", format = ["sdist", "wheel"] },
+    { path = ".claude/skills/deep-research", format = ["sdist", "wheel"] },
+    { path = ".claude/skills/draft-reviser", format = ["sdist", "wheel"] },
+    { path = ".claude/skills/figure-drawer", format = ["sdist", "wheel"] },
+    { path = ".claude/skills/review-digest", format = ["sdist", "wheel"] },
+    { path = ".claude/skills/survey-writer", format = ["sdist", "wheel"] },
+    { path = ".claude/skills/textbook-chapter-writer", format = ["sdist", "wheel"] },
+    { path = ".claude/skills/thesis-chapter-writer", format = ["sdist", "wheel"] },
+    { path = ".claude/skills/tutorial-writer", format = ["sdist", "wheel"] },
     # The Codex and OpenCode launchers (#812, #900), for `init --agent`.
     { path = ".codex", format = ["sdist", "wheel"] },
-    { path = ".agents", format = ["sdist", "wheel"] },
-    { path = ".opencode", format = ["sdist", "wheel"] },
+    { path = ".agents/skills/agenda-reviser", format = ["sdist", "wheel"] },
+    { path = ".agents/skills/book-assembler", format = ["sdist", "wheel"] },
+    { path = ".agents/skills/corpus-reviser", format = ["sdist", "wheel"] },
+    { path = ".agents/skills/deep-research", format = ["sdist", "wheel"] },
+    { path = ".agents/skills/draft-reviser", format = ["sdist", "wheel"] },
+    { path = ".agents/skills/figure-drawer", format = ["sdist", "wheel"] },
+    { path = ".agents/skills/review-digest", format = ["sdist", "wheel"] },
+    { path = ".agents/skills/survey-writer", format = ["sdist", "wheel"] },
+    { path = ".agents/skills/textbook-chapter-writer", format = ["sdist", "wheel"] },
+    { path = ".agents/skills/thesis-chapter-writer", format = ["sdist", "wheel"] },
+    { path = ".agents/skills/tutorial-writer", format = ["sdist", "wheel"] },
+    { path = ".opencode/chitragupta", format = ["sdist", "wheel"] },
+    { path = ".opencode/opencode.json", format = ["sdist", "wheel"] },
+    { path = ".opencode/plugins", format = ["sdist", "wheel"] },
+    { path = ".opencode/skills/agenda-reviser-opencode", format = ["sdist", "wheel"] },
+    { path = ".opencode/skills/book-assembler-opencode", format = ["sdist", "wheel"] },
+    { path = ".opencode/skills/corpus-reviser-opencode", format = ["sdist", "wheel"] },
+    { path = ".opencode/skills/deep-research-opencode", format = ["sdist", "wheel"] },
+    { path = ".opencode/skills/draft-reviser-opencode", format = ["sdist", "wheel"] },
+    { path = ".opencode/skills/figure-drawer-opencode", format = ["sdist", "wheel"] },
+    { path = ".opencode/skills/review-digest-opencode", format = ["sdist", "wheel"] },
+    { path = ".opencode/skills/survey-writer-opencode", format = ["sdist", "wheel"] },
+    { path = ".opencode/skills/textbook-chapter-writer-opencode", format = ["sdist", "wheel"] },
+    { path = ".opencode/skills/thesis-chapter-writer-opencode", format = ["sdist", "wheel"] },
+    { path = ".opencode/skills/tutorial-writer-opencode", format = ["sdist", "wheel"] },
     { path = "docs", format = ["sdist", "wheel"] },
     { path = "AGENTS.md", format = ["sdist", "wheel"] },
     { path = "CLAUDE.md", format = ["sdist", "wheel"] },
@@ -344,8 +390,10 @@ markers = [
 # should apply to at least as much as anything under chitragupta/. It only became
 # measurable once tests/test_hook_modules.py started importing them:
 # spawning a hook, which is how the harness runs it and what the other two
-# hook test files do, contributes no coverage at all.
-source = ["chitragupta", "scripts", ".claude/hooks"]
+# hook test files do, contributes no coverage at all. The demo-recorder
+# skill's scripts (#1188) are in scope for the same reason any code is,
+# though no distribution ships them.
+source = ["chitragupta", "scripts", ".claude/hooks", ".claude/skills/demo-recorder/scripts"]
 branch = true
 omit = [
     "*/enrich/__init__.py",
