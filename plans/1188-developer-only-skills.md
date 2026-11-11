@@ -1,6 +1,11 @@
 # #1188: developer-only skills, and the demo-recorder skill
 
-Status: **plan.** Written 2026-11-11.
+Status: **done.** Written 2026-11-11. Closed by #1189 (v6.170.0). What
+changed on the way: review found `init` copying `.claude/worktrees/` in
+an editable install, so it skips that too (decision 3). A follow-up
+added `scripts/install_tools.sh`, which checks for the recording tools
+and installs them with apt; a fresh Ubuntu container showed it needs
+`unzip` for the headless Chrome.
 
 **Written for** whoever adds this repository's first developer-only
 skill, or a second one later. **Assumed:** the three per-harness skill
