@@ -51,6 +51,24 @@ class TestTheMarker:
         write_skill(tmp_path, ".claude/skills/survey-writer", body)
         assert developer_skills(tmp_path) == set()
 
+    @pytest.mark.parametrize(
+        "frontmatter",
+        [
+            "name: x\ndescription: d\n\n  audience: developer\n",
+            "name: x\nother:\n  audience: developer\n",
+            "name: x\nmetadata:\n  team: docs\nother:\n  audience: developer\n",
+        ],
+        ids=["no-key", "under-another-key", "after-metadata-ends"],
+    )
+    def test_the_marker_counts_only_under_metadata(self, tmp_path, frontmatter):
+        write_skill(tmp_path, ".claude/skills/x", f"---\n{frontmatter}---\n")
+        assert developer_skills(tmp_path) == set()
+
+    def test_other_metadata_may_come_first(self, tmp_path):
+        text = "---\nname: x\nmetadata:\n  team: docs\n  audience: developer\n---\n"
+        write_skill(tmp_path, ".claude/skills/x", text)
+        assert developer_skills(tmp_path) == {".claude/skills/x"}
+
     def test_crlf_line_endings_still_mark(self, tmp_path):
         """A Windows checkout with `core.autocrlf` hands the file over
         with `\\r\\n`, and the skill must not start shipping there."""

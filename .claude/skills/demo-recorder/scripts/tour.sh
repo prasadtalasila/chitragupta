@@ -160,7 +160,7 @@ say "36. verbatim overlap -- the same check against one source, phrase by phrase
 show 2.5 review verbatim overlap "$DRAFT" sample_dt_overview_2024
 
 say "37. discover --app -- export the topic graph as an offline viewer"
-show 1.5 corpus discover --app "$WORK/topic-app"
+show 1.5 corpus discover --app ../topic-app
 
 say "next: the offline topic-graph viewer (content/topic_map.html)"
 pause 1.5

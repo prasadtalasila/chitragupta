@@ -37,6 +37,11 @@ reaches users three ways, and each one needs its own fix:
    is stdlib-only and imports nothing from the package, because
    `scripts/release.py` loads it by path (the `merge_pr.py` idiom).
    `init.scaffold` and `release.tracked_files` both skip what it finds.
+   `init` also skips `.claude/worktrees/`: in an editable install it
+   would otherwise copy every Claude Code worktree of the checkout, each
+   with its own copy of the skill, which the marker scan of the three
+   top-level trees does not reach. (Found in review. That copy predates
+   this plan, but left alone it defeats the skip.)
 4. **`pyproject.toml` names what ships.** Each harness folder's entries
    are listed one by one: its non-skill entries and every skill folder
    that is not developer-only. `tests/test_developer_skills.py` derives

@@ -21,11 +21,11 @@ is left out with them.
 | Tool | For | Where to get it |
 | --- | --- | --- |
 | a venv with the enrich extra | running the tour | `.venv-full/bin/python`; pass it as `PY` |
-| asciinema | recording the terminal | `pip install asciinema` (2.x writes the v2 `.cast` the scripts read; on 3.x add `--output-format asciicast-v2`) |
-| agg | `.cast` to GIF | the release binary from github.com/asciinema/agg |
-| svg-term-cli, puppeteer-core | `.cast` to SVG; driving Chrome | `npm install --prefix "$OUT/node" svg-term-cli puppeteer-core` |
-| Chrome | the topic-map capture | `npx @puppeteer/browsers install chrome-headless-shell@stable`, which needs fewer system libraries than a full Chrome; pass the binary as `CHROME_PATH` |
-| ffmpeg | frames to video, joining, WebM | the system one, or `imageio-ffmpeg`'s bundled binary |
+| asciinema 2.x | recording the terminal | `apt install asciinema`, or `pip install asciinema`. 3.x changed its flags and its default `.cast` format; the scripts read 2.x's |
+| ffmpeg | frames to video, joining, WebM | `apt install ffmpeg` |
+| agg | `.cast` to GIF | the release binary from github.com/asciinema/agg, into `/usr/local/bin` |
+| svg-term-cli, puppeteer-core | `.cast` to SVG; driving Chrome | `npm install -g svg-term-cli puppeteer-core` |
+| Chrome | the topic-map capture | a cached Puppeteer Chrome, or `npx @puppeteer/browsers install chrome-headless-shell@stable`; pass the binary as `CHROME_PATH`. If it fails on a missing `.so`, install that library (`libcups2t64` on Ubuntu 26.04), or use the headless shell, which needs fewer |
 
 None of these is a dependency of this repository; install them outside
 it. Pick an output folder `OUT` outside the checkout too. Recordings are
@@ -68,12 +68,11 @@ binaries and never go into git.
    slows it down). The script prints the old and new length.
 5. **Render the terminal.**
    `agg --font-size 14 "$OUT/tour.final.cast" "$OUT/tour.gif"` and
-   `"$OUT/node/node_modules/.bin/svg-term" --in "$OUT/tour.final.cast"
-   --out "$OUT/tour.svg" --window`.
+   `svg-term --in "$OUT/tour.final.cast" --out "$OUT/tour.svg" --window`.
 6. **Capture the topic map.**
 
    ```bash
-   NODE_PATH="$OUT/node/node_modules" CHROME_PATH=<chrome> \
+   NODE_PATH="$(npm root -g)" CHROME_PATH=<chrome> \
      node .claude/skills/demo-recorder/scripts/capture_topic_map.js \
      docs/examples/sample-project/content/topic_map.html "$OUT/frames"
    ffmpeg -y -framerate 10 -i "$OUT/frames/f%04d.png" \

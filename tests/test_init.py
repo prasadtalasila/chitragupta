@@ -526,6 +526,18 @@ class TestAgents:
         assert not any("demo-recorder" in p.as_posix() for p in project.rglob("*"))
         assert (project / ".agents" / "skills" / "survey-writer" / "SKILL.md").is_file()
 
+    def test_a_checkouts_worktrees_are_never_scaffolded(self, source, tmp_path):
+        """#1188: Claude Code keeps a checkout's worktrees under
+        `.claude/worktrees/`, each a whole checkout with its own copy of
+        the developer-only skill, which the marker scan does not reach."""
+        nested = source / ".claude" / "worktrees" / "wt" / ".claude" / "skills" / "x"
+        nested.mkdir(parents=True)
+        (nested / "SKILL.md").write_text("# x", encoding="utf-8")
+        report = init.scaffold(tmp_path / "project")
+        assert not any(".claude/worktrees" in line for line in report)
+        assert not (tmp_path / "project" / ".claude" / "worktrees").exists()
+        assert (tmp_path / "project" / ".claude" / "skills" / "survey-writer").is_dir()
+
     def test_no_other_harness_gets_the_codex_copy(self, source, tmp_path):
         init.scaffold(tmp_path, agents=("claude", "opencode"))
         assert not (tmp_path / ".agents").exists()

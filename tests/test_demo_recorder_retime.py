@@ -74,8 +74,8 @@ class TestRetime:
             retime_cast.retime(EVENTS, "# 0.", "# 2.")
 
 
-def write_cast(path: Path) -> None:
-    lines = [json.dumps(HEADER)] + [json.dumps(ev) for ev in EVENTS]
+def write_cast(path: Path, header: dict = HEADER) -> None:
+    lines = [json.dumps(header)] + [json.dumps(ev) for ev in EVENTS]
     path.write_text("\n".join(lines) + "\n\n", encoding="utf-8")
 
 
@@ -89,6 +89,18 @@ class TestMain:
         assert json.loads(header) == HEADER
         assert times(json.loads(line) for line in events) == [0.5, 1.0, 1.5, 2.0, 4.0]
         assert "7.00s -> 4.00s" in capsys.readouterr().out
+
+    def test_tail_scales_the_recorded_idle_limit(self, tmp_path, capsys):
+        """`asciinema rec --idle-time-limit 2` stores the limit in the
+        header, and a player or agg caps every gap at it, which would cut
+        a stretched gap back to 2s. Scaled with the tail, it keeps the
+        stretch and still caps a gap as long as the original limit did."""
+        src, dst = tmp_path / "in.cast", tmp_path / "out.cast"
+        write_cast(src, {**HEADER, "idle_time_limit": 2})
+        argv = [str(src), str(dst), "--start", "# 1.", "--end", "# 2.", "--tail", "1.5"]
+        retime_cast.main(argv)
+        header = json.loads(dst.read_text(encoding="utf-8").splitlines()[0])
+        assert header == {**HEADER, "idle_time_limit": 3.0}
 
     @pytest.mark.parametrize("value", ["0", "-2", "x"])
     def test_a_factor_must_be_a_positive_number(self, tmp_path, value, capsys):

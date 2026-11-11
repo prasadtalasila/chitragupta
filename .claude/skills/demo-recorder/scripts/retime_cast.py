@@ -5,8 +5,10 @@ The span runs from the first output event containing START to the first
 one after it containing END -- tour.sh's `# N. ...` headings, so
 `--start "# 1." --end "# 2."` is the `pip install` scroll. Inside it,
 time runs `--speed-up` times faster; after it, `--tail` times slower
-(below 1, faster); before it, nothing moves. Event payloads and the
-header line are copied unchanged.
+(below 1, faster); before it, nothing moves. Event payloads are copied
+unchanged, and so is the header, except that a recorded
+`idle_time_limit` is scaled by the tail factor: players and agg cap
+every gap at it, which would undo a stretch.
 
 Stdlib-only, so it runs with bare `python3`.
 
@@ -69,11 +71,14 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     with open(args.source, encoding="utf-8") as f:
-        header, *lines = f.read().splitlines()
+        header_line, *lines = f.read().splitlines()
+    header = json.loads(header_line)
+    if "idle_time_limit" in header:
+        header["idle_time_limit"] *= args.tail
     events = [json.loads(line) for line in lines if line.strip()]
     out = retime(events, args.start, args.end, args.speed_up, args.tail)
     with open(args.target, "w", encoding="utf-8") as f:
-        f.write(header + "\n")
+        f.write(json.dumps(header) + "\n")
         f.writelines(json.dumps(ev) + "\n" for ev in out)
     print(f"{args.target}: {events[-1][0]:.2f}s -> {out[-1][0]:.2f}s")
     return 0

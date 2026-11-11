@@ -24,8 +24,13 @@ from pathlib import Path
 # Where each harness reads its skills (docs/HARNESS.md).
 SKILL_TREES = (".claude/skills", ".agents/skills", ".opencode/skills")
 
-# `\s*$` rather than `$`, so a `\r\n` checkout still matches.
-_MARKER = re.compile(r"^\s+audience:\s*developer\s*$", re.MULTILINE)
+# `audience: developer` indented under a top-level `metadata:` key, with
+# only other indented lines between them. `\r?` so a `\r\n` checkout
+# still matches.
+_MARKER = re.compile(
+    r"^metadata:[ \t]*\r?\n(?:[ \t]+.*\n)*?[ \t]+audience:[ \t]*developer[ \t]*\r?$",
+    re.MULTILINE,
+)
 
 
 def developer_skills(root: Path) -> set[str]:

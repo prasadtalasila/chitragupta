@@ -8,8 +8,8 @@ wondering why a skill refused something. **Assumed:**
 **Not covered here:** how a skill is written or changed. That is
 `DEVELOPER-AGENTS.md` (git checkout only).
 
-Eleven skills live in `.claude/` (a git checkout also holds
-`demo-recorder`, a developer tool no project receives): six write a new draft,
+Eleven user-facing skills live in `.claude/` (a git checkout also
+holds `demo-recorder`, a developer tool no project receives): six write a new draft,
 three change an existing one, one assembles a book from units the
 others wrote, and one draws the figures the others hand it. Of the
 three revisers, one is cheap and scoped, one goes back to the whole

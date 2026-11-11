@@ -278,10 +278,6 @@ def _write_tree(src: Path, dst: Path, *, force: bool, dry_run: bool) -> list[str
     exactly what "never destroys" rules out. Each file gets its own
     create/exists/overwrite verdict instead.
 
-    The developer-only skills (#1188) are left out entirely: an
-    editable install's SOURCE_ROOT is the checkout itself, which holds
-    them.
-
     `__pycache__` is skipped -- not disk cruft from a checkout, but
     something `pip install` itself creates: it byte-compiles every `.py`
     file it installs, including `.claude/hooks/*.py`, which sit in
@@ -292,7 +288,12 @@ def _write_tree(src: Path, dst: Path, *, force: bool, dry_run: bool) -> list[str
     """
     if src.is_file():
         return [_write_one(src, dst, force=force, dry_run=dry_run)]
-    skip = developer_skills(SOURCE_ROOT)
+    # Left out entirely: the developer-only skills (#1188), which an
+    # editable install's SOURCE_ROOT -- the checkout itself -- holds, and
+    # `.claude/worktrees/`, where Claude Code keeps that checkout's git
+    # worktrees: gitignored, so in no wheel or zip, but on disk here,
+    # each with its own copy of every skill.
+    skip = developer_skills(SOURCE_ROOT) | {".claude/worktrees"}
     return [
         _write_one(f, dst / f.relative_to(src), force=force, dry_run=dry_run)
         for f in sorted(src.rglob("*"))
