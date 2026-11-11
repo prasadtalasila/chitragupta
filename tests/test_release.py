@@ -132,6 +132,19 @@ class TestTrackedFiles:
         # too, alongside the standalone docker-only one.
         assert "docker/Dockerfile" in paths
 
+    def test_excludes_a_developer_only_skill_but_ships_the_rest(self, repo):
+        """#1188: a skill marked `audience: developer` is this
+        repository's own tooling, like `tests/`, and its scripts go with it."""
+        skill = repo / ".claude" / "skills" / "demo-recorder"
+        (skill / "scripts").mkdir(parents=True)
+        (skill / "SKILL.md").write_text("---\nname: x\nmetadata:\n  audience: developer\n---\n")
+        (skill / "scripts" / "tour.sh").write_text("#!")
+        subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
+        subprocess.run(["git", "commit", "-q", "-m", "dev skill"], cwd=repo, check=True)
+        paths = release.tracked_files()
+        assert ".claude/skills/survey-writer/SKILL.md" in paths
+        assert not any(p.startswith(".claude/skills/demo-recorder") for p in paths)
+
     def test_excludes_github_and_gitignore(self, repo):
         paths = release.tracked_files()
         assert not any(p.startswith(".github/") for p in paths)

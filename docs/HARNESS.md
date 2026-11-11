@@ -173,7 +173,7 @@ and loads every folder it scans concurrently, so among same-named copies
 the last to load wins, which in practice is random. The suffixed names
 cannot collide with the other copies, and the `skill` permission in
 `.opencode/opencode.json`, which filters the list the model is shown,
-denies the eleven unsuffixed names. That holds per project, with no
+denies every unsuffixed name. That holds per project, with no
 environment variable. The OpenCode copies refer to one another by the
 suffixed names; `AGENTS.md` says so in one line.
 
@@ -206,6 +206,31 @@ To change a skill, change every copy, and add or edit a phrase-map
 entry for any wording that is meant to differ. The step scans
 (`tests/test_skill_*_step.py`) read only `.claude/skills/`; once the
 copies agree, a required step present in one is present in all three.
+
+### Developer-only skills
+
+A skill for working on this repository rather than with the pipeline,
+so far only `demo-recorder` (which records the feature demo), carries
+one extra frontmatter field:
+
+```yaml
+metadata:
+  audience: developer
+```
+
+It keeps its three copies and its deny rule like any other skill, so
+every checkout's harness offers it. No distribution carries it (#1188):
+`chitragupta init` and `scripts/release.py` skip any skill folder
+`chitragupta/developer_skills.py` finds marked, and `pyproject.toml`
+names every other skill folder one by one, because Poetry's `exclude`
+cannot take a path back out of an `include`d folder. A new user-facing
+skill therefore needs three `include` lines, and
+`tests/test_developer_skills.py` fails, naming the files, until it has
+them. The step scans and the user-facing skill counts skip developer-only
+skills. A developer-only skill keeps its scripts in its own folder, so
+the marker takes them out with it. The deny rule does ship, in
+`.opencode/opencode.json`: a rule for a name a project lacks has no
+effect.
 
 ### Only `SKILL.md` is per harness
 

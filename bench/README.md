@@ -312,8 +312,9 @@ the failure this convention exists to catch.
 
 The reason is the first line of every such function: `bench/` sits
 outside **all four** of the things that hold the rest of this tree --
-C1/C2, coverage (`source = ["chitragupta", "scripts", ".claude/hooks"]`
-in `pyproject.toml`), the release archive, and
+C1/C2, coverage (`source = ["chitragupta", "scripts", ".claude/hooks",
+".claude/skills/demo-recorder/scripts"]` in `pyproject.toml`), the
+release archive, and
 the linter. Nothing in the test suite will ever catch a regression
 in these files, so the check runs on every invocation instead. It costs
 microseconds.

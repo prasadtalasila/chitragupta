@@ -37,6 +37,8 @@ from pathlib import Path
 
 import pytest
 
+from chitragupta.developer_skills import developer_skills
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PHRASES = tomllib.loads(
     (REPO_ROOT / "tests" / "fixtures" / "skill_harness_phrases.toml").read_text(encoding="utf-8")
@@ -48,6 +50,11 @@ ROOTS = {
 }
 SUFFIX = {"claude": "", "codex": "", "opencode": "-opencode"}
 SKILLS = sorted(p.name for p in ROOTS["claude"].iterdir() if p.is_dir())
+# The skills this repository's developers use and no user is offered
+# (#1188). They keep three in-step copies like every other skill, but
+# the checks on drafting steps and on the user-facing counts skip them.
+DEVELOPER_SKILLS = {Path(p).name for p in developer_skills(REPO_ROOT) if p.startswith(".claude/")}
+USER_SKILLS = [name for name in SKILLS if name not in DEVELOPER_SKILLS]
 SUFFIXED = re.compile(r"\b(" + "|".join(map(re.escape, SKILLS)) + r")-opencode\b")
 
 # Tool names that belong to one harness and must not appear in another's

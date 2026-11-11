@@ -38,6 +38,7 @@ from pathlib import Path
 import pytest
 
 from tests.skill_text import collapsed, expanded
+from tests.test_skill_harness_copies import USER_SKILLS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
@@ -65,7 +66,8 @@ _NO_FIX = "fix none of them"
 
 
 def _skill_files():
-    return sorted(SKILLS_DIR.glob("*/SKILL.md"))
+    """Every user-facing skill; a developer-only one (#1188) drafts nothing."""
+    return sorted(p for p in SKILLS_DIR.glob("*/SKILL.md") if p.parent.name in USER_SKILLS)
 
 
 def _body(path: Path) -> str:

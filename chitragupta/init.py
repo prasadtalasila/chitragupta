@@ -14,7 +14,7 @@ project's vendored assets (the CSL style, the Vale rules, the default
 acronym list) from `PACKAGE_ROOT.parent` -- one level above the installed
 package, wherever that is. `pyproject.toml`'s `[tool.poetry].include`
 ships `.claude/`, `.codex/`, `.opencode/`, `docs/` and the four root
-`.md` files to that exact
+`.md` files (all but the developer-only skills, #1188) to that exact
 sibling location for the same reason, so this module reads from the same
 seam `shipped()` already established rather than inventing a second one.
 
@@ -46,6 +46,7 @@ import shutil
 import sys
 from pathlib import Path
 
+from chitragupta.developer_skills import developer_skills, is_developer_only
 from chitragupta.progname import prog_for
 
 # Deliberately not `from chitragupta.config import PACKAGE_ROOT`: that
@@ -287,10 +288,18 @@ def _write_tree(src: Path, dst: Path, *, force: bool, dry_run: bool) -> list[str
     """
     if src.is_file():
         return [_write_one(src, dst, force=force, dry_run=dry_run)]
+    # Left out entirely: the developer-only skills (#1188), which an
+    # editable install's SOURCE_ROOT -- the checkout itself -- holds, and
+    # `.claude/worktrees/`, where Claude Code keeps that checkout's git
+    # worktrees: gitignored, so in no wheel or zip, but on disk here,
+    # each with its own copy of every skill.
+    skip = developer_skills(SOURCE_ROOT) | {".claude/worktrees"}
     return [
         _write_one(f, dst / f.relative_to(src), force=force, dry_run=dry_run)
         for f in sorted(src.rglob("*"))
-        if f.is_file() and "__pycache__" not in f.parts
+        if f.is_file()
+        and "__pycache__" not in f.parts
+        and not is_developer_only(f.relative_to(SOURCE_ROOT).as_posix(), skip)
     ]
 
 

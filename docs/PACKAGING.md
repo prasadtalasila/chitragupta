@@ -240,6 +240,13 @@ test. The deliberate differences (`bench/`, `tests/`,
 `.github/`, and the CI config that is actively wrong outside this
 repository) are held in one named set that both sides read.
 
+One thing is left out of the zip, the wheel and the scaffold alike: a
+skill marked developer-only, such as `demo-recorder`. Each route needs
+its own exclusion, and `pyproject.toml`'s is the awkward one. Poetry
+cannot exclude a path from inside an `include`d folder, so the harness
+folders are listed entry by entry. [HARNESS.md](HARNESS.md#developer-only-skills)
+has the mechanism.
+
 ## ⚡ What a shipped command name costs
 
 Before a package ships, renaming a command is nearly free: the strings
