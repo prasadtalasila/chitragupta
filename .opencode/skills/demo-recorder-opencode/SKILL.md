@@ -18,18 +18,23 @@ is left out with them.
 
 ## What you need
 
-| Tool | For | Where to get it |
-| --- | --- | --- |
-| a venv with the enrich extra | running the tour | `.venv-full/bin/python`; pass it as `PY` |
-| asciinema 2.x | recording the terminal | `apt install asciinema`, or `pip install asciinema`. 3.x changed its flags and its default `.cast` format; the scripts read 2.x's |
-| ffmpeg | frames to video, joining, WebM | `apt install ffmpeg` |
-| agg | `.cast` to GIF | the release binary from github.com/asciinema/agg, into `/usr/local/bin` |
-| svg-term-cli, puppeteer-core | `.cast` to SVG; driving Chrome | `npm install -g svg-term-cli puppeteer-core` |
-| Chrome | the topic-map capture | a cached Puppeteer Chrome, or `npx @puppeteer/browsers install chrome-headless-shell@stable`; pass the binary as `CHROME_PATH`. If it fails on a missing `.so`, install that library (`libcups2t64` on Ubuntu 26.04), or use the headless shell, which needs fewer |
+| Tool | For |
+| --- | --- |
+| a venv with the enrich extra | running the tour; pass its interpreter as `PY` (`.venv-full/bin/python`) |
+| asciinema 2.x | recording the terminal. 3.x changed its flags and its default `.cast` format; the scripts read 2.x's |
+| agg, svg-term-cli | `.cast` to GIF and to SVG |
+| node, puppeteer-core, Chrome | the topic-map capture |
+| ffmpeg | frames to video, joining, WebM |
 
-None of these is a dependency of this repository; install them outside
-it. Pick an output folder `OUT` outside the checkout too. Recordings are
-binaries and never go into git.
+`bash .claude/skills/demo-recorder/scripts/install_tools.sh --check`
+lists each one and exits 1 if any is missing. Without `--check` it
+installs what is missing, system-wide and with sudo: apt packages, agg
+into `/usr/local/bin`, `npm install -g`, and, when no Chrome on the host
+can start, `chrome-headless-shell` with its libraries. It needs apt, so
+on another system install the table by hand. Either way, its last line
+is the `CHROME_PATH` for step 6. None of these is a dependency of this
+repository. Pick an output folder `OUT` outside the checkout. Recordings
+are binaries and never go into git.
 
 ## Steps
 
