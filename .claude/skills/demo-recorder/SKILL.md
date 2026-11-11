@@ -10,11 +10,11 @@ metadata:
 
 A developer tool. You are changing or exercising this repository, so
 `DEVELOPER-AGENTS.md` governs the session, not `AGENTS.md`. Paths in
-this skill are from the project root. The
-`audience: developer` line above is what keeps this skill and its
-`scripts/` out of every distribution (`chitragupta/developer_skills.py`,
-#1188): keep it, and put any new recording code under
-`.claude/skills/demo-recorder/scripts/` so it is left out with them.
+this skill are from the project root. The `audience: developer` line
+above keeps this skill and its `scripts/` out of every distribution
+(see `chitragupta/developer_skills.py`). Keep that line, and put any
+new recording code under `.claude/skills/demo-recorder/scripts/` so it
+is left out with them.
 
 ## What you need
 
