@@ -72,7 +72,9 @@ class TestTheMarker:
     def test_crlf_line_endings_still_mark(self, tmp_path):
         """A Windows checkout with `core.autocrlf` hands the file over
         with `\\r\\n`, and the skill must not start shipping there."""
-        write_skill(tmp_path, ".claude/skills/rec", MARKED.replace("\n", "\r\n"))
+        (tmp_path / ".claude/skills/rec").mkdir(parents=True)
+        crlf = MARKED.format(name="rec").replace("\n", "\r\n").encode("utf-8")
+        (tmp_path / ".claude/skills/rec/SKILL.md").write_bytes(crlf)
         assert developer_skills(tmp_path) == {".claude/skills/rec"}
 
     def test_no_harness_trees_find_nothing(self, tmp_path):
