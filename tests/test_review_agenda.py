@@ -453,6 +453,21 @@ class TestVerbatimRunItems:
         items = _items_findings.verbatim_run_items(source, [])
         assert items[0].unattended is True
 
+    def test_short_names_run_is_surfaced(self):
+        """#1187: a short run made mostly of copied names is a person's call."""
+        source = _sources.AidSource(
+            available=True,
+            data={"findings": [self._finding(severity="short", matched_words=8, names=True)]},
+        )
+        assert _items_findings.verbatim_run_items(source, [])[0].unattended is False
+
+    def test_baseline_without_names_is_unchanged(self):
+        """A baseline filed before #1187 has no `names` key: stays unattended."""
+        finding = self._finding(severity="short", matched_words=8)
+        assert "names" not in finding
+        source = _sources.AidSource(available=True, data={"findings": [finding]})
+        assert _items_findings.verbatim_run_items(source, [])[0].unattended is True
+
     def test_no_citekey_still_produces_a_summary(self):
         source = _sources.AidSource(
             available=True, data={"findings": [self._finding(citekey=None, severity="short")]}

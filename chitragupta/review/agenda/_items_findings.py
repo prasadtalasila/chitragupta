@@ -71,7 +71,15 @@ def verbatim_run_items(source: AidSource, sections: list[Section]) -> list[Item]
                 # than with an edit. Something advisory-only cannot also
                 # be safe to act on unasked; the two modules disagreeing
                 # about the same tier was the bug, not the wording.
-                unattended=(severity == "short" and tier != "embedding"),
+                #
+                # `names` (#1187): a short run mostly of copied proper
+                # names has no other wording, so editing it away is a
+                # judgement for a person. `.get`, because a baseline
+                # filed before the flag existed has no such key and
+                # must stay unattended exactly as it was.
+                unattended=(
+                    severity == "short" and tier != "embedding" and not finding.get("names", False)
+                ),
                 summary=_run_summary(tier, words, matched, citekey),
                 detail={"severity": severity, "verbatim_id": finding.get("id")},
                 # `draft_text`, not the `fragment` the id hashes: only

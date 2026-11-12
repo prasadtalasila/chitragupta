@@ -1979,6 +1979,7 @@ class TestScanPayload:
             "quoted",
             "score",
             "source_text",
+            "names",
             "severity",
         ]
 
@@ -3761,3 +3762,33 @@ class TestReportingWhatDidNotRun:
     def test_a_score_rides_inside_the_tier_note_only_when_there_is_one(self):
         assert vc._tier_note({"tier": "exact", "score": None}) == "tier=exact"
         assert vc._tier_note({"tier": "embedding", "score": 0.41}) == ("tier=embedding, score=0.41")
+
+
+class TestNamesHeavy:
+    """#1187: a short run of mostly capitalised non-initial words."""
+
+    def test_an_organisation_name_is_names_heavy(self):
+        from chitragupta.review.verbatim_check._names import names_heavy
+
+        text = "established by the National Institute of Standards and Technology in"
+        assert names_heavy(text) is True
+
+    def test_lowercase_prose_is_not(self):
+        from chitragupta.review.verbatim_check._names import names_heavy
+
+        assert names_heavy("the model is updated from sensor data at each step") is False
+
+    def test_sentence_initial_words_do_not_count(self):
+        from chitragupta.review.verbatim_check._names import names_heavy
+
+        assert names_heavy("Data. Models") is False
+
+    def test_empty_is_not(self):
+        from chitragupta.review.verbatim_check._names import names_heavy
+
+        assert names_heavy("") is False
+
+    def test_one_content_word_is_not(self):
+        from chitragupta.review.verbatim_check._names import names_heavy
+
+        assert names_heavy("of the National") is False

@@ -14,6 +14,7 @@ from chitragupta.review.verbatim_check._corpus import norm
 from chitragupta.review.verbatim_check._embed import _embed_tier_findings
 from chitragupta.review.verbatim_check._exact import _exact_tier_findings
 from chitragupta.review.verbatim_check._masking import _tokenize_draft
+from chitragupta.review.verbatim_check._names import names_heavy
 from chitragupta.review.verbatim_check._shared import _newline_offsets
 from chitragupta.review.verbatim_check._skipgram import _skipgram_tier_findings
 
@@ -144,6 +145,8 @@ def scan_findings(
     # Longest run first, no silent truncation -- every finding above the
     # floor prints unless --limit narrows it, matching the issue's explicit
     # break from `overlap`'s hardcoded top-25.
+    for f in findings:
+        f["names"] = names_heavy(f.get("draft_text") or "")
     findings.sort(key=lambda f: (-f["span_words"], f["citekey"], f["start"]))
     if limit is not None:
         findings = findings[:limit]
@@ -244,6 +247,9 @@ _PAYLOAD_FIELDS = (
     # is both sides. Appended for the same reason `score` was: consumers
     # reading these positionally see an unchanged prefix.
     "source_text",
+    # A short run mostly of copied proper names (#1187): the agenda
+    # surfaces it to a person instead of marking it unattended.
+    "names",
 )
 
 
