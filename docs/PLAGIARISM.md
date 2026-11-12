@@ -415,7 +415,10 @@ because rewording them cannot repair anything (#1187):
 - **Names are surfaced, not suppressed.** A finding carries
   `"names": true` when at least two content words remain and half or more
   of them start with a capital letter and are not sentence-initial
-  (stopwords such as "of" and "and" are left X
+  (stopwords such as "of" and "and" are left out of both counts). An
+  undeclared organisation name copied from sources is not repaired by
+  rewording, so a short run flagged `names` is surfaced to a person
+  instead of being marked `unattended` for `agenda-reviser`.
 
 ## 🛠 Repairing what the scan found
 
