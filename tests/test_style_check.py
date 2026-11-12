@@ -450,6 +450,13 @@ class TestAgainstRealVale:
         found = style_check.check(draft, override="en-GB")["findings"]
         return [f["match"] for f in found]
 
+    @staticmethod
+    def _empty_vocabulary(tmp_path, monkeypatch, body=""):
+        """config.ACRONYMS_PATH is not isolated by conftest."""
+        vocab = tmp_path / "acronyms.toml"
+        vocab.write_text(body, encoding="utf-8")
+        monkeypatch.setattr(config, "ACRONYMS_PATH", vocab)
+
     def test_latex_command_names_are_not_prose(self, tmp_path):
         """#1187: `\\center` and `\\centering` are commands, not the word.
         The prose between them is still checked, which is the control
@@ -467,18 +474,28 @@ class TestAgainstRealVale:
     def test_easy_in_prose_is_still_a_marker(self, tmp_path):
         assert "easy" in self._matches(tmp_path, "y.md", "This is easy to see.\n")
 
-    def test_lower_case_expansion_counts_as_expanded(self, tmp_path):
+    def test_lower_case_expansion_counts_as_expanded(self, tmp_path, monkeypatch):
+        self._empty_vocabulary(tmp_path, monkeypatch)
         text = "We use supervisory control and data acquisition (SCADA). SCADA again.\n"
         draft = tmp_path / "s.md"
         draft.write_text(text, encoding="utf-8")
         found = style_check.check(draft, override="en-GB")["findings"]
         assert not [f for f in found if f["rule"] == "chitragupta.Acronyms"]
 
-    def test_unexpanded_acronym_is_still_reported(self, tmp_path):
+    def test_unexpanded_acronym_is_still_reported(self, tmp_path, monkeypatch):
+        self._empty_vocabulary(tmp_path, monkeypatch)
         draft = tmp_path / "f.md"
         draft.write_text("FOOB is unexpanded.\n", encoding="utf-8")
         found = style_check.check(draft, override="en-GB")["findings"]
         assert [f for f in found if f["rule"] == "chitragupta.Acronyms"]
+
+    def test_declared_term_is_exempt_under_en_gb(self, tmp_path, monkeypatch):
+        """#1187: a proper name carrying an en-US spelling is not a
+        dialect slip. The control is the same word outside the term."""
+        self._empty_vocabulary(tmp_path, monkeypatch, 'UML = "Unified Modeling Language"\n')
+        text = "The Unified Modeling Language is used.\n"
+        assert self._matches(tmp_path, "t.md", text) == []
+        assert "Modeling" in self._matches(tmp_path, "u.md", "Modeling is used.\n")
 
 
 class TestSetLanguageRoundTrip:

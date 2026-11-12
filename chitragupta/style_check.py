@@ -57,7 +57,7 @@ from subprocess import run as _run
 from pathlib import Path
 from typing import Any
 
-from chitragupta import config, install, programs
+from chitragupta import config, install, programs, style_exceptions
 from chitragupta.style_language import resolve_language, rule_filter
 from chitragupta.style_report import report
 from chitragupta.style_rules import PYTHON_CHECKS, with_repair
@@ -129,7 +129,8 @@ def run_vale(draft: Path, language: str | None) -> list[dict]:
             f"vale produced output this command could not read ({exc}). "
             f"Check {config.VALE_CONFIG_PATH}.\n{result.stderr}"
         ) from exc
-    return [finding for findings in payload.values() for finding in findings]
+    flattened = [finding for findings in payload.values() for finding in findings]
+    return style_exceptions.drop_exempt(flattened, Path(draft).read_text(encoding="utf-8"))
 
 
 def collapse(findings: list[dict]) -> list[dict]:
