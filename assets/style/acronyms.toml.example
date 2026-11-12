@@ -9,6 +9,12 @@
 # --apply`. Everything here also expands your queries when
 # `[retrieval].acronym_expansion` is on, so "DT" finds the papers that
 # only ever write "digital twin". See README.md.
+#
+# The case of an expansion is authoritative: capitalised means a proper
+# name ("Unified Modeling Language"), lower case a common noun
+# ("supervisory control and data acquisition"). `draft style` reports a
+# draft that writes the expansion before "(ACRO)" in a different case
+# (chitragupta.AcronymCase).
 
 DT = "Digital Twin"
 DS = "Digital Shadow"

@@ -39,6 +39,13 @@ field's vocabulary -- or let `python -m chitragupta.draft dossier
 acronyms-suggest <draft> --apply` write new entries, proposed from a
 draft's own glossary and its prose; see `docs/CONFIG.md`.
 
+**The case of an expansion is authoritative.** Capitalised means a
+proper name (`UML = "Unified Modeling Language"`), lower case a common
+noun (`SCADA = "supervisory control and data acquisition"`). A draft that
+writes the expansion before `(ACRO)` in a different case is reported by
+`chitragupta.AcronymCase`; only a sentence or heading start may
+capitalise the first letter.
+
 **It is also what expands your searches.** With
 `[retrieval].acronym_expansion` on -- the shipped default -- a query
 saying `DT` also searches for the words that entry maps it to, so an

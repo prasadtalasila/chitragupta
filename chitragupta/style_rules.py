@@ -8,6 +8,7 @@ cannot check from one it can. Their own module so neither imports the
 other.
 """
 
+from chitragupta.style_acronym_case import findings as acronym_case_findings
 from chitragupta.style_acronym_drift import findings as acronym_drift_findings
 from chitragupta.style_bare_citekeys import findings as bare_citekey_findings
 from chitragupta.style_equations import findings as equation_findings
@@ -26,6 +27,7 @@ from chitragupta.style_typeset import findings as typeset_findings
 # nowhere and say nothing.
 PYTHON_CHECKS = (
     acronym_drift_findings,
+    acronym_case_findings,
     table_findings,
     figure_findings,
     equation_findings,

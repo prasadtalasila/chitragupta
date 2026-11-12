@@ -463,6 +463,7 @@ class TestSuggestAcronyms:
         out = capsys.readouterr().out
         assert "DTaaS" in out
         assert "Digital Twin as a Service" in out
+        assert "Case is authoritative" in out
         assert vendored.read_text() == vocab_before
 
 
@@ -605,6 +606,7 @@ class TestApplySuggestions:
         out = capsys.readouterr().out
         assert "Wrote 1 new entry" in out
         assert "DTaaS" in out
+        assert "Case is authoritative" in out
 
 
 class TestKnownCitekeys:

@@ -113,6 +113,11 @@ def apply_suggestions(draft: Path) -> dict[str, str]:
     return candidates
 
 
+_CASE_REMINDER = (
+    "\n  Case is authoritative: write a common noun in lower case (WRITING-STANDARDS.md §9)."
+)
+
+
 def _cmd_acronyms_suggest(args) -> int:
     """Always 0, deliberately -- unlike _cmd_brief's exit code, nothing
     downstream reads this one: `acronyms-suggest` has no caller but a
@@ -137,6 +142,7 @@ def _cmd_acronyms_suggest(args) -> int:
         )
         for term, definition in sorted(written.items()):
             print(f'  {term} = "{definition}"')
+        print(_CASE_REMINDER)
         return 0
     candidates = suggest_acronyms(draft)
     if not candidates:
@@ -149,4 +155,5 @@ def _cmd_acronyms_suggest(args) -> int:
     )
     for term, definition in sorted(candidates.items()):
         print(f'  {term} = "{definition}"')
+    print(_CASE_REMINDER)
     return 0
