@@ -246,8 +246,10 @@ sentence**, which then surfaces as an `uncited-claim` on the next agenda
 for you to decide. The problem is not resolved silently; it moves to the
 column where a person decides. The `missing-citekey` item itself, and
 the `recorded-but-uncited` item the removed marker leaves, persist while
-`evidence.md` or `sections.md` still hold the key. Both clear when the
-author runs `dossier prune`.
+`evidence.md` or `sections.md` still hold the key. The author clears
+both with `dossier prune` for an `evidence.md` block, and with `dossier
+sections --citekeys --write` for a key recorded only in `sections.md`,
+which `prune` refuses.
 
 ## 🔁 Two sections that appear only sometimes
 

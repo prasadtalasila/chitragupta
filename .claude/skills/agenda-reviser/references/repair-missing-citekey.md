@@ -24,10 +24,13 @@ record and not off the draft's live markers. And a `recorded-but-uncited`
 item, which is the state the repair manufactures by construction: the
 draft no longer cites a key the dossier still records. Neither is a
 failure of the repair, and neither is the intended end state. Both clear
-only when the author runs `dossier prune`, which a person confirms
-because a recorded key may instead be an uncited candidate. The reviser
-does not run it. **Its report says so, naming the command**: "N
-`missing-citekey` items remain until you run `dossier prune`", not a
-statement that the residue is intended. Before #701 the residue was
+only when the author acts, and a person confirms because a recorded key
+may instead be an uncited candidate: `dossier prune` removes an
+`evidence.md` block, and `dossier sections --citekeys --write` clears a
+key recorded only in `sections.md` (`prune` refuses that one, saying so).
+The reviser runs neither. **Its report says so, naming the command that
+fits**: "N `missing-citekey` items remain until you run `dossier prune`",
+or the `sections` command for a `sections.md`-only key, not a statement
+that the residue is intended. Before #701 the residue was
 reported on no surface at all unless the dossier carried a `dossier
 stamp` baseline.
