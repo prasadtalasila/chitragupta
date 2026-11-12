@@ -471,6 +471,11 @@ class TestAgainstRealVale:
         text = "**Exercise 1 (Objective 2, easy).** Classify.\n"
         assert self._matches(tmp_path, "x.md", text) == []
 
+    def test_other_words_in_a_bold_exercise_heading_are_still_prose(self, tmp_path):
+        """#1187 control: only the documented label is skipped."""
+        text = "**Exercise 3: why this is obviously wrong**\n"
+        assert "obviously" in self._matches(tmp_path, "z.md", text)
+
     def test_easy_in_prose_is_still_a_marker(self, tmp_path):
         assert "easy" in self._matches(tmp_path, "y.md", "This is easy to see.\n")
 

@@ -413,11 +413,9 @@ because rewording them cannot repair anything (#1187):
   names. The scan is slightly less sensitive around such words, which
   was accepted.
 - **Names are surfaced, not suppressed.** A finding carries
-  `"names": true` when at least half its words start with a capital
-  letter and are not sentence-initial. An undeclared organisation name
-  copied from sources is not repaired by rewording, so a short run
-  flagged `names` is surfaced to a person instead of being marked
-  `unattended` for `agenda-reviser`.
+  `"names": true` when at least two content words remain and half or more
+  of them start with a capital letter and are not sentence-initial
+  (stopwords such as "of" and "and" are left X
 
 ## 🛠 Repairing what the scan found
 

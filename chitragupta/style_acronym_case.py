@@ -43,10 +43,12 @@ def _pattern(expansion: str, acronym: str) -> re.Pattern:
 
 
 def _tolerated(text: str, match: re.Match, expansion: str) -> bool:
-    """Only the first letter's case differs, at a sentence or heading start."""
+    """Only the first letter differs, capitalised where the vocabulary is
+    lower case, at a sentence or heading start. The reverse flip ("unified
+    Modeling Language") is a real case error, not grammar (#1187)."""
     written = " ".join(match.group(1).split())
     wanted = " ".join(expansion.split())
-    if written[1:] != wanted[1:]:
+    if written[1:] != wanted[1:] or not (written[0].isupper() and wanted[0].islower()):
         return False
     before = text[: match.start()]
     line_start = text.rfind("\n", 0, match.start()) + 1

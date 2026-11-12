@@ -16,6 +16,8 @@ from chitragupta import ledger
 
 
 def _known_citekeys() -> frozenset[str]:
+    # Every ledger key, parsed or not, on purpose: unlike the citable=parsed
+    # rule (#1117), any key string in a draft cannot be repaired by rewording.
     try:
         with ledger.reading() as con:
             return frozenset(ledger.known_citekeys(con))

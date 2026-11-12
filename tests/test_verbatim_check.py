@@ -758,12 +758,18 @@ class TestProjectTerms:
         assert suppressed >= 1
 
     def test_tex_draft_cite_command_is_not_a_run(self, ledger_con, tmp_path, monkeypatch):
+        """The source text deliberately continues with the cite command's own
+        words, so a scan that read the draft as Markdown would extend the
+        run over `citep p 3 cited 2024`; read as LaTeX the command is
+        blanked and the run stops before it (#1187)."""
         monkeypatch.setattr(style_exceptions, "terms", lambda: ())
-        add_parsed_item(ledger_con, tmp_path, "cited_2024", "alpha beta gamma delta epsilon zeta")
+        run = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu"
+        add_parsed_item(ledger_con, tmp_path, "cited_2024", f"{run} citep p 3 cited 2024")
         draft = tmp_path / "draft.tex"
-        draft.write_text("Intro \\citep[p.~3]{cited_2024} alpha beta gamma delta epsilon zeta.\n")
+        draft.write_text(f"Intro {run} \\citep[p.~3]{{cited_2024}}.\n")
         findings, *_ = vc.scan_findings(draft)
-        assert all("cite" not in f["draft_text"].lower() for f in findings)
+        assert findings
+        assert all("citep" not in f["draft_text"].lower() for f in findings)
 
 
 class TestParagraphs:
