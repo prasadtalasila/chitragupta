@@ -90,10 +90,17 @@ def test_acronyms_rule_is_never_dropped(uml):
     assert style_exceptions.drop_exempt([finding], text) == [finding]
 
 
-def test_term_inside_a_longer_word_does_not_exempt(paths):
+def test_term_at_the_start_of_a_longer_word_does_not_exempt(paths):
     paths[0].write_text('terms = ["Rose"]\n')
     text = "A Rosette is not Rose.\n"
-    finding = _finding(1, 3, 8)
+    finding = _finding(1, 3, 6)  # "Rose" inside "Rosette": needs the trailing guard
+    assert style_exceptions.drop_exempt([finding], text) == [finding]
+
+
+def test_term_at_the_end_of_a_longer_word_does_not_exempt(paths):
+    paths[0].write_text('terms = ["Rose"]\n')
+    text = "A Prose line.\n"
+    finding = _finding(1, 4, 7)  # "rose" inside "Prose": needs the leading guard
     assert style_exceptions.drop_exempt([finding], text) == [finding]
 
 
