@@ -72,12 +72,13 @@ Three classes carry `unattended: true` on this checkout:
 
 | Class | What it is | This skill |
 | --- | --- | --- |
-| `verbatim-run`, severity `short`, `exact` or `skip-gram` tier | Under 15 words of borrowed wording, not a marked quotation | Repair unattended |
+| `verbatim-run`, severity `short`, `exact` or `skip-gram` tier, not `names` | Under 15 words of borrowed wording, not a marked quotation | Repair unattended |
+| `verbatim-run`, severity `short`, `names: true` | Under 15 words, mostly copied proper names | **Surfaced**: rewording a name is no repair. Report it; a person declares the term in `content/style_exceptions.toml` |
 | `verbatim-run`, severity `long` | 15 words or more, not a marked quotation | **Stop and ask** -- surfaced, not unattended |
 | `verbatim-run`, `embedding` tier, **any** severity | A meaning-level alignment, sharing no wording with the source | Surfaced whatever its length. The tier is advisory only, permanently -- its findings move with tier availability and the embedding model, not only with an edit -- so there is nothing here an edit can reliably resolve. The item names its tier in the summary; do not infer it from the length |
 | `verbatim-run`, `quoted` | Touching quote marks **and** citing the source | Already correct. Do not touch it |
-| `prose` | A `draft style` finding -- an unexpanded acronym, a drifted glossary term, a dialect slip, an uncaptioned table or figure | Repair unattended -- except a finding its rule built with `repair: "review"`, which the agenda already surfaces: a `WideCodeLine` (a wide line in a block verified to run may be deliberate) and a dialect finding whose dialect came from the host-wide `config.toml` rather than `scope.md` or `--language`. Read `unattended`; do not re-derive it |
-| `missing-citekey` | A citekey the draft cites that the corpus no longer has | Repair unattended -- by removing the `[@citekey]` marker, per "Repair a `missing-citekey` item" below |
+| `prose` | A `draft style` finding -- an unexpanded acronym, a drifted glossary term, a dialect slip, an uncaptioned table or figure | Repair unattended -- except a finding its rule built with `repair: "review"`, which the agenda already surfaces: a `WideCodeLine` (a wide line in a block verified to run may be deliberate), an `AcronymCase`, and a dialect finding whose dialect came from the host-wide `config.toml` rather than `scope.md` or `--language`, or whose match starts with a capital letter. Read `unattended`; do not re-derive it |
+| `missing-citekey` | A citekey the draft cites that the corpus no longer has | Repair unattended -- by removing the `[@citekey]` marker, per "Repair a `missing-citekey` item" below. The item and a `recorded-but-uncited` item persist until the author runs `dossier prune`; the report names that command |
 | `recorded-but-uncited` | `evidence.md` or `sections.md` still records a citekey the draft no longer cites -- often the residue of *this skill's own* `missing-citekey` repair | Surfaced. Report and do not touch. The repair is `dossier prune`, which a person confirms; pruning it here would delete evidence that may instead be an uncited candidate |
 | Every other class (`unsupported-claim`, `claim-support`, `uncited-claim`, `misquoted`) | Judgement calls | Surfaced. Report and do not touch |
 

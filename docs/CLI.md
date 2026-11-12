@@ -1670,6 +1670,15 @@ equation is only "declared" at all once the author opts it in with an
 | `chitragupta.EquationUnknownRef` | An `<!-- equationref: -->` naming an equation that does not exist |
 | `chitragupta.EquationRefOutsideSection` | The equation is referred to, but only from another section |
 
+**The acronym-case finding**, `chitragupta.AcronymCase`, reports an
+acronym's expansion written in a different case from
+`content/acronyms.toml`, whose case is authoritative. A capitalised first
+letter at a sentence, line or heading start is accepted. It is always
+`review`, since the vocabulary may be the wrong side
+([WRITING-STANDARDS.md](WRITING-STANDARDS.md#-9-what-is-checked-mechanically-and-what-is-not)).
+Terms in `content/style_exceptions.toml` are never reported by a prose
+rule other than `Acronyms`.
+
 **The typesetting findings**, WRITING-STANDARDS.md §14's two decidable
 rows. Both name something a reader of the rendered pdf would meet at the
 right margin rather than anything about the prose itself:
@@ -1973,7 +1982,8 @@ Every item carries a `class` from the item-class table
 ([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)), a section anchor where one
 applies, and whether it is `unattended`, meaning safe for a future
 automated pass to act on without asking first (`missing-citekey`, the
-short runs a verbatim scan finds, and `prose`), or only surfaced for a
+short runs a verbatim scan finds unless they are mostly copied names,
+and `prose` bar its `review` findings), or only surfaced for a
 person to decide (`recorded-but-uncited`, `unsupported-claim`, `claim-support`,
 `uncited-claim` and `misquoted`).
 

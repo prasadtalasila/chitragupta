@@ -136,7 +136,14 @@ used as given.
   `chitragupta.review verbatim scan` consults (see
   [PLAGIARISM.md](PLAGIARISM.md#-the-boilerplate-allowlist)). It is fixed
   at `<dir>/verbatim_allowlist.toml` and not independently configurable,
-  the same as the enrichment caches below it. The directory is also what
+  the same as the enrichment caches below it.
+  The other hand-edited file is `style_exceptions.toml`, the project's
+  list of terms no prose rule reports and the verbatim scan masks (see
+  [WRITING-STANDARDS.md](WRITING-STANDARDS.md#-9-what-is-checked-mechanically-and-what-is-not)).
+  It is project data, meant to be versioned with the project, unlike the
+  per-host allowlist. It is fixed at `<dir>/style_exceptions.toml` and
+  not independently configurable. A missing file means no terms, and
+  `chitragupta init` does not create it. The directory is also what
   every tier-1 command that takes a path will *accept*:
   `citation_gate`, `references` and `render_output` each refuse a path
   that resolves outside it, and so do all eleven of `chitragupta.review`'s
