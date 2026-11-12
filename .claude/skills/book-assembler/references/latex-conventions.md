@@ -349,10 +349,15 @@ It is the reading copy for anyone who is not building LaTeX.
 `notation.tex` beside `book.tex` from the accepted units' `scope.md`
 glossaries and `math.md` `## Symbols` tables (a symbol's meaning
 lives in `math.md` since #1143, never in the glossary); each carries
-its own `\chapter*` and `\addcontentsline`, so
+its own `\chapter*`, `\addcontentsline` and `\markboth`, so
 `book.tex` holds one `\input` each, where the outline's `{#glossary}`
 and `{#symbols}` entries put them (below). A page step 3 did not write
 (no terms, or no symbols) gets no `\input`. The layout, for checking the PDF:
+
+- every page after the first is headed GLOSSARY or LIST OF SYMBOLS, as
+  the lists, bibliography and index are headed with their own names.
+  `\chapter*` sets no running head, so a page without the `\markboth`
+  carries the last appendix's chapter and section titles (#1182);
 
 - a term with several definitions prints each, numbered, in outline
   order; identical definitions print once;

@@ -672,6 +672,18 @@ def pdf_text(pdf) -> str:
     ).stdout
 
 
+def lualatex_book(directory) -> None:
+    """One `lualatex` pass over `directory/book.tex`, failing the test
+    with the log's tail when it does not compile."""
+    run = subprocess.run(
+        ["lualatex", "-interaction=nonstopmode", "book.tex"],
+        cwd=directory,
+        capture_output=True,
+        text=True,
+    )
+    assert run.returncode == 0, run.stdout[-3000:]
+
+
 # Whether this host can compile a TikZ figure at all: the two facts
 # `render_output/_figures.py::_require_tikz()` checks. A skip, not a
 # failure, because CI's Windows leg installs no `os-deps`. One marker for

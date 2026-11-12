@@ -49,6 +49,9 @@ def test_one_definition_prints_inline_with_its_chapter(book):
     assert "\\item[{Model}] a description. (\\Cref{ch-model})" in glossary
     assert "\\chapter*{Glossary}" in glossary
     assert "\\addcontentsline{toc}{chapter}{Glossary}" in glossary
+    # `\chapter*` sets no running head, so without this the pages carry
+    # the last appendix's (#1182).
+    assert "\\markboth{\\MakeUppercase{Glossary}}{\\MakeUppercase{Glossary}}" in glossary
 
 
 def test_several_definitions_print_numbered_in_outline_order(book):
@@ -214,6 +217,9 @@ def test_one_meaning_in_several_chapters_is_one_row(book):
     assert notation.count("$RTF$ &") == 1
     assert "$RTF$ & Real-time factor & \\Cref{ch-model}, \\Cref{ch-data} \\\\" in notation
     assert "\\chapter*{List of Symbols}" in notation
+    assert (
+        "\\markboth{\\MakeUppercase{List of Symbols}}{\\MakeUppercase{List of Symbols}}" in notation
+    )
 
 
 def test_different_meanings_are_one_row_each(book):
