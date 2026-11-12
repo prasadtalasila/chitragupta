@@ -136,9 +136,20 @@ def _cref(units: "list[str]") -> str:
     return "(" + ", ".join(f"\\Cref{{{unit}}}" for unit in units) + ")"
 
 
+def _opening(flag: str, title: str) -> "list[str]":
+    """The page's unnumbered chapter, its contents line and its running
+    head. `\\chapter*` sets no mark, so without `\\markboth` every page
+    carried the last appendix's chapter and section (#1182); this is the
+    mark the `book` class's own `\\listoffigures` and bibliography set."""
+    return [
+        _BANNER.format(flag=flag) + f"\\chapter*{{{title}}}",
+        f"\\addcontentsline{{toc}}{{chapter}}{{{title}}}",
+        f"\\markboth{{\\MakeUppercase{{{title}}}}}{{\\MakeUppercase{{{title}}}}}",
+    ]
+
+
 def _glossary_tex(entries, latex) -> str:
-    lines = [_BANNER.format(flag="--glossary") + "\\chapter*{Glossary}"]
-    lines += ["\\addcontentsline{toc}{chapter}{Glossary}", "\\begin{description}"]
+    lines = _opening("--glossary", "Glossary") + ["\\begin{description}"]
     for heading, definitions in entries:
         if len(definitions) == 1:
             ((text, units),) = definitions
@@ -151,11 +162,8 @@ def _glossary_tex(entries, latex) -> str:
 
 
 def _notation_tex(rows, latex) -> str:
-    lines = [_BANNER.format(flag="--notation") + "\\chapter*{List of Symbols}"]
-    lines += [
-        "\\addcontentsline{toc}{chapter}{List of Symbols}",
-        "\\begin{longtable}{@{}l p{0.55\\textwidth} p{0.25\\textwidth}@{}}",
-    ]
+    lines = _opening("--notation", "List of Symbols")
+    lines.append("\\begin{longtable}{@{}l p{0.55\\textwidth} p{0.25\\textwidth}@{}}")
     for symbol, label, units in rows:
         lines.append(f"{latex[symbol]} & {latex[label]} & {_cref(units)[1:-1]} \\\\")
     return "\n".join(lines + ["\\end{longtable}"]) + "\n"

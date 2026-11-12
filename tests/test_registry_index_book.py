@@ -16,7 +16,7 @@ import subprocess
 import pytest
 
 from chitragupta import registry, render_output, spec
-from tests.conftest import pandoc_available
+from tests.conftest import lualatex_book, pandoc_available
 
 # conftest's `signed_book` reads this module's BOOK_SPEC as the outline.
 from tests.test_registry import BOOK_SPEC, accept  # noqa: F401
@@ -61,16 +61,6 @@ BOOK = r"""\documentclass{book}
 """
 
 
-def lualatex(directory):
-    run = subprocess.run(
-        ["lualatex", "-interaction=nonstopmode", "book.tex"],
-        cwd=directory,
-        capture_output=True,
-        text=True,
-    )
-    assert run.returncode == 0, run.stdout[-3000:]
-
-
 @pytest.fixture
 def book(signed_book):
     return signed_book
@@ -90,12 +80,12 @@ def build(book, capsys):
             rendered = target
         render_output.render(draft, "tex", fragment=True, index_terms=terms)
     (rendered / "book.tex").write_text(BOOK, encoding="utf-8")
-    lualatex(rendered)
-    lualatex(rendered)
+    lualatex_book(rendered)
+    lualatex_book(rendered)
     capsys.readouterr()
     assert registry.main(["index", str(book), "--idx", str(rendered / "book.idx")]) == 0
     assert "index: " in capsys.readouterr().out
-    lualatex(rendered)
+    lualatex_book(rendered)
     return rendered
 
 
