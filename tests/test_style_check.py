@@ -444,6 +444,42 @@ class TestAgainstRealVale:
         matches = [f["match"] for f in style_check.check(draft)["findings"]]
         assert "simply" in matches
 
+    def _matches(self, tmp_path, name, text):
+        draft = tmp_path / name
+        draft.write_text(text, encoding="utf-8")
+        found = style_check.check(draft, override="en-GB")["findings"]
+        return [f["match"] for f in found]
+
+    def test_latex_command_names_are_not_prose(self, tmp_path):
+        """#1187: `\\center` and `\\centering` are commands, not the word.
+        The prose between them is still checked, which is the control
+        that stops someone splitting the one alternation in vale.ini."""
+        text = "\\begin{center}\n\\centering\nInside, this is simply the center.\n\\end{center}\n"
+        assert self._matches(tmp_path, "c.tex", text) == ["simply", "center"]
+
+    def test_emph_argument_is_still_prose(self, tmp_path):
+        assert "obviously" in self._matches(tmp_path, "e.tex", "\\emph{obviously} so.\n")
+
+    def test_exercise_grade_is_not_a_marker(self, tmp_path):
+        text = "**Exercise 1 (Objective 2, easy).** Classify.\n"
+        assert self._matches(tmp_path, "x.md", text) == []
+
+    def test_easy_in_prose_is_still_a_marker(self, tmp_path):
+        assert "easy" in self._matches(tmp_path, "y.md", "This is easy to see.\n")
+
+    def test_lower_case_expansion_counts_as_expanded(self, tmp_path):
+        text = "We use supervisory control and data acquisition (SCADA). SCADA again.\n"
+        draft = tmp_path / "s.md"
+        draft.write_text(text, encoding="utf-8")
+        found = style_check.check(draft, override="en-GB")["findings"]
+        assert not [f for f in found if f["rule"] == "chitragupta.Acronyms"]
+
+    def test_unexpanded_acronym_is_still_reported(self, tmp_path):
+        draft = tmp_path / "f.md"
+        draft.write_text("FOOB is unexpanded.\n", encoding="utf-8")
+        found = style_check.check(draft, override="en-GB")["findings"]
+        assert [f for f in found if f["rule"] == "chitragupta.Acronyms"]
+
 
 class TestSetLanguageRoundTrip:
     """`dossier set-language` writes what `style` then reads. The two are

@@ -57,6 +57,11 @@ Concrete guards:
   defect markers. When the thing isn't obvious, the reader concludes the
   failure is theirs. Delete the word; if the sentence then looks like it's
   asserting too much, that's the actual problem showing through.
+- Label each textbook exercise
+  `**Exercise N (Objective M, easy|medium|hard).**`, where `M` is the
+  learning objective it exercises. The grade in that label is a difficulty
+  rating for the student, not a defect marker, and the prose check skips
+  the label. The word "easy" in a sentence is still a marker.
 
 ## 📏 3. State scope up front
 

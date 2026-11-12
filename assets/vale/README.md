@@ -110,6 +110,14 @@ naive `-ise`/`-ize` rule gets every one of them wrong:
 
 ## Two things about the config that are not obvious
 
+**`TokenIgnores` also skips LaTeX command names and the exercise label**
+(#1187). `\centering` and `\begin{center}` were read as prose, and
+`center` as an en-US spelling. One alternation covers both forms and must
+stay one entry: split in two, it hid every finding beside a `\begin`
+line. The label `**Exercise N (Objective M, easy|medium|hard).**` is
+ignored whole, so its grade is not read as the marker "easy"; "easy" in
+running prose is still reported.
+
 **`[formats] tex = md` is load-bearing.** LaTeX is not one of Vale's
 native markup formats. Without that mapping a `.tex` fragment is scanned
 as plain text, `BlockIgnores` is silently not applied, and every word
