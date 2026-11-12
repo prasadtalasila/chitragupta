@@ -7,8 +7,10 @@ chitragupta/review/verbatim_check/_corpus.py's docstring for the split.
 
 from pathlib import Path
 
-from chitragupta import overlap_index
+from chitragupta import citation_gate, overlap_index, style_exceptions
 from chitragupta.review.verbatim_check._allowlist import _load_allowlist_phrases
+from chitragupta.review.verbatim_check._citekeys import _known_citekeys
+from chitragupta.review.verbatim_check._corpus import norm
 from chitragupta.review.verbatim_check._embed import _embed_tier_findings
 from chitragupta.review.verbatim_check._exact import _exact_tier_findings
 from chitragupta.review.verbatim_check._masking import _tokenize_draft
@@ -76,10 +78,15 @@ def scan_findings(
         min_run = overlap_index.DEFAULT_N
 
     text = Path(draft).read_text(encoding="utf-8")
-    words, paragraph_citekeys = _tokenize_draft(text)
+    words, paragraph_citekeys = _tokenize_draft(
+        text, latex=citation_gate.is_latex(draft), citekeys=_known_citekeys()
+    )
     word_strs = [w.text for w in words]
     newlines = _newline_offsets(text)
-    allowlist = _load_allowlist_phrases()
+    # Declared project terms (#1187) are allowlist phrases: a run they
+    # account for cannot be repaired by rewording, so it is not reported.
+    terms = (tuple(norm(term)) for term in style_exceptions.terms())
+    allowlist = _load_allowlist_phrases() + [t for t in terms if t]
 
     exact_findings, exact_suppressed = _exact_tier_findings(
         words, word_strs, paragraph_citekeys, newlines, text, min_run, gap, allowlist
