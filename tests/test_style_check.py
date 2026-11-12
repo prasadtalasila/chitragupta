@@ -640,8 +640,8 @@ class TestWithRepair:
     agenda fix it unattended, `"review"` lists it for a person."""
 
     @staticmethod
-    def _repair(rule: str, source: str = "scope.md") -> str:
-        found = {"rule": rule, "match": "x", "line": 1, "count": 1}
+    def _repair(rule: str, source: str = "scope.md", match: str = "x") -> str:
+        found = {"rule": rule, "match": match, "line": 1, "count": 1}
         return style_rules.with_repair([found], source)[0]["repair"]
 
     def test_just_is_left_for_a_person(self):
@@ -657,3 +657,14 @@ class TestWithRepair:
 
     def test_a_dialect_the_author_declared_is_repaired_unattended(self):
         assert self._repair("chitragupta.DialectGB", "scope.md") == "edit"
+
+    def test_a_capitalised_dialect_match_is_left_for_a_person(self):
+        """A capitalised match may be a proper name ("Unified Modeling
+        Language"), which no dialect re-spelling should touch (#1187)."""
+        assert self._repair("chitragupta.DialectGB", "scope.md", "Modeling") == "review"
+
+    def test_a_lower_case_dialect_match_is_still_repaired(self):
+        assert self._repair("chitragupta.DialectGB", "scope.md", "modeling") == "edit"
+
+    def test_capitalisation_does_not_touch_other_rules(self):
+        assert self._repair("chitragupta.DefectMarkers", "scope.md", "Simply") == "edit"

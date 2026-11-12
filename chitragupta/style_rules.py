@@ -74,12 +74,17 @@ def with_repair(findings: "list[dict]", language_source: str) -> "list[dict]":
     author: re-spelling a whole draft to a host-wide default is not a
     repair to make unattended when the draft's own dialect may be the
     deliberate one. A rule in `_ALWAYS_REVIEW` is always `"review"`.
-    Every other Vale rule is an `"edit"`.
+    A dialect finding whose match starts with a capital letter is
+    `"review"` too, whatever the source: it may be a proper name
+    ("Unified Modeling Language") that an unattended re-spelling would
+    corrupt. The guess only downgrades the repair mode and never
+    suppresses the finding, so a real mis-spelling is still listed
+    (#1187). Every other Vale rule is an `"edit"`.
     """
     for finding in findings:
         dialect = finding["rule"] in _ALL_DIALECT_RULES
         review = finding["rule"] in _ALWAYS_REVIEW or (
-            dialect and language_source not in _AUTHOR_SOURCES
+            dialect and (language_source not in _AUTHOR_SOURCES or finding["match"][:1].isupper())
         )
         finding["repair"] = "review" if review else "edit"
     return findings
