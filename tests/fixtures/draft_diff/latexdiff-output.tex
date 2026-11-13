@@ -1,0 +1,165 @@
+% Options for packages loaded elsewhere
+%DIF LATEXDIFF DIFFERENCE FILE
+%DIF DEL ../old/survey.tex   Fri Nov 13 09:45:27 2026
+%DIF ADD survey.tex          Fri Nov 13 09:45:27 2026
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+  12pt,
+  a4paper,
+]{article}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage[numbers,sort&compress]{natbib}
+\bibliographystyle{IEEEtran}
+\author{}
+\date{}
+%DIF PREAMBLE EXTENSION ADDED BY LATEXDIFF
+%DIF UNDERLINE PREAMBLE %DIF PREAMBLE
+\RequirePackage[normalem]{ulem} %DIF PREAMBLE
+\RequirePackage{color}\definecolor{RED}{rgb}{1,0,0}\definecolor{BLUE}{rgb}{0,0,1} %DIF PREAMBLE
+\providecommand{\DIFadd}[1]{{\protect\color{blue}\uwave{#1}}} %DIF PREAMBLE
+\providecommand{\DIFdel}[1]{{\protect\color{red}\sout{#1}}} %DIF PREAMBLE
+%DIF SAFE PREAMBLE %DIF PREAMBLE
+\providecommand{\DIFaddbegin}{} %DIF PREAMBLE
+\providecommand{\DIFaddend}{} %DIF PREAMBLE
+\providecommand{\DIFdelbegin}{} %DIF PREAMBLE
+\providecommand{\DIFdelend}{} %DIF PREAMBLE
+\providecommand{\DIFmodbegin}{} %DIF PREAMBLE
+\providecommand{\DIFmodend}{} %DIF PREAMBLE
+%DIF FLOATSAFE PREAMBLE %DIF PREAMBLE
+\providecommand{\DIFaddFL}[1]{\DIFadd{#1}} %DIF PREAMBLE
+\providecommand{\DIFdelFL}[1]{\DIFdel{#1}} %DIF PREAMBLE
+\providecommand{\DIFaddbeginFL}{} %DIF PREAMBLE
+\providecommand{\DIFaddendFL}{} %DIF PREAMBLE
+\providecommand{\DIFdelbeginFL}{} %DIF PREAMBLE
+\providecommand{\DIFdelendFL}{} %DIF PREAMBLE
+%DIF AMSMATHULEM PREAMBLE %DIF PREAMBLE
+\makeatletter %DIF PREAMBLE
+\let\sout@orig\sout %DIF PREAMBLE
+\renewcommand{\sout}[1]{\ifmmode\text{\sout@orig{\ensuremath{#1}}}\else\sout@orig{#1}\fi} %DIF PREAMBLE
+\makeatother %DIF PREAMBLE
+%DIF COLORLISTINGS PREAMBLE %DIF PREAMBLE
+\RequirePackage{listings} %DIF PREAMBLE
+\RequirePackage{color} %DIF PREAMBLE
+\lstdefinelanguage{DIFcode}{ %DIF PREAMBLE
+%DIF DIFCODE_UNDERLINE %DIF PREAMBLE
+  moredelim=[il][\color{red}\sout]{\%DIF\ <\ }, %DIF PREAMBLE
+  moredelim=[il][\color{blue}\uwave]{\%DIF\ >\ } %DIF PREAMBLE
+} %DIF PREAMBLE
+\lstdefinestyle{DIFverbatimstyle}{ %DIF PREAMBLE
+	language=DIFcode, %DIF PREAMBLE
+	basicstyle=\ttfamily, %DIF PREAMBLE
+	columns=fullflexible, %DIF PREAMBLE
+	keepspaces=true %DIF PREAMBLE
+} %DIF PREAMBLE
+\lstnewenvironment{DIFverbatim}[1][]{\lstset{style=DIFverbatimstyle}}{} %DIF PREAMBLE
+\lstnewenvironment{DIFverbatim*}[1][]{\lstset{style=DIFverbatimstyle,showspaces=true}}{} %DIF PREAMBLE
+\lstset{extendedchars=\true,inputencoding=utf8}
+
+%DIF END PREAMBLE EXTENSION ADDED BY LATEXDIFF
+
+\begin{document}
+
+\section{Digital Twins in Operation: a Short Survey of the Sample
+Corpus}\label{digital-twins-in-operation-a-short-survey-of-the-sample-corpus}
+
+\subsection{1. Introduction}\label{introduction}
+
+The phrase \emph{digital twin} is applied to systems \DIFdelbegin \DIFdel{with very different
+levels of }\DIFdelend \DIFaddbegin \DIFadd{of widely differing
+}\DIFaddend ambition, and the corpus surveyed here begins by fixing that vocabulary.
+A digital model exchanges data with its physical counterpart only
+through manual steps \DIFaddbegin \DIFadd{\mbox{%DIFAUXCMD
+\citep{sample_ml_anomaly_2023}}\hskip0pt%DIFAUXCMD
+}\DIFaddend ; a digital shadow
+adds an automatic flow in one direction; a digital twin closes the loop,
+with data flowing automatically both ways
+\citep{sample_dt_overview_2024}. The distinction is one of data flow
+rather than model sophistication, and holding it strictly keeps
+expectations honest: in one synthetic survey of forty deployments,
+twenty-eight systems described as twins were, by this definition,
+shadows \citep{sample_dt_overview_2024}.
+
+This survey groups the sample corpus into three themes -- keeping the
+twin true to its asset, using its state stream, and integrating it with
+everything else -- and closes with the gaps the corpus leaves open.
+
+\DIFaddbegin \subsection{\DIFadd{4. Integrating with everything
+else}}\label{integrating-with-everything-else}
+
+\DIFadd{Twin pilots rarely die of modelling problems; they die of integration.
+Interoperability requires agreement at three layers -- transport, syntax
+and semantics -- and only the first two can be bought as mature
+standards \mbox{%DIFAUXCMD
+\citep{sample_std_interop_2021}}\hskip0pt%DIFAUXCMD
+. Versioning discipline follows
+the same logic; the corpus recommends append-only models, where a field
+is deprecated and replaced but never repurposed
+\mbox{%DIFAUXCMD
+\citep{sample_std_interop_2021}}\hskip0pt%DIFAUXCMD
+.
+}
+
+\DIFaddend \subsection{3. Using the state stream}\label{using-the-state-stream}
+
+Once a twin exists, its state stream is a naturally clean substrate for
+analytics. For anomaly detection, a layered configuration -- a rolling
+z-score everywhere, with a learned detector added only where the
+false-positive cost justifies its upkeep -- matched an autoencoder's
+precision on point faults while remaining immune to the baseline
+corruption that made the autoencoder miss the slowest drift entirely
+\citep{sample_ml_anomaly_2023}. The cost asymmetry is stark: constant
+memory per signal for the baseline against a weekly GPU hour and a human
+retraining decision for the learned model
+\citep{sample_ml_anomaly_2023}.
+
+\DIFdelbegin \subsection{\DIFdel{4. Integrating with everything
+else}}%DIFAUXCMD
+\addtocounter{subsection}{-1}%DIFAUXCMD
+%DIFDELCMD < \label{integrating-with-everything-else}
+%DIFDELCMD < 
+
+%DIFDELCMD < %%%
+\DIFdel{Twin pilots rarely die of modelling problems; they die of integration.
+Interoperability requires agreement at three layers -- transport, syntax
+and semantics -- and only the first two can be bought as mature
+standards \mbox{%DIFAUXCMD
+\citep{sample_std_interop_2021}}\hskip0pt%DIFAUXCMD
+. The practical instrument for
+the third is a shared asset-model registry with named owners: sites that
+maintained one integrated a new asset in a median of six days, against
+seven weeks where semantics were negotiated per project (citation
+withdrawn). Versioning discipline follows the same logic; the corpus
+recommends append-only models, where a field is deprecated and replaced
+but never repurposed \mbox{%DIFAUXCMD
+\citep{sample_std_interop_2021}}\hskip0pt%DIFAUXCMD
+.
+}%DIFDELCMD < 
+
+%DIFDELCMD < %%%
+\DIFdelend \subsection{5a. A worked estimate}\label{a.-a-worked-estimate}
+
+The twin's state estimate is corrected by the measurement in proportion
+to the gain:
+
+\[
+\hat{x}_k = \hat{x}_{k-1} + K_k\,(z_k - \hat{x}_{k-1}), \qquad K_k = \DIFdelbegin \DIFdel{\frac{P_k}{P_k + R}
+}\DIFdelend \DIFaddbegin \DIFadd{\frac{P_k}{P_k + R_k}
+}\DIFaddend \]
+
+
+\begin{figure}
+
+{\centering\input{figures/estimator-loop.tex}\par}
+
+\caption{The estimator loop that keeps a twin's state
+honest.}\label{fig:estimator-loop}
+
+\end{figure}
+
+
+\bibliography{/tmp/tmpk2v9x1qe/references.bib}
+
+\end{document}
