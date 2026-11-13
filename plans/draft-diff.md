@@ -62,8 +62,9 @@ and nothing produces one.
     source. Its header says "Changes since <ref> — review copy".
 15. **Revisers** end by running `draft diff` and showing the report.
 16. **Install scripts** gain latexdiff.
-17. **Delivery.** One issue, two PRs: snapshots (with this plan), then
-    `draft diff` with the reviser changes.
+17. **Delivery.** One issue, one PR carrying this plan, snapshots,
+    `draft diff`, the install changes and the reviser changes
+    (revised 2026-11-13 from two PRs).
 
 ## Spike findings (2026-11-13)
 
@@ -245,10 +246,11 @@ and its Perl requirement are verified on Windows, not before;
 
 ## Delivery
 
-- **PR 1, snapshots**: §1, this plan, docs/DOSSIER.md.
-- **PR 2, `draft diff`**: §2–§4, install scripts, the three skills,
-  docs ([docs/DRAFT-ITERATION.md](../docs/DRAFT-ITERATION.md) and
-  [docs/CLI.md](../docs/CLI.md)).
+One PR: this plan, §1–§4, the install scripts, the three skills, and
+the docs ([docs/DOSSIER.md](../docs/DOSSIER.md),
+[docs/DRAFT-ITERATION.md](../docs/DRAFT-ITERATION.md),
+[docs/CLI.md](../docs/CLI.md)). Snapshots land first within it, so the
+commits that follow can build on them.
 
 ## Deferred
 
