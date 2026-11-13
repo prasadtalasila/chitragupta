@@ -14,10 +14,10 @@ An inline `simply` code span, and a fenced one above.
 
 > A quoted source that says obviously, and spells it color.
 
-## 3.13 References
-
-- P. Smith, "Simply a Study of Color Organization," 2020.
-
 **Exercise 1 (Objective 2, easy).** Classify.
 
 We use supervisory control and data acquisition (SCADA).
+
+## 3.13 References
+
+- P. Smith, "Simply a Study of Color Organization," 2020.

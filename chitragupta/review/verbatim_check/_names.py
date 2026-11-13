@@ -35,7 +35,7 @@ def names_heavy(text: str) -> bool:
         content += 1
         initial = i == 0 or _follows_sentence_end(text, matches[i - 1].end(), m.start())
         capitalised += m.group()[0].isupper() and not initial
-    return content >= 2 and capitalised * 2 >= content
+    return capitalised * 2 >= content >= 2
 
 
 def _follows_sentence_end(text: str, prev_end: int, start: int) -> bool:

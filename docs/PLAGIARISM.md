@@ -418,7 +418,10 @@ because rewording them cannot repair anything (#1187):
   (stopwords such as "of" and "and" are left out of both counts). An
   undeclared organisation name copied from sources is not repaired by
   rewording, so a short run flagged `names` is surfaced to a person
-  instead of being marked `unattended` for `agenda-reviser`.
+  instead of being marked `unattended` for `agenda-reviser`. A Title-Case
+  heading, or a phrase like "Figure 3 and Table 2 of Section 4", also
+  counts as names-heavy; that only surfaces the run to a person, never
+  hides it.
 
 ## 🛠 Repairing what the scan found
 

@@ -386,6 +386,24 @@ class TestMain:
         assert style_check.main(["content/drafts/gone.md"]) == 0
         assert "WARNING" in capsys.readouterr().out
 
+    def test_a_broken_exceptions_file_is_a_usage_error_not_a_finding(
+        self, draft, monkeypatch, capsys
+    ):
+        """#1187: a malformed `style_exceptions.toml` must stop the run
+        with its reason on stderr and exit 2, like the allowlist; loading
+        it as empty would silently re-raise every declared term."""
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
+        monkeypatch.setattr(style_check, "_run", fake_run({}))
+
+        def _broken(*_args, **_kwargs):
+            raise ValueError("style_exceptions.toml: malformed TOML")
+
+        monkeypatch.setattr(style_check, "check", _broken)
+        assert style_check.main([str(draft)]) == 2
+        captured = capsys.readouterr()
+        assert "style_exceptions.toml" in captured.err
+        assert captured.out == ""
+
     def test_json_carries_the_findings_and_the_not_a_verdict_notice(
         self, draft, monkeypatch, capsys
     ):
