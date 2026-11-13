@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 import pytest
 from chitragupta import ledger
 from chitragupta import render_output
@@ -1196,3 +1197,99 @@ class TestCaptionedFigureRenderReal:
         rendered = out_path.read_text()
         assert "**Figure 2:**" not in rendered
         assert "Figure 1 is the one to compare against." in rendered
+
+
+class TestDeferredCitations:
+    """`render(defer_citations=True)`: a standalone article whose citations
+    stay `\\citep{key}` for bibtex, which is what lets latexdiff compare
+    two versions of a draft by key rather than by citeproc's numbers --
+    one added citation renumbers every later one (plans/1194-draft-diff.md,
+    spike findings)."""
+
+    @staticmethod
+    def _argv(fragment=False, defer_citations=False):
+        cmd, _ = render_output._pandoc_command(
+            Path("in.md"),
+            Path("bib.bib"),
+            Path("ieee.csl"),
+            Path("out.tex"),
+            Path("in.md"),
+            "tex",
+            "article",
+            "12pt",
+            "a4",
+            "1in",
+            [],
+            fragment,
+            defer_citations=defer_citations,
+        )
+        return cmd
+
+    def test_defer_citations_argv_is_standalone_natbib(self):
+        cmd = self._argv(defer_citations=True)
+
+        assert "--standalone" in cmd and "--natbib" in cmd
+        assert "--citeproc" not in cmd and "--csl" not in cmd
+        assert "biblio-style=IEEEtran" in cmd
+        assert "natbiboptions=numbers,sort&compress" in cmd
+        # The article shape, not the book fragment's: no chapter division
+        # and no label prefix, which only a fragment sharing a book needs.
+        assert "--top-level-division=chapter" not in cmd
+        assert not any("chitragupta-label-prefix" in arg for arg in cmd)
+        # bibtex formats the list, so nothing is left for this filter to
+        # rewrite -- exactly as for a fragment.
+        assert not any("bib_raw_tex_as_text.lua" in arg for arg in cmd)
+
+    def test_a_plain_render_takes_none_of_it(self):
+        cmd = self._argv()
+
+        assert "--citeproc" in cmd
+        assert "biblio-style=IEEEtran" not in cmd
+        assert any("bib_raw_tex_as_text.lua" in arg for arg in cmd)
+
+    def test_defer_citations_with_fragment_refused(self, isolated_config):
+        draft = content_draft(isolated_config, "drafts/survey.md")
+        draft.write_text("# T\n\nNo citations.\n")
+
+        with pytest.raises(ValueError, match="fragment"):
+            render_output.render(
+                str(draft), output_format="tex", fragment=True, defer_citations=True
+            )
+
+    @pytest.mark.parametrize("fmt", ["pdf", "md", "docx"])
+    def test_defer_citations_is_tex_only(self, isolated_config, fmt):
+        draft = content_draft(isolated_config, "drafts/survey.md")
+        draft.write_text("# T\n\nNo citations.\n")
+
+        with pytest.raises(ValueError, match="tex"):
+            render_output.render(str(draft), output_format=fmt, defer_citations=True)
+
+    @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
+    def test_a_deferred_render_keeps_citekeys_and_one_references_list(
+        self, isolated_config, ledger_con
+    ):
+        add_citable(ledger_con, "sample_dt_sync_2023", title="Sync", year="2023")
+        isolated_config.BIB_FILE_PATH.write_text(
+            "@article{sample_dt_sync_2023,\n  title={Sync},\n  year={2023},\n}\n"
+        )
+        draft = content_draft(isolated_config, "drafts/dt/survey.md")
+        draft.write_text(
+            "# T\n\n## Background\n\nTwins synchronise [@sample_dt_sync_2023].\n\n"
+            "## References\n\n- [@sample_dt_sync_2023] Sync, 2023.\n"
+        )
+        out_dir = isolated_config.REVIEW_DIR / "dt" / "survey.diff" / "rendered"
+
+        out = render_output.render(
+            str(draft), output_format="tex", output_dir=out_dir, defer_citations=True
+        )
+
+        tex = out.read_text()
+        assert "\\citep{sample_dt_sync_2023}" in tex
+        assert "\\citeproc" not in tex
+        assert "\\bibliographystyle{IEEEtran}" in tex
+        assert "numbers,sort&compress" in tex
+        assert "\\documentclass" in tex
+        # The draft's own list is dropped, so `\bibliography` gives the
+        # compiled diff its only References heading.
+        assert "{References}" not in tex
+        assert (out_dir / isolated_config.BIB_FILE_PATH.name).is_file()

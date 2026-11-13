@@ -22,13 +22,15 @@ before converting, and write the answer to that line as part of the pass.
 A conversion applied against an unrecorded target is one the next session
 cannot repeat or check.
 
-**One `revisions.md` entry for the whole pass**, not one per section, and
-it names the convention rather than the sections:
+**One `revisions.md` entry for the whole pass**, not one per section. It
+states the convention, and its `Sections:` line names every section the
+pass changed, or `draft diff` flags each one as needing a log entry:
 
 ```text
 2026-08-14 -- copy-edit: converted to en-GB per scope.md's `language:`
-(-ise, -our, -re endings); whole document; no claim, citation, section
-order or citekey changed.
+(-ise, -our, -re endings); no claim, citation, section order or citekey
+changed.
+Sections: 1. Introduction, 2. Background, 3. Methods, 4. Conclusions
 ```
 
 One entry because the log's later reader wants to know *what convention

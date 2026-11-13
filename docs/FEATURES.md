@@ -341,9 +341,9 @@ usually the model resuming a draft weeks later, not a person. That
 separates it from [REVIEW.md](REVIEW.md), which is written for you.
 
 `chitragupta draft dossier` is how you work with one by hand: `init`,
-`status`, `mark-revision`, `stamp`, `sections`, `prune`, `outline`,
-`brief`, `set-language`, `acronyms-suggest`, `check-evidence`, `list`,
-and `export`/`restore` for backup.
+`status`, `mark-revision`, `snapshot`, `versions`, `stamp`, `sections`,
+`prune`, `outline`, `brief`, `set-language`, `acronyms-suggest`,
+`check-evidence`, `list`, and `export`/`restore` for backup.
 `status` is the one to know. It recomputes the corpus fingerprint the
 dossier recorded, and if the corpus has moved it names the citekeys that
 appear nowhere in the dossier, neither kept nor rejected. That
@@ -369,6 +369,19 @@ the section's new wording as ITER-RETGEN's `y_{t-1}` (Shao et al.,
 *Findings of EMNLP 2023*), with a human in the generation slot a model
 would otherwise occupy. Exactly two rounds, merged and capped, never
 applied unasked.
+
+What a revision pass changed can be seen, not only read about in
+`revisions.md`. Every `mark-revision` keeps a numbered snapshot of the
+draft and its figures in the dossier, unless the draft is unchanged
+since the last one, and `dossier snapshot --label`
+keeps a named one, such as the version sent to a supervisor.
+`draft diff <draft>` compares the draft with the latest snapshot, or
+`--against` a number, a label or any file, and writes a change report
+beside the review reports: sections added, removed, moved or changed,
+each linked to the `revisions.md` entry that names it, citekeys added
+and dropped, and figures redrawn. `--format pdf` adds a redline of the
+prose, built with latexdiff. Both are review copies: never gated, never
+a deliverable, never a source.
 
 ### 📖 Evidence: `claim:` and `quote:`
 

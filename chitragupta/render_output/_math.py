@@ -179,9 +179,13 @@ def mapping_path(draft: Path) -> "Path | None":
     return target
 
 
-def mapping_text(draft: Path) -> str:
-    """`draft`'s `math.md`, or "" if it has none or can have none."""
-    path = mapping_path(draft)
+def mapping_text(draft: Path, path: "Path | None" = None) -> str:
+    """`draft`'s `math.md`, or "" if it has none or can have none.
+
+    `path` names the file instead of mirroring it from `draft`'s place,
+    for a copy rendered outside `content/drafts/` (#1194).
+    """
+    path = mapping_path(draft) if path is None else path
     if path is None or not path.is_file():
         return ""
     return path.read_text(encoding="utf-8")
@@ -307,7 +311,7 @@ def substitute(text: str, mapping: "dict[str, str]") -> str:
     return _SPAN_RE.sub(_span, text)
 
 
-def check(text: str, draft: Path, mapping: "dict[str, str]") -> None:
+def check(text: str, draft: Path, mapping: "dict[str, str]", path: "Path | None" = None) -> None:
     """Raises `MathMappingError` on a displayed equation that cannot render.
 
     Only the certain cases, never the heuristic ones. A `<!-- math -->`
@@ -322,13 +326,15 @@ def check(text: str, draft: Path, mapping: "dict[str, str]") -> None:
     draft by path alone and there is no `dossier rename`. A file that
     exists but lacks the row is an unmaintained mapping. Different cause,
     different fix.
+
+    `path` is the mapping file when the caller named one (`mapping_text`).
     """
     blocks = list(_BLOCK_RE.finditer(text))
     lone = len(_LONE_MARKER_RE.findall(text)) - len(blocks)
     if not blocks and not lone:
         return
 
-    path = mapping_path(draft)
+    path = mapping_path(draft) if path is None else path
     if path is None or not path.is_file():
         raise MathMappingError(
             f"{draft.name} marks a displayed equation with `<!-- math -->`, but "

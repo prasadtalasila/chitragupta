@@ -37,6 +37,8 @@ DRAFT_SUBCOMMANDS = {
         "init",
         "status",
         "mark-revision",
+        "snapshot",
+        "versions",
         "stamp",
         "sections",
         "prune",
@@ -54,7 +56,7 @@ DRAFT_SUBCOMMANDS = {
     "registry": {"build", "check", "excerpt", "index"},
     "tldr": {"write", "show"},
 }
-DRAFT_FLAT_VERBS = {"gate", "references", "evidence", "render", "style", "figures"}
+DRAFT_FLAT_VERBS = {"gate", "references", "evidence", "render", "style", "figures", "diff"}
 
 REVIEW_SUBCOMMANDS = {"verbatim": {"overlap", "scan", "recheck", "locate"}}
 REVIEW_FLAT_AIDS = {

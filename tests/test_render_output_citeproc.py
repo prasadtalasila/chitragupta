@@ -283,3 +283,20 @@ class TestDeferringCitationsToTheConsumingDocument:
 
         assert "## References" in render_output._substituted(text, draft, "tex", {})
         assert "## References" not in render_output._substituted(text, draft, "tex", {}, True)
+
+    def test_substituted_drops_the_references_section_for_deferred_citations(self, tmp_path):
+        """A deferred render's `\\bibliography` is the document's one
+        list, so the manual one goes, as for a fragment -- but the render
+        is a standalone article, so its chapter number stays. Pure text,
+        no pandoc, so every CI leg reaches it."""
+        draft = tmp_path / "unit.md"
+        text = (
+            "# Chapter 1: Twins\n\nBody [@sample_dt_overview_2024].\n\n"
+            "## References\n\n[1] Overview. `sample_dt_overview_2024`\n"
+        )
+        draft.write_text(text, encoding="utf-8")
+
+        out = render_output._substituted(text, draft, "tex", {}, defer_citations=True)
+
+        assert "## References" not in out
+        assert "# Chapter 1: Twins" in out

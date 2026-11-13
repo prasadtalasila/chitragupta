@@ -8,7 +8,9 @@ import.
 """
 
 import ast
+import builtins
 import importlib
+import inspect
 import shutil
 import subprocess
 from pathlib import Path
@@ -50,10 +52,21 @@ def _raised_classes():
         for node in ast.walk(ast.parse(source.read_text(encoding="utf-8"))):
             if isinstance(node, ast.Raise) and isinstance(node.exc, ast.Call):
                 dotted = ast.unparse(node.exc.func).split(".")
-                found = vars(module)[dotted[0]]
+                found = vars(module).get(dotted[0]) or getattr(builtins, dotted[0])
                 for part in dotted[1:]:
                     found = getattr(found, part)
                 yield source.name, node.lineno, found
+
+
+# A call no command line can make -- `defer_citations` with a fragment or
+# a format other than tex -- is the caller's mistake, not a render that
+# failed, so it is deliberately outside `RENDER_FAILURES`: a caller that
+# degrades on a failed render must not swallow it.
+# Only that one site: a `ValueError` from a real render step anywhere
+# else is a failure a caller must be able to catch, and still trips this.
+def _is_the_caller_mistake(name, line, cls):
+    lines, first = inspect.getsourcelines(render_output._refuse_misdeferred)
+    return (name, cls) == ("__init__.py", ValueError) and first <= line < first + len(lines)
 
 
 def _instance(failure):
@@ -63,6 +76,13 @@ def _instance(failure):
 
 
 class TestRenderFailures:
+    def test_the_caller_mistake_exemption_is_one_site(self):
+        lines, first = inspect.getsourcelines(render_output._refuse_misdeferred)
+        inside = [line for name, line, _ in _raised_classes() if name == "__init__.py"]
+        assert any(_is_the_caller_mistake("__init__.py", line, ValueError) for line in inside)
+        assert not _is_the_caller_mistake("_paths.py", first + 1, ValueError)
+        assert not _is_the_caller_mistake("__init__.py", first + len(lines), ValueError)
+
     def test_every_raise_in_the_package_is_a_render_failure(self):
         # #949: `review.write` listed the exceptions render() raised when
         # it was written and missed the four added since. Walking every
@@ -72,7 +92,7 @@ class TestRenderFailures:
         strays = [
             (name, line, cls.__name__)
             for name, line, cls in sites
-            if not issubclass(cls, RENDER_FAILURES)
+            if not issubclass(cls, RENDER_FAILURES) and not _is_the_caller_mistake(name, line, cls)
         ]
         assert not strays
 

@@ -38,6 +38,7 @@ BACKING_MODULES = {
     "registry": "registry",
     "tldr": "tldr",
     "figures": "draft_figures",
+    "diff": "draft_diff",
 }
 
 # A real top-level entry-point block, anchored at column 0 -- not the

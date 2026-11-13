@@ -148,7 +148,9 @@ _STEERING_TEMPLATE = """# Steering
 _REVISIONS_TEMPLATE = """# Revisions
 
 <!-- Append-only, newest last. One entry per revision session: what
-     changed, which sections, and why. -->
+     changed, which sections, and why. End each entry with a line
+     "Sections: <heading>, <heading>" naming every section it changed;
+     draft diff links entries to sections through it. -->
 
 """
 

@@ -68,6 +68,7 @@ only.
 | `math.md` | ASCII in the draft -> the LaTeX it renders as ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12), an optional "Not mathematics" table of spans that are code, and `## Symbols`, what each mapped symbol means |
 | `outline.md` | the human's own per-section brief/claim/declared queries |
 | `paper.md` | a research paper's paper-level inputs: the software, venue, message, contributions and the evidence for each. Written by `init` for that genre only (#1175) |
+| `versions/` | numbered snapshots of the draft, each with both forms of every figure it names: one taken by every `mark-revision` whose draft changed since the last, and one by `dossier snapshot --label` for a milestone the author names. What `draft diff` compares against; `dossier versions` lists them. Not written by `init` |
 
 Four filled dossiers are committed to read alongside this page:
 `docs/examples/sample-project/content/dossiers/dt-overview/` holds one per

@@ -162,6 +162,7 @@ install_os_deps() {
         lmodern texlive-pictures \
         texlive-binaries texlive-publishers \
         texlive-luatex \
+        latexdiff \
         fonts-noto-core fonts-noto-cjk fonts-dejavu-core fonts-unifont fontconfig \
         libgl1 "$glib_pkg"
     # texlive-luatex and the four font packages are a pdf render's engine
@@ -235,6 +236,13 @@ install_os_deps() {
     # `dpkg -S`) -- chitragupta/render_output/ loads it conditionally for a
     # draft with a \input/\include'd TikZ figure (#222), and none of the
     # packages above pull it in.
+    # latexdiff is for `draft diff --format pdf`'s redline, and is its
+    # own Debian package (universe; 626 KiB installed, Ubuntu 26.04's
+    # 1.3.2): texlive-extra-utils only Suggests it, so naming that
+    # package instead would install no latexdiff at all. latexdiff's
+    # default markup underlines with ulem.sty, which nothing here
+    # installs, so chitragupta/draft_diff/_redline.py redefines the
+    # markup with lua-ul, already present from texlive-luatex above.
     # texlive-binaries owns /usr/bin/bibtex (confirmed via `dpkg -S` on
     # the alternative's target) and texlive-publishers ships IEEEtran.bst.
     # Named explicitly rather than relied on transitively, because the

@@ -1,6 +1,6 @@
 """The drafting layer's single entry point: `python -m chitragupta.draft <verb>`.
 
-Twelve commands, run by hand or by a genre skill over one draft:
+Thirteen commands, run by hand or by a genre skill over one draft:
 
     python -m chitragupta.draft gate <file> [<file> ...]
         verify every citekey in a draft against the ledger -- this
@@ -52,6 +52,11 @@ Twelve commands, run by hand or by a genre skill over one draft:
         and the crop to look at while drafting. A reading aid; a source
         figure is never reproduced in a draft (AGENTS.md).
 
+    python -m chitragupta.draft diff <file> [--against REF] [--format md|pdf] [--json]
+        what changed in a draft since a snapshot of it: a change report,
+        and a redline PDF -- a review copy, never a deliverable
+        (docs/DRAFT-ITERATION.md).
+
 **One entry point, one level deep**, like `python -m chitragupta.corpus sync` for the
 corpus layer and `python -m chitragupta.review <aid>` for the review layer. None
 of the modules beside this one carries a `__main__` block any more,
@@ -97,6 +102,7 @@ import sys
 from chitragupta import (
     citation_gate,
     dossier,
+    draft_diff,
     draft_figures,
     evidence_appendix,
     ledger,
@@ -143,6 +149,10 @@ VERBS = {
     "figures": (
         draft_figures,
         "one paper's figures to look at while drafting -- never to reproduce",
+    ),
+    "diff": (
+        draft_diff,
+        "what changed",
     ),
 }
 

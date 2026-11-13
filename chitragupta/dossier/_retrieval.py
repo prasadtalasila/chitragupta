@@ -19,6 +19,7 @@ re-export where they used to live, so no existing call site changes.
 """
 
 import argparse
+import sys
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -27,6 +28,7 @@ from chitragupta import config
 from chitragupta.dossier import RETRIEVAL_MD, _REVISION_MARKER_MODE, dossier_dir, draft_relpath
 from chitragupta.dossier._create import _RETRIEVAL_TEMPLATE
 from chitragupta.dossier._retrieval_queries import _retrieval_rows
+from chitragupta.dossier._versions import MARK_REVISION, VersionError, take
 
 
 def log_retrieval(
@@ -168,7 +170,18 @@ def mark_revision(draft: Path, label: str = "") -> Path:
     `retrieval_cost_by_revision`'s totals; it is real data only to
     `retrieval_cost_by_revision`, which reads it as a boundary rather than
     a call.
+
+    It also snapshots the draft (`_versions.take`), so `draft diff` has
+    the text this pass started from. Before the row, so the snapshot is
+    the state the pass began with; skipped for a draft not on disk, and
+    a snapshot store that cannot be read is warned about rather than
+    allowed to stop the pass -- the row does not depend on it.
     """
+    if draft.is_file():
+        try:
+            take(draft, trigger=MARK_REVISION, revision_label=label)
+        except VersionError as error:
+            print(f"[warning] {error}; no snapshot taken", file=sys.stderr)
     target = dossier_dir(draft)
     target.mkdir(parents=True, exist_ok=True)
     path = target / RETRIEVAL_MD

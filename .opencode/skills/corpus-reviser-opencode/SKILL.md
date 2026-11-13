@@ -147,8 +147,9 @@ turn a wide pass into the re-run this skill exists to avoid.
 - **The dossier is written back** -- `scope.md` only if the user agreed
   to a scope change, plus `evidence.md`, `rejected.md`, `sections.md`,
   `steering.md`, and a `revisions.md` entry saying plainly that this pass
-  was wide and why. **`math.md` too, if the draft has one**: a wide
-  rewrite rewords more quantities than a scoped one
+  was wide and why, whose `Sections:` line names every section touched.
+  **`math.md` too, if the draft has one**: a wide rewrite rewords more
+  quantities than a scoped one
   (`.claude/skills-common/references/figures-tables-equations.md` §6).
 - **Figures, tables and equations follow the same rules as in
   `draft-reviser-opencode`.** Figures follow the draft's own genre, read from
@@ -201,6 +202,10 @@ turn a wide pass into the re-run this skill exists to avoid.
   now and follow it: what to show, what the scan could not check, and
   how to keep the report. Repairing a finding is `agenda-reviser-opencode`'s
   job, and only if the user asks.
+- **Show what changed, last** -- an unnumbered rider too:
+  `python -m chitragupta.draft diff content/drafts/<path> --format pdf`,
+  then read `.claude/skills/draft-reviser/references/draft-diff.md` now
+  and follow it.
 
 ## Guardrails
 
