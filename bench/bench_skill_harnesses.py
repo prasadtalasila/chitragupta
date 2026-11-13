@@ -503,7 +503,8 @@ def safe_job(args, harness: str, skill: str, k: int, servers, job=None) -> dict:
     except Exception as error:  # noqa: BLE001 -- recorded, never swallowed
         row = {"harness": harness, "skill": skill, "run": k, "exit": "error", "gate": 2}
         row["error"] = f"{type(error).__name__}: {error}"
-        print(json.dumps(row), flush=True)
+        if job is None:  # a real job; the self-check's own fake stays quiet
+            print(json.dumps(row), flush=True)
         return row
 
 
