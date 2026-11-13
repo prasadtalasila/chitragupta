@@ -15,7 +15,7 @@ import pytest
 from chitragupta import config, dossier, draft, programs, render_output
 from chitragupta.dossier import _draft_fingerprint, _versions
 from chitragupta.draft_diff import _cli, _redline
-from tests.conftest import add_citable, content_draft
+from tests.conftest import add_citable, content_draft, pandoc_available
 
 _OLD = (
     "# Twins\n\n"
@@ -319,6 +319,9 @@ def test_diff_pdf_reports_a_failed_redline(isolated_config, ledger_con, monkeypa
     assert capsys.readouterr().err == "[error] The redline did not compile.\n"
 
 
+# The old side renders first and gates clean, so without pandoc it stops
+# at the toolchain check before the new side's gate can refuse anything.
+@pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
 def test_diff_pdf_refuses_a_draft_citing_an_uncitable_key(
     isolated_config, ledger_con, monkeypatch, capsys
 ):
