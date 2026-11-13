@@ -372,7 +372,8 @@ applied unasked.
 
 What a revision pass changed can be seen, not only read about in
 `revisions.md`. Every `mark-revision` keeps a numbered snapshot of the
-draft and its figures in the dossier, and `dossier snapshot --label`
+draft and its figures in the dossier, unless the draft is unchanged
+since the last one, and `dossier snapshot --label`
 keeps a named one, such as the version sent to a supervisor.
 `draft diff <draft>` compares the draft with the latest snapshot, or
 `--against` a number, a label or any file, and writes a change report

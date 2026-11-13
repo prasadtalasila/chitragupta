@@ -670,7 +670,7 @@ unavailable.
 | Prose conformance report (`chitragupta.draft style`) | stdlib only, plus `vale` on PATH (`os-deps` stage); absent, it reports missing-binary |
 | Docling layout-aware parsing, embeddings/Chroma, BERTopic; `review support`'s NLI model and `verbatim scan`'s embedding tier | venv, `enrich` Poetry group |
 | Compiling generated `.tex` to PDF | `pandoc`, LuaLaTeX (`texlive-luatex`) and the fonts in `chitragupta/pdf_fonts.py`, `latexmk`; the same LuaLaTeX for the figure-layout aid (`os-deps` stage) |
-| Redline PDF of a draft against a snapshot (`draft diff --format pdf`) | `latexdiff` (the `latexdiff` package, `os-deps` stage), then the LuaLaTeX and `bibtexu` above; absent, only the Markdown change report is written |
+| Redline PDF of a draft against a snapshot (`draft diff --format pdf`) | `latexdiff` (the `latexdiff` package, `os-deps` stage), then the LuaLaTeX above and `bibtexu` (TeX Live's `texlive-binaries`, which `texlive-luatex` pulls in; `chitragupta doctor` checks it); absent, only the Markdown change report is written |
 
 ## 🐍 Which interpreter, and why
 

@@ -86,7 +86,9 @@ A redline (`draft diff --format pdf`) defers too, for a related reason:
 resolved citations are text, so one new citation would renumber every
 later one and latexdiff would mark each as a change. Both sides render
 to `.tex` with `defer_citations=True`, latexdiff compares them, and the
-result compiles once with LuaLaTeX and `bibtexu`
+result compiles with LuaLaTeX, `bibtexu` (only when the first pass
+found a citation), then LuaLaTeX twice more. A LuaLaTeX failure is
+retried once with latexdiff's `--math-markup=whole`
 (`chitragupta/draft_diff/_redline.py`).
 
 The deferred path writes `config.BIB_FILE_PATH` beside the output as well

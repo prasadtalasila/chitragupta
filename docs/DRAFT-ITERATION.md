@@ -421,18 +421,19 @@ cannot be repeated or checked by the next session.
 
 A revision is only reviewable if you can see what it changed. Every
 `mark-revision` keeps a numbered snapshot of the draft and its figures
-under the dossier's `versions/`, so each pass starts from a baseline,
+under the dossier's `versions/` (unless the draft is unchanged since the
+last one, which is then still the baseline), so each pass starts from one,
 and every reviser ends by running `draft diff` against it and showing
 you the result. You can run the same commands yourself:
 
 ```bash
 python -m chitragupta doctor    # latexdiff is listed; the PDF needs it
-python -m chitragupta.draft dossier snapshot content/drafts/survey.md --label "sent to supervisor"
-python -m chitragupta.draft dossier versions content/drafts/survey.md
-python -m chitragupta.draft diff content/drafts/survey.md --format pdf
-python -m chitragupta.draft diff content/drafts/survey.md --against "sent to supervisor" --format pdf
-python -m chitragupta.draft diff content/drafts/survey.md --against 2 --format pdf
-python -m chitragupta.draft diff content/drafts/survey.md --against old/survey.md --format pdf
+python -m chitragupta.draft dossier snapshot content/drafts/dt-overview/survey.md --label "sent to supervisor"
+python -m chitragupta.draft dossier versions content/drafts/dt-overview/survey.md
+python -m chitragupta.draft diff content/drafts/dt-overview/survey.md --format pdf
+python -m chitragupta.draft diff content/drafts/dt-overview/survey.md --against "sent to supervisor" --format pdf
+python -m chitragupta.draft diff content/drafts/dt-overview/survey.md --against 2 --format pdf
+python -m chitragupta.draft diff content/drafts/dt-overview/survey.md --against old/survey.md --format pdf
 ```
 
 `snapshot` names a milestone, such as the version you sent someone;
@@ -442,8 +443,12 @@ reviser's pass is the one its `mark-revision` took. `--against` takes a
 label, a number, or the path of any file. The outputs land in
 `content/review/<topic>/`: `<stem>.diff.md` and `<stem>.diff.json`, the
 change report, written first; `--format pdf` adds `<stem>.diff.tex` and
-the redline, `<stem>.diff.pdf`. Without latexdiff the report is still
-written.
+the redline, `<stem>.diff.pdf`; for the draft above, that is
+`content/review/dt-overview/survey.diff.pdf`. When nothing changed the
+report says `No changes.` and no PDF is written. Without latexdiff the
+report is still written, but the command exits 1, naming the missing
+tool. [CLI.md](CLI.md#-chitragupta-draft-diff) has every flag and exit
+code.
 
 The diff is a review copy, never a deliverable: it is never gated,
 never submitted and never a source for another draft.
@@ -451,9 +456,12 @@ never submitted and never a source for another draft.
 The report ties each changed section to the `revisions.md` entries that
 explain it, and lists under `## Needs a log entry` any changed section
 none does. An entry starts with its date and ends with a `Sections:`
-line naming the sections it changed, by heading text as the report
-lists it (`2. Background`) or by number; a `.tex` draft's sections go by
-title:
+line naming the sections it changed, comma-separated, by heading text
+as the report lists it (`2. Background`) or by number; a `.tex` draft's
+sections go by title. A heading with a comma in it cannot be named by
+its text, because the comma splits it into two names; name it by its
+number instead, or, in a `.tex` draft, expect it under `## Needs a log
+entry` and say so:
 
 ```text
 2026-11-13 -- shortened the background at the supervisor's request;
