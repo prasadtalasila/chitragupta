@@ -5,7 +5,10 @@ level: suggestion
 scope: text
 ignorecase: false
 first: '\b([A-Z]{2,6})\b'
-second: '(?:\b[A-Z][a-z]+[\s-]){1,5}\(([A-Z]{2,6})\)'
+# The expansion may be lower case ("supervisory control and data
+# acquisition (SCADA)"); whether its case is right is AcronymCase's
+# question, not this rule's (#1187).
+second: '(?:\b[A-Za-z][a-z]+[\s-]){1,5}\(([A-Z]{2,6})\)'
 # Roman numerals are the largest false-positive class measured on real
 # drafts: "Part II" and "Chapter III" are not acronyms. Listed rather
 # than excluded by pattern, because III and IV are also plausible

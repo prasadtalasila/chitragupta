@@ -62,11 +62,10 @@ def _source_notes(agenda) -> list[str]:
     ]
 
     style = agenda.sources.style
-    notes.append(
-        "- Prose (style_check): **partial** -- vale not on PATH"
-        if style.partial
-        else "- Prose (style_check): read"
-    )
+    # #1187: a broken exceptions file reads as not run, not as absent Vale.
+    state = "**partial** -- vale not on PATH" if style.partial else "read"
+    state = f"not run -- {style.reason}" if style.reason else state
+    notes.append(f"- Prose (style_check): {state}")
 
     drift = agenda.sources.drift
     if not drift.available:

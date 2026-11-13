@@ -7,11 +7,14 @@ chitragupta/review/verbatim_check/_corpus.py's docstring for the split.
 
 from pathlib import Path
 
-from chitragupta import overlap_index
+from chitragupta import citation_gate, overlap_index, style_exceptions
 from chitragupta.review.verbatim_check._allowlist import _load_allowlist_phrases
+from chitragupta.review.verbatim_check._citekeys import _known_citekeys
+from chitragupta.review.verbatim_check._corpus import norm
 from chitragupta.review.verbatim_check._embed import _embed_tier_findings
 from chitragupta.review.verbatim_check._exact import _exact_tier_findings
 from chitragupta.review.verbatim_check._masking import _tokenize_draft
+from chitragupta.review.verbatim_check._names import names_heavy
 from chitragupta.review.verbatim_check._shared import _newline_offsets
 from chitragupta.review.verbatim_check._skipgram import _skipgram_tier_findings
 
@@ -76,10 +79,15 @@ def scan_findings(
         min_run = overlap_index.DEFAULT_N
 
     text = Path(draft).read_text(encoding="utf-8")
-    words, paragraph_citekeys = _tokenize_draft(text)
+    words, paragraph_citekeys = _tokenize_draft(
+        text, latex=citation_gate.is_latex(draft), citekeys=_known_citekeys()
+    )
     word_strs = [w.text for w in words]
     newlines = _newline_offsets(text)
-    allowlist = _load_allowlist_phrases()
+    # Declared project terms (#1187) are allowlist phrases: a run they
+    # account for cannot be repaired by rewording, so it is not reported.
+    terms = (tuple(norm(term)) for term in style_exceptions.terms())
+    allowlist = _load_allowlist_phrases() + [t for t in terms if t]
 
     exact_findings, exact_suppressed = _exact_tier_findings(
         words, word_strs, paragraph_citekeys, newlines, text, min_run, gap, allowlist
@@ -137,6 +145,8 @@ def scan_findings(
     # Longest run first, no silent truncation -- every finding above the
     # floor prints unless --limit narrows it, matching the issue's explicit
     # break from `overlap`'s hardcoded top-25.
+    for f in findings:
+        f["names"] = names_heavy(f.get("draft_text") or "")
     findings.sort(key=lambda f: (-f["span_words"], f["citekey"], f["start"]))
     if limit is not None:
         findings = findings[:limit]
@@ -237,6 +247,9 @@ _PAYLOAD_FIELDS = (
     # is both sides. Appended for the same reason `score` was: consumers
     # reading these positionally see an unchanged prefix.
     "source_text",
+    # A short run mostly of copied proper names (#1187): the agenda
+    # surfaces it to a person instead of marking it unattended.
+    "names",
 )
 
 

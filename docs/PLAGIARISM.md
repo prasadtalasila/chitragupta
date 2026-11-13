@@ -397,6 +397,32 @@ than a flag, so it is not part of the recorded, re-runnable command. A
 report has to say what it consulted, or "what was waved through" stops
 being visible from the report's own side.
 
+### 🎭 What the scan masks before it measures
+
+Four kinds of text are blanked or discounted before a run is measured,
+because rewording them cannot repair anything (#1187):
+
+- **LaTeX cites.** In a `.tex` draft, `\cite…{key}` commands are blanked
+  the way a Markdown `[@key]` marker is, so the key is not read as words
+  and a run that cites its source is seen to cite it.
+- **Bare citekeys.** A token equal to a corpus citekey is blanked, so a
+  reference-list line or a prose mention cannot form a run.
+- **Declared terms.** Every phrase in `content/style_exceptions.toml`'s
+  `terms`, and every acronym expansion in the vocabulary, is masked like
+  an allowlist phrase: a run must clear `--min-run` words *beyond* those
+  names. The scan is slightly less sensitive around such words, which
+  was accepted.
+- **Names are surfaced, not suppressed.** A finding carries
+  `"names": true` when at least two content words remain and half or more
+  of them start with a capital letter and are not sentence-initial
+  (stopwords such as "of" and "and" are left out of both counts). An
+  undeclared organisation name copied from sources is not repaired by
+  rewording, so a short run flagged `names` is surfaced to a person
+  instead of being marked `unattended` for `agenda-reviser`. A Title-Case
+  heading, or a phrase like "Figure 3 and Table 2 of Section 4", also
+  counts as names-heavy; that only surfaces the run to a person, never
+  hides it.
+
 ## 🛠 Repairing what the scan found
 
 Detection without remediation would leave the human doing the tedious

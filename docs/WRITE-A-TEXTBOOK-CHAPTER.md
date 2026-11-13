@@ -260,7 +260,8 @@ queries:
 ## Exercises
 
 brief: Six, mixed difficulty, hints for the last two. At least one that
-cannot be done by pattern-matching the worked example.
+cannot be done by pattern-matching the worked example. Each is labelled
+`**Exercise N (Objective M, easy|medium|hard).**`.
 
 ## Summary and where to go next
 ```

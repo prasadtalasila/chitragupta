@@ -106,6 +106,19 @@ class _DraftWord:
 
 _PARA_SPLIT_RE = re.compile(r"\n\s*\n")
 _CITE_MARKER_RE = re.compile(r"\[@[^\]]+\]")
+# `\citep[p.~3]{key}` in a .tex draft (#1187): the command name and the key
+# are not prose, and no rewording of the sentence removes them.
+_LATEX_CITE_RE = re.compile(r"\\cite[a-zA-Z]*\*?\s*(?:\[[^\]]*\]\s*)*\{[^}]*\}")
+
+
+def _citekey_re(citekeys: frozenset[str]) -> re.Pattern | None:
+    """One alternation over `citekeys`, longest first so a key that is a
+    prefix of another cannot shadow it, bounded so only a whole token
+    matches (a key inside a longer identifier or path is not a citation)."""
+    if not citekeys:
+        return None
+    keys = "|".join(re.escape(k) for k in sorted(citekeys, key=lambda k: (-len(k), k)))
+    return re.compile(rf"(?<![\w:.-])(?:{keys})(?![\w:-])")
 
 
 def _paragraphs(text: str) -> list[tuple[int, str]]:
@@ -171,7 +184,9 @@ def _blank_span(m: re.Match) -> str:
     return re.sub(r"[^\n]", " ", m.group(0))
 
 
-def _tokenize_draft(text: str) -> tuple[list[_DraftWord], list[set[str]]]:
+def _tokenize_draft(
+    text: str, *, latex: bool = False, citekeys: frozenset[str] = frozenset()
+) -> tuple[list[_DraftWord], list[set[str]]]:
     """Every word of `text` (masked, citation markers blanked) as a flat
     list across the whole draft, plus which citekeys each paragraph
     cites. Each word carries where it sits in `text` itself.
@@ -191,13 +206,22 @@ def _tokenize_draft(text: str) -> tuple[list[_DraftWord], list[set[str]]]:
     place in this module that still deleted. It also stops
     `twins[@key]matter` from welding into a single token, which deleting
     did.
+
+    `latex` blanks `\\cite...{key}` commands too, and `citekeys` blanks
+    every whole-token occurrence of a known key (#1187). Both default to
+    off, so the other callers see the stream they always did.
     """
     masked = _mask_for_scan(text)
+    bare_re = _citekey_re(citekeys)
     words = []
     paragraph_citekeys = []
     for p_idx, (para_start, para) in enumerate(_paragraphs(masked)):
-        paragraph_citekeys.append(set(citation_gate.extract_citekeys_from_line(para)))
+        paragraph_citekeys.append(set(citation_gate.extract_citekeys_from_line(para, latex=latex)))
         clean = _CITE_MARKER_RE.sub(_blank_span, para)
+        if latex:
+            clean = _LATEX_CITE_RE.sub(_blank_span, clean)
+        if bare_re is not None:
+            clean = bare_re.sub(_blank_span, clean)
         quote_spans = _quote_char_spans(clean)
         lowered, offsets = _lower_offsets(clean)
         for m in WORD.finditer(lowered):

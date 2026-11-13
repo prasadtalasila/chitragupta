@@ -272,12 +272,15 @@ candidate for the chapter.
    last posed as a problem. Dropping a student straight from a fully worked
    example to an unaided exercise is the standard cliff, and fading is the
    standard fix.
-6. **Exercises.** Include a mix of difficulty, and either solutions or hints
-   -- state which. Each exercise should map to a stated learning objective
-   (step 1); say which one, at least in your own notes, and cut any exercise
-   that maps to none. Exercises should exercise the objectives, not just
-   recall the reading. Note each cut in the dossier's `rejected.md` -- one row
-   naming the exercise and why it went -- so a later revision doesn't
+6. **Exercises.** Include a mix of difficulty, label each one
+   `**Exercise N (Objective M, easy|medium|hard).**` (those three grades
+   only; the grade is not a defect marker, WRITING-STANDARDS.md §2), and
+   give either solutions or hints -- state which. Each exercise should map
+   to a stated learning objective (step 1); say which one, at least in your
+   own notes, and cut any exercise that maps to none. Exercises should
+   exercise the objectives, not just recall the reading. Note each cut in
+   the dossier's `rejected.md` -- one row naming the exercise and why it
+   went -- so a later revision doesn't
    reintroduce a problem you already judged and dropped. The same goes for a
    worked example you drafted and abandoned.
 

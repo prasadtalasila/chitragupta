@@ -324,6 +324,11 @@ OVERLAP_DIR = CONTENT_DIR / "overlap"
 # rather than independently relocatable like BIB_FILE_PATH -- there's no
 # case for pointing this at a second location.
 VERBATIM_ALLOWLIST_PATH = CONTENT_DIR / "verbatim_allowlist.toml"
+# Exact terms no prose rule reports and the verbatim scan masks (#1187).
+# Project data, unlike the per-host allowlist above: an author's statement
+# about the project, meant to be versioned with it. Absent on a fresh
+# clone, which means no terms.
+STYLE_EXCEPTIONS_PATH = CONTENT_DIR / "style_exceptions.toml"
 # Mutex for anything that writes content/ -- see chitragupta/runlock.py. A
 # dedicated sqlite file rather than the ledger, so that locking a run
 # doesn't force the ledger's five commit points into one transaction.

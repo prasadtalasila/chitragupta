@@ -209,6 +209,36 @@ class TestReadStyle:
         assert source.partial is True
 
 
+class TestReadStyleBrokenExceptions:
+    def test_a_broken_exceptions_file_degrades_to_unavailable_with_the_reason(
+        self, isolated_config, monkeypatch
+    ):
+        """#1187: the agenda must not crash on a malformed
+        `style_exceptions.toml`; the prose source reads as not run and
+        carries the reason, as an unreadable aid sidecar does (#496)."""
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# Survey\n")
+
+        def _broken(*_args, **_kwargs):
+            raise ValueError("style_exceptions.toml: malformed TOML")
+
+        monkeypatch.setattr(_sources.style_check, "check", _broken)
+        source = _sources._read_style(draft)
+        assert source.available is False
+        assert "style_exceptions.toml" in source.reason
+        assert _items_findings.prose_items(source, []) == []
+
+    def test_the_header_names_the_reason(self):
+        sources = _sources_stub(
+            style=_sources.StyleSource(reason="style_exceptions.toml: malformed TOML"),
+        )
+        rendered = _render.render_markdown(
+            agenda.Agenda(draft=Path("content/drafts/t/survey.md"), sources=sources, items=[]),
+            "cmd",
+        )
+        assert "Prose (style_check): not run -- style_exceptions.toml" in rendered
+
+
 class TestReadDrift:
     def test_draft_outside_drafts_dir_has_no_dossier(self, isolated_config):
         draft = content_draft(isolated_config, "not-a-draft.md")
@@ -452,6 +482,21 @@ class TestVerbatimRunItems:
         )
         items = _items_findings.verbatim_run_items(source, [])
         assert items[0].unattended is True
+
+    def test_short_names_run_is_surfaced(self):
+        """#1187: a short run made mostly of copied names is a person's call."""
+        source = _sources.AidSource(
+            available=True,
+            data={"findings": [self._finding(severity="short", matched_words=8, names=True)]},
+        )
+        assert _items_findings.verbatim_run_items(source, [])[0].unattended is False
+
+    def test_baseline_without_names_is_unchanged(self):
+        """A baseline filed before #1187 has no `names` key: stays unattended."""
+        finding = self._finding(severity="short", matched_words=8)
+        assert "names" not in finding
+        source = _sources.AidSource(available=True, data={"findings": [finding]})
+        assert _items_findings.verbatim_run_items(source, [])[0].unattended is True
 
     def test_no_citekey_still_produces_a_summary(self):
         source = _sources.AidSource(

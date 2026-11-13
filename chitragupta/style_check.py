@@ -47,6 +47,7 @@ running this over a real 178,000-word book rather than chosen up front:
 """
 
 import json
+import sys
 
 # `_run` is the one patch point for this module's external launches
 # (#854), in the shape `render_output._pandoc._run_pandoc` set: a test
@@ -57,7 +58,7 @@ from subprocess import run as _run
 from pathlib import Path
 from typing import Any
 
-from chitragupta import config, install, programs
+from chitragupta import config, install, programs, style_exceptions
 from chitragupta.style_language import resolve_language, rule_filter
 from chitragupta.style_report import report
 from chitragupta.style_rules import PYTHON_CHECKS, with_repair
@@ -129,7 +130,8 @@ def run_vale(draft: Path, language: str | None) -> list[dict]:
             f"vale produced output this command could not read ({exc}). "
             f"Check {config.VALE_CONFIG_PATH}.\n{result.stderr}"
         ) from exc
-    return [finding for findings in payload.values() for finding in findings]
+    flattened = [finding for findings in payload.values() for finding in findings]
+    return style_exceptions.drop_exempt(flattened, Path(draft).read_text(encoding="utf-8"))
 
 
 def collapse(findings: list[dict]) -> list[dict]:
@@ -247,9 +249,11 @@ def build_parser() -> Any:
 
 
 def main(argv=None) -> int:
-    """Always 0. The one exception is a usage error, which argparse owns
-    and which is a mistake by the caller rather than a finding about the
-    draft."""
+    """0 for any finding, with or without Vale. The exceptions are usage
+    errors -- argparse's, and a broken `style_exceptions.toml` (#1187),
+    which exits 2 with its reason on stderr: a malformed config is a
+    mistake by the caller rather than a finding about the draft, and
+    loading it as empty would silently re-raise every declared term."""
     args = build_parser().parse_args(argv)
     payloads, warnings = [], []
     for name in args.draft:
@@ -258,6 +262,9 @@ def main(argv=None) -> int:
             payloads.append(check(draft, args.language))
         except OSError as exc:
             warnings.append(f"{draft}: {exc}")
+        except ValueError as exc:
+            print(exc, file=sys.stderr)
+            return 2
     # Once, not once per draft: the binary will not appear between two of
     # them, and repeating an identical warning is noise. Every draft is
     # still checked, because the findings Vale does not produce do not

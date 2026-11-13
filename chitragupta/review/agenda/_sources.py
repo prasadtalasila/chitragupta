@@ -141,6 +141,7 @@ class StyleSource:
     available: bool = False
     partial: bool = False
     data: dict | None = None
+    reason: str | None = None
 
 
 @dataclass
@@ -214,7 +215,13 @@ def _read_style(draft: Path) -> StyleSource:
     # propose=False: the agenda never reads `proposed_language` (m-73,
     # issue #495), so the two extra Vale runs `check()` would otherwise
     # spend computing it on every unset-dialect draft are pure waste here.
-    result = style_check.check(draft, propose=False)
+    try:
+        result = style_check.check(draft, propose=False)
+    except ValueError as exc:
+        # A broken `style_exceptions.toml` (#1187) must not take the whole
+        # agenda down, nor read as "no findings": the source degrades to
+        # not run with the reason carried, as `_read_aid_json` does.
+        return StyleSource(reason=str(exc))
     return StyleSource(available=True, partial=bool(result["vale_error"]), data=result)
 
 

@@ -160,6 +160,7 @@ def isolated_config(tmp_path, monkeypatch):
         "RETRIEVAL_PASSAGE_INDEX_PATH": "retrieval_passage_index.json",
         "OVERLAP_DIR": "overlap",
         "VERBATIM_ALLOWLIST_PATH": "verbatim_allowlist.toml",
+        "STYLE_EXCEPTIONS_PATH": "style_exceptions.toml",
         "PIPELINE_LOCK_PATH": "pipeline.lock.db",
         "DOCLING_DIR": "docling",
         "DOCLING_CACHE_PATH": "docling_cache.json",

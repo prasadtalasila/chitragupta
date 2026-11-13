@@ -232,7 +232,7 @@ reason behind each class's disposition.
 
 | | Meaning | Classes |
 | --- | --- | --- |
-| `[unattended]` | mechanically re-checkable: a future automated pass may repair it **without asking first** | `prose` (except a finding its rule marks `repair: "review"`: `WideCodeLine`, a `BareCitekey` set as code or naming a key with no parsed PDF, and dialect findings when the dialect came from `config.toml` rather than the author), `verbatim-run` at severity `short` from the `exact` or `skip-gram` tier (an `embedding`-tier run is surfaced), `missing-citekey` |
+| `[unattended]` | mechanically re-checkable: a future automated pass may repair it **without asking first** | `prose` (except a finding its rule marks `repair: "review"`: `WideCodeLine`, `AcronymCase`, a `BareCitekey` set as code or naming a key with no parsed PDF, and dialect findings when the dialect came from `config.toml` rather than the author or the match starts with a capital letter), `verbatim-run` at severity `short` from the `exact` or `skip-gram` tier (an `embedding`-tier run, or a run marked `names`, mostly copied proper names, is surfaced), `missing-citekey` |
 | `[surfaced]` | a judgement about meaning that only a person can make | `unsupported-claim`, `claim-support`, `uncited-claim`, `recorded-but-uncited`, `misquoted` |
 
 The dividing line is whether the repair can be verified by re-running
@@ -244,7 +244,12 @@ re-run, so no loop may close it on your behalf.
 A `missing-citekey` is unattended, but its repair is to **de-cite the
 sentence**, which then surfaces as an `uncited-claim` on the next agenda
 for you to decide. The problem is not resolved silently; it moves to the
-column where a person decides.
+column where a person decides. The `missing-citekey` item itself, and
+the `recorded-but-uncited` item the removed marker leaves, persist while
+`evidence.md` or `sections.md` still hold the key. The author clears
+both with `dossier prune` for an `evidence.md` block, and with `dossier
+sections --citekeys --write` for a key recorded only in `sections.md`,
+which `prune` refuses.
 
 ## 🔁 Two sections that appear only sometimes
 

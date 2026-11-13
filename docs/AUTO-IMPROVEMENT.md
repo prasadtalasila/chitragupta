@@ -128,8 +128,11 @@ reasons behind each disposition:
   repair is `dossier prune`, which a person confirms. It is computed
   without a `dossier stamp` baseline, unlike `status`'s own report of the
   same state.
-- **`verbatim-run`, unattended except long runs and every
-  `embedding`-tier finding.** `severity` comes from `_bucket`, which
+- **`verbatim-run`, unattended except long runs, every
+  `embedding`-tier finding and every run marked `names`.** A short run
+  mostly of copied proper names has no other wording to reach for, so it
+  is surfaced (#1187). The rest of this bullet is about the tier.
+  `severity` comes from `_bucket`, which
   thresholds on `matched_words` and never looks at `tier`, so on severity
   alone a short embedding alignment is indistinguishable from a short
   exact run. Acting on it would authorise an automated edit on the
@@ -143,8 +146,9 @@ reasons behind each disposition:
   *is* the mechanically re-checkable subset, and the repair is an edit to
   the draft, which is R1's write-set. A finding whose right repair may be
   "leave it alone" carries `repair: "review"` and is surfaced:
-  `WideCodeLine`, and a dialect finding whose dialect came from the
-  host-wide `config.toml` instead of `scope.md` or `--language`.
+  `WideCodeLine`, `AcronymCase`, and a dialect finding whose dialect
+  came from the host-wide `config.toml` instead of `scope.md` or
+  `--language`, or whose match starts with a capital letter.
 - **`unsupported-claim`, surfaced.** A judgement.
 - **`claim-support`, surfaced.** Unfiltered by design, since a cutoff
   would claim a precision this corpus does not support

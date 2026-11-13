@@ -26,7 +26,15 @@ from chitragupta.review import verbatim_check as vc
 # its recorded count, and one more re-export line would grow a debt the
 # ratchet exists to stop growing.
 from chitragupta.review.verbatim_check._scan_notes import _words_note
-from chitragupta import config, ledger, overlap_chroma, overlap_embed, overlap_index
+from chitragupta import (
+    config,
+    ledger,
+    overlap_chroma,
+    overlap_embed,
+    overlap_index,
+    style_exceptions,
+)
+from chitragupta.review.verbatim_check import _citekeys, _scan
 from tests.conftest import add_parsed_item, run_python
 
 
@@ -674,6 +682,94 @@ class TestTokenizeDraft:
         by_text = {w.text: w.quoted for w in words}
         assert by_text["unquoted"] is False
         assert by_text["quoted"] is True
+
+    def test_latex_cite_command_is_blanked(self):
+        text = "Prior work \\citep[p.~3]{fixture_key_2000} agrees.\n"
+        words, keys = vc._tokenize_draft(text, latex=True)
+        assert [w.text for w in words] == ["prior", "work", "agrees"]
+        assert "fixture_key_2000" in keys[0]
+
+    def test_latex_cite_is_left_alone_without_the_flag(self):
+        words, _ = vc._tokenize_draft("See \\citep{fixture_key_2000} now.\n")
+        assert "2000" in [w.text for w in words]
+
+    def test_bare_citekey_is_blanked(self):
+        text = "Before fixture_key_2000 after words.\n"
+        words, _ = vc._tokenize_draft(text, citekeys=frozenset({"fixture_key_2000"}))
+        assert [w.text for w in words] == ["before", "after", "words"]
+        after = words[1]
+        assert text[after.char : after.char_end] == "after"
+
+    def test_bare_citekey_match_is_whole_token_only(self):
+        text = "x fixture_key_2000b and fixture_key_2000 end.\n"
+        words, _ = vc._tokenize_draft(text, citekeys=frozenset({"fixture_key_2000"}))
+        assert [w.text for w in words] == ["x", "fixture", "key", "2000b", "and", "end"]
+
+    def test_no_ledger_means_no_keys(self, monkeypatch):
+        def no_ledger():
+            raise ledger.NoLedger("none")
+
+        monkeypatch.setattr(ledger, "reading", no_ledger)
+        assert _citekeys._known_citekeys() == frozenset()
+
+    def test_known_keys_come_from_the_ledger(self, ledger_con, tmp_path):
+        add_parsed_item(ledger_con, tmp_path, "fixture_key_2000", "alpha beta")
+        assert "fixture_key_2000" in _citekeys._known_citekeys()
+
+
+class TestProjectTerms:
+    NAME = "National Institute of Standards and Technology"
+
+    @pytest.fixture(autouse=True)
+    def _isolated(self, monkeypatch):
+        config.VERBATIM_ALLOWLIST_PATH.parent.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr(_citekeys, "_known_citekeys", lambda: frozenset())
+        monkeypatch.setattr(_scan, "_known_citekeys", lambda: frozenset())
+
+    def _scan(self, ledger_con, tmp_path, monkeypatch, draft_text, terms):
+        monkeypatch.setattr(style_exceptions, "terms", lambda: terms)
+        add_parsed_item(ledger_con, tmp_path, "cited_2024", f"{self.NAME} sets the rule")
+        draft = tmp_path / "draft.md"
+        draft.write_text(draft_text)
+        return vc.scan_findings(draft)
+
+    def test_declared_term_suppresses_a_run_it_accounts_for(
+        self, ledger_con, tmp_path, monkeypatch
+    ):
+        text = f"[@cited_2024] {self.NAME} sets the rule here.\n"
+        findings, _, suppressed, _ = self._scan(
+            ledger_con, tmp_path, monkeypatch, text, (self.NAME,)
+        )
+        assert findings == []
+        assert suppressed >= 1
+
+    def test_without_the_term_the_run_is_reported(self, ledger_con, tmp_path, monkeypatch):
+        text = f"[@cited_2024] {self.NAME} sets the rule here.\n"
+        findings, _, suppressed, _ = self._scan(ledger_con, tmp_path, monkeypatch, text, ())
+        assert findings
+        assert suppressed == 0
+
+    def test_term_across_a_line_break_is_masked(self, ledger_con, tmp_path, monkeypatch):
+        text = "[@cited_2024] National Institute of\nStandards and Technology sets the rule here.\n"
+        findings, _, suppressed, _ = self._scan(
+            ledger_con, tmp_path, monkeypatch, text, (self.NAME,)
+        )
+        assert findings == []
+        assert suppressed >= 1
+
+    def test_tex_draft_cite_command_is_not_a_run(self, ledger_con, tmp_path, monkeypatch):
+        """The source text deliberately continues with the cite command's own
+        words, so a scan that read the draft as Markdown would extend the
+        run over `citep p 3 cited 2024`; read as LaTeX the command is
+        blanked and the run stops before it (#1187)."""
+        monkeypatch.setattr(style_exceptions, "terms", lambda: ())
+        run = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu"
+        add_parsed_item(ledger_con, tmp_path, "cited_2024", f"{run} citep p 3 cited 2024")
+        draft = tmp_path / "draft.tex"
+        draft.write_text(f"Intro {run} \\citep[p.~3]{{cited_2024}}.\n")
+        findings, *_ = vc.scan_findings(draft)
+        assert findings
+        assert all("citep" not in f["draft_text"].lower() for f in findings)
 
 
 class TestParagraphs:
@@ -1889,6 +1985,7 @@ class TestScanPayload:
             "quoted",
             "score",
             "source_text",
+            "names",
             "severity",
         ]
 
@@ -3193,6 +3290,10 @@ def tier3(monkeypatch, ledger_con):
             FakeScopeEmbedder(scores),
         )
         monkeypatch.setattr(overlap_embed, "open_scope", lambda draft: (scope, None))
+        # No declared terms, so the tier runs with an empty allowlist: the
+        # vendored acronym expansions `terms()` always merges in (#1187)
+        # would otherwise leave `_embed`'s no-allowlist path unreached.
+        monkeypatch.setattr(style_exceptions, "terms", lambda: ())
         return scope
 
     return install
@@ -3671,3 +3772,33 @@ class TestReportingWhatDidNotRun:
     def test_a_score_rides_inside_the_tier_note_only_when_there_is_one(self):
         assert vc._tier_note({"tier": "exact", "score": None}) == "tier=exact"
         assert vc._tier_note({"tier": "embedding", "score": 0.41}) == ("tier=embedding, score=0.41")
+
+
+class TestNamesHeavy:
+    """#1187: a short run of mostly capitalised non-initial words."""
+
+    def test_an_organisation_name_is_names_heavy(self):
+        from chitragupta.review.verbatim_check._names import names_heavy
+
+        text = "established by the National Institute of Standards and Technology in"
+        assert names_heavy(text) is True
+
+    def test_lowercase_prose_is_not(self):
+        from chitragupta.review.verbatim_check._names import names_heavy
+
+        assert names_heavy("the model is updated from sensor data at each step") is False
+
+    def test_sentence_initial_words_do_not_count(self):
+        from chitragupta.review.verbatim_check._names import names_heavy
+
+        assert names_heavy("Data. Models") is False
+
+    def test_empty_is_not(self):
+        from chitragupta.review.verbatim_check._names import names_heavy
+
+        assert names_heavy("") is False
+
+    def test_one_content_word_is_not(self):
+        from chitragupta.review.verbatim_check._names import names_heavy
+
+        assert names_heavy("of the National") is False

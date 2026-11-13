@@ -57,6 +57,11 @@ Concrete guards:
   defect markers. When the thing isn't obvious, the reader concludes the
   failure is theirs. Delete the word; if the sentence then looks like it's
   asserting too much, that's the actual problem showing through.
+- Label each textbook exercise
+  `**Exercise N (Objective M, easy|medium|hard).**`, where `M` is the
+  learning objective it exercises. The grade in that label is a difficulty
+  rating for the student, not a defect marker, and the prose check skips
+  the label. The word "easy" in a sentence is still a marker.
 
 ## 📏 3. State scope up front
 
@@ -153,6 +158,13 @@ material keeps its source's spelling, and so do a cited title, a proper
 noun, and a dataset or code identifier: changing those is a misquotation,
 not a correction.
 
+A dialect match that starts with a capital letter is reported for a
+person to decide rather than repaired. "Modeling" in "Unified Modeling
+Language" is a name, and a capital cannot tell a name from a sentence's
+first word, so the cost of a wrong guess is one question. Declare the
+name in `content/style_exceptions.toml` ([§9](#-9-what-is-checked-mechanically-and-what-is-not))
+and it stops being reported.
+
 House style belongs in the same field. A target venue may
 impose conventions these standards do not settle: serial comma or not,
 "Section 3" or "§3", how a figure is captioned. Record the decision
@@ -173,11 +185,12 @@ only when someone remembers to.
 
 | Rule | Section | Decidable? | Checked by, and may a machine repair it unattended? |
 | --- | --- | --- | --- |
-| Dialect matches `scope.md`'s `language:` | §8 | yes | `DialectGB`/`DialectUS`/`DialectIN`: yes when the dialect came from `scope.md` or `--language`; no (`review`) when it came from `config.toml` |
+| Dialect matches `scope.md`'s `language:` | §8 | yes | `DialectGB`/`DialectUS`/`DialectIN`: yes when the dialect came from `scope.md` or `--language` and the match is lower case; no (`review`) when it came from `config.toml` or the match starts with a capital letter, which may be a name ([§8](#-8-dialect-and-house-style)) |
 | No defect markers: "obviously", "simply", "of course", "clearly", "easy" | §2 | yes | `DefectMarkers`: yes |
 | "just", specifically | §2 | no: the adverb ("just add the flag") and the adjective ("a just outcome") are not separable by string match | `Just`: no (`review`). The finding asks which one it is; only the adverb is a defect, so a person decides |
 | Each term defined once, then used consistently | §2 | yes, given the dossier's glossary | not checked for a plain term; only acronyms are (next two rows) |
 | Acronym expanded at first use, then not re-expanded | §2 | yes: first occurrence is computable | `Acronyms`: yes |
+| An acronym's expansion is written in the case the vocabulary gives it | §2 | yes, given `[style].acronyms` | `AcronymCase`: no (`review`). Whether the vocabulary or the draft has the wrong case is a person's call |
 | A glossary's acronym expansion still matches the current acronym vocabulary | §2 | yes, given the dossier's glossary and `[style].acronyms`; only the glossary is compared, not the draft's prose | `AcronymDrift`: yes |
 | Active voice with a named actor | §4 | detectable | not checked: the fix is a judgement |
 | Each paragraph leads with its point | §4 | heuristic only | not checked |
@@ -205,8 +218,9 @@ chitragupta.draft style` finding, reported as `chitragupta.<name>`. Each
 finding carries a `repair` value. `edit`, the default,
 lets the review agenda mark it `unattended`, so `agenda-reviser` may
 repair it without asking; `review` puts it in front of a person. Only
-two cases are `review`: `WideCodeLine`, and a dialect finding whose
-dialect came from `config.toml`. `review synthesis` and `review uncited`
+these cases are `review`: `WideCodeLine`, `AcronymCase`, and a dialect
+finding whose dialect came from `config.toml` or whose match starts with
+a capital letter. `review synthesis` and `review uncited`
 are review aids: they report, and no unattended repair acts on them.
 
 **Nothing in the last column is a continuous score, deliberately.** A
@@ -226,6 +240,30 @@ than findings. No rule here has a zero-exception form, which is also why
 none of them may become a gate; see [ARCHITECTURE.md](ARCHITECTURE.md)'s
 "Layer 4" for the axis that decides which checks may block, and
 [SOUL.md](../SOUL.md) for why there is exactly one that does.
+
+**The case of an acronym's expansion is authoritative.** The value in
+`content/acronyms.toml` is the case a draft uses mid-sentence. A
+capitalised value (`UML = "Unified Modeling Language"`) is a proper name.
+A lower-case value (`SCADA = "supervisory control and data
+acquisition"`) is a common noun, which is capitalised only where a
+sentence, a line or a heading begins. `AcronymCase` reports the other
+cases as `review`, and `dossier acronyms-suggest` reminds you of the rule
+when it proposes entries. Write the vocabulary's case once and the
+drafts follow it.
+
+**Exceptions are declared, never guessed.** A term no prose rule should
+report goes in `content/style_exceptions.toml`, a `terms` list that
+applies to every draft in the project under every dialect. A term there
+suppresses a prose finding that lies inside it, whole-word and ignoring
+case, and the verbatim scan treats it like an allowlist phrase
+([PLAGIARISM.md](PLAGIARISM.md#-the-boilerplate-allowlist)). Every
+acronym expansion in the vocabulary counts as a term already, so list
+only the rest. The one finding it never hides is `Acronyms`: a term
+covering "Unified Modeling Language (UML)" must not excuse an unexpanded
+`UML` elsewhere. The file is project data meant to be versioned with the
+project; a missing file means no terms, and a malformed one is an
+error, so a broken file cannot quietly turn suppressed findings back
+into unattended edits.
 
 **Every verdict in the table is scoped to English**, for the reason §8
 gives.
