@@ -104,11 +104,14 @@ def tracked_harness_files() -> list[str]:
 
 
 class TestThisRepository:
-    def test_demo_recorder_is_developer_only_on_every_harness(self):
+    def test_demo_recorder_and_skill_bench_are_developer_only_on_every_harness(self):
         assert developer_skills(REPO_ROOT) == {
             ".claude/skills/demo-recorder",
             ".agents/skills/demo-recorder",
             ".opencode/skills/demo-recorder-opencode",
+            ".claude/skills/skill-bench",
+            ".agents/skills/skill-bench",
+            ".opencode/skills/skill-bench-opencode",
         }
 
     def test_pyproject_ships_every_harness_file_but_the_developer_skills(self):

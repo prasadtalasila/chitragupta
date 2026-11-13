@@ -40,6 +40,7 @@ BUDGET = {
     "demo-recorder": (6_000, None),
     "draft-reviser": (30_000, f"{_LATER}; draft diff closing step (#1194)"),
     "figure-drawer": (7_000, None),
+    "skill-bench": (5_000, None),
     "review-digest": (17_000, _LATER),
     "survey-writer": (32_000, _LATER),
     "textbook-chapter-writer": (33_000, _LATER),

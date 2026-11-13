@@ -210,7 +210,8 @@ copies agree, a required step present in one is present in all three.
 ### Developer-only skills
 
 A skill for working on this repository rather than with the pipeline,
-so far only `demo-recorder` (which records the feature demo), carries
+so far `demo-recorder` (which records the feature demo) and
+`skill-bench` (which measures a skill change on all three harnesses), carries
 one extra frontmatter field:
 
 ```yaml
@@ -572,7 +573,7 @@ stop running it, and no unit test sees that. `skill-bench` measures it
   is an argument and never a third word.
 - `ran` and `missed`: which of those a tool call executed. A command
   counts only where a shell would run it: as the first word of a simple
-  command, inside `sh -c '...'` (Codex wraps every call so), or behind
+  command, inside the `zsh -lc '...'` that Codex wraps every call in, or behind
   `cd x &&`, `VAR=1` or `timeout 600`. A `grep` for the command, or an
   `echo` naming it, is not a run.
 - `forbidden_ran`: `corpus sync` or `enrich`, which the skills name only

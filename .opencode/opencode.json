@@ -11,6 +11,7 @@
       "draft-reviser": "deny",
       "figure-drawer": "deny",
       "review-digest": "deny",
+      "skill-bench": "deny",
       "survey-writer": "deny",
       "textbook-chapter-writer": "deny",
       "thesis-chapter-writer": "deny",
