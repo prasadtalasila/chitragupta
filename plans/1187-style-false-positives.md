@@ -1,6 +1,8 @@
 # 1187: style and verbatim findings an unattended repair must not touch
 
-Status: **built, in review as [PR 1193](https://github.com/prasadtalasila/chitragupta/pull/1193).** Written 2026-11-12, for
+Status: **built, in review as
+[PR 1193](https://github.com/prasadtalasila/chitragupta/pull/1193).**
+Written 2026-11-12, for
 [issue 1187](https://github.com/prasadtalasila/chitragupta/issues/1187)
 and its 2026-11-11 comment.
 
