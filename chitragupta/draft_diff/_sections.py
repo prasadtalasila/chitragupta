@@ -17,6 +17,12 @@ from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES
 
 LEADING = "(before the first heading)"
 
+# Every character `str.splitlines()` breaks on besides "\n". The gate
+# numbers a citekey's line by counting "\n" alone, so the heading scan is
+# handed a copy with these blanked to spaces: one character for one, so
+# both count the same lines and a key is placed in the section it sits in.
+_OTHER_BREAKS = str.maketrans(dict.fromkeys("\r\v\f\x1c\x1d\x1e\x85\u2028\u2029", " "))
+
 # `sections()` levels: `\chapter` 1, `\section` 2, `\subsection` 3.
 _TEX_DEEPEST = 3
 
@@ -50,8 +56,9 @@ def _cuts(text: str, suffix: str, lines: list[str]) -> list[tuple[str, int]]:
 def split(text: str, suffix: str) -> list[Section]:
     """`text` as its sections, in order, with the text above the first one
     as a section of its own when it holds anything but whitespace."""
-    lines = text.splitlines()
-    cuts = _cuts(text, suffix, lines)
+    flat = text.translate(_OTHER_BREAKS)
+    lines = text.split("\n")
+    cuts = _cuts(flat, suffix, flat.split("\n"))
     starts = [start for _, start in cuts]
     found = []
     first = starts[0] if starts else len(lines) + 1
@@ -70,7 +77,9 @@ def split(text: str, suffix: str) -> list[Section]:
 def title_at(split_sections: list[Section], line: int) -> str:
     """The title of the section holding 1-indexed `line`.
 
-    Every line of text that can hold a citekey is in some section: the
-    only lines `split()` leaves out are blank ones above the first heading.
+    The only lines `split()` leaves out are blank ones above the first
+    heading, which hold no citekey; should one be asked about anyway, it
+    is above the first heading, and is named so.
     """
-    return next(s.title for s in split_sections if s.first_line <= line <= s.last_line)
+    held = (s.title for s in split_sections if s.first_line <= line <= s.last_line)
+    return next(held, LEADING)

@@ -306,3 +306,27 @@ def test_from_snapshot_takes_label_date_and_figures_from_the_version(tmp_path):
     assert view.figures == {}
     named = Snapshot(**{**snap.__dict__, "label": "sent to supervisor"})
     assert from_snapshot(named).label == "sent to supervisor"
+
+
+def test_citekeys_are_placed_by_the_gates_line_count():
+    # U+2028 and a form feed are line breaks to `str.splitlines()` but not
+    # to the gate, which counts "\n" alone; both must number lines alike.
+    new = "Intro\u2028x\x0cy\n## A\nCited [@sample_dt_sync_2023].\n## B\nz\n"
+    report = compare(_view("## A\n\nText.\n"), _view(new), _status)
+    assert report.citekeys_added == [("sample_dt_sync_2023", "A")]
+    split = _sections.split(new, ".md")
+    assert [s.title for s in split] == ["(before the first heading)", "A", "B"]
+    assert split[0].body == "Intro\u2028x\x0cy"
+
+
+def test_a_citekey_under_blank_leading_lines_is_placed():
+    report = compare(_view("x\n"), _view("  \n## A\n[@sample_dt_sync_2023]\n"), _status)
+    assert report.citekeys_added == [("sample_dt_sync_2023", "A")]
+    assert _sections.title_at([], 1) == "(before the first heading)"
+
+
+def test_a_figure_undrawn_on_both_sides_is_no_change():
+    figures = {"figures/loop": _forms(None, None), "figures/arch": _forms("t", "a")}
+    report = compare(_view(_FIG_MD, figures=figures), _view(_FIG_MD, figures=figures), _status)
+    assert report.figures == []
+    assert not report.has_changes

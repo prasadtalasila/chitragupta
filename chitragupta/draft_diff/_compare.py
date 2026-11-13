@@ -54,7 +54,7 @@ class ChangeReport:
     sections: list[SectionChange]
     citekeys_added: list[tuple[str, str]]  # (key, section title)
     citekeys_dropped: list[tuple[str, str]]  # (key, its status now)
-    figures: list[FigureChange] | None  # None when old.figures is None
+    figures: list[FigureChange] | None  # None when either side's figures are unknown
     log_entries: list[str] = field(default_factory=list)
     unmatched_log_sections: list[str] = field(default_factory=list)
     hand_edits: bool = False
@@ -190,6 +190,10 @@ def _compare_figures(old: dict, new: dict) -> list[FigureChange]:
             for side, held in (("old", old), ("new", new))
             if name in held and not _drawn(held[name])
         ]
+        if len(missing) == 2:
+            # Undrawn on both sides is no change between them; the draft's
+            # own checks are what report a figure never drawn.
+            continue
         if missing:
             changes.extend(FigureChange(name, "missing", "", side) for side in missing)
         elif name not in new:
