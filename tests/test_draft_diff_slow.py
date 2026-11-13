@@ -30,6 +30,8 @@ pytestmark = [
 ]
 
 _SAMPLE = Path(__file__).resolve().parents[1] / "docs" / "examples" / "sample-project"
+# The sample project's own, versioned `.bib`, not the host's.
+_SAMPLE_BIB = _SAMPLE / "papers" / "bibliography.bib"
 _KEYS = (
     "sample_dt_overview_2024",
     "sample_dt_sync_2023",
@@ -108,7 +110,7 @@ def _apply(text: str) -> str:
 
 
 def _survey() -> Path:
-    shutil.copy(_SAMPLE / "papers" / "bibliography.bib", config.BIB_FILE_PATH)
+    shutil.copy(_SAMPLE_BIB, config.BIB_FILE_PATH)
     path = content_draft(config, "drafts/dt-overview/survey.md")
     sample = (_SAMPLE / "content" / "drafts" / "dt-overview" / "survey.md").read_text("utf-8")
     path.write_text(sample.replace("## 5. Gaps", _WORKED + "## 5. Gaps"), encoding="utf-8")
@@ -201,7 +203,7 @@ A queue of three.
 def test_citation_free_draft_redline(isolated_config, ledger_con, capsys):
     """No `\\citation` in the aux: bibtexu would fail with "I found no
     \\citation commands", so the redline compiles without it."""
-    shutil.copy(_SAMPLE / "papers" / "bibliography.bib", config.BIB_FILE_PATH)
+    shutil.copy(_SAMPLE_BIB, config.BIB_FILE_PATH)
     path = content_draft(config, "drafts/queues/ch3.md")
     path.write_text(_CHAPTER, encoding="utf-8")
     assert _versions.take(path, trigger="mark-revision") is not None
@@ -216,7 +218,7 @@ def test_dropped_only_citation_still_lists_its_source(isolated_config, ledger_co
     writes a `\\citation`, so bibtexu runs and the reference resolves."""
     add_citable(ledger_con, "sample_dt_sync_2023")
     ledger_con.commit()
-    shutil.copy(_SAMPLE / "papers" / "bibliography.bib", config.BIB_FILE_PATH)
+    shutil.copy(_SAMPLE_BIB, config.BIB_FILE_PATH)
     path = content_draft(config, "drafts/queues/ch3.md")
     path.write_text(_CHAPTER + "\n## Further reading\n\nSee [@sample_dt_sync_2023].\n", "utf-8")
     assert _versions.take(path, trigger="mark-revision") is not None
@@ -236,7 +238,7 @@ def test_redline_with_a_bibliography_named_otherwise(
     ledger_con.commit()
     bib = config.BIB_FILE_PATH.with_name("My Library.bib")
     monkeypatch.setattr(config, "BIB_FILE_PATH", bib)
-    shutil.copy(_SAMPLE / "papers" / "bibliography.bib", bib)
+    shutil.copy(_SAMPLE_BIB, bib)
     path = content_draft(config, "drafts/queues/ch3.md")
     path.write_text(_CHAPTER, encoding="utf-8")
     assert _versions.take(path, trigger="mark-revision") is not None
