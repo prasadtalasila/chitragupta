@@ -3,6 +3,13 @@
 Read this once you have said you are in acronym-realignment mode and
 named the term(s). Paths here are from the project root.
 
+Before the first edit, mark the start of this pass, as the loop's step 1
+does, so "Show what changed" has a baseline that is this pass alone:
+
+```bash
+python -m chitragupta.draft dossier mark-revision content/drafts/<path> --label "acronym realignment"
+```
+
 **The check only ever compares `scope.md`'s glossary to the vocabulary.**
 It cannot see whether the draft's own first-use expansion has drifted
 the same way, independently, or not at all -- that is prose, not a file
@@ -29,8 +36,13 @@ naming the term(s) and every file touched:
 updated scope.md's glossary bullet and the chapter's own first-use
 expansion (section 2) to match. The glossary half came from the style
 check; the body half was read by eye, not re-verified by a check.
+Sections: 2
 ```
+
+Its `Sections:` line names the section whose first-use expansion you
+changed; leave the line out if only `scope.md` changed.
 
 Re-run the prose check at the end: the finding should be gone. If it
 isn't, say so rather than presenting a draft that still fails the check
-you were asked to fix.
+you were asked to fix. Then "Show what changed" closes the pass as it
+closes the loop: `references/draft-diff.md`.

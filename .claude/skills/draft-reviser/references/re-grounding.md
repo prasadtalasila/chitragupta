@@ -30,6 +30,18 @@ anything else:
 
 ## R3. Act on the three lists -- they are not the same kind of thing
 
+Before the first retrieval call or edit, mark the start of this pass, as
+step 1 does for a revision someone asked for:
+
+```bash
+python -m chitragupta.draft dossier mark-revision content/drafts/<path> --label "re-ground"
+```
+
+It is what `dossier status` totals this pass's retrieval cost by, and it
+keeps the snapshot "Show what changed" diffs against. Skip it and the
+diff at the end starts from an earlier pass's snapshot, or finds none
+and refuses.
+
 Flattening them into one list of "papers to look at" is the failure mode
 this section exists to prevent.
 
@@ -133,9 +145,11 @@ dossier will not appear in the report at all. `python -m
 chitragupta.draft gate` is the check that reads the draft, and it is what
 decides the draft is presentable. A clean drift report never does.
 
-The loop's two riders still apply, and neither is a gate. A re-grounding
-pass rewrites sentences around a swapped citation, which is new prose
-whatever prompted it.
+The loop's three riders still apply -- the prose check, the verbatim
+scan and "Show what changed" -- and none is a gate. A re-grounding pass
+rewrites sentences around a swapped citation, which is new prose
+whatever prompted it, and its `revisions.md` entry ends with the
+`Sections:` line the diff reads.
 
 Expect the draft to keep showing candidates in the next sweep, and say
 so. A query returns fifteen hits and a revision accepts one or two;
