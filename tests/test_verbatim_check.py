@@ -3290,6 +3290,10 @@ def tier3(monkeypatch, ledger_con):
             FakeScopeEmbedder(scores),
         )
         monkeypatch.setattr(overlap_embed, "open_scope", lambda draft: (scope, None))
+        # No declared terms, so the tier runs with an empty allowlist: the
+        # vendored acronym expansions `terms()` always merges in (#1187)
+        # would otherwise leave `_embed`'s no-allowlist path unreached.
+        monkeypatch.setattr(style_exceptions, "terms", lambda: ())
         return scope
 
     return install

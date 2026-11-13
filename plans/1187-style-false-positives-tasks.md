@@ -5,7 +5,7 @@
 > superpowers:executing-plans to implement this plan task-by-task. Steps
 > use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **planned, unbuilt.** Written 2026-11-12.
+Status: **built, in review as [PR 1193](https://github.com/prasadtalasila/chitragupta/pull/1193).** Written 2026-11-12.
 
 **Goal:** Stop `draft style` and the verbatim scan from handing
 `agenda-reviser` unattended "repairs" that are false positives
