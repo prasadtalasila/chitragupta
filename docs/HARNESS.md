@@ -614,14 +614,49 @@ real regression: a step dropped outright fails at 3 runs, and a command
 that fell from 90% to 30% fails at 6 runs more than half the time.
 Results are comparable within one host and model build only.
 
-**Measured on 2026-11-13** on six NVIDIA A40s (driver 595.58, CUDA
-13.2): llama.cpp `b11321` built with `-DGGML_CUDA=ON` and
+**The baseline, measured on 2026-11-13** on six NVIDIA A40s (driver
+595.58, CUDA 13.2): llama.cpp `b11321` built with `-DGGML_CUDA=ON` and
 `CMAKE_CUDA_ARCHITECTURES=86`, one `llama-server` per GPU with
 `-c 131072 -np 1 -ngl 99 --jinja`, serving the same Qwen3.6-35B-A3B
-`UD-Q4_K_M` file as #1068. A Tier 2 survey took 3 to 4 minutes on
-Codex and OpenCode, against 2 to 3.5 hours on the CPU host. On that
-day's single survey run per harness, Codex wrote the dossier by hand
-instead of running `draft dossier init`, and OpenCode skipped
-`draft evidence`; Claude Code ran 14 of the 19 commands the skill and
-its references name, and the five it did not are branch-only
-(`draft dossier outline`) or named as optional.
+`UD-Q4_K_M` file as #1068; Codex on three GPUs and OpenCode on the
+other three. Skills scaffolded from `feat-1091-skill-bench` (main's
+skills, unchanged); the commands a model ran used `main` at 6.172.1.
+Every user skill's Tier 2 task ran 3 times on each harness, 99 runs,
+and Claude Code ran 3 more as an unchanged second arm. The rows are in
+`bench/results/2026-11-13-skill-bench-baseline/`.
+
+| Harness | Usable runs | Gate passed | Named commands run | Median run |
+| --- | ---: | ---: | ---: | ---: |
+| Claude Code (`sonnet`) | 33 of 33 | 33 | 74% | 336 s |
+| Codex 0.159.3 (Qwen3.6) | 32 of 33 | 30 | 49% | 443 s |
+| OpenCode 1.18.34 (Qwen3.6) | 31 of 33 | 24 | 48% | 280 s |
+
+"Named commands run" counts every command the skill and its
+references name, branch-only ones included, so no harness reaches
+100%. Three runs left out had a prerequisite survey that never wrote
+its draft; no run timed out, and none ran `corpus sync` or `enrich`.
+
+- **Claude Code runs the same steps every time.** In its A/A
+  comparison (runs 1-3 against 4-6), `--compare` failed nothing:
+  8 skills passed and 3 were inconclusive on one-run moves in
+  commands only a branch reaches.
+- **Codex skips the dossier bookkeeping.** It ran `draft dossier init`
+  in under half its survey, textbook, thesis, tutorial and
+  review-digest runs, writing the dossier files by hand instead, and
+  rarely ran `draft dossier status` or `check-evidence`. Its drafts
+  still passed the gate.
+- **OpenCode stops early.** In its non-interactive mode a request to
+  read outside the project (a figure compiled in `/tmp`, the installed
+  package's source) is refused and ends the run, so whole tails of
+  steps go unrun: its tutorial-writer runs reached about 2 of 17 commands
+  and never wrote a gating draft, and deep-research ran the render
+  and stamp steps in one run of three.
+
+**What that does to the pass rule.** Simulated with `judge()` on the
+per-command rates measured here, an unchanged skill fails between 2%
+and 42% of the time over all three harnesses (survey-writer, whose
+local runs vary most, is the worst), and 0% to 5% on Claude Code
+alone. The local harnesses' noise is per run, not per command: a run
+that derails drops every step after it at once. So a 3-plus-3-run
+`--compare` over the local harnesses cannot yet tell a shrink from
+that noise; which way to fix it is an open decision on #1196.
