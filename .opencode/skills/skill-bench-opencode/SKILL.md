@@ -74,7 +74,7 @@ person does that.
 
    Exit 3 is inconclusive: 3 runs screen, they do not convict. Run 3 more
    on both arms, join each arm's two files into one JSON list, and
-   compare again; 6 against 6 always settles. A fail stands: report it,
+   compare again; 6 against 6 settles. A fail stands: report it,
    never rerun it until it passes. *Done when* it exits 0 or 1.
 6. **Stop the servers and record.**
    `bash .claude/skills/skill-bench/scripts/serve_models.sh --stop`.
@@ -82,6 +82,7 @@ person does that.
    and the verdict in `docs/HARNESS.md` and on the PR. *Done when* the
    PR comment links the commit that records it.
 
-A run whose `prerequisite_gate` is not 0, or whose `exit` is
-`timeout`, measured the fixture or the clock, not the skill: name it
-in the record rather than counting it as the skill's.
+`--compare` leaves out a run that timed out, raised, or started from
+a prerequisite that never passed its gate, and says how many: it
+measured the clock or the fixture, not the skill. Name those runs in
+the record too.

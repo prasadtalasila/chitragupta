@@ -573,38 +573,46 @@ stop running it, and no unit test sees that. `skill-bench` measures it
   is an argument and never a third word.
 - `ran` and `missed`: which of those a tool call executed. A command
   counts only where a shell would run it: as the first word of a simple
-  command, inside the `zsh -lc '...'` that Codex wraps every call in, or behind
-  `cd x &&`, `VAR=1` or `timeout 600`. A `grep` for the command, or an
-  `echo` naming it, is not a run.
+  command, inside the `zsh -lc '...'` that Codex wraps every call in, or
+  behind `cd x &&`, `VAR=1`, `timeout 600` or a keyword such as `then`.
+  A `grep` for the command, an `echo` naming it, a line inside a heredoc
+  body and a `--help` call are not runs.
 - `forbidden_ran`: `corpus sync` or `enrich`, which the skills name only
   as what the user runs.
 - `gate`: `draft gate` on the task's own draft, 2 when it was never
-  written.
+  written; and `prerequisite_gate`, the same for the survey a reviser
+  task starts from.
 
 `--compare BEFORE AFTER` reads two such files and judges each (harness,
-skill) on every command either arm expected, counted from everything
-each run executed:
+skill) that both arms ran, on every command either arm expected, counted
+from everything each run executed. It leaves out a run that timed out,
+raised, or started from a prerequisite that never passed its gate: that
+run measured the clock or the fixture, not the skill. Every row -- each
+command, the gate, each forbidden command -- is judged by one rule:
 
-| Runs per arm | Fail (exit 1) | Inconclusive (exit 3) | Pass (exit 0) |
+| Usable runs per arm | Fail (exit 1) | Inconclusive (exit 3) | Pass (exit 0) |
 | --- | --- | --- | --- |
-| 3 against 3 | a command that ran in every before run ran in no after run; or the gate passed before and never after; or a forbidden command ran after and not before | any other drop | no drop |
-| 6 against 6 | a drop of 4 or more runs, or any of the 3-run fail cases | -- | anything else |
+| fewer than 3 | -- | always | -- |
+| 3 against 3 | the row went all the way the wrong way: a command or the gate in every before run and no after run, or a forbidden command in no before run and every after run | any other move the wrong way | no move the wrong way |
+| 6 against 6 | an all-the-way move, or a move of 4 runs or more | -- | anything else |
 
 On exit 3, run 3 more on both arms and compare the merged files.
 
-**Why 3 runs screen and do not convict.** Take a command that a model
-runs on 80% of runs, unchanged between the arms. Both arms 3 of 3 and
-then 2 of 3 happens 20% of the time (38% when the before arm is 3 of
-3). A drop of two or more happens for 1 command in 18, and a skill names
-about nine commands on each of three harnesses, so a rule that failed a
-two-run drop at 3 runs would fail an unchanged skill 79% of the time.
-The rule above fails 3 against 3 only on all-to-none, 0.4% a command,
-and 6 against 6 on a drop of 4, 0.5% a command: about 1 unchanged PR in
-10 at each stage, fewer where a command runs always or never, as most
-do on Claude Code. It still finds a real regression: a command that
-fell from 90% to 30% fails 6 against 6 more than half the time, and a
-step dropped outright fails at 3. Results are comparable within one
-host and model build only.
+**Why 3 runs screen and do not convict.** A skill names 15 to 19
+commands counting its references (5 for figure-drawer), so a comparison
+judges about 54 rows across the three harnesses. Take a row a model
+runs on 80% of runs, unchanged between the arms. A two-run drop then
+happens for 1 row in 18, so a rule that failed a two-run drop at 3 runs
+would fail an unchanged skill 96% of the time. The rule above fails a
+row at 3 runs only on all-to-none (0.4% a row) and at 6 runs on a drop
+of 4 (0.5% a row). Simulated end to end with `judge()` itself, if every
+row ran at 80% an unchanged skill would still fail 34% of the time, at
+90% 7%, and at 95% under 1%. Real rows are mostly near 0 or 1: a
+command a skill always runs, or one only a branch reaches. The baseline
+below measures what that makes the false-fail rate. It still finds a
+real regression: a step dropped outright fails at 3 runs, and a command
+that fell from 90% to 30% fails at 6 runs more than half the time.
+Results are comparable within one host and model build only.
 
 **Measured on 2026-11-13** on six NVIDIA A40s (driver 595.58, CUDA
 13.2): llama.cpp `b11321` built with `-DGGML_CUDA=ON` and

@@ -13,16 +13,19 @@ the skill, read every `.claude/skills...` file its `SKILL.md` names, and
 print each file's first line. A read is counted only when the printed
 line matches the file, so a model that guesses fails.
 
-Tier 2, following: one real drafting task per harness (a survey, then a
-copy-edit of it), to see which references a model reads unprompted, and
-at which step. That is a long run on a local model, so it is a separate
-`--tier 2` and its transcript is kept for reading rather than scored.
+Tier 2, following: one real task per user skill and harness
+(skill_bench_tasks.py), scored by which `chitragupta` commands the skill
+and its references name and which a tool call actually ran
+(skill_commands.py), and by the gate on the task's draft. `--runs` and
+`--jobs` repeat and parallelise it; `--compare` judges two arms
+(docs/HARNESS.md, "Measuring a skill change").
 
 Models: Claude Code runs `claude -p --model sonnet`; Codex and OpenCode
-run on an OpenAI-compatible server at BASE_URL (a local llama-server in
-the recorded runs). The server has one slot, so harnesses run one at a
-time. Like everything in bench/, this is outside the test suite and its
-coverage; docs/HARNESS.md records what it measured.
+run on OpenAI-compatible servers given by `--base-url` (one local
+llama-server per GPU in the recorded runs, one slot each, so each local
+job holds a server of its own). Like everything in bench/, this is
+outside the test suite and its coverage; docs/HARNESS.md records what it
+measured.
 
 **Run it only on a disposable machine.** To measure a harness unattended
 it turns that harness's safety off: Claude Code runs with
@@ -63,6 +66,7 @@ from tests.test_skill_references import NAMED_PATH  # noqa: E402
 from skill_bench_tasks import TIER2_TASKS  # noqa: E402  (bench/ is sys.path[0])
 from skill_commands import (  # noqa: E402
     commands_run,
+    commands_run_in,
     compare,
     expected_commands,
     score_commands,
@@ -299,6 +303,12 @@ def loaded_own_copy(harness: str, name: str, log: Path, text: str) -> "tuple[boo
     return own in text, f".claude/skills/{name}/SKILL.md" in text
 
 
+def leaked(text: str) -> bool:
+    """Whether `text` names this checkout or `--source` as a path of its
+    own -- `/srv/cg` or `/srv/cg/x`, never the sibling `/srv/cg-runs`."""
+    return any(re.search(re.escape(root) + r"(?![\w.-])", text) for root in LEAK_ROOTS)
+
+
 def score_tier1(project: Path, harness: str, name: str, log: Path) -> dict:
     """Which named files the model read, judged by whether the first line
     it printed is really that file's first line, from which copy of the
@@ -308,7 +318,7 @@ def score_tier1(project: Path, harness: str, name: str, log: Path) -> dict:
     own, foreign = loaded_own_copy(harness, name, log, text)
     # A harness that resolved the project from the wrong directory reads
     # this checkout's identical files and would otherwise pass.
-    leaked = any(root in text for root in LEAK_ROOTS)
+    outside = leaked(text)
     # A model may print a path absolute, inside its own project; the
     # file is the same one, so it is made relative before matching.
     for root in {str(project.resolve()), str(project)}:
@@ -332,10 +342,10 @@ def score_tier1(project: Path, harness: str, name: str, log: Path) -> dict:
         "wrong_first_line": wrong,
         "missing": sorted(expected - set(printed)),
         "extra": sorted(set(printed) - expected),
-        "outside_project": leaked,
+        "outside_project": outside,
         "loaded_own_copy": own,
         "loaded_claude_copy": foreign,
-        "pass": set(read) == expected and not leaked and own and not foreign,
+        "pass": set(read) == expected and not outside and own and not foreign,
     }
 
 
@@ -480,14 +490,29 @@ def tier2(args) -> list:
         if skill in TIER2_TASKS
     ]
     with ThreadPoolExecutor(max_workers=args.jobs) as pool:
-        futures = [pool.submit(tier2_job, args, *job, servers) for job in jobs]
+        futures = [pool.submit(safe_job, args, *job, servers) for job in jobs]
         return [future.result() for future in futures]
+
+
+def safe_job(args, harness: str, skill: str, k: int, servers, job=None) -> dict:
+    """`tier2_job`, or an error row when it raises: one failing fixture
+    must not throw away a multi-hour run's other rows. `--compare` leaves
+    an error row out, as it does a timeout."""
+    try:
+        return (job or tier2_job)(args, harness, skill, k, servers)
+    except Exception as error:  # noqa: BLE001 -- recorded, never swallowed
+        row = {"harness": harness, "skill": skill, "run": k, "exit": "error", "gate": 2}
+        row["error"] = f"{type(error).__name__}: {error}"
+        print(json.dumps(row), flush=True)
+        return row
 
 
 def check_args(args) -> "str | None":
     """Why these flags cannot run, or None."""
     if not (Path(args.source) / "chitragupta" / "init.py").is_file():
         return f"--source {args.source} holds no chitragupta/init.py: not a checkout"
+    if args.jobs < 1 or getattr(args, "runs", 1) < 1:
+        return "--jobs and --runs must be at least 1"
     return None
 
 
@@ -582,6 +607,7 @@ def self_check() -> None:
         _check_tier1_reads(project, log)
         _check_command_scoring(project)
         _check_compare(project)
+        _check_shell_shapes()
         (ref / "b.md").write_text("", encoding="utf-8")
         log.write_text(good, encoding="utf-8")
         scored = score_tier1(project, "claude", "x", log)
@@ -671,21 +697,52 @@ def _check_command_scoring(project: Path) -> None:
     assert scored["forbidden_ran"] == ["corpus sync"], scored
 
 
-def _check_compare(project: Path) -> None:
-    """3 against 3 screens: equal passes, 3 to 0 fails, any other drop is
-    inconclusive. 6 against 6 settles: a drop of 4 fails, less passes."""
+# (one tool call's command, the command keys it ran). Each row is a shape
+# a real transcript produced or a reviewer found the scorer misreading.
+SHELL_SHAPES = [
+    ("cat >> r.md <<'EOF'\nIt's done.\nEOF\npython -m chitragupta.draft gate x", ["draft gate"]),
+    ("cat > n.md <<EOF\npython -m chitragupta.draft render x\nEOF", []),
+    ("cat <<-EOF > n.md\n\tpython -m chitragupta.draft render x\n\tEOF\necho ok", []),
+    ("echo it's\npython -m chitragupta.draft style x", ["draft style"]),
+    ("python -m chitragupta.draft gate --help", []),
+    ("python -m chitragupta.corpus sync -h", []),
+    ("cd p\n\npython -m chitragupta.draft gate x", ["draft gate"]),
+    ("cd p &&\npython -m chitragupta.draft gate x", ["draft gate"]),
+    ("(cd p); python -m chitragupta.draft gate x", ["draft gate"]),
+    ("python -m chitragupta draft dossier stamp x", ["draft dossier stamp"]),
+    ("python -W ignore -X utf8 -m chitragupta.draft gate x", ["draft gate"]),
+    ("bash -e -c 'python -m chitragupta.draft gate x'", ["draft gate"]),
+    ("echo time python -m chitragupta.draft render x", []),
+    ("echo python -m chitragupta.draft gate", []),
+]
 
-    def arm(name: str, ran_in: int, runs: int = 3, gated: int = 3, forbidden: bool = False) -> Path:
+
+def _check_shell_shapes() -> None:
+    for command, want in SHELL_SHAPES:
+        got = commands_run_in(command)
+        assert got == want, f"{command!r}: ran {got}, want {want}"
+
+
+def _check_compare(project: Path) -> None:
+    """3 against 3 screens: equal passes, all to none fails, any other move
+    is inconclusive. 6 against 6 settles: a move of 4 fails, less passes.
+    The gate and a forbidden command follow the same rule as a command;
+    a run that measured its fixture or the clock is left out."""
+
+    def arm(name, ran_in, runs=3, gated=3, forbidden=0, broken=0, timeouts=0, skills=("x",)):
         rows = [
             {
                 "harness": "codex",
-                "skill": "x",
+                "skill": skill,
                 "run": k,
+                "exit": "timeout" if k > runs - timeouts else 0,
                 "expected": ["draft gate"],
                 "ran": ["draft gate"] if k <= ran_in else [],
-                "forbidden_ran": ["corpus sync"] if forbidden and k == 1 else [],
+                "forbidden_ran": ["corpus sync"] if k <= forbidden else [],
                 "gate": 0 if k <= gated else 1,
+                "prerequisite_gate": 2 if k > runs - broken else 0,
             }
+            for skill in skills
             for k in range(1, runs + 1)
         ]
         path = project / f"{name}.json"
@@ -699,15 +756,27 @@ def _check_compare(project: Path) -> None:
     assert compare(arm("b", 2), arm("a", 0), quiet=True) == 3, "2 to 0 is not every run"
     assert compare(arm("b", 6, 6), arm("a", 3, 6), quiet=True) == 0, "6v6: a three-run drop passes"
     assert compare(arm("b", 6, 6), arm("a", 2, 6), quiet=True) == 1, "6v6: a four-run drop fails"
-    assert compare(arm("b", 3, gated=1), arm("a", 3, gated=0), quiet=True) == 1, "gate lost"
-    assert compare(arm("b", 3), arm("a", 3, forbidden=True), quiet=True) == 1, "new forbidden"
-    assert compare(arm("b", 3, forbidden=True), arm("a", 3, forbidden=True), quiet=True) == 0
+    assert compare(arm("b", 3, gated=1), arm("a", 3, gated=0), quiet=True) == 3, "gate 1 to 0"
+    assert compare(arm("b", 3, gated=3), arm("a", 3, gated=0), quiet=True) == 1, "gate 3 to 0"
+    assert compare(arm("b", 3), arm("a", 3, forbidden=1), quiet=True) == 3, "one new forbidden"
+    assert compare(arm("b", 3), arm("a", 3, forbidden=3), quiet=True) == 1, "forbidden every run"
+    assert compare(arm("b", 3, forbidden=1), arm("a", 3, forbidden=1), quiet=True) == 0
+    assert compare(arm("b", 6, 6), arm("a", 6, 6, forbidden=4), quiet=True) == 1, "6v6: +4"
+    assert compare(arm("b", 3), arm("a", 2, broken=1), quiet=True) == 3, "a broken fixture"
+    assert compare(arm("b", 3), arm("a", 2, timeouts=1), quiet=True) == 3, "a timeout"
+    assert compare(arm("b", 3), arm("a", 0, broken=3), quiet=True) == 3, "no usable runs"
+    both = arm("b", 3, skills=("x", "y"))
+    assert compare(both, arm("a", 3), quiet=True) == 0, "a skill in one arm only is skipped"
     moved = arm("a", 3)
     rows = json.loads(moved.read_text(encoding="utf-8"))
     for row in rows:
         row.update(expected=[], ran=[], ran_all=["draft gate"])
     moved.write_text(json.dumps(rows), encoding="utf-8")
     assert compare(arm("b", 3), moved, quiet=True) == 0, "a command the after arm stopped naming"
+
+
+def _raise(*_args) -> dict:
+    raise RuntimeError("boom")
 
 
 def _check_flag_guards(tmp: Path) -> None:
@@ -717,6 +786,15 @@ def _check_flag_guards(tmp: Path) -> None:
     assert check_args(plain) is not None, "--source without chitragupta/init.py"
     good = argparse.Namespace(source=REPO_ROOT, jobs=1, base_url=[BASE_URL], harness=["codex"])
     assert check_args(good) is None, "this checkout is a valid --source"
+    for bad in ({"jobs": 0}, {"runs": 0}):
+        flags = argparse.Namespace(source=REPO_ROOT, jobs=1, runs=1, base_url=[], harness=[])
+        assert check_args(argparse.Namespace(**{**vars(flags), **bad})) is not None, bad
+    leak = tmp / "leak.jsonl"
+    leak.write_text(f"cd {REPO_ROOT}-runs/x\n", encoding="utf-8")
+    assert not leaked(leak.read_text(encoding="utf-8")), "a sibling folder is not this checkout"
+    assert leaked(f"cd {REPO_ROOT}\n") and leaked(f"cat {REPO_ROOT}/x"), "this checkout is"
+    row = safe_job(argparse.Namespace(), "codex", "x", 1, None, job=_raise)
+    assert row["exit"] == "error" and "boom" in row["error"], "a failed job is a row, not a crash"
     busy = argparse.Namespace(source=REPO_ROOT, jobs=3, base_url=[BASE_URL], harness=["codex"])
     assert check_args(busy) is None and jobs_warning(busy), "3 jobs on 1 server warns"
     assert not jobs_warning(good), "1 job on 1 server is quiet"

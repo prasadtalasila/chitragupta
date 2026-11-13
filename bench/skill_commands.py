@@ -46,7 +46,8 @@ CONSOLE = {"chitragupta", "cg"}
 @functools.lru_cache(maxsize=None)
 def subcommands(path: tuple) -> frozenset:
     """The subcommand choices `python -m chitragupta.<path...> --help`
-    prints in its usage line's first `{a,b}` group; empty for a leaf."""
+    prints in its usage line's first positional `{a,b}` group; empty for a
+    leaf, or when `--help` fails."""
     module, *rest = path
     proc = subprocess.run(
         [sys.executable, "-m", f"chitragupta.{module}", *rest, "--help"],
@@ -54,9 +55,15 @@ def subcommands(path: tuple) -> frozenset:
         text=True,
         check=False,
     )
-    usage = proc.stdout.split("\n\n")[0]
-    found = re.search(r"\{([\w,-]+)\}", usage)
-    return frozenset(found.group(1).split(",")) if found else frozenset()
+    if proc.returncode != 0:
+        return frozenset()
+    words = proc.stdout.split("\n\n")[0].split()
+    for before, word in zip(["usage:", *words], words):
+        found = re.fullmatch(r"\[?\{([\w,-]+)\}\]?", word)
+        # `[--where {host,docker}]` is an option's choices, not subcommands
+        if found and not (before.lstrip("[").startswith("-") and not before.endswith("]")):
+            return frozenset(found.group(1).split(","))
+    return frozenset()
 
 
 def command_key(module: str, words: list) -> str:
@@ -79,74 +86,151 @@ def expected_commands(*files: Path) -> list:
     for path in files:
         for module, words in NAMED.findall(path.read_text(encoding="utf-8")):
             key = command_key(module, words.split())
-            if key not in seen and key not in FORBIDDEN:
+            if key not in seen and not forbidden(key):
                 seen.append(key)
     return seen
 
 
-def _tokens(command: str) -> list:
-    """Shell words with quotes honoured, and `;`, `&&`, `|`, `(` and `)`
-    as words of their own, so `$(python -m ...)` and `a; b` both expose
-    the interpreter. An unbalanced quote (a heredoc, a cut-off command)
-    falls back to whitespace, which can split a quoted mention apart but
-    never join one into an interpreter call."""
+HEREDOC = re.compile(r"(?<!<)<<(?!<)(-?)\s*(['\"]?)(\w+)\2")
+
+
+def _strip_heredocs(command: str) -> str:
+    """`command` without its heredoc bodies. A body is data a command
+    reads, never a command: `cat > notes.md <<EOF` over a line that says
+    `python -m chitragupta.draft render` runs nothing, and an apostrophe
+    in a body ("It's done.") must not unbalance the quotes of the lines
+    after it."""
+    kept, pending = [], []
+    for line in command.split("\n"):
+        if pending:
+            delimiter, tabs = pending[0]
+            if (line.lstrip("\t") if tabs else line) == delimiter:
+                pending.pop(0)
+            continue
+        kept.append(line)
+        pending.extend((m.group(3), m.group(1) == "-") for m in HEREDOC.finditer(line))
+    return "\n".join(kept)
+
+
+def _shell_words(text: str) -> list:
     # A newline ends a command like `;` does, so it is punctuation here,
     # not whitespace: line two of a multi-line Bash call is a command too.
-    lexer = shlex.shlex(command, posix=True, punctuation_chars="();<>|&\n")
+    lexer = shlex.shlex(text, posix=True, punctuation_chars="();<>|&\n")
     lexer.whitespace = " \t\r"
     lexer.whitespace_split = True
+    return list(lexer)
+
+
+def _tokens(command: str) -> list:
+    """Shell words with quotes honoured, and `;`, `&&`, `|`, `(`, `)` and
+    newlines as words of their own, so `$(python -m ...)` and `a; b` both
+    expose the interpreter. Where the quotes still do not balance (a
+    command cut off mid-string), each line is read on its own, so one bad
+    line costs only itself; a line that still fails falls back to
+    whitespace, which can split a quoted mention apart but never join one
+    into an interpreter call."""
+    command = _strip_heredocs(command)
     try:
-        return list(lexer)
+        return _shell_words(command)
     except ValueError:
-        return command.split()
+        tokens = []
+        for line in command.split("\n"):
+            try:
+                tokens.extend(_shell_words(line))
+            except ValueError:
+                tokens.extend(line.split())
+            tokens.append("\n")
+        return tokens
 
 
-# What may stand before a command and leave the next word in command
-# position: shell operators, the keywords that open a body, and wrappers
-# that run their argument (`timeout`'s duration is skipped as well).
-OPERATORS = {";", "&&", "||", "|", "&", "(", ")", "{", "}", "!", "\n"}
-KEYWORDS = {"do", "then", "else", "elif", "time", "exec", "nohup", "env", "sudo", "xargs", "if"}
+# Words that may stand before a command and leave the next word in
+# command position: the keywords that open a body, and wrappers that run
+# their argument (their own options, and `timeout`'s duration, skipped).
+KEYWORDS = {"do", "then", "else", "elif", "if", "while", "until", "{", "}", "!"}
+WRAPPERS = {"time", "exec", "nohup", "env", "sudo", "xargs", "command", "nice", "timeout"}
+OPERATOR_CHARS = set(";&|()\n")
+HELP = {"-h", "--help"}
+
+
+def _is_operator(token: str) -> bool:
+    """`;`, `&&\\n`, `);` and every other run of shell punctuation, which
+    the lexer hands back as one word when they touch."""
+    return bool(token) and set(token) <= OPERATOR_CHARS
 
 
 def _command_words(tokens: list):
     """(index, word) of each word in command position: the first word of a
-    simple command, past `VAR=value` assignments and `timeout <n>`. `echo
-    python -m ...` names an interpreter as an argument, not a command."""
-    at_start = True
+    simple command, past keywords, `VAR=value` assignments and wrappers.
+    `echo python -m ...` and `echo time python -m ...` name an interpreter
+    as an argument, not a command."""
+    at_start, wrapped = True, False
     for i, token in enumerate(tokens):
         bare = token.lstrip("$`")
-        if token in OPERATORS or token.endswith("$") or bare in KEYWORDS:
-            at_start = True
-        elif at_start and (
-            re.fullmatch(r"\w+=.*", token)
-            or bare == "timeout"
-            or re.fullmatch(r"[\d.]+[smhd]?", token)
-        ):
+        if _is_operator(token):
+            at_start, wrapped = True, False
+        elif not at_start:
             continue
-        elif at_start:
-            at_start = False
+        elif bare in KEYWORDS or re.fullmatch(r"\w+=.*", token):
+            continue
+        elif bare in WRAPPERS:
+            wrapped = True
+        elif wrapped and (token.startswith("-") or re.fullmatch(r"[\d.]+[smhd]?", token)):
+            continue
+        else:
+            at_start, wrapped = False, False
             yield i, bare
+
+
+def _arguments(tokens: list) -> list:
+    """`tokens` up to the end of their simple command."""
+    for i, token in enumerate(tokens):
+        if _is_operator(token):
+            return tokens[:i]
+    return tokens
+
+
+def _python_module(after: list):
+    """(module, its arguments) when `after` -- a Python interpreter's
+    arguments -- runs `-m chitragupta.<module>` or the `chitragupta`
+    dispatcher, else None. `-W` and `-X` take a value of their own."""
+    while after and after[0].startswith("-") and after[0] not in ("-m", "-c"):
+        after = after[2:] if after[0] in ("-W", "-X") else after[1:]
+    if len(after) < 2 or after[0] != "-m":
+        return None
+    if after[1] == "chitragupta":
+        if len(after) > 2 and after[2] in subcommands(("__main__",)):
+            return after[2], after[3:]
+        return None
+    if after[1].startswith("chitragupta."):
+        return after[1].split(".", 1)[1], after[2:]
+    return None
 
 
 def commands_run_in(command: str) -> list:
     """Every command key one tool call's shell command executes, in order.
 
     `sh -c '<script>'` (Codex runs everything as `zsh -lc '...'`) is
-    scored on the script inside the quotes."""
+    scored on the script inside the quotes. A `--help` or `-h` call shows
+    usage and runs nothing, so it is not a run of the command."""
     tokens = _tokens(command)
     found = []
     for i, word in _command_words(tokens):
         name = Path(word).name
-        after = tokens[i + 1 :]
-        if name in SHELLS and len(after) >= 2 and re.fullmatch(r"-\w*c\w*", after[0]):
-            found.extend(commands_run_in(after[1]))
+        after = _arguments(tokens[i + 1 :])
+        module = None
+        if name in SHELLS:
+            for j, option in enumerate(after):
+                if not option.startswith("-"):
+                    break
+                if re.fullmatch(r"-\w*c\w*", option) and j + 1 < len(after):
+                    found.extend(commands_run_in(after[j + 1]))
+                    break
         elif name in CONSOLE and after and after[0] in subcommands(("__main__",)):
-            found.append(command_key(after[0], after[1:]))
+            module = after[0], after[1:]
         elif re.fullmatch(r"python[\d.]*", name):
-            while after and after[0].startswith("-") and after[0] != "-m":
-                after = after[1:]
-            if len(after) >= 2 and after[0] == "-m" and after[1].startswith("chitragupta."):
-                found.append(command_key(after[1].split(".", 1)[1], after[2:]))
+            module = _python_module(after)
+        if module is not None and not HELP & set(module[1]):
+            found.append(command_key(*module))
     return found
 
 
@@ -163,12 +247,31 @@ def commands_run(tool_inputs: list) -> list:
 
 
 PASS, FAIL, INCONCLUSIVE = 0, 1, 3
+SEVERITY = [PASS, INCONCLUSIVE, FAIL]
+GATE = "(gate passed)"
+
+
+def forbidden(key: str) -> bool:
+    """`corpus sync`, and `enrich` with any subcommand of its own."""
+    return any(key == f or key.startswith(f + " ") for f in FORBIDDEN)
+
+
+def usable(rows: list) -> list:
+    """The runs that measured the skill. A run whose prerequisite never
+    passed its gate measured a broken fixture, and one that timed out or
+    raised measured the clock or the bench; skill-bench names those in
+    its record rather than counting them as the skill's."""
+    return [
+        row
+        for row in rows
+        if row.get("exit") not in ("timeout", "error") and row.get("prerequisite_gate", 0) == 0
+    ]
 
 
 def _counts(rows: list) -> dict:
     """Per command, in how many of `rows` it ran; plus the gate and every
     forbidden command, under keys of their own."""
-    counts = {"(gate passed)": sum(row.get("gate") == 0 for row in rows)}
+    counts = {GATE: sum(row.get("gate") == 0 for row in rows)}
     for row in rows:
         # Every command the run executed, not only those its own arm's
         # skill named: a command one arm moved out of the files the
@@ -180,47 +283,53 @@ def _counts(rows: list) -> dict:
     return counts
 
 
+def _verdict(b: int, n_b: int, a: int, n_a: int, worse_when_lower: bool) -> int:
+    """One row's verdict. `move` is how far the after arm went the wrong
+    way, on the before arm's scale, so unequal arms compare rates."""
+    scaled = a * n_b / n_a
+    move = b - scaled if worse_when_lower else scaled - b
+    everything_lost = b == n_b and a == 0 if worse_when_lower else b == 0 and a == n_a
+    if everything_lost:
+        return FAIL
+    if n_b >= 6 and n_a >= 6:
+        return FAIL if move >= 2 * n_b / 3 - 1e-9 else PASS
+    return INCONCLUSIVE if move > 1e-9 else PASS
+
+
 def judge(before: list, after: list) -> "tuple[int, list]":
     """The verdict for one (harness, skill), and its table rows.
 
     3 runs an arm can screen but not convict (docs/HARNESS.md has the
-    arithmetic): at a true per-run rate of 0.8, a two-run drop between
-    two unchanged arms happens for 1 command in 18, so over a skill's
-    ~9 commands on 3 harnesses a 3-run "fail" would be noise most of the
-    time. So at 3 against 3 only a command that ran in every before run
-    and no after run fails (or the gate, or a new forbidden command); any
-    other drop is inconclusive, and 3 more runs an arm settle it, where a
-    drop of 4 in 6 fails and anything less passes. Drops are counted on
-    the before arm's scale, so unequal arms compare rates.
+    arithmetic): a skill names 15 to 19 commands counting its references,
+    and at a true per-run rate of 0.8 a two-run drop between two unchanged
+    arms happens for 1 command in 18. So at 3 against 3 only a row that
+    went all the way the wrong way fails -- a command that ran in every
+    before run and no after run, a gate that passed in every before run
+    and no after run, a forbidden command that ran in no before run and
+    every after run -- and any other move is inconclusive, settled by 3
+    more runs an arm, where a move of 4 in 6 fails and less passes. Only
+    usable runs count, and an arm with fewer than 3 is inconclusive.
     """
-    n_b, n_a = len(before), len(after)
-    scale = max(n_b, 1) / 3
-    settled = n_b >= 6 and n_a >= 6
-    b_counts, a_counts = _counts(before), _counts(after)
-    keys = list(dict.fromkeys([k for row in before + after for k in row.get("expected", [])]))
-    keys = (
-        ["(gate passed)"]
-        + keys
-        + sorted(k for k in set(b_counts) | set(a_counts) if k.startswith("(forbidden)"))
+    b_rows, a_rows = usable(before), usable(after)
+    n_b, n_a = len(b_rows), len(a_rows)
+    left_out = (
+        "(runs left out: fixture, timeout)",
+        str(len(before) - n_b),
+        str(len(after) - n_a),
+        "",
     )
-    verdict, table = PASS, []
-    for key in keys:
+    if n_b < 3 or n_a < 3:
+        return INCONCLUSIVE, [left_out, ("(fewer than 3 usable runs)", str(n_b), str(n_a), "drop?")]
+    b_counts, a_counts = _counts(b_rows), _counts(a_rows)
+    keys = list(dict.fromkeys([k for row in b_rows + a_rows for k in row.get("expected", [])]))
+    extra = sorted(k for k in set(b_counts) | set(a_counts) if k.startswith("(forbidden)"))
+    verdict, table = PASS, [left_out] if len(before) + len(after) > n_b + n_a else []
+    for key in [GATE, *keys, *extra]:
         b, a = b_counts.get(key, 0), a_counts.get(key, 0)
-        drop = b - a * n_b / max(n_a, 1)
-        if key.startswith("(forbidden)"):
-            bad = FAIL if a and not b else PASS
-        elif (b == n_b > 0 or key == "(gate passed)" and b > 0) and a == 0:
-            bad = FAIL
-        elif settled:
-            bad = FAIL if drop >= 2 * scale - 1e-9 else PASS
-        elif drop > 1e-9:
-            bad = INCONCLUSIVE
-        else:
-            bad = PASS
-        verdict = max(verdict, bad, key=[PASS, INCONCLUSIVE, FAIL].index)
-        table.append(
-            (key, f"{b}/{n_b}", f"{a}/{n_a}", {PASS: "", INCONCLUSIVE: "drop?", FAIL: "FAIL"}[bad])
-        )
+        bad = _verdict(b, n_b, a, n_a, worse_when_lower=not key.startswith("(forbidden)"))
+        verdict = max(verdict, bad, key=SEVERITY.index)
+        mark = {PASS: "", INCONCLUSIVE: "drop?", FAIL: "FAIL"}[bad]
+        table.append((key, f"{b}/{n_b}", f"{a}/{n_a}", mark))
     return verdict, table
 
 
@@ -228,21 +337,24 @@ def compare(before_path: Path, after_path: Path, quiet: bool = False) -> int:
     """`--compare`: one table per (harness, skill), then the worst verdict
     as the exit code -- 0 pass, 1 fail, 3 inconclusive (rerun 3 more on
     both arms and compare the merged files). A (harness, skill) in only one
-    arm is inconclusive: there is nothing to compare it against."""
-    load = lambda path: json.loads(Path(path).read_text(encoding="utf-8"))  # noqa: E731
+    arm is listed and skipped, so a full baseline compares against a PR
+    that ran one skill."""
+
+    def load(path):
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+
     groups: dict = {}
     for arm, rows in (("before", load(before_path)), ("after", load(after_path))):
         for row in rows:
-            groups.setdefault((row["harness"], row["skill"]), {"before": [], "after": []})[
-                arm
-            ].append(row)
-    worst = PASS
+            key = (row["harness"], row["skill"])
+            groups.setdefault(key, {"before": [], "after": []})[arm].append(row)
+    worst, skipped = PASS, []
     for (harness, skill), arms in sorted(groups.items()):
         if not arms["before"] or not arms["after"]:
-            verdict, table = INCONCLUSIVE, [("(no runs in one arm)", "", "", "drop?")]
-        else:
-            verdict, table = judge(arms["before"], arms["after"])
-        worst = max(worst, verdict, key=[PASS, INCONCLUSIVE, FAIL].index)
+            skipped.append(f"{harness} / {skill}")
+            continue
+        verdict, table = judge(arms["before"], arms["after"])
+        worst = max(worst, verdict, key=SEVERITY.index)
         if not quiet:
             name = {PASS: "pass", FAIL: "FAIL", INCONCLUSIVE: "inconclusive"}[verdict]
             print(f"\n{harness} / {skill}: {name}")
@@ -250,6 +362,8 @@ def compare(before_path: Path, after_path: Path, quiet: bool = False) -> int:
             for key, b, a, mark in table:
                 print(f"  {key:<{width}}  {b:>5} -> {a:<5} {mark}")
     if not quiet:
+        if skipped:
+            print(f"\nin one arm only, not judged: {', '.join(skipped)}")
         print(f"\nverdict: {({PASS: 'pass', FAIL: 'fail', INCONCLUSIVE: 'inconclusive'})[worst]}")
     return worst
 
@@ -263,6 +377,6 @@ def score_commands(expected: list, ran_all: list) -> dict:
         "ran_all": ran_all,
         "ran": ran,
         "missed": [key for key in expected if key not in ran],
-        "forbidden_ran": [key for key in ran_all if key in FORBIDDEN],
-        "ran_unnamed": [key for key in ran_all if key not in expected and key not in FORBIDDEN],
+        "forbidden_ran": [key for key in ran_all if forbidden(key)],
+        "ran_unnamed": [key for key in ran_all if key not in expected and not forbidden(key)],
     }
