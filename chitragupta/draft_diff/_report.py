@@ -41,11 +41,14 @@ def _figures_summary(figures: list[FigureChange] | None) -> str:
 
 def _summary(report: ChangeReport) -> str:
     # Both counts are of the new draft's sections; a removed one has no
-    # place there, so it is counted on its own.
-    in_new = [c for c in report.sections if c.kind != "removed"]
-    touched = sum(c.kind != "unchanged" for c in in_new)
-    removed = len(report.sections) - len(in_new)
+    # place there, so it is counted on its own. A regenerated References
+    # section is no prose at all, so it is named and never counted.
+    kinds = [c.kind for c in report.sections]
+    in_new = [kind for kind in kinds if kind not in ("removed", "regenerated")]
+    touched = sum(kind != "unchanged" for kind in in_new)
+    removed = kinds.count("removed")
     gone = f", {removed} removed" if removed else ""
+    gone += ", references regenerated" if "regenerated" in kinds else ""
     parts = (
         f"{_words(report.words_changed)} changed in {touched} of {len(in_new)} sections{gone}",
         f"citekeys +{len(report.citekeys_added)} {_MINUS}{len(report.citekeys_dropped)}",

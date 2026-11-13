@@ -136,7 +136,11 @@ snapshot, the live draft and an `--against` file look alike.
 2. **Sections**, matched by heading title (the rule
    `_draft_fingerprint.py` uses): added, removed, moved, changed with a
    words-changed count, or unchanged (collapsed to a count). A rename
-   is a removal and an addition; renames are not guessed.
+   is a removal and an addition; renames are not guessed. The
+   References section `draft references` writes, recognised by
+   `references_section`'s heading rule as `render` recognises it, is
+   generated: a change to it is `regenerated`, with no word count,
+   outside the summary's ratio and needing no log entry.
 3. **Citekeys**, extracted with the existing `_pandoc_cites` helpers
    for Markdown and `\cite*` for `.tex`: added (with the section),
    dropped (with the ledger's status now: still citable, or no longer

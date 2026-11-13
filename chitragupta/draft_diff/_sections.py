@@ -21,7 +21,7 @@ LEADING = "(before the first heading)"
 # numbers a citekey's line by counting "\n" alone, so the heading scan is
 # handed a copy with these blanked to spaces: one character for one, so
 # both count the same lines and a key is placed in the section it sits in.
-_OTHER_BREAKS = str.maketrans(dict.fromkeys("\r\v\f\x1c\x1d\x1e\x85\u2028\u2029", " "))
+OTHER_BREAKS = str.maketrans(dict.fromkeys("\r\v\f\x1c\x1d\x1e\x85\u2028\u2029", " "))
 
 # `sections()` levels: `\chapter` 1, `\section` 2, `\subsection` 3.
 _TEX_DEEPEST = 3
@@ -56,7 +56,7 @@ def _cuts(text: str, suffix: str, lines: list[str]) -> list[tuple[str, int]]:
 def split(text: str, suffix: str) -> list[Section]:
     """`text` as its sections, in order, with the text above the first one
     as a section of its own when it holds anything but whitespace."""
-    flat = text.translate(_OTHER_BREAKS)
+    flat = text.translate(OTHER_BREAKS)
     lines = text.split("\n")
     cuts = _cuts(flat, suffix, flat.split("\n"))
     starts = [start for _, start in cuts]

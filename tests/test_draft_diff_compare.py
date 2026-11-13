@@ -330,3 +330,54 @@ def test_a_figure_undrawn_on_both_sides_is_no_change():
     report = compare(_view(_FIG_MD, figures=figures), _view(_FIG_MD, figures=figures), _status)
     assert report.figures == []
     assert not report.has_changes
+
+
+# `draft references` rewrites this section on every pass; its entries are
+# generated, not prose a reviser wrote.
+_REFS = "\n## {heading}\n\n" "[@sample_dt_overview_2024] A. Author, \"Twins,\" 2024.\n\n{extra}"
+
+
+def _with_refs(text, heading="References", extra=""):
+    return text + _REFS.format(heading=heading, extra=extra)
+
+
+def test_a_regenerated_references_section_is_reported_without_words():
+    old = _with_refs(_BASE)
+    new = _with_refs(
+        _swap(_BASE, "quickly [@sample_dt_sync_2023].", "quickly [@sample_dt_sync_2023]. Done."),
+        extra="[@sample_dt_sync_2023] B. Author, \"Clocks,\" 2023, pp. 1-40.\n",
+    )
+    report = compare(_view(old), _view(new), _status)
+    refs = next(c for c in report.sections if c.title == "References")
+    assert (refs.kind, refs.words_changed) == ("regenerated", 0)
+    assert report.words_changed == 1
+    assert report.unlogged == ["3. Results"]
+
+
+def test_a_numbered_references_section_first_written_is_regenerated():
+    report = compare(_view(_BASE), _view(_with_refs(_BASE, "5. References")), _status)
+    assert _kinds(report)["5. References"] == "regenerated"
+    assert report.words_changed == 0
+    assert report.unlogged == []
+    assert report.has_changes
+
+
+def test_a_dropped_references_section_is_regenerated():
+    report = compare(_view(_with_refs(_BASE)), _view(_BASE), _status)
+    assert _kinds(report)["References"] == "regenerated"
+    assert report.words_changed == 0
+
+
+def test_an_unchanged_references_section_stays_unchanged():
+    report = compare(_view(_with_refs(_BASE)), _view(_with_refs(_BASE)), _status)
+    assert _kinds(report)["References"] == "unchanged"
+
+
+def test_only_the_bibliography_heading_is_generated():
+    """The heading rule render() drops the section by, anchored: a
+    section that only starts with the word is prose."""
+    old = _with_refs(_BASE, "References and notes")
+    new = _with_refs(_BASE, "References and notes", extra="A note.\n")
+    report = compare(_view(old), _view(new), _status)
+    assert _kinds(report)["References and notes"] == "changed"
+    assert report.unlogged == ["References and notes"]

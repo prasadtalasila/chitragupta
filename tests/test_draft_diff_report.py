@@ -220,6 +220,25 @@ def test_summary_counts_removed_sections_apart():
     assert summary.startswith("19 words changed in 1 of 1 sections, 2 removed · ")
 
 
+def test_regenerated_references_sit_outside_the_count_and_the_log():
+    report = _report(
+        sections=[
+            SectionChange("1. Background", "changed", 3),
+            SectionChange("2. Methods", "unchanged", 0),
+            SectionChange("References", "regenerated", 0),
+        ]
+    )
+    markdown = to_markdown(report)
+    lines = markdown.splitlines()
+    assert _summary(markdown).startswith(
+        "3 words changed in 1 of 2 sections, references regenerated · "
+    )
+    assert "- regenerated: References" in lines
+    tail = lines[lines.index("## Needs a log entry") :]
+    assert tail == ["## Needs a log entry", "", "- changed: 1. Background"]
+    assert to_json(report)["unlogged"] == ["1. Background"]
+
+
 def test_markdown_figure_only_change_counts_unchanged_sections():
     report = _report(
         sections=[SectionChange("A", "unchanged", 0), SectionChange("B", "unchanged", 0)],
@@ -247,6 +266,7 @@ _SHAPES = [
     {"sections": [SectionChange("A", "unchanged", 0)], "citekeys_added": []},
     {"sections": [SectionChange("A", "removed", 5), SectionChange("C", "added", 10)]},
     {"sections": [SectionChange("1. Background", "changed", 1, ["2026-11-12 a"])]},
+    {"sections": [SectionChange("A", "removed", 5), SectionChange("References", "regenerated", 0)]},
     {
         "sections": [SectionChange("A", "unchanged", 0)],
         "citekeys_added": [],

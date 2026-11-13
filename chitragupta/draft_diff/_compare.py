@@ -10,6 +10,12 @@ A section is changed when its words differ, compared as whitespace
 tokens, so re-wrapping a paragraph is not a change and a "changed"
 section always has a non-zero word count.
 
+A draft's References section is generated: `draft references` rewrites
+it on every pass, and `render` drops or replaces it. Recognised by the
+heading rule both of those use (`references_section`), a change to it
+is reported as `regenerated`, with no word count, outside the summary's
+ratio and outside what needs a log entry (#1194).
+
 `key_status` is passed in so this module never opens the ledger; the
 caller says what a dropped key's standing is now.
 """
@@ -20,12 +26,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+from chitragupta import references_section
 from chitragupta.citation_gate import extract_citekeys_for
 from chitragupta.draft_diff import _sections
 from chitragupta.draft_diff._sections import Section
 from chitragupta.draft_diff._views import FigureForms, VersionView
 
-SectionKind = Literal["added", "removed", "moved", "changed", "unchanged"]
+SectionKind = Literal["added", "removed", "moved", "changed", "unchanged", "regenerated"]
 
 # The kinds a revision log entry is expected to explain.
 _LOGGED_KINDS = ("added", "moved", "changed")
@@ -119,22 +126,47 @@ def _key(section: Section) -> tuple[str, int]:
     return (section.title, section.occurrence)
 
 
+def _generated(sections: list[Section], text: str) -> set[tuple[str, int]]:
+    """The key of `text`'s References section, if it has one.
+
+    `section_start` counts lines as `str.splitlines()` does; the copy it
+    reads has the other breaks blanked, as `_sections.split` counts.
+    """
+    flat = text.translate(_sections.OTHER_BREAKS)
+    start = references_section.section_start(flat.splitlines(keepends=True))
+    return {_key(s) for s in sections if start is not None and s.first_line == start + 1}
+
+
+def _as_generated(change: SectionChange, generated: bool) -> SectionChange:
+    if generated and change.kind != "unchanged":
+        return SectionChange(change.title, "regenerated", 0)
+    return change
+
+
 def _paired(old: Section, new: Section, in_order: bool) -> SectionChange:
     words = _words_changed(old.body, new.body)
     kind = "changed" if words else ("unchanged" if in_order else "moved")
     return SectionChange(new.title, kind, words)
 
 
-def _removed(old: list[Section], start: int, stop: int, new_keys: set) -> list[SectionChange]:
+def _removed(
+    old: list[Section], start: int, stop: int, new_keys: set, generated: set
+) -> list[SectionChange]:
     return [
-        SectionChange(section.title, "removed", len(section.body.split()))
+        _as_generated(
+            SectionChange(section.title, "removed", len(section.body.split())),
+            _key(section) in generated,
+        )
         for section in old[start:stop]
         if _key(section) not in new_keys
     ]
 
 
-def _compare_sections(old: list[Section], new: list[Section]) -> list[SectionChange]:
-    """Every section, in the new order, each removed one after its old predecessor."""
+def _compare_sections(
+    old: list[Section], new: list[Section], generated: set[tuple[str, int]]
+) -> list[SectionChange]:
+    """Every section, in the new order, each removed one after its old
+    predecessor; a change to a key in `generated` is `regenerated`."""
     old_index = {_key(s): index for index, s in enumerate(old)}
     new_keys = {_key(s) for s in new}
     common = [_key(s) for s in new if _key(s) in old_index]
@@ -143,13 +175,14 @@ def _compare_sections(old: list[Section], new: list[Section]) -> list[SectionCha
     for section in new:
         index = old_index.get(_key(section))
         if index is None:
-            changes.append(SectionChange(section.title, "added", len(section.body.split())))
-            continue
-        if index >= next_old:
-            changes.extend(_removed(old, next_old, index, new_keys))
-            next_old = index + 1
-        changes.append(_paired(old[index], section, _key(section) in in_order))
-    changes.extend(_removed(old, next_old, len(old), new_keys))
+            change = SectionChange(section.title, "added", len(section.body.split()))
+        else:
+            if index >= next_old:
+                changes.extend(_removed(old, next_old, index, new_keys, generated))
+                next_old = index + 1
+            change = _paired(old[index], section, _key(section) in in_order)
+        changes.append(_as_generated(change, _key(section) in generated))
+    changes.extend(_removed(old, next_old, len(old), new_keys, generated))
     return changes
 
 
@@ -222,7 +255,11 @@ def compare(old: VersionView, new: VersionView, key_status: Callable[[str], str]
     return ChangeReport(
         old=old,
         new=new,
-        sections=_compare_sections(old_sections, new_sections),
+        sections=_compare_sections(
+            old_sections,
+            new_sections,
+            _generated(old_sections, old.text) | _generated(new_sections, new.text),
+        ),
         citekeys_added=added,
         citekeys_dropped=dropped,
         figures=figures,

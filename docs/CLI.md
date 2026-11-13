@@ -1999,7 +1999,10 @@ chitragupta draft diff content/drafts/survey.md --against 2 --json
 The change report lists sections added, removed, moved or changed (each
 with the `revisions.md` entries whose `Sections:` line names it),
 citekeys added and dropped, figures added, removed or redrawn, and any
-changed section no log entry explains. It is written to
+changed section no log entry explains. The References section `draft
+references` writes is generated, so a change to it is listed as
+`regenerated`, with no word count, and is never counted among the
+changed sections or asked for a log entry. It is written to
 `content/review/<topic>/` as `<stem>.diff.md` and `<stem>.diff.json`
 before any PDF work starts; `pdf` adds `<stem>.diff.tex` and
 `<stem>.diff.pdf`, with the two rendered sides kept in `<stem>.diff/`.
