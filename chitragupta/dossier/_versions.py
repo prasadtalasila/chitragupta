@@ -157,9 +157,20 @@ def _checked_slug(label: str, versions: list[Snapshot]) -> str:
     return slug
 
 
-def _write(draft: Path, text: bytes, snap: Snapshot, staging: Path) -> None:
-    (staging / snap.draft_name).write_bytes(text)
-    for name in figure_names(text.decode("utf-8"), draft.suffix):
+def _as_read_text(raw: bytes) -> str:
+    """`raw` as `Path.read_text(encoding="utf-8")` returns it, newlines and all.
+
+    Universal newlines, so a CRLF draft's `\\r` cannot sit before a
+    marker's end of line, and its fingerprint is the one `dossier stamp`
+    records. Derived from the bytes already read, so the copy and its
+    fingerprint describe the same file even if the draft is saved between.
+    """
+    return raw.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _write(draft: Path, raw: bytes, snap: Snapshot, staging: Path) -> None:
+    (staging / snap.draft_name).write_bytes(raw)
+    for name in figure_names(_as_read_text(raw), draft.suffix):
         for form in _FIGURE_FORMS:
             ref = f"{name}{form}"
             figure = _resolve_sibling(draft.parent, ref)
@@ -192,8 +203,10 @@ def take(
         raise VersionError(
             "An automatic snapshot is numbered only; pass the label as revision_label."
         )
-    text = draft.read_bytes()
-    fingerprint = digest(text.decode("utf-8"))
+    # The copy is byte for byte; what is read *from* it is the text
+    # every other reader of the draft sees.
+    raw = draft.read_bytes()
+    fingerprint = digest(_as_read_text(raw))
     versions = list_versions(draft)
     slug = _checked_slug(label, versions) if trigger == MANUAL else ""
     if trigger == MARK_REVISION and versions and versions[-1].fingerprint == fingerprint:
@@ -215,7 +228,7 @@ def take(
     root.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=".tmp-", dir=root))
     try:
-        _write(draft, text, snap, staging)
+        _write(draft, raw, snap, staging)
         staging.rename(snap.path)
     except BaseException:
         shutil.rmtree(staging, ignore_errors=True)

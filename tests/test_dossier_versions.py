@@ -17,6 +17,7 @@ from chitragupta import config, dossier
 from chitragupta.dossier import dossier_dir
 from chitragupta.dossier import _retrieval, _versions
 from chitragupta.dossier._versions import VersionError
+from chitragupta.spec import digest
 
 _MD_DRAFT = "# A survey\n\n## 1. First\n\ntext\n\n<!-- figure: figures/estimator-loop -->\n"
 
@@ -211,6 +212,34 @@ def test_tex_fragment_snapshot_copies_its_figures(isolated_config):
     assert snap.source == snap.path / "chapter.tex"
     assert (snap.path / "figures" / "x.tex").is_file()
     assert (snap.path / "figures" / "x.txt").is_file()
+
+
+@pytest.mark.parametrize(
+    "name, text",
+    [
+        ("survey.md", _MD_DRAFT),
+        (
+            "chapter.tex",
+            "\\section{Intro}\n\n\\input{figures/estimator-loop.tex}\n"
+            "%figure: figures/estimator-loop\n",
+        ),
+    ],
+)
+def test_a_crlf_draft_keeps_its_figures_and_stamps_fingerprint(isolated_config, name, text):
+    # Written as bytes so the CRLF is there on every OS, not only where
+    # `write_text` puts it (Windows): a `\r` before each `\n` must not
+    # hide a figure marker, and the fingerprint must be the one `dossier
+    # stamp` computes from the same draft.
+    draft = _draft(name, "")
+    draft.write_bytes(text.replace("\n", "\r\n").encode("utf-8"))
+    _figure(draft, "figures/estimator-loop")
+
+    snap = _versions.take(draft, trigger="mark-revision")
+
+    assert snap.source.read_bytes() == draft.read_bytes()
+    assert (snap.path / "figures" / "estimator-loop.tex").is_file()
+    assert (snap.path / "figures" / "estimator-loop.txt").is_file()
+    assert snap.fingerprint == digest(draft.read_text(encoding="utf-8"))
 
 
 def test_figure_names_dedupes_in_order():
