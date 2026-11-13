@@ -52,7 +52,7 @@ does not restate its decisions or spike findings.
 - Not-slow coverage stays at 100%; TeX/latexdiff execution is
   `@pytest.mark.slow` or `# pragma: no cover-windows`, as
   `render_output/__init__.py` already does.
-- Version: MINOR bump, `6.170.2` → `6.171.0` (new module, new verb).
+- Version: MINOR bump, `6.171.0` → `6.172.0` (new module, new verb).
 - Each reviser `SKILL.md` copy (`.claude/`, `.agents/`, `.opencode/`)
   changes identically except where `tests/fixtures/skill_harness_phrases.toml`
   says.
@@ -851,12 +851,12 @@ git commit -m "Have every reviser end by showing what it changed"
 
 - Modify: `docs/DRAFT-ITERATION.md` (a section on reviewing a revision:
   the commands an author runs, from the spec's §4), `pyproject.toml`
-  (`6.171.0`), `plans/draft-diff.md` (rename to `<issue>-draft-diff.md`
+  (`6.172.0`), `plans/draft-diff.md` (rename to `<issue>-draft-diff.md`
   and this file to match, once the issue exists)
 
 - [ ] **Step 1: Write the docs section** with the five author commands
   (doctor, snapshot, versions, diff three ways, where the outputs land).
-- [ ] **Step 2: Bump the version** to `6.171.0`.
+- [ ] **Step 2: Bump the version** to `6.172.0`.
 - [ ] **Step 3: Run every local check** that DEVELOPER-AGENTS.md's
   "Before claiming a task complete" lists (full pytest including slow,
   ruff, markdownlint over the documented globs, Vale), from
@@ -866,5 +866,5 @@ git commit -m "Have every reviser end by showing what it changed"
 
 ```bash
 git add docs pyproject.toml plans
-git commit -m "Document reviewing a revision, and release draft diff as 6.171.0"
+git commit -m "Document reviewing a revision, and release draft diff as 6.172.0"
 ```

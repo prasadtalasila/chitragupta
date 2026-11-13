@@ -206,9 +206,9 @@ inherits it through draft-reviser's loop, adding only that its entry
 names every section touched. agenda-reviser's "Show the diff" becomes
 the same command, against the snapshot its one `mark-revision` took.
 Each `SKILL.md` gets about five lines; the detail goes in
-`.claude/skills/draft-reviser/references/draft-diff.md`, mirrored to
-the `.agents/` and `.opencode/` copies. A cap in
-`tests/test_skill_size.py` rises only with this issue as its reason.
+`.claude/skills/draft-reviser/references/draft-diff.md`, which lives
+only there: the `.agents/` and `.opencode/` copies point to it by path.
+A cap in `tests/test_skill_size.py` rises only with this issue as its reason.
 
 **Errors.**
 
