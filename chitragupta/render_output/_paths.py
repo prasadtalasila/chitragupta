@@ -99,3 +99,24 @@ def _output_dir(input_path: Path) -> Path:
             "draft from a topic directory that isn't one."
         )
     return mirrored
+
+
+def _target_dir(input_path: Path, output_dir: str | Path | None) -> Path:
+    """Where this render lands: the mirrored default, or the caller's own.
+
+    A caller naming a directory does not widen where this pipeline may
+    write -- `output_dir` is confined to `content/` exactly like the
+    mirrored default it replaces.
+    """
+    if output_dir is None:
+        return _output_dir(input_path)
+    out_dir = Path(output_dir)
+    if not config.resolves_inside(out_dir, config.CONTENT_DIR):
+        raise OutsideContentDir(
+            f"{out_dir} resolves to {out_dir.resolve()}, outside the content "
+            f"directory {config.CONTENT_DIR.resolve()}. Naming an output "
+            "directory does not widen where this pipeline may write -- see "
+            "config.require_inside_content, and point [content].dir "
+            "(config.toml) at the tree you are really working in."
+        )
+    return out_dir

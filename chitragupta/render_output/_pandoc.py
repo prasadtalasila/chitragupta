@@ -128,8 +128,18 @@ def _pandoc_command(
     has_code_block: bool = False,
     preamble_files: list[Path] | None = None,
     index_terms: str | Path | None = None,
+    defer_citations: bool = False,
 ) -> tuple[list[str], dict[str, str] | None]:
-    """The pandoc argv and the environment to run it in."""
+    """The pandoc argv and the environment to run it in.
+
+    `defer_citations` takes a fragment's citations -- `--natbib`, no
+    reference-list filter -- and none of its shape: the output stays a
+    standalone article whose labels need no prefix. `draft diff` renders
+    both versions of a draft this way so latexdiff compares `\\citep{key}`
+    with `\\citep{key}`; resolved, one new citation renumbers every later
+    one and each renumbering reads as a change (plans/draft-diff.md).
+    """
+    deferred = fragment or defer_citations
     # A fragment is for `\input` into a larger document, so it gets no
     # preamble and no `\begin{document}` -- and its own `#` heading is
     # that document's chapter, not a section, which is why the two flags
@@ -197,7 +207,7 @@ def _pandoc_command(
         # nothing to rewrite.
         *(
             []
-            if fragment
+            if deferred
             else [
                 "--lua-filter",
                 str(config.shipped("assets", "pandoc", "bib_raw_tex_as_text.lua")),
@@ -205,7 +215,7 @@ def _pandoc_command(
         ),
         # `--natbib` and `--citeproc` are alternatives, not additions:
         # one defers every citation to LaTeX, the other resolves it here.
-        *(["--natbib"] if fragment else ["--citeproc", "--csl", str(csl_path)]),
+        *(["--natbib"] if deferred else ["--citeproc", "--csl", str(csl_path)]),
         "--bibliography",
         str(safe_bib),
         # Gives a long inline code span (a URL, a REST path, a file
@@ -216,6 +226,18 @@ def _pandoc_command(
         "--lua-filter",
         str(config.shipped("assets", "pandoc", "breakable_inline_code.lua")),
     ]
+    # A fragment's book supplies its own `\bibliographystyle`; a deferred
+    # standalone render has only pandoc's template to name one, whose
+    # default is `plainnat` (author-year). IEEEtran with natbib's numeric
+    # compressed markers is the bibtex spelling of the IEEE CSL a plain
+    # render uses, so a compiled redline reads like the draft's own pdf.
+    if defer_citations:
+        cmd += [
+            "--variable",
+            "biblio-style=IEEEtran",
+            "--variable",
+            "natbiboptions=numbers,sort&compress",
+        ]
     # Loaded only for a draft that actually has a figure (#222) --
     # pandoc's default LaTeX template has no \usepackage{tikz}, so a bare
     # tikzpicture environment fails with "Environment tikzpicture
@@ -347,6 +369,14 @@ def _pandoc_command(
         # TeX as text.
     cmd += ["-o", str(out_path)]
     return cmd, env
+
+
+def _require_toolchain(output_format: str) -> None:  # pragma: no cover-windows
+    """Raises `MissingBinary` unless this host has pandoc and, for a pdf,
+    the LuaLaTeX toolchain `_require_pdf_toolchain` checks."""
+    _require("pandoc")
+    if output_format == "pdf":
+        _require_pdf_toolchain()
 
 
 def _require_pdf_toolchain() -> None:

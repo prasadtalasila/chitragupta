@@ -126,8 +126,9 @@ from chitragupta.render_output._figures import (
 )
 from chitragupta.render_output._cli import main
 from chitragupta.render_output._pandoc import _has_code_block, _pandoc_command, _render_csl
-from chitragupta.render_output._pandoc import _require_pdf_toolchain, _run_pandoc
-from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES, _output_dir
+from chitragupta.render_output._pandoc import _require_pdf_toolchain, _require_toolchain
+from chitragupta.render_output._pandoc import _run_pandoc
+from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES, _output_dir, _target_dir
 from chitragupta.render_output._gate import gated_warnings
 from chitragupta.render_output._substitution import _checked_math_mapping, _substituted
 
@@ -142,38 +143,32 @@ from chitragupta.render_output._substitution import _checked_math_mapping, _subs
 __all__ = ["MissingBinary", "OutsideContentDir", "render", "main"]
 
 
-def _target_dir(input_path: Path, output_dir: str | Path | None) -> Path:
-    """Where this render lands: the mirrored default, or the caller's own.
-
-    A caller naming a directory does not widen where this pipeline may
-    write -- `output_dir` is confined to `content/` exactly like the
-    mirrored default it replaces.
-    """
-    if output_dir is None:
-        return _output_dir(input_path)
-    out_dir = Path(output_dir)
-    if not config.resolves_inside(out_dir, config.CONTENT_DIR):
-        raise OutsideContentDir(
-            f"{out_dir} resolves to {out_dir.resolve()}, outside the content "
-            f"directory {config.CONTENT_DIR.resolve()}. Naming an output "
-            "directory does not widen where this pipeline may write -- see "
-            "config.require_inside_content, and point [content].dir "
-            "(config.toml) at the tree you are really working in."
-        )
-    return out_dir
-
-
-def _copy_local_assets(input_path: Path, dest_dir: Path, fragment: bool = False) -> None:
+def _copy_local_assets(input_path: Path, dest_dir: Path, deferred: bool = False) -> None:
     """Every local file the output needs beside it, copied there.
 
     Called together, not separately at each site -- one kind being
-    forgotten is how a `tex` output stops compiling alone. `fragment` adds
-    the book's aliased `.bib` (`_assets._copy_book_bibliography`).
+    forgotten is how a `tex` output stops compiling alone. `deferred` --
+    a fragment, or a render with its citations deferred -- adds the
+    aliased `.bib` its bibtex pass reads (`_assets._copy_book_bibliography`).
     """
     _copy_local_images(input_path, dest_dir)
     _copy_local_tex_includes(input_path, dest_dir)
-    if fragment:
+    if deferred:
         _assets._copy_book_bibliography(dest_dir)
+
+
+def _refuse_misdeferred(output_format: str, fragment: bool, defer_citations: bool) -> None:
+    """Raises `ValueError` for a deferred render that is not a standalone
+    `tex`: a pdf or docx would need the bibtex pass pandoc does not run,
+    and a fragment's citations are deferred already. No command line
+    makes this call, so it is the caller's mistake, outside `RENDER_FAILURES`.
+    """
+    if defer_citations and (fragment or output_format != "tex"):
+        raise ValueError(
+            "defer_citations renders a standalone tex document; it takes "
+            f"output_format='tex' and no fragment (got {output_format!r}, "
+            f"fragment={fragment})"
+        )
 
 
 def render(
@@ -191,6 +186,7 @@ def render(
     output_dir: str | Path | None = None,
     fragment: bool = False,
     index_terms: str | Path | None = None,
+    defer_citations: bool = False,
 ) -> Path:
     """Renders `input_path` (Pandoc markdown) to `output_format` (pdf/tex/docx/...).
 
@@ -231,7 +227,12 @@ def render(
     `index_terms` names a book's `index-terms.json` (#1168); a fragment
     rendered with it carries the book index's `\\index{}` entries and
     leaves `<stem>.index.json` beside it.
+
+    `defer_citations=True` keeps the standalone article but leaves its
+    citations to bibtex, as a fragment's are (`_pandoc_command` has why);
+    the gate runs as for any render.
     """
+    _refuse_misdeferred(output_format, fragment, defer_citations)
     input_path = config.require_inside_content(Path(input_path))
     out_dir = _target_dir(input_path, output_dir)
     # Read once, here, and thread it through everything below. Three
@@ -273,15 +274,13 @@ def render(
     # toolchain to exercise -- see #291. Marked per-line rather than by
     # extracting a helper, since there is no single enclosing block to tag
     # and this trailing tail is otherwise ordinary sequential code.
-    _require("pandoc")  # pragma: no cover-windows
-    if output_format == "pdf":  # pragma: no cover-windows
-        _require_pdf_toolchain()
+    _require_toolchain(output_format)  # pragma: no cover-windows
     figure_refs = _figure_refs(draft_text)  # pragma: no cover-windows
     if figure_refs and output_format in _TEX_FORMATS:  # pragma: no cover-windows
         _require_tikz()
 
     out_dir.mkdir(parents=True, exist_ok=True)  # pragma: no cover-windows
-    _copy_local_assets(input_path, out_dir, fragment)  # pragma: no cover-windows
+    _copy_local_assets(input_path, out_dir, fragment or defer_citations)  # pragma: no cover-windows
     out_path = out_dir / f"{input_path.stem}.{output_format}"  # pragma: no cover-windows
 
     with tempfile.TemporaryDirectory() as tmp:  # pragma: no cover-windows
@@ -289,7 +288,9 @@ def render(
             input_path,
             config.BIB_FILE_PATH,
             Path(tmp),
-            _substituted(draft_text, input_path, output_format, math_mapping, fragment),
+            _substituted(
+                draft_text, input_path, output_format, math_mapping, fragment, defer_citations
+            ),
         )
         cmd, env = _pandoc_command(
             safe_md,
@@ -307,6 +308,7 @@ def render(
             _has_code_block(draft_text),
             _unicode.preamble_files(draft_text, output_format, fragment, Path(tmp), out_dir),
             index_terms,
+            defer_citations,
         )
         _run_pandoc(cmd, env)
 

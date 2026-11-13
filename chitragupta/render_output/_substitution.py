@@ -127,6 +127,7 @@ def _substituted(
     output_format: str,
     math_mapping: "dict[str, str]",
     fragment: bool = False,
+    defer_citations: bool = False,
 ) -> str:
     """The text a writer actually sees, with every marker resolved.
 
@@ -140,7 +141,14 @@ def _substituted(
     the call site because this function is already the one answer to
     "what does the writer actually see", and a second place that rewrites
     the same text is a second place for the two to disagree.
+
+    `defer_citations` drops the References section for the same reason
+    and keeps the chapter number: its `\\bibliography` is the document's
+    one list, but the render is a standalone article, not a book's
+    chapter.
     """
+    if defer_citations:
+        draft_text = drop_manual_refs(draft_text)
     if fragment:
         # `latex` off a `.tex` suffix rather than off `output_format`: what
         # it selects is which regions of the *draft* are code, and a `.tex`

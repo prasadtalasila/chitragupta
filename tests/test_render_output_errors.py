@@ -8,6 +8,7 @@ import.
 """
 
 import ast
+import builtins
 import importlib
 import shutil
 import subprocess
@@ -50,10 +51,17 @@ def _raised_classes():
         for node in ast.walk(ast.parse(source.read_text(encoding="utf-8"))):
             if isinstance(node, ast.Raise) and isinstance(node.exc, ast.Call):
                 dotted = ast.unparse(node.exc.func).split(".")
-                found = vars(module)[dotted[0]]
+                found = vars(module).get(dotted[0]) or getattr(builtins, dotted[0])
                 for part in dotted[1:]:
                     found = getattr(found, part)
                 yield source.name, node.lineno, found
+
+
+# A call no command line can make -- `defer_citations` with a fragment or
+# a format other than tex -- is the caller's mistake, not a render that
+# failed, so it is deliberately outside `RENDER_FAILURES`: a caller that
+# degrades on a failed render must not swallow it.
+_CALLER_MISTAKES = (ValueError,)
 
 
 def _instance(failure):
@@ -72,7 +80,7 @@ class TestRenderFailures:
         strays = [
             (name, line, cls.__name__)
             for name, line, cls in sites
-            if not issubclass(cls, RENDER_FAILURES)
+            if not issubclass(cls, RENDER_FAILURES) and cls not in _CALLER_MISTAKES
         ]
         assert not strays
 
