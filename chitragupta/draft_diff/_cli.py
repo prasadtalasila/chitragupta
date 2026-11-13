@@ -20,7 +20,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
-from chitragupta import config, ledger, render_output
+from chitragupta import citation_gate, config, ledger, render_output
 from chitragupta.dossier import REVISIONS_MD, DossierError, dossier_dir
 from chitragupta.dossier._versions import VersionError, resolve
 from chitragupta.draft_diff import _redline
@@ -103,13 +103,23 @@ def _baseline(draft: Path, ref: str | None) -> VersionView:
     return from_snapshot(resolve(draft, ref))
 
 
+def _key_status(draft: Path, old: VersionView, new: VersionView) -> Callable[[str], str]:
+    """Each key's standing now, read from the ledger only if either side
+    cites one -- the gate's own test, so a citation-free draft diffs
+    before the first sync, as it renders."""
+    if not any(citation_gate.extract_citekeys_for(draft, v.text) for v in (old, new)):
+        # Never consulted: neither side has a key to ask about.
+        return lambda key: _STILL_CITABLE
+    with ledger.reading() as con:
+        return key_status(con)
+
+
 def _report(
     draft: Path, old: VersionView, new: VersionView
 ) -> "tuple[ChangeReport, Callable[[str], str]]":
     """The change report, with its log entries and hand-edit flag, and
     the key-status function it was built with."""
-    with ledger.reading() as con:
-        status = key_status(con)
+    status = _key_status(draft, old, new)
     report = compare(old, new, status)
     revisions = dossier_dir(draft) / REVISIONS_MD
     log = entries(revisions.read_text(encoding="utf-8")) if revisions.is_file() else []

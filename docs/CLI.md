@@ -2011,9 +2011,10 @@ names the key.
 | --- | --- |
 | Report written, including `No changes.` (no PDF then, and an older redline is removed) | 0 |
 | No snapshot yet, an unknown `--against`, a `.md` draft against a `.tex` baseline, or a draft outside `content/drafts/` | 1 |
+| Either version cites a key and there is no ledger yet (before the first `corpus sync`). A draft citing nothing is diffed without one, as `draft render` renders it | 1, naming the sync to run |
 | `--format pdf` without latexdiff, LuaLaTeX or bibtexu, a side the gate refuses, or a redline that does not compile after one retry | 1, the report already written |
 
-Each refusal is one `[error]` line on stderr.
+Each refusal is reported on stderr as an `[error]` line.
 
 ### 🗺 `chitragupta review agenda`
 

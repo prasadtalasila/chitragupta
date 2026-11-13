@@ -152,7 +152,7 @@ VERBS = {
     ),
     "diff": (
         draft_diff,
-        "what changed in a draft since a snapshot: a change report and a redline PDF",
+        "what changed",
     ),
 }
 

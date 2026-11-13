@@ -345,3 +345,37 @@ def test_diff_json_with_pdf_keeps_stdout_parseable(
     captured = capsys.readouterr()
     assert json.loads(captured.out)["has_changes"] is True
     assert captured.err.strip() == str(_review_dir() / "survey.diff.pdf")
+
+
+_UNCITED = "# Lab\n\n## Setup\n\nInstall the tools.\n"
+
+
+@pytest.mark.parametrize("output_format", ["md", "pdf"])
+def test_diff_an_uncited_draft_needs_no_ledger(isolated_config, monkeypatch, capsys, output_format):
+    # No ledger exists: the gate's own test finds no key on either side,
+    # so the diff never opens one, as `render()` would not.
+    path = _draft(_UNCITED)
+    _versions.take(path, trigger="mark-revision")
+    path.write_text(_UNCITED.replace("the tools", "the tools first"), encoding="utf-8")
+    monkeypatch.setattr(render_output, "render", _fake_render([]))
+    monkeypatch.setattr(
+        _redline, "redline", lambda old, new, report, out_dir, stem: out_dir / "survey.diff.pdf"
+    )
+
+    assert _diff(path, "--format", output_format) == 0
+
+    assert "changed: Setup" in (_review_dir() / "survey.diff.md").read_text(encoding="utf-8")
+    assert not config.LEDGER_PATH.exists()
+    assert capsys.readouterr().err == ""
+
+
+def test_diff_a_cited_draft_without_a_ledger_says_so(isolated_config, capsys):
+    path = _draft()
+    _versions.take(path, trigger="mark-revision")
+
+    assert _diff(path) == 1
+
+    # `draft.py`'s own `NoLedger` line, which names the sync to run.
+    err = capsys.readouterr().err
+    assert err.startswith("[error] No ledger")
+    assert "corpus sync" in err
