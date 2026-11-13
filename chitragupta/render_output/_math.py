@@ -311,9 +311,7 @@ def substitute(text: str, mapping: "dict[str, str]") -> str:
     return _SPAN_RE.sub(_span, text)
 
 
-def check(
-    text: str, draft: Path, mapping: "dict[str, str]", path: "Path | None" = None
-) -> None:
+def check(text: str, draft: Path, mapping: "dict[str, str]", path: "Path | None" = None) -> None:
     """Raises `MathMappingError` on a displayed equation that cannot render.
 
     Only the certain cases, never the heuristic ones. A `<!-- math -->`

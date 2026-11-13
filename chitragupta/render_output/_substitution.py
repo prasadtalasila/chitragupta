@@ -30,7 +30,7 @@ from chitragupta.render_output._figures import _figure_warnings, _with_figures_f
 
 
 def _checked_math_mapping(
-    draft_text: str, input_path: Path, mapping_path: "Path | None" = None
+    draft_text: str, input_path: Path, mapping_path: "str | Path | None" = None
 ) -> "dict[str, str]":
     """`input_path`'s ASCII-to-LaTeX mapping, having reported what is wrong.
 

@@ -187,6 +187,8 @@ def render(
     fragment: bool = False,
     index_terms: str | Path | None = None,
     defer_citations: bool = False,
+    # The `math.md` for a copy of a draft rendered from outside
+    # `content/drafts/`, where none mirrors: `draft diff`'s sides (#1194).
     math_mapping_path: str | Path | None = None,
 ) -> Path:
     """Renders `input_path` (Pandoc markdown) to `output_format` (pdf/tex/docx/...).
@@ -232,10 +234,6 @@ def render(
     `defer_citations=True` keeps the standalone article but leaves its
     citations to bibtex, as a fragment's are (`_pandoc_command` has why);
     the gate runs as for any render.
-
-    `math_mapping_path` names the `math.md` to resolve the draft's
-    mathematics with, for a copy of a draft rendered from outside
-    `content/drafts/`, where none mirrors (#1194).
     """
     _refuse_misdeferred(output_format, fragment, defer_citations)
     input_path = config.require_inside_content(Path(input_path))
@@ -272,9 +270,7 @@ def render(
             input_path, out_dir, _substituted(draft_text, input_path, output_format, {})
         )
 
-    math_mapping = _checked_math_mapping(
-        draft_text, input_path, None if math_mapping_path is None else Path(math_mapping_path)
-    )
+    math_mapping = _checked_math_mapping(draft_text, input_path, math_mapping_path)
     _refuse_escaping_refs(input_path, draft_text)
 
     # Everything from here on needs the real pandoc/LuaLaTeX/TeX Live
