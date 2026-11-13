@@ -53,6 +53,8 @@ _AMSMATHULEM = re.compile(
 )
 _LISTINGS_ULEM = re.compile(r"\\(?:sout|uwave)\]")
 
+# What bibtex prints last when it met an error, and only then.
+_BIBTEX_ERRORS = re.compile(r"^\(There (?:was|were) (\d+ error messages?)\)", re.MULTILINE)
 _BIBLIOGRAPHY = re.compile(r"\\bibliography\{[^}]*\}")
 _HEADING = re.compile(r"\\(?:sub){0,2}section\*?\{")
 
@@ -214,17 +216,20 @@ def _compile(lualatex: str, bibtexu: str, work: Path, name: str) -> bool:
 
     `bibtexu` exits 1 on warnings alone (an empty `booktitle`), so its
     `.blg` is read for an error instead, as book-assembler's build does.
+    Only its closing error count is read: the word "error" elsewhere in
+    the log can be the aux file's name or a warned citekey.
     """
-    for leftover in (".aux", ".bbl"):
+    for leftover in (".aux", ".bbl", ".blg"):
         (work / f"{name}{leftover}").unlink(missing_ok=True)
     if not _lualatex(lualatex, work, f"{name}.tex"):
         return False
     _run([bibtexu, name], cwd=work, capture_output=True, check=False)
     blg = work / f"{name}.blg"
-    log = blg.read_text(encoding="utf-8", errors="replace") if blg.is_file() else ""
-    errors = [line for line in log.splitlines() if "error" in line.lower()]
-    if errors:
-        raise RedlineFailed(f"bibtexu reported errors in {blg}:\n" + "\n".join(errors))
+    if not blg.is_file():
+        raise RedlineFailed(f"bibtexu wrote no {blg.name} in {work}; it did not run.")
+    summary = _BIBTEX_ERRORS.search(blg.read_text(encoding="utf-8", errors="replace"))
+    if summary:
+        raise RedlineFailed(f"bibtexu reported {summary.group(1)}; see {blg}.")
     return all(_lualatex(lualatex, work, f"{name}.tex") for _ in range(2))
 
 

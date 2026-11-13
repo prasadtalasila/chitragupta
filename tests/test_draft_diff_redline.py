@@ -236,7 +236,7 @@ def test_redline_command_lines(monkeypatch, on_path, tmp_path, diff_tex):
 def test_redline_into_its_own_work_directory(monkeypatch, on_path, tmp_path, diff_tex):
     on_path("latexdiff", "lualatex", "bibtexu")
     old, new = _sides(tmp_path)
-    monkeypatch.setattr(_redline, "_run", _Launches(diff_tex, blg=None))
+    monkeypatch.setattr(_redline, "_run", _Launches(diff_tex))
     assert _redline.redline(old, new, _report(), new.parent, "survey").is_file()
 
 
@@ -268,7 +268,10 @@ def test_redline_retry_succeeds(monkeypatch, on_path, tmp_path, diff_tex):
 def test_redline_fails_on_a_bibtexu_error(monkeypatch, on_path, tmp_path, diff_tex):
     on_path("latexdiff", "lualatex", "bibtexu")
     old, new = _sides(tmp_path)
-    blg = "I couldn't open database file bibliography.bib\n(There was 1 error message)\n"
+    blg = (
+        "I couldn't open database file bibliography.bib\n"
+        "(There were 2 warnings)\n(There was 1 error message)\n"
+    )
     monkeypatch.setattr(_redline, "_run", _Launches(diff_tex, blg=blg))
     with pytest.raises(_redline.RedlineFailed, match="1 error message"):
         _redline.redline(old, new, _report(), tmp_path / "out", "survey")
@@ -291,3 +294,25 @@ def test_redline_refuses_a_stem_that_escapes_its_work_directory(on_path, tmp_pat
     old, new = _sides(tmp_path)
     with pytest.raises(ValueError, match="not a file name"):
         _redline.redline(old, new, _report(), tmp_path / "out", "../survey")
+
+
+def test_redline_passes_a_blg_whose_names_say_error(monkeypatch, on_path, tmp_path, diff_tex):
+    on_path("latexdiff", "lualatex", "bibtexu")
+    old, new = _sides(tmp_path)
+    blg = (
+        "The top-level auxiliary file: error-handling.diff.aux\n"
+        "Warning--empty booktitle in hammingErrorDetecting1950\n"
+        "(There was 1 warning)\n"
+    )
+    monkeypatch.setattr(_redline, "_run", _Launches(diff_tex, blg=blg))
+    assert _redline.redline(old, new, _report(), tmp_path / "out", "error-handling").is_file()
+
+
+def test_redline_fails_when_bibtexu_leaves_no_blg(monkeypatch, on_path, tmp_path, diff_tex):
+    on_path("latexdiff", "lualatex", "bibtexu")
+    old, new = _sides(tmp_path)
+    # A clean log from an earlier run must not stand in for this one's.
+    (new.parent / "survey.diff.blg").write_text("Done.\n")
+    monkeypatch.setattr(_redline, "_run", _Launches(diff_tex, blg=None))
+    with pytest.raises(_redline.RedlineFailed, match="bibtexu wrote no survey.diff.blg"):
+        _redline.redline(old, new, _report(), tmp_path / "out", "survey")
