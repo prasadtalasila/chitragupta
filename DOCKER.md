@@ -246,8 +246,10 @@ developer's home directory and no release number. Set these in
 | `CHITRAGUPTA_PROJECT_NAME` | `chitragupta` | Compose's project name, which prefixes the network. Set it per workspace to run two of these side by side |
 | `CHITRAGUPTA_IMAGE_TAG` | `latest` | Which tag to run. This is how you point one workspace at a `:tmp` build without disturbing the `:latest` everything else uses |
 | `CHITRAGUPTA_CLAUDE_HOME` | `./claude` | Host directory for `/home/$CHITRAGUPTA_USER/.claude`. This is what persists the login, so a restart is not a re-authentication |
+| `CHITRAGUPTA_CLAUDE_JSON` | none | The host's `~/.claude.json`, mounted read-only. The entrypoint copies its account record (`oauthAccount`) into the container's own `~/.claude.json` on every start. Set it when `CHITRAGUPTA_CLAUDE_HOME` is the host's `~/.claude`: that carries the token but not the account, and remote-control then fails with `Unable to determine your organization` |
 | `RC_NAME` / `RC_PREFIX` | container name | The agent's name in the remote-control UI, and the prefix for sessions it spawns |
 | `RC_PERMISSION_MODE` | `bypassPermissions` | Permission mode `claude remote-control` runs with. The container is the isolation boundary |
+| `RC_SPAWN` | `worktree` | What a session started from the app runs in: `worktree` (its own git worktree of the workspace; falls back to `same-dir`, with a log line, when the workspace is not a git repository), `same-dir` or `session`. Always passed, because unset, `claude` waits at a prompt nobody can answer |
 | `RC_VENV` | none (`/opt/venv`) | A venv inside the container to run the agent from instead of `/opt/venv` |
 | `CHITRAGUPTA_PAPERS` | `$CHITRAGUPTA_WORKSPACE/papers` | Host directory of PDFs, mounted **read-only** at `/workspace/papers`. Point it elsewhere to share one corpus across workspaces |
 | `COMPOSE_PROFILES` | none | `cpu` or `gpu`; see below. Compose's own variable, not one of ours |
@@ -287,9 +289,10 @@ the agent under `docker/rc-daemon.sh`, which restarts it with backoff
 it inherits from `ENV PATH`.
 
 Every setting in `rc-daemon.env` is overridable from the environment, so
-nothing needs editing in a running container. Set `RC_NAME`, `RC_PREFIX`,
-`RC_PERMISSION_MODE` or `RC_VENV` in `docker/.env`. `RC_VENV` points at
-another venv *inside the container*, for example one in the workspace;
+nothing needs editing in a running container. Set `RC_NAME`,
+`RC_PREFIX`, `RC_PERMISSION_MODE`, `RC_SPAWN` or `RC_VENV` in
+`docker/.env`. `RC_VENV` points at another venv *inside the container*,
+for example one in the workspace;
 `/opt/venv` is the default. The entrypoint also records the workspace
 trust and the Remote Control consent in the container's `~/.claude.json`,
 because the supervisor will not start without them.

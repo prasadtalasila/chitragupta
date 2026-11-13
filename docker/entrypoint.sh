@@ -25,8 +25,10 @@ export RC_NAME="${RC_NAME:-${CLAUDE_AGENT_NAME:-$(hostname)}}"
 # interactive prompts otherwise: onboarding, the Remote Control consent, and
 # trust for the workspace. rc-daemon.sh's preflight refuses to start without
 # the last two, and a detached tmux pane has nobody to answer them. Seed
-# them here. Login is separate: it comes from the mounted
-# ~/.claude/.credentials.json.
+# them here. Login is separate: the token comes from the mounted
+# ~/.claude/.credentials.json and the account record from the host's
+# ~/.claude.json, below. (The spawn-mode prompt is the fourth; rc-daemon.sh
+# answers it by always passing --spawn.)
 python3 - <<'PY'
 import json, os
 p = os.path.expanduser("~/.claude.json")
@@ -34,6 +36,19 @@ try:
     c = json.load(open(p))
 except (OSError, ValueError):
     c = {}
+# The account record (which organization the login belongs to). Without it
+# `claude remote-control` exits with "Unable to determine your organization".
+# docker-compose.yml mounts the host's ~/.claude.json here when
+# CHITRAGUPTA_CLAUDE_JSON is set, and /dev/null otherwise, which fails to
+# parse and is skipped. Copied on every start, so a re-login on the host
+# reaches the container at its next restart.
+host = os.path.expanduser("~/.claude.host.json")
+if os.path.isfile(host) and os.path.getsize(host):
+    try:
+        c["oauthAccount"] = json.load(open(host))["oauthAccount"]
+        print("entrypoint: account record copied from the host's ~/.claude.json")
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        print(f"entrypoint: WARNING -- CHITRAGUPTA_CLAUDE_JSON has no usable account record ({type(e).__name__}: {e}); log in on the host first")
 c["hasCompletedOnboarding"] = True
 c["remoteDialogSeen"] = True
 c.setdefault("projects", {}).setdefault(os.environ["RC_DIR"], {})["hasTrustDialogAccepted"] = True

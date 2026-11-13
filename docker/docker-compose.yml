@@ -68,14 +68,15 @@ x-claude: &claude
     # The workspace path inside the container, which rc-daemon.sh runs the
     # agent from and which entrypoint.sh marks trusted. It is the mount
     # target below, so the two are one value and cannot drift. Everything
-    # else rc-daemon reads (RC_NAME, RC_PREFIX, RC_PERMISSION_MODE, RC_VENV)
-    # is optional. Compose passes an unset one as an empty string, which
+    # else rc-daemon reads (RC_NAME, RC_PREFIX, RC_PERMISSION_MODE, RC_SPAWN,
+    # RC_VENV) is optional. Compose passes an unset one as an empty string, which
     # rc-daemon.env's `${VAR:-default}` treats as unset, so its default
     # applies.
     RC_DIR: /workspace
     RC_NAME: ${RC_NAME:-}
     RC_PREFIX: ${RC_PREFIX:-}
     RC_PERMISSION_MODE: ${RC_PERMISSION_MODE:-bypassPermissions}
+    RC_SPAWN: ${RC_SPAWN:-}
     RC_VENV: ${RC_VENV:-}
 
   volumes:
@@ -84,6 +85,23 @@ x-claude: &claude
     # and scaffolding a project into the git checkout.
     - ${CHITRAGUPTA_WORKSPACE:?set CHITRAGUPTA_WORKSPACE to the host directory to mount at /workspace}:/workspace
     - ${CHITRAGUPTA_CLAUDE_HOME:-./claude}:/home/${CHITRAGUPTA_USER}/.claude
+    # The account record lives in ~/.claude.json, not in ~/.claude, so the
+    # mount above carries the login token but not which organization it
+    # belongs to, and `claude remote-control` refuses to start without that
+    # ("Unable to determine your organization"). Point CHITRAGUPTA_CLAUDE_JSON
+    # at the host's ~/.claude.json and entrypoint.sh copies its
+    # `oauthAccount` into the container's own file on every start. Read-only,
+    # and nothing else in it is read. Unset, /dev/null is mounted instead and
+    # the entrypoint skips the copy. Long syntax for `create_host_path:
+    # false`: with the short form, a mistyped path makes the Docker daemon
+    # create a root-owned *directory* there on the host and the copy fails
+    # silently; this way `up` refuses to start and names the path.
+    - type: bind
+      source: ${CHITRAGUPTA_CLAUDE_JSON:-/dev/null}
+      target: /home/${CHITRAGUPTA_USER}/.claude.host.json
+      read_only: true
+      bind:
+        create_host_path: false
     # Read-only on purpose: `corpus sync` only ever reads these, and an
     # agent running with bypassPermissions has no business rewriting the
     # human's source PDFs. Add papers from the host side. See
