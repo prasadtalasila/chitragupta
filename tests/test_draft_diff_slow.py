@@ -101,9 +101,10 @@ def _apply(text: str) -> str:
         assert old in text, old
         text = text.replace(old, new)
     # Section 4 moved above section 3.
-    s3 = re.search(r"## 3\. Using the state stream.*?(?=## 4\.)", text, re.S).group(0)
-    s4 = re.search(r"## 4\. Integrating with everything else.*?(?=## 5a\.)", text, re.S).group(0)
-    return text.replace(s3 + s4, s4 + s3)
+    s3 = re.search(r"## 3\. Using the state stream.*?(?=## 4\.)", text, re.S)
+    s4 = re.search(r"## 4\. Integrating with everything else.*?(?=## 5a\.)", text, re.S)
+    assert s3 and s4, "the sample survey no longer has sections 3 and 4 in order"
+    return text.replace(s3.group(0) + s4.group(0), s4.group(0) + s3.group(0))
 
 
 def _survey() -> Path:
@@ -118,16 +119,34 @@ def _survey() -> Path:
     return path
 
 
-def _inside_del(tex: str, phrase: str) -> bool:
-    """Whether `phrase` sits inside the argument of some `\\DIFdel{...}`."""
-    for match in re.finditer(r"\\DIFdel\{", tex):
+def _marked(tex: str) -> "list[tuple[str, int, int]]":
+    """(macro, start, end) of every `\\DIFadd{...}` and `\\DIFdel{...}`
+    argument, braces matched and `\\{` `\\}` skipped."""
+    spans = []
+    for match in re.finditer(r"\\(DIFadd|DIFdel)(?:FL)?\{", tex):
         depth, at = 1, match.end()
         while depth and at < len(tex):
+            if tex[at] == "\\":
+                at += 2
+                continue
             depth += {"{": 1, "}": -1}.get(tex[at], 0)
             at += 1
-        if phrase in tex[match.end() : at]:
-            return True
-    return False
+        spans.append((match.group(1), match.end(), at))
+    return spans
+
+
+def _inside(tex: str, macro: str, phrase: str) -> bool:
+    """Whether `phrase` sits inside the argument of some `\\<macro>{...}`."""
+    return any(phrase in tex[start:end] for name, start, end in _marked(tex) if name == macro)
+
+
+def _cites(tex: str) -> "list[tuple[str | None, str]]":
+    """(enclosing DIF macro or None, keys) for every `\\citep{keys}`."""
+    spans = _marked(tex)
+    return [
+        (next((name for name, start, end in spans if start <= m.start() < end), None), m.group(1))
+        for m in re.finditer(r"\\citep\{([^}]*)\}", tex)
+    ]
 
 
 def test_spike_scenario_redline(isolated_config, ledger_con, capsys):
@@ -148,18 +167,20 @@ def test_spike_scenario_redline(isolated_config, ledger_con, capsys):
     review = config.REVIEW_DIR / "dt-overview"
     assert (review / "survey.diff.pdf").is_file()
     tex = (review / "survey.diff.tex").read_text(encoding="utf-8")
-    # The one inserted citation is marked, and only it. latexdiff boxes a
-    # whole added command: `\DIFadd{\mbox{%DIFAUXCMD` and a line break.
-    added = re.findall(
-        r"\\DIFadd\{\s*(?:\\mbox\{%DIFAUXCMD\s*)?\\citep\{\s*sample_ml_anomaly_2023\s*\}", tex
-    )
-    assert len(added) == 1, tex
-    # A citation in an unchanged paragraph is the same `\citep{key}` on
-    # both sides, so the renumbering a resolved render would show is gone.
-    for line in tex.splitlines():
-        if "\\citep{sample_dt_sync_2023}" in line:
-            assert "\\DIF" not in line, line
+    # Only the citations the edits touched are marked: the one inserted
+    # in section 1, and the single citation that became a multi-citation
+    # in section 5. Every other `\citep{key}` is the same on both sides,
+    # so the renumbering a resolved render would show is gone -- including
+    # the moved section 3's, which latexdiff leaves in place.
+    cites = _cites(tex)
+    assert sorted((m, k) for m, k in cites if m) == [
+        ("DIFadd", "sample_dt_overview_2024, sample_dt_factory_2022"),
+        ("DIFadd", "sample_ml_anomaly_2023"),
+        ("DIFdel", "sample_dt_overview_2024"),
+    ], cites
+    # Not vacuous: the unchanged section 2 and the conclusion cite it four times.
+    assert [m for m, k in cites if k == "sample_dt_sync_2023"] == [None] * 4, cites
     assert "figure redrawn since 001" in tex
-    assert _inside_del(tex, "(citation withdrawn)"), tex
+    assert _inside(tex, "DIFdel", "(citation withdrawn)"), tex
     report = (review / "survey.diff.md").read_text(encoding="utf-8")
     assert re.search(rf"{_WITHDRAWN}.*no longer in the corpus", report), report
