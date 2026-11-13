@@ -556,3 +556,63 @@ call.
   shell and the hook never fired; OpenCode's plugin did fire and
   refused a write. Both runs are in [LOCAL-MODELS.md](LOCAL-MODELS.md),
   tracked in [#904](https://github.com/prasadtalasila/chitragupta/issues/904).
+
+### Measuring a skill change: commands run, and the pass rule
+
+A shrink can leave a step's command in a skill and still make a model
+stop running it, and no unit test sees that. `skill-bench` measures it
+(plans/1091-skill-shrink.md, PR 0). Each Tier 2 run of
+`bench/bench_skill_harnesses.py` records, for its (harness, skill):
+
+- `expected`: every `chitragupta` command the harness's own copy of
+  `SKILL.md` names, and every command in the references it names, since
+  a step cut to a pointer keeps its commands in the reference. A command
+  is `module sub [sub]` (`draft dossier init`), with the subcommands
+  taken from the module's own `--help`, so a slug after `draft render`
+  is an argument and never a third word.
+- `ran` and `missed`: which of those a tool call executed. A command
+  counts only where a shell would run it: as the first word of a simple
+  command, inside `sh -c '...'` (Codex wraps every call so), or behind
+  `cd x &&`, `VAR=1` or `timeout 600`. A `grep` for the command, or an
+  `echo` naming it, is not a run.
+- `forbidden_ran`: `corpus sync` or `enrich`, which the skills name only
+  as what the user runs.
+- `gate`: `draft gate` on the task's own draft, 2 when it was never
+  written.
+
+`--compare BEFORE AFTER` reads two such files and judges each (harness,
+skill) on every command either arm expected, counted from everything
+each run executed:
+
+| Runs per arm | Fail (exit 1) | Inconclusive (exit 3) | Pass (exit 0) |
+| --- | --- | --- | --- |
+| 3 against 3 | a command that ran in every before run ran in no after run; or the gate passed before and never after; or a forbidden command ran after and not before | any other drop | no drop |
+| 6 against 6 | a drop of 4 or more runs, or any of the 3-run fail cases | -- | anything else |
+
+On exit 3, run 3 more on both arms and compare the merged files.
+
+**Why 3 runs screen and do not convict.** Take a command that a model
+runs on 80% of runs, unchanged between the arms. Both arms 3 of 3 and
+then 2 of 3 happens 20% of the time (38% when the before arm is 3 of
+3). A drop of two or more happens for 1 command in 18, and a skill names
+about nine commands on each of three harnesses, so a rule that failed a
+two-run drop at 3 runs would fail an unchanged skill 79% of the time.
+The rule above fails 3 against 3 only on all-to-none, 0.4% a command,
+and 6 against 6 on a drop of 4, 0.5% a command: about 1 unchanged PR in
+10 at each stage, fewer where a command runs always or never, as most
+do on Claude Code. It still finds a real regression: a command that
+fell from 90% to 30% fails 6 against 6 more than half the time, and a
+step dropped outright fails at 3. Results are comparable within one
+host and model build only.
+
+**Measured on 2026-11-13** on six NVIDIA A40s (driver 595.58, CUDA
+13.2): llama.cpp `b11321` built with `-DGGML_CUDA=ON` and
+`CMAKE_CUDA_ARCHITECTURES=86`, one `llama-server` per GPU with
+`-c 131072 -np 1 -ngl 99 --jinja`, serving the same Qwen3.6-35B-A3B
+`UD-Q4_K_M` file as #1068. A Tier 2 survey took 3 to 4 minutes on
+Codex and OpenCode, against 2 to 3.5 hours on the CPU host. On that
+day's single survey run per harness, Codex wrote the dossier by hand
+instead of running `draft dossier init`, and OpenCode skipped
+`draft evidence`; Claude Code ran 14 of the 19 commands the skill and
+its references name, and the five it did not are branch-only
+(`draft dossier outline`) or named as optional.

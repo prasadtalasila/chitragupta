@@ -42,6 +42,8 @@ another user could plant files in.
 
 import argparse
 import json
+import queue
+from concurrent.futures import ThreadPoolExecutor
 import os
 import re
 import shutil
@@ -55,8 +57,16 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from tests.test_skill_harness_copies import SKILLS, SUFFIX  # noqa: E402
+from tests.test_skill_harness_copies import SUFFIX, USER_SKILLS  # noqa: E402
 from tests.test_skill_references import NAMED_PATH  # noqa: E402
+
+from skill_bench_tasks import TIER2_TASKS  # noqa: E402  (bench/ is sys.path[0])
+from skill_commands import (  # noqa: E402
+    commands_run,
+    compare,
+    expected_commands,
+    score_commands,
+)
 
 EXAMPLES = REPO_ROOT / "docs" / "examples"
 BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:18080/v1")
@@ -65,6 +75,9 @@ HARNESSES = ("claude", "codex", "opencode")
 # Filled by main() before any scaffolding, so a missing CLI is named up
 # front rather than failing inside Popen after a corpus sync.
 BINARIES: dict = {}
+# This checkout and `--source`: a run whose transcript names either
+# resolved the project from the wrong directory (filled by main()).
+LEAK_ROOTS: set = {str(REPO_ROOT)}
 SKILL_DIRS = {
     "claude": ".claude/skills",
     "codex": ".agents/skills",
@@ -94,20 +107,9 @@ _RENDER_CLAUSE = " Follow the skill through to the end"
 TIER2_SKILL_ONLY = TIER2_SURVEY.split(_RENDER_CLAUSE)[0] + (
     " Follow the skill through to the end, including its self-check with draft gate."
 )
-# Which of the render step's commands a tool call ran, by a phrase each
-# command cannot be run without.
-RENDER_STEP = {
-    "references": "chitragupta.draft references",
-    "render": "chitragupta.draft render",
-    "evidence": "chitragupta.draft evidence",
-}
-TIER2_COPYEDIT = """\
-Copy-edit the draft at content/drafts/dt-survey.md: convert it to British
-English (en-GB). Change no claim and no citation.
-"""
 
 
-def harness_env() -> dict:
+def harness_env(base_url: str = BASE_URL) -> dict:
     """The project's own interpreter first on PATH, and `git` off it for
     OpenCode, whose runtime never reaps a `git` child in this container
     and then waits on it forever."""
@@ -115,7 +117,7 @@ def harness_env() -> dict:
     python_dir = str(Path(sys.executable).parent)
     parts = [python_dir, *[p for p in env.get("PATH", "").split(os.pathsep) if p]]
     env["PATH"] = os.pathsep.join(parts)
-    env["BASE_URL"] = BASE_URL
+    env["BASE_URL"] = base_url
     env["OPENCODE_CONFIG"] = str(EXAMPLES / "opencode" / "opencode-provider.json")
     return env
 
@@ -147,15 +149,21 @@ def without_git(env: dict, shim_root: Path) -> dict:
     return {**env, "PATH": os.pathsep.join(parts)}
 
 
-def scaffold(harness: str, dest: Path, sync: bool) -> Path:
-    """A fresh project from this checkout's tree, not an installed one."""
-    project = dest / harness / "project"
+def scaffold(harness: str, project: Path, sync: bool, source: Path = REPO_ROOT) -> Path:
+    """A fresh project from `source`'s tree, not an installed one.
+
+    `init` takes its source tree from its own `__file__`, and `-m` imports
+    from the working directory first, so running it with `cwd=source`
+    scaffolds that checkout's skills. Only the scaffold comes from
+    `source`: the sync, the gate and every command a model runs use the
+    installed `chitragupta`, the same for both arms of a comparison.
+    """
     if project.exists():
         shutil.rmtree(project)
     project.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
         [sys.executable, "-m", "chitragupta.init", "--agent", harness, str(project)],
-        cwd=REPO_ROOT,
+        cwd=source,
         check=True,
         stdout=subprocess.DEVNULL,
     )
@@ -171,7 +179,7 @@ def scaffold(harness: str, dest: Path, sync: bool) -> Path:
     return project
 
 
-def command(harness: str, prompt: str) -> list:
+def command(harness: str, prompt: str, base_url: str = BASE_URL) -> list:
     if harness == "claude":
         return [
             BINARIES["claude"],
@@ -197,7 +205,7 @@ def command(harness: str, prompt: str) -> list:
             "model_provider=local",
             "-c",
             # json.dumps writes a valid TOML basic string, quotes escaped.
-            f'model_providers.local={{name="local",base_url={json.dumps(BASE_URL)},'
+            f'model_providers.local={{name="local",base_url={json.dumps(base_url)},'
             'wire_api="responses"}',
             "-m",
             LOCAL_MODEL,
@@ -206,11 +214,13 @@ def command(harness: str, prompt: str) -> list:
     return [BINARIES["opencode"], "run", "--format", "json", prompt]
 
 
-def run(harness: str, project: Path, prompt: str, log: Path, timeout: int) -> dict:
+def run(
+    harness: str, project: Path, prompt: str, log: Path, timeout: int, base_url: str = BASE_URL
+) -> dict:
     # PWD too, not only cwd: OpenCode takes its project directory from the
     # inherited PWD, so without this it loads the skills of whichever
     # directory launched the bench (measured: it read this checkout's).
-    env = {**harness_env(), "PWD": str(project)}
+    env = {**harness_env(base_url), "PWD": str(project)}
     if harness == "opencode":
         env = without_git(env, project.parent / "path-shim")
     started = time.monotonic()
@@ -221,7 +231,7 @@ def run(harness: str, project: Path, prompt: str, log: Path, timeout: int) -> di
     # too (measured).
     with log.open("w", encoding="utf-8") as out:
         proc = subprocess.Popen(
-            command(harness, prompt),
+            command(harness, prompt, base_url),
             cwd=project,
             env=env,
             stdin=subprocess.DEVNULL,
@@ -293,7 +303,11 @@ def score_tier1(project: Path, harness: str, name: str, log: Path) -> dict:
     own, foreign = loaded_own_copy(harness, name, log, text)
     # A harness that resolved the project from the wrong directory reads
     # this checkout's identical files and would otherwise pass.
-    leaked = str(REPO_ROOT) in text
+    leaked = any(root in text for root in LEAK_ROOTS)
+    # A model may print a path absolute, inside its own project; the
+    # file is the same one, so it is made relative before matching.
+    for root in {str(project.resolve()), str(project)}:
+        text = text.replace(root + "/", "")
     printed = {}
     for path, first in READ_LINE.findall(text):
         printed[path.rstrip(".,")] = first.strip()
@@ -303,7 +317,10 @@ def score_tier1(project: Path, harness: str, name: str, log: Path) -> dict:
             continue
         lines = (project / path).read_text(encoding="utf-8").splitlines()
         actual = next(iter(lines), "").strip()
-        (read if printed[path].strip("`") == actual else wrong).append(path)
+        # Wrapping backticks are the model's, so both sides lose them:
+        # stripping only the printed side failed every first line that
+        # itself ends in a backtick (`draft-diff.md`'s heading).
+        (read if printed[path].strip("`") == actual.strip("`") else wrong).append(path)
     return {
         "expected": sorted(expected),
         "read": read,
@@ -320,11 +337,12 @@ def score_tier1(project: Path, harness: str, name: str, log: Path) -> dict:
 def tier1(args) -> list:
     results = []
     for harness in args.harness:
-        project = scaffold(harness, args.out, sync=False)
+        project = scaffold(harness, args.out / harness / "project", False, args.source)
         for name in args.skill:
             loaded = f"{name}{SUFFIX[harness]}"
             log = args.out / harness / f"t1-{name}.jsonl"
-            outcome = run(harness, project, TIER1_PROMPT.format(name=loaded), log, args.timeout)
+            prompt = TIER1_PROMPT.format(name=loaded)
+            outcome = run(harness, project, prompt, log, args.timeout, args.base_url[0])
             outcome.update(score_tier1(project, harness, name, log))
             outcome.update(harness=harness, skill=name)
             results.append(outcome)
@@ -335,10 +353,21 @@ def tier1(args) -> list:
 TOOL_INPUT_KEYS = {"file_path", "filePath", "command", "path"}
 
 
-def tool_inputs(log: Path) -> str:
-    """The file paths and commands of every tool call in a transcript --
-    what a harness actually opened or ran, not the skill text it was
-    shown, which names every reference whether or not one is read."""
+def score_run(source: Path, harness: str, skill: str, log: Path) -> dict:
+    """Task 2's fields for one run, against the commands the harness's own
+    copy of the skill, in the scaffolded checkout, names."""
+    skill_md = source / SKILL_DIRS[harness] / f"{skill}{SUFFIX[harness]}" / "SKILL.md"
+    named = [source / m.split("#")[0] for m in NAMED_PATH.findall(skill_md.read_text("utf-8"))]
+    files = [skill_md, *dict.fromkeys(p for p in named if p.is_file())]
+    return score_commands(expected_commands(*files), commands_run(tool_input_list(log)))
+
+
+def tool_input_list(log: Path) -> list:
+    """The file paths and commands of every tool call in a transcript, one
+    entry per call -- what a harness actually opened or ran, not the skill
+    text it was shown, which names every reference whether or not one is
+    read. One entry per call, so a command is parsed on its own and one
+    bad quote spoils only its own call."""
     found = []
 
     def walk(node):
@@ -357,7 +386,12 @@ def tool_inputs(log: Path) -> str:
             walk(json.loads(line))
         except ValueError:
             continue
-    return "\n".join(found)
+    return found
+
+
+def tool_inputs(log: Path) -> str:
+    """`tool_input_list`, joined."""
+    return "\n".join(tool_input_list(log))
 
 
 def references_read(log: Path) -> list:
@@ -371,33 +405,96 @@ def references_read(log: Path) -> list:
     return seen
 
 
+def gate(project: Path, draft: str) -> int:
+    """`draft gate`'s exit code on the task's own draft, or 2 when the run
+    never wrote it (a gate on a missing file is not a pass)."""
+    if not (project / draft).exists():
+        return 2
+    return subprocess.run(
+        [sys.executable, "-m", "chitragupta.draft", "gate", draft],
+        cwd=project,
+        env=harness_env(),
+        capture_output=True,
+        text=True,
+        check=False,
+    ).returncode
+
+
+def tier2_job(args, harness: str, skill: str, k: int, servers: "queue.Queue") -> dict:
+    """One (harness, skill, run): a fresh project, the task's prerequisite
+    if it has one, then the task, scored on the task's transcript only.
+
+    A local-model job holds one server for its whole length, prerequisite
+    included, so two jobs never share a llama-server slot."""
+    task = TIER2_TASKS[skill]
+    root = args.out / harness / skill / f"run-{k}"
+    project = scaffold(harness, root / "project", True, args.source)
+    if task.setup is not None:
+        task.setup(project)
+    url = servers.get() if harness != "claude" else BASE_URL
+    prerequisite = {}
+    try:
+        if task.after is not None:
+            before = root / f"prerequisite-{task.after}.jsonl"
+            run(harness, project, task_prompt(args, task.after), before, args.timeout, url)
+            # The task's input: a prerequisite that never passed its gate
+            # hands the task a broken draft, which is read with the score.
+            prerequisite = {"prerequisite_gate": gate(project, TIER2_TASKS[task.after].draft)}
+        if task.seed is not None:
+            task.seed(project)
+        log = root / "transcript.jsonl"
+        outcome = run(harness, project, task_prompt(args, skill), log, args.timeout, url)
+    finally:
+        if harness != "claude":
+            servers.put(url)
+    outcome.update(harness=harness, skill=skill, run=k, references=references_read(log))
+    outcome.update(prerequisite)
+    outcome.update(score_run(args.source, harness, skill, log))
+    outcome["gate"] = gate(project, task.draft)
+    print(json.dumps(outcome), flush=True)
+    return outcome
+
+
+def task_prompt(args, skill: str) -> str:
+    """`--skill-only` swaps the survey prompt for the one with no render
+    clause; every other task's prompt is its own."""
+    if skill == "survey-writer" and args.skill_only:
+        return TIER2_SKILL_ONLY
+    return TIER2_TASKS[skill].prompt
+
+
 def tier2(args) -> list:
-    results = []
-    for harness in args.harness:
-        project = scaffold(harness, args.out, sync=True)
-        survey = TIER2_SKILL_ONLY if args.skill_only else TIER2_SURVEY
-        for label, prompt in (("survey", survey), ("copy-edit", TIER2_COPYEDIT)):
-            log = args.out / harness / f"t2-{label}.jsonl"
-            outcome = run(harness, project, prompt, log, args.timeout)
-            ran = tool_inputs(log)
-            outcome.update(
-                harness=harness,
-                task=label,
-                references=references_read(log),
-                ran={step: phrase in ran for step, phrase in RENDER_STEP.items()},
-            )
-            gate = subprocess.run(
-                [sys.executable, "-m", "chitragupta.draft", "gate", "content/drafts/dt-survey.md"],
-                cwd=project,
-                env=harness_env(),
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            outcome["gate"] = gate.returncode
-            results.append(outcome)
-            print(json.dumps(outcome), flush=True)
-    return results
+    servers: "queue.Queue" = queue.Queue()
+    for url in args.base_url:
+        servers.put(url)
+    jobs = [
+        (harness, skill, k)
+        for k in range(1, args.runs + 1)
+        for skill in args.skill
+        for harness in args.harness
+        if skill in TIER2_TASKS
+    ]
+    with ThreadPoolExecutor(max_workers=args.jobs) as pool:
+        futures = [pool.submit(tier2_job, args, *job, servers) for job in jobs]
+        return [future.result() for future in futures]
+
+
+def check_args(args) -> "str | None":
+    """Why these flags cannot run, or None."""
+    if not (Path(args.source) / "chitragupta" / "init.py").is_file():
+        return f"--source {args.source} holds no chitragupta/init.py: not a checkout"
+    return None
+
+
+def jobs_warning(args) -> "str | None":
+    """Local jobs beyond the number of servers wait for a free one."""
+    local = [h for h in args.harness if h != "claude"]
+    if local and args.jobs > len(args.base_url):
+        return (
+            f"--jobs {args.jobs} with {len(args.base_url)} --base-url: local-model jobs "
+            "beyond that wait for a free server"
+        )
+    return None
 
 
 def self_check() -> None:
@@ -475,9 +572,11 @@ def self_check() -> None:
             + "\nThe skill names `python -m chitragupta.draft references x.md`.\n",
             encoding="utf-8",
         )
-        ran = tool_inputs(log)
-        assert RENDER_STEP["render"] in ran, "a command a tool call ran counts"
-        assert RENDER_STEP["references"] not in ran, "a command the text only names does not"
+        ran = commands_run(tool_input_list(log))
+        assert ran == ["draft render"], "a command a tool call ran counts; one only named does not"
+        _check_tier1_reads(project, log)
+        _check_command_scoring(project)
+        _check_compare(project)
         (ref / "b.md").write_text("", encoding="utf-8")
         log.write_text(good, encoding="utf-8")
         scored = score_tier1(project, "claude", "x", log)
@@ -489,13 +588,134 @@ def self_check() -> None:
         env = without_git({"PATH": str(tools)}, project / "shim")
         shim = Path(env["PATH"])
         assert sorted(p.name for p in shim.iterdir()) == ["python"], "only git is hidden"
+        _check_flag_guards(project)
 
 
-def main(argv=None) -> int:
+def _check_tier1_reads(project: Path, log: Path) -> None:
+    """Two ways a real read was scored as a failure (measured 2026-11-13,
+    9 of 14 Tier 1 failures): a first line that itself ends in a backtick,
+    and a path printed absolute rather than from the project root."""
+    skill = project / SKILL_DIRS["claude"] / "y" / "SKILL.md"
+    ref = project / ".claude" / "skills" / "y" / "references"
+    skill.parent.mkdir(parents=True)
+    ref.mkdir(parents=True)
+    skill.write_text(
+        "Read `.claude/skills/y/references/c.md` and `.claude/skills/y/references/d.md`.\n",
+        encoding="utf-8",
+    )
+    (ref / "c.md").write_text("# Showing what changed: `draft diff`\n", encoding="utf-8")
+    (ref / "d.md").write_text("# D heading\n", encoding="utf-8")
+    load = json.dumps({"name": "Skill", "input": {"skill": "y"}}, separators=(",", ":"))
+    log.write_text(
+        f"{load}\nREAD .claude/skills/y/references/c.md :: # Showing what changed: `draft diff`\n"
+        f"READ {project}/.claude/skills/y/references/d.md :: `# D heading`\n",
+        encoding="utf-8",
+    )
+    scored = score_tier1(project, "claude", "y", log)
+    assert scored["read"] == sorted(scored["expected"]) and scored["pass"], scored
+    log.write_text(
+        f"{load}\nREAD .claude/skills/y/references/c.md :: # Showing what changed: `draft`\n"
+        "READ .claude/skills/y/references/d.md :: # D heading\n",
+        encoding="utf-8",
+    )
+    scored = score_tier1(project, "claude", "y", log)
+    assert scored["wrong_first_line"] == [".claude/skills/y/references/c.md"], scored
+
+
+def _check_command_scoring(project: Path) -> None:
+    """Task 2's five cases: fenced and inline both expected; `-P` is the
+    same command; named but not run is missed; `corpus sync` is never
+    expected, and is reported when it ran."""
+    skill_md = project / "cmd-skill.md"
+    skill_md.write_text(
+        "Run `python -m chitragupta.draft gate <draft>`, never "
+        "`python -m chitragupta.corpus sync`.\n\n```bash\n"
+        "python -P -m chitragupta.draft dossier stamp content/drafts/x.md\n"
+        "python -m chitragupta.draft render twin-basics --format pdf\n```\n",
+        encoding="utf-8",
+    )
+    expected = expected_commands(skill_md)
+    assert expected == ["draft gate", "draft dossier stamp", "draft render"], expected
+    pointer = project / "cmd-ref.md"
+    pointer.write_text("Then `python -m chitragupta.draft evidence <draft>`.\n", encoding="utf-8")
+    both = expected_commands(skill_md, pointer)
+    assert both == expected + ["draft evidence"], "a reference's command is expected too"
+    ran = commands_run(
+        [
+            "/bin/zsh -lc 'python -m chitragupta.draft dossier stamp x.md; echo done'",
+            'grep "python -m chitragupta.draft gate" x.md',
+            "echo python -m chitragupta.draft render x.md",
+            "python -m chitragupta.corpus sync",
+            "cd p && python3 -P -m chitragupta.draft gate x.md",
+        ]
+    )
+    scored = score_commands(expected, ran)
+    assert scored["ran"] == ["draft dossier stamp", "draft gate"], scored
+    assert scored["missed"] == ["draft render"], "a mention is not a run: " + str(scored)
+    assert scored["forbidden_ran"] == ["corpus sync"], scored
+
+
+def _check_compare(project: Path) -> None:
+    """3 against 3 screens: equal passes, 3 to 0 fails, any other drop is
+    inconclusive. 6 against 6 settles: a drop of 4 fails, less passes."""
+
+    def arm(name: str, ran_in: int, runs: int = 3, gated: int = 3, forbidden: bool = False) -> Path:
+        rows = [
+            {
+                "harness": "codex",
+                "skill": "x",
+                "run": k,
+                "expected": ["draft gate"],
+                "ran": ["draft gate"] if k <= ran_in else [],
+                "forbidden_ran": ["corpus sync"] if forbidden and k == 1 else [],
+                "gate": 0 if k <= gated else 1,
+            }
+            for k in range(1, runs + 1)
+        ]
+        path = project / f"{name}.json"
+        path.write_text(json.dumps(rows), encoding="utf-8")
+        return path
+
+    assert compare(arm("b", 3), arm("a", 3), quiet=True) == 0, "equal arms pass"
+    assert compare(arm("b", 3), arm("a", 2), quiet=True) == 3, "a one-run drop is inconclusive"
+    assert compare(arm("b", 3), arm("a", 0), quiet=True) == 1, "3 to 0 fails"
+    assert compare(arm("b", 3), arm("a", 1), quiet=True) == 3, "3 to 1 only screens"
+    assert compare(arm("b", 2), arm("a", 0), quiet=True) == 3, "2 to 0 is not every run"
+    assert compare(arm("b", 6, 6), arm("a", 3, 6), quiet=True) == 0, "6v6: a three-run drop passes"
+    assert compare(arm("b", 6, 6), arm("a", 2, 6), quiet=True) == 1, "6v6: a four-run drop fails"
+    assert compare(arm("b", 3, gated=1), arm("a", 3, gated=0), quiet=True) == 1, "gate lost"
+    assert compare(arm("b", 3), arm("a", 3, forbidden=True), quiet=True) == 1, "new forbidden"
+    assert compare(arm("b", 3, forbidden=True), arm("a", 3, forbidden=True), quiet=True) == 0
+    moved = arm("a", 3)
+    rows = json.loads(moved.read_text(encoding="utf-8"))
+    for row in rows:
+        row.update(expected=[], ran=[], ran_all=["draft gate"])
+    moved.write_text(json.dumps(rows), encoding="utf-8")
+    assert compare(arm("b", 3), moved, quiet=True) == 0, "a command the after arm stopped naming"
+
+
+def _check_flag_guards(tmp: Path) -> None:
+    """`--source` must be a checkout, and more local jobs than servers
+    must be said out loud rather than discovered as a slow run."""
+    plain = argparse.Namespace(source=tmp, jobs=1, base_url=[BASE_URL], harness=["codex"])
+    assert check_args(plain) is not None, "--source without chitragupta/init.py"
+    good = argparse.Namespace(source=REPO_ROOT, jobs=1, base_url=[BASE_URL], harness=["codex"])
+    assert check_args(good) is None, "this checkout is a valid --source"
+    busy = argparse.Namespace(source=REPO_ROOT, jobs=3, base_url=[BASE_URL], harness=["codex"])
+    assert check_args(busy) is None and jobs_warning(busy), "3 jobs on 1 server warns"
+    assert not jobs_warning(good), "1 job on 1 server is quiet"
+    assert set(TIER2_TASKS) == set(USER_SKILLS) - {"figure-drawer"} or set(TIER2_TASKS) == set(
+        USER_SKILLS
+    ), "every user skill has a Tier 2 task"
+    for name, task in TIER2_TASKS.items():
+        assert task.after is None or task.after in TIER2_TASKS, f"{name} runs after a task"
+
+
+def parse(argv) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--tier", type=int, choices=(1, 2), required=True)
+    parser.add_argument("--tier", type=int, choices=(1, 2))
     parser.add_argument("--harness", action="append", choices=HARNESSES)
-    parser.add_argument("--skill", action="append", choices=SKILLS)
+    parser.add_argument("--skill", action="append", choices=USER_SKILLS)
     parser.add_argument("--out", type=Path, help="default: a fresh private temporary directory")
     parser.add_argument("--timeout", type=int, default=900, help="seconds per run (default 900)")
     parser.add_argument(
@@ -503,10 +723,46 @@ def main(argv=None) -> int:
         action="store_true",
         help="tier 2: drop the survey prompt's render clause, so only the skill asks for it",
     )
+    parser.add_argument(
+        "--source", type=Path, default=REPO_ROOT, help="the checkout whose skills are scaffolded"
+    )
+    parser.add_argument(
+        "--base-url",
+        action="append",
+        help=f"an OpenAI-compatible server, repeatable, one local job each (default {BASE_URL})",
+    )
+    parser.add_argument("--jobs", type=int, default=1, help="(harness, skill, run) jobs at once")
+    parser.add_argument("--runs", type=int, default=1, help="tier 2: runs of each task")
+    parser.add_argument(
+        "--compare",
+        nargs=2,
+        type=Path,
+        metavar=("BEFORE", "AFTER"),
+        help="compare two tier2.json files; exit 0 pass, 1 fail, 3 inconclusive",
+    )
     args = parser.parse_args(argv)
-    self_check()
+    if args.compare is None and args.tier is None:
+        parser.error("one of --tier or --compare is required")
+    args.source = args.source.resolve()
+    args.base_url = args.base_url or [BASE_URL]
     args.harness = args.harness or list(HARNESSES)
-    args.skill = args.skill or list(SKILLS)
+    args.skill = args.skill or list(USER_SKILLS)
+    return args
+
+
+def main(argv=None) -> int:
+    args = parse(argv)
+    self_check()
+    if args.compare is not None:
+        return compare(*args.compare)
+    problem = check_args(args)
+    if problem:
+        print(problem, file=sys.stderr)
+        return 2
+    warning = jobs_warning(args)
+    if warning:
+        print(f"warning: {warning}", file=sys.stderr)
+    LEAK_ROOTS.update({str(REPO_ROOT), str(args.source)})
     BINARIES.update({h: shutil.which(h) for h in args.harness})
     missing = [h for h, path in BINARIES.items() if path is None]
     if missing:
