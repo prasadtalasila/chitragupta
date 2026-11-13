@@ -6,3 +6,7 @@ sections added, removed, moved or changed, citekeys added and dropped,
 figures redrawn -- and a redline of the prose. The output is a review
 copy: never gated, never a deliverable, never a source.
 """
+
+from chitragupta.draft_diff._cli import main
+
+__all__ = ["main"]

@@ -678,7 +678,7 @@ tier each command is in; this is the reason there are tiers at all.
 
 | Tier | Needs | Commands |
 | --- | --- | --- |
-| 1 | bare `python`, stdlib only | `chitragupta.draft` (all twelve commands; `style` also probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all eleven aids) |
+| 1 | bare `python`, stdlib only | `chitragupta.draft` (all thirteen commands; `style` also probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all eleven aids) |
 | 2 | venv + `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | venv + the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -733,15 +733,15 @@ by that aid's own parser. The submodules inside `chitragupta/enrich/` and
 done nothing. That is a trap, but a silent and harmless one, and it is
 the price of there being exactly one `--help` per layer.
 
-The drafting layer's twelve commands carry the same trap without moving
+The drafting layer's thirteen commands carry the same trap without moving
 into a package. `citation_gate.py`, `dossier/`, `references.py`,
 `evidence_appendix.py`, `render_output/`, `retrieval.py`,
-`style_check.py`, `spec/`, `unit/`, `registry/`, `tldr.py` and
-`draft_figures.py` sit in `chitragupta/` itself, each a top-level
+`style_check.py`, `spec/`, `unit/`, `registry/`, `tldr.py`,
+`draft_figures.py` and `draft_diff/` sit in `chitragupta/` itself, each a top-level
 module or package, never gathered into a shared drafting subpackage the
 way `enrich/`'s stages are. `chitragupta/draft.py` beside them is the
 layer's one front door, and none of them carries a `__main__` block.
-So `python -m chitragupta.dossier`, or any of the other eleven, is the same
+So `python -m chitragupta.dossier`, or any of the other twelve, is the same
 silent no-op as the nested form above.
 
 One module refuses instead: `chitragupta/sync.py`. Silence is an

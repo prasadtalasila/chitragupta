@@ -41,6 +41,7 @@ short path; this is the full set.
   - [`chitragupta draft registry`](#-chitragupta-draft-registry)
   - [`chitragupta draft tldr`](#-chitragupta-draft-tldr)
   - [`chitragupta draft figures`](#-chitragupta-draft-figures)
+  - [`chitragupta draft diff`](#-chitragupta-draft-diff)
   - [`chitragupta review agenda`](#-chitragupta-review-agenda)
   - [`chitragupta review figure`](#-chitragupta-review-figure)
   - [`chitragupta review coverage`](#-chitragupta-review-coverage)
@@ -167,7 +168,7 @@ not resolve there fails silently. It says `python`, and
 
 | Tier | Interpreter | Commands |
 | --- | --- | --- |
-| 1 | **`python`**: stdlib only, no venv | `chitragupta.draft` (all twelve commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover` (its semantic rung upgrades itself when tier 3 is installed), `chitragupta.review` (all eleven aids; `support` needs the `enrich` extra and exits 0 with a notice without it) |
+| 1 | **`python`**: stdlib only, no venv | `chitragupta.draft` (all thirteen commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover` (its semantic rung upgrades itself when tier 3 is installed), `chitragupta.review` (all eleven aids; `support` needs the `enrich` extra and exits 0 with a notice without it) |
 | 2 | **`.venv-full/bin/python`**: venv, for `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | **`.venv-full/bin/python`**: venv with the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -1187,7 +1188,9 @@ chitragupta draft dossier outline content/drafts/survey.md --check
 | `sections <draft>` | Heading -> line range, for reading and editing one section instead of the file |
 | `sections <draft> --citekeys` | The dossier's `sections.md` table, derived from the draft: each heading with the citekeys cited under it. `--write` puts it in the dossier |
 | `outline <draft>` | Read and validate `outline.md`, the human's own per-section brief/claim/declared queries. A section is a `##`-or-deeper heading; a level-1 line is the file's own title and is passed over. **Exits 1** if there's no `outline.md`, or if a section has neither a `brief:` nor a `claim:` block |
-| `mark-revision <draft>` | Record a revision-session boundary in `retrieval.md`, so `status` can total retrieval cost per revision instead of only as one lifetime figure |
+| `mark-revision <draft>` | Record a revision-session boundary in `retrieval.md`, so `status` can total retrieval cost per revision instead of only as one lifetime figure. Also keeps a numbered snapshot of the draft and its figures under the dossier's `versions/`, skipped when the draft is unchanged since the latest one |
+| `snapshot <draft> --label TEXT` | Keep the draft as it is now, with both forms of every figure it names, as a named version (`002-sent-to-supervisor`) for `draft diff --against`. Always taken, even when unchanged |
+| `versions <draft>` | Every snapshot the dossier holds, oldest first: number, date, trigger, and its label or revision label |
 | `stamp <draft>` | Record the draft's current text digest in `scope.md`, so `status` can report `CHANGED since last stamp` on a later hand edit. Run after `gate` passes, never before |
 | `set-language <draft> <language>` | Record the draft's dialect (a BCP-47 tag: `en-GB`, `en-US`, `en-IN`) in `scope.md`, so `chitragupta.draft style` can check it |
 | `acronyms-suggest <draft>` | Acronyms this draft's glossary or prose defines that aren't in `[style].acronyms` yet. Prints only; writes nothing |
@@ -1207,7 +1210,9 @@ chitragupta draft dossier outline content/drafts/survey.md --check
 | `--outline` | `init` | Also create `outline.md`. Opt-in, since most dossiers don't have one |
 | `--all` | `status` | Report every dossier instead of one draft. Mutually exclusive with a draft path |
 | `--json` | `status` | Emit the drift report as JSON, for `draft-reviser` rather than a terminal |
-| `--label TEXT` | `mark-revision` | Short name for this revision. Optional; an unlabelled marker is numbered by order instead (`revision 1`, `revision 2`, ...) |
+| `--label TEXT` | `mark-revision` | Short name for this revision. Optional; an unlabelled marker is numbered by order instead (`revision 1`, `revision 2`, ...). Stored as the snapshot's description, never as its label |
+| `--label TEXT` | `snapshot` | Required: the milestone's name, as the author gave it. Not all digits, unique within the draft, and holding at least one ASCII letter or digit |
+| `--json` | `versions` | Emit the list as JSON, each snapshot's path relative to `content/` |
 | `--citekeys` | `sections` | Print the derived `sections.md` table instead of the outline. A citekey cited above the first heading is reported on stderr, never filed under a section that doesn't contain it |
 | `--write` | `sections` | With `--citekeys`: write the table into the dossier's `sections.md`, replacing what is there. Refused without `--citekeys`, and refused when the dossier doesn't exist |
 | `--check` | `outline`, `brief` | With `outline`: report shape problems without printing the sections. With `brief`: report what resolves, and what doesn't, without printing the blocks. This is what an orchestrator runs before dispatching |
@@ -1226,6 +1231,10 @@ chitragupta draft dossier sections content/drafts/survey.md --citekeys --write
 
 # Before a revision session's first retrieval call
 chitragupta draft dossier mark-revision content/drafts/survey.md --label "shorten intro"
+
+# A milestone the author named, to diff against later
+chitragupta draft dossier snapshot content/drafts/survey.md --label "sent to supervisor"
+chitragupta draft dossier versions content/drafts/survey.md
 
 # After `draft gate` passes, so `status` can tell a later hand edit apart
 # from an unchanged draft
@@ -1965,6 +1974,46 @@ a path, never by importing that layer, so an ordinary drafting run needs
 none of its optional dependencies. The index lists figures rather than
 every picture on the page;
 [CONFIG.md](CONFIG.md#-docling_images) says what that excludes and why.
+
+### 🔀 `chitragupta draft diff`
+
+What changed in a draft since a snapshot of it. The baseline is the
+latest snapshot (`dossier mark-revision` takes one each pass), or
+`--against` a snapshot number, a snapshot label, or any file. The
+output is a review copy: never gated, never a deliverable, never a
+source.
+
+```bash
+chitragupta draft diff content/drafts/survey.md
+chitragupta draft diff content/drafts/survey.md --against "sent to supervisor" --format pdf
+chitragupta draft diff content/drafts/survey.md --against 2 --json
+```
+
+| Flag | Default | What it does |
+| --- | --- | --- |
+| `<draft>` | required | The draft, under `content/drafts/` |
+| `--against REF` | the latest snapshot | A snapshot number (`2`, `002`), a snapshot label, or a path. A path wins when it exists as a file; a file with no `figures/` beside it leaves the figures uncompared |
+| `--format md\|pdf` | `md` | `md` writes the change report; `pdf` also writes a redline, built with latexdiff from both versions rendered with their citations deferred |
+| `--json` | off | Print the report as JSON instead of Markdown. Both files are written either way |
+
+The change report lists sections added, removed, moved or changed (each
+with the `revisions.md` entries whose `Sections:` line names it),
+citekeys added and dropped, figures added, removed or redrawn, and any
+changed section no log entry explains. It is written to
+`content/review/<topic>/` as `<stem>.diff.md` and `<stem>.diff.json`
+before any PDF work starts; `pdf` adds `<stem>.diff.tex` and
+`<stem>.diff.pdf`, with the two rendered sides kept in `<stem>.diff/`.
+A citation in the baseline whose key is no longer citable becomes
+`(citation withdrawn)` on the old side of the redline, and the report
+names the key.
+
+| Situation | Exit |
+| --- | --- |
+| Report written, including `No changes.` (no PDF then, and an older redline is removed) | 0 |
+| No snapshot yet, an unknown `--against`, a `.md` draft against a `.tex` baseline, or a draft outside `content/drafts/` | 1 |
+| `--format pdf` without latexdiff, LuaLaTeX or bibtexu, a side the gate refuses, or a redline that does not compile after one retry | 1, the report already written |
+
+Each refusal is one `[error]` line on stderr.
 
 ### 🗺 `chitragupta review agenda`
 

@@ -522,7 +522,7 @@ because nothing degrades: a module either imports or raises
 
 | # | Needs | Commands |
 | --- | --- | --- |
-| 1 | bare `python`, stdlib only | `chitragupta.draft` (all twelve commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover`, `chitragupta.review` (all eleven aids; `support` and `verbatim`'s tier 3 also need the `enrich` group to score, and say so when it is missing) |
+| 1 | bare `python`, stdlib only | `chitragupta.draft` (all thirteen commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover`, `chitragupta.review` (all eleven aids; `support` and `verbatim`'s tier 3 also need the `enrich` group to score, and say so when it is missing) |
 | 2 | a venv with `bibtexparser` | `python -m chitragupta.corpus sync` |
 | 3 | a venv with the `enrich` group | `python -m chitragupta.enrich` |
 

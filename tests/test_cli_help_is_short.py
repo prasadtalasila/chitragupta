@@ -44,10 +44,11 @@ ENTRY_POINTS = {
 # not by the author.
 _MAX_DESCRIPTION_CHARS = 200
 
-# What a whole `--help` is allowed to run to. The four entry points land
-# between 12 and 20 lines; 30 leaves room for a verb or a flag to be added
+# What a whole `--help` is allowed to run to. The five entry points land
+# between 16 and 32 lines (`draft`, at thirteen verbs since `draft diff`,
+# is the long one); 35 leaves room for a verb or a flag to be added
 # without re-tuning, and still fails loudly on a docstring coming back.
-_MAX_HELP_LINES = 30
+_MAX_HELP_LINES = 35
 
 
 def _help(module_path):

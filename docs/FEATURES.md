@@ -370,6 +370,18 @@ the section's new wording as ITER-RETGEN's `y_{t-1}` (Shao et al.,
 would otherwise occupy. Exactly two rounds, merged and capped, never
 applied unasked.
 
+What a revision pass changed can be seen, not only read about in
+`revisions.md`. Every `mark-revision` keeps a numbered snapshot of the
+draft and its figures in the dossier, and `dossier snapshot --label`
+keeps a named one, such as the version sent to a supervisor.
+`draft diff <draft>` compares the draft with the latest snapshot, or
+`--against` a number, a label or any file, and writes a change report
+beside the review reports: sections added, removed, moved or changed,
+each linked to the `revisions.md` entry that names it, citekeys added
+and dropped, and figures redrawn. `--format pdf` adds a redline of the
+prose, built with latexdiff. Both are review copies: never gated, never
+a deliverable, never a source.
+
 ### 📖 Evidence: `claim:` and `quote:`
 
 Kept evidence records what a source establishes in the drafter's own
