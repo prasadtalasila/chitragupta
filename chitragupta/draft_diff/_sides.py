@@ -97,6 +97,52 @@ def _joined(pieces: list[str], separator: str) -> str:
     return separator.join([pieces[0].lstrip(), *pieces[1:]])
 
 
+def _latex_keys(prose: str) -> "list[tuple[int, str]]":
+    """(command offset, key) for every key of every `\\cite*{...}`: what a
+    group item cites in raw LaTeX, beside its Pandoc citations."""
+    return [
+        (match.start(), key.strip())
+        for match in citation_gate._LATEX_CITE_RE.finditer(prose)
+        for token in citation_gate._CITE_KEYS_RE.finditer(match.group(1))
+        if token.group(1) is not None
+        for key in token.group(1).split(",")
+        if key.strip()
+    ]
+
+
+def _group_edits(
+    prose: str,
+    source: str,
+    group: "tuple[int, int]",
+    cites: list,
+    raw: "list[tuple[int, str]]",
+    gone: Callable[[str], bool],
+) -> "list[tuple[int, int, str]]":
+    """The edits that take the withdrawn keys out of one bracketed group."""
+    opened, closed = group
+    edits, kept, dropped = [], [], False
+    for item_start, item_end in _items(prose, opened, closed):
+        here = [cite for cite in cites if item_start <= cite[0] < item_end]
+        # A raw `\\citep{}` in the item cites too: an item whose only
+        # kept key is one is not citation-free, and must stay.
+        keys = [key for _, _, key in here] + [
+            key for start, key in raw if item_start <= start < item_end
+        ]
+        if keys and all(gone(key) for key in keys):
+            dropped = True
+            continue
+        kept.append((source[item_start:item_end], bool(keys)))
+        # One item citing a kept key and a withdrawn one has no
+        # separator to drop at; the withdrawn one is replaced in place
+        # (a withdrawn raw key, by `_latex_edits`).
+        edits += [(start, end, WITHDRAWN) for start, end, key in here if gone(key)]
+    if not any(cites_here for _, cites_here in kept):
+        return [(opened, closed + 1, WITHDRAWN)]
+    if dropped:
+        edits.append((opened + 1, closed, _joined([text for text, _ in kept], ";")))
+    return edits
+
+
 def _pandoc_edits(
     prose: str, labels: "set[str]", source: str, latex: bool, gone: Callable[[str], bool]
 ) -> "list[tuple[int, int, str]]":
@@ -105,6 +151,7 @@ def _pandoc_edits(
     if not withdrawn:
         return []
     pairs = _bracket_pairs(prose, source)
+    raw = _latex_keys(prose)
     edits, groups = [], set()
     for start, end, _ in withdrawn:
         group = _group_of(start, pairs, source)
@@ -113,20 +160,7 @@ def _pandoc_edits(
         else:
             groups.add(group)
     for opened, closed in groups:
-        kept, dropped = [], False
-        for item_start, item_end in _items(prose, opened, closed):
-            here = [cite for cite in cites if item_start <= cite[0] < item_end]
-            if here and all(gone(key) for _, _, key in here):
-                dropped = True
-                continue
-            kept.append((source[item_start:item_end], bool(here)))
-            # One item citing a kept key and a withdrawn one has no
-            # separator to drop at; the withdrawn one is replaced in place.
-            edits += [(start, end, WITHDRAWN) for start, end, key in here if gone(key)]
-        if not any(cites_here for _, cites_here in kept):
-            edits.append((opened, closed + 1, WITHDRAWN))
-        elif dropped:
-            edits.append((opened + 1, closed, _joined([text for text, _ in kept], ";")))
+        edits += _group_edits(prose, source, (opened, closed), cites, raw, gone)
     return edits
 
 

@@ -97,6 +97,28 @@ def test_withdraw_reaches_a_citation_nested_in_another_edit():
     assert withdraw(text, ".md", _citable) == f"X {WITHDRAWN}.\n"
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "A [see \\citep{sample_dt_sync_2023}; @sample_std_interop_2021].\n",
+        "A [\\citep{sample_dt_sync_2023} @sample_std_interop_2021; @sample_dt_overview_2024].\n",
+    ],
+)
+def test_withdraw_keeps_a_citable_raw_latex_citation_inside_a_group(text):
+    # The item's only kept key is a raw `\citep{}`: it is not
+    # citation-free, so neither the item nor the group may go.
+    out = withdraw(text, ".md", _citable)
+
+    assert "sample_dt_sync_2023" in _keys(out)
+    assert _GONE not in _keys(out)
+
+
+def test_withdraw_drops_the_pandoc_item_beside_a_raw_latex_one():
+    text = "A [see \\citep{sample_dt_sync_2023}; @sample_std_interop_2021].\n"
+
+    assert withdraw(text, ".md", _citable) == "A [see \\citep{sample_dt_sync_2023}].\n"
+
+
 def test_withdraw_tex_citep_whole_and_mixed():
     whole = "Agreed per project \\citep{sample_std_interop_2021}.\n"
     mixed = "Drift \\citep{sample_dt_sync_2023, sample_std_interop_2021}.\n"
