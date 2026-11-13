@@ -1203,7 +1203,7 @@ class TestDeferredCitations:
     """`render(defer_citations=True)`: a standalone article whose citations
     stay `\\citep{key}` for bibtex, which is what lets latexdiff compare
     two versions of a draft by key rather than by citeproc's numbers --
-    one added citation renumbers every later one (plans/draft-diff.md,
+    one added citation renumbers every later one (plans/1194-draft-diff.md,
     spike findings)."""
 
     @staticmethod

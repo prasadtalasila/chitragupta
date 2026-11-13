@@ -1,4 +1,4 @@
-"""The redline end to end: the spike scenario of plans/draft-diff.md,
+"""The redline end to end: the spike scenario of plans/1194-draft-diff.md,
 replayed on the sample project with the real toolchain.
 
 pandoc renders both sides with deferred citations, latexdiff marks the

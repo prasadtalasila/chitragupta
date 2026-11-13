@@ -5,7 +5,7 @@ Both sides are standalone articles whose citations are still
 a citation only where one was added or dropped. Its output is patched
 here rather than configured: latexdiff's default markup loads `ulem`,
 which TeX Live's `texlive-luatex` does not carry, and `--preamble`
-needs a Perl module the bare script lacks (plans/draft-diff.md, "Spike
+needs a Perl module the bare script lacks (plans/1194-draft-diff.md, "Spike
 findings"). So the markup is redefined with `lua-ul`, which does ship
 there, after latexdiff's own preamble and before `\\begin{document}`.
 

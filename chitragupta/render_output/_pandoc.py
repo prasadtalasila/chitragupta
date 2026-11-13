@@ -137,7 +137,7 @@ def _pandoc_command(
     standalone article whose labels need no prefix. `draft diff` renders
     both versions of a draft this way so latexdiff compares `\\citep{key}`
     with `\\citep{key}`; resolved, one new citation renumbers every later
-    one and each renumbering reads as a change (plans/draft-diff.md).
+    one and each renumbering reads as a change (plans/1194-draft-diff.md).
     """
     deferred = fragment or defer_citations
     # A fragment is for `\input` into a larger document, so it gets no

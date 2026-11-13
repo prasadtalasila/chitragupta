@@ -7,7 +7,7 @@ directory is computed with the rule `review/_paths.report_dir` uses,
 restated rather than imported: the drafting layer does not reach into
 the review layer.
 
-The output is a review copy (plans/draft-diff.md, decision 14): it is
+The output is a review copy (plans/1194-draft-diff.md, decision 14): it is
 never gated as a draft, never rendered as a deliverable, and never read
 back as a source. Each side of the redline is still gated by `render()`,
 unchanged.
@@ -155,7 +155,7 @@ def _redline_pdf(
     )
     # The sides sit in the review directory, where no `math.md` mirrors,
     # so both take the draft's own: figures are shown as they are now
-    # (plans/draft-diff.md, decision 12), and so is the mathematics.
+    # (plans/1194-draft-diff.md, decision 12), and so is the mathematics.
     mapping = math_mapping_path(draft)
     old_tex, new_tex = (
         render_output.render(

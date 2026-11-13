@@ -2,7 +2,7 @@
 
 Each side is a version's text and both forms of each figure it names,
 written to `<work>/old/` or `<work>/new/`. The old side is rewritten in
-one way only (plans/draft-diff.md, decision 11): a citation whose key is
+one way only (plans/1194-draft-diff.md, decision 11): a citation whose key is
 not citable now becomes the plain words `(citation withdrawn)`, so the
 gate, which runs unchanged on both sides, passes a baseline that cited a
 paper since dropped from the corpus. The new side is the draft as it

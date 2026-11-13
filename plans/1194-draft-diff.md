@@ -1,7 +1,6 @@
 # Draft versions and a redline diff of a revision
 
-Status: **plan.** Written 2026-11-13. Issue to be filed; rename this
-file `<issue>-draft-diff.md` when it is.
+Status: **plan.** Written 2026-11-13 for issue #1194.
 
 **Written for** whoever builds draft snapshots and `draft diff`, and
 whoever later changes a reviser skill's closing step. **Assumed:**

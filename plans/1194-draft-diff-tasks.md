@@ -23,7 +23,7 @@ it with LuaLaTeX and `bibtexu`.
 `subprocess`), pandoc, latexdiff, LuaLaTeX, `lua-ul`, `marginnote`,
 `bibtexu`.
 
-**Spec:** [plans/draft-diff.md](draft-diff.md). Read it first; this file
+**Spec:** [plans/1194-draft-diff.md](1194-draft-diff.md). Read it first; this file
 does not restate its decisions or spike findings.
 
 ## Global Constraints
@@ -852,8 +852,8 @@ git commit -m "Have every reviser end by showing what it changed"
 
 - Modify: `docs/DRAFT-ITERATION.md` (a section on reviewing a revision:
   the commands an author runs, from the spec's §4), `pyproject.toml`
-  (`6.172.0`), `plans/draft-diff.md` (rename to `<issue>-draft-diff.md`
-  and this file to match, once the issue exists)
+  (`6.172.0`), `plans/1194-draft-diff.md` (renamed from `draft-diff.md`
+  once #1194 was filed, and this file to match)
 
 - [ ] **Step 1: Write the docs section** with the five author commands
   (doctor, snapshot, versions, diff three ways, where the outputs land).
