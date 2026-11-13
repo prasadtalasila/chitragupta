@@ -15,6 +15,7 @@ from pathlib import Path
 
 from chitragupta import config
 from chitragupta.dossier._citekeys import cited_citekeys, declared_citekeys
+from chitragupta.dossier._versions import versions_summary
 from chitragupta.dossier import (
     EVIDENCE_MD,
     FILES,
@@ -173,6 +174,8 @@ def _cmd_status(args: argparse.Namespace) -> int:
 
     print(f"Dossier: {draft_relpath(report.dossier)}")
     _print_status_files(report)
+    if report.draft is not None:
+        print(versions_summary(report.draft))
     _print_status_retrieval(report)
     _print_status_outline(report)
     print()

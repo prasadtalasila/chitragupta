@@ -33,6 +33,7 @@ from chitragupta.dossier._sections import _cmd_sections
 from chitragupta.dossier._outline import _cmd_outline
 from chitragupta.dossier._prune import _cmd_prune
 from chitragupta.dossier._status import _cmd_status
+from chitragupta.dossier._versions import VersionError, _cmd_snapshot, _cmd_versions
 
 _DRAFT_PATH_HELP = "Path to the draft under content/drafts/"
 
@@ -72,6 +73,29 @@ def _add_mark_revision_parser(sub) -> None:
         "--label", default="", help="Short name for this revision (the date is already recorded)"
     )
     p_mark_revision.set_defaults(func=_cmd_mark_revision)
+
+
+def _add_snapshot_parser(sub) -> None:
+    p_snapshot = sub.add_parser(
+        "snapshot",
+        help="Keep the draft as it is now as a named version, for `draft diff --against`",
+    )
+    p_snapshot.add_argument("draft", help=_DRAFT_PATH_HELP)
+    p_snapshot.add_argument(
+        "--label",
+        required=True,
+        help="The milestone's name, as the author gave it (not all digits)",
+    )
+    p_snapshot.set_defaults(func=_cmd_snapshot)
+
+
+def _add_versions_parser(sub) -> None:
+    p_versions = sub.add_parser(
+        "versions", help="Every snapshot of the draft the dossier holds, oldest first"
+    )
+    p_versions.add_argument("draft", help=_DRAFT_PATH_HELP)
+    p_versions.add_argument("--json", action="store_true", help="Machine-readable list")
+    p_versions.set_defaults(func=_cmd_versions)
 
 
 def _add_stamp_parser(sub) -> None:
@@ -230,6 +254,8 @@ def main(argv: list[str] | None = None) -> int:
     _add_init_parser(sub)
     _add_status_parser(sub)
     _add_mark_revision_parser(sub)
+    _add_snapshot_parser(sub)
+    _add_versions_parser(sub)
     _add_stamp_parser(sub)
     _add_sections_parser(sub)
     _add_prune_parser(sub)
@@ -245,6 +271,6 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         return args.func(args)
-    except DossierError as exc:
+    except (DossierError, VersionError) as exc:
         print(f"[error] {exc}", file=sys.stderr)
         return 1

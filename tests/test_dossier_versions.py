@@ -9,12 +9,13 @@ one.
 """
 
 import json
+import shutil
 
 import pytest
 
-from chitragupta import config
+from chitragupta import config, dossier
 from chitragupta.dossier import dossier_dir
-from chitragupta.dossier import _versions
+from chitragupta.dossier import _retrieval, _versions
 from chitragupta.dossier._versions import VersionError
 
 _MD_DRAFT = "# A survey\n\n## 1. First\n\ntext\n\n<!-- figure: figures/estimator-loop -->\n"
@@ -244,3 +245,174 @@ def test_a_failed_write_leaves_no_version_behind(isolated_config, monkeypatch):
     with pytest.raises(OSError, match="disk full"):
         _versions.take(draft, trigger="mark-revision")
     assert list(_versions_dir(draft).iterdir()) == []
+
+
+def test_mark_revision_takes_a_snapshot_with_its_label(isolated_config):
+    draft = _draft()
+
+    path = _retrieval.mark_revision(draft, "shorten §4")
+
+    snap = _versions.latest(draft)
+    assert snap.trigger == "mark-revision"
+    assert snap.revision_label == "shorten §4" and snap.label == ""
+    assert "| shorten §4 |" in path.read_text(encoding="utf-8")
+
+
+def test_mark_revision_unchanged_draft_writes_row_but_no_snapshot(isolated_config):
+    draft = _draft()
+    _retrieval.mark_revision(draft, "pass 1")
+
+    path = _retrieval.mark_revision(draft, "pass 2")
+
+    assert [snap.ref for snap in _versions.list_versions(draft)] == ["001"]
+    assert "| pass 2 |" in path.read_text(encoding="utf-8")
+
+
+def test_mark_revision_on_a_missing_draft_writes_row_but_no_snapshot(isolated_config):
+    draft = config.DRAFTS_DIR / "dt" / "nowhere.md"
+
+    path = _retrieval.mark_revision(draft, "pass 1")
+
+    assert "| pass 1 |" in path.read_text(encoding="utf-8")
+    assert _versions.list_versions(draft) == []
+
+
+def test_a_corrupt_snapshot_warns_but_still_marks_the_revision(isolated_config, capsys):
+    """A broken manifest must not stop a revision pass: the boundary row
+    is what retrieval cost accounting reads, and it does not need the
+    snapshot to be right."""
+    draft = _draft()
+    snap = _versions.take(draft, trigger="mark-revision")
+    (snap.path / _versions.SNAPSHOT_JSON).write_text("{not json", encoding="utf-8")
+
+    path = _retrieval.mark_revision(draft, "pass 2")
+
+    assert "| pass 2 |" in path.read_text(encoding="utf-8")
+    err = capsys.readouterr().err
+    assert err.startswith("[warning] ")
+    assert "not a snapshot manifest" in err and err.rstrip().endswith("; no snapshot taken")
+
+
+def test_snapshot_command_prints_ref_and_exits_0(isolated_config, capsys):
+    draft = _draft()
+    _versions.take(draft, trigger="mark-revision")
+
+    assert dossier.main(["snapshot", str(draft), "--label", "sent to supervisor"]) == 0
+
+    out = capsys.readouterr().out
+    assert out.startswith("Snapshot 002-sent-to-supervisor of ")
+    assert "survey.md" in out
+    assert _versions.latest(draft).trigger == "manual"
+
+
+@pytest.mark.parametrize("bad", ["2024", "!!!"])
+def test_snapshot_command_bad_label_exits_1(isolated_config, capsys, bad):
+    draft = _draft()
+
+    assert dossier.main(["snapshot", str(draft), "--label", bad]) == 1
+
+    assert capsys.readouterr().err.startswith("[error] ")
+    assert _versions.list_versions(draft) == []
+
+
+def test_snapshot_command_on_a_missing_draft_exits_1(isolated_config, capsys):
+    missing = config.DRAFTS_DIR / "nowhere.md"
+
+    assert dossier.main(["snapshot", str(missing), "--label", "x"]) == 1
+
+    assert "No such draft" in capsys.readouterr().err
+
+
+def test_versions_command_lists_and_json(isolated_config, capsys):
+    draft = _draft()
+    _retrieval.mark_revision(draft, "shorten §4")
+    _versions.take(draft, trigger="manual", label="sent to supervisor")
+    capsys.readouterr()
+
+    assert dossier.main(["versions", str(draft)]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    today = _versions.latest(draft).taken_at[:10]
+    assert lines[0].split() == ["001", today, "mark-revision", '"shorten', '§4"']
+    assert lines[1].split() == ["002", today, "manual", "sent", "to", "supervisor"]
+
+    assert dossier.main(["versions", str(draft), "--json"]) == 0
+    listed = json.loads(capsys.readouterr().out)
+    assert [entry["number"] for entry in listed] == [1, 2]
+    assert listed[1]["label"] == "sent to supervisor"
+    assert listed[1]["path"] == "dossiers/dt/survey/versions/002-sent-to-supervisor"
+    assert set(listed[0]) == {
+        "number",
+        "label",
+        "taken_at",
+        "trigger",
+        "revision_label",
+        "fingerprint",
+        "draft_name",
+        "path",
+    }
+
+
+def test_versions_command_with_none_says_so(isolated_config, capsys):
+    draft = _draft()
+
+    assert dossier.main(["versions", str(draft)]) == 0
+    assert "no snapshots yet" in capsys.readouterr().out
+    assert dossier.main(["versions", str(draft), "--json"]) == 0
+    assert json.loads(capsys.readouterr().out) == []
+
+
+def test_versions_command_on_a_corrupt_manifest_exits_1(isolated_config, capsys):
+    draft = _draft()
+    snap = _versions.take(draft, trigger="mark-revision")
+    (snap.path / _versions.SNAPSHOT_JSON).write_text("{not json", encoding="utf-8")
+
+    assert dossier.main(["versions", str(draft)]) == 1
+    assert capsys.readouterr().err.startswith("[error] ")
+
+
+def test_status_reports_versions_line(isolated_config, capsys):
+    draft = _draft()
+    dossier.init(draft, "survey")
+    assert dossier.main(["status", str(draft)]) == 0
+    assert "Versions: none yet" in capsys.readouterr().out
+
+    _versions.take(draft, trigger="mark-revision")
+    newest = _versions.take(draft, trigger="manual", label="milestone")
+    assert dossier.main(["status", str(draft)]) == 0
+    assert f"Versions: 2, latest 002 ({newest.taken_at[:10]})" in capsys.readouterr().out
+
+
+def test_status_reports_an_unreadable_snapshot_without_failing(isolated_config, capsys):
+    draft = _draft()
+    dossier.init(draft, "survey")
+    snap = _versions.take(draft, trigger="mark-revision")
+    (snap.path / _versions.SNAPSHOT_JSON).write_text("{not json", encoding="utf-8")
+
+    assert dossier.main(["status", str(draft)]) == 0
+    assert "Versions: unreadable" in capsys.readouterr().out
+
+
+def test_export_restore_round_trip_keeps_versions(isolated_config, tmp_path):
+    draft = _draft()
+    _figure(draft, "figures/estimator-loop")
+    dossier.init(draft, "survey")
+    first = _versions.take(draft, trigger="mark-revision", revision_label="pass 1")
+    draft.write_text(_MD_DRAFT + "\nmore\n", encoding="utf-8")
+    _versions.take(draft, trigger="manual", label="sent to supervisor")
+    held = sorted(
+        path.relative_to(_versions_dir(draft)).as_posix()
+        for path in _versions_dir(draft).rglob("*")
+    )
+    archive, _ = dossier.export([], tmp_path / "bundle.tar.gz")
+    shutil.rmtree(dossier_dir(draft))
+
+    dossier.restore(archive, force=True)
+
+    restored = sorted(
+        path.relative_to(_versions_dir(draft)).as_posix()
+        for path in _versions_dir(draft).rglob("*")
+    )
+    assert restored == held
+    assert [snap.ref for snap in _versions.list_versions(draft)] == ["001", "002"]
+    assert _versions.resolve(draft, "1").source.read_bytes() == first.source.read_bytes()
+    assert _versions.resolve(draft, "sent to supervisor").label == "sent to supervisor"

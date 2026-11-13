@@ -37,6 +37,8 @@ DRAFT_SUBCOMMANDS = {
         "init",
         "status",
         "mark-revision",
+        "snapshot",
+        "versions",
         "stamp",
         "sections",
         "prune",

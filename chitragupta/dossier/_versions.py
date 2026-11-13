@@ -17,16 +17,19 @@ a crash leaves a `.tmp-*` directory `list_versions` never reads rather
 than a version missing half its figures.
 """
 
+import argparse
 import json
 import re
 import shutil
+import sys
 import tempfile
 import unicodedata
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-from chitragupta.dossier import dossier_dir
+from chitragupta import config
+from chitragupta.dossier import dossier_dir, draft_relpath
 from chitragupta.render_output._figures import (
     _FIGURE_MARKER_MD_RE,
     _FIGURE_MARKER_TEX_RE,
@@ -109,7 +112,9 @@ def _read(version_dir: Path) -> Snapshot:
         data = json.loads((version_dir / SNAPSHOT_JSON).read_text(encoding="utf-8"))
         return Snapshot(**data, path=version_dir)
     except (ValueError, TypeError) as error:
-        raise VersionError(f"{version_dir / SNAPSHOT_JSON} is not a snapshot manifest: {error}")
+        raise VersionError(
+            f"{version_dir / SNAPSHOT_JSON} is not a snapshot manifest: {error}"
+        ) from error
 
 
 def _numbered_dirs(draft: Path) -> list[tuple[int, Path]]:
@@ -241,3 +246,48 @@ def resolve(draft: Path, ref: str | None) -> Snapshot:
             return snap
     held = ", ".join(snap.path.name for snap in versions)
     raise VersionError(f"{draft.name} has no version {ref!r}. It has: {held}.")
+
+
+def versions_summary(draft: Path) -> str:
+    """`dossier status`'s one line: how many versions, and the latest."""
+    try:
+        versions = list_versions(draft)
+    except VersionError as error:
+        # `status` is what a person runs to find out what is wrong, so it
+        # reports a broken manifest rather than failing on it.
+        return f"Versions: unreadable -- {error}"
+    if not versions:
+        return "Versions: none yet"
+    newest = versions[-1]
+    return f"Versions: {len(versions)}, latest {newest.ref} ({newest.taken_at[:10]})"
+
+
+def _cmd_snapshot(args: argparse.Namespace) -> int:
+    draft = Path(args.draft)
+    if not draft.is_file():
+        print(f"[error] No such draft: {args.draft}", file=sys.stderr)
+        return 1
+    snap = take(draft, trigger=MANUAL, label=args.label)
+    print(f"Snapshot {snap.path.name} of {draft_relpath(draft)}")
+    return 0
+
+
+def _as_json(snap: Snapshot) -> dict:
+    entry = asdict(snap)
+    entry["path"] = snap.path.resolve().relative_to(config.CONTENT_DIR.resolve()).as_posix()
+    return entry
+
+
+def _cmd_versions(args: argparse.Namespace) -> int:
+    draft = Path(args.draft)
+    versions = list_versions(draft)
+    if args.json:
+        print(json.dumps([_as_json(snap) for snap in versions], indent=2))
+        return 0
+    if not versions:
+        print(f"{draft.name} has no snapshots yet; `dossier mark-revision` takes the first.")
+        return 0
+    for snap in versions:
+        about = snap.label or (f'"{snap.revision_label}"' if snap.revision_label else "")
+        print(f"{snap.ref}  {snap.taken_at[:10]}  {snap.trigger:<13}  {about}".rstrip())
+    return 0

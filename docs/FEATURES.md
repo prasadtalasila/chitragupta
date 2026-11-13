@@ -341,9 +341,9 @@ usually the model resuming a draft weeks later, not a person. That
 separates it from [REVIEW.md](REVIEW.md), which is written for you.
 
 `chitragupta draft dossier` is how you work with one by hand: `init`,
-`status`, `mark-revision`, `stamp`, `sections`, `prune`, `outline`,
-`brief`, `set-language`, `acronyms-suggest`, `check-evidence`, `list`,
-and `export`/`restore` for backup.
+`status`, `mark-revision`, `snapshot`, `versions`, `stamp`, `sections`,
+`prune`, `outline`, `brief`, `set-language`, `acronyms-suggest`,
+`check-evidence`, `list`, and `export`/`restore` for backup.
 `status` is the one to know. It recomputes the corpus fingerprint the
 dossier recorded, and if the corpus has moved it names the citekeys that
 appear nowhere in the dossier, neither kept nor rejected. That
