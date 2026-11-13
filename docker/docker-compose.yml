@@ -90,8 +90,11 @@ x-claude: &claude
     # belongs to, and `claude remote-control` refuses to start without that
     # ("Unable to determine your organization"). Point CHITRAGUPTA_CLAUDE_JSON
     # at the host's ~/.claude.json and entrypoint.sh copies its
-    # `oauthAccount` into the container's own file on every start. Read-only,
-    # and nothing else in it is read. Unset, /dev/null is mounted instead and
+    # `oauthAccount` into the container's own file on every start. Read-only.
+    # The entrypoint copies nothing else, but the whole file stays readable
+    # by the agent, which runs with bypassPermissions: if it holds secrets
+    # (an MCP server's env or headers), point this at a file holding only
+    # {"oauthAccount": ...} instead. Unset, /dev/null is mounted instead and
     # the entrypoint skips the copy. Long syntax for `create_host_path:
     # false`: with the short form, a mistyped path makes the Docker daemon
     # create a root-owned *directory* there on the host and the copy fails

@@ -33,8 +33,14 @@ log() { printf '[%s] %s\n' "$(date '+%F %T')" "$*" | tee -a "$LOG"; }
 supervise() {
   local backoff=5
   cd "$RC_DIR" || { log "cannot cd to $RC_DIR"; exit 1; }
-  if [ "$RC_SPAWN" = worktree ] && ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    log "$RC_DIR is not a git repository; RC_SPAWN=worktree needs one, using same-dir"
+  # Any git failure falls back, not only "not a repository": a workspace
+  # owned by another uid ("dubious ownership") or a linked worktree whose
+  # gitdir is outside the mount fails the same way, and claude's own
+  # worktree creation would fail there too. git's own message goes in the
+  # log line, so the cause is not misreported.
+  local why
+  if [ "$RC_SPAWN" = worktree ] && ! why=$(git rev-parse --is-inside-work-tree 2>&1 >/dev/null); then
+    log "RC_SPAWN=worktree needs git in $RC_DIR, using same-dir; git said: ${why:-(nothing)}"
     RC_SPAWN=same-dir
   fi
   while true; do
@@ -83,6 +89,11 @@ EOF
 case "${1:-}" in
   start)
     if running; then echo "already running (tmux session '$TMUX_SESSION')"; exit 0; fi
+    # A typo would otherwise make claude exit on every restart, forever.
+    case "$RC_SPAWN" in
+      worktree|same-dir|session) ;;
+      *) echo "not started; RC_SPAWN='$RC_SPAWN' is not one of worktree, same-dir, session" >&2; exit 1 ;;
+    esac
     preflight || exit 1
     tmux new-session -d -s "$TMUX_SESSION" \
       "RC_DIR='$RC_DIR' RC_NAME='$RC_NAME' RC_PREFIX='$RC_PREFIX' RC_PERMISSION_MODE='$RC_PERMISSION_MODE' RC_SPAWN='$RC_SPAWN' RC_LOG='$LOG' '$SELF' _supervise"

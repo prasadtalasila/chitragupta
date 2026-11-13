@@ -43,12 +43,22 @@ except (OSError, ValueError):
 # parse and is skipped. Copied on every start, so a re-login on the host
 # reaches the container at its next restart.
 host = os.path.expanduser("~/.claude.host.json")
-if os.path.isfile(host) and os.path.getsize(host):
+warn = "entrypoint: WARNING -- CHITRAGUPTA_CLAUDE_JSON: "
+if os.path.isdir(host):
+    # Left behind on the host by a short-syntax mount of a mistyped path.
+    print(warn + "the mounted path is a directory, not the host's ~/.claude.json")
+elif os.path.isfile(host) and os.path.getsize(host):
     try:
-        c["oauthAccount"] = json.load(open(host))["oauthAccount"]
+        acct = json.load(open(host)).get("oauthAccount")
+    except (OSError, ValueError, AttributeError) as e:
+        acct, why = None, f"{type(e).__name__}: {e}"
+    else:
+        why = "no oauthAccount in it; is the host logged in?"
+    if isinstance(acct, dict) and acct:
+        c["oauthAccount"] = acct
         print("entrypoint: account record copied from the host's ~/.claude.json")
-    except (OSError, ValueError, KeyError, TypeError) as e:
-        print(f"entrypoint: WARNING -- CHITRAGUPTA_CLAUDE_JSON has no usable account record ({type(e).__name__}: {e}); log in on the host first")
+    else:
+        print(warn + "no usable account record (" + why + ")")
 c["hasCompletedOnboarding"] = True
 c["remoteDialogSeen"] = True
 c.setdefault("projects", {}).setdefault(os.environ["RC_DIR"], {})["hasTrustDialogAccepted"] = True

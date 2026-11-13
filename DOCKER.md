@@ -246,7 +246,7 @@ developer's home directory and no release number. Set these in
 | `CHITRAGUPTA_PROJECT_NAME` | `chitragupta` | Compose's project name, which prefixes the network. Set it per workspace to run two of these side by side |
 | `CHITRAGUPTA_IMAGE_TAG` | `latest` | Which tag to run. This is how you point one workspace at a `:tmp` build without disturbing the `:latest` everything else uses |
 | `CHITRAGUPTA_CLAUDE_HOME` | `./claude` | Host directory for `/home/$CHITRAGUPTA_USER/.claude`. This is what persists the login, so a restart is not a re-authentication |
-| `CHITRAGUPTA_CLAUDE_JSON` | none | The host's `~/.claude.json`, mounted read-only. The entrypoint copies its account record (`oauthAccount`) into the container's own `~/.claude.json` on every start. Set it when `CHITRAGUPTA_CLAUDE_HOME` is the host's `~/.claude`: that carries the token but not the account, and remote-control then fails with `Unable to determine your organization` |
+| `CHITRAGUPTA_CLAUDE_JSON` | none | The host's `~/.claude.json`, mounted read-only. The entrypoint copies its account record (`oauthAccount`) into the container's own `~/.claude.json` on every start. Set it when `CHITRAGUPTA_CLAUDE_HOME` is the host's `~/.claude`: that carries the token but not the account, and remote-control then fails with `Unable to determine your organization`. The whole file is readable by the agent, so point it at a copy holding only `oauthAccount` if yours carries secrets |
 | `RC_NAME` / `RC_PREFIX` | container name | The agent's name in the remote-control UI, and the prefix for sessions it spawns |
 | `RC_PERMISSION_MODE` | `bypassPermissions` | Permission mode `claude remote-control` runs with. The container is the isolation boundary |
 | `RC_SPAWN` | `worktree` | What a session started from the app runs in: `worktree` (its own git worktree of the workspace; falls back to `same-dir`, with a log line, when the workspace is not a git repository), `same-dir` or `session`. Always passed, because unset, `claude` waits at a prompt nobody can answer |
@@ -371,6 +371,21 @@ reports `unhealthy` only if the supervisor itself is gone, not for a
 missing login. `docker logs <name>` is therefore the first thing to read
 when the remote-control UI does not list your agent, not `docker ps`,
 which will say `Up` either way.
+
+Two other lines you may find there:
+
+- `Error: Unable to determine your organization for Remote Control
+  eligibility.` The login is there but the account record is not. That
+  happens when `CHITRAGUPTA_CLAUDE_HOME` is the host's `~/.claude`,
+  because the record lives in `~/.claude.json` beside it. Set
+  `CHITRAGUPTA_CLAUDE_JSON` (see the table above) and recreate the
+  container.
+- `RC_SPAWN=worktree needs git in /workspace, using same-dir; git said:
+  ...`. Sessions from the app then share `/workspace` instead of getting a
+  worktree each. If git's message is `detected dubious ownership`, the
+  workspace's owner is not `CHITRAGUPTA_UID`; fix the ownership, or add
+  `git config --global --add safe.directory /workspace` inside the
+  container.
 
 Attach to the live session with:
 
