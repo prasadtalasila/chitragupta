@@ -470,7 +470,8 @@ git commit -m "Link a diff's changed sections to their revision-log entries"
 
 Markdown order: `# Changes since …` header; summary line (`412 words
 changed in 3 of 9 sections · citekeys +2 −1 · figures 1 redrawn`);
-`Includes edits made outside any revision pass.` when `hand_edits`;
+`The draft differs from its last dossier stamp.` when `hand_edits`
+(worded as what is measured since the #1194 sign-off review);
 `## Revision log` (entries); `## Sections` (non-unchanged rows, each
 with `↳` log lines, then `N unchanged`); `## Citekeys`; `## Figures`
 (`Baseline figures unknown.` when `None`); `## Needs a log entry`

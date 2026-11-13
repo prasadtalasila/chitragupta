@@ -67,7 +67,7 @@ def test_markdown_sections_in_order_and_summary_counts():
         " · citekeys +1 −1 · figures 1 redrawn, 1 added"
     )
     assert _summary(markdown) == summary
-    assert "Includes edits made outside any revision pass." in lines
+    assert "The draft differs from its last dossier stamp." in lines
     assert _headings(markdown) == [
         lines[0],
         "## Revision log",
@@ -109,7 +109,7 @@ def test_markdown_omits_optional_parts_and_says_none():
     lines = markdown.splitlines()
     expected = "1 word changed in 1 of 1 sections · citekeys +0 −0 · figures 0 redrawn"
     assert _summary(markdown) == expected
-    assert "Includes edits made outside any revision pass." not in markdown
+    assert "The draft differs from its last dossier stamp." not in markdown
     assert "## Needs a log entry" not in markdown
     assert "Not matched" not in markdown
     assert "No entries since the baseline." in lines

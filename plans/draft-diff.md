@@ -154,8 +154,10 @@ snapshot, the live draft and an `--against` file look alike.
    a name matching no heading is reported. A changed section no entry
    names is flagged "changed, no log entry".
 6. **Hand edits**: if the live draft's fingerprint differs from the
-   one `dossier stamp` last recorded, the report says it includes
-   edits made outside any revision pass.
+   one `dossier stamp` last recorded, the report says so, as what is
+   measured: "The draft differs from its last dossier stamp." An
+   agenda pass never stamps, so after one that is the pass's own
+   repairs; the JSON key stays `hand_edits`.
 
 Outputs: `content/review/<topic>/<stem>.diff.md` (also printed) and
 `<stem>.diff.json` for the revisers, with no timestamp in the body so

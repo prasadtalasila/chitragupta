@@ -114,7 +114,9 @@ def to_markdown(report: ChangeReport) -> str:
     else:
         blocks.append([_summary(report)])
         if report.hand_edits:
-            blocks.append(["Includes edits made outside any revision pass."])
+            # What is measured, not why: an agenda pass never stamps, so
+            # after one this is the pass's own repairs, not a hand edit.
+            blocks.append(["The draft differs from its last dossier stamp."])
         for title, body in (
             ("Revision log", _revision_log(report)),
             ("Sections", _sections(report)),

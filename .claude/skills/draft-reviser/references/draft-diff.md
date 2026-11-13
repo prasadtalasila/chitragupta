@@ -51,9 +51,9 @@ From the report, in this order:
 2. The summary under it: words changed, sections changed of the total,
    citekeys added and dropped, figures. It spans several lines; show
    all of them.
-3. "Includes edits made outside any revision pass.", if present: the
-   draft changed since its last stamp. After an agenda pass, which never
-   stamps, that is the pass's own repairs; say so.
+3. "The draft differs from its last dossier stamp.", if present. After
+   an agenda pass, which never stamps, that is the pass's own repairs;
+   say so.
 4. Every section under `## Sections` that is not unchanged, with the
    entries under it; the unchanged count is enough for the rest.
 5. Every line under `## Citekeys`. A dropped key's status says whether
