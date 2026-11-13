@@ -340,7 +340,8 @@ surfaced.
 
 Append to the dossier's `revisions.md`: the date, each item by `id` and
 `class`, what was done, and what happened -- accepted, reverted,
-escalated, or declined by the user. Refusals are the entries most worth
+escalated, or declined by the user -- and a closing `Sections:` line
+naming every section edited. Refusals are the entries most worth
 having, because they are what stops the next session re-attempting
 something that was already decided against.
 
@@ -349,14 +350,16 @@ that were retrieved and turned down, not repairs that did not work.
 
 ### 7. Present
 
-Show the diff and the `revisions.md` entries, and state the outcome
-against the baseline agenda from step 2: `objective_class_count` before
-and after, what was repaired per class, what was escalated and why,
-and every aid any cycle's `not_refreshed` named, with a note that its
-items went unverified. For an aid that raised, quote its
-`refresh_errors` reason and say which of the two outcomes above it had.
-That reason is what tells a known gap, such as `support` without the
-enrich stack, apart from a bug worth reporting.
+Run `python -m chitragupta.draft diff content/drafts/<path> --format
+pdf`, against step 1's snapshot (the default), and show what
+`.claude/skills/draft-reviser/references/draft-diff.md` says to. State
+the outcome against the baseline agenda from step 2:
+`objective_class_count` before and after, what was repaired per class,
+what was escalated and why, and every aid any cycle's `not_refreshed`
+named, with a note that its items went unverified. For an aid that
+raised, quote its `refresh_errors` reason and say which of the two
+outcomes above it had. That reason is what tells a known gap, such as
+`support` without the enrich stack, apart from a bug worth reporting.
 
 The human accepts. Nothing here merges, commits or renders on its own.
 

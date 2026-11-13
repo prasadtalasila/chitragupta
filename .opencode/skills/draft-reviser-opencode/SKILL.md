@@ -311,8 +311,9 @@ Update only what actually changed:
   `.claude/skills-common/references/figures-tables-equations.md` §6, then run
   step 7 and read
   its `[math]` warnings.
-- `revisions.md` -- append one entry: date, what changed, which sections,
-  and why. A copy-edit pass logs one entry for the whole document and
+- `revisions.md` -- append one entry: date, what changed and why, and a
+  closing `Sections:` line naming every section changed (by title in a
+  `.tex` draft). A copy-edit pass logs one entry for the whole document and
   updates nothing else in this list; see "Copy-edit mode".
 
 ### 7. Gate, reference, render
@@ -407,6 +408,17 @@ Read `.claude/skills-common/references/verbatim-scan.md`
 now and follow it: what to show, what the scan could not check, and
 how to keep the report. Repairing a finding is `agenda-reviser-opencode`'s
 job, and only if the user asks.
+
+### Show what changed
+
+Last, once the entry is written:
+
+```bash
+python -m chitragupta.draft diff content/drafts/<path> --format pdf
+```
+
+Read `.claude/skills/draft-reviser/references/draft-diff.md` now and
+follow it: the fallback, what to show, `Needs a log entry`, milestones.
 
 ## Copy-edit mode
 

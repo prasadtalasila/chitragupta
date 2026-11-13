@@ -38,7 +38,7 @@ BUDGET = {
     "corpus-reviser": (13_000, _LATER),
     "deep-research": (41_000, _LATER),
     "demo-recorder": (6_000, None),
-    "draft-reviser": (29_000, _LATER),
+    "draft-reviser": (30_000, "draft diff closing step"),
     "figure-drawer": (7_000, None),
     "review-digest": (17_000, _LATER),
     "survey-writer": (32_000, _LATER),
