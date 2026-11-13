@@ -155,6 +155,72 @@ def test_plain_title_drops_markup_labels_and_deleted_text():
     assert _redline._group_end("{abc", 0) == 4
 
 
+# pandoc 3's LaTeX for Markdown headings that carry markup: inline code
+# and emphasis come wrapped in `\texorpdfstring`, an `{#id}` attribute
+# becomes the label, and dashes are spelled out.
+_MARKED_UP_HEADINGS = r"""\begin{document}
+\subsection{\texorpdfstring{The \texttt{sync}
+command}{The sync command}}\label{the-sync-command}
+
+x
+
+\subsection{\texorpdfstring{\emph{Emphasis}
+here}{Emphasis here}}\label{emphasis-here}
+
+y
+
+\subsection{Background}\label{sec-bg}
+
+z
+
+\subsection{A --- B}\label{a-b}
+
+w
+
+\subsection{\texorpdfstring{The \texttt{my\_var} \emph{field} --
+range}{The my\_var field -- range}}\label{the-my_var-field-range}
+
+v
+\end{document}
+"""
+
+
+def test_patch_notes_headings_that_carry_markdown_markup():
+    titles = (
+        "The `sync` command",
+        "*Emphasis* here",
+        "Background {#sec-bg}",
+        "A — B",
+        "The `my_var` _field_ – range",
+    )
+    report = _report(
+        sections=[SectionChange(title, "moved", 0) for title in titles],
+        figures=[],
+    )
+    out = _redline.patch(_MARKED_UP_HEADINGS, report)
+    assert out.count("\\cgchangenote{moved}") == len(titles)
+    for label in ("the-sync-command", "emphasis-here", "sec-bg", "a-b", "the-my_var-field-range"):
+        assert f"}}\\cgchangenote{{moved}}\\label{{{label}}}" in out
+
+
+def test_plain_title_keeps_texorpdfstrings_first_argument_and_reads_dashes():
+    assert _redline._plain_title("\\texorpdfstring{The \\texttt{sync}\ncommand}{The sync command}") == (
+        "The sync command"
+    )
+    assert _redline._plain_title("A --- B -- C") == "A — B – C"
+    # A malformed one with no second argument keeps what it has.
+    assert _redline._plain_title("\\texorpdfstring{Alone} here") == "Alone here"
+
+
+def test_a_tex_drafts_titles_are_read_as_latex():
+    """A `.tex` draft's report titles are LaTeX already: `\\_` is an
+    underscore there, not Markdown emphasis to strip."""
+    new = VersionView(ref="current draft", label="", date="", text="", suffix=".tex", figures={})
+    tex = "\\begin{document}\n\\section{The \\texttt{my\\_var} field}\\label{x}\n\\end{document}\n"
+    report = _report(new=new, sections=[SectionChange("The \\texttt{my\\_var} field", "moved", 0)])
+    assert "field}\\cgchangenote{moved}\\label{x}" in _redline.patch(tex, report)
+
+
 # --- redline ---------------------------------------------------------------
 
 
