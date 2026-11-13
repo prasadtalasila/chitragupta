@@ -59,6 +59,7 @@ _BIBTEX_ERRORS = re.compile(
     r"^\((There (?:was|were) \d+ error messages?|That was a fatal error)\)", re.MULTILINE
 )
 _BIBLIOGRAPHY = re.compile(r"\\bibliography\{[^}]*\}")
+_BIB_FILE = "bibliography.bib"
 _HEADING = re.compile(r"\\(?:sub){0,2}section\*?\{")
 
 _TEX_SPECIALS = {
@@ -217,6 +218,9 @@ def _lualatex(lualatex: str, work: Path, name: str) -> bool:
 def _compile(lualatex: str, bibtexu: str, work: Path, name: str) -> bool:
     """lualatex, bibtexu, lualatex twice; False on a LuaLaTeX failure.
 
+    bibtexu runs only when the first pass wrote a `\\citation`: on an aux
+    with none it prints "I found no \\citation commands" and counts that
+    as an error. A citation struck out of the old side still writes one.
     `bibtexu` exits 1 on warnings alone (an empty `booktitle`), so its
     `.blg` is read for an error instead, as book-assembler's build does.
     Only its closing error count is read: the word "error" elsewhere in
@@ -226,21 +230,41 @@ def _compile(lualatex: str, bibtexu: str, work: Path, name: str) -> bool:
         (work / f"{name}{leftover}").unlink(missing_ok=True)
     if not _lualatex(lualatex, work, f"{name}.tex"):
         return False
+    aux = (work / f"{name}.aux").read_text(encoding="utf-8", errors="replace")
+    if "\\citation{" in aux:
+        _bibtex(bibtexu, work, name)
+    return all(_lualatex(lualatex, work, f"{name}.tex") for _ in range(2))
+
+
+def _bibtex(bibtexu: str, work: Path, name: str) -> None:
     _run([bibtexu, name], cwd=work, capture_output=True, check=False)
     blg = work / f"{name}.blg"
     if not blg.is_file():
         raise RedlineFailed(f"bibtexu wrote no {blg.name} in {work}; it did not run.")
     summary = _BIBTEX_ERRORS.search(blg.read_text(encoding="utf-8", errors="replace"))
     if summary:
-        raise RedlineFailed(f"bibtexu failed ({summary.group(1)}); see {blg}.")
-    return all(_lualatex(lualatex, work, f"{name}.tex") for _ in range(2))
+        raise RedlineFailed(
+            f"bibtexu failed ({summary.group(1)}); see {blg}. "
+            f"Kept: {work / f'{name}.tex'} and {work / f'{name}.log'}."
+        )
+
+
+def _bibliography_as_patched(work: Path) -> None:
+    """Gives the render's copy of the project's `.bib` the name `patch`
+    points `\\bibliography` at. The render keeps the project's own file
+    name (`_assets._copy_book_bibliography`), which bibtex cannot open
+    when it has a space in it, as Zotero's default "My Library.bib" does."""
+    rendered = work / config.BIB_FILE_PATH.name
+    if rendered.is_file() and rendered.name != _BIB_FILE:
+        shutil.copyfile(rendered, work / _BIB_FILE)
 
 
 def redline(old_tex: Path, new_tex: Path, report: ChangeReport, out_dir: Path, stem: str) -> Path:
     """Compiles `<stem>.diff.pdf` from two deferred renders; returns its path in `out_dir`.
 
     Works in `new_tex`'s directory, which holds the new side's
-    `figures/` and `bibliography.bib`. A LuaLaTeX failure is retried
+    `figures/` and the project's `.bib`, read as `bibliography.bib`
+    whatever the project calls it. A LuaLaTeX failure is retried
     once with `--math-markup=whole`, which replaces a changed formula
     whole rather than marking inside it; a second failure raises
     `RedlineFailed` naming the `.diff.tex` and `.log` it leaves behind.
@@ -255,6 +279,7 @@ def redline(old_tex: Path, new_tex: Path, report: ChangeReport, out_dir: Path, s
     # directory rather than in it.
     if not config.resolves_inside(diff_tex, work):
         raise ValueError(f"{stem!r} is not a file name: it would write {diff_tex.resolve()}")
+    _bibliography_as_patched(work)
     for math in ("coarse", "whole"):
         _write_diff(latexdiff, math, Path(old_tex), Path(new_tex), diff_tex, report)
         if _compile(lualatex, bibtexu, work, name):

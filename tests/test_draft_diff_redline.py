@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import programs
+from chitragupta import config, programs
 from chitragupta.draft_diff import _redline
 from chitragupta.draft_diff._compare import ChangeReport, FigureChange, SectionChange
 from chitragupta.draft_diff._views import VersionView
@@ -171,9 +171,11 @@ def on_path(monkeypatch):
 class _Launches:
     """A fake `_run`: records each argv; lualatex succeeds or fails on cue."""
 
-    def __init__(self, diff_tex, lualatex_ok=lambda attempt: True, blg="Done.\n"):
+    def __init__(
+        self, diff_tex, lualatex_ok=lambda attempt: True, blg="Done.\n", aux="\\citation{k}\n"
+    ):
         self.argvs, self.attempt = [], 0
-        self.diff_tex, self.lualatex_ok, self.blg = diff_tex, lualatex_ok, blg
+        self.diff_tex, self.lualatex_ok, self.blg, self.aux = diff_tex, lualatex_ok, blg, aux
 
     def __call__(self, argv, cwd=None, **_):
         self.argvs.append(argv)
@@ -187,6 +189,7 @@ class _Launches:
                 (work / f"{argv[1]}.blg").write_text(self.blg)
             return subprocess.CompletedProcess(argv, 1)
         ok = self.lualatex_ok(self.attempt)
+        (work / argv[-1].replace(".tex", ".aux")).write_text(self.aux)
         if ok:
             (work / argv[-1].replace(".tex", ".pdf")).write_bytes(b"%PDF-1.5")
         return subprocess.CompletedProcess(argv, 0 if ok else 1)
@@ -283,8 +286,43 @@ def test_redline_fails_on_a_bibtexu_error(monkeypatch, on_path, tmp_path, diff_t
         "(There were 2 warnings)\n(There was 1 error message)\n"
     )
     monkeypatch.setattr(_redline, "_run", _Launches(diff_tex, blg=blg))
-    with pytest.raises(_redline.RedlineFailed, match="1 error message"):
+    with pytest.raises(_redline.RedlineFailed, match="1 error message") as raised:
         _redline.redline(old, new, _report(), tmp_path / "out", "survey")
+    # What the spec's failure row promises: the artefacts kept, by path.
+    message = str(raised.value)
+    for kept in ("survey.diff.blg", "survey.diff.tex", "survey.diff.log"):
+        assert str(new.parent / kept) in message
+
+
+def test_redline_skips_bibtexu_without_citations(monkeypatch, on_path, tmp_path, diff_tex):
+    """bibtexu errors on an aux with no `\\citation` ("I found no
+    \\citation commands"), so a citation-free draft must not run it."""
+    on_path("latexdiff", "lualatex", "bibtexu")
+    old, new = _sides(tmp_path)
+    # A leftover log from an earlier, cited run must not be read either.
+    (new.parent / "survey.diff.blg").write_text("(There was 1 error message)\n")
+    launches = _Launches(diff_tex, blg="(There was 1 error message)\n", aux="\\relax\n")
+    monkeypatch.setattr(_redline, "_run", launches)
+
+    assert _redline.redline(old, new, _report(), tmp_path / "out", "survey").is_file()
+
+    lualatex = ["/bin/lualatex", "-interaction=nonstopmode", "survey.diff.tex"]
+    assert launches.argvs[1:] == [lualatex] * 3
+
+
+def test_redline_reads_a_bibliography_of_any_name(monkeypatch, on_path, tmp_path, diff_tex):
+    """The render copies the project's `.bib` under its own name, which
+    bibtex cannot open when it has a space; the redline reads it as
+    `bibliography.bib`, the name `patch` writes."""
+    on_path("latexdiff", "lualatex", "bibtexu")
+    monkeypatch.setattr(config, "BIB_FILE_PATH", tmp_path / "papers" / "My Library.bib")
+    old, new = _sides(tmp_path)
+    (new.parent / "My Library.bib").write_text("@article{k, title={T}}\n")
+    monkeypatch.setattr(_redline, "_run", _Launches(diff_tex))
+
+    _redline.redline(old, new, _report(), tmp_path / "out", "survey")
+
+    assert (new.parent / "bibliography.bib").read_text() == "@article{k, title={T}}\n"
 
 
 def test_redline_fails_when_latexdiff_does(monkeypatch, on_path, tmp_path):

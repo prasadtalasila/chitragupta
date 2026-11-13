@@ -184,3 +184,65 @@ def test_spike_scenario_redline(isolated_config, ledger_con, capsys):
     assert _inside(tex, "DIFdel", "(citation withdrawn)"), tex
     report = (review / "survey.diff.md").read_text(encoding="utf-8")
     assert re.search(rf"{_WITHDRAWN}.*no longer in the corpus", report), report
+
+
+_CHAPTER = """# Chapter 3: Queues
+
+## Worked example
+
+A queue of three.
+
+## Exercises
+
+1. Do it.
+"""
+
+
+def test_citation_free_draft_redline(isolated_config, ledger_con, capsys):
+    """No `\\citation` in the aux: bibtexu would fail with "I found no
+    \\citation commands", so the redline compiles without it."""
+    shutil.copy(_SAMPLE / "papers" / "bibliography.bib", config.BIB_FILE_PATH)
+    path = content_draft(config, "drafts/queues/ch3.md")
+    path.write_text(_CHAPTER, encoding="utf-8")
+    assert _versions.take(path, trigger="mark-revision") is not None
+    path.write_text(_CHAPTER.replace("of three.", "of three, then four."), encoding="utf-8")
+
+    assert draft.main(["diff", str(path), "--format", "pdf"]) == 0, capsys.readouterr().err
+    assert (config.REVIEW_DIR / "queues" / "ch3.diff.pdf").is_file()
+
+
+def test_dropped_only_citation_still_lists_its_source(isolated_config, ledger_con, capsys):
+    """The new side cites nothing, but the struck-out old citation still
+    writes a `\\citation`, so bibtexu runs and the reference resolves."""
+    add_citable(ledger_con, "sample_dt_sync_2023")
+    ledger_con.commit()
+    shutil.copy(_SAMPLE / "papers" / "bibliography.bib", config.BIB_FILE_PATH)
+    path = content_draft(config, "drafts/queues/ch3.md")
+    path.write_text(_CHAPTER + "\n## Further reading\n\nSee [@sample_dt_sync_2023].\n", "utf-8")
+    assert _versions.take(path, trigger="mark-revision") is not None
+    path.write_text(_CHAPTER, encoding="utf-8")
+
+    assert draft.main(["diff", str(path), "--format", "pdf"]) == 0, capsys.readouterr().err
+    review = config.REVIEW_DIR / "queues"
+    assert (review / "ch3.diff.pdf").is_file()
+    assert "\\bibitem" in (review / "ch3.diff" / "new-tex" / "ch3.diff.bbl").read_text("utf-8")
+
+
+def test_redline_with_a_bibliography_named_otherwise(
+    isolated_config, ledger_con, capsys, monkeypatch
+):
+    """Zotero's default export name has a space, which bibtex cannot open."""
+    add_citable(ledger_con, "sample_dt_sync_2023")
+    ledger_con.commit()
+    bib = config.BIB_FILE_PATH.with_name("My Library.bib")
+    monkeypatch.setattr(config, "BIB_FILE_PATH", bib)
+    shutil.copy(_SAMPLE / "papers" / "bibliography.bib", bib)
+    path = content_draft(config, "drafts/queues/ch3.md")
+    path.write_text(_CHAPTER, encoding="utf-8")
+    assert _versions.take(path, trigger="mark-revision") is not None
+    path.write_text(_CHAPTER.replace("Do it.", "Do it [@sample_dt_sync_2023]."), "utf-8")
+
+    assert draft.main(["diff", str(path), "--format", "pdf"]) == 0, capsys.readouterr().err
+    review = config.REVIEW_DIR / "queues"
+    assert (review / "ch3.diff.pdf").is_file()
+    assert "\\bibitem" in (review / "ch3.diff" / "new-tex" / "ch3.diff.bbl").read_text("utf-8")
