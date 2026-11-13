@@ -83,6 +83,11 @@ SKILL_DIRS = {
     "codex": ".agents/skills",
     "opencode": ".opencode/skills",
 }
+# A skill or reference file a `SKILL.md` names, in any harness's folder:
+# the Codex and OpenCode copies point at their own harness's copy of
+# another skill (agenda-reviser follows draft-reviser's loop), and only
+# the references live under `.claude/` alone.
+SKILL_FILE = re.compile(r"\.(?:claude|agents|opencode)/skills(?:-common)?/[\w./-]+?\.md")
 READ_LINE = re.compile(r"READ\s+`?(\.claude/skills[^\s`]*)`?\s*::\s*(.*)")
 
 TIER1_PROMPT = """\
@@ -357,8 +362,8 @@ def score_run(source: Path, harness: str, skill: str, log: Path) -> dict:
     """Task 2's fields for one run, against the commands the harness's own
     copy of the skill, in the scaffolded checkout, names."""
     skill_md = source / SKILL_DIRS[harness] / f"{skill}{SUFFIX[harness]}" / "SKILL.md"
-    named = [source / m.split("#")[0] for m in NAMED_PATH.findall(skill_md.read_text("utf-8"))]
-    files = [skill_md, *dict.fromkeys(p for p in named if p.is_file())]
+    named = [source / m for m in SKILL_FILE.findall(skill_md.read_text("utf-8"))]
+    files = [skill_md, *dict.fromkeys(p for p in named if p.is_file() and p != skill_md)]
     return score_commands(expected_commands(*files), commands_run(tool_input_list(log)))
 
 
@@ -640,6 +645,17 @@ def _check_command_scoring(project: Path) -> None:
     pointer.write_text("Then `python -m chitragupta.draft evidence <draft>`.\n", encoding="utf-8")
     both = expected_commands(skill_md, pointer)
     assert both == expected + ["draft evidence"], "a reference's command is expected too"
+    # Each harness's copy points at that harness's copy of another skill
+    # (agenda-reviser reads `.opencode/skills/draft-reviser-opencode/...`).
+    own = project / SKILL_DIRS["opencode"] / "a-opencode" / "SKILL.md"
+    other = project / SKILL_DIRS["opencode"] / "b-opencode" / "SKILL.md"
+    own.parent.mkdir(parents=True)
+    other.parent.mkdir(parents=True)
+    own.write_text("Follow `.opencode/skills/b-opencode/SKILL.md`.\n", encoding="utf-8")
+    other.write_text("Run `python -m chitragupta.draft diff <draft>`.\n", encoding="utf-8")
+    log = project / "empty.jsonl"
+    log.write_text("", encoding="utf-8")
+    assert score_run(project, "opencode", "a", log)["expected"] == ["draft diff"], "own harness"
     ran = commands_run(
         [
             "/bin/zsh -lc 'python -m chitragupta.draft dossier stamp x.md; echo done'",
