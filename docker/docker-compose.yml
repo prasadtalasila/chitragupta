@@ -63,6 +63,9 @@ x-claude: &claude
   # measured: it registered as `05f401525853`, which is unique and
   # useless when you have two of these running.
   hostname: ${CHITRAGUPTA_CONTAINER_NAME:-chitragupta-claude}
+  # Where `docker exec` lands. The image's WORKDIR is /workspace, which is
+  # an empty directory when CHITRAGUPTA_WORKSPACE_DIR moves the mount.
+  working_dir: ${CHITRAGUPTA_WORKSPACE_DIR:-/workspace}
   environment:
     CLAUDE_AGENT_NAME: ${CHITRAGUPTA_CONTAINER_NAME:-chitragupta-claude}
     # The workspace path inside the container, which rc-daemon.sh runs the
@@ -72,7 +75,7 @@ x-claude: &claude
     # RC_VENV) is optional. Compose passes an unset one as an empty string, which
     # rc-daemon.env's `${VAR:-default}` treats as unset, so its default
     # applies.
-    RC_DIR: /workspace
+    RC_DIR: ${CHITRAGUPTA_WORKSPACE_DIR:-/workspace}
     RC_NAME: ${RC_NAME:-}
     RC_PREFIX: ${RC_PREFIX:-}
     RC_PERMISSION_MODE: ${RC_PERMISSION_MODE:-bypassPermissions}
@@ -83,7 +86,14 @@ x-claude: &claude
     # `:?` rather than a default: a missing workspace is a mistake to
     # stop on, not one to paper over by mounting the compose directory
     # and scaffolding a project into the git checkout.
-    - ${CHITRAGUPTA_WORKSPACE:?set CHITRAGUPTA_WORKSPACE to the host directory to mount at /workspace}:/workspace
+    #
+    # The target is CHITRAGUPTA_WORKSPACE_DIR, /workspace unless set. Two
+    # containers that share CHITRAGUPTA_CLAUDE_HOME need different values:
+    # Claude Code keys its remote-control resume pointer
+    # (~/.claude/projects/<path>/bridge-pointer.json) and the server keys
+    # its one-agent-per-folder rule on this path, so with the same one the
+    # second container to start takes over the first one's session.
+    - ${CHITRAGUPTA_WORKSPACE:?set CHITRAGUPTA_WORKSPACE to the host directory to mount in the container}:${CHITRAGUPTA_WORKSPACE_DIR:-/workspace}
     - ${CHITRAGUPTA_CLAUDE_HOME:-./claude}:/home/${CHITRAGUPTA_USER}/.claude
     # The account record lives in ~/.claude.json, not in ~/.claude, so the
     # mount above carries the login token but not which organization it
@@ -109,7 +119,7 @@ x-claude: &claude
     # agent running with bypassPermissions has no business rewriting the
     # human's source PDFs. Add papers from the host side. See
     # `.env.example` -- this source must exist before the first `up`.
-    - ${CHITRAGUPTA_PAPERS:-${CHITRAGUPTA_WORKSPACE}/papers}:/workspace/papers:ro
+    - ${CHITRAGUPTA_PAPERS:-${CHITRAGUPTA_WORKSPACE}/papers}:${CHITRAGUPTA_WORKSPACE_DIR:-/workspace}/papers:ro
 
   # The agent is meant to outlive a reboot; entrypoint.sh ends in a
   # `tail -f /dev/null`, so the container only exits on a real failure
