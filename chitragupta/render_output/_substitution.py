@@ -11,6 +11,7 @@ stay identical to the single module it replaced.
 import sys
 from pathlib import Path
 
+from chitragupta import config
 from chitragupta.render_output import (
     _chapter_number,
     _equation_captions,
@@ -28,7 +29,9 @@ from chitragupta.render_output._figure_captions import substitute_captions, subs
 from chitragupta.render_output._figures import _figure_warnings, _with_figures_for
 
 
-def _checked_math_mapping(draft_text: str, input_path: Path) -> "dict[str, str]":
+def _checked_math_mapping(
+    draft_text: str, input_path: Path, mapping_path: "Path | None" = None
+) -> "dict[str, str]":
     """`input_path`'s ASCII-to-LaTeX mapping, having reported what is wrong.
 
     Called past `render`'s Markdown-to-Markdown early return, so it runs
@@ -48,12 +51,21 @@ def _checked_math_mapping(draft_text: str, input_path: Path) -> "dict[str, str]"
     `content/drafts/` -- prints none of them (#1115): each asks for a row
     nobody can add, and a report's header quoting the draft's path is
     otherwise read as arithmetic. `check` still runs there, being certain.
+
+    `mapping_path` names the mapping for a copy of a draft rendered
+    outside `content/drafts/`: `draft diff`'s two sides, in
+    `content/review/` (#1194). It is confined to `content/` like every
+    path `render` reads. Such a copy still prints no gaps -- the draft's
+    own render reports them, once -- and nor does it read the glossary,
+    which is mirrored from the path the same way.
     """
-    text = _math.mapping_text(input_path)
+    if mapping_path is not None:
+        mapping_path = config.require_inside_content(Path(mapping_path), "math mapping")
+    text = _math.mapping_text(input_path, mapping_path)
     rows = _math.mapping_rows(text)
     mapping = dict(rows)
     path = _math.mapping_path(input_path)
-    _math.check(draft_text, input_path, mapping)
+    _math.check(draft_text, input_path, mapping, mapping_path)
     if path is None:
         return mapping
     not_math = _math.not_math(text)

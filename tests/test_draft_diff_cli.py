@@ -205,8 +205,8 @@ def test_diff_json_flag_prints_json(isolated_config, ledger_con, capsys):
 
 
 def _fake_render(calls):
-    def render(input_path, output_format, output_dir, defer_citations):
-        calls.append((input_path, output_format, output_dir, defer_citations))
+    def render(input_path, output_format, output_dir, defer_citations, math_mapping_path):
+        calls.append((input_path, output_format, output_dir, defer_citations, math_mapping_path))
         out = Path(output_dir)
         out.mkdir(parents=True, exist_ok=True)
         tex = out / "survey.tex"
@@ -258,6 +258,10 @@ def test_diff_pdf_renders_both_sides_and_redlines(isolated_config, ledger_con, m
     ]
     assert calls[0][0] == str(work / "old" / "survey.md")
     assert calls[1][0] == str(work / "new" / "survey.md")
+    # Neither side sits where its `math.md` mirrors to, so both are
+    # handed the draft's own (#1194).
+    mapping = dossier.dossier_dir(path) / "math.md"
+    assert [c[4] for c in calls] == [mapping, mapping]
     assert redlined == [
         (work / "old-tex" / "survey.tex", work / "new-tex" / "survey.tex", _review_dir(), "survey")
     ]

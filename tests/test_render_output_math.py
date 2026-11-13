@@ -770,6 +770,57 @@ class TestWhereNoMappingCanExist:
         assert "[math] `eps_k = y^T * S^-1 * y` has 2 rows" in capsys.readouterr().err
 
 
+class TestAMappingNamedByTheCaller:
+    """#1194: `draft diff` renders each side of a redline from
+    `content/review/`, where no `math.md` mirrors. It names the draft's
+    own mapping instead, and that file resolves the side's equations."""
+
+    def test_a_review_copy_takes_the_mapping_it_is_given(self, isolated_config, capsys):
+        from chitragupta.render_output import _substitution
+
+        mapping = _math.mapping_path(_draft())
+        side = config.REVIEW_DIR / "dt" / "tank.diff" / "new" / "tank.md"
+        mapped = _substitution._checked_math_mapping(ASCII_DRAFT, side, mapping)
+        assert mapped["dW/dt = -W/tau"] == "\\frac{dW}{dt} = -\\frac{W}{\\tau}"
+        # The draft's own render reports a gap; its review copy stays quiet.
+        assert "[math]" not in capsys.readouterr().err
+
+    def test_without_it_the_review_copy_is_refused(self, isolated_config):
+        from chitragupta.render_output import _substitution
+
+        _draft()
+        side = config.REVIEW_DIR / "dt" / "tank.diff" / "new" / "tank.md"
+        with pytest.raises(_math.MathMappingError, match="there is no"):
+            _substitution._checked_math_mapping(ASCII_DRAFT, side)
+
+    def test_a_named_mapping_outside_content_is_refused(self, isolated_config, tmp_path):
+        from chitragupta.render_output import _substitution
+
+        outside = tmp_path / "elsewhere" / "math.md"
+        outside.parent.mkdir()
+        outside.write_text(MAPPING, encoding="utf-8")
+        side = config.REVIEW_DIR / "dt" / "tank.diff" / "new" / "tank.md"
+        with pytest.raises(config.OutsideContentDir):
+            _substitution._checked_math_mapping(ASCII_DRAFT, side, outside)
+
+    def test_render_hands_its_mapping_on(self, isolated_config, monkeypatch):
+        seen = []
+
+        class Stop(Exception):
+            pass
+
+        def checked(draft_text, input_path, mapping_path=None):
+            seen.append(mapping_path)
+            raise Stop
+
+        monkeypatch.setattr(render_output, "_checked_math_mapping", checked)
+        draft = _draft()
+        mapping = _math.mapping_path(draft)
+        with pytest.raises(Stop):
+            render_output.render(str(draft), output_format="tex", math_mapping_path=mapping)
+        assert seen == [mapping]
+
+
 class TestTheIssuesReproductions:
     def test_1115_file_and_directory_names(self, isolated_config, capsys):
         from chitragupta.render_output import _substitution

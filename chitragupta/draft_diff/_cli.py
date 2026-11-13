@@ -31,6 +31,7 @@ from chitragupta.draft_diff._sides import key_status, prepare
 from chitragupta.draft_diff._views import VersionView, from_draft, from_file, from_snapshot
 from chitragupta.render_output._gate import UngatedDraft
 from chitragupta.render_output._math import MathMappingError
+from chitragupta.render_output._math import mapping_path as math_mapping_path
 
 _STILL_CITABLE = "still citable"
 
@@ -142,8 +143,9 @@ def _write_report(report: ChangeReport, review_dir: Path, stem: str) -> None:
 
 
 def _redline_pdf(
-    report: ChangeReport, status: Callable[[str], str], review_dir: Path, stem: str
+    report: ChangeReport, status: Callable[[str], str], review_dir: Path, draft: Path
 ) -> Path:
+    stem = draft.stem
     name = f"{stem}.diff"
     work = review_dir / name
     # Exactly what the gate accepts, so the old side keeps every citation
@@ -151,9 +153,17 @@ def _redline_pdf(
     old_src, new_src = prepare(
         report.old, report.new, work, lambda key: status(key) == _STILL_CITABLE, stem
     )
+    # The sides sit in the review directory, where no `math.md` mirrors,
+    # so both take the draft's own: figures are shown as they are now
+    # (plans/draft-diff.md, decision 12), and so is the mathematics.
+    mapping = math_mapping_path(draft)
     old_tex, new_tex = (
         render_output.render(
-            str(src), output_format="tex", output_dir=work / side, defer_citations=True
+            str(src),
+            output_format="tex",
+            output_dir=work / side,
+            defer_citations=True,
+            math_mapping_path=mapping,
         )
         for src, side in ((old_src, "old-tex"), (new_src, "new-tex"))
     )
@@ -175,7 +185,7 @@ def _diff(args: argparse.Namespace) -> int:
     else:
         print(to_markdown(report), end="")
     if report.has_changes and args.output_format == "pdf":
-        pdf = _redline_pdf(report, status, review_dir, draft.stem)
+        pdf = _redline_pdf(report, status, review_dir, draft)
         # On stderr under --json, so what stdout carries still parses.
         print(pdf, file=sys.stderr if args.json else sys.stdout)
     return 0

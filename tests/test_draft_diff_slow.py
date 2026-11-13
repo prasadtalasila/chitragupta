@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from chitragupta import config, draft, ledger, programs
-from chitragupta.dossier import _versions
+from chitragupta.dossier import _versions, dossier_dir
 from tests.conftest import add_citable, content_draft
 
 _TOOLS = ("latexdiff", "lualatex", "bibtexu", "pandoc")
@@ -248,3 +248,50 @@ def test_redline_with_a_bibliography_named_otherwise(
     review = config.REVIEW_DIR / "queues"
     assert (review / "ch3.diff.pdf").is_file()
     assert "\\bibitem" in (review / "ch3.diff" / "new-tex" / "ch3.diff.bbl").read_text("utf-8")
+
+
+_TANK = """# Draining the tank
+
+## Model
+
+The level `h` decays with time constant `tau`:
+
+<!-- math -->
+```
+h(t) = h0 * exp(-t / tau)
+```
+
+Fitted, `tau = 48` seconds.
+"""
+
+_TANK_MAPPING = """# Math
+
+| ASCII in the draft | LaTeX |
+| --- | --- |
+| `h` | `h` |
+| `tau` | `\\tau` |
+| `h0` | `h_0` |
+| `tau = 48` | `\\tau = 48` |
+| `h(t) = h0 * exp(-t / tau)` | `h(t) = h_0 e^{-t/\\tau}` |
+"""
+
+
+def test_a_draft_with_a_math_mapping_redlines_its_equations(isolated_config, ledger_con, capsys):
+    """#1194: the sides are rendered from `content/review/`, where no
+    `math.md` mirrors; the draft's own mapping resolves both."""
+    shutil.copy(_SAMPLE_BIB, config.BIB_FILE_PATH)
+    path = content_draft(config, "drafts/dt/tank.md")
+    path.write_text(_TANK, encoding="utf-8")
+    dossier = dossier_dir(path)
+    dossier.mkdir(parents=True)
+    (dossier / "math.md").write_text(_TANK_MAPPING, encoding="utf-8")
+    assert _versions.take(path, trigger="mark-revision") is not None
+    path.write_text(_TANK.replace("decays with", "falls with"), encoding="utf-8")
+
+    assert draft.main(["diff", str(path), "--format", "pdf"]) == 0, capsys.readouterr().err
+    review = config.REVIEW_DIR / "dt"
+    assert (review / "tank.diff.pdf").is_file()
+    tex = (review / "tank.diff.tex").read_text(encoding="utf-8")
+    assert "h_0 e^{-t/\\tau}" in tex
+    assert "\\tau = 48" in tex
+    assert "exp(-t / tau)" not in tex
