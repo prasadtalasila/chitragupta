@@ -64,9 +64,14 @@ class ChangeReport:
         return sum(change.words_changed for change in self.sections)
 
     @property
+    def unlogged_sections(self) -> list[SectionChange]:
+        """Sections added, moved or changed that no log entry names."""
+        return [c for c in self.sections if c.kind in _LOGGED_KINDS and not c.log]
+
+    @property
     def unlogged(self) -> list[str]:
-        """Titles of sections added, moved or changed that no log entry names."""
-        return [c.title for c in self.sections if c.kind in _LOGGED_KINDS and not c.log]
+        """Titles of `unlogged_sections`."""
+        return [c.title for c in self.unlogged_sections]
 
     @property
     def has_changes(self) -> bool:

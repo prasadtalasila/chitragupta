@@ -8,6 +8,8 @@ and reads only what it writes.
 import json
 import re
 
+import pytest
+
 from chitragupta.draft_diff._compare import ChangeReport, FigureChange, SectionChange
 from chitragupta.draft_diff._report import header, to_json, to_markdown
 from chitragupta.draft_diff._views import VersionView
@@ -44,6 +46,12 @@ def _report(**fields):
     return ChangeReport(**defaults)
 
 
+def _summary(markdown):
+    """The summary paragraph as it renders: its soft line breaks as spaces."""
+    lines = markdown.splitlines()
+    return " ".join(lines[2 : lines.index("", 2)])
+
+
 def _headings(markdown):
     return [line for line in markdown.splitlines() if line.startswith("#")]
 
@@ -52,10 +60,13 @@ def test_markdown_sections_in_order_and_summary_counts():
     markdown = to_markdown(_report())
     lines = markdown.splitlines()
     assert lines[0] == "# Changes since 004 · shorten §4 · 2026-11-12 — review copy"
-    # 82 words over 4 non-unchanged sections; the removed one is not in
-    # the new draft's 5.
-    summary = "82 words changed in 4 of 5 sections · citekeys +1 −1 · figures 1 redrawn, 1 added"
-    assert summary in lines
+    # 82 words; of the new draft's 5 sections 3 differ, and the removed
+    # one is counted on its own.
+    summary = (
+        "82 words changed in 3 of 5 sections, 1 removed"
+        " · citekeys +1 −1 · figures 1 redrawn, 1 added"
+    )
+    assert _summary(markdown) == summary
     assert "Includes edits made outside any revision pass." in lines
     assert _headings(markdown) == [
         lines[0],
@@ -96,7 +107,8 @@ def test_markdown_omits_optional_parts_and_says_none():
     )
     markdown = to_markdown(report)
     lines = markdown.splitlines()
-    assert "1 word changed in 1 of 1 sections · citekeys +0 −0 · figures 0 redrawn" in lines
+    expected = "1 word changed in 1 of 1 sections · citekeys +0 −0 · figures 0 redrawn"
+    assert _summary(markdown) == expected
     assert "Includes edits made outside any revision pass." not in markdown
     assert "## Needs a log entry" not in markdown
     assert "Not matched" not in markdown
@@ -123,7 +135,8 @@ def test_markdown_no_changes_is_two_lines():
 def test_markdown_unknown_figures_says_so():
     markdown = to_markdown(_report(figures=None))
     lines = markdown.splitlines()
-    assert "82 words changed in 4 of 5 sections · citekeys +1 −1 · figures unknown" in lines
+    expected = "82 words changed in 3 of 5 sections, 1 removed · citekeys +1 −1 · figures unknown"
+    assert _summary(markdown) == expected
     figures = lines[lines.index("## Figures") :]
     assert figures[:3] == ["## Figures", "", "Baseline figures unknown."]
 
@@ -190,6 +203,67 @@ def test_header_forms_for_number_label_and_file():
 
 def test_summary_names_added_and_removed_figures_only_when_any():
     only_redrawn = _report(figures=[FigureChange("pipeline", "redrawn", "both")])
-    assert to_markdown(only_redrawn).splitlines()[2].endswith("· figures 1 redrawn")
+    assert _summary(to_markdown(only_redrawn)).endswith("· figures 1 redrawn")
     gone = _report(figures=[FigureChange("loop", "removed", "")])
-    assert to_markdown(gone).splitlines()[2].endswith("· figures 0 redrawn, 1 removed")
+    assert _summary(to_markdown(gone)).endswith("· figures 0 redrawn, 1 removed")
+
+
+def test_summary_counts_removed_sections_apart():
+    report = _report(
+        sections=[
+            SectionChange("A", "removed", 5),
+            SectionChange("B", "removed", 4),
+            SectionChange("C", "added", 10),
+        ]
+    )
+    summary = _summary(to_markdown(report))
+    assert summary.startswith("19 words changed in 1 of 1 sections, 2 removed · ")
+
+
+def test_markdown_figure_only_change_counts_unchanged_sections():
+    report = _report(
+        sections=[SectionChange("A", "unchanged", 0), SectionChange("B", "unchanged", 0)],
+        citekeys_added=[],
+        citekeys_dropped=[],
+    )
+    markdown = to_markdown(report)
+    lines = markdown.splitlines()
+    assert _summary(markdown).startswith("0 words changed in 0 of 2 sections · ")
+    assert lines[lines.index("## Sections") :][:3] == ["## Sections", "", "2 unchanged"]
+
+
+def test_markdown_with_no_sections_says_so():
+    lines = to_markdown(_report(sections=[])).splitlines()
+    assert lines[lines.index("## Sections") :][:3] == ["## Sections", "", "No sections."]
+
+
+# Every report shape the tests above build, for the blank-line check.
+_SHAPES = [
+    {},
+    {"figures": None},
+    {"figures": [], "citekeys_added": [], "citekeys_dropped": [], "log_entries": []},
+    {"unmatched_log_sections": [], "hand_edits": False},
+    {"sections": []},
+    {"sections": [SectionChange("A", "unchanged", 0)], "citekeys_added": []},
+    {"sections": [SectionChange("A", "removed", 5), SectionChange("C", "added", 10)]},
+    {"sections": [SectionChange("1. Background", "changed", 1, ["2026-11-12 a"])]},
+    {
+        "sections": [SectionChange("A", "unchanged", 0)],
+        "citekeys_added": [],
+        "citekeys_dropped": [],
+        "figures": [],
+    },
+]
+
+
+@pytest.mark.parametrize("fields", _SHAPES)
+def test_markdown_never_has_two_blank_lines_in_a_row(fields):
+    # markdownlint's MD012; a section with an empty body is how it slips in.
+    assert "\n\n\n" not in to_markdown(_report(**fields))
+
+
+@pytest.mark.parametrize("fields", _SHAPES)
+def test_markdown_summary_and_rows_fit_80_columns(fields):
+    # markdownlint's MD013, for every line the writer itself composes; a
+    # long heading title in the draft is the one thing it cannot shorten.
+    assert max(map(len, to_markdown(_report(**fields)).splitlines())) <= 80

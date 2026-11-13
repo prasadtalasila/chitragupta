@@ -10,7 +10,7 @@ is built here once.
 
 from dataclasses import asdict
 
-from chitragupta.draft_diff._compare import _LOGGED_KINDS, ChangeReport, FigureChange, SectionChange
+from chitragupta.draft_diff._compare import ChangeReport, FigureChange, SectionChange
 from chitragupta.draft_diff._views import VersionView
 
 _SEPARATOR = " · "
@@ -40,14 +40,20 @@ def _figures_summary(figures: list[FigureChange] | None) -> str:
 
 
 def _summary(report: ChangeReport) -> str:
-    touched = sum(c.kind != "unchanged" for c in report.sections)
-    in_new = sum(c.kind != "removed" for c in report.sections)
+    # Both counts are of the new draft's sections; a removed one has no
+    # place there, so it is counted on its own.
+    in_new = [c for c in report.sections if c.kind != "removed"]
+    touched = sum(c.kind != "unchanged" for c in in_new)
+    removed = len(report.sections) - len(in_new)
+    gone = f", {removed} removed" if removed else ""
     parts = (
-        f"{_words(report.words_changed)} changed in {touched} of {in_new} sections",
+        f"{_words(report.words_changed)} changed in {touched} of {len(in_new)} sections{gone}",
         f"citekeys +{len(report.citekeys_added)} {_MINUS}{len(report.citekeys_dropped)}",
         _figures_summary(report.figures),
     )
-    return _SEPARATOR.join(parts)
+    # One part per line keeps every line inside markdownlint's 80 columns;
+    # the line breaks are soft, so it renders as one line.
+    return (_SEPARATOR.rstrip() + "\n").join(parts)
 
 
 def _revision_log(report: ChangeReport) -> list[str]:
@@ -74,8 +80,8 @@ def _sections(report: ChangeReport) -> list[str]:
     ]
     unchanged = sum(c.kind == "unchanged" for c in report.sections)
     if unchanged:
-        rows += ["", f"{unchanged} unchanged"]
-    return rows
+        rows += [*([""] if rows else []), f"{unchanged} unchanged"]
+    return rows or ["No sections."]
 
 
 def _citekeys(report: ChangeReport) -> list[str]:
@@ -113,9 +119,7 @@ def to_markdown(report: ChangeReport) -> str:
             ("Figures", _figures(report)),
         ):
             blocks += [[f"## {title}"], body]
-        # `report.unlogged`'s sections themselves, so each row names its kind.
-        unlogged = [c for c in report.sections if c.kind in _LOGGED_KINDS and not c.log]
-        if unlogged:
+        if unlogged := report.unlogged_sections:
             blocks += [["## Needs a log entry"], [f"- {c.kind}: {c.title}" for c in unlogged]]
     return "\n\n".join("\n".join(block) for block in blocks) + "\n"
 
