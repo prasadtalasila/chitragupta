@@ -22,7 +22,7 @@ from pathlib import Path
 # `review/figure_layout/_probe.py`: a test fakes it here and nowhere else.
 from subprocess import run as _run
 
-from chitragupta import config, programs
+from chitragupta import config, install, programs
 from chitragupta.draft_diff._compare import ChangeReport, SectionChange
 from chitragupta.draft_diff._report import header
 from chitragupta.render_output._errors import MissingBinary
@@ -70,8 +70,8 @@ _TEX_SPECIALS = {
 _TEX_SPECIAL_RE = re.compile("[" + re.escape("".join(_TEX_SPECIALS)) + "]")
 
 _LATEXDIFF_HINT = (
-    "'latexdiff' is not on PATH; the redline needs it. On Debian/Ubuntu it "
-    "ships in texlive-extra-utils (with the Perl modules it needs); "
+    "'latexdiff' is not on PATH; the redline needs it. On Debian/Ubuntu, "
+    f"`apt install latexdiff`, or {install.remedy('os-deps')}; "
     "`python -m chitragupta doctor` checks it. The Markdown report does not need it."
 )
 

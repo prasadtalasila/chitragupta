@@ -222,13 +222,17 @@ the `.agents/` and `.opencode/` copies. A cap in
 | latexdiff missing, `--format pdf` | Report written; `MissingBinary` with the install hint |
 | Compile fails | One retry, then artefacts kept, exit non-zero |
 
-**Install.** `scripts/install_full_pipeline.sh` `os-deps` adds
-`texlive-extra-utils` (latexdiff and its Perl modules), with a comment
-recording the ulem and lua-ul findings; `docker/Dockerfile` inherits it;
+**Install.** `scripts/install_full_pipeline.sh` `os-deps` adds the
+`latexdiff` Debian package, with a comment recording the ulem and lua-ul
+findings. `texlive-extra-utils` was the first choice, but it only
+Suggests latexdiff, so it installs none. Ubuntu 26.04's latexdiff is
+1.3.2, against the spike's 1.4.0; the slow redline test passes on
+both. `docker/Dockerfile` inherits it;
 `chitragupta/doctor.py` checks `latexdiff`;
 [docs/WINDOWS.md](../docs/WINDOWS.md) gets a row once MiKTeX's latexdiff
 and its Perl requirement are verified on Windows, not before;
-`docs/DEV-ENV.md` and `docs/RENDERING-FLOW.md` mention it.
+`docs/ARCHITECTURE.md`'s capability table (in place of `docs/DEV-ENV.md`,
+which lists no TeX tools) and `docs/RENDERING-FLOW.md` mention it.
 
 **Tests.**
 

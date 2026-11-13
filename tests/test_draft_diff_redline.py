@@ -18,6 +18,7 @@ from chitragupta.draft_diff import _redline
 from chitragupta.draft_diff._compare import ChangeReport, FigureChange, SectionChange
 from chitragupta.draft_diff._views import VersionView
 from chitragupta.render_output import MissingBinary
+from tests.conftest import REPO_ROOT
 
 FIXTURE = Path(__file__).parent / "fixtures" / "draft_diff" / "latexdiff-output.tex"
 
@@ -204,8 +205,17 @@ def test_redline_requires_latexdiff(on_path, tmp_path):
     old, new = _sides(tmp_path)
     with pytest.raises(MissingBinary) as raised:
         _redline.redline(old, new, _report(), tmp_path / "out", "survey")
-    assert "texlive-extra-utils" in str(raised.value)
+    assert "apt install latexdiff" in str(raised.value)
     assert "python -m chitragupta doctor" in str(raised.value)
+
+
+def test_os_deps_installs_the_latexdiff_the_hint_names():
+    """The hint sends the reader to os-deps, so its apt line must name the
+    `latexdiff` package itself: texlive-extra-utils only Suggests it."""
+    script = (REPO_ROOT / "scripts" / "install_full_pipeline.sh").read_text(encoding="utf-8")
+    install = script[script.index("install_os_deps() {") :]
+    apt = install[install.index("apt-get install") : install.index("libgl1")]
+    assert "latexdiff" in apt.split()
 
 
 def test_redline_requires_lualatex(on_path, tmp_path):

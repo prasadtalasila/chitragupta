@@ -57,6 +57,11 @@ class TestCheckBinaries:
         #1168, `upmendex` for its index; both ship in texlive-binaries."""
         assert {"bibtexu", "upmendex"} <= set(doctor.BINARIES)
 
+    def test_the_redlines_differ_is_checked(self):
+        """`draft diff --format pdf` builds its redline with `latexdiff`;
+        without it only the Markdown change report is written."""
+        assert "latexdiff" in doctor.BINARIES
+
 
 class TestCheckOptionalPdflatex:
     """pdflatex is no longer the pipeline's, but a thesis author whose

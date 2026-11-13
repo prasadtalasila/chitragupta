@@ -72,7 +72,8 @@ DESCRIPTION = (
 # poppler tools `figure look` and a pdf render's figure pictures use
 # (pdftoppm, pdfinfo; #1052), and the two a book's build runs between its
 # LuaLaTeX passes: bibtexu for the bibliography, upmendex for the index
-# (#1168). Doctor probes them once, up front.
+# (#1168), plus latexdiff for `draft diff --format pdf`'s redline.
+# Doctor probes them once, up front.
 BINARIES = (
     "pandoc",
     "lualatex",
@@ -82,6 +83,7 @@ BINARIES = (
     "vale",
     "bibtexu",
     "upmendex",
+    "latexdiff",
 )
 
 THIS_DISTRIBUTION = "chitragupta-cli"
