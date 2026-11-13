@@ -53,8 +53,11 @@ _AMSMATHULEM = re.compile(
 )
 _LISTINGS_ULEM = re.compile(r"\\(?:sout|uwave)\]")
 
-# What bibtex prints last when it met an error, and only then.
-_BIBTEX_ERRORS = re.compile(r"^\(There (?:was|were) (\d+ error messages?)\)", re.MULTILINE)
+# What bibtex prints last when it met an error, and only then: an error
+# count, or the line a fatal error stops it with.
+_BIBTEX_ERRORS = re.compile(
+    r"^\((There (?:was|were) \d+ error messages?|That was a fatal error)\)", re.MULTILINE
+)
 _BIBLIOGRAPHY = re.compile(r"\\bibliography\{[^}]*\}")
 _HEADING = re.compile(r"\\(?:sub){0,2}section\*?\{")
 
@@ -229,7 +232,7 @@ def _compile(lualatex: str, bibtexu: str, work: Path, name: str) -> bool:
         raise RedlineFailed(f"bibtexu wrote no {blg.name} in {work}; it did not run.")
     summary = _BIBTEX_ERRORS.search(blg.read_text(encoding="utf-8", errors="replace"))
     if summary:
-        raise RedlineFailed(f"bibtexu reported {summary.group(1)}; see {blg}.")
+        raise RedlineFailed(f"bibtexu failed ({summary.group(1)}); see {blg}.")
     return all(_lualatex(lualatex, work, f"{name}.tex") for _ in range(2))
 
 

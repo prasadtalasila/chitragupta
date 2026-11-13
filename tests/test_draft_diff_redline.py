@@ -316,3 +316,12 @@ def test_redline_fails_when_bibtexu_leaves_no_blg(monkeypatch, on_path, tmp_path
     monkeypatch.setattr(_redline, "_run", _Launches(diff_tex, blg=None))
     with pytest.raises(_redline.RedlineFailed, match="bibtexu wrote no survey.diff.blg"):
         _redline.redline(old, new, _report(), tmp_path / "out", "survey")
+
+
+def test_redline_fails_on_a_fatal_bibtexu_run(monkeypatch, on_path, tmp_path, diff_tex):
+    on_path("latexdiff", "lualatex", "bibtexu")
+    old, new = _sides(tmp_path)
+    blg = "I couldn't open style file nosuch.bst\n(That was a fatal error)\n"
+    monkeypatch.setattr(_redline, "_run", _Launches(diff_tex, blg=blg))
+    with pytest.raises(_redline.RedlineFailed, match=r"bibtexu failed \(That was a fatal error\)"):
+        _redline.redline(old, new, _report(), tmp_path / "out", "survey")
