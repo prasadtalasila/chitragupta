@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from chitragupta import config, programs
-from chitragupta.draft_diff import _redline
+from chitragupta.draft_diff import _redline, _titles
 from chitragupta.draft_diff._compare import ChangeReport, FigureChange, SectionChange
 from chitragupta.draft_diff._views import VersionView
 from chitragupta.render_output import MissingBinary
@@ -147,12 +147,12 @@ def test_patch_leaves_no_ulem_dependency(diff_tex):
 
 
 def test_plain_title_drops_markup_labels_and_deleted_text():
-    assert _redline._plain_title("\\DIFadd{3. Using}~the \\DIFdel{old} \\emph{state} \\& x") == (
+    assert _titles.plain_title("\\DIFadd{3. Using}~the \\DIFdel{old} \\emph{state} \\& x") == (
         "3. Using the state & x"
     )
-    assert _redline._plain_title("A % comment\n\\label{a}B") == "A B"
+    assert _titles.plain_title("A % comment\n\\label{a}B") == "A B"
     # An unclosed group reaches the end rather than looping.
-    assert _redline._group_end("{abc", 0) == 4
+    assert _titles.group_end("{abc", 0) == 4
 
 
 # pandoc 3's LaTeX for Markdown headings that carry markup: inline code
@@ -205,10 +205,10 @@ def test_patch_notes_headings_that_carry_markdown_markup():
 
 def test_plain_title_keeps_texorpdfstrings_first_argument_and_reads_dashes():
     wrapped = "\\texorpdfstring{The \\texttt{sync}\ncommand}{The sync command}"
-    assert _redline._plain_title(wrapped) == "The sync command"
-    assert _redline._plain_title("A --- B -- C") == "A — B – C"
+    assert _titles.plain_title(wrapped) == "The sync command"
+    assert _titles.plain_title("A --- B -- C") == "A — B – C"
     # A malformed one with no second argument keeps what it has.
-    assert _redline._plain_title("\\texorpdfstring{Alone} here") == "Alone here"
+    assert _titles.plain_title("\\texorpdfstring{Alone} here") == "Alone here"
 
 
 def test_a_tex_drafts_titles_are_read_as_latex():
