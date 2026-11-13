@@ -334,7 +334,7 @@ def test_a_figure_undrawn_on_both_sides_is_no_change():
 
 # `draft references` rewrites this section on every pass; its entries are
 # generated, not prose a reviser wrote.
-_REFS = "\n## {heading}\n\n" "[@sample_dt_overview_2024] A. Author, \"Twins,\" 2024.\n\n{extra}"
+_REFS = '\n## {heading}\n\n[@sample_dt_overview_2024] A. Author, "Twins," 2024.\n\n{extra}'
 
 
 def _with_refs(text, heading="References", extra=""):
@@ -345,7 +345,7 @@ def test_a_regenerated_references_section_is_reported_without_words():
     old = _with_refs(_BASE)
     new = _with_refs(
         _swap(_BASE, "quickly [@sample_dt_sync_2023].", "quickly [@sample_dt_sync_2023]. Done."),
-        extra="[@sample_dt_sync_2023] B. Author, \"Clocks,\" 2023, pp. 1-40.\n",
+        extra='[@sample_dt_sync_2023] B. Author, "Clocks," 2023, pp. 1-40.\n',
     )
     report = compare(_view(old), _view(new), _status)
     refs = next(c for c in report.sections if c.title == "References")

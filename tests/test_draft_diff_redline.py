@@ -204,9 +204,8 @@ def test_patch_notes_headings_that_carry_markdown_markup():
 
 
 def test_plain_title_keeps_texorpdfstrings_first_argument_and_reads_dashes():
-    assert _redline._plain_title("\\texorpdfstring{The \\texttt{sync}\ncommand}{The sync command}") == (
-        "The sync command"
-    )
+    wrapped = "\\texorpdfstring{The \\texttt{sync}\ncommand}{The sync command}"
+    assert _redline._plain_title(wrapped) == "The sync command"
     assert _redline._plain_title("A --- B -- C") == "A — B – C"
     # A malformed one with no second argument keeps what it has.
     assert _redline._plain_title("\\texorpdfstring{Alone} here") == "Alone here"
