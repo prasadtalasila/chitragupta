@@ -280,7 +280,8 @@ def _substitutions(command: str) -> list:
     into one word: `$(...)` inside double quotes (`OUT="$(python -m
     ...)"`), and backticks anywhere outside single quotes. An unquoted
     `$(...)` is already split into words of its own; anything in single
-    quotes is text and runs nothing."""
+    quotes is text and runs nothing. The caller strips heredoc bodies
+    first: a backticked command in a note written to a file ran nothing."""
     found, quote, i = [], None, 0
     while i < len(command):
         char = command[i]
@@ -313,7 +314,9 @@ def commands_run_in(command: str) -> list:
     scored on the script inside the quotes. A `--help` or `-h` call shows
     usage and runs nothing, so it is not a run of the command."""
     tokens = _tokens(command)
-    found = [key for inner in _substitutions(command) for key in commands_run_in(inner)]
+    found = [
+        key for inner in _substitutions(_strip_heredocs(command)) for key in commands_run_in(inner)
+    ]
     for i, word in _command_words(tokens):
         name = Path(word).name
         after = _arguments(tokens[i + 1 :])

@@ -819,6 +819,7 @@ def _check_handoffs(project: Path) -> None:
 SHELL_SHAPES = [
     ("cat >> r.md <<'EOF'\nIt's done.\nEOF\npython -m chitragupta.draft gate x", ["draft gate"]),
     ("cat > n.md <<EOF\npython -m chitragupta.draft render x\nEOF", []),
+    ("cat >> r.md <<'EOF'\nrun `python -m chitragupta.enrich` first\nEOF", []),
     ("cat <<-EOF > n.md\n\tpython -m chitragupta.draft render x\n\tEOF\necho ok", []),
     ("echo it's\npython -m chitragupta.draft style x", ["draft style"]),
     ("python -m chitragupta.draft gate --help", []),

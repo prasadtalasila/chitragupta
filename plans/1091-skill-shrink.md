@@ -845,7 +845,7 @@ runs.
 
 **If it fails:** nothing in PRs 1-8 changes.
 
-- [ ] **Step 1:** The bench rule, `handoffs_loaded`, their
+- [x] **Step 1:** The bench rule, `handoffs_loaded`, their
   `self_check()` cases, and the docs. Done when the self-check passes
   and the before/after expected sets differ only as listed above.
 - [ ] **Step 2:** File the issue; put its number in the series table.
@@ -855,6 +855,52 @@ runs.
   recorded in `docs/HARNESS.md` and on the issue.
 - [ ] **Step 4:** Apply the decision to this plan (the list above), and
   only then start PR 1.
+
+### Result, 2026-11-14
+
+Run in a cloud container, not on the A40 server: Claude Code only
+(`claude -p --model sonnet`, as the bench launches it), 6 skill-only
+survey-writer runs an arm, 3 at a time, all three arms at once, each
+capped at 3600 seconds. The inline arm is `9cbaf678`; the arms are
+`exp-1091-critique-pointer` (`0f3cd674`) and
+`exp-1091-critique-handoff` (`a4a2eae3`). The rows, rescored with this
+branch's bench, are in
+`bench/results/2026-11-14-skill-handoff-experiment/`.
+
+| | Inline | Pointer | Handoff |
+| --- | ---: | ---: | ---: |
+| Usable runs, none timed out | 6 | 6 | 6 |
+| Gate passed | 6 | 6 | 6 |
+| Reached the loop's text | 6 (read `critique.md`) | 6 (read the reference) | 6 (5 by the skill tool, 1 by reading its `SKILL.md`) |
+| `revisions.md` has a critique entry | 6 | 6 | 6 |
+| `review verbatim recheck` ran | 5 | 5 | 5 |
+| Baseline scan before the first recheck, where one ran | 5 of 5 | 5 of 5 | 5 of 5 |
+| `draft dossier status` ran | 6 | 4 | 5 |
+| Median run | 414 s | 350 s | 368 s |
+
+Both comparisons exit 0. Every other command row is equal across the
+arms or moves within the rows only a branch reaches
+(`draft dossier outline` 3, 1, 1; `review synthesis` 2, 3, 3).
+
+**What it shows.** The handoff held the step in 6 of 6 runs. So did
+the pointer: the 2026-10 single-run skip did not reproduce at 6 runs
+with a pointer step that says the step is not done until the loop has
+run. On this evidence the handoff is no more reliable than the pointer
+on Claude Code, and it costs what "What a skill costs" lists. The
+decision rule above was written expecting the pointer to be the weaker
+arm, so its first branch is met in letter and its premise is not.
+Step 4 therefore waits for the owner.
+
+**What it does not show.** Codex and OpenCode were not run. One step
+of one skill was measured, on one model, with the two moved steps
+worded alike; a pointer without the "not done until" sentence was not
+an arm.
+
+**A scorer bug found on the way.** The first scoring flagged `enrich`
+as run in 3 pointer runs. No run ran it: each had written a note to
+`revisions.md` through a quoted heredoc whose text named the command
+in backticks, and the scorer read backticks inside a heredoc body as a
+substitution. Fixed here, with a `self_check()` case.
 
 ---
 
