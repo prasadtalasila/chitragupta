@@ -900,6 +900,30 @@ of one skill was measured, on one model, with the two moved steps
 worded alike; a pointer without the "not done until" sentence was not
 an arm.
 
+**The same three arms with an outline, 2026-11-14.** In the runs above
+no dossier had an `outline.md`, so `draft dossier status` was optional
+in the critique step and a run that skipped it had followed the step;
+counted only where it ran at or before the baseline scan, it ran in 5,
+4 and 3 runs. The arms were run again with `--outline`, which gives the
+task five outlined sections with declared queries and so makes the
+command required. Rows: `inline-outline.json`, `pointer-outline.json`
+and `handoff-outline.json` in the same folder.
+
+| | Inline | Pointer | Handoff |
+| --- | ---: | ---: | ---: |
+| Usable runs, gate passed, `outline.md` written | 6 | 6 | 6 |
+| `draft dossier status` at or before the baseline scan | 6 | 6 | 6 |
+| `review verbatim recheck` ran | 6 | 6 | 6 |
+| `revisions.md` has a critique entry | 6 | 6 | 6 |
+| Reached the loop's text | 6 | 6 | 6 (all by the skill tool) |
+| Median run | 334 s | 386 s | 329 s |
+
+Both comparisons exit 0, with every command row equal but
+`review synthesis` (3, 4, 3) and `figure sync` (1, 0, 0). Where the
+command is required, all three arms ran it in every run. No declared
+query came back `no evidence`: the security query returned candidates,
+so what a run does with a `no evidence` sub-theme was not exercised.
+
 **A scorer bug found on the way.** The first scoring flagged `enrich`
 as run in 3 pointer runs. No run ran it: each had written a note to
 `revisions.md` through a quoted heredoc whose text named the command
