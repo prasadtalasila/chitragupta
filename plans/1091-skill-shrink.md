@@ -164,8 +164,9 @@ server.
     calls it inconclusive and reruns rather than failing. Results are
     comparable within this series only: #1068 ran the same GGUF on the
     CPU host with one slot. The baseline showed that only Claude Code is
-    steady enough at 3 runs to gate on; whether the shrink PRs gate on
-    Claude Code alone while #1210 is open is the user's to decide.
+    steady enough at 3 runs to gate on, so the shrink PRs gate on
+    Claude Code alone (user, 2026-11-14) and report Codex and OpenCode
+    as advisory until #1210 steadies them.
 
 ## The series
 

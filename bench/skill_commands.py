@@ -333,12 +333,20 @@ def judge(before: list, after: list) -> "tuple[int, list]":
     return verdict, table
 
 
-def compare(before_path: Path, after_path: Path, quiet: bool = False) -> int:
+# The harnesses whose verdict sets the exit code. Only Claude Code runs a
+# skill's steps steadily enough at 3 runs an arm to gate on; Codex and
+# OpenCode are judged and printed, but advisory, until #1210 steadies
+# them (docs/HARNESS.md, the 2026-11-13 baseline).
+GATED = ("claude",)
+
+
+def compare(before_path: Path, after_path: Path, quiet: bool = False, gate=GATED) -> int:
     """`--compare`: one table per (harness, skill), then the worst verdict
-    as the exit code -- 0 pass, 1 fail, 3 inconclusive (rerun 3 more on
-    both arms and compare the merged files). A (harness, skill) in only one
-    arm is listed and skipped, so a full baseline compares against a PR
-    that ran one skill."""
+    of the `gate` harnesses as the exit code -- 0 pass, 1 fail, 3
+    inconclusive (rerun 3 more on both arms and compare the merged
+    files). Every other harness is judged and marked advisory. A (harness,
+    skill) in only one arm is listed and skipped, so a full baseline
+    compares against a PR that ran one skill."""
 
     def load(path):
         return json.loads(Path(path).read_text(encoding="utf-8"))
@@ -354,17 +362,20 @@ def compare(before_path: Path, after_path: Path, quiet: bool = False) -> int:
             skipped.append(f"{harness} / {skill}")
             continue
         verdict, table = judge(arms["before"], arms["after"])
-        worst = max(worst, verdict, key=SEVERITY.index)
+        if harness in gate:
+            worst = max(worst, verdict, key=SEVERITY.index)
         if not quiet:
             name = {PASS: "pass", FAIL: "FAIL", INCONCLUSIVE: "inconclusive"}[verdict]
-            print(f"\n{harness} / {skill}: {name}")
+            note = "" if harness in gate else " (advisory)"
+            print(f"\n{harness} / {skill}: {name}{note}")
             width = max(len(row[0]) for row in table)
             for key, b, a, mark in table:
                 print(f"  {key:<{width}}  {b:>5} -> {a:<5} {mark}")
     if not quiet:
         if skipped:
             print(f"\nin one arm only, not judged: {', '.join(skipped)}")
-        print(f"\nverdict: {({PASS: 'pass', FAIL: 'fail', INCONCLUSIVE: 'inconclusive'})[worst]}")
+        verdict_name = {PASS: "pass", FAIL: "fail", INCONCLUSIVE: "inconclusive"}[worst]
+        print(f"\nverdict: {verdict_name} (gated on: {', '.join(gate)})")
     return worst
 
 

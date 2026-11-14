@@ -65,6 +65,7 @@ from tests.test_skill_references import NAMED_PATH  # noqa: E402
 
 from skill_bench_tasks import TIER2_TASKS  # noqa: E402  (bench/ is sys.path[0])
 from skill_commands import (  # noqa: E402
+    GATED,
     commands_run,
     commands_run_in,
     compare,
@@ -730,10 +731,20 @@ def _check_compare(project: Path) -> None:
     The gate and a forbidden command follow the same rule as a command;
     a run that measured its fixture or the clock is left out."""
 
-    def arm(name, ran_in, runs=3, gated=3, forbidden=0, broken=0, timeouts=0, skills=("x",)):
+    def arm(
+        name,
+        ran_in,
+        runs=3,
+        gated=3,
+        forbidden=0,
+        broken=0,
+        timeouts=0,
+        skills=("x",),
+        harness="claude",
+    ):
         rows = [
             {
-                "harness": "codex",
+                "harness": harness,
                 "skill": skill,
                 "run": k,
                 "exit": "timeout" if k > runs - timeouts else 0,
@@ -774,6 +785,11 @@ def _check_compare(project: Path) -> None:
         row.update(expected=[], ran=[], ran_all=["draft gate"])
     moved.write_text(json.dumps(rows), encoding="utf-8")
     assert compare(arm("b", 3), moved, quiet=True) == 0, "a command the after arm stopped naming"
+    # Only the gated harnesses set the exit code (Claude Code by default,
+    # #1210): a local harness's fail is reported, and advisory.
+    local_b, local_a = arm("lb", 3, harness="codex"), arm("la", 0, harness="codex")
+    assert compare(local_b, local_a, quiet=True) == 0, "codex is advisory by default"
+    assert compare(local_b, local_a, quiet=True, gate=("claude", "codex")) == 1, "unless gated"
 
 
 def _raise(*_args) -> dict:
@@ -835,6 +851,13 @@ def parse(argv) -> argparse.Namespace:
         metavar=("BEFORE", "AFTER"),
         help="compare two tier2.json files; exit 0 pass, 1 fail, 3 inconclusive",
     )
+    parser.add_argument(
+        "--gate",
+        action="append",
+        choices=HARNESSES,
+        help="--compare: a harness whose verdict sets the exit code, repeatable "
+        "(default claude; the others are advisory until #1210)",
+    )
     args = parser.parse_args(argv)
     if args.compare is None and args.tier is None:
         parser.error("one of --tier or --compare is required")
@@ -849,7 +872,7 @@ def main(argv=None) -> int:
     args = parse(argv)
     self_check()
     if args.compare is not None:
-        return compare(*args.compare)
+        return compare(*args.compare, gate=tuple(args.gate or GATED))
     problem = check_args(args)
     if problem:
         print(problem, file=sys.stderr)

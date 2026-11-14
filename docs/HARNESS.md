@@ -598,6 +598,12 @@ command, the gate, each forbidden command -- is judged by one rule:
 
 On exit 3, run 3 more on both arms and compare the merged files.
 
+**Only Claude Code gates.** The exit code is the worst verdict of the
+`--gate` harnesses, `claude` by default; Codex and OpenCode are judged
+and printed, marked advisory. The baseline below is why: only Claude
+Code runs a skill's steps steadily enough at 3 runs an arm. When #1210
+steadies the other two, add them with `--gate codex --gate opencode`.
+
 **Why 3 runs screen and do not convict.** A skill names 15 to 19
 commands counting its references (5 for figure-drawer), so a comparison
 judges about 54 rows across the three harnesses. Take a row a model
@@ -659,4 +665,5 @@ local runs vary most, is the worst), and 0% to 5% on Claude Code
 alone. The local harnesses' noise is per run, not per command: a run
 that derails drops every step after it at once. So a 3-plus-3-run
 `--compare` over the local harnesses cannot yet tell a shrink from
-that noise; which way to fix it is an open decision on #1196.
+that noise. So `--compare` gates on Claude Code alone, and #1210
+tracks steadying Codex and OpenCode.

@@ -72,6 +72,8 @@ person does that.
      <before>/tier2.json <after>/tier2.json
    ```
 
+   Only Claude Code sets the exit code; Codex and OpenCode tables are
+   marked advisory (`--gate` adds them once #1210 steadies them).
    Exit 3 is inconclusive: 3 runs screen, they do not convict. Run 3 more
    on both arms, join each arm's two files into one JSON list, and
    compare again; 6 against 6 settles. A fail stands: report it,
