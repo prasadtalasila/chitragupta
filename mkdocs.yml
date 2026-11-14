@@ -224,6 +224,7 @@ nav:
           - Tables: docs/writing-standards/tables.md
           - What has to fit the page: docs/writing-standards/page.md
           - Genre files: docs/writing-standards/genres/README.md
+          - "Genre: survey": docs/writing-standards/genres/survey.md
           - House styles: docs/writing-standards/styles/README.md
       - TikZ figure style: docs/TIKZ-STYLE.md
       - Figure checks:

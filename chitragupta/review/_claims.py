@@ -27,10 +27,10 @@ absent:
   read the sentences whose paragraph rests on nothing first.
 - **Table rows stay in.** `survey.md`'s comparison table attributes each
   row with a citekey in backticks, which is not a citation the gate can
-  see -- and `survey-writer` step 9 already says to attribute "in the
-  prose or the comparison table, **where the gate can see the key**".
-  Suppressing the rows would hide a real instance of what that step
-  warns about.
+  see -- and docs/writing-standards/genres/survey.md already says to
+  attribute "in the prose or the comparison table, where the gate can
+  see the key". Suppressing the rows would hide a real instance of what
+  that rule warns about.
 
 Stdlib-only, and reads only the draft -- no ledger, no corpus, no sync.
 """

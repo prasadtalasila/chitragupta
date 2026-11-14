@@ -321,8 +321,10 @@ logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups
                           demand. Plus demo-recorder, which records the feature demo, and
                           skill-bench, which measures a skill change on three harnesses:
                           developer-only, so no distribution ships them (docs/HARNESS.md)
-.claude/skills-common/    references/ shared by several skills (critique, prose check,
-                          verbatim scan, collection scoping), kept once for all harnesses
+.claude/skills-common/    references/ shared by several skills (the genre writers' shared steps,
+                          collection scoping, critique, render and references, prose check,
+                          verbatim scan, mathematical prose, figures/tables/equations in a
+                          revision, digest copying), kept once for all harnesses
 .claude/agents/           deep-research's subagents: deep-research-interviewer, deep-research-writer, peer-reviewer
 .claude/hooks/            citation_gate_hook.py and style_check_hook.py -- PostToolUse hooks,
                           mechanically enforcing the citation gate and the prose style check on
