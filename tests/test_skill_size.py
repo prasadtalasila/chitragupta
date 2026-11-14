@@ -51,7 +51,7 @@ BUDGET = {
     "survey-writer": (
         15_000,
         "#1091: deduplicated from 32 KB; the rest is commands and tested text, "
-        "and going under 12,000 is the owner's call (plans/1091-skill-shrink.md, Decision 1)",
+        "and the target is a guideline (plans/1091-skill-shrink.md, Decision 1)",
     ),
     "textbook-chapter-writer": (33_000, _LATER),
     "thesis-chapter-writer": (34_000, _LATER),

@@ -1,7 +1,7 @@
 # Move ledger: survey-writer (#1198, SK-1)
 
-Status: **built on `feat-1091-survey-writer`; stopped above the 12,000
-target under Decision 1.** Written 2026-11-14 against `9cbaf678`
+Status: **built on `feat-1091-survey-writer`, above the 12,000 target,
+which the owner accepted on 2026-11-14.** Written 2026-11-14 against `9cbaf678`
 (6.173.0), for [plans/1091-skill-shrink.md](1091-skill-shrink.md) PR 1,
 Task 3.
 
@@ -27,8 +27,10 @@ way.
 | `.opencode/skills/survey-writer-opencode/SKILL.md` | 31,909 | 14,208 |
 
 The cap in `tests/test_skill_size.py` falls from 32,000 to 15,000, with
-its reason. **It stays above the 12,000 target**, and Decision 1 sends
-that back to the owner rather than compressing further. What the 14 KB
+its reason. **It stays above the 12,000 target.** Decision 1 sent that back to the
+owner, who answered on 2026-11-14 that the cap is a guideline: the goal
+is less duplication and better compliance, so nothing is compressed to
+fit. What the 14 KB
 holds, measured on the `.claude` copy:
 
 - 1,075 bytes of frontmatter and title, which Decision 7 leaves alone;
