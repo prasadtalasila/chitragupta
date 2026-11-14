@@ -19,8 +19,8 @@ already handled) except:
   **Every prose document ships** -- README.md, docs/, SOUL.md, AGENTS.md,
   DEVELOPER-AGENTS.md and DEVELOPER.md -- as does `.claude/` and its genre
   skills, but not a skill marked developer-only (#1188): `demo-recorder`
-  is this repository's own machinery, like `tests/`, and
-  `chitragupta/developer_skills.py` finds it in every harness folder.
+  and `skill-bench` are this repository's own machinery, like `tests/`,
+  and `chitragupta/developer_skills.py` finds them in every harness folder.
   Those genre skills cite AGENTS.md by name for the citekey invariant,
   and the docs cross-reference each other freely, so excluding any one of
   them leaves dangling references in the rest. Someone who unzips a

@@ -210,7 +210,8 @@ copies agree, a required step present in one is present in all three.
 ### Developer-only skills
 
 A skill for working on this repository rather than with the pipeline,
-so far only `demo-recorder` (which records the feature demo), carries
+so far `demo-recorder` (which records the feature demo) and
+`skill-bench` (which measures a skill change on all three harnesses), carries
 one extra frontmatter field:
 
 ```yaml
@@ -323,10 +324,9 @@ the one partial skip was a run with the commands inline. That is one
 step on small samples, so it licenses moving this step, which is what
 the four genre writers and deep-research now do, and nothing more. The
 critique loop keeps its commands inline until it is measured the same
-way. `bench/bench_skill_harnesses.py --tier 2 --skill-only` re-runs the
-pointer arm, since it scaffolds the tree it runs from; run with this
-script against a tree from before the size budget, it gives the inline
-arm.
+way. `bench/bench_skill_harnesses.py --tier 2 --skill-only` now runs
+that pointer arm for every user skill, not only the survey (see
+"Measuring a skill change" below).
 
 Two harness facts the bench had to work around, both recorded in the
 script: OpenCode takes its project directory from the inherited `PWD`,
@@ -556,3 +556,155 @@ call.
   shell and the hook never fired; OpenCode's plugin did fire and
   refused a write. Both runs are in [LOCAL-MODELS.md](LOCAL-MODELS.md),
   tracked in [#904](https://github.com/prasadtalasila/chitragupta/issues/904).
+
+### Measuring a skill change: commands run, and the pass rule
+
+A shrink can leave a step's command in a skill and still make a model
+stop running it, and no unit test sees that. `skill-bench` measures it
+(plans/1091-skill-shrink.md, PR 0). Each Tier 2 run of
+`bench/bench_skill_harnesses.py` records, for its (harness, skill):
+
+- `expected`: every `chitragupta` command the harness's own copy of
+  `SKILL.md` names, and every command in the references it names, since
+  a step cut to a pointer keeps its commands in the reference. A command
+  is `module sub [sub]` (`draft dossier init`), with the subcommands
+  taken from the module's own `--help`, so a slug after `draft render`
+  is an argument and never a third word.
+- `ran` and `missed`: which of those a tool call executed. A command
+  counts only where a shell would run it: as the first word of a simple
+  command, inside the `zsh -lc '...'` that Codex wraps every call in, or
+  behind `cd x &&`, `VAR=1`, `timeout 600` or a keyword such as `then`.
+  A `grep` for the command, an `echo` naming it, a line inside a heredoc
+  body and a `--help` call are not runs.
+- `forbidden_ran`: `corpus sync` or `enrich`, which the skills name only
+  as what the user runs.
+- `gate`: `draft gate` on the task's own draft, 2 when it was never
+  written; and `prerequisite_gate`, the same for the survey a reviser
+  task starts from.
+
+**The gated arm is the skill-only one.** Each task's prompt holds what a
+user would bring (the answers to the skill's questions, what they want
+in the draft) and, unless `--skill-only` is given, a tail that names the
+closing steps (render, prose check, verbatim scan, stamp). A prompt that
+names a step makes a model run it whatever the skill says, so those rows
+measure the prompt; with `--skill-only` only the skill can ask for them,
+which is the failure a shrink can cause. A reviser's prerequisite survey
+always gets the full prompt, so the reviser starts from a complete
+draft. Each run records which prompt it had.
+
+`--compare BEFORE AFTER` reads two such files and judges each (harness,
+skill) on every command either arm expected, counted from everything
+each run executed. It leaves out a run whose prerequisite never passed
+its gate, or whose transcript names the launch checkout (it loaded the
+wrong skills): those measured the fixture or the setup. A run that timed
+out or raised is left out of the command rows, whose tail it never
+reached, and counted on a row of its own instead, since a shrink can
+cause it. Every command, gate and forbidden-command row is judged by one
+rule:
+
+| Usable runs per arm | Fail (exit 1) | Inconclusive (exit 3) | Pass (exit 0) |
+| --- | --- | --- | --- |
+| fewer than 3 | -- | always | -- |
+| 3 against 3 | the row went all the way the wrong way: a command or the gate in every before run and no after run, or a forbidden command in no before run and every after run | any other move the wrong way | no move the wrong way |
+| 6 against 6 | an all-the-way move, or a move of 4 runs or more | -- | anything else |
+
+The timeout-or-error row is stricter, since the baseline below had none
+in 132 runs: a rise of 2 runs fails at any size, and a rise of 1 is
+inconclusive. Arms that used different prompts are inconclusive. A
+(harness, skill) only the before arm ran is skipped, so a full baseline
+compares against a PR that ran one skill; one only the after arm ran,
+or a comparison that judged no gated (harness, skill) at all, is
+inconclusive, never a pass.
+
+On exit 3, run 3 more on both arms into a fresh `--out` (the bench
+overwrites its own), join each arm's runs into one JSON list, and
+compare again.
+
+**Only Claude Code gates.** The exit code is the worst verdict of the
+`--gate` harnesses, `claude` by default; Codex and OpenCode are judged
+and printed, marked advisory. The baseline below is why: only Claude
+Code runs a skill's steps steadily enough at 3 runs an arm. When #1210
+steadies the other two, add them with `--gate codex --gate opencode`.
+
+**Why 3 runs screen and do not convict.** A skill names 12 to 19
+commands counting its references (5 for figure-drawer), so a comparison
+judges about 54 rows across the three harnesses. Take a row a model
+runs on 80% of runs, unchanged between the arms. A two-run drop then
+happens for 1 row in 18, so a rule that failed a two-run drop at 3 runs
+would fail an unchanged skill 96% of the time. The rule above fails a
+row at 3 runs only on all-to-none (0.4% a row) and at 6 runs on a drop
+of 4 (0.5% a row). Simulated end to end with `judge()` itself, if every
+row ran at 80% an unchanged skill would still fail 34% of the time, at
+90% 7%, and at 95% under 1%. Real rows are mostly near 0 or 1: a
+command a skill always runs, or one only a branch reaches. The baseline
+below measures what that makes the false-fail rate. It still finds a
+real regression: a step dropped outright fails at 3 runs, and a command
+that fell from 90% to 30% fails at 6 runs more than half the time.
+Results are comparable within one host and model build only.
+
+**The baseline, measured on 2026-11-13** on six NVIDIA A40s (driver
+595.58, CUDA 13.2): llama.cpp `b11321` built with `-DGGML_CUDA=ON` and
+`CMAKE_CUDA_ARCHITECTURES=86`, one `llama-server` per GPU with
+`-c 131072 -np 1 -ngl 99 --jinja`, serving the same Qwen3.6-35B-A3B
+`UD-Q4_K_M` file as #1068; Codex on three GPUs and OpenCode on the
+other three. Skills scaffolded from `feat-1091-skill-bench` (main's
+skills, unchanged); the commands a model ran used `main` at 6.172.1.
+Every user skill's Tier 2 task ran 3 times on each harness with its
+full prompt, 99 runs, and Claude Code ran 3 more as an unchanged second
+arm: each run was its own `--runs 1` invocation into its own `--out`,
+joined afterwards with the run number set from the invocation. The rows
+are in `bench/results/2026-11-13-skill-bench-baseline/`.
+
+| Harness | Usable runs | Gate passed | Named commands run | Median run |
+| --- | ---: | ---: | ---: | ---: |
+| Claude Code (`sonnet`) | 33 of 33 | 33 | 74% | 336 s |
+| Codex 0.159.3 (Qwen3.6) | 32 of 33 | 30 | 49% | 443 s |
+| OpenCode 1.18.34 (Qwen3.6) | 31 of 33 | 24 | 48% | 280 s |
+
+"Named commands run" counts every command the skill and its
+references name, branch-only ones included, so no harness reaches
+100%. Three runs left out had a prerequisite survey that never wrote
+its draft; no run timed out, and none ran `corpus sync` or `enrich`.
+13 of Codex's 33 runs exited 1 (Codex's own exit code, not a timeout)
+and are counted: what they ran and the gate on their draft are scored
+like any other run.
+
+- **Claude Code runs the same steps every time.** In its A/A
+  comparison (runs 1-3 against 4-6), `--compare` failed nothing:
+  8 skills passed and 3 were inconclusive on one-run moves in
+  commands only a branch reaches.
+- **Codex skips the dossier bookkeeping.** It ran `draft dossier init`
+  in under half its survey, textbook, thesis, tutorial and
+  review-digest runs, writing the dossier files by hand instead, and
+  rarely ran `draft dossier status` or `check-evidence`. Its drafts
+  still passed the gate.
+- **OpenCode stops early.** In its non-interactive mode a request to
+  read outside the project (a figure compiled in `/tmp`, the installed
+  package's source) is refused and ends the run, so whole tails of
+  steps go unrun: its tutorial-writer runs reached about 2 of 17 commands
+  and never wrote a gating draft, and deep-research ran the render
+  and stamp steps in one run of three.
+
+**What that does to the pass rule.** Simulated with `judge()` on the
+per-command rates measured here, an unchanged skill fails between 2%
+and 42% of the time over all three harnesses (survey-writer, whose
+local runs vary most, is the worst), and 0% to 5% on Claude Code
+alone. The local harnesses' noise is per run, not per command: a run
+that derails drops every step after it at once. So a 3-plus-3-run
+`--compare` over the local harnesses cannot yet tell a shrink from
+that noise. So `--compare` gates on Claude Code alone, and #1210
+tracks steadying Codex and OpenCode.
+
+**The skill-only arm, measured on 2026-11-14** on the same host and
+skills: every user skill's Tier 2 task, 3 runs on Claude Code with
+`--skill-only`, so no prompt named a closing step. All 33 runs were
+usable and passed the gate, 74% of named commands ran, as with the full
+prompt, and every skill ran within one command of its full-prompt mean;
+no command the full prompt got in every run fell below half the
+skill-only runs. With today's skills the closing steps came from the
+skills, not the prompt, so this arm is the before arm a shrink is
+measured against: a step a shrink hides now has room to fall. The rows
+are in `bench/results/2026-11-14-skill-bench-skill-only/`. The task
+prompts were split into body and tail after the full-prompt baseline
+ran, which reordered a sentence or two in a few of them; the full
+prompts are otherwise the ones it used.

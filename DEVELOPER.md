@@ -318,8 +318,9 @@ logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups
                           assembles accepted units into a book (book-assembler), and one
                           that draws a figure for the others (figure-drawer). Each has a
                           SKILL.md and, where it needs one, a references/ folder read on
-                          demand. Plus demo-recorder, which records the feature demo:
-                          developer-only, so no distribution ships it (docs/HARNESS.md)
+                          demand. Plus demo-recorder, which records the feature demo, and
+                          skill-bench, which measures a skill change on three harnesses:
+                          developer-only, so no distribution ships them (docs/HARNESS.md)
 .claude/skills-common/    references/ shared by several skills (critique, prose check,
                           verbatim scan, collection scoping), kept once for all harnesses
 .claude/agents/           deep-research's subagents: deep-research-interviewer, deep-research-writer, peer-reviewer

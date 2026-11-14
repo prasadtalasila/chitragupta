@@ -14,7 +14,7 @@ import sys
 
 import pytest
 
-from tests.conftest import REPO_ROOT
+from tests.conftest import REPO_ROOT, fake
 
 BASH = shutil.which("bash")
 SCRIPT = REPO_ROOT / ".claude" / "skills" / "demo-recorder" / "scripts" / "install_tools.sh"
@@ -24,13 +24,6 @@ pytestmark = pytest.mark.skipif(
 )
 
 TOOLS = ("asciinema", "ffmpeg", "agg", "svg-term", "node", "npm")
-
-
-def fake(directory, name, body):
-    path = directory / name
-    path.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
-    path.chmod(0o755)
-    return path
 
 
 def everything(tmp_path, asciinema="asciinema 2.4.0"):

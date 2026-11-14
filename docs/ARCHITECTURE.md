@@ -189,7 +189,8 @@ successful read, `1` for a citekey the ledger doesn't hold.
 ## ✍ Layer 2: the drafting layer
 
 Eleven user-facing Claude Code skills in `.claude/skills/` (a git
-checkout also holds the developer-only `demo-recorder`), one set of grounding rules
+checkout also holds the developer-only `demo-recorder` and
+`skill-bench`), one set of grounding rules
 between them: six that write a new draft, three that revise one that
 already exists, `book-assembler`, which writes no prose and composes an
 already-drafted book from its accepted units, and `figure-drawer`, which
