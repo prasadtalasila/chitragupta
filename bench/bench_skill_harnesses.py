@@ -63,7 +63,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from tests.test_skill_harness_copies import SUFFIX, USER_SKILLS  # noqa: E402
 from tests.test_skill_references import NAMED_PATH  # noqa: E402
 
-from skill_bench_tasks import TAIL_WORDS, TIER2_TASKS  # noqa: E402  (bench/ is sys.path[0])
+from skill_bench_tasks import OUTLINE_TASKS, TAIL_WORDS, TIER2_TASKS  # noqa: E402  (bench/ is sys.path[0])
 from skill_commands import (  # noqa: E402
     GATED,
     commands_run,
@@ -509,6 +509,8 @@ def tier2_job(args, harness: str, skill: str, k: int, servers: "queue.Queue") ->
             servers.put(url)
     outcome.update(harness=harness, skill=skill, run=k, references=references_read(log))
     outcome["prompt"] = "skill-only" if args.skill_only else "full"
+    if args.outline and skill in OUTLINE_TASKS:
+        outcome["prompt"] += "+outline"
     # A run that resolved its project from this checkout or `--source`
     # measured the wrong skills; `--compare` leaves it out.
     outcome["outside_project"] = leaked(transcript_text(log))
@@ -524,7 +526,9 @@ def task_prompt(args, skill: str, prerequisite: bool = False) -> str:
     named, so only the skill can make a model run them), else its full
     one. A prerequisite always gets the full prompt: a reviser is measured
     on what it does to a complete survey, not on a survey's own skips."""
-    return TIER2_TASKS[skill].prompt(skill_only=args.skill_only and not prerequisite)
+    tasks = OUTLINE_TASKS if args.outline and not prerequisite else {}
+    task = tasks.get(skill, TIER2_TASKS[skill])
+    return task.prompt(skill_only=args.skill_only and not prerequisite)
 
 
 def tier2(args) -> list:
@@ -643,7 +647,7 @@ def self_check() -> None:
             encoding="utf-8",
         )
         assert references_read(log) == [".claude/skills-common/references/a.md"]
-        for name, task in TIER2_TASKS.items():
+        for name, task in [*TIER2_TASKS.items(), *OUTLINE_TASKS.items()]:
             only = task.prompt(skill_only=True).lower()
             named = [word for word in TAIL_WORDS if word in only]
             assert not named, f"{name}'s skill-only prompt names a closing step: {named}"
@@ -994,6 +998,12 @@ def parse(argv) -> argparse.Namespace:
         action="store_true",
         help="tier 2: leave every task's closing steps out of its prompt, so only the "
         "skill asks for them (the arm a shrink is gated on)",
+    )
+    parser.add_argument(
+        "--outline",
+        action="store_true",
+        help="tier 2: survey-writer's task opens its dossier with an outline, which makes "
+        "the critique step's `draft dossier status` required and not optional",
     )
     parser.add_argument(
         "--source", type=Path, default=REPO_ROOT, help="the checkout whose skills are scaffolded"
