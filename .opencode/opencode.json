@@ -6,6 +6,7 @@
       "agenda-reviser": "deny",
       "book-assembler": "deny",
       "corpus-reviser": "deny",
+      "critique-loop": "deny",
       "deep-research": "deny",
       "demo-recorder": "deny",
       "draft-reviser": "deny",
