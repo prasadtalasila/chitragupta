@@ -42,7 +42,9 @@ def test_no_printed_string_names_the_install_script():
     assert offenders == []
 
 
-SKILL_TREES = (".claude/skills", ".agents/skills", ".opencode/skills")
+# `.claude/skills-common/` too: a passage moved out of a `SKILL.md` into a
+# shared reference is still read by a drafting model (#1091).
+SKILL_TREES = (".claude/skills", ".claude/skills-common", ".agents/skills", ".opencode/skills")
 
 
 def test_no_skill_sends_a_drafting_reader_to_the_install_script():

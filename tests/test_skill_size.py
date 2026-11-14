@@ -14,6 +14,12 @@ with the file:
 Bytes, not lines: a line limit is dodged by re-wrapping, and bytes are
 what a context window spends. A raise cannot be detected from the tree
 alone; the reason column is what makes one visible in review.
+
+What a shrink may move is prose: rationale and detail go to the skill's
+`references/` or `.claude/skills-common/references/`, behind a pointer
+that says when to read them. Every `python -m chitragupta...` command, every
+marker a draft must carry and every phrase a test reads from the raw file
+stay in `SKILL.md` (plans/1091-skill-shrink.md, Decision 2).
 """
 
 import pytest
@@ -67,8 +73,8 @@ def test_each_copy_is_under_its_cap(name, harness):
     cap, _ = BUDGET[name]
     size = len((folder(harness, name) / "SKILL.md").read_bytes())
     assert size <= cap, (
-        f"{size} bytes over a cap of {cap}: move prose to references/, "
-        "or raise the cap in this table with a reason"
+        f"{size} bytes over a cap of {cap}: move prose to references/; commands "
+        "stay in SKILL.md. Or raise the cap in this table with a reason"
     )
 
 
