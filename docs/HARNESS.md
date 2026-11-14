@@ -278,7 +278,10 @@ read counts only when that line matches the file. (Since 2026-11-14 it
 also asks for every `docs/` page the skill or those files name, such as
 `docs/WRITING-STANDARDS.md`, scored the same way, so moving a cited
 section to another page is measured too; the table below predates
-that.) Each Tier 1 run was
+that. Its first run, Claude Code on main's skills, passed 9 of 11: one
+`docs/` page named only in a shared reference went unread, and one
+heading's emoji came back garbled; the rows are in
+`bench/results/2026-11-14-tier1-docs-baseline/`.) Each Tier 1 run was
 capped at 900 seconds (`--timeout 900`, the script's default), except
 the first Codex batch (1800) and OpenCode's four genre writers (1200);
 each Tier 2 task was capped at 3300.
