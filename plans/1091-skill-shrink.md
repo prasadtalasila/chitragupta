@@ -5,7 +5,8 @@
 > superpowers:executing-plans to implement this plan task-by-task. Steps
 > use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **PR 0 built and benched, in review; PRs 0b-8 not started.**
+Status: **PR 0 merged (`9cbaf678`); PR 0c, an experiment added on
+2026-11-14, being built; PRs 0b and 1-8 not merged.**
 Written 2026-11-13 against `9aa75085`
 (6.170.2), branched from `a76b9ba1` (6.172.0), for
 issue [1091](https://github.com/prasadtalasila/chitragupta/issues/1091).
@@ -115,7 +116,7 @@ server.
   be requested with the repository's token, so each PR says so rather
   than claiming it.
 
-## Decisions (user, 2026-11-11 to 11-13)
+## Decisions (user, 2026-11-11 to 11-14)
 
 1. **The byte cap is a guard, not the goal.** The goal is deduplication
    and one wording per rule. The targets are 12,000 bytes for a genre
@@ -167,6 +168,20 @@ server.
     steady enough at 3 runs to gate on, so the shrink PRs gate on
     Claude Code alone (user, 2026-11-14) and report Codex and OpenCode
     as advisory until #1210 steadies them.
+11. **Shared procedures: a pointer or a skill handoff? Measured first**
+    (user, 2026-11-14). Decision 5 sends procedure the genre writers
+    share to `.md` files behind "read this now and follow it" pointers.
+    The repository already has a second way to share a procedure: a
+    genre writer hands a step to another skill and takes it back, as all
+    four do with `figure-drawer`. The question is whether that handoff
+    should carry shared *procedures* instead of pointers. It is settled by
+    an experiment, PR 0c, before PR 1 starts. **Rule:** if the handoff
+    arm does not fail against the inline arm, the four `skills-common`
+    procedures the genre writers call with "Read ... now and follow it"
+    (critique, render-and-references, prose-check, verbatim-scan) and
+    the procedural sections §3 and §7 of the planned `genre-steps.md`
+    become skills, and only writing rules stay as `.md`. If it fails,
+    this plan stands as merged. Writing rules stay in `docs/` either way.
 
 ## The series
 
@@ -174,6 +189,7 @@ server.
 | --- | --- | --- | --- |
 | 0 | #1196 SK-0 | this plan, `skill-bench`, bench `--source`, `--jobs`, `--base-url`, `--runs`, per-command scoring, `--compare` | minor (a new script, `DEVELOPER-AGENTS.md:1149-1151`; #1189 did the same) |
 | 0b | #1197 SK-0b | `docs/WRITING-STANDARDS.md` split into `docs/writing-standards/` | patch |
+| 0c | to be filed, SK-0c | experiment: survey-writer's critique step inline, as a pointer, and as a handoff to a new `critique-loop` skill; the bench scores handoffs; decides Decision 11 | patch (the bench rule and this plan; the arm branches are never merged) |
 | 1 | #1198 SK-1 | `genre-steps.md`, survey-writer, `genres/survey.md` | patch |
 | 2 | #1199 SK-2 | textbook, thesis, tutorial; `placement.md` §4; tutorial captions | patch |
 | 3 | #1200 SK-3 | review-digest, restoring what #1173 dropped | patch |
@@ -610,12 +626,235 @@ Rules that keep it from going piecemeal, written into the index:
   when both are green.
 - [ ] **Step 4:** Bench Tier 1 for all skills on the server
   (`skill-bench`, Tier 1 only). Done when it passes as on main.
+
+  **Tier 1 does not yet see this move.** On `main` it scores only the
+  files a `SKILL.md` names under `.claude/skills` (`NAMED_PATH`, and the
+  Tier 1 prompt asks for exactly those), and every file PR 0b creates
+  or splits is under `docs/`. So Tier 1 would pass PR 0b without testing
+  whether a model follows a `docs/writing-standards/` citation. It is
+  being extended to score the `docs/` files a skill names as well, on
+  branch `feat-1091-tier1-docs-reads` (2026-11-14), and Step 4 runs with
+  that extension, on `main` and on this branch alike. Until it merges,
+  a Tier 1 pass here says nothing about the moved sections.
 - [ ] **Step 5:** Commit, PR with its sub-issue. After merge, comment on
   #1178 and update `plans/1179-research-paper-genre.md`'s "The writing
   rules": research-paper's rules go in
   `docs/writing-standards/genres/research-paper.md`, what only the skill
   needs goes in `research-paper-writer/references/`, and the skill cites
   `genre-steps.md`.
+
+---
+
+## PR 0c: does a skill handoff hold a mandatory step?
+
+Branch `feat-1091-routing-experiment` (this plan's section and the
+bench rule below). Runs before PR 1, because its result decides what
+PR 1 builds (Decision 11). Issue to be filed.
+
+**What is already known.** With survey-writer's critique step cut to
+"read `critique.md` and follow it", one Claude Code run skipped the step
+outright: no baseline, no recheck, no `revisions.md` entry
+(`docs/HARNESS.md`, "Only `SKILL.md` is per harness"). That is one run,
+and it is why every genre writer keeps the loop's commands inline. A
+mandatory step handed to another skill has never been measured: the
+only handoff in use, to `figure-drawer`, is a step the genre writers
+reach because the task asks for a figure.
+
+**What a skill costs that a reference does not:**
+
+- three `SKILL.md` copies, kept in step by
+  `tests/test_skill_harness_copies.py`;
+- a phrase-map entry for every harness-specific phrase it carries;
+- a row in `.opencode/opencode.json`'s deny list, which
+  `chitragupta doctor` checks;
+- a frontmatter description that every harness loads in every session,
+  whether or not the skill runs (Decision 7 leaves descriptions alone
+  until they can be measured; a new skill adds one);
+- on Codex, nothing a reference does not already cost the model: Codex
+  has no skill tool, so a handoff there is a read of
+  `.agents/skills/<name>/SKILL.md`, as a pointer is a read of a `.md`.
+
+What it buys: a skill may name harness tools and other skills, which a
+shared reference may not (`tests/test_skill_references.py`), so a
+phrase such as `critique_edit_tool` could live in the one skill that
+needs it instead of in every caller.
+
+### The three arms
+
+Each arm is a branch off the same `main` commit, and only survey-writer's
+step 10 (the pre-gate self-feedback loop that
+`tests/test_skill_pregate_feedback_step.py` pins) differs between them.
+
+| Arm | Branch | Step 10 holds | Where the loop's commands are |
+| --- | --- | --- | --- |
+| inline | `main` | the loop's commands, as today | `SKILL.md`, all three copies |
+| pointer | `exp-1091-critique-pointer` | a pointer at an `.md` reference | that reference, once under `.claude/` |
+| handoff | `exp-1091-critique-handoff` | a handoff to a new skill that runs the loop and returns | `critique-loop` (`critique-loop-opencode` in the OpenCode copy), three copies |
+
+The arm branches are built elsewhere and are never merged; the step-10
+tests fail on them by construction, since the commands leave the step.
+The handoff arm words its step the way the genre writers word the
+figure handoff ("Hand ... to `critique-loop`, and come back to this
+step"), because that is the sentence the bench follows (below).
+
+### Files on this branch
+
+- Modify: `bench/skill_commands.py`: `HANDOFF`, `handoffs`,
+  `handed_off`, `skill_files`
+- Modify: `bench/bench_skill_harnesses.py`: `score_run` (Tier 2 only),
+  `skill_load`, and their `self_check()` cases; the Tier 1 path is not
+  touched (`feat-1091-tier1-docs-reads` changes it)
+- Modify: `bench/README.md`, `docs/HARNESS.md` ("Measuring a skill
+  change")
+- Modify: this plan
+
+### The bench rule: a handoff's commands are expected
+
+Without it the bench could not score the handoff arm: `expected` held
+the commands of a harness's `SKILL.md` and of the files it names by
+path, so a step moved into another skill would leave the expected set.
+`--compare` would still count the commands (it counts every command a
+run executed, `ran_all`), but only for keys some arm expected.
+
+- **The rule.** A sentence that hands something to `` `<skill>` `` and
+  says "and come back" is a handoff, when `<skill>` is a folder in the
+  same harness's skills folder. That skill's commands, and those of the
+  files it names, are expected of the caller, and so on for any skill
+  it hands to in turn. The OpenCode copies write the suffixed name,
+  which is the folder looked up, so no suffix logic is needed.
+- **Why so narrow.** A skill that only names a sibling ("use
+  `draft-reviser` instead", "Hand off to `corpus-reviser`", "drawn
+  through `figure-drawer`") must not take on its commands, or every
+  skill's expected set would grow by its siblings' steps and the
+  recorded baselines would change meaning. The return clause is what
+  separates a sub-procedure from a route away.
+- **What it changes on `main`'s skills**, computed for every user skill
+  on every harness before and after: the four genre writers gain 5
+  commands each (`draft figures`, `figure new`, `figure sync`,
+  `figure check`, `figure look`) and draft-reviser 4 (it already named
+  `draft figures`), on all three harnesses, from their `figure-drawer`
+  handoffs. No other set changed. Comparing a new arm against the
+  recorded baselines in `bench/results/` stays sound, because those rows
+  carry `ran_all` and `--compare` judges the union of both arms'
+  expected sets; re-scoring the 2026-11-14 skill-only rows with the new
+  sets and comparing them with the originals passes. The "Named
+  commands run" share in `docs/HARNESS.md` was taken over the old sets.
+- **Whether the run loaded the skill** is recorded per run as
+  `handoffs_loaded`: `"skill"` (Claude Code's `Skill` or OpenCode's
+  `skill` tool named it), `"read"` (a tool call opened that harness's
+  copy of its `SKILL.md`), or `null`. Codex can only show `"read"`. In
+  the 36 recorded Claude Code genre-writer transcripts, `figure-drawer`
+  was loaded by reading its `SKILL.md` in 22 and through `Skill` in 14,
+  so a Claude Code handoff is not always a `Skill` call either.
+
+### Running it
+
+Bench code from this branch for all three arms, `chitragupta` from the
+same venv, Claude Code only, the skill-only prompt (survey-writer's
+task names no critique step even in its full prompt, so only the skill
+can make a model run it), 6 runs an arm, all three arms on the same
+day:
+
+```bash
+for arm in inline pointer handoff; do
+  python bench/bench_skill_harnesses.py --tier 2 --skill survey-writer \
+    --harness claude --skill-only --runs 6 --jobs 6 \
+    --source <worktree of that arm> --out <dir>/$arm
+done
+python bench/bench_skill_harnesses.py --compare \
+  <dir>/inline/tier2.json <dir>/pointer/tier2.json
+python bench/bench_skill_harnesses.py --compare \
+  <dir>/inline/tier2.json <dir>/handoff/tier2.json
+```
+
+The inline arm is run fresh rather than reusing the 2026-11-14
+skill-only rows, which have 3 runs and were scaffolded from an older
+`main`.
+
+### What is measured, and what is not
+
+- **Measured:** for each run, whether each command key ran at least once,
+  whether the draft passed the gate, timeouts and errors, and, on the
+  handoff arm, how `critique-loop` was loaded.
+- **Not seen by the per-command rows:** most of step 10's commands
+  (`draft dossier sections`, `review verbatim scan`, `draft style`,
+  `draft gate`) also run in steps 11, 16 and 17, so a run that skips step
+  10 still runs them, and `draft dossier status` runs only when the
+  dossier has an `outline.md`, which the task does not give it. The one
+  key only step 10 runs is `review verbatim recheck`, and only once a
+  repair is attempted. In the recorded Claude Code survey runs it ran in
+  3 of 3 skill-only runs and 4 of 6 full-prompt runs. So the verdict
+  rests on that row, the gate and the clock.
+- **Read by hand, recorded beside the verdict, never a gate:** whether
+  each run's dossier `revisions.md` holds a critique entry, and whether
+  the baseline (`review verbatim scan --write`) ran before the first
+  recheck. Both sit in the run's project under `--out`.
+- **Not measured at all:** Codex and OpenCode (advisory everywhere in
+  this series, #1210, and not run here); a handoff the task does not
+  ask for anywhere but the skill, in any genre but the survey; and the
+  description cost of a new skill.
+
+### The decision
+
+- **`--compare` inline vs handoff exits 0:** the handoff holds. Decision
+  11's first branch applies, and PRs 1-8 change as below.
+- **It exits 1:** the handoff dropped the step. This plan stands as
+  merged; `critique-loop` is not built; the result is recorded in
+  `docs/HARNESS.md` beside the 2026-10 pointer finding.
+- **It exits 3:** at 6 against 6 that comes only from fewer than 3
+  usable runs, mixed prompts or a single new timeout. Rerun what was
+  left out and compare again; read it as neither outcome.
+
+The inline vs pointer comparison is recorded with it. It does not enter
+the rule: it says whether the 2026-10 single-run skip reproduces at 6
+runs.
+
+**If the handoff holds, what changes in PRs 1-8:**
+
+- Decision 5's table gains a row: a procedure several skills run is its
+  own skill, handed to and taken back. `skills-common/references/`
+  keeps only what is not a procedure.
+- Decision 2 reads "every command stays in a `SKILL.md`": the called
+  skill's, not necessarily the caller's.
+- PR 1: `genre-steps.md` keeps §1, §2, §4, §5 and §6; §3 (opening the
+  dossier) and §7 (stamping and handing over) become skills. The
+  critique, render-and-references, prose-check and verbatim-scan
+  procedures become skills, each with its three copies, deny-list row,
+  phrase-map entries (`critique_edit_tool` moves into the critique
+  skill), cap in `tests/test_skill_size.py`, `pyproject.toml` include
+  lines, and frontmatter count. survey-writer hands steps 10, 12-13, 16
+  and 17 to them, and the dossier opening and the stamp to the two
+  `genre-steps.md` skills; the step numbers stay (Decision 6).
+- PR 1 Task 4: the step tests that read a step's riders
+  (`tests/test_skill_pregate_feedback_step.py`,
+  `tests/test_skill_style_check_step.py`,
+  `tests/test_skill_verbatim_scan_step.py`) follow the handoff into the
+  called skill instead of `expanded()`'s spliced references; review
+  focus 1 changes with them.
+- The bench: each new skill joins `USER_SKILLS`, so it needs a Tier 2
+  task or an exemption like `figure-drawer`'s, and the
+  `TIER2_TASKS`-covers-`USER_SKILLS` check in `self_check()` widens to
+  match; `docs/FEATURES.md`'s skill count moves with
+  `tests/test_features_doc.py`.
+- PRs 2-8: every skill that names one of the four references today
+  hands off to its skill instead: textbook, thesis, tutorial and
+  deep-research all four; review-digest prose-check; draft-reviser,
+  corpus-reviser and book-assembler prose-check and verbatim-scan;
+  agenda-reviser verbatim-scan (counted on `main` at `9cbaf678`).
+- PR 0b is unchanged: writing rules stay in `docs/` either way.
+
+**If it fails:** nothing in PRs 1-8 changes.
+
+- [ ] **Step 1:** The bench rule, `handoffs_loaded`, their
+  `self_check()` cases, and the docs. Done when the self-check passes
+  and the before/after expected sets differ only as listed above.
+- [ ] **Step 2:** File the issue; put its number in the series table.
+- [ ] **Step 3:** With both arm branches built, run the three arms and
+  both comparisons on the server. Done when both `--compare` outputs,
+  each run's `handoffs_loaded` and the hand-read `revisions.md` check are
+  recorded in `docs/HARNESS.md` and on the issue.
+- [ ] **Step 4:** Apply the decision to this plan (the list above), and
+  only then start PR 1.
 
 ---
 
