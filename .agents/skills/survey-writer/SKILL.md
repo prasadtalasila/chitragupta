@@ -6,449 +6,205 @@ tags: [survey, literature-review, citation]
 
 # survey-writer
 
-Genre-specific drafting agent for survey-style output. This is the "generative
-drafting" half of the pipeline (the drafting layer) -- it runs on demand and its
-output is reviewed by the user, unlike `python -m chitragupta.corpus sync` (the
-corpus
-layer: deterministic, safe to run unattended).
+Drafts a survey from the synced corpus: themes, a comparison table and a
+gap analysis, every claim cited from the ledger. Paths in this skill are
+from the project root, not from this skill's own folder.
 
-## Shared corpus layer (read, don't regenerate)
+## Before you start
 
-- `content/ledger.sqlite` -- per-citekey status, populated by `sync`
-- `papers/bibliography.bib` (gitignored, per-host) -- the source of truth for citekeys/metadata;
-  `sync` reads it, it is never regenerated
-- `content/parsed/<citekey>.txt` -- extracted PDF text
-- `chitragupta/retrieval.py` --
-  `python -m chitragupta.draft retrieve search "<q>" --k 15 --log <draft>`,
-  which returns a citekey, title, score and a 500-character snippet per
-  candidate. `... evidence "<q>" --citekey <key> --log <draft>` reads more of
-  one document when a snippet is not enough to judge it
-
-## Collection scoping (#195): draft from the shelf, not the library
-
-At step 0, before any retrieval, check whether the library is sorted
-into collections:
-
-```bash
-python -m chitragupta.corpus ledger --collections     # what exists, with counts
-```
-
-Paths in this skill are from the project root, not from this skill's
-own folder.
-
-If it reports none, say nothing, ask nothing, record
-`- collection: (whole corpus)` in `scope.md`'s header, and skip the rest
-of this section. Otherwise read
-`.claude/skills-common/references/collection-scoping.md` now and follow
-it for the whole run. If retrieval inside the shelf comes back thin, the
-honest fix to offer is a whole-corpus pass with `corpus-reviser`, which
-is the one skill allowed to widen.
-
-## The dossier: write down what produced the draft
-
-The draft is only half of what this run produces. The other half is the
-judgment behind it -- the reader, the scope, the glossary, which
-candidates were kept and **which were turned down and why** -- and it
-belongs on disk, not in this conversation. Without it the next revision
-has to re-retrieve and re-score the whole topic to change one paragraph.
-
-`chitragupta/dossier/` owns that state, in Markdown, one directory per draft at
-`content/dossiers/<the draft's path, minus its suffix>/`. Create it before
-you search (step 0) and fill it in as you go -- not at the end, when what
-you rejected has already fallen out of your context. `docs/DRAFT-ITERATION.md`
-is the full design.
-
-**Read-only means read-only: never run `python -m chitragupta.corpus sync`, and
-never
-run `python -m chitragupta.enrich` or any `chitragupta/enrich/*` build stage.**
-Both belong to the
-corpus layer, both take the pipeline's write lock, and either can run for
-tens of minutes -- a first full-corpus parse, or building the embedding
-index. They are the user's to run, not yours. If a semantic index would
-help and none exists, say so and use `chitragupta.retrieval.search()`; do not
-build one.
-
-**If the ledger is empty, stop.** Check before drafting anything:
+**The corpus is read-only: never run `python -m chitragupta.corpus sync`
+or `python -m chitragupta.enrich`.** Before the first retrieval, read
+`.claude/skills-common/references/genre-steps.md` §1: what the corpus
+holds, and why those are the user's to run. **If the ledger is empty,
+stop.** Check before drafting anything:
 
 ```bash
 python -m chitragupta.corpus ledger
 ```
 
-If it reports no items, or none with status `parsed`, say so plainly --
-name what you checked and what you found -- and stop there. Do not draft
-around it, do not sync, do not cite. Tell the user to run
-`.venv-full/bin/python -m chitragupta.corpus sync` and come back.
+If it reports nothing `parsed`, say what you checked and found, and stop.
+Tell the user to run `.venv-full/bin/python -m chitragupta.corpus sync`
+and come back.
 
 ## When to invoke
 
-| Situation | Action |
-| --- | --- |
-| User asks for a survey / lit review / background / related-work section on topic X | Invoke this skill |
-| User asks for a thesis chapter | Use `thesis-chapter-writer` instead |
-| User asks for a textbook chapter / lecture notes / worked examples | Use `textbook-chapter-writer` instead |
-| User asks for a hands-on tutorial the reader follows at a keyboard | Use `tutorial-writer` instead |
-| User asks to change a survey that **already exists** in `content/drafts/` | Use `draft-reviser` instead -- never re-run this skill to make a change |
-| Ledger is empty, or nothing is `parsed` | Say so and stop. **Never** run `python -m chitragupta.corpus sync` yourself |
+A thesis chapter is `thesis-chapter-writer`'s, a textbook chapter
+`textbook-chapter-writer`'s, a keyboard tutorial `tutorial-writer`'s,
+and a change to a survey in `content/drafts/` is `draft-reviser`'s:
+never re-run this skill to make one.
+
+## Collection scoping
+
+At step 0, before any retrieval, check whether the library is sorted
+into collections:
+
+```bash
+python -m chitragupta.corpus ledger --collections
+```
+
+If it reports none, say nothing, ask nothing, record
+`- collection: (whole corpus)` in `scope.md`'s header, and skip this
+section. Otherwise read
+`.claude/skills-common/references/collection-scoping.md` now and follow
+it for the whole run. If retrieval inside the shelf comes back thin, the
+honest fix to offer is a whole-corpus pass with `corpus-reviser`, which
+is the one skill allowed to widen.
 
 ## Prose standards
 
-Follow `docs/WRITING-STANDARDS.md` for the cross-genre rules: name the reader
-before drafting, define terms once, state scope up front, active voice with a
-named actor, ban "obviously/simply/just", and reread as the reader before
-presenting. That file also carries the attribution for where these
-principles come from -- Diátaxis, Last's *Technical Writing Essentials*, and
-Google's Technical Writing courses, all CC-licensed and all requiring credit.
-The genre-specific additions below layer on top of it.
-
-### What a survey owes its reader
-
-A survey's job is to **organize a field and locate the gaps in it** -- not to
-teach the topic and not to advocate a position. Two failure directions:
-
-- **Drifting into a textbook chapter.** You start explaining the concepts for
-  a reader who doesn't know them. A survey's reader is a researcher entering
-  the area; they need the map, not the lesson. If the user actually wants the
-  lesson, `textbook-chapter-writer` exists -- say so.
-- **Drifting into an argument.** You start defending one approach as correct.
-  Weighing alternatives is the deliverable here; picking a winner is the
-  thesis chapter's job, and doing it in a survey hides the disagreement the
-  reader came for.
-
-Unlike the tutorial genre, **alternatives and options are the point**. Never
-collapse them for the sake of a cleaner narrative.
+Follow `docs/WRITING-STANDARDS.md` for the rules every genre shares, and
+`docs/writing-standards/genres/survey.md` for what a survey owes its
+reader: read it before step 6. The works these standards come from are
+credited in
+[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution);
+if asked what bears on a survey, read
+`.claude/skills/survey-writer/references/survey.md` §4.
 
 ## Process
 
 0. **Name the reader and the scope, and open the dossier.** Before
-   searching, settle who this survey is for (a thesis reader? a grant
-   reviewer? a paper's related-work section?) and what it will and won't
-   cover. Write the scope statement into the draft's opening paragraph --
-   including what's deliberately excluded, so a reader can tell an
-   omission from an oversight. Then create the dossier and record the same
-   decisions there:
+   creating it, read `.claude/skills-common/references/genre-steps.md`
+   §2 and §3: the slug, `scope.md`, the dialect, the acronym vocabulary
+   and the fingerprint. Settle `<slug>` with the user, then:
 
    ```bash
    python -m chitragupta.draft dossier init content/drafts/<slug>.md --genre survey
    ```
 
-   **Settle `<slug>` with the user before running that.** It is a path
-   under `content/drafts/` and it may contain directories: "a survey for
-   the `books/software-engineering` book" means
-   `content/drafts/books/software-engineering/survey.md`, and a topic
-   that will hold more than one genre wants
-   `content/drafts/<topic>/survey.md` so they sit together. A flat
-   `content/drafts/<slug>.md` is the default when neither applies. Ask
-   rather than guess: the dossier (`content/dossiers/<slug>/`) and every
-   render (`content/rendered/<the draft's own directory>/`) mirror
-   whatever you pick, so moving the draft later means moving both.
-   Fill in `scope.md`'s **Reader**, **Covers**, **Does not cover** and
-   **Glossary** now, while you are deciding them. Settle the **dialect**
-   with the reader in the same breath and write it to `scope.md`'s
-   `language:` line, which ships unset: a survey for an IEEE submission is
-   `en-US` and one for a European funder is usually `en-GB`, and a draft
-   whose dialect nobody chose silently gets the model's own
-   (`docs/WRITING-STANDARDS.md` §8). Read the acronym vocabulary too --
-   the vendored floor at `assets/style/acronyms.toml`, plus the user's
-   own file if `[style].acronyms` in `config.toml` points at one -- and
-   use its recorded expansion at an acronym's first use rather than
-   inventing one. `init` also stamps the
-   corpus fingerprint, which is what lets a later revision tell whether
-   the ledger has moved since.
-1. **Retrieve broadly, over-fetching on purpose.**
-
-   **First, check whether the dossier has an `outline.md`** -- a human
-   writes this file by hand (`dossier init --outline`, or added later)
-   with, per section, a heading, a `brief:` and/or `claim:` block, and
-   optional declared `queries:`:
+   Done when `scope.md` records the reader, the scope and `language:`.
+1. **Retrieve broadly, over-fetching on purpose.** First check for an
+   `outline.md`:
 
    ```bash
    python -m chitragupta.draft dossier outline content/drafts/<slug>.md --check
    ```
 
-   **If it exists and passes**, run each section's declared queries
-   **verbatim** instead of breaking the topic into sub-themes yourself,
-   logged `--origin declared` in place of the plain `--log` below:
+   If it passes, read `.claude/skills-common/references/genre-steps.md`
+   §4, then run each section's declared queries verbatim; a thin
+   section's reformulations are `--origin extended`.
+   `python -m chitragupta.review uncited` is the backstop for a `claim:`
+   you could not ground.
 
    ```bash
    python -m chitragupta.draft retrieve search "<declared query>" --k 15 --collection "<from scope.md>" --origin declared --log content/drafts/<slug>.md
    ```
 
-   Score and record evidence exactly as steps 2-3 describe. A section
-   whose declared queries come up thin still gets step 3's
-   reformulation, logged `--origin extended` instead of `--origin
-   declared` -- that distinction is what lets `dossier status` answer
-   "did this draft follow its outline?" from `retrieval.md` afterwards,
-   so log it honestly rather than as `declared`.
-
-   **A `claim:` section is content to ground, not steer from.** The
-   human's prose there is rewritten, not preserved: find a citekey
-   supporting each assertion (the section's declared queries first, then
-   the assertion's own wording if those don't cover it, logged
-   `--origin extended`), write the grounded sentence into the draft with
-   its citation, and **drop, don't ship, any sentence you can't ground**
-   -- name what you dropped in your final summary to the user.
-   `python -m chitragupta.review uncited` is the backstop that
-   catches anything that slips through regardless.
-
-   **No `outline.md`, or it fails `--check`:** break the requested topic
-   into 2-4 sub-themes if it's broad. For each:
+   With no `outline.md`, or one that fails `--check`, break the topic
+   into 2-4 sub-themes and pull more candidates than you expect to use:
 
    ```bash
    python -m chitragupta.draft retrieve search "<sub-theme>" --k 15 --collection "<from scope.md>" --log content/drafts/<slug>.md
    ```
 
-   Pull more candidates than you expect to use. This is a keyword-overlap
-   ranker, not embeddings (unless `chitragupta/enrich/embed_index.py` has been built
-   for this corpus) -- a high score means the query's words are in the
-   document, not that it supports your claim.
-
-   `--log` records the call's size in the dossier's `retrieval.md`, which is
-   what makes the cost of a run measurable instead of estimated. Pass it on
-   every call.
-2. **Score every candidate yourself before it counts as evidence.** Read the
-   full snippet -- 500 characters, sized so you have enough to judge and not
-   just a title -- and decide: does this actually support a claim about the
-   sub-theme, or did it just share vocabulary with the query? Keep only the
-   ones that pass. This is the discipline PaperQA2 calls "gather evidence"
-   (retrieve, then judge relevance, *then* write); the difference here is you
-   judge inline rather than via a second API call.
-
-   Where a snippet is not enough to decide on a source you are minded to
-   keep, read more of that one document:
+   Done when every query has run, each with `--log`.
+2. **Score every candidate yourself before it counts as evidence.** Keep
+   a source only if it supports a claim, not if it merely shares the
+   query's words. Before your first `evidence.md` block, read
+   `.claude/skills-common/references/genre-steps.md` §5. Where a snippet
+   cannot settle a source you mean to keep:
 
    ```bash
    python -m chitragupta.draft retrieve evidence "<sub-theme>" --citekey <key> --log content/drafts/<slug>.md
    ```
 
-   Use it to be **more careful about something you are about to cite** -- not
-   as a routine second pass over everything. `docs/REJECTION.md` explains why
-   the reverse, a cheap screen used to reject faster, was tried and withdrawn:
-   a wrong rejection is invisible, unrecoverable, and then entrenched in
-   `rejected.md`, which later revisions are told to trust.
-
-   **Record both outcomes in the dossier before you start drafting prose**,
-   while the passages are still in front of you:
-   - what survives, into `evidence.md` -- one `## \`citekey\`` block with a
-     `relevance:` line (why it supports the claim), a `claim:` line -- what
-     the source establishes, written in your own words -- and, only when a
-     quotation is genuinely warranted, a `quote:` line (the verbatim span).
-     `claim:` is the only field you may draft prose from later; `quote:` is
-     usable in the draft solely inside quotation marks with an attribution.
-     Write `claim:` from what you now understand the source to say, not by
-     lightly editing the passage still on screen -- the two produce
-     different sentences, and only the first is yours;
-   - what doesn't, into `rejected.md` -- one table row per candidate:
-     citekey, the query that surfaced it, and a few words on why it was
-     turned down ("shares vocabulary only", "wrong domain", "superseded by
-     X").
-
-   The rejected list is the more valuable of the two and the easier to
-   skip. It is what stops the next revision retrieving and re-judging the
-   same twelve papers you just turned down -- the single most expensive
-   piece of repeated work in this pipeline.
-
-   Then run the advisory self-check, which flags a `claim:` that reads like
-   its own `quote:` with the words moved:
+   Before drafting, record what survives in `evidence.md` and what
+   doesn't in `rejected.md`, then:
 
    ```bash
    python -m chitragupta.draft dossier check-evidence content/drafts/<slug>.md
    ```
 
-   Two kinds of warning. `N blocks under one citekey` means `evidence.md`
-   has more than one block for that paper and only the first is ever read
-   -- merge them. A reword warning means re-read whether that claim is
-   really your own reading of the source, and is not a cue to keep
-   rewording until the warning stops.
+   Done when every candidate is in one of the two files.
 2a. **On a broad topic, put steps 1-2 behind a subagent.** If your session
    offers subagent tools, spawn one per sub-theme, each told to
-   run the retrieve-and-score loop above and return **only** the kept-evidence
-   packet plus the rejected list -- never the raw candidates.
+   run the retrieve-and-score loop above and return **only** the
+   kept-evidence packet plus the rejected list -- never the raw
+   candidates. Before dispatching, read
+   `.claude/skills/survey-writer/references/survey.md` §1. Done when
+   each packet is in the dossier.
+3. **Reformulate and re-search if a sub-theme comes up thin.** When one
+   does, read `.claude/skills-common/references/genre-steps.md` §6.
+   Done when each is covered, or reported thin after real attempts.
+4. **Cluster by judgment.** With a small corpus there's no BERTopic
+   step: group the kept citekeys into themes by what the evidence says.
+   Done when each sits in a theme.
+5. **Check for disagreement across sources before writing.** When two
+   kept sources conflict, read
+   `.claude/skills-common/references/genre-steps.md` §6. Done when each
+   conflict is noted for the draft.
+6. **Draft**, in Markdown, citing as `[@citekey]` or `[@key1; @key2]`
+   only from `evidence.md`: a framing paragraph, one subsection per
+   theme, a comparison table and a gap-analysis paragraph. Before the
+   table, read `.claude/skills/survey-writer/references/survey.md` §2.
+   The table carries a caption and an id
+   (`docs/writing-standards/tables.md` §13):
 
-   **The packet itself is `claim:`/`quote:` shaped, not a paste of what the
-   subagent read.** Tell each subagent explicitly: write `claim:` in your own
-   words, after you've judged the source, not by lightly editing the snippet
-   or evidence window still on screen; capture `quote:` only where a
-   quotation is genuinely warranted. A subagent that returns a `relevance:`
-   line next to a pasted 500-character snippet or 600-character evidence
-   window has satisfied "never the raw candidates" in name only -- the raw
-   retrieval window still reaches your context, just wearing a `relevance:`
-   label. The rule is on the *content* of what comes back, not only on which
-   candidates are excluded.
+   ```markdown
+   | Starting point | Citekey | Core idea | Stated limitation |
+   |---|---|---|---|
+   | ... | ... | ... | ... |
 
-   The reason is not parallelism. This is where the reliable token saving is:
-   it costs nothing in retrieval quality, unlike trimming what you read.
-   Anything you read yourself stays in
-   your context and is re-sent on every later turn of the run; anything a
-   subagent reads is paid for once. Four sub-themes retrieved inline is tens
-   of thousands of characters you will then carry through clustering,
-   drafting, gating and rendering, most of it material you already rejected.
+   : Where to start when building a first twin.
+   <!-- table: start-here -->
+   ```
 
-   Skip this for a narrow topic with one sub-theme -- a subagent that returns
-   almost everything it read saves nothing and costs a dispatch.
-3. **Reformulate and re-search if a sub-theme comes up thin.** A single
-   query wording is not the ceiling -- if scoring leaves you with little or
-   nothing for a sub-theme, try synonyms, broader/narrower terms, or an
-   adjacent concept, and search again. Do this a few times before concluding
-   "thin coverage" is real rather than a wording problem. Only after genuine
-   reformulation attempts should you report a sub-theme as thin -- and then
-   say so explicitly rather than padding it with uncited claims.
-4. **Cluster by judgment.** With a small corpus there's no BERTopic step;
-   group the surviving (scored, kept) citekeys into themes yourself based on
-   what the evidence actually says.
-5. **Check for disagreement across sources before writing.** If two kept
-   pieces of evidence conflict on a claim, don't silently pick one side --
-   note the disagreement explicitly in the draft (which source says what).
-   Silently resolving a real contradiction is a worse failure than leaving
-   it visible.
-6. **Draft**, in Markdown, using Pandoc-style citations (`[@citekey]`,
-   `[@key1; @key2]`), citing only from your scored-evidence file:
-   - Framing paragraph for the overall topic
-   - One subsection per theme, citing the papers that actually support each claim
-   - A comparison table: columns for approach/paper, citekey, core idea,
-     stated limitations. **It carries a caption and an id, and the prose
-     reads it** -- `docs/WRITING-STANDARDS.md` §13 is the contract, and
-     this genre's table is the one it was written for:
-
-     ```markdown
-     | Starting point | Citekey | Core idea | Stated limitation |
-     |---|---|---|---|
-     | ... | ... | ... | ... |
-
-     : Where to start when building a first twin.
-     <!-- table: start-here -->
-     ```
-
-     Refer to it with an inline `<!-- tableref: start-here -->`, which
-     the renderer expands to "Table 3" or `\ref{}` depending on the
-     format -- never write the number yourself, and never write the word
-     "Table" beside the marker. Introduce the table before it appears
-     (what is compared, on what axis) and read a pattern off it
-     afterwards (the outlier row, the column where everything agrees).
-     A comparison nobody reads aloud is a table the reader has to
-     interpret unaided.
-   - A gap-analysis paragraph: what the retrieved corpus does *not* cover
-     (including sub-themes that stayed thin after reformulation, and any
-     cross-source disagreement from step 5)
-   - **Every body paragraph closes on two or more citekeys wherever the
-     evidence allows.** A paragraph fusing three papers cannot be a
-     transcription of any one of them -- that is the point, and it is a
-     stronger defence than paraphrasing harder. Organise a paragraph around
-     what its sources agree and disagree about, rather than summarising them
-     one after another. Where one paper genuinely is the only source for a
-     point, keep it and say so with
-     `<!-- single-source: why -->` on the line above or below, no blank line
-     between. docs/WRITING-STANDARDS.md §11 is the rule; `python -m
-     chitragupta.review synthesis <draft>` reports it.
-7. **Never write a citekey you didn't get from a retrieval result.** If you
-   want to cite something you know about from general knowledge but that isn't
-   in the ledger, say so in prose to the user instead ("X is commonly discussed
-   in this area but isn't in your synced library yet") -- do not invent a key
-   for it.
-8. **Map sections to citekeys.** Save the draft to
-   `content/drafts/<slug>.md` first if you haven't already, then derive
-   the map rather than writing it by hand:
+   The prose names it with `<!-- tableref: start-here -->`. A body
+   paragraph closes on two or more citekeys wherever the evidence
+   allows, or carries `<!-- single-source: why -->` on the line beside
+   it (`docs/WRITING-STANDARDS.md` §11;
+   `python -m chitragupta.review synthesis <draft>` reports it). Done
+   when every section is drafted.
+7. **Never write a citekey you didn't get from a retrieval result.** If
+   you want to cite something the ledger lacks, say so to the user in
+   prose ("X is commonly discussed in this area but isn't in your synced
+   library yet"); do not invent a key for it. Done when every key came
+   from a retrieval result.
+8. **Map sections to citekeys.** Save the draft, then:
 
    ```bash
    python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write
    ```
 
-   It joins each heading's line range to the citekeys cited inside it and
-   writes the dossier's `sections.md`, so a later revision can tell which
-   section owns a citation without reading the draft. Drop `--write` to
-   see the table first. Read what it prints on stderr: a citekey cited
-   above the first heading belongs to no section, and it says so rather
-   than dropping it. Fix that in the draft (the claim wants a section) --
-   don't hand-edit the table, which is regenerated from the draft.
-9. **Add a figure only for what the table can't express.** Place it
-   beside the relationship it captures, such as a taxonomy no
-   comparison row shows -- `docs/WRITING-STANDARDS.md` §10's figures
-   are rare here, the rarest of any genre in this pipeline, because the
-   comparison table already carries that structural work. Absence is
-   the default, not an oversight.
-
-   On the rare occasion one is warranted, it is a **pair of files**, and
-   §10 is the contract. This genre carries no inline form of either --
-   the draft names the figure in a marker line of its own, with nothing
-   beside it:
+   A citekey it reports above the first heading belongs to no section:
+   fix the draft, not the table. Done when it reports none.
+9. **Add a figure only for what the table can't express**; absence is
+   the default. A figure is a pair of files, `figures/<name>.tex` and
+   `figures/<name>.txt`, named by a marker line of its own
+   (`docs/writing-standards/figures.md` §10):
 
    ```html
    <!-- figure: figures/<name> -->
    ```
 
-   Write both `content/drafts/<topic>/figures/<name>.tex` (the TikZ
-   picture) and `content/drafts/<topic>/figures/<name>.txt` (the ASCII
-   form, in §10's 7-bit alphabet). The renderer swaps the marker for the
-   `.txt` contents in a fence on `--format md` (step 13) and every other
-   non-LaTeX format, and for `\input{figures/<name>.tex}` on
-   `--format tex`/`--format pdf`, which is what makes a survey figure
-   usable in the paper this draft feeds.
+   Hand the drawing to `figure-drawer` and come back to this step when
+   it returns. What holds even if that skill is never loaded:
 
-   Hand the drawing itself to `figure-drawer`, and come back to this
-   step when it returns: it owns the layout metaphor and scaffold,
-   panel letters, the ASCII twin, the compile probe and the geometry
-   review. What stays here must hold even if that skill is never
-   loaded:
-
-   - **A topic directory is required.** If step 0 settled on a flat
-     `content/drafts/<slug>.md`, move the draft and its dossier before
-     adding a figure, or drop the figure -- and in this genre dropping
-     it is usually the right answer. Figures under a flat draft land in
-     `content/drafts/figures/`, shared with every other flat draft.
+   - **A topic directory is required.** Move a flat draft and its
+     dossier first, or drop the figure: here, usually the right answer.
    - **Check for TikZ, and that the figure compiles.** If
-     `figure-drawer` was not loaded, run `kpsewhich tikz.sty`
-     yourself: if it finds nothing, write the ASCII inline in
-     a fence instead, no pair and no marker, and say so in
-     chat. A figure you keep compiles on its own
-     first, with `lualatex`, the engine the pdf render uses: a malformed
-     one fails the whole pdf render, not just the figure.
-   - **No citekey inside either figure file.** Step 11's gate reads the
-     draft and does not follow `\input`, so a citekey in a node label
-     evades the one check this pipeline exists for. This is the genre
-     most likely to want one -- a taxonomy figure naturally attributes
-     each branch -- and it is exactly the wrong place for it: attribute
-     in the prose or the comparison table, where the gate can see the
-     key.
+     `figure-drawer` was not loaded, run `kpsewhich tikz.sty`: if it
+     finds nothing, write the ASCII inline in a fence, no pair and no
+     marker, and say so in chat. A figure you keep compiles on its own
+     first, with `lualatex`: a malformed one fails the whole pdf render.
+   - **No citekey inside either figure file.**
    - **Nothing redrawn from a source.**
-     A taxonomy redrawn from a source survey's own figure is the same
-     violation in different pixels, whichever notation it is drawn in.
-   - **A caption, if this figure warrants one, goes in the draft, never
-     in the figure file.** A caption line directly below the marker, no
-     blank line between, and an inline `<!-- figureref: <name> -->`
-     wherever prose points at it -- never write the word "Figure" or a
-     number yourself; the renderer assigns both. Every figure needs a
-     caption: since #421 an uncaptioned marker is reported as
-     `chitragupta.FigureNoCaption` by this skill's own prose-check step.
+   - **A caption line directly below the marker**, and
+     `<!-- figureref: <name> -->` where the prose points at it.
 
-   **Any quantity in the prose follows `docs/WRITING-STANDARDS.md` §12,
-   not this step.** Write it as ASCII in a code span and give it a row in
-   the dossier's `math.md`; `render` turns those into real mathematics for
-   every format that reaches pandoc, and leaves the `.md` alone. A survey
-   rarely has much, but a threshold or an error bound quoted from a source
-   is a quantity, and a bare `` `k = 4` `` renders as typewriter text.
-
-   **Most of that math stays unnumbered.** §12 gives a displayed
-   equation a number only if it is standalone, the final step of a
-   derivation, or reused later -- and a survey, which reports results
-   rather than proving them, rarely has a derivation at all. When a
-   comparison across sources genuinely needs one -- restating a formula
-   two papers define differently before contrasting them, say -- number
-   it like a table or a figure: an `<!-- equation: <id> -->` marker
-   directly above the `<!-- math -->` block, an inline
-   `<!-- equationref: <id> -->` in the sentence that discusses it, and a
-   sentence explaining what the numbered form shows. Never number it
-   yourself; the renderer assigns the number, same as a table's or a
-   figure's. An id left with no referencing sentence is
-   `chitragupta.EquationUnreferenced`, this skill's own prose-check step.
+   A quantity follows `docs/writing-standards/mathematics.md` §12. To
+   number an equation, put `<!-- equation: <id> -->` above its
+   `<!-- math -->` block and `<!-- equationref: <id> -->` in the
+   sentence that explains it. Before adding a figure or numbering an
+   equation, read `docs/writing-standards/genres/survey.md`. Done when
+   each figure has both files and a caption.
 
 10. **Critique against the evidence packet, before gating.** Read the
     dossier's `evidence.md` -- the `claim:`/`quote:` blocks step 2
-    recorded -- against the draft's own prose, section by section. List,
-    in priority order, up to five places where the prose claims more
-    than its `claim:` line supports, omits a kept `claim:` the draft
-    never used, or drifts from the wording `claim:` actually recorded.
-    This is one inline judgement call, not a subagent dispatch and not a
-    deterministic check -- nothing in this pipeline scores this
-    automatically.
+    recorded -- against the draft, section by section, and list in
+    priority order up to five places where the prose claims more than
+    its `claim:` supports, omits a kept `claim:`, or drifts from its
+    wording. One inline judgement call: not a subagent dispatch and not
+    a deterministic check.
 
     **Run this step: it is never a condition of presenting, but it is not done
     until you have run its commands.** Read
@@ -473,9 +229,6 @@ collapse them for the sake of a cleaner narrative.
 
        If the scan's `tiers_not_run` is not empty, quote the reason: **genuine
        restatement is only detected where the embedding tier can run**.
-       `style` reports only what WRITING-STANDARDS.md §9 marks decidable, and
-       this step is told to fix none of them: its count is a proxy for a new
-       defect, not a work list.
 
     3. Repair at most three items, each edit with an `apply_patch` hunk,
        inside that section only. Keep an edit only if all three checks pass
@@ -493,39 +246,35 @@ collapse them for the sake of a cleaner narrative.
 
     4. Log every attempt, kept or reverted, in the dossier's `revisions.md`.
 
-    If nothing on the list clears the bar, or the list was empty, say so and
-    continue to the gate.
-11. **Gate before presenting.** Save the draft as `content/drafts/<slug>.md`
-    (this is the canonical, source-of-truth format), then run:
+    Done when every attempt is logged, or you have said that nothing
+    cleared the bar.
+11. **Gate before presenting.** Save the draft as
+    `content/drafts/<slug>.md` (the canonical, source-of-truth format),
+    then:
 
     ```bash
     python -m chitragupta.draft gate content/drafts/<slug>.md
     ```
 
-    If it reports `FAIL`, fix the offending line(s) — either correct the citekey
-    or remove the claim — and re-run until it reports `OK`. Never show the user
-    a draft that hasn't passed.
-12. **Build the References section.** Once the gate passes, follow
-    `.claude/skills-common/references/render-and-references.md`
-    §1 for `content/drafts/<slug>.md`. The step is not done until
-    `draft references` has run.
+    On `FAIL`, fix the offending line -- correct the citekey or remove
+    the claim -- and re-run. Never show the user a draft that hasn't
+    passed. Done when it reports `OK`.
+12. **Build the References section.** Follow
+    `.claude/skills-common/references/render-and-references.md` §1 for
+    `content/drafts/<slug>.md`. Done when `draft references` has run.
 13. **Render tex, pdf and md, then the evidence sidecar.** Follow
-    `.claude/skills-common/references/render-and-references.md`
-    §2 and §3 for the same draft: render tex, pdf and md, then the
-    sidecar in pdf and md. **A survey emits one.** This genre is the
-    natural fit: it is citation-dense, and its reader is mapping a field
-    and wants to see what the sources actually said.
-14. **Read it once as the reader** (`docs/WRITING-STANDARDS.md` §6). Check
-    specifically for: terms used before they're defined, a theme heading that
-    doesn't match what the subsection actually argues, a comparison-table row
-    that repeats prose already above it, and any paragraph whose first
-    sentence doesn't carry its point.
-15. **Record any steering.** If the user shaped this draft in chat --
-    "don't lead with tooling", "shorter", "drop the adoption angle" --
-    append it to the dossier's `steering.md`, dated. It is invisible in
-    the prose and has nowhere else to live; a revision that doesn't know
-    about it will undo it.
-16. **Run the prose check.** After the gate passes and before
+    `.claude/skills-common/references/render-and-references.md` §2 and
+    §3 for the same draft: tex, pdf and md, then the sidecar in pdf and
+    md. If the user asks why a survey emits one, read
+    `.claude/skills/survey-writer/references/survey.md` §3. Done when
+    each command has run or its warning is reported.
+14. **Read it once as the reader, and record any steering.** Reread
+    against the checklist in `docs/writing-standards/genres/survey.md`.
+    If the user shaped this draft in chat, append that to the dossier's
+    `steering.md`, dated; read
+    `.claude/skills-common/references/genre-steps.md` §2 if unsure what
+    counts. Done when both are done.
+15. **Run the prose check.** After the gate passes and before
     presenting:
 
     ```bash
@@ -533,10 +282,10 @@ collapse them for the sake of a cleaner narrative.
     ```
 
     Read `.claude/skills-common/references/prose-check.md` now and follow
-    it: what the check can and cannot see, and how to report what it
-    finds. If the user wants any finding acted on, that is
-    `draft-reviser`'s copy-edit mode, never an edit made here.
-17. **Run the verbatim scan.** Before presenting, rebuild the section map
+    it. If the user wants any finding acted on, that is
+    `draft-reviser`'s copy-edit mode, never an edit made here. Done when
+    every finding is reported.
+16. **Run the verbatim scan.** Before presenting, rebuild the section map
     and scan:
 
     ```bash
@@ -544,54 +293,18 @@ collapse them for the sake of a cleaner narrative.
     python -m chitragupta.review verbatim scan content/drafts/<slug>.md
     ```
 
-    The first command is not optional and not a repeat of step 8: a
-    section map written ten steps ago describes a draft you have since
-    edited. **A review aid, not a gate: it is never a condition of
-    presenting.**
-
-    Read `.claude/skills-common/references/verbatim-scan.md`
-    now and follow it: what to show, what the scan could not check, and
-    how to keep the report. Repairing a finding is `agenda-reviser`'s
-    job, and only if the user asks.
-18. **Stamp the draft fingerprint, then present.** Nothing edits the draft's
-    text after this point, so this is where `dossier status` records the
-    baseline a later hand edit is compared against (#454):
+    The first command is not optional and not a repeat of step 8.
+    **A review aid, not a gate: it is never a condition of presenting.**
+    Read `.claude/skills-common/references/verbatim-scan.md` now and
+    follow it. Repairing a finding is `agenda-reviser`'s job, and only
+    if the user asks. Done when the findings are shown.
+17. **Stamp the draft fingerprint, then present.** Read
+    `.claude/skills-common/references/genre-steps.md` §7 first, then:
 
     ```bash
     python -m chitragupta.draft dossier stamp content/drafts/<slug>.md
     ```
 
-    Then present the draft plus a one-paragraph summary of thin-coverage areas and
-    any unresolved cross-source disagreement, and report the render outcome
-    (paths to the `.tex`/`.pdf` if they succeeded, or the warning if not).
-    Tell the user where the dossier is, that changes to this draft should go
-    through `draft-reviser` rather than another run of this skill, and that
-    `content/drafts/` and `content/dossiers/` are gitignored -- so `python -m
-    chitragupta.draft dossier export <slug>` is how a draft and its working
-    state get
-    backed up.
-
-## Sources
-
-The prose standards this skill inherits are not original to this project.
-
-Full citations, licences and a per-principle attribution table are in
-[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution).
-All three works are openly licensed (CC-BY or CC-BY-SA) and require credit.
-
-What bears on *this* genre specifically:
-
-- **Last, *Technical Writing Essentials* (CC-BY 4.0)** -- audience and task
-  analysis as a step before drafting, and the introduction checklist that
-  asks for scope and the reader's assumed background. Step 0 is that
-  checklist applied to a survey.
-- **Google, *Technical Writing Courses* (CC-BY 4.0)** -- the curse of
-  knowledge, defining each term once, and leading a paragraph with its
-  point. The last matters more here than in any other genre, because a
-  survey is read by skimming.
-- **Procida, *Diátaxis* (CC-BY-SA 4.0)** -- the genre-separation principle
-  behind "What a survey owes its reader". Note that a literature survey is
-  **not** one of Diátaxis's four quadrants: Diátaxis describes software
-  documentation, and its tutorial/how-to rules (single path, no options)
-  would destroy a survey. Only the underlying insight transfers -- that a
-  document trying to do two jobs does both badly.
+    Present as that section says. Changes go through `draft-reviser`,
+    and `python -m chitragupta.draft dossier export <slug>` backs a draft
+    and its dossier up. Done when the user has the draft.
