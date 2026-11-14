@@ -102,8 +102,13 @@ def expected_commands(*files: Path) -> list:
 # through `figure-drawer`" -- names a skill the run is meant to leave
 # for, or only mentions, and pulling its commands in would make every
 # skill expect its siblings' steps. No `.` or backtick between "hand"
-# and the name, so the clause is one sentence about that one skill.
-HANDOFF = re.compile(r"\bhand\b[^.`]*?\bto `([a-z][\w-]*)`\**,?\s+and come back", re.IGNORECASE)
+# and the name, so the clause is one sentence about that one skill. A
+# short "with `<path>` as `<draft>`" may sit between the name and the
+# return clause, saying what is handed over.
+HANDOFF = re.compile(
+    r"\bhand\b[^.`]*?\bto `([a-z][\w-]*)`\**(?:\s+with\b[^,]{0,80})?,?\s+and come back",
+    re.IGNORECASE,
+)
 
 
 def handoffs(text: str) -> list:
