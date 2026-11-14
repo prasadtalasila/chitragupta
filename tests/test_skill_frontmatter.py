@@ -39,7 +39,8 @@ def frontmatter(path: Path) -> dict[str, str]:
 
 
 def test_every_copy_of_every_skill_is_found():
-    assert len(SKILL_FILES) == 36  # eleven user skills and demo-recorder, three harnesses
+    # eleven user skills, demo-recorder and skill-bench, three harnesses
+    assert len(SKILL_FILES) == 39
 
 
 def test_the_digest_skill_exists_on_every_harness():

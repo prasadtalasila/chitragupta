@@ -898,3 +898,13 @@ def fake_pdfium(monkeypatch):
     module.__spec__ = importlib.machinery.ModuleSpec("pypdfium2", loader=None)
     monkeypatch.setitem(sys.modules, "pypdfium2", module)
     return log
+
+
+def fake(directory: Path, name: str, body: str) -> Path:
+    """An executable `/bin/sh` script `name` in `directory` running `body`:
+    a stand-in for a real tool on a test PATH, as the install-tools tests
+    of the developer skills use."""
+    path = directory / name
+    path.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
+    path.chmod(0o755)
+    return path
