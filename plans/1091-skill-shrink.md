@@ -316,6 +316,12 @@ it and measure every baseline on `main` before any skill changes.
     agenda-reviser). review-digest syncs with Docling for its passage
     sidecars; book-assembler accepts a second chapter so the book
     composes. Local jobs take a server from a queue, one job a server.
+    survey-writer's task has its own prompt, not `TIER2_SURVEY` (which is
+    gone). Every task's prompt is a body (the answers and what the user
+    wants) and a tail naming the closing steps; `--skill-only` drops the
+    tail for every task, and that is the arm a shrink is gated on, since
+    a prompt that names a step masks a skill that stopped asking for it
+    (Fable review of PR 0).
 
 - [x] **Step 1:** Add the four flags, the `USER_SKILLS` default and
   `TIER2_TASKS`. Write each new prompt in the shape of `TIER2_SURVEY`:
@@ -368,9 +374,8 @@ it and measure every baseline on `main` before any skill changes.
 
   **As built** (`bench/skill_commands.py`; `docs/HARNESS.md`, "Measuring
   a skill change", owns the rule and its arithmetic):
-  - The rule above would fail an unchanged skill most of the time: at
-    a per-run rate of 0.8 a two-run drop happens for 1 command in 18,
-    and a comparison judges about 54 rows. So 3 runs only screen: at
+  - The rule above would fail an unchanged skill most of the time
+    (`docs/HARNESS.md` has the numbers). So 3 runs only screen: at
     3 against 3 a row fails only when it went all the way the wrong way
     (a command or the gate in every before run and no after run, a
     forbidden command in no before run and every after run), and any
@@ -405,11 +410,10 @@ it and measure every baseline on `main` before any skill changes.
 - [x] **Step 3:** Run `python bench/bench_skill_harnesses.py --compare
   a.json a.json` on any recorded `tier2.json`. Done when it exits 0 and
   prints every command as unchanged.
-- [x] **Step 4:** In `docs/HARNESS.md`, record the pass rule above and
-  why a one-run drop is not a failure at 3 runs: at a true per-run rate
-  of 0.8, a 3-of-3 baseline followed by 2-of-3 happens about a fifth
-  of the time per command, and a skill has about nine commands on each
-  of three harnesses.
+- [x] **Step 4:** In `docs/HARNESS.md`, record the pass rule and why a
+  one-run drop is not a failure at 3 runs. (As built: the rule changed,
+  see above; `docs/HARNESS.md` records the rule actually used and its
+  arithmetic.)
 - [x] **Step 5:** Commit.
 
 ### Task 3: the `skill-bench` developer skill

@@ -63,7 +63,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from tests.test_skill_harness_copies import SUFFIX, USER_SKILLS  # noqa: E402
 from tests.test_skill_references import NAMED_PATH  # noqa: E402
 
-from skill_bench_tasks import TIER2_TASKS  # noqa: E402  (bench/ is sys.path[0])
+from skill_bench_tasks import TAIL_WORDS, TIER2_TASKS  # noqa: E402  (bench/ is sys.path[0])
 from skill_commands import (  # noqa: E402
     GATED,
     commands_run,
@@ -108,22 +108,17 @@ what the skill describes, and write no files.
 4. Then print DONE and stop.
 """
 
-TIER2_SURVEY = (EXAMPLES / "codex" / "prompt.txt").read_text(encoding="utf-8")
-# The survey prompt ends by asking for the render. `--skill-only` drops
-# that clause, so only the skill's own step can make a model run
-# `draft references`, `draft render` and `draft evidence` -- the shape
-# #1068 measured a pointer-only step with (docs/HARNESS.md).
-_RENDER_CLAUSE = " Follow the skill through to the end"
-TIER2_SKILL_ONLY = TIER2_SURVEY.split(_RENDER_CLAUSE)[0] + (
-    " Follow the skill through to the end, including its self-check with draft gate."
-)
+
+# Credentials a model must never be handed: every harness runs with its
+# approvals off, and the A40 operator sets GH_TOKEN for scripts/merge_pr.py.
+SECRET = re.compile(r"(?i)^(GH|GITHUB)\w*_TOKEN$|^GH_TOKEN$|^GITHUB_PAT\w*$")
 
 
 def harness_env(base_url: str = BASE_URL) -> dict:
     """The project's own interpreter first on PATH, and `git` off it for
     OpenCode, whose runtime never reaps a `git` child in this container
     and then waits on it forever."""
-    env = dict(os.environ)
+    env = {k: v for k, v in os.environ.items() if not SECRET.search(k)}
     python_dir = str(Path(sys.executable).parent)
     parts = [python_dir, *[p for p in env.get("PATH", "").split(os.pathsep) if p]]
     env["PATH"] = os.pathsep.join(parts)
@@ -452,7 +447,8 @@ def tier2_job(args, harness: str, skill: str, k: int, servers: "queue.Queue") ->
     try:
         if task.after is not None:
             before = root / f"prerequisite-{task.after}.jsonl"
-            run(harness, project, task_prompt(args, task.after), before, args.timeout, url)
+            prompt = task_prompt(args, task.after, prerequisite=True)
+            run(harness, project, prompt, before, args.timeout, url)
             # The task's input: a prerequisite that never passed its gate
             # hands the task a broken draft, which is read with the score.
             prerequisite = {"prerequisite_gate": gate(project, TIER2_TASKS[task.after].draft)}
@@ -464,6 +460,10 @@ def tier2_job(args, harness: str, skill: str, k: int, servers: "queue.Queue") ->
         if harness != "claude":
             servers.put(url)
     outcome.update(harness=harness, skill=skill, run=k, references=references_read(log))
+    outcome["prompt"] = "skill-only" if args.skill_only else "full"
+    # A run that resolved its project from this checkout or `--source`
+    # measured the wrong skills; `--compare` leaves it out.
+    outcome["outside_project"] = leaked(transcript_text(log))
     outcome.update(prerequisite)
     outcome.update(score_run(args.source, harness, skill, log))
     outcome["gate"] = gate(project, task.draft)
@@ -471,12 +471,12 @@ def tier2_job(args, harness: str, skill: str, k: int, servers: "queue.Queue") ->
     return outcome
 
 
-def task_prompt(args, skill: str) -> str:
-    """`--skill-only` swaps the survey prompt for the one with no render
-    clause; every other task's prompt is its own."""
-    if skill == "survey-writer" and args.skill_only:
-        return TIER2_SKILL_ONLY
-    return TIER2_TASKS[skill].prompt
+def task_prompt(args, skill: str, prerequisite: bool = False) -> str:
+    """The task's skill-only prompt under `--skill-only` (no closing steps
+    named, so only the skill can make a model run them), else its full
+    one. A prerequisite always gets the full prompt: a reviser is measured
+    on what it does to a complete survey, not on a survey's own skips."""
+    return TIER2_TASKS[skill].prompt(skill_only=args.skill_only and not prerequisite)
 
 
 def tier2(args) -> list:
@@ -595,8 +595,11 @@ def self_check() -> None:
             encoding="utf-8",
         )
         assert references_read(log) == [".claude/skills-common/references/a.md"]
-        assert "draft render" in TIER2_SURVEY, "the prompt changed; re-derive TIER2_SKILL_ONLY"
-        assert "draft render" not in TIER2_SKILL_ONLY, "--skill-only must not ask for the render"
+        for name, task in TIER2_TASKS.items():
+            only = task.prompt(skill_only=True).lower()
+            named = [word for word in TAIL_WORDS if word in only]
+            assert not named, f"{name}'s skill-only prompt names a closing step: {named}"
+            assert task.tail.strip() and task.tail in task.prompt(), f"{name}'s full prompt"
         log.write_text(
             json.dumps(
                 {"input": {"command": "python -m chitragupta.draft render x.md --format md"}}
@@ -716,6 +719,19 @@ SHELL_SHAPES = [
     ("bash -e -c 'python -m chitragupta.draft gate x'", ["draft gate"]),
     ("echo time python -m chitragupta.draft render x", []),
     ("echo python -m chitragupta.draft gate", []),
+    (
+        "python -m chitragupta.draft gate x  # check\npython -m chitragupta.draft render x",
+        ["draft gate", "draft render"],
+    ),
+    ("cd p # go\npython -m chitragupta.draft gate x", ["draft gate"]),
+    ('OUT="$(python -m chitragupta.draft gate x 2>&1)"', ["draft gate"]),
+    ("OUT=`python -m chitragupta.draft gate x`", ["draft gate"]),
+    ("echo $((1<<4))\npython -m chitragupta.draft gate x", ["draft gate"]),
+    ("echo $((x<<y))\npython -m chitragupta.draft gate x", ["draft gate"]),
+    ("cat <<\\EOF > n.md\npython -m chitragupta.draft render x\nEOF", []),
+    ("cat <<'END-OF' > n.md\npython -m chitragupta.draft render x\nEND-OF", []),
+    ("# python -m chitragupta.draft render x", []),
+    ("grep '$(python -m chitragupta.draft gate x)' f", []),
 ]
 
 
@@ -741,6 +757,8 @@ def _check_compare(project: Path) -> None:
         timeouts=0,
         skills=("x",),
         harness="claude",
+        outside=0,
+        prompt="skill-only",
     ):
         rows = [
             {
@@ -753,6 +771,8 @@ def _check_compare(project: Path) -> None:
                 "forbidden_ran": ["corpus sync"] if k <= forbidden else [],
                 "gate": 0 if k <= gated else 1,
                 "prerequisite_gate": 2 if k > runs - broken else 0,
+                "outside_project": k <= outside,
+                "prompt": prompt,
             }
             for skill in skills
             for k in range(1, runs + 1)
@@ -776,6 +796,18 @@ def _check_compare(project: Path) -> None:
     assert compare(arm("b", 6, 6), arm("a", 6, 6, forbidden=4), quiet=True) == 1, "6v6: +4"
     assert compare(arm("b", 3), arm("a", 2, broken=1), quiet=True) == 3, "a broken fixture"
     assert compare(arm("b", 3), arm("a", 2, timeouts=1), quiet=True) == 3, "a timeout"
+    assert compare(arm("b", 3), arm("a", 1, timeouts=2), quiet=True) == 1, "two new timeouts"
+    steady = arm("b", 3, timeouts=1), arm("a", 3, timeouts=1)
+    assert compare(*steady, quiet=True) == 3, "a timed-out run is not judged on its commands"
+    assert compare(arm("b", 6, 6), arm("a", 3, 6, timeouts=3), quiet=True) == 1, "6v6: 3 timeouts"
+    assert compare(arm("b", 3), arm("a", 3, outside=1), quiet=True) == 3, "a run outside"
+    assert compare(arm("b", 3), arm("a", 3, prompt="full"), quiet=True) == 3, "mixed prompts"
+    empty = project / "empty.json"
+    empty.write_text("[]", encoding="utf-8")
+    assert compare(arm("b", 3), empty, quiet=True) == 3, "nothing judged is not a pass"
+    assert compare(arm("b", 3), arm("a", 3, harness="codex"), quiet=True) == 3, "no gated pair"
+    after_more = arm("a", 3, skills=("x", "z"))
+    assert compare(arm("b", 3), after_more, quiet=True) == 3, "a gated skill only after"
     assert compare(arm("b", 3), arm("a", 0, broken=3), quiet=True) == 3, "no usable runs"
     both = arm("b", 3, skills=("x", "y"))
     assert compare(both, arm("a", 3), quiet=True) == 0, "a skill in one arm only is skipped"
@@ -788,6 +820,10 @@ def _check_compare(project: Path) -> None:
     # Only the gated harnesses set the exit code (Claude Code by default,
     # #1210): a local harness's fail is reported, and advisory.
     local_b, local_a = arm("lb", 3, harness="codex"), arm("la", 0, harness="codex")
+    for path, claude in ((local_b, arm("cb", 3)), (local_a, arm("ca", 3))):
+        rows = json.loads(path.read_text(encoding="utf-8"))
+        rows += json.loads(claude.read_text(encoding="utf-8"))
+        path.write_text(json.dumps(rows), encoding="utf-8")
     assert compare(local_b, local_a, quiet=True) == 0, "codex is advisory by default"
     assert compare(local_b, local_a, quiet=True, gate=("claude", "codex")) == 1, "unless gated"
 
@@ -810,6 +846,17 @@ def _check_flag_guards(tmp: Path) -> None:
     leak.write_text(f"cd {REPO_ROOT}-runs/x\n", encoding="utf-8")
     assert not leaked(leak.read_text(encoding="utf-8")), "a sibling folder is not this checkout"
     assert leaked(f"cd {REPO_ROOT}\n") and leaked(f"cat {REPO_ROOT}/x"), "this checkout is"
+    saved = {k: os.environ.get(k) for k in ("GH_TOKEN", "GITHUB_TOKEN")}
+    os.environ.update(GH_TOKEN="x", GITHUB_TOKEN="y")
+    try:
+        env = harness_env()
+    finally:
+        for key, value in saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+    assert "GH_TOKEN" not in env and "GITHUB_TOKEN" not in env and env["PATH"], "no token"
     row = safe_job(argparse.Namespace(), "codex", "x", 1, None, job=_raise)
     assert row["exit"] == "error" and "boom" in row["error"], "a failed job is a row, not a crash"
     busy = argparse.Namespace(source=REPO_ROOT, jobs=3, base_url=[BASE_URL], harness=["codex"])
@@ -832,7 +879,8 @@ def parse(argv) -> argparse.Namespace:
     parser.add_argument(
         "--skill-only",
         action="store_true",
-        help="tier 2: drop the survey prompt's render clause, so only the skill asks for it",
+        help="tier 2: leave every task's closing steps out of its prompt, so only the "
+        "skill asks for them (the arm a shrink is gated on)",
     )
     parser.add_argument(
         "--source", type=Path, default=REPO_ROOT, help="the checkout whose skills are scaffolded"

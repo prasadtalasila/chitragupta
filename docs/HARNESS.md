@@ -324,10 +324,9 @@ the one partial skip was a run with the commands inline. That is one
 step on small samples, so it licenses moving this step, which is what
 the four genre writers and deep-research now do, and nothing more. The
 critique loop keeps its commands inline until it is measured the same
-way. `bench/bench_skill_harnesses.py --tier 2 --skill-only` re-runs the
-pointer arm, since it scaffolds the tree it runs from; run with this
-script against a tree from before the size budget, it gives the inline
-arm.
+way. `bench/bench_skill_harnesses.py --tier 2 --skill-only` now runs
+that pointer arm for every user skill, not only the survey (see
+"Measuring a skill change" below).
 
 Two harness facts the bench had to work around, both recorded in the
 script: OpenCode takes its project directory from the inherited `PWD`,
@@ -583,12 +582,25 @@ stop running it, and no unit test sees that. `skill-bench` measures it
   written; and `prerequisite_gate`, the same for the survey a reviser
   task starts from.
 
+**The gated arm is the skill-only one.** Each task's prompt holds what a
+user would bring (the answers to the skill's questions, what they want
+in the draft) and, unless `--skill-only` is given, a tail that names the
+closing steps (render, prose check, verbatim scan, stamp). A prompt that
+names a step makes a model run it whatever the skill says, so those rows
+measure the prompt; with `--skill-only` only the skill can ask for them,
+which is the failure a shrink can cause. A reviser's prerequisite survey
+always gets the full prompt, so the reviser starts from a complete
+draft. Each run records which prompt it had.
+
 `--compare BEFORE AFTER` reads two such files and judges each (harness,
-skill) that both arms ran, on every command either arm expected, counted
-from everything each run executed. It leaves out a run that timed out,
-raised, or started from a prerequisite that never passed its gate: that
-run measured the clock or the fixture, not the skill. Every row -- each
-command, the gate, each forbidden command -- is judged by one rule:
+skill) on every command either arm expected, counted from everything
+each run executed. It leaves out a run whose prerequisite never passed
+its gate, or whose transcript names the launch checkout (it loaded the
+wrong skills): those measured the fixture or the setup. A run that timed
+out or raised is left out of the command rows, whose tail it never
+reached, and counted on a row of its own instead, since a shrink can
+cause it. Every command, gate and forbidden-command row is judged by one
+rule:
 
 | Usable runs per arm | Fail (exit 1) | Inconclusive (exit 3) | Pass (exit 0) |
 | --- | --- | --- | --- |
@@ -596,7 +608,17 @@ command, the gate, each forbidden command -- is judged by one rule:
 | 3 against 3 | the row went all the way the wrong way: a command or the gate in every before run and no after run, or a forbidden command in no before run and every after run | any other move the wrong way | no move the wrong way |
 | 6 against 6 | an all-the-way move, or a move of 4 runs or more | -- | anything else |
 
-On exit 3, run 3 more on both arms and compare the merged files.
+The timeout-or-error row is stricter, since the baseline below had none
+in 132 runs: a rise of 2 runs fails at any size, and a rise of 1 is
+inconclusive. Arms that used different prompts are inconclusive. A
+(harness, skill) only the before arm ran is skipped, so a full baseline
+compares against a PR that ran one skill; one only the after arm ran,
+or a comparison that judged no gated (harness, skill) at all, is
+inconclusive, never a pass.
+
+On exit 3, run 3 more on both arms into a fresh `--out` (the bench
+overwrites its own), join each arm's runs into one JSON list, and
+compare again.
 
 **Only Claude Code gates.** The exit code is the worst verdict of the
 `--gate` harnesses, `claude` by default; Codex and OpenCode are judged
@@ -604,7 +626,7 @@ and printed, marked advisory. The baseline below is why: only Claude
 Code runs a skill's steps steadily enough at 3 runs an arm. When #1210
 steadies the other two, add them with `--gate codex --gate opencode`.
 
-**Why 3 runs screen and do not convict.** A skill names 15 to 19
+**Why 3 runs screen and do not convict.** A skill names 12 to 19
 commands counting its references (5 for figure-drawer), so a comparison
 judges about 54 rows across the three harnesses. Take a row a model
 runs on 80% of runs, unchanged between the arms. A two-run drop then
@@ -627,9 +649,11 @@ Results are comparable within one host and model build only.
 `UD-Q4_K_M` file as #1068; Codex on three GPUs and OpenCode on the
 other three. Skills scaffolded from `feat-1091-skill-bench` (main's
 skills, unchanged); the commands a model ran used `main` at 6.172.1.
-Every user skill's Tier 2 task ran 3 times on each harness, 99 runs,
-and Claude Code ran 3 more as an unchanged second arm. The rows are in
-`bench/results/2026-11-13-skill-bench-baseline/`.
+Every user skill's Tier 2 task ran 3 times on each harness with its
+full prompt, 99 runs, and Claude Code ran 3 more as an unchanged second
+arm: each run was its own `--runs 1` invocation into its own `--out`,
+joined afterwards with the run number set from the invocation. The rows
+are in `bench/results/2026-11-13-skill-bench-baseline/`.
 
 | Harness | Usable runs | Gate passed | Named commands run | Median run |
 | --- | ---: | ---: | ---: | ---: |
@@ -641,6 +665,9 @@ and Claude Code ran 3 more as an unchanged second arm. The rows are in
 references name, branch-only ones included, so no harness reaches
 100%. Three runs left out had a prerequisite survey that never wrote
 its draft; no run timed out, and none ran `corpus sync` or `enrich`.
+13 of Codex's 33 runs exited 1 (Codex's own exit code, not a timeout)
+and are counted: what they ran and the gate on their draft are scored
+like any other run.
 
 - **Claude Code runs the same steps every time.** In its A/A
   comparison (runs 1-3 against 4-6), `--compare` failed nothing:

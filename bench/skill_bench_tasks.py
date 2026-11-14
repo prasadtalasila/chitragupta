@@ -44,11 +44,40 @@ TO_THE_END = (
 
 
 class Task(NamedTuple):
-    prompt: str
+    """One skill's Tier 2 task. `body` is what a user would bring: the
+    pre-answers to the skill's questions and what they want in the draft.
+    `tail` names the closing steps (render, prose check, verbatim scan,
+    stamp, ...). The full prompt asks for both; the skill-only prompt
+    leaves the tail out, so only the skill can make a model run those
+    steps -- the arm a shrink is gated on, since a step a pointer hides is
+    exactly what a prompt that names it would mask."""
+
+    body: str
+    tail: str
     draft: str
     after: Optional[str] = None
     setup: Optional[Callable[[Path], None]] = None
     seed: Optional[Callable[[Path], None]] = None
+
+    def prompt(self, skill_only: bool = False) -> str:
+        return self.body + ("" if skill_only else self.tail) + TO_THE_END
+
+
+# Words that name a closing step; no task's skill-only prompt may hold one
+# (bench_skill_harnesses.self_check proves it for every task).
+TAIL_WORDS = (
+    "render",
+    "stamp",
+    "verbatim scan",
+    "verbatim-scan",
+    "prose check",
+    "prose-check",
+    "evidence sidecar",
+    "draft diff",
+    "section map",
+    "sign-off",
+    "verified environment",
+)
 
 
 def _cg(project: Path, *args: str) -> None:
@@ -177,7 +206,7 @@ record-keeping, the last of which keeps the asset's history as an audit
 trail after the asset is retired [@sample_dt_overview_2024].
 """
 
-SURVEY_PROMPT = (
+SURVEY_BODY = (
     "Use the survey-writer skill to draft a literature survey on digital twins in "
     "manufacturing from this project's synced corpus. " + NON_INTERACTIVE + "My answers: "
     "the slug is dt/survey, so the draft is content/drafts/dt/survey.md; the reader is a "
@@ -193,13 +222,15 @@ SURVEY_PROMPT = (
     "source supports. Draw one figure through the figure-drawer skill, a taxonomy of "
     "model, shadow and twin, captioned and referenced from the prose. State the reported "
     "detector figures as quantities, with one numbered equation that the prose refers "
-    "to. Record this steering: do not lead with tooling. Then render the draft to tex, "
-    "pdf and md with draft render, write its evidence sidecar, and run the prose check, "
-    "the verbatim scan and the stamp." + TO_THE_END
+    "to. Record this steering: do not lead with tooling."
+)
+SURVEY_TAIL = (
+    " Then render the draft to tex, pdf and md with draft render, write its evidence "
+    "sidecar, and run the prose check, the verbatim scan and the stamp."
 )
 
 TIER2_TASKS = {
-    "survey-writer": Task(SURVEY_PROMPT, SURVEY),
+    "survey-writer": Task(SURVEY_BODY, SURVEY_TAIL, SURVEY),
     "textbook-chapter-writer": Task(
         "Use the textbook-chapter-writer skill to write a chapter that students study: they "
         "read it, they do not follow it at a keyboard. " + NON_INTERACTIVE + "My answers: "
@@ -214,9 +245,9 @@ TIER2_TASKS = {
         "then a faded one, then a problem left to the student; a captioned table of "
         "symbols; a numbered final equation the text refers back to; one figure through the "
         "figure-drawer skill; and five exercises graded easy, medium and hard, each with a "
-        "hint. Record this steering: assume no probability beyond mean and variance. Then "
-        "render it, write the evidence sidecar, and run the prose check, the verbatim scan "
-        "and the stamp." + TO_THE_END,
+        "hint. Record this steering: assume no probability beyond mean and variance.",
+        " Then render it, write the evidence sidecar, and run the prose check, the verbatim "
+        "scan and the stamp.",
         "content/drafts/dt/book-chapter.md",
     ),
     "thesis-chapter-writer": Task(
@@ -238,9 +269,9 @@ TIER2_TASKS = {
         "toward a position, mark single-source points, and surface conflicts between "
         "sources. Include a captioned comparison table of the three strategies, one "
         "architecture figure through the figure-drawer skill, and a numbered equation for "
-        "the staleness bound. Record this steering: argue harder against threshold push. "
-        "Then render it, write the evidence sidecar, quote any render notices to me, and "
-        "run the prose check, the verbatim scan and the stamp." + TO_THE_END,
+        "the staleness bound. Record this steering: argue harder against threshold push.",
+        " Then render it, write the evidence sidecar, quote any render notices to me, and "
+        "run the prose check, the verbatim scan and the stamp.",
         "content/drafts/dt/thesis-chapter.tex",
     ),
     "tutorial-writer": Task(
@@ -252,13 +283,14 @@ TIER2_TASKS = {
         "prints each reading a rolling z-score flags above 4 standard deviations; it covers "
         "building and running that script; it does not cover other detectors, Docker or "
         "other languages; dialect en-GB; it must be completable in 30 minutes; no "
-        "collection, omit --collection. Run every command yourself and record the verified "
-        "environment. Include a table of the expected output lines and two figures through "
-        "the figure-drawer skill (what you will build; how the data flows). Treat the "
-        "threshold as a quantity in the prose and as a typed constant in the code. Cite at "
-        "least two corpus papers, in 'Where to go next' only. Record this steering: no "
-        "third-party packages. Then render it, run the prose check, the verbatim scan and "
-        "the stamp, and tell me whether verification passed in full." + TO_THE_END,
+        "collection, omit --collection. Include a table of the expected output lines and "
+        "two figures through the figure-drawer skill (what you will build; how the data "
+        "flows). Treat the threshold as a quantity in the prose and as a typed constant in "
+        "the code. Cite at least two corpus papers, in 'Where to go next' only. Record this "
+        "steering: no third-party packages.",
+        " Run every command yourself and record the verified environment. Then render it, "
+        "run the prose check, the verbatim scan and the stamp, and tell me whether "
+        "verification passed in full.",
         "content/drafts/dt/tutorial.md",
     ),
     "review-digest": Task(
@@ -277,7 +309,8 @@ TIER2_TASKS = {
         "sidecar, say which. After the digest and synthesis reports: yes, work the report "
         "for one repair pass, every item, worst class first, keeping or reverting each by "
         "the skill's rule and logging each in revisions.md, then stop. Record these "
-        "instructions as steering, then stamp and present." + TO_THE_END,
+        "instructions as steering.",
+        " Then stamp and present.",
         "content/drafts/dt/digest.md",
         setup=setup_docling,
     ),
@@ -295,8 +328,9 @@ TIER2_TASKS = {
         "interoperability (semantic interoperability asset-model registry), anomaly "
         "detection (anomaly detection drift z-score autoencoder) and provenance (blockchain "
         "ledger provenance for twins). Drop the adoption and incentives lens and log that "
-        "as steering. Keep the verbatim-scan report with --write. Run every phase through "
-        "the render, the evidence sidecar and the stamp." + TO_THE_END,
+        "as steering.",
+        " Keep the verbatim-scan report with --write. Run every phase through the render, "
+        "the evidence sidecar and the stamp.",
         "content/drafts/dt/deep-research.md",
     ),
     "figure-drawer": Task(
@@ -308,9 +342,10 @@ TIER2_TASKS = {
         "if the taste gate concludes that a sentence or a table would do, draw it anyway "
         "and say so; put its marker after the paragraph that defines the levels, with a "
         "caption and an inline reference from that paragraph; record any deliberate check "
-        "finding with a cg-allow and its reason; look at the rendered figure. Then carry on "
-        "with draft-reviser's loop: write the dossier back, gate, references, render tex, "
-        "pdf and md, stamp, the prose check, the verbatim scan and the draft diff." + TO_THE_END,
+        "finding with a cg-allow and its reason.",
+        " Look at the rendered figure. Then carry on with draft-reviser's loop: write the "
+        "dossier back, gate, references, render tex, pdf and md, stamp, the prose check, "
+        "the verbatim scan and the draft diff.",
         SURVEY,
         after="survey-writer",
     ),
@@ -326,10 +361,10 @@ TIER2_TASKS = {
         "tell me; (c) shorten the factory section by about a third. Then, as a separate "
         "copy-edit pass, put the draft into British English (en-GB, as scope.md's language: "
         "line says); if the copy-edit tempts a change of substance, report it and do not "
-        "make it. Log steering and revisions, pass the gate, run references, render tex, "
-        "pdf and md, stamp, run the prose check, rebuild the section map and run the "
-        "verbatim scan, then the draft diff as a pdf. Snapshot the result as "
-        "'benchmark-v1'." + TO_THE_END,
+        "make it. Snapshot the result as 'benchmark-v1'.",
+        " Log steering and revisions, pass the gate, run references, render tex, pdf and "
+        "md, stamp, run the prose check, rebuild the section map and run the verbatim scan, "
+        "then the draft diff as a pdf.",
         SURVEY,
         after="survey-writer",
         seed=seed_draft_reviser,
@@ -340,12 +375,12 @@ TIER2_TASKS = {
         "waiting. " + NON_INTERACTIVE + "I agree a scope change: the survey now also covers "
         "machine-learning anomaly detection where it consumes a twin's state stream; update "
         "scope.md's scope accordingly and, since that changes why any source was rejected, "
-        "say so and re-judge it. Keep the reader unchanged. Re-search every recorded "
-        "sub-theme, read every section, fix any claim the sources contradict, write back "
-        "evidence, rejected, sections, steering and revisions, gate, references, render, "
-        "stamp, run the prose check (report only), rebuild the section map and run the "
-        "verbatim scan, then the draft diff as a pdf. Accept any dossier-drift repair you "
-        "offer." + TO_THE_END,
+        "say so and re-judge it. Keep the reader unchanged. Fix any claim the sources "
+        "contradict. Accept any dossier-drift repair you offer.",
+        " Re-search every recorded sub-theme, read every section, write back evidence, "
+        "rejected, sections, steering and revisions, gate, references, render, stamp, run "
+        "the prose check (report only), rebuild the section map and run the verbatim scan, "
+        "then the draft diff as a pdf.",
         SURVEY,
         after="survey-writer",
     ),
@@ -356,10 +391,10 @@ TIER2_TASKS = {
         + "My answers: for any long verbatim run, convert it to an "
         "attributed quotation in quote marks and keep its citation; escalations and "
         "surfaced items go in your report. Also accept the uncited-claim items for me. "
-        "Follow every step through the closing full-format agenda run and the draft diff as "
-        "a pdf, and report objective_class_count before and after, not_refreshed and "
-        "refresh_errors, any stale-span refusal, and what the verbatim tiers did not check."
-        + TO_THE_END,
+        "Report objective_class_count before and after, not_refreshed and refresh_errors, "
+        "any stale-span refusal, and what the verbatim tiers did not check.",
+        " Follow every step through the closing full-format agenda run and the draft diff "
+        "as a pdf.",
         SURVEY,
         after="survey-writer",
         seed=seed_agenda_reviser,
@@ -368,9 +403,9 @@ TIER2_TASKS = {
         "Use the book-assembler skill to assemble the book in content/drafts/twin-basics "
         "into one LaTeX document. " + NON_INTERACTIVE + "My answers: the author is Sample "
         "Author; if a unit is not accepted, report it and stop as the skill says; build the "
-        "PDF, since TeX Live is installed. Report every registry finding, the gate result "
-        "and the per-unit prose-check and verbatim results as one table, then stop at the "
-        "sign-off." + TO_THE_END,
+        "PDF, since TeX Live is installed.",
+        " Report every registry finding, the gate result and the per-unit prose-check and "
+        "verbatim results as one table, then stop at the sign-off.",
         "content/rendered/twin-basics/book.tex",
         setup=setup_book,
     ),

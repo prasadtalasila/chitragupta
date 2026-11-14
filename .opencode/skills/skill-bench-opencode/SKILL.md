@@ -55,12 +55,15 @@ person does that.
    bench code:
 
    ```bash
-   python bench/bench_skill_harnesses.py --tier 2 --skill <name> \
+   python bench/bench_skill_harnesses.py --tier 2 --skill-only --skill <name> \
      --runs 3 --jobs <n> --timeout 1500 --source <worktree> --out <dir> <base-urls>
    ```
 
-   Give `--jobs` the number of servers plus 4 for Claude Code. Leave out
-   `--skill` for a baseline of every user skill. A task that revises a
+   `--skill-only` keeps the closing steps out of the prompt, so only the
+   skill asks for them: the arm a shrink is gated on. Put `--out`
+   outside every checkout; a run whose transcript names one is left
+   out. Give `--jobs` the number of servers plus 4 for Claude Code.
+   Leave out `--skill` for a baseline of every user skill. A task that revises a
    draft runs survey-writer first in the same project; its own score
    covers only its own transcript, and `prerequisite_gate` says whether
    it started from a passing draft. *Done when* both `tier2.json` files
@@ -75,8 +78,9 @@ person does that.
    Only Claude Code sets the exit code; Codex and OpenCode tables are
    marked advisory (`--gate` adds them once #1210 steadies them).
    Exit 3 is inconclusive: 3 runs screen, they do not convict. Run 3 more
-   on both arms, join each arm's two files into one JSON list, and
-   compare again; 6 against 6 settles. A fail stands: report it,
+   on both arms, each into a fresh `--out` (the bench overwrites its
+   own), join each arm's two files into one JSON list, and compare
+   again; 6 against 6 settles. A fail stands: report it,
    never rerun it until it passes. *Done when* it exits 0 or 1.
 6. **Stop the servers and record.**
    `bash .claude/skills/skill-bench/scripts/serve_models.sh --stop`.
@@ -84,7 +88,7 @@ person does that.
    and the verdict in `docs/HARNESS.md` and on the PR. *Done when* the
    PR comment links the commit that records it.
 
-`--compare` leaves out a run that timed out, raised, or started from
-a prerequisite that never passed its gate, and says how many: it
-measured the clock or the fixture, not the skill. Name those runs in
-the record too.
+`--compare` leaves out a run that started from a prerequisite that
+never passed its gate, or that loaded the wrong checkout, and says how
+many; it judges timeouts and errors on a row of their own. Name those
+runs in the record too.

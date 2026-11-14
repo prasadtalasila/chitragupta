@@ -91,7 +91,10 @@ def expected_commands(*files: Path) -> list:
     return seen
 
 
-HEREDOC = re.compile(r"(?<!<)<<(?!<)(-?)\s*(['\"]?)(\w+)\2")
+HEREDOC = re.compile(
+    r"(?<![\w<])<<(?!<)(-?)[ \t]*"
+    r"(?:'([A-Za-z_][\w-]*)'|\"([A-Za-z_][\w-]*)\"|\\?([A-Za-z_][\w-]*))"
+)
 
 
 def _strip_heredocs(command: str) -> str:
@@ -108,7 +111,10 @@ def _strip_heredocs(command: str) -> str:
                 pending.pop(0)
             continue
         kept.append(line)
-        pending.extend((m.group(3), m.group(1) == "-") for m in HEREDOC.finditer(line))
+        pending.extend(
+            (m.group(2) or m.group(3) or m.group(4), m.group(1) == "-")
+            for m in HEREDOC.finditer(line)
+        )
     return "\n".join(kept)
 
 
@@ -118,6 +124,10 @@ def _shell_words(text: str) -> list:
     lexer = shlex.shlex(text, posix=True, punctuation_chars="();<>|&\n")
     lexer.whitespace = " \t\r"
     lexer.whitespace_split = True
+    # No comment handling: shlex's would swallow the newline after a
+    # `# note`, and with it the next line's command. A `#` word is then
+    # the command word of its line, which runs nothing we count.
+    lexer.commenters = ""
     return list(lexer)
 
 
@@ -206,6 +216,37 @@ def _python_module(after: list):
     return None
 
 
+def _substitutions(command: str) -> list:
+    """The scripts of substitutions the shell runs but the lexer folds
+    into one word: `$(...)` inside double quotes (`OUT="$(python -m
+    ...)"`), and backticks anywhere outside single quotes. An unquoted
+    `$(...)` is already split into words of its own; anything in single
+    quotes is text and runs nothing."""
+    found, quote, i = [], None, 0
+    while i < len(command):
+        char = command[i]
+        if quote != '"' and char == "'":
+            quote = None if quote == "'" else "'"
+        elif quote != "'" and char == '"':
+            quote = None if quote == '"' else '"'
+        elif quote == '"' and command.startswith("$(", i) and not command.startswith("$((", i):
+            depth, j = 1, i + 2
+            while j < len(command) and depth:
+                depth += {"(": 1, ")": -1}.get(command[j], 0)
+                j += 1
+            found.append(command[i + 2 : j - 1])
+            i = j
+            continue
+        elif quote != "'" and char == "`":
+            end = command.find("`", i + 1)
+            if end > i:
+                found.append(command[i + 1 : end])
+                i = end + 1
+                continue
+        i += 1
+    return found
+
+
 def commands_run_in(command: str) -> list:
     """Every command key one tool call's shell command executes, in order.
 
@@ -213,7 +254,7 @@ def commands_run_in(command: str) -> list:
     scored on the script inside the quotes. A `--help` or `-h` call shows
     usage and runs nothing, so it is not a run of the command."""
     tokens = _tokens(command)
-    found = []
+    found = [key for inner in _substitutions(command) for key in commands_run_in(inner)]
     for i, word in _command_words(tokens):
         name = Path(word).name
         after = _arguments(tokens[i + 1 :])
@@ -256,18 +297,6 @@ def forbidden(key: str) -> bool:
     return any(key == f or key.startswith(f + " ") for f in FORBIDDEN)
 
 
-def usable(rows: list) -> list:
-    """The runs that measured the skill. A run whose prerequisite never
-    passed its gate measured a broken fixture, and one that timed out or
-    raised measured the clock or the bench; skill-bench names those in
-    its record rather than counting them as the skill's."""
-    return [
-        row
-        for row in rows
-        if row.get("exit") not in ("timeout", "error") and row.get("prerequisite_gate", 0) == 0
-    ]
-
-
 def _counts(rows: list) -> dict:
     """Per command, in how many of `rows` it ran; plus the gate and every
     forbidden command, under keys of their own."""
@@ -296,40 +325,83 @@ def _verdict(b: int, n_b: int, a: int, n_a: int, worse_when_lower: bool) -> int:
     return INCONCLUSIVE if move > 1e-9 else PASS
 
 
+def measured(rows: list) -> list:
+    """The runs that measured this skill on this project at all: not one
+    whose prerequisite never passed its gate (a broken fixture), and not
+    one whose transcript names the launch checkout (it loaded the wrong
+    skills)."""
+    return [
+        row
+        for row in rows
+        if row.get("prerequisite_gate", 0) == 0 and not row.get("outside_project", False)
+    ]
+
+
+def usable(rows: list) -> list:
+    """The measured runs whose commands and gate are judged: also not one
+    that timed out or raised, whose tail never ran. Those are judged on
+    their own row instead (`judge`), since a shrink can cause them."""
+    return [row for row in measured(rows) if row.get("exit") not in ("timeout", "error")]
+
+
+CLOCK = "(timed out or raised)"
+
+
+def _clock_verdict(b: int, n_b: int, a: int, n_a: int) -> int:
+    """Timeouts and errors, stricter than a command: none in 132 baseline
+    runs, so a rise of two runs fails at any size and one is inconclusive."""
+    rise = a * n_b / max(n_a, 1) - b
+    if rise >= 2 - 1e-9:
+        return FAIL
+    return INCONCLUSIVE if rise > 1e-9 else PASS
+
+
 def judge(before: list, after: list) -> "tuple[int, list]":
     """The verdict for one (harness, skill), and its table rows.
 
-    3 runs an arm can screen but not convict (docs/HARNESS.md has the
-    arithmetic): a skill names 15 to 19 commands counting its references,
-    and at a true per-run rate of 0.8 a two-run drop between two unchanged
-    arms happens for 1 command in 18. So at 3 against 3 only a row that
-    went all the way the wrong way fails -- a command that ran in every
-    before run and no after run, a gate that passed in every before run
-    and no after run, a forbidden command that ran in no before run and
-    every after run -- and any other move is inconclusive, settled by 3
-    more runs an arm, where a move of 4 in 6 fails and less passes. Only
-    usable runs count, and an arm with fewer than 3 is inconclusive.
+    3 runs an arm screen and do not convict (docs/HARNESS.md, "Measuring a
+    skill change", has the rule and its arithmetic): at 3 against 3 only a
+    row that went all the way the wrong way fails, and any other move is
+    inconclusive, settled by 3 more runs an arm, where a move of 4 in 6
+    fails and less passes. Timeouts and errors are a row of their own;
+    arms that used different prompts, or with fewer than 3 usable runs,
+    are inconclusive.
     """
-    b_rows, a_rows = usable(before), usable(after)
+    m_b, m_a = measured(before), measured(after)
+    b_rows, a_rows = usable(m_b), usable(m_a)
     n_b, n_a = len(b_rows), len(a_rows)
-    left_out = (
-        "(runs left out: fixture, timeout)",
-        str(len(before) - n_b),
-        str(len(after) - n_a),
-        "",
+    table = []
+    if len(before) + len(after) > len(m_b) + len(m_a):
+        broken = (len(before) - len(m_b), len(after) - len(m_a))
+        table.append(("(left out: fixture, outside project)", *map(str, broken), ""))
+    clock_b = sum(r.get("exit") in ("timeout", "error") for r in m_b)
+    clock_a = sum(r.get("exit") in ("timeout", "error") for r in m_a)
+    verdict = _clock_verdict(clock_b, len(m_b), clock_a, len(m_a)) if m_b and m_a else PASS
+    mark = {PASS: "", INCONCLUSIVE: "drop?", FAIL: "FAIL"}
+    table.append((CLOCK, f"{clock_b}/{len(m_b)}", f"{clock_a}/{len(m_a)}", mark[verdict]))
+    prompts = (
+        {row.get("prompt", "full") for row in b_rows},
+        {row.get("prompt", "full") for row in a_rows},
     )
+    if prompts[0] != prompts[1]:
+        mixed = (
+            "(arms used different prompts)",
+            "/".join(sorted(prompts[0])),
+            "/".join(sorted(prompts[1])),
+            "drop?",
+        )
+        return max(verdict, INCONCLUSIVE, key=SEVERITY.index), [*table, mixed]
     if n_b < 3 or n_a < 3:
-        return INCONCLUSIVE, [left_out, ("(fewer than 3 usable runs)", str(n_b), str(n_a), "drop?")]
+        few = ("(fewer than 3 usable runs)", str(n_b), str(n_a), "drop?")
+        return max(verdict, INCONCLUSIVE, key=SEVERITY.index), [*table, few]
     b_counts, a_counts = _counts(b_rows), _counts(a_rows)
     keys = list(dict.fromkeys([k for row in b_rows + a_rows for k in row.get("expected", [])]))
     extra = sorted(k for k in set(b_counts) | set(a_counts) if k.startswith("(forbidden)"))
-    verdict, table = PASS, [left_out] if len(before) + len(after) > n_b + n_a else []
     for key in [GATE, *keys, *extra]:
         b, a = b_counts.get(key, 0), a_counts.get(key, 0)
         bad = _verdict(b, n_b, a, n_a, worse_when_lower=not key.startswith("(forbidden)"))
         verdict = max(verdict, bad, key=SEVERITY.index)
-        mark = {PASS: "", INCONCLUSIVE: "drop?", FAIL: "FAIL"}[bad]
-        table.append((key, f"{b}/{n_b}", f"{a}/{n_a}", mark))
+        table.append((key, f"{b}/{n_b}", f"{a}/{n_a}", mark[bad]))
     return verdict, table
 
 
@@ -345,8 +417,9 @@ def compare(before_path: Path, after_path: Path, quiet: bool = False, gate=GATED
     of the `gate` harnesses as the exit code -- 0 pass, 1 fail, 3
     inconclusive (rerun 3 more on both arms and compare the merged
     files). Every other harness is judged and marked advisory. A (harness,
-    skill) in only one arm is listed and skipped, so a full baseline
-    compares against a PR that ran one skill."""
+    skill) only the before arm ran is listed and skipped, so a full
+    baseline compares against a PR that ran one skill; one only the after
+    arm ran, or judging no gated pair at all, is inconclusive."""
 
     def load(path):
         return json.loads(Path(path).read_text(encoding="utf-8"))
@@ -356,14 +429,21 @@ def compare(before_path: Path, after_path: Path, quiet: bool = False, gate=GATED
         for row in rows:
             key = (row["harness"], row["skill"])
             groups.setdefault(key, {"before": [], "after": []})[arm].append(row)
-    worst, skipped = PASS, []
+    worst, skipped, judged = PASS, [], 0
     for (harness, skill), arms in sorted(groups.items()):
-        if not arms["before"] or not arms["after"]:
+        if not arms["after"]:
             skipped.append(f"{harness} / {skill}")
+            continue
+        if not arms["before"]:
+            if harness in gate:
+                worst = max(worst, INCONCLUSIVE, key=SEVERITY.index)
+            if not quiet:
+                print(f"\n{harness} / {skill}: inconclusive -- no before runs to compare with")
             continue
         verdict, table = judge(arms["before"], arms["after"])
         if harness in gate:
             worst = max(worst, verdict, key=SEVERITY.index)
+            judged += 1
         if not quiet:
             name = {PASS: "pass", FAIL: "FAIL", INCONCLUSIVE: "inconclusive"}[verdict]
             note = "" if harness in gate else " (advisory)"
@@ -371,9 +451,15 @@ def compare(before_path: Path, after_path: Path, quiet: bool = False, gate=GATED
             width = max(len(row[0]) for row in table)
             for key, b, a, mark in table:
                 print(f"  {key:<{width}}  {b:>5} -> {a:<5} {mark}")
+    if not judged:
+        # A wrong --skill or --harness on one arm, or a truncated file,
+        # judges nothing; that must never read as a pass.
+        worst = max(worst, INCONCLUSIVE, key=SEVERITY.index)
     if not quiet:
         if skipped:
-            print(f"\nin one arm only, not judged: {', '.join(skipped)}")
+            print(f"\nin the before arm only, not judged: {', '.join(skipped)}")
+        if not judged:
+            print(f"\nno {'/'.join(gate)} (harness, skill) was judged")
         verdict_name = {PASS: "pass", FAIL: "fail", INCONCLUSIVE: "inconclusive"}[worst]
         print(f"\nverdict: {verdict_name} (gated on: {', '.join(gate)})")
     return worst
