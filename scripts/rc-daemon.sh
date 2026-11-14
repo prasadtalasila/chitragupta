@@ -15,7 +15,16 @@ SELF="$(readlink -f "$0")"
 RC_ENV_FILE="${RC_ENV_FILE:-${SELF%.sh}.env}"
 # shellcheck source-path=SCRIPTDIR source=rc-daemon.env.example
 . "$RC_ENV_FILE" || { echo "cannot read $RC_ENV_FILE" >&2; exit 1; }
-: "${RC_DIR:?} ${RC_NAME:?} ${RC_PREFIX:?} ${RC_PERMISSION_MODE:?} ${TMUX_SESSION:?} ${RC_LOG:?}"
+# How a session started from the app gets its directory: worktree (its own
+# git worktree of RC_DIR), same-dir or session. Defaulted here as well as in
+# the env file, so an env file written before the setting existed still
+# works. Always passed: unset, claude stops at a "Choose [1/2]" prompt
+# inside the detached pane, and nobody is there to answer it. worktree needs
+# RC_DIR to be a git repository, which a `chitragupta init` workspace
+# usually is not; supervise() falls back to same-dir there rather than
+# letting claude exit on every restart.
+RC_SPAWN="${RC_SPAWN:-worktree}"
+: "${RC_DIR:?} ${RC_NAME:?} ${RC_PREFIX:?} ${RC_PERMISSION_MODE:?} ${RC_SPAWN:?} ${TMUX_SESSION:?} ${RC_LOG:?}"
 LOG="$RC_LOG"
 
 log() { printf '[%s] %s\n' "$(date '+%F %T')" "$*" | tee -a "$LOG"; }
@@ -24,12 +33,23 @@ log() { printf '[%s] %s\n' "$(date '+%F %T')" "$*" | tee -a "$LOG"; }
 supervise() {
   local backoff=5
   cd "$RC_DIR" || { log "cannot cd to $RC_DIR"; exit 1; }
+  # Any git failure falls back, not only "not a repository": a workspace
+  # owned by another uid ("dubious ownership") or a linked worktree whose
+  # gitdir is outside the mount fails the same way, and claude's own
+  # worktree creation would fail there too. git's own message goes in the
+  # log line, so the cause is not misreported.
+  local why
+  if [ "$RC_SPAWN" = worktree ] && ! why=$(git rev-parse --is-inside-work-tree 2>&1 >/dev/null); then
+    log "RC_SPAWN=worktree needs git in $RC_DIR, using same-dir; git said: ${why:-(nothing)}"
+    RC_SPAWN=same-dir
+  fi
   while true; do
-    log "starting claude remote-control --name $RC_NAME in $RC_DIR"
+    log "starting claude remote-control --name $RC_NAME --spawn $RC_SPAWN in $RC_DIR"
     local started=$SECONDS
     claude remote-control \
       --name "$RC_NAME" \
       --permission-mode "$RC_PERMISSION_MODE" \
+      --spawn "$RC_SPAWN" \
       --remote-control-session-name-prefix "$RC_PREFIX"
     local rc=$? ran=$((SECONDS - started))
     log "claude remote-control exited with code $rc after ${ran}s"
@@ -69,9 +89,14 @@ EOF
 case "${1:-}" in
   start)
     if running; then echo "already running (tmux session '$TMUX_SESSION')"; exit 0; fi
+    # A typo would otherwise make claude exit on every restart, forever.
+    case "$RC_SPAWN" in
+      worktree|same-dir|session) ;;
+      *) echo "not started; RC_SPAWN='$RC_SPAWN' is not one of worktree, same-dir, session" >&2; exit 1 ;;
+    esac
     preflight || exit 1
     tmux new-session -d -s "$TMUX_SESSION" \
-      "RC_DIR='$RC_DIR' RC_NAME='$RC_NAME' RC_PREFIX='$RC_PREFIX' RC_PERMISSION_MODE='$RC_PERMISSION_MODE' RC_LOG='$LOG' '$SELF' _supervise"
+      "RC_DIR='$RC_DIR' RC_NAME='$RC_NAME' RC_PREFIX='$RC_PREFIX' RC_PERMISSION_MODE='$RC_PERMISSION_MODE' RC_SPAWN='$RC_SPAWN' RC_LOG='$LOG' '$SELF' _supervise"
     # claude's own output (errors, prompts) only reaches the pane; mirror it to a
     # side log so failures like "Workspace not trusted" are visible without attaching.
     tmux pipe-pane -t "$TMUX_SESSION" -o "cat >> '${LOG%.log}.pane.log'"

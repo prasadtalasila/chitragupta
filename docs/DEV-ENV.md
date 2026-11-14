@@ -39,6 +39,7 @@ cp scripts/rc-daemon.env.example scripts/rc-daemon.env
 | `RC_NAME` | `chitragupta-dev` | Remote Control session name, as claude.ai shows it |
 | `RC_PREFIX` | `chitragupta-dev` | Name prefix for sessions spawned from it |
 | `RC_PERMISSION_MODE` | `bypassPermissions` | Permission mode for those sessions |
+| `RC_SPAWN` | `worktree` | What those sessions run in: `worktree` (a git worktree of `RC_DIR` each; `same-dir` when `RC_DIR` is not a git repository), `same-dir` or `session` |
 | `TMUX_SESSION` | `chitragupta-dev` | `tmux` session the loop runs in |
 | `RC_LOG` | `~/claude-daemon/chitragupta-dev.log` | The loop's log; the pane output goes to `<name>.pane.log` beside it |
 

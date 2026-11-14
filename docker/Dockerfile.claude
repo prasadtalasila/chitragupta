@@ -131,7 +131,7 @@ RUN mkdir -p /workspace && chown -R "${CG_USER}:${CG_USER}" /workspace
 # is the deliberate act the pin exists to require. The CLI self-updates
 # inside a running container regardless, so the pin governs what the
 # *image* carries, not what a long-lived container ends up running.
-ARG CLAUDE_CODE_VERSION=2.1.260
+ARG CLAUDE_CODE_VERSION=2.1.323
 RUN npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
 
 # /usr/local/bin, not the account's home directory: the entrypoint's
