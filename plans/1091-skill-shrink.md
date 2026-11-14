@@ -127,6 +127,10 @@ server.
    real deduplication leaves above 12,000 stops and goes back to the
    user before its PR opens; any other skill records the reason in its
    cap row.
+   **Answered for survey-writer, 2026-11-14:** the cap is a guideline.
+   The goal is less duplication and better compliance, so a skill that
+   real deduplication leaves above its target keeps that size, records
+   the reason in its cap row, and does not stop its PR.
 2. **Commands stay in `SKILL.md`** (#1091 item 3): every
    `python -m chitragupta...` line, every marker a draft must carry, and
    every phrase a test reads from the raw file. Output samples (the
