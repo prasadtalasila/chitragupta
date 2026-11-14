@@ -6,7 +6,10 @@ can cause and a unit test cannot see (plans/1091-skill-shrink.md, review
 focus 2). Two halves, kept apart so each is checked on its own:
 
 - `expected_commands` reads the commands a `SKILL.md` names, inline or
-  fenced, as `module sub [sub]` keys ("draft dossier init").
+  fenced, as `module sub [sub]` keys ("draft dossier init"), from the
+  files `skill_files` lists: the `SKILL.md`, the files it names, and the
+  same for every skill it hands a step to and gets it back from
+  (`HANDOFF`).
 - `commands_run` reads the commands a transcript's tool calls executed,
   in the same keys.
 
@@ -89,6 +92,57 @@ def expected_commands(*files: Path) -> list:
             if key not in seen and not forbidden(key):
                 seen.append(key)
     return seen
+
+
+# A step handed to another skill that hands it back: "Hand the drawing
+# itself to `figure-drawer`, and come back to this step" (the genre
+# writers), "hand it to `figure-drawer`** and come back to step 6"
+# (draft-reviser). The return clause is the rule. A routing sentence --
+# "Hand off to `corpus-reviser`", "use `draft-reviser` instead", "drawn
+# through `figure-drawer`" -- names a skill the run is meant to leave
+# for, or only mentions, and pulling its commands in would make every
+# skill expect its siblings' steps. No `.` or backtick between "hand"
+# and the name, so the clause is one sentence about that one skill.
+HANDOFF = re.compile(r"\bhand\b[^.`]*?\bto `([a-z][\w-]*)`\**,?\s+and come back", re.IGNORECASE)
+
+
+def handoffs(text: str) -> list:
+    """The skill names `text` hands a step to and gets it back from, in
+    order, each once; line breaks are spaces, since a sentence wraps."""
+    return list(dict.fromkeys(HANDOFF.findall(" ".join(text.split()))))
+
+
+def handed_off(source: Path, folder: str, name: str) -> list:
+    """Every skill in `source/folder` that skill `name` hands a step to,
+    and every skill those hand to, in order found. A name is matched as
+    written against the folder: the OpenCode copies write the suffixed
+    name, and an unsuffixed one names no folder there, so it is dropped
+    as a name with no skill behind it is."""
+    found, pending = [], [name]
+    while pending:
+        text = (source / folder / pending.pop(0) / "SKILL.md").read_text(encoding="utf-8")
+        for target in handoffs(text):
+            if target != name and target not in found:
+                if (source / folder / target / "SKILL.md").is_file():
+                    found.append(target)
+                    pending.append(target)
+    return found
+
+
+def skill_files(source: Path, folder: str, name: str, named: "re.Pattern") -> list:
+    """The files whose commands a run of skill `name` is expected to run:
+    its `SKILL.md` and every file it names (`named` finds them), then the
+    same for each skill it hands a step to (`handed_off`). A step moved
+    into a handed-off skill keeps its commands there, as one moved behind
+    a pointer keeps them in the reference."""
+    files = []
+    for skill in [name, *handed_off(source, folder, name)]:
+        skill_md = source / folder / skill / "SKILL.md"
+        text = skill_md.read_text(encoding="utf-8")
+        for path in [skill_md, *(source / m for m in named.findall(text))]:
+            if path.is_file() and path not in files:
+                files.append(path)
+    return files
 
 
 HEREDOC = re.compile(
