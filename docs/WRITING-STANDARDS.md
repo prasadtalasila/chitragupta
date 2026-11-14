@@ -37,7 +37,8 @@ genre, and a style file one house style.
 | Element | [`writing-standards/mathematics.md`](writing-standards/mathematics.md) | §12 | mathematics, checked by `chitragupta/style_equations.py` and `render` |
 | Element | [`writing-standards/tables.md`](writing-standards/tables.md) | §13 | tables, checked by `chitragupta/style_tables.py` |
 | Element | [`writing-standards/page.md`](writing-standards/page.md) | §14 | what has to fit the page, checked by `chitragupta/style_typeset.py` |
-| Genre | [`writing-standards/genres/README.md`](writing-standards/genres/README.md) | none yet | what each genre owes its reader; no genre file yet |
+| Genre | [`writing-standards/genres/README.md`](writing-standards/genres/README.md) | none | what each genre owes its reader; one file per genre, listed below |
+| Genre | [`writing-standards/genres/survey.md`](writing-standards/genres/survey.md) | none | what a survey owes its reader, its reread, and how rare its figures and numbered equations are |
 | Style | [`writing-standards/styles/README.md`](writing-standards/styles/README.md) | none | house styles to come; no style yet |
 
 Five rules keep the layers from going piecemeal:
