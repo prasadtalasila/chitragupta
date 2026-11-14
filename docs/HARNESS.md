@@ -274,7 +274,11 @@ against freshly scaffolded projects. Claude Code ran
 `claude -p --model sonnet`; Codex 0.159.3 and OpenCode 1.18.34 ran
 Qwen3.6-35B-A3B on a local llama-server. Tier 1 asks each harness to load
 a skill and print the first line of every `.claude/` file it names; a
-read counts only when that line matches the file. Each Tier 1 run was
+read counts only when that line matches the file. (Since 2026-11-14 it
+also asks for every `docs/` page the skill or those files name, such as
+`docs/WRITING-STANDARDS.md`, scored the same way, so moving a cited
+section to another page is measured too; the table below predates
+that.) Each Tier 1 run was
 capped at 900 seconds (`--timeout 900`, the script's default), except
 the first Codex batch (1800) and OpenCode's four genre writers (1200);
 each Tier 2 task was capped at 3300.
