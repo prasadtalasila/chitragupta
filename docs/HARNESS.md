@@ -694,3 +694,17 @@ that derails drops every step after it at once. So a 3-plus-3-run
 `--compare` over the local harnesses cannot yet tell a shrink from
 that noise. So `--compare` gates on Claude Code alone, and #1210
 tracks steadying Codex and OpenCode.
+
+**The skill-only arm, measured on 2026-11-14** on the same host and
+skills: every user skill's Tier 2 task, 3 runs on Claude Code with
+`--skill-only`, so no prompt named a closing step. All 33 runs were
+usable and passed the gate, 74% of named commands ran, as with the full
+prompt, and every skill ran within one command of its full-prompt mean;
+no command the full prompt got in every run fell below half the
+skill-only runs. With today's skills the closing steps came from the
+skills, not the prompt, so this arm is the before arm a shrink is
+measured against: a step a shrink hides now has room to fall. The rows
+are in `bench/results/2026-11-14-skill-bench-skill-only/`. The task
+prompts were split into body and tail after the full-prompt baseline
+ran, which reordered a sentence or two in a few of them; the full
+prompts are otherwise the ones it used.
