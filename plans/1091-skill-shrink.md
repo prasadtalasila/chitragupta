@@ -5,7 +5,8 @@
 > superpowers:executing-plans to implement this plan task-by-task. Steps
 > use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **plan, PR 0 open.** Written 2026-11-13 against `9aa75085`
+Status: **PR 0 built and benched, in review; PRs 0b-8 not started.**
+Written 2026-11-13 against `9aa75085`
 (6.170.2), branched from `a76b9ba1` (6.172.0), for
 issue [1091](https://github.com/prasadtalasila/chitragupta/issues/1091).
 Each PR below has a sub-issue under #1091; the last one closes it.
@@ -46,13 +47,20 @@ session's context does not travel, so this section carries what it knew.
 - the sub-issues, #1196–#1205 under #1091, and #1206 outside the series;
 - the note on #1091 about what #1173 dropped;
 - cross-links on #1181, #1157, #1128, #1199 and #1203;
-- a Fable-model review of this plan, all 17 findings applied.
+- a Fable-model review of this plan, all 17 findings applied;
+- PR 0's Tasks 1-3, built on the A40 server (2026-11-13, inline
+  execution) on `feat-1091-skill-bench` at 6.173.0 (MINOR: a script and
+  a developer skill, `DEVELOPER-AGENTS.md:1149-1151`), with a
+  whole-branch review whose 1 critical and 6 important findings were
+  fixed test-first;
+- the first baseline of every user skill on all three harnesses,
+  `bench/results/2026-11-13-skill-bench-baseline/`, written up in
+  `docs/HARNESS.md` ("Measuring a skill change");
+- #1210, for the two local harnesses' noise that baseline found.
 
-PR 0's branch, `feat-1091-skill-bench`, holds only this plan and the
-version bump to 6.173.0 (MINOR: PR 0 adds a script and a developer
-skill, `DEVELOPER-AGENTS.md:1149-1151`). Tasks 1–3 are not started, and
-the execution method (subagent-driven or native) is for the user to
-choose.
+Where PR 0 was built differently from the tasks below, each task says
+so under **As built**. The A40 host already has the pinned tools under
+`~/bench-tools/`; `install_tools.sh --check` confirms them.
 
 **Line numbers are from `9aa75085` and are already stale in places.**
 After it, #1193 and #1195 (`a76b9ba1`):
@@ -155,7 +163,9 @@ server.
     With 3 runs a one-run drop is noise, so the pass rule (PR 0 Task 2)
     calls it inconclusive and reruns rather than failing. Results are
     comparable within this series only: #1068 ran the same GGUF on the
-    CPU host with one slot.
+    CPU host with one slot. The baseline showed that only Claude Code is
+    steady enough at 3 runs to gate on; whether the shrink PRs gate on
+    Claude Code alone while #1210 is open is the user's to decide.
 
 ## The series
 
@@ -292,19 +302,33 @@ it and measure every baseline on `main` before any skill changes.
     A chained task runs its prerequisite in the same job and scores only
     its own transcript.
 
-- [ ] **Step 1:** Add the four flags, the `USER_SKILLS` default and
+    **As built** (`bench/skill_bench_tasks.py`): figure-drawer has a task
+    too (a second figure on the survey, after survey-writer), so every
+    user skill is covered. Each prompt pre-answers its skill's questions
+    and asks for the branches the five-paper corpus can reach (an outline
+    on one genre, sub-themes on another, a figure, a numbered equation,
+    steering, the render with its sidecar, the prose check, the verbatim
+    scan, the stamp). The revisers start from a fresh `dt/survey` and a
+    `seed` hook then plants the defects their branches exist for (US
+    spellings and an unstamped section for draft-reviser, which converts
+    to en-GB; short unquoted source runs and prose findings for
+    agenda-reviser). review-digest syncs with Docling for its passage
+    sidecars; book-assembler accepts a second chapter so the book
+    composes. Local jobs take a server from a queue, one job a server.
+
+- [x] **Step 1:** Add the four flags, the `USER_SKILLS` default and
   `TIER2_TASKS`. Write each new prompt in the shape of `TIER2_SURVEY`:
   the skill named, its input, "follow the skill through to the end,
   including its self-check with draft gate". For book-assembler, check
   that `twin-basics`' units carry acceptance records; if not, the task
   scaffolds them as the fixture, never by editing the example.
-- [ ] **Step 2:** `self_check()` gains a check that `--source` points at a
+- [x] **Step 2:** `self_check()` gains a check that `--source` points at a
   directory holding `chitragupta/init.py`, and that `--jobs` above
   `len(--base-url)` warns that jobs will share a server slot.
-- [ ] **Step 3:** Run `python bench/bench_skill_harnesses.py --tier 1
+- [x] **Step 3:** Run `python bench/bench_skill_harnesses.py --tier 1
   --harness claude --skill survey-writer --source .`. Done when it
   prints `tier 1: 1/1 passed`.
-- [ ] **Step 4:** Commit.
+- [x] **Step 4:** Commit.
 
 ### Task 2: score each run against the skill's own commands, and compare
 
@@ -341,24 +365,51 @@ it and measure every baseline on `main` before any skill changes.
       6 against 6, where the fail thresholds double.
     - **pass** (exit 0): otherwise.
 
-- [ ] **Step 1:** `self_check()` gains five cases, checked on a fixture
+  **As built** (`bench/skill_commands.py`; `docs/HARNESS.md`, "Measuring
+  a skill change", owns the rule and its arithmetic):
+  - The rule above would fail an unchanged skill most of the time: at
+    a per-run rate of 0.8 a two-run drop happens for 1 command in 18,
+    and a comparison judges about 54 rows. So 3 runs only screen: at
+    3 against 3 a row fails only when it went all the way the wrong way
+    (a command or the gate in every before run and no after run, a
+    forbidden command in no before run and every after run), and any
+    other move is inconclusive; 6 against 6 fails on a move of 4 or
+    more and passes otherwise. The gate and forbidden rows follow the
+    commands' rule.
+  - Expected commands come from `SKILL.md` and every file it names, in
+    the harness's own folder, since survey-writer's render step already
+    lives only in a reference; `--compare` counts from every command a
+    run executed, so a command a shrink moves out still counts.
+  - A command is `module sub [sub]`, its subcommands read from the
+    module's own `--help`. `FORBIDDEN` is `corpus sync` and `enrich`
+    (`corpus enrich` is not a command).
+  - A run counts a command only in command position: never a `grep`,
+    an `echo`, a heredoc body or a `--help` call.
+  - Runs that timed out, raised, or started from a prerequisite that
+    never passed its gate are left out; an arm with fewer than 3 usable
+    runs is inconclusive; a (harness, skill) in one arm only is skipped.
+  - Two Tier 1 scorer bugs were fixed on the way: a first line ending
+    in a backtick, and a path printed absolute, had failed 9 real reads
+    of 14 measured failures.
+
+- [x] **Step 1:** `self_check()` gains five cases, checked on a fixture
   `SKILL.md` string and fixture JSONL transcripts: a fenced and an inline
   command are both found; `python -P -m` matches like `python -m`; a
   command named in the skill but absent from the tool calls lands in
   `missed`; `corpus sync` named in the skill is not `expected`; and
   `--compare` on 3-vs-3 fixtures gives pass for an equal pair,
   inconclusive for a one-run drop and fail for a 3-to-0 drop.
-- [ ] **Step 2:** Implement `expected_commands`, the result fields and
+- [x] **Step 2:** Implement `expected_commands`, the result fields and
   `--compare`.
-- [ ] **Step 3:** Run `python bench/bench_skill_harnesses.py --compare
+- [x] **Step 3:** Run `python bench/bench_skill_harnesses.py --compare
   a.json a.json` on any recorded `tier2.json`. Done when it exits 0 and
   prints every command as unchanged.
-- [ ] **Step 4:** In `docs/HARNESS.md`, record the pass rule above and
+- [x] **Step 4:** In `docs/HARNESS.md`, record the pass rule above and
   why a one-run drop is not a failure at 3 runs: at a true per-run rate
-  of 0.8, a 3-of-3 baseline followed by 2-of-3 happens about a quarter
+  of 0.8, a 3-of-3 baseline followed by 2-of-3 happens about a fifth
   of the time per command, and a skill has about nine commands on each
   of three harnesses.
-- [ ] **Step 5:** Commit.
+- [x] **Step 5:** Commit.
 
 ### Task 3: the `skill-bench` developer skill
 
@@ -399,7 +450,9 @@ it and measure every baseline on `main` before any skill changes.
 - Consumes: Task 1's flags and Task 2's `--compare`.
 - Produces: `serve_models.sh N` starts one `llama-server` per GPU,
   `CUDA_VISIBLE_DEVICES=i`, on port `18080+i`, and prints the
-  `--base-url` arguments for the bench.
+  `--base-url` arguments for the bench. **As built:** `serve_models.sh
+  N [FIRST]` takes GPUs FIRST..FIRST+N-1, runs the servers detached so
+  they outlive a long baseline, and `--stop` ends them.
 
 The skill's frontmatter carries `metadata:` / `audience: developer`. Its
 steps, each with a `Done when`:
@@ -441,7 +494,7 @@ steps, each with a `Done when`:
 Claude Code runs on the API, so step 4 needs `claude` logged in on the
 server; the skill says so up front.
 
-- [ ] **Step 1:** Run the skill tests against the new skill:
+- [x] **Step 1:** Run the skill tests against the new skill:
 
   ```bash
   pytest -q tests/test_developer_skills.py tests/test_skill_size.py \
@@ -451,12 +504,12 @@ server; the skill says so up front.
 
   Expected: failures naming each file still to
   update.
-- [ ] **Step 2:** Write the skill, its scripts and every update the
+- [x] **Step 2:** Write the skill, its scripts and every update the
   failures name.
-- [ ] **Step 3:** Run the full suite with coverage
+- [x] **Step 3:** Run the full suite with coverage
   (`-n auto`, absolute `PYTHONPATH`, real `config.toml`). Done when it is
   green at 100%.
-- [ ] **Step 4:** Commit, together with this plan, and open PR 0 with
+- [x] **Step 4:** Commit, together with this plan, and open PR 0 with
   "Closes #1196" and "Part of #1091".
 
 ---
