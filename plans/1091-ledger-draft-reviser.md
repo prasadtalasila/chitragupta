@@ -333,7 +333,22 @@ seeded with an unstamped section) reaches the ordinary loop, the
 cannot reach re-grounding, acronym realignment, the no-dossier bootstrap
 or a whole-corpus hand-off; those are unmeasured.** For them only
 history and duplicated rationale moved, and no command left `SKILL.md`.
-Results: see `bench/results/2026-11-15-draft-reviser-shrink/`.
+The after rows are in
+`bench/results/2026-11-15-draft-reviser-shrink/tier2.json`.
+
+**Verdict: pass** (`--compare` exit 0). Every command is 3/3 or 0/3 in
+both arms, and the same ones: `draft dossier status`, `mark-revision`,
+`sections`, `retrieve evidence`, `gate`, `references`, `render`, `stamp`,
+`style`, `review verbatim scan`, `draft diff`, `dossier snapshot` and
+`dossier versions` ran in every run of both; `draft figures`,
+`dossier prune`, `retrieve search`, `dossier init` and figure-drawer's
+four ran in none, in either arm, as the task gives them no occasion. All
+3 after runs passed their gate and their prerequisite survey's gate, and
+none ran `corpus sync` or `enrich`. Each after run opened `copy-edit.md`,
+`prose-check.md`, `verbatim-scan.md` and `draft-diff.md`; the before
+runs opened the same four, except run 1, which skipped `prose-check.md`.
+No run opened `genre-steps.md`: the task keeps nothing new, so §5's
+condition never fired. After runs took 83-101 seconds; before, 117-135.
 
 ## For the plan
 
