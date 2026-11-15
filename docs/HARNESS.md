@@ -304,10 +304,14 @@ real survey. With the critique step reduced to "read `critique.md` and
 follow it", a Claude Code run skipped the step outright: no baseline, no
 recheck, no `revisions.md` entry. With the loop's commands inline and the
 step saying it is not done until they have run, two re-runs both worked
-the loop, so each genre's step keeps them inline.
-`tests/test_skill_pregate_feedback_step.py` fails if the step's own text
-loses them. Move rationale and detail into a reference; keep the
-commands a step requires in `SKILL.md`.
+the loop. A pointer that carries the same not-done-until sentence was
+measured later and held as well (below), so the loop's commands may now
+move behind it, one genre writer at a time.
+`tests/test_skill_pregate_feedback_step.py` lists which genre writers'
+steps are pointers: it fails if an inline step's own text loses the
+commands, and if a pointer step loses that sentence, keeps a command, or
+its reference loses one. Otherwise, move rationale and detail into a
+reference; keep the commands a step requires in `SKILL.md`.
 
 **The render step is the one measured exception**, measured on
 2026-10-30 to 11-02. survey-writer's steps 12 and 13 (`draft references`, `draft
@@ -330,8 +334,8 @@ Every final draft passed the gate. No pointer-only step was skipped;
 the one partial skip was a run with the commands inline. That is one
 step on small samples, so it licenses moving this step, which is what
 the four genre writers and deep-research now do, and nothing more. The
-critique loop keeps its commands inline until it is measured the same
-way. `bench/bench_skill_harnesses.py --tier 2 --skill-only` now runs
+critique loop kept its commands inline until it was measured the same
+way (below). `bench/bench_skill_harnesses.py --tier 2 --skill-only` now runs
 that pointer arm for every user skill, not only the survey (see
 "Measuring a skill change" below).
 
@@ -350,9 +354,14 @@ Codex and OpenCode with Qwen3.6-35B-A3B, 6 outline runs an arm, no run
 in any arm logged a critique entry, the inline arm included, so those
 runs cannot tell the arms apart. A pointer therefore holds this step
 as well as a handoff does where the step is held at all, and it adds
-no skill to keep in three copies; the genre writers still keep the
-loop's commands inline, which is a separate decision
-(plans/1091-skill-shrink.md, Decision 2).
+no skill to keep in three copies. On that evidence the owner decided
+(2026-11-15) that the loop's commands may leave the step for
+`.claude/skills-common/references/critique.md`, which now holds the
+loop as numbered steps, each with its commands and a "Done when", and
+a last step that returns to the caller. Each genre writer and
+deep-research converts its step in its own PR, benched; survey-writer
+was first (rows in
+`bench/results/2026-11-15-survey-writer-critique-pointer/`).
 
 Two harness facts the bench had to work around, both recorded in the
 script: OpenCode takes its project directory from the inherited `PWD`,
