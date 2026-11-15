@@ -58,12 +58,14 @@ stands: the user chose it, and only the user unchooses it.
 
 ## The loop
 
-**Before step 1, say the cost sentence.** Read `scope.md`, then give
-the user the one sentence "Say what it costs" describes, as the first
-thing you write in this run. No search and no edit comes before it: a
-cost given only in the closing summary is too late for the user to stop
-the pass. Then start step 1 unless they stop you. Done when the cost
-sentence is the first thing the user read.
+**Before step 1, say the cost sentence.** Read `scope.md`, then write
+the one sentence "Say what it costs" describes as a message to the user:
+text in your reply, the first you output in this run. A sentence you
+only reason about is one the user never sees. No search and no edit
+comes before it: a cost given only in the closing summary is too late
+for the user to stop the pass. Then start step 1 unless they stop you.
+Done when the cost sentence is on the user's screen before the first
+search.
 
 Follow `.opencode/skills/draft-reviser-opencode/SKILL.md`'s `## The loop`, steps
 1 through 7, unchanged except for the two steps below. Read that file; do
