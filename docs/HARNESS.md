@@ -274,7 +274,14 @@ against freshly scaffolded projects. Claude Code ran
 `claude -p --model sonnet`; Codex 0.159.3 and OpenCode 1.18.34 ran
 Qwen3.6-35B-A3B on a local llama-server. Tier 1 asks each harness to load
 a skill and print the first line of every `.claude/` file it names; a
-read counts only when that line matches the file. Each Tier 1 run was
+read counts only when that line matches the file. (Since 2026-11-14 it
+also asks for every `docs/` page the skill or those files name, such as
+`docs/WRITING-STANDARDS.md`, scored the same way, so moving a cited
+section to another page is measured too; the table below predates
+that. Its first run, Claude Code on main's skills, passed 9 of 11: one
+`docs/` page named only in a shared reference went unread, and one
+heading's emoji came back garbled; the rows are in
+`bench/results/2026-11-14-tier1-docs-baseline/`.) Each Tier 1 run was
 capped at 900 seconds (`--timeout 900`, the script's default), except
 the first Codex batch (1800) and OpenCode's four genre writers (1200);
 each Tier 2 task was capped at 3300.
@@ -327,6 +334,25 @@ critique loop keeps its commands inline until it is measured the same
 way. `bench/bench_skill_harnesses.py --tier 2 --skill-only` now runs
 that pointer arm for every user skill, not only the survey (see
 "Measuring a skill change" below).
+
+**The critique loop was measured the same way on 2026-11-14 and 15**
+(plans/1091-skill-shrink.md, PR 0c; rows in
+`bench/results/2026-11-14-skill-handoff-experiment/`). survey-writer's
+critique step was left inline, cut to a pointer at a reference, and cut
+to a handoff to a `critique-loop` skill, each with the sentence that
+the step is not done until the loop has run. On Claude Code
+(`claude -p --model sonnet`), 12 skill-only runs an arm, 6 of them with
+an outline in the dossier: every run in every arm reached the loop's
+text, logged a critique entry in `revisions.md` and passed the gate,
+and with the outline every run ran `draft dossier status` before the
+baseline scan. The single skipped run above did not reproduce. On
+Codex and OpenCode with Qwen3.6-35B-A3B, 6 outline runs an arm, no run
+in any arm logged a critique entry, the inline arm included, so those
+runs cannot tell the arms apart. A pointer therefore holds this step
+as well as a handoff does where the step is held at all, and it adds
+no skill to keep in three copies; the genre writers still keep the
+loop's commands inline, which is a separate decision
+(plans/1091-skill-shrink.md, Decision 2).
 
 Two harness facts the bench had to work around, both recorded in the
 script: OpenCode takes its project directory from the inherited `PWD`,

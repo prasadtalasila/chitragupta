@@ -217,7 +217,14 @@ nav:
       - Agenda: docs/AGENDA.md
       - Citation provenance: docs/CITATION-PROVENANCE.md
       - Plagiarism / verbatim reuse: docs/PLAGIARISM.md
-      - Writing standards: docs/WRITING-STANDARDS.md
+      - Writing standards:
+          - The core and its index: docs/WRITING-STANDARDS.md
+          - Figures: docs/writing-standards/figures.md
+          - Mathematics: docs/writing-standards/mathematics.md
+          - Tables: docs/writing-standards/tables.md
+          - What has to fit the page: docs/writing-standards/page.md
+          - Genre files: docs/writing-standards/genres/README.md
+          - House styles: docs/writing-standards/styles/README.md
       - TikZ figure style: docs/TIKZ-STYLE.md
       - Figure checks:
           - Reading a report: docs/figure-checks/README.md

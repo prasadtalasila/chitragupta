@@ -9,9 +9,10 @@ that skill's own folder, or that a model actually follows the pointer.
 This measures that, against a project scaffolded from this checkout.
 
 Tier 1, loading: for each skill and each harness, ask the model to load
-the skill, read every `.claude/skills...` file its `SKILL.md` names, and
-print each file's first line. A read is counted only when the printed
-line matches the file, so a model that guesses fails.
+the skill, read every `.claude/skills...` file its `SKILL.md` names and
+every `docs/` page it or those files name, and print each file's first
+line. A read is counted only when the printed line matches the file, so
+a model that guesses fails.
 
 Tier 2, following: one real task per user skill and harness
 (skill_bench_tasks.py), scored by which `chitragupta` commands the skill
@@ -96,16 +97,24 @@ SKILL_DIRS = {
 # another skill (agenda-reviser follows draft-reviser's loop), and only
 # the references live under `.claude/` alone.
 SKILL_FILE = re.compile(r"\.(?:claude|agents|opencode)/skills(?:-common)?/[\w./-]+?\.md")
-READ_LINE = re.compile(r"READ\s+`?(\.claude/skills[^\s`]*)`?\s*::\s*(.*)")
+# A `docs/` page a skill or one of its references names, at any depth,
+# backticked, bare, or as a relative link (`../../../docs/X.md`, which
+# every such link in the skills resolves to the project's own `docs/`).
+# Not `mkdocs/x.md` or `sample-project/docs/x.md`: another folder's.
+DOCS_PATH = re.compile(r"(?<![\w.-])(?<![\w-]/)docs/[\w./-]*?\.md(?!\w)")
+READ_LINE = re.compile(r"READ\s+`?(?:\.\./)*(\.claude/skills[^\s`]*|docs/[^\s`]*)`?\s*::\s*(.*)")
 
 TIER1_PROMPT = """\
 This is a check of how skills load. It is not a drafting task: do not do
 what the skill describes, and write no files.
 
 1. Load the skill named `{name}`, the way you load any skill.
-2. Its instructions name files by paths that start with `.claude/skills`.
-   Read every one of those files. Skip anything else.
-3. For each file you read, print exactly one line:
+2. Its instructions name files by paths that start with `.claude/skills`
+   or `docs/` (some as a relative link such as `../../../docs/X.md`).
+   Read every one of those files, then every `docs/` file that the
+   `.claude/skills` files you read name. Skip anything else.
+3. For each file you read, print exactly one line, with the path from
+   the project root (`docs/X.md`, never `../../../docs/X.md`):
    READ <path> :: <the first line of that file, verbatim>
    If a file cannot be read, print: FAIL <path> :: <why>
 4. Then print DONE and stop.
@@ -281,9 +290,14 @@ def transcript_text(log: Path) -> str:
 
 
 def expected_paths(project: Path, harness: str, name: str) -> set:
+    """The `.claude/skills...` files the harness's `SKILL.md` names, and
+    the `docs/` pages it or any of those files names: a rule a skill cites
+    in a `docs/` page is read only if a model follows that pointer too."""
     skill_md = project / SKILL_DIRS[harness] / f"{name}{SUFFIX[harness]}" / "SKILL.md"
     text = skill_md.read_text(encoding="utf-8")
-    return {m.split("#")[0] for m in NAMED_PATH.findall(text)}
+    named = {m.split("#")[0] for m in NAMED_PATH.findall(text)}
+    texts = [text, *((project / p).read_text("utf-8") for p in named if (project / p).is_file())]
+    return named | {m for t in texts for m in DOCS_PATH.findall(t)}
 
 
 def loaded_own_copy(harness: str, name: str, log: Path, text: str) -> "tuple[bool, bool]":
@@ -325,16 +339,20 @@ def score_tier1(project: Path, harness: str, name: str, log: Path) -> dict:
     printed = {}
     for path, first in READ_LINE.findall(text):
         printed[path.rstrip(".,")] = first.strip()
-    read, wrong = [], []
-    for path in sorted(expected):
-        if path not in printed:
-            continue
+    read, wrong, firsts = [], [], {}
+    for path in sorted(p for p in expected if (project / p).is_file()):
         lines = (project / path).read_text(encoding="utf-8").splitlines()
         actual = next(iter(lines), "").strip()
+        firsts.setdefault(actual.strip("`"), []).append(path)
+        if path not in printed:
+            continue
         # Wrapping backticks are the model's, so both sides lose them:
         # stripping only the printed side failed every first line that
         # itself ends in a backtick (`draft-diff.md`'s heading).
         (read if printed[path].strip("`") == actual.strip("`") else wrong).append(path)
+    # Two named files that open on the same line cannot tell a read of
+    # one from a read of the other, so the skill fails until one changes.
+    shared = sorted(p for paths in firsts.values() if len(paths) > 1 for p in paths)
     return {
         "expected": sorted(expected),
         "read": read,
@@ -344,7 +362,8 @@ def score_tier1(project: Path, harness: str, name: str, log: Path) -> dict:
         "outside_project": outside,
         "loaded_own_copy": own,
         "loaded_claude_copy": foreign,
-        "pass": set(read) == expected and not outside and own and not foreign,
+        "shared_first_line": shared,
+        "pass": set(read) == expected and not outside and own and not foreign and not shared,
     }
 
 
@@ -592,7 +611,9 @@ def self_check() -> None:
     reported missing rather than passed, a run that touched this checkout
     instead of its own project, or loaded another copy of the skill, must
     fail even though the files there are identical -- and a clean run must
-    still pass. Tier 2 counts only files a tool call opened.
+    still pass. A `docs/` page is held to the same rule, and two named
+    files sharing a first line fail. Tier 2 counts only files a tool call
+    opened.
     """
     import tempfile
 
@@ -662,6 +683,7 @@ def self_check() -> None:
         ran = commands_run(tool_input_list(log))
         assert ran == ["draft render"], "a command a tool call ran counts; one only named does not"
         _check_tier1_reads(project, log)
+        _check_tier1_docs(project, log)
         _check_command_scoring(project)
         _check_handoffs(project)
         _check_compare(project)
@@ -709,6 +731,48 @@ def _check_tier1_reads(project: Path, log: Path) -> None:
     )
     scored = score_tier1(project, "claude", "y", log)
     assert scored["wrong_first_line"] == [".claude/skills/y/references/c.md"], scored
+
+
+def _check_tier1_docs(project: Path, log: Path) -> None:
+    """A `docs/` page named by `SKILL.md` (backticked, bare, or as a
+    relative link) or by a reference it names is expected and scored like
+    a reference; another folder's `docs/` is not; and two named files
+    that open on one line fail, since neither read can then be told."""
+    skill = project / SKILL_DIRS["claude"] / "w" / "SKILL.md"
+    ref = project / ".claude" / "skills" / "w" / "references" / "r.md"
+    docs = project / "docs" / "sub"
+    ref.parent.mkdir(parents=True)
+    docs.mkdir(parents=True)
+    skill.write_text(
+        "Follow `docs/A.md` §3, see [the rules](../../../docs/B.md#-rules) and docs/A.md,\n"
+        "never `mkdocs/C.md` or `sample-project/docs/C.md`; read "
+        "`.claude/skills/w/references/r.md`.\n",
+        encoding="utf-8",
+    )
+    ref.write_text("# R heading\nThen `docs/sub/D.md`.\n", encoding="utf-8")
+    for path, first in (("A.md", "# A doc"), ("B.md", "# B doc"), ("sub/D.md", "# D doc")):
+        (project / "docs" / path).write_text(f"{first}\nbody\n", encoding="utf-8")
+    want = ["docs/A.md", "docs/B.md", "docs/sub/D.md", ".claude/skills/w/references/r.md"]
+    load = json.dumps({"name": "Skill", "input": {"skill": "w"}}, separators=(",", ":"))
+    good = (
+        f"{load}\nREAD .claude/skills/w/references/r.md :: # R heading\n"
+        "READ docs/A.md :: # A doc\nREAD ../../../docs/B.md :: # B doc\n"
+        "READ docs/sub/D.md :: # D doc\n"
+    )
+    log.write_text(good, encoding="utf-8")
+    scored = score_tier1(project, "claude", "w", log)
+    assert scored["expected"] == sorted(want) and scored["pass"], scored
+    log.write_text(good.replace(":: # D doc", ":: # D"), encoding="utf-8")
+    scored = score_tier1(project, "claude", "w", log)
+    assert scored["wrong_first_line"] == ["docs/sub/D.md"] and not scored["pass"], scored
+    log.write_text(good.replace("READ docs/A.md :: # A doc\n", ""), encoding="utf-8")
+    scored = score_tier1(project, "claude", "w", log)
+    assert scored["missing"] == ["docs/A.md"] and not scored["pass"], scored
+    (project / "docs" / "B.md").write_text("# A doc\n", encoding="utf-8")
+    log.write_text(good.replace(":: # B doc", ":: # A doc"), encoding="utf-8")
+    scored = score_tier1(project, "claude", "w", log)
+    assert scored["shared_first_line"] == ["docs/A.md", "docs/B.md"], scored
+    assert not scored["pass"], "two files that open on one line prove neither read"
 
 
 def _check_command_scoring(project: Path) -> None:
