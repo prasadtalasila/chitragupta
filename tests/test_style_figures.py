@@ -153,3 +153,20 @@ class TestFindingShape:
             encoding="utf-8",
         )
         assert style_figures.findings(fragment) == []
+
+
+class TestMessagesCiteTheFiguresFile:
+    """§10 moved to `docs/writing-standards/figures.md` (#1212) and the
+    core keeps only a stub, so a finding that cites the core sends the
+    author one hop short of the rule. Every message that cites §10 names
+    the file it lives in now, in the form `style_equations` prints."""
+
+    def test_every_cited_section_names_the_figures_file(self, tmp_path):
+        body = f"# S\n\n<!-- figure: figures/x -->\n\nSome prose after a blank line.\n\n{CAPTIONED}"
+        found = style_figures.findings(draft_with(body, tmp_path))
+        assert set(rules(found)) == {
+            "chitragupta.FigureNoCaption",
+            "chitragupta.FigureUnreferenced",
+        }
+        for finding in found:
+            assert "(docs/writing-standards/figures.md §10)." in finding["message"], finding
