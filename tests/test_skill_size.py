@@ -40,7 +40,12 @@ _LATER = "#1091: shrinks to its target in its own PR"
 # skill: (cap in bytes, why the cap is above the target, or None)
 BUDGET = {
     "agenda-reviser": (29_000, f"{_LATER}; draft diff closing step (#1194)"),
-    "book-assembler": (20_000, _LATER),
+    "book-assembler": (
+        14_000,
+        "#1091: deduplicated from 20 KB into book-steps.md and latex-conventions.md; "
+        "the rest is ten steps' commands, the guardrails and their pointers, and the "
+        "target is a guideline (plans/1091-skill-shrink.md, Decision 1)",
+    ),
     "corpus-reviser": (13_000, _LATER),
     "deep-research": (41_000, _LATER),
     "demo-recorder": (6_000, None),

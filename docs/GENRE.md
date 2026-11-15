@@ -456,7 +456,8 @@ wrong.
 
 These rules are the same in every skill. Each is stated in each
 of the eleven `SKILL.md` files or, where several skills share the wording
-(the steps the genre writers share, the critique loop, the prose
+(the steps the genre writers share, the steps composing a book from
+accepted units takes, the critique loop, the prose
 check, the verbatim scan, collection scoping, building the References
 section and rendering, and the figure, table and equation rules a
 revision follows), once in a
