@@ -53,7 +53,12 @@ BUDGET = {
     "corpus-reviser": (13_000, _LATER),
     "deep-research": (41_000, _LATER),
     "demo-recorder": (6_000, None),
-    "draft-reviser": (30_000, f"{_LATER}; draft diff closing step (#1194)"),
+    "draft-reviser": (
+        23_000,
+        "#1091: deduplicated from 29 KB; agenda-reviser and corpus-reviser follow "
+        "its loop by step number, so every step stays complete inline, and the "
+        "rest is commands and tested text (plans/1091-ledger-draft-reviser.md)",
+    ),
     "figure-drawer": (7_000, None),
     "skill-bench": (5_000, None),
     "review-digest": (17_000, _LATER),
