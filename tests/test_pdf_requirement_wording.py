@@ -15,7 +15,17 @@ import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-ROOTS = ("docs", ".claude/skills", ".agents/skills", ".opencode/skills", "chitragupta", "assets")
+# `.claude/skills-common/` holds the passages several skills share, moved
+# out of their `SKILL.md`s (#1091), so a requirement line there is read too.
+ROOTS = (
+    "docs",
+    ".claude/skills",
+    ".claude/skills-common",
+    ".agents/skills",
+    ".opencode/skills",
+    "chitragupta",
+    "assets",
+)
 FILES = ("README.md", "DEVELOPER.md", "AGENTS.md", "DEVELOPER-AGENTS.md", "SOUL.md")
 
 _REQUIREMENT = re.compile(

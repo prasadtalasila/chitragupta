@@ -9,9 +9,9 @@ and for the skills that will read the result. **Assumed:** the core,
 [WRITING-STANDARDS.md](../../WRITING-STANDARDS.md), and
 [GENRE.md](../../GENRE.md) for which skill writes which genre.
 
-This folder holds no genre file yet. It will hold one per genre, named
-by the genre's `--genre` value (`survey.md`, `thesis-chapter.md`,
-`research-paper.md`), each saying:
+This folder holds one file per genre, named by the genre's `--genre`
+value. [survey.md](survey.md) is the first; `thesis-chapter.md` and
+`research-paper.md` are to come. Each says:
 
 - what the genre owes its reader;
 - its reread checklist, the genre's form of the core's §6;

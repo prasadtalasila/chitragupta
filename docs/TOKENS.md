@@ -101,7 +101,7 @@ resident cost = tokens entering context x turns remaining in the run
 ```
 
 and the second factor is a property of the skill, not of the topic.
-`survey-writer` has 20 numbered steps (0-18, plus 2a), of which retrieval is
+`survey-writer` has 19 numbered steps (0-17, plus 2a), of which retrieval is
 step 1; `deep-research` has seven phases, and Phase 7 alone mandates a
 peer-review dispatch, a reconciliation, an assembly, a provenance write, a
 gate run, a references build, three renders, two dossier writes and a
