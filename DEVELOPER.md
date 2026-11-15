@@ -322,7 +322,7 @@ logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups
                           skill-bench, which measures a skill change on three harnesses:
                           developer-only, so no distribution ships them (docs/HARNESS.md)
 .claude/skills-common/    references/ shared by several skills (the genre writers' shared steps,
-                          collection scoping, critique, render and references, prose check,
+                          a book skill's shared steps, collection scoping, critique, render and references, prose check,
                           verbatim scan, mathematical prose, figures/tables/equations in a
                           revision, digest copying), kept once for all harnesses
 .claude/agents/           deep-research's subagents: deep-research-interviewer, deep-research-writer, peer-reviewer

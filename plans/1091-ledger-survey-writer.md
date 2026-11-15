@@ -1,9 +1,11 @@
 # Move ledger: survey-writer (#1198, SK-1)
 
 Status: **built on `feat-1091-survey-writer`, above the 12,000 target,
-which the owner accepted on 2026-11-14.** Written 2026-11-14 against `9cbaf678`
+which the owner accepted on 2026-11-14; step 10 cut to a pointer on
+`feat-1091-critique-pointer`, 2026-11-15.** Written 2026-11-14 against `9cbaf678`
 (6.173.0), for [plans/1091-skill-shrink.md](1091-skill-shrink.md) PR 1,
-Task 3.
+Task 3; the critique step's rows are in
+["Step 10 behind its pointer"](#step-10-behind-its-pointer-2026-11-15) below.
 
 **Written for** the reviewer of PR 1, and for whoever builds PRs 2–8,
 which keep a ledger in this shape. **Assumed:** the plan's "Decisions"
@@ -36,11 +38,13 @@ holds, measured on the `.claude` copy:
 - 1,075 bytes of frontmatter and title, which Decision 7 leaves alone;
 - about 2,300 bytes of fenced commands and the table and marker
   examples, which Decision 2 keeps;
-- 2,200 bytes for step 10 (the critique), whose commands are inline by
-  measurement (`docs/HARNESS.md`, "A pointer alone is not enough") and
-  whose two qualifiers sit inside the windows
+- 2,200 bytes for step 10 (the critique), whose commands were then
+  inline by measurement (`docs/HARNESS.md`, "A pointer alone is not
+  enough") and whose two qualifiers sat inside the windows
   `tests/test_skill_style_check_step.py` and
-  `tests/test_skill_verbatim_scan_step.py` measure from each command;
+  `tests/test_skill_verbatim_scan_step.py` measure from each command
+  (since cut to a pointer step of about 1,250 bytes: see
+  ["Step 10 behind its pointer"](#step-10-behind-its-pointer-2026-11-15));
 - 1,500 bytes for step 9 (the figure stub), which
   `tests/test_skill_figure_step.py` requires to hold without the drawer;
 - about 1,200 bytes of project-root paths in pointers (each citation of
@@ -72,8 +76,8 @@ after the rewrite; the suite is green on it.
 | `test_skill_table_step.py` | `<!-- table:`, `<!-- tableref:`, "§13" | raw |
 | `test_skill_acronym_step.py` | "acronyms.toml" or "acronym vocabulary" | raw |
 | `test_skill_pregate_feedback_step.py` | the pointer `` `.claude/skills-common/references/critique.md` `` within 2,000 characters of "Critique against the evidence packet" | raw |
-| `test_skill_pregate_feedback_step.py` | `verbatim scan`, `draft gate` and `verbatim recheck` commands within 5,900 characters of that anchor | raw |
-| `test_skill_pregate_feedback_step.py` | within 5,900 of every anchor: "evidence.md", "claim:", "at most three items", "no second critique pass", scan before gate before recheck, a `draft style`, "objective_delta", "90% of its own", "revisions.md", "Never write any of this to `rejected.md`", "`no evidence`", "cut the sentence", "never to re-point it", "declared queries are exhausted", "dossier status", "there is no declared list", "never a condition of presenting" | expanded |
+| `test_skill_pregate_feedback_step.py` | `verbatim scan`, `draft gate` and `verbatim recheck` commands within 5,900 characters of that anchor (since 2026-11-15 survey-writer is in `_POINTER_FORM`, and this applies only to the inline-form skills; see below) | raw |
+| `test_skill_pregate_feedback_step.py` | within 5,900 of every anchor (since 2026-11-15: 6,800 for an inline-form skill; for survey-writer, in the step plus the whole reference): "evidence.md", "claim:", "at most three items", "no second critique pass", scan before gate before recheck, a `draft style`, "objective_delta", "90% of its own", "revisions.md", "Never write any of this to `rejected.md`", "`no evidence`", "cut the sentence", "never to re-point it", "declared queries are exhausted", "dossier status", "there is no declared list", "never a condition of presenting" | expanded |
 | `test_skill_pregate_feedback_step.py` | the anchor phrase appears only in the five genre writers | expanded |
 | `test_skill_style_check_step.py` | the pointer `` `.claude/skills-common/references/prose-check.md` `` within 1,400 characters after some `-m chitragupta.draft style` | raw |
 | `test_skill_style_check_step.py` | "§9 marks decidable" and "fix none of them" within 1,400 characters after **every** `-m chitragupta.draft style` (frontmatter stripped) | expanded |
@@ -278,7 +282,7 @@ names no step number.
 | Step | Pointer today | What would move into the skill | What would have to stay, and why |
 | --- | --- | --- | --- |
 | 0 | `genre-steps.md` §3 (opening the dossier) | §3 whole, plus `python -m chitragupta.draft dossier init <draft> --genre <genre>` and settling the slug with the user | §2 (why a dossier) stays a reference; `--genre survey` becomes an argument; `tests/test_skill_acronym_step.py` reads "acronym vocabulary" from each genre's raw `SKILL.md`, so it would need to read the handed-off skill instead |
-| 10 | `critique.md` | the whole repair loop, and the inline outline of its commands | the step's anchor "Critique against the evidence packet", its opening judgement and "never a condition of presenting"; `tests/test_skill_pregate_feedback_step.py` requires `scan`, `gate` and `recheck` in the raw step text, which was measured (`docs/HARNESS.md`), so the handoff would need its own measurement first |
+| 10 | `critique.md` | the whole repair loop, and the inline outline of its commands | the step's anchor "Critique against the evidence packet", its opening judgement and "never a condition of presenting"; `tests/test_skill_pregate_feedback_step.py` then required `scan`, `gate` and `recheck` in the raw step text, which was measured (`docs/HARNESS.md`), so the handoff would need its own measurement first. SK-0c measured it, and the step is now a pointer (below) |
 | 12, 13 | `render-and-references.md` §1–§3 | the references, render and sidecar commands, which already live only there | the formats a survey renders (tex, pdf, md; sidecar pdf and md) as arguments; `survey.md` §3 stays |
 | 15 | `prose-check.md` | the `python -m chitragupta.draft style` command and the report rules | the `draft-reviser` routing sentence (a reference names no skill); the window `tests/test_skill_style_check_step.py` measures from the command |
 | 16 | `verbatim-scan.md` | the section-map rebuild, the scan, and the report rules | the `agenda-reviser` routing sentence; the regeneration-then-scan pair `tests/test_skill_verbatim_scan_step.py` anchors on |
@@ -287,3 +291,170 @@ names no step number.
 Steps 1, 2, 3, 5 and 6 point at `genre-steps.md` §1, §4, §5 and §6 and at
 `survey.md` §1 and §2: judgement, not procedure, so they stay pointers
 either way.
+
+## Step 10 behind its pointer (2026-11-15)
+
+Built from `cc65f47a` (6.173.3). SK-0c measured a pointer step that says
+the step is not done until the loop has run, and it held as well as the
+inline step, in 12 of 12 Claude Code runs (plans/1091-skill-shrink.md,
+PR 0c, "Result"). The owner then decided that the critique loop's
+commands may move behind its pointer in the four genre writers and
+deep-research, one PR each, benched. This is survey-writer's.
+
+| File | Before | After |
+| --- | ---: | ---: |
+| `.claude/skills/survey-writer/SKILL.md` | 14,087 | 13,129 |
+| `.agents/skills/survey-writer/SKILL.md` | 14,091 | 13,133 |
+| `.opencode/skills/survey-writer-opencode/SKILL.md` | 14,208 | 13,250 |
+| `.claude/skills-common/references/critique.md` | 5,090 | 6,955 |
+
+The cap falls from 15,000 to 14,000, still above the 12,000 target, with
+its reason. `critique.md` grew because it is now the loop itself, read by
+all five callers: numbered steps, a `Done when` on each, and a closing
+step that returns to the caller. The other four callers keep their
+inline outline until their own PRs, and the reference reads correctly
+for them too. It names no skill, no tool and no caller's step number,
+says "the tool the step that sent you names" for the edit, and opens
+"before listing anything", which is what all five steps already said.
+
+### Pinned phrases that changed
+
+| Test | Phrase, window or absence | Reads |
+| --- | --- | --- |
+| `test_skill_pregate_feedback_step.py` | `_POINTER_FORM = {"survey-writer"}`: the step, from its anchor to the end of its `Done when` sentence, names `` `.claude/skills-common/references/critique.md` ``, carries "not done until the loop the reference describes has run", and holds no `-m chitragupta` command | raw |
+| `test_skill_pregate_feedback_step.py` | the reference holds `dossier status`, `dossier sections <draft> --citekeys --write`, `verbatim scan`, `draft style`, `draft gate` and `verbatim recheck`, in that order | the reference |
+| `test_skill_pregate_feedback_step.py` | for a pointer-form skill, every rider of the table above is found in the step plus the whole reference; for an inline-form skill, within 6,800 characters (was 5,900) of every anchor, because the reference's "Never write any of this to `rejected.md`" now sits 6,398 characters from deep-research's anchor | raw step plus reference; expanded |
+| `test_skill_harness_copies.py` | `critique_edit_tool` stays, inside "make each edit with `Edit`" and its two other forms | raw, all copies |
+| `test_skill_style_check_step.py`, `test_skill_verbatim_scan_step.py` | unchanged: every `draft style` and `verbatim scan` in the reference still has its qualifiers within 1,400 and 2,000 characters, and step 10 names no command of its own | expanded |
+
+### Where step 10's text went
+
+Old lines are the `.claude` copy at `cc65f47a`.
+
+| Old line | First words | Went to |
+| --- | --- | --- |
+| 201 | "10. **Critique against the evidence packet, before gating.** Read the dossier's `evidence.md`" | stays: the title and the survey's listing paragraph. "This step runs on every survey, once the draft is written and before step 11's gate" is added, saying when it runs |
+| 206 | "One inline judgement call: not a subagent dispatch" | stays; also in `critique.md` step 2, with "nothing in this pipeline scores this automatically" |
+| 209 | "**Run this step: it is never a condition of presenting, but it is not done until you have run its commands.**" | "never a condition of presenting" stays; "not done until you have run its commands" becomes "not done until the loop the reference describes has run", the sentence SK-0c measured |
+| 210 | "Read `.claude/skills-common/references/critique.md` now, before listing anything, and work it through with" | stays, as "follow it with `content/drafts/<slug>.md` as `<draft>`"; "In outline:" is cut, since the step no longer outlines the loop |
+| 215 | "1. Where the dossier has an `outline.md`, read what the corpus could not answer" and its `dossier status` fence | `critique.md` step 1, which already held both |
+| 222 | "2. Take the baseline" and its three-command fence | `critique.md` step 3, which already held them |
+| 230 | "If the scan's `tiers_not_run` is not empty, quote the reason" | `critique.md` step 3, which already held it; the step asks for the reason back ("the scan's `tiers_not_run` reason if it gave one"), and `critique.md` step 6 returns it |
+| 233 | "3. Repair at most three items, each edit with `Edit`, inside that section only" | `critique.md` step 4, substeps 1, 2 and 4; "each edit with `Edit`" stays in the step as "make each edit with `Edit`", the `critique_edit_tool` phrase; "at most three repairs" stays in the not-done-until sentence |
+| 237 | the `gate`, `verbatim recheck` and `style` fence | `critique.md` step 4, substep 3, which already held it |
+| 244 | "Read `style`'s count only as a number" | `critique.md` step 4, substep 3, which already held it |
+| 247 | "4. Log every attempt, kept or reverted, in the dossier's `revisions.md`" | `critique.md` step 4, substep 5; the step keeps "each checked and logged in the dossier's `revisions.md`" |
+| 249 | "Done when every attempt is logged, or you have said that nothing cleared the bar." | stays, as "Done when the loop has returned and every attempt is logged, or you have said that nothing cleared the bar"; the step adds what to come back with, which `critique.md` step 6 returns |
+
+**Totals for step 10:** 12 rows. Stay: 5 (the title and listing, the
+judgement call, the presenting clause, the pointer and the `Done when`),
+four of them reworded or extended. Moved to `critique.md`: 7, each a duplicate of
+text the reference already held. Cut with nothing moved: "In outline:"
+alone. Without a destination: none.
+
+### What `critique.md` gained, and from where
+
+Its four `##` sections became numbered steps: "A sub-theme the corpus
+could not answer" is step 1, "The baseline" step 3, "The repairs" step
+4, and "Then report exhaustion, and carry on" steps 5 and 6. Nothing in
+them was cut. Added, each from a caller's step:
+
+- in the opening, "before listing anything" (all five steps say it; the
+  old text said "once you have the prioritised list"), "which prose to
+  read against the evidence", and "this loop is never a condition of
+  presenting";
+- step 2, the listing: the three kinds of gap every genre's listing
+  paragraph names, the judgement-call sentence, and adding each sentence
+  step 1 found resting on a `no evidence` sub-theme to the list, which
+  step 1's "cut inside the same accept-or-revert cycle" already implied.
+  Which prose to read stays with each genre;
+- a `Done when` on each step, "If the list is empty there is nothing to
+  repair", and a note in step 1 that step 5 reads the same block;
+- step 6, what to return with (the list, each repair, the
+  `tiers_not_run` reason, the exhaustion sentence), from the "Come back
+  with" sentence of survey-writer's step in the SK-0c pointer arm.
+
+### The bench
+
+Claude Code only, skill-only, 6 runs an arm, 6 at a time, each capped
+at 3600 seconds, `PYTHONPATH` unset. Rows in
+`bench/results/2026-11-15-survey-writer-critique-pointer/`: `inline.json`
+is 6 runs of `main`'s survey-writer (`cc65f47a`) on the same host the
+same day, `pointer.json` this branch, and `pointer-outline.json` this
+branch with `--outline`, compared against SK-0c's
+`2026-11-14-skill-handoff-experiment/inline-outline.json`. Counted by
+hand from each run's transcript and project:
+
+| | Inline | Pointer | Inline, outline (SK-0c) | Pointer, outline |
+| --- | ---: | ---: | ---: | ---: |
+| Usable runs, none timed out, gate passed | 6 | 6 | 6 | 6 |
+| Opened `critique.md` | 6 | 6 | 6 | 6 |
+| `revisions.md` has a critique entry | 6 | 6 | 6 | 6 |
+| `review verbatim recheck` ran | 6 | 6 | 6 | 6 |
+| Baseline scan (`--write`) before the first recheck | 6 | 6 | 6 | 6 |
+| `draft dossier status` at or before the baseline scan | 4 | 1 | 6 | 6 |
+| Median run | 319 s | 340 s | 334 s | 332 s |
+
+**Without an outline `--compare` exits 1**, on `draft dossier status`
+alone (5 of 6 runs to 1 of 6). That command is conditional: the loop
+runs it only "where the dossier has an `outline.md`", and none of these
+dossiers had one. The pointer runs skipped it as the loop says to, and
+three of them wrote "no outline.md, so no declared queries to exhaust"
+in `revisions.md`; the inline step's outline put the command in front of
+the model whether or not it applied. SK-0c's pointer arm showed the same
+drop (4 of 6). **With `--outline`, which makes the command required,
+`--compare` exits 0** and every run ran it before the baseline scan.
+So the command was not put back inline: the drop is a skipped step that
+did not apply, not a lost one.
+
+### For the plan
+
+`plans/1091-skill-shrink.md` is not edited on this branch. What it
+should say:
+
+**Decision 2, replacement text:**
+
+```markdown
+2. **Commands stay in `SKILL.md`** (#1091 item 3): every
+   `python -m chitragupta...` line, every marker a draft must carry, and
+   every phrase a test reads from the raw file. Output samples (the
+   `text` fences in thesis step 9) may move. **Two steps are measured
+   exceptions**, whose commands live in a shared reference behind a
+   pointer: the render step (`render-and-references.md`, measured
+   2026-10-30 to 11-02), and the critique loop (`critique.md`), decided
+   2026-11-15 on PR 0c's result for the four genre writers and
+   deep-research. A critique step moves in its own skill's PR, benched
+   for that skill. Its pointer says the step is not done until the loop
+   the reference describes has run, and
+   `tests/test_skill_pregate_feedback_step.py`'s `_POINTER_FORM` lists
+   the skills that have moved. survey-writer moved first.
+```
+
+**Global constraint "A shared reference names no step number and
+contains no command", replacement text:**
+
+```markdown
+- A shared reference names no skill, no harness tool and no step
+  number of a step that points at it. A reference that holds a
+  procedure numbers its own steps, ends each on a `Done when`, and
+  returns to the step that sent the reader. A command a step requires
+  stays in that step's `SKILL.md`, except in the steps Decision 2
+  names; a reference may also repeat a command its caller carries.
+```
+
+The old sentence was already untrue on `main` before this branch:
+`render-and-references.md` holds six commands, and `prose-check.md`,
+`verbatim-scan.md`, `collection-scoping.md`, `digest-copying.md` and
+`figures-tables-equations.md` one or two each, besides `critique.md`'s
+seven.
+
+**Review focus 1** should read 6,800 where it says 5,900, and add that
+a pointer-form critique step is read whole, the step and then the
+reference, so a spliced reference cannot push its riders out of a
+window.
+
+**PR 2 and PR 8** each convert their skills' critique steps the same
+way: move the skill into `_POINTER_FORM`, replace the inline outline
+with the pointer step, record the rows in that skill's own ledger, and
+bench that skill against a fresh before arm, with `--outline` too where
+its task takes one.
