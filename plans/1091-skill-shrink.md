@@ -5,8 +5,8 @@
 > superpowers:executing-plans to implement this plan task-by-task. Steps
 > use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **PR 0 merged (`9cbaf678`); PR 0c, an experiment added on
-2026-11-14, being built; PRs 0b and 1-8 not merged.**
+Status: **PR 0 merged (`9cbaf678`); PRs 0b, 0c and 1 built and in
+review; PRs 2-8 not started.**
 Written 2026-11-13 against `9aa75085`
 (6.170.2), branched from `a76b9ba1` (6.172.0), for
 issue [1091](https://github.com/prasadtalasila/chitragupta/issues/1091).
@@ -193,7 +193,7 @@ server.
 | --- | --- | --- | --- |
 | 0 | #1196 SK-0 | this plan, `skill-bench`, bench `--source`, `--jobs`, `--base-url`, `--runs`, per-command scoring, `--compare` | minor (a new script, `DEVELOPER-AGENTS.md:1149-1151`; #1189 did the same) |
 | 0b | #1197 SK-0b | `docs/WRITING-STANDARDS.md` split into `docs/writing-standards/` | patch |
-| 0c | to be filed, SK-0c | experiment: survey-writer's critique step inline, as a pointer, and as a handoff to a new `critique-loop` skill; the bench scores handoffs; decides Decision 11 | patch (the bench rule and this plan; the arm branches are never merged) |
+| 0c | #1213 SK-0c | experiment: survey-writer's critique step inline, as a pointer, and as a handoff to a new `critique-loop` skill; the bench scores handoffs; decides Decision 11 | patch (the bench rule and this plan; the arm branches are never merged) |
 | 1 | #1198 SK-1 | `genre-steps.md`, survey-writer, `genres/survey.md` | patch |
 | 2 | #1199 SK-2 | textbook, thesis, tutorial; `placement.md` §4; tutorial captions | patch |
 | 3 | #1200 SK-3 | review-digest, restoring what #1173 dropped | patch |
@@ -653,7 +653,7 @@ Rules that keep it from going piecemeal, written into the index:
 
 Branch `feat-1091-routing-experiment` (this plan's section and the
 bench rule below). Runs before PR 1, because its result decides what
-PR 1 builds (Decision 11). Issue to be filed.
+PR 1 builds (Decision 11). Issue #1213.
 
 **What is already known.** With survey-writer's critique step cut to
 "read `critique.md` and follow it", one Claude Code run skipped the step
@@ -852,12 +852,13 @@ runs.
 - [x] **Step 1:** The bench rule, `handoffs_loaded`, their
   `self_check()` cases, and the docs. Done when the self-check passes
   and the before/after expected sets differ only as listed above.
-- [ ] **Step 2:** File the issue; put its number in the series table.
-- [ ] **Step 3:** With both arm branches built, run the three arms and
+- [x] **Step 2:** File the issue; put its number in the series table.
+- [x] **Step 3:** With both arm branches built, run the three arms and
   both comparisons on the server. Done when both `--compare` outputs,
   each run's `handoffs_loaded` and the hand-read `revisions.md` check are
-  recorded in `docs/HARNESS.md` and on the issue.
-- [ ] **Step 4:** Apply the decision to this plan (the list above), and
+  recorded in `docs/HARNESS.md` and on the issue. (As run: recorded
+  under "Result" below, with the rows in `bench/results/`.)
+- [x] **Step 4:** Apply the decision to this plan (the list above), and
   only then start PR 1.
 
 ### Result, 2026-11-14
@@ -893,7 +894,15 @@ run. On this evidence the handoff is no more reliable than the pointer
 on Claude Code, and it costs what "What a skill costs" lists. The
 decision rule above was written expecting the pointer to be the weaker
 arm, so its first branch is met in letter and its premise is not.
-Step 4 therefore waits for the owner.
+Step 4 therefore went to the owner.
+
+**Decided, 2026-11-15.** Shown these results and the Codex and
+OpenCode runs below, the owner said to proceed with the merges on the
+conclusion that this plan stands as merged: shared procedures move
+behind `.md` pointers, `critique-loop` is not built, and PRs 1-8 do
+not change. A pointer removes the same duplicate text as a handoff,
+holds the step as well on Claude Code, and adds no skill to keep in
+three copies.
 
 **What it does not show.** Codex and OpenCode were not run. One step
 of one skill was measured, on one model, with the two moved steps
