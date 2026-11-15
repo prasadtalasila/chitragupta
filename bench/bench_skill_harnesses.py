@@ -56,6 +56,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import unicodedata
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -322,6 +323,37 @@ def leaked(text: str) -> bool:
     return any(re.search(re.escape(root) + r"(?![\w.-])", text) for root in LEAK_ROOTS)
 
 
+def _pictographic(char: str) -> bool:
+    """An emoji or other symbol, or a character that only shapes one:
+    a variation selector, a zero-width joiner, a skin-tone modifier, a
+    keycap, a tag -- and U+FFFD, what an emoji becomes when a model's
+    output mangles its bytes."""
+    point = ord(char)
+    return (
+        unicodedata.category(char) == "So"
+        or point in (0x200D, 0x20E3, 0xFFFD)
+        or 0xFE00 <= point <= 0xFE0F
+        or 0x1F3FB <= point <= 0x1F3FF
+        or 0xE0000 <= point <= 0xE01EF
+    )
+
+
+def first_line_key(line: str) -> str:
+    """What two first lines are compared by.
+
+    Wrapping backticks are the model's, so both sides lose them: stripping
+    only the printed side failed every first line that itself ends in a
+    backtick (`draft-diff.md`'s heading). Pictographs go too, with the
+    space around them: many `docs/` headings open on an emoji, and a model
+    that prints the heading with the emoji garbled to U+FFFD, or dropped,
+    has still read the file (the agenda-reviser baseline, 2026-11-14).
+    Every other character, words included, still has to match.
+    """
+    unwrapped = line.strip().strip("`")
+    marked = "".join("\0" if _pictographic(char) else char for char in unwrapped)
+    return re.sub(r"\s*\0[\s\0]*", " ", marked).strip()
+
+
 def score_tier1(project: Path, harness: str, name: str, log: Path) -> dict:
     """Which named files the model read, judged by whether the first line
     it printed is really that file's first line, from which copy of the
@@ -342,16 +374,15 @@ def score_tier1(project: Path, harness: str, name: str, log: Path) -> dict:
     read, wrong, firsts = [], [], {}
     for path in sorted(p for p in expected if (project / p).is_file()):
         lines = (project / path).read_text(encoding="utf-8").splitlines()
-        actual = next(iter(lines), "").strip()
-        firsts.setdefault(actual.strip("`"), []).append(path)
+        actual = first_line_key(next(iter(lines), ""))
+        firsts.setdefault(actual, []).append(path)
         if path not in printed:
             continue
-        # Wrapping backticks are the model's, so both sides lose them:
-        # stripping only the printed side failed every first line that
-        # itself ends in a backtick (`draft-diff.md`'s heading).
-        (read if printed[path].strip("`") == actual.strip("`") else wrong).append(path)
+        (read if first_line_key(printed[path]) == actual else wrong).append(path)
     # Two named files that open on the same line cannot tell a read of
     # one from a read of the other, so the skill fails until one changes.
+    # It is the same key as the read itself: two headings that differ only
+    # by emoji are one line once emoji are ignored.
     shared = sorted(p for paths in firsts.values() if len(paths) > 1 for p in paths)
     return {
         "expected": sorted(expected),
@@ -773,6 +804,39 @@ def _check_tier1_docs(project: Path, log: Path) -> None:
     scored = score_tier1(project, "claude", "w", log)
     assert scored["shared_first_line"] == ["docs/A.md", "docs/B.md"], scored
     assert not scored["pass"], "two files that open on one line prove neither read"
+    (project / "docs" / "B.md").write_text("# B doc\n", encoding="utf-8")
+    _check_tier1_emoji(project, log, good)
+
+
+def _check_tier1_emoji(project: Path, log: Path, good: str) -> None:
+    """A heading's emoji is a symbol, not the read: the agenda-reviser
+    baseline (2026-11-14) printed `docs/AUTO-IMPROVEMENT-RATIONALE.md`'s
+    heading whole but for a replacement character where its emoji was,
+    and was scored a wrong first line. Pictographs are ignored on both
+    sides; every word still has to match, and two headings that differ
+    only by emoji are one shared first line."""
+    docs = project / "docs"
+    (docs / "A.md").write_text("# \U0001f4a1 A doc\nbody\n", encoding="utf-8")
+    (docs / "sub" / "D.md").write_text(
+        "# \U0001f9d1\u200d\U0001f4bb\ufe0f D doc\n", encoding="utf-8"
+    )
+    garbled = good.replace(":: # A doc", ":: # \ufffd A doc").replace(
+        ":: # D doc", ":: # \ufffd\ufffd D doc"
+    )
+    log.write_text(garbled, encoding="utf-8")
+    scored = score_tier1(project, "claude", "w", log)
+    assert scored["pass"] and not scored["wrong_first_line"], f"a garbled emoji: {scored}"
+    log.write_text(good, encoding="utf-8")
+    scored = score_tier1(project, "claude", "w", log)
+    assert scored["pass"] and not scored["wrong_first_line"], f"a missing emoji: {scored}"
+    log.write_text(garbled.replace("\ufffd A doc", "\ufffd A page"), encoding="utf-8")
+    scored = score_tier1(project, "claude", "w", log)
+    assert scored["wrong_first_line"] == ["docs/A.md"] and not scored["pass"], scored
+    (docs / "B.md").write_text("# \U0001f4d0 A doc\n", encoding="utf-8")
+    log.write_text(good.replace(":: # B doc", ":: # A doc"), encoding="utf-8")
+    scored = score_tier1(project, "claude", "w", log)
+    assert scored["shared_first_line"] == ["docs/A.md", "docs/B.md"], scored
+    assert not scored["pass"], "two headings that differ only by emoji prove neither read"
 
 
 def _check_command_scoring(project: Path) -> None:

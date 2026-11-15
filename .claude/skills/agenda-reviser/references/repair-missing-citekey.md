@@ -2,9 +2,10 @@
 
 Read this when the item in hand is of class `missing-citekey`: a key the
 dossier declares that has left the ledger, or whose PDF no longer parses
-(it is then still in the `.bib` but not citable). The step that sent
-you here says which edit tool to use. Paths here are from the project
-root.
+(it is then still in the `.bib` but not citable). The item's own
+`citekey` and `section` are the whole repair payload: there is nothing
+else to look up. The step that sent you here says which edit tool to
+use. Paths here are from the project root.
 
 **Repair a `missing-citekey` item.** The only unattended repair available
 is a deletion: this skill may not run `corpus sync` (the user's write
@@ -31,6 +32,8 @@ key recorded only in `sections.md` (`prune` refuses that one, saying so).
 The reviser runs neither. **Its report says so, naming the command that
 fits**: "N `missing-citekey` items remain until you run `dossier prune`",
 or the `sections` command for a `sections.md`-only key, not a statement
-that the residue is intended. Before #701 the residue was
-reported on no surface at all unless the dossier carried a `dossier
-stamp` baseline.
+that the residue is intended.
+
+**Not done at the edit.** The repair is done only once the recheck
+the step that sent you here names has run and accepted it, or it has
+been reverted and logged.
