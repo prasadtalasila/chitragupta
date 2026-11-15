@@ -39,6 +39,7 @@ genre, and a style file one house style.
 | Element | [`writing-standards/page.md`](writing-standards/page.md) | §14 | what has to fit the page, checked by `chitragupta/style_typeset.py` |
 | Genre | [`writing-standards/genres/README.md`](writing-standards/genres/README.md) | none | what each genre owes its reader; one file per genre, listed below |
 | Genre | [`writing-standards/genres/survey.md`](writing-standards/genres/survey.md) | none | what a survey owes its reader, its reread, and how rare its figures and numbered equations are |
+| Genre | [`writing-standards/genres/deep-research.md`](writing-standards/genres/deep-research.md) | none | what a deep-research report owes its reader, why it has no figures, how its tables and mathematics are reconciled across parallel writers, and its reread |
 | Style | [`writing-standards/styles/README.md`](writing-standards/styles/README.md) | none | house styles to come; no style yet |
 
 Five rules keep the layers from going piecemeal:

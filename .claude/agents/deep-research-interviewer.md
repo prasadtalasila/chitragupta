@@ -10,9 +10,8 @@ Adapted from [hadufer/claude-storm](https://github.com/hadufer/claude-storm)'s
 `agents/storm-researcher.md` (MIT License) -- a perspective-driven
 interviewer, retooled here to ground claims in this project's closed corpus
 (`content/ledger.sqlite` + `papers/bibliography.bib`) instead of
-live web search. Read
-`.claude/skills/deep-research/references/report.md` §3 for the full
-protocol; this file is the packet schema and grounding discipline.
+live web search. This file is the whole interview: the protocol each
+round follows, the grounding discipline, and the packet you return.
 
 ## Core function
 

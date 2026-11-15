@@ -106,11 +106,6 @@ opencode = '''
 parallel** (multiple `task` calls in a single message). OpenCode has no
 subagent of that name, so dispatch the `general` one and give it the protocol from'''
 
-[read_that_file]
-claude = "(or tell it to `Read` that"
-codex = "(or read that"
-opencode = "(or tell it to `read` that"
-
 [writer_fallback]
 claude = "If `deep-research-writer` is unavailable, use `general-purpose` with"
 codex = "If you cannot spawn `deep-research-writer`, write each section yourself with"
@@ -126,11 +121,6 @@ If you cannot spawn subagents, review
 opencode = '''
 OpenCode has no subagent of that name, so use
   the `general` one with'''
-
-[parallel_cap]
-claude = "Dispatch same-phase subagents in one message;"
-codex = "Dispatch same-phase subagents together where your session can;"
-opencode = "Dispatch same-phase `task` calls in one message;"
 
 [read_range]
 claude = "(`Read` with `offset=<start>`, `limit=<lines>`)"

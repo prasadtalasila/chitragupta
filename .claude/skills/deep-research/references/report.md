@@ -1,6 +1,10 @@
 # deep-research -- Reference (exact protocol, adapted)
 
-Source of truth for the deep-research skill's phases. Adapted from
+The orchestrating run's reference for the deep-research skill's phases.
+What a dispatched agent does (an interviewer, a section writer, a
+reviewer) is in that agent's own file under `.claude/agents/`, which a
+run without subagents reads and follows itself. Paths here are from the
+project root. Adapted from
 [hadufer/claude-storm](https://github.com/hadufer/claude-storm) (MIT
 License), which itself encodes the Stanford STORM algorithm
 (`github.com/stanford-oval/storm`, NAACL 2024 / arXiv:2402.14207) fused with
@@ -33,40 +37,60 @@ alongside the faster single-pass survey writer.
 
 ## 2. The personas (Phase 1)
 
-Always include the generalist; default the rest to the five lenses in
-SKILL.md, adapted per topic. STORM's own persona discovery works by
-surveying related reference material and inventing personas that match
-recurring structure in it -- operationalized here as: run 1-2 broad
-retrieval calls on the topic itself (not the sub-questions yet) and skim
-what actually comes back before finalizing the persona list, for
-`standard`/`deep` depth. Skip for `quick`.
+Read this when the dossier has no `outline.md`, or one that fails its
+check: an outline's own section headings name the angles instead.
+
+Always include the generalist, the **Basic fact writer**. STORM's own
+persona discovery works by surveying related reference material and
+inventing personas that match recurring structure in it --
+operationalized here as: run 1-2 broad retrieval calls on the topic
+itself (not the sub-questions yet) and skim what actually comes back --
+titles, sub-fields, recurring angles -- before finalizing the persona
+list. For `standard`/`deep` depth, derive 1-2 **corpus-specific**
+personas from what is actually there (skip this for `quick`). Then map
+the remaining slots onto these five lenses, **adapted and renamed to fit
+the topic** (drop one that genuinely doesn't apply):
+
+1. **The Practitioner** -- what does applying this in practice surface that
+   the papers gloss over?
+2. **The Academic** -- what does the retrieved literature actually claim,
+   and where do sources in this corpus disagree with each other?
+3. **The Skeptic** -- the strongest limitation the corpus itself admits to
+   (or a gap it fails to address).
+4. **The Adoption/Incentives analyst** -- who would use this and why; what
+   incentives shape the work (adapt or drop if inapplicable).
+5. **The Historian** -- what earlier approaches does this build on or react
+   against.
 
 ---
 
-## 3. Interview protocol (Phase 2) -- what each `deep-research-interviewer` does
+## 3. Why this skill does not scope to a collection
 
-Per round (repeat for ROUNDS):
+Read this when a user asks for a collection-scoped report, or wonders
+why this genre alone offers no scoping.
 
-1. **Ask one persona-guided question** -- never repeat a prior question in
-   this interview; go deeper each round.
-2. **Question -> up to 3 search-query reformulations** against this
-   project's corpus (`chitragupta.retrieval.search()`, or `chitragupta.enrich.embed_index.search()`
-   if that stack has been built for this corpus).
-3. **Retrieve and filter**: run the queries, read the actual snippets
-   (500 chars by default from both `search()` functions), keep only what
-   passes a relevance judgment -- same discipline as the survey
-   writer's step 2, not "top-k, done."
-4. **Answer grounded only in what survived filtering**, every sentence
-   cited by real citekey. If nothing relevant survives after reformulating,
-   say so -- "no appropriate answer can be formulated from this corpus" is
-   a valid, honest output, not a failure to route around.
+Every other genre offers to scope retrieval to one curated Zotero
+collection and threads `--collection` through its searches. This one
+does not, and neither do its agents. That is a decision, not an
+oversight.
 
-No web fallback exists in this adaptation. Every hit `search()` returns is a
-real, citable citekey from `content/ledger.sqlite`; nothing outside that set
-may be cited -- see AGENTS.md's citekey invariant.
+The reason is what this skill is for. Its whole method is to attack a
+question from several perspectives at once, each interviewer chasing a
+different framing, and then to map where those framings *disagree*. A
+curated shelf is one person's answer to "what is this topic about",
+already filtered by the judgement being interrogated. Scoping to it
+would narrow every perspective to the same pre-agreed subset and quietly
+delete the contradictions this skill exists to surface -- the report would
+look consistent because it had been prevented from seeing anything that
+would make it otherwise.
 
-The packet schema each interviewer returns is defined in
-`.claude/agents/deep-research-interviewer.md`.
+There is measured reason to expect that, not just principle. A 19-item
+shelf surfaced ten papers a whole-corpus search never returned, and the
+whole-corpus search surfaced far more that the shelf did not hold
+(`bench/RESULTS.md`, 2026-08-19): the two are different rankings, not
+subsets. For a single-thesis genre, picking one is a reasonable trade.
+For a genre whose output is a contradiction map, taking the narrower one
+by default is the wrong half.
 
 ---
 
@@ -137,7 +161,7 @@ not any single reviewer's raw output.>
 - **Missing perspective:** <6th angle>
 - **Overall grade:** <grade> -- <what to fix>
 
-<For `quick`: the single self-critique from SKILL.md Phase 7a instead --
+<For `quick`: the single inline self-critique §7 ends on instead --
 confidence scores, weakest link, bias check, missing perspective, overall
 grade, no panel verdicts row.>
 
@@ -154,6 +178,13 @@ assigns those numbers when the draft is rendered.>
 Save as `content/drafts/deep-research-<kebab-topic>.md` (canonical format),
 then render `.tex`/`.pdf` from it — see SKILL.md Phase 7(d) for the exact
 commands and the warn-and-continue behavior on a rendering failure.
+
+**A deep-research report emits the evidence sidecar, and has the
+strongest claim to it of the five genres:** showing its work *is* the
+product here. A report that reconciles several perspectives and names
+where the corpus disagrees with itself is read by someone who wants to
+check a contradiction against what each source actually said, and the
+sidecar is where they do that.
 
 ---
 
@@ -186,15 +217,10 @@ reviewers, each with a different, narrow mandate, and none seeing the
 others' notes before writing their own, surface more than a single pass
 asked to "review this critically."
 
-**The four roles** (dispatched as parallel `peer-reviewer` subagents; full
-spec in `.claude/agents/peer-reviewer.md`):
-
-| Role | Mandate |
-| --- | --- |
-| `domain-accuracy` | Re-check every cited claim against the actual source text. The one check `citation_gate.py` and academic-research-skills' external-database triangulation both skip: neither verifies the *claim* matches the *source*, only that the citekey/reference exists somewhere. |
-| `methodology-rigor` | Does the argument hold together; do conclusions overreach the evidence; is the contradiction-map/synthesis logic internally consistent? |
-| `clarity-completeness` | Is it well organized; are thin-coverage gaps or missing citations left unflagged? |
-| `devils-advocate` | Argue the strongest case against the draft's central conclusion -- substance, not style. |
+**The four roles** -- `domain-accuracy`, `methodology-rigor`,
+`clarity-completeness` and `devils-advocate` -- are dispatched as
+parallel `peer-reviewer` subagents. What each role checks, and the
+packet each returns, is in `.claude/agents/peer-reviewer.md`.
 
 **The concession threshold** (this project's own rule -- academic-research-skills'
 actual "concession-threshold protocol" internals weren't reused, since this
@@ -216,3 +242,52 @@ four verdicts (`ready`/`needs revision`/`reject`), applies the threshold
 above, revises what the threshold requires, and writes the final
 Peer-Review & Reliability Scorecard section from the reconciled result, not
 from any single reviewer's raw output.
+
+**At `quick` depth there is no panel.** Critique the draft inline,
+once, with no subagent: a confidence score (1-10) per key finding, with
+its justification; the weakest link, and what would verify it; a bias
+check (did one perspective's sources dominate?); a missing sixth
+perspective; and an overall grade. That is the scorecard §5's template
+describes for `quick`, with no panel-verdicts row.
+
+---
+
+## 8. Why the closing checks matter more here
+
+Read this when the user asks why the prose check or the verbatim scan
+runs on this report, or what either is for in this genre.
+
+**The prose check** is the first time anything reads the whole report
+at once: a dozen subagents wrote sections independently, so a defect
+marker in one and en-US spelling in another are exactly what no writer
+was placed to notice.
+
+**The verbatim scan** is earned more here than in most genres for the
+same reason: no single context ever saw the whole report, and the
+synthesis prose stitching the sections together cites nothing at all.
+
+---
+
+## 9. What bears on this genre from the writing standards' sources
+
+Read this when asked where this genre's writing rules come from.
+
+The prose standards this skill inherits are not original to this
+project. Full citations, licences and a per-principle attribution table
+are in `docs/WRITING-STANDARDS.md`'s "Sources and attribution"; all three
+works are openly licensed (CC-BY or CC-BY-SA) and require credit. What
+bears on *this* genre specifically:
+
+- **Google, *Technical Writing Courses* (CC-BY 4.0)** -- using the same term
+  for the same concept throughout is the direct ancestor of the Phase 4
+  glossary. In a single-author document that rule is a style preference; in
+  a pipeline dispatching parallel section writers it is the difference
+  between one report and four stitched together, which is why it is
+  enforced structurally at outline time rather than left to Phase 6 polish.
+- **Last, *Technical Writing Essentials* (CC-BY 4.0)** -- the introduction
+  checklist -- scope ("what will and will not be covered") plus the reader's
+  assumed background -- behind Phase 6's scope statement.
+- **Procida, *Diátaxis* (CC-BY-SA 4.0)** -- the genre-separation principle.
+  A multi-perspective research report is not a Diátaxis quadrant, and none
+  of the tutorial/how-to structural rules apply; what transfers is the
+  requirement that the report know which single job it is doing.
