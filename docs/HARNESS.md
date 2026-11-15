@@ -281,7 +281,10 @@ section to another page is measured too; the table below predates
 that. Its first run, Claude Code on main's skills, passed 9 of 11: one
 `docs/` page named only in a shared reference went unread, and one
 heading's emoji came back garbled; the rows are in
-`bench/results/2026-11-14-tier1-docs-baseline/`.) Each Tier 1 run was
+`bench/results/2026-11-14-tier1-docs-baseline/`. Since 2026-11-15 the
+comparison ignores emoji and other pictographic symbols on both sides,
+so a garbled or dropped emoji no longer fails a read; a changed word
+still does.) Each Tier 1 run was
 capped at 900 seconds (`--timeout 900`, the script's default), except
 the first Codex batch (1800) and OpenCode's four genre writers (1200);
 each Tier 2 task was capped at 3300.

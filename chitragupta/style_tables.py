@@ -100,7 +100,7 @@ def _uncaptioned(text: str, tables: "list[_tables.Table]") -> "list[dict]":
                     min(following),
                     "this table's caption carries no `<!-- table: <id> -->` "
                     "marker under it, so no sentence can refer to it "
-                    "(WRITING-STANDARDS.md §13).",
+                    "(docs/writing-standards/tables.md §13).",
                 )
             )
         else:
@@ -110,7 +110,7 @@ def _uncaptioned(text: str, tables: "list[_tables.Table]") -> "list[dict]":
                     lines[line - 1].strip(),
                     line,
                     "this table has no caption line, so it renders with no "
-                    "number in every format (WRITING-STANDARDS.md §13).",
+                    "number in every format (docs/writing-standards/tables.md §13).",
                 )
             )
     return found
@@ -137,7 +137,12 @@ def findings(draft: Path) -> "list[dict]":
         _uncaptioned(text, tables)
         + style_elements.id_problems(RULES, tables, "table", "tab")
         + style_elements.reference_problems(
-            RULES, text, tables, _tables.references(text), "table", "WRITING-STANDARDS.md §13"
+            RULES,
+            text,
+            tables,
+            _tables.references(text),
+            "table",
+            "docs/writing-standards/tables.md §13",
         )
     )
     return sorted(found, key=lambda finding: (finding["line"], finding["rule"]))
