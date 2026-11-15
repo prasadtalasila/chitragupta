@@ -1,7 +1,7 @@
 # Move ledger: corpus-reviser (#1204, SK-7)
 
 Status: **built on `feat-1091-corpus-reviser`, which branches from
-`feat-1091-draft-reviser` (SK-4, not yet merged); above the 8,000
+`feat-1091-draft-reviser` (SK-4, since merged to main as #1219); above the 8,000
 target, with a reason in its cap row.** Written 2026-11-15 against
 `cc8856ac` (6.173.8), for [plans/1091-skill-shrink.md](1091-skill-shrink.md),
 the PR 7 row of "PRs 3-8, in outline".
@@ -251,10 +251,64 @@ created.
 
 ## The bench
 
-See the commit that records it, and the section below once filled.
+Skill `corpus-reviser`, Claude Code, skill-only. The task runs
+survey-writer first, then asks for a whole-corpus re-check with an
+agreed scope change (machine-learning anomaly detection on a twin's
+state stream). It reaches the cost statement, the whole-draft read, the
+re-search of every recorded sub-theme, the scope write-back and all
+three closing steps. **It cannot reach a recorded `collection:` line
+(the sample survey has none), a figure, a table or an equation, or a
+rejection to re-open (the survey's `rejected.md` is empty); those are
+unmeasured.**
+
+**First comparison, 3 after runs against the 3 recorded before rows in
+`bench/results/2026-11-14-skill-bench-skill-only/tier2.json`:
+inconclusive** (`--compare` exit 3): `draft references` 3/3 -> 2/3. One
+of the first after batch's runs had stopped at an HTTP 429 (usage
+limit) after 8 seconds; it was discarded and rerun alone, as run 2.
+
+**Then 3 more of each arm**, one batch at a time: before from an export
+of `origin/main` at `c8413d94` (draft-reviser's shrink merged; the old
+corpus-reviser), after from this branch. No run of either batch hit a
+429. **6 against 6: pass** (`--compare` exit 0). Every command is 6/6 or
+0/6 in both arms except `draft references`, 6/6 -> 5/6, and that run
+did run it: it called `for c in "gate" "references"; do python -P -m
+chitragupta.draft $c ...`, which the scorer cannot resolve to a
+subcommand (its `ran_unnamed` is `draft`). `draft retrieve evidence`,
+`draft figures`, `dossier prune`, `dossier snapshot` and
+`dossier versions` ran in no run of either arm. All 12 runs passed their
+gate and their prerequisite survey's gate; none ran `corpus sync` or
+`enrich`. Rows: `bench/results/2026-11-15-corpus-reviser-shrink/`,
+`tier2.json` (after, 6) and `before.json` (the 3 recorded rows and the
+3 new ones, renumbered 4-6).
+
+**Read by hand, the 6 after runs:**
+
+| Check | Runs 1-3 | Runs 1-6 | Before, runs 4-6 |
+| --- | ---: | ---: | ---: |
+| stated the cost before the first search | 2/3 | 3/6 | 0/3 |
+| re-ran every query `retrieval.md` recorded before the pass | 3/3 | 5/6 | 3/3 |
+| opened draft-reviser's `SKILL.md` | 3/3 | 6/6 | 3/3 |
+| opened `genre-steps.md` (§5) | 3/3 | 6/6 | 0/3 |
+
+The run that missed queries (run 4) re-searched every sub-theme but
+folded the five recorded wordings of the thin security sub-theme into
+two. The runs that gave no cost sentence before searching all reported
+the cost in their closing summary. The `genre-steps.md` opening is the
+stale-pointer fix at work: the old text sent the model to
+"`survey-writer` step 2", which no longer holds that procedure.
+After runs opened `genre-steps.md`, `prose-check.md`, `verbatim-scan.md`
+and `draft-diff.md` (the `references` field); none opened
+`figures-tables-equations.md` or `mathematical-prose.md`, whose
+conditions the task never meets. After runs took 98-167 seconds for
+the revision; before runs, 109-177.
 
 ## For the plan
 
+- The cost sentence before the first search held in 3 of 6 after runs
+  (0 of the 3 new before runs). It is a guardrail stated as its own
+  section with a `Done when`; if a later bench wants it higher, the next
+  lever is making it the first line of `## The loop`, measured then.
 - PR 7's row: the 8,000 target is not reached without compressing
   prose; real deduplication stops at about 10.1 KB (the cap is 11,000,
   with a reason). The rest is the routing table, the guardrails, the
