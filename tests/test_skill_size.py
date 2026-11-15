@@ -44,7 +44,12 @@ _LATER = "#1091: shrinks to its target in its own PR"
 
 # skill: (cap in bytes, why the cap is above the target, or None)
 BUDGET = {
-    "agenda-reviser": (29_000, f"{_LATER}; draft diff closing step (#1194)"),
+    "agenda-reviser": (
+        18_500,
+        "#1091: deduplicated from 28 KB; it runs unattended repairs, so every "
+        "guardrail stays inline beside its command, and the rest is commands and "
+        "tested text (plans/1091-ledger-agenda-reviser.md)",
+    ),
     "book-assembler": (
         14_000,
         "#1091: deduplicated from 20 KB into book-steps.md and latex-conventions.md; "
@@ -61,13 +66,13 @@ BUDGET = {
         "rest is commands and tested text (plans/1091-ledger-draft-reviser.md)",
     ),
     "figure-drawer": (7_000, None),
-    "skill-bench": (5_000, None),
     "review-digest": (
         17_000,
         "#1091: deduplicated, then the six passages #1173 cut restored; the rest is "
         "commands, the digest format and tested text, and the target is a guideline "
         "(plans/1091-skill-shrink.md, Decision 1)",
     ),
+    "skill-bench": (5_000, None),
     "survey-writer": (
         14_000,
         "#1091: deduplicated from 32 KB, then the critique loop moved behind its "
