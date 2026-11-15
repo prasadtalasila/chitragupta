@@ -229,6 +229,24 @@ SURVEY_TAIL = (
     "sidecar, and run the prose check, the verbatim scan and the stamp."
 )
 
+# The same survey with an outline: its dossier then has an `outline.md`,
+# which is the condition survey-writer's critique step puts on
+# `draft dossier status`. Without one that command is optional there, and
+# a run that skips it has followed the step (the SK-0c experiment, #1091).
+NO_OUTLINE = "no outline, choose the sub-themes yourself."
+WITH_OUTLINE = (
+    "open the dossier with --outline, and write outline.md with five sections, each "
+    "with a brief: and queries: -- definitions (digital twin shadow model integration "
+    "levels), synchronisation (synchronisation staleness event-driven push pull), "
+    "deployment and trust (factory deployment operator trust override), "
+    "interoperability (semantic interoperability asset-model registry) and security "
+    "(blockchain ledger provenance for twins)."
+)
+assert NO_OUTLINE in SURVEY_BODY
+OUTLINE_TASKS = {
+    "survey-writer": Task(SURVEY_BODY.replace(NO_OUTLINE, WITH_OUTLINE), SURVEY_TAIL, SURVEY),
+}
+
 TIER2_TASKS = {
     "survey-writer": Task(SURVEY_BODY, SURVEY_TAIL, SURVEY),
     "textbook-chapter-writer": Task(

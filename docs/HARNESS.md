@@ -335,6 +335,25 @@ way. `bench/bench_skill_harnesses.py --tier 2 --skill-only` now runs
 that pointer arm for every user skill, not only the survey (see
 "Measuring a skill change" below).
 
+**The critique loop was measured the same way on 2026-11-14 and 15**
+(plans/1091-skill-shrink.md, PR 0c; rows in
+`bench/results/2026-11-14-skill-handoff-experiment/`). survey-writer's
+critique step was left inline, cut to a pointer at a reference, and cut
+to a handoff to a `critique-loop` skill, each with the sentence that
+the step is not done until the loop has run. On Claude Code
+(`claude -p --model sonnet`), 12 skill-only runs an arm, 6 of them with
+an outline in the dossier: every run in every arm reached the loop's
+text, logged a critique entry in `revisions.md` and passed the gate,
+and with the outline every run ran `draft dossier status` before the
+baseline scan. The single skipped run above did not reproduce. On
+Codex and OpenCode with Qwen3.6-35B-A3B, 6 outline runs an arm, no run
+in any arm logged a critique entry, the inline arm included, so those
+runs cannot tell the arms apart. A pointer therefore holds this step
+as well as a handoff does where the step is held at all, and it adds
+no skill to keep in three copies; the genre writers still keep the
+loop's commands inline, which is a separate decision
+(plans/1091-skill-shrink.md, Decision 2).
+
 Two harness facts the bench had to work around, both recorded in the
 script: OpenCode takes its project directory from the inherited `PWD`,
 not the process's working directory, so a run launched from elsewhere
@@ -576,7 +595,29 @@ stop running it, and no unit test sees that. `skill-bench` measures it
   a step cut to a pointer keeps its commands in the reference. A command
   is `module sub [sub]` (`draft dossier init`), with the subcommands
   taken from the module's own `--help`, so a slug after `draft render`
-  is an argument and never a third word.
+  is an argument and never a third word. A step handed to another skill
+  keeps its commands in that skill, so those count too: every command
+  of a skill in the same harness folder that this one hands a step to
+  and takes it back from, with its references'. Only a sentence that
+  hands something to `` `<skill>` `` and says "and come back" is such a
+  handoff: the genre writers' "Hand the drawing itself to
+  `figure-drawer`, and come back to this step", and draft-reviser's
+  "hand it to `figure-drawer` and come back to step 6". A skill only
+  named ("use `draft-reviser` instead", "Hand off to `corpus-reviser`",
+  "drawn through `figure-drawer`") adds nothing, or every skill would
+  expect its siblings' steps. The OpenCode copies write the suffixed
+  name, which is the folder the rule looks in.
+- `handoffs_loaded`: for each such skill, how the run loaded it:
+  `"skill"` through the harness's skill tool (Claude Code's `Skill`,
+  OpenCode's `skill`), `"read"` by opening that harness's copy of its
+  `SKILL.md` with a file tool or a shell command, or `null` when the
+  transcript shows neither. Codex has no skill tool, so a read is the
+  only load it can show. Reading is common on Claude Code too: in the
+  36 Claude Code genre-writer transcripts behind the two baselines
+  below, 22 loaded `figure-drawer` by reading its `SKILL.md` and 14
+  through `Skill`. A load the transcript does not show (a `cat SKILL.md`
+  after a `cd` into the skill's folder) reads as `null`, and a read of
+  another harness's copy is not counted.
 - `ran` and `missed`: which of those a tool call executed. A command
   counts only where a shell would run it: as the first word of a simple
   command, inside the `zsh -lc '...'` that Codex wraps every call in, or
@@ -588,6 +629,20 @@ stop running it, and no unit test sees that. `skill-bench` measures it
 - `gate`: `draft gate` on the task's own draft, 2 when it was never
   written; and `prerequisite_gate`, the same for the survey a reviser
   task starts from.
+
+**The handoff rule came after the baselines below.** It adds
+`figure-drawer`'s commands (`figure new`, `figure sync`, `figure check`,
+`figure look`, and `draft figures` where the caller did not already
+name it) to the four genre writers' expected sets, 5 commands each, and
+to draft-reviser's, 4; no other skill's set changed, on any harness.
+The recorded rows keep the sets they were scored with. A comparison
+against them is still sound, because `--compare` judges the union of
+both arms' expected commands and counts each run from everything it
+executed (`ran_all`), which the recorded rows hold: re-scoring the
+skill-only baseline's rows with the new sets and comparing them with
+the originals passes, the figure rows equal on both sides. What does
+change is the "Named commands run" share in the table below, which was
+taken over the old sets.
 
 **The gated arm is the skill-only one.** Each task's prompt holds what a
 user would bring (the answers to the skill's questions, what they want
