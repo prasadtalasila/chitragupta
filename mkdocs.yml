@@ -227,6 +227,7 @@ nav:
           - "Genre: survey": docs/writing-standards/genres/survey.md
           - "Genre: digest": docs/writing-standards/genres/digest.md
           - "Genre: tutorial": docs/writing-standards/genres/tutorial.md
+          - "Genre: textbook chapter": docs/writing-standards/genres/textbook-chapter.md
           - House styles: docs/writing-standards/styles/README.md
       - TikZ figure style: docs/TIKZ-STYLE.md
       - Figure checks:

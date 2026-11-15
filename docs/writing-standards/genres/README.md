@@ -15,6 +15,7 @@ value. [survey.md](survey.md) and [digest.md](digest.md) are written;
 value. [survey.md](survey.md) is the first; `thesis-chapter.md` and
 `research-paper.md` are to come.
 [tutorial.md](tutorial.md) holds the hands-on lesson's rules.
+[textbook-chapter.md](textbook-chapter.md) holds the textbook chapter's.
 Each says:
 
 - what the genre owes its reader;
