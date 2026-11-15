@@ -924,6 +924,41 @@ command is required, all three arms ran it in every run. No declared
 query came back `no evidence`: the security query returned candidates,
 so what a run does with a `no evidence` sub-theme was not exercised.
 
+**Codex and OpenCode, 2026-11-15, advisory.** The outline task again,
+6 skill-only runs an arm on each harness, Codex 0.159.3 and OpenCode
+1.18.34 on the Qwen3.6-35B-A3B `UD-Q4_K_M` file, one `llama-server`
+(b11321, CUDA) per A40 as `serve_models.sh` starts it, two servers an
+arm, each run capped at 1500 seconds. Rows: `inline-outline-local.json`,
+`pointer-outline-local.json` and `handoff-outline-local.json`. Counts
+are runs of 6, read from each transcript and project by hand:
+
+| | Codex inline | Codex pointer | Codex handoff | OpenCode inline | OpenCode pointer | OpenCode handoff |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Gate passed | 6 | 5 | 5 | 2 | 5 | 3 |
+| Opened the loop's text | 0 | 1 | 5 | 0 | 3 | 2 |
+| `draft dossier status` ran | 0 | 0 | 0 | 1 | 0 | 2 |
+| `review verbatim scan` ran | 3 | 5 | 1 | 2 | 1 | 2 |
+| `review verbatim recheck` ran | 0 | 0 | 1 | 0 | 0 | 0 |
+| `revisions.md` has a critique entry | 0 | 0 | 0 | 0 | 0 | 0 |
+| `draft render` ran | 4 | 5 | 2 | 2 | 3 | 2 |
+
+The local model does not work the critique loop in any arm: no run of
+36 logged a critique entry, and the inline arm, with the commands in
+front of it, ran `draft dossier status` once in 12 runs. With nothing
+to lose, these runs cannot show whether moving the step loses it. Two
+things they do suggest, at 6 runs and far inside this harness's noise:
+a handoff got Codex to open the loop's text in 5 runs against 0 inline,
+and the Codex handoff arm then reached `draft render` in 2 runs against
+4 and 5, which is the return risk a handoff carries.
+
+`--compare` calls both harnesses inconclusive, for a reason of this
+launch's own: the bench was started with `PYTHONPATH` set to its
+checkout, the model's `python -m chitragupta` then resolved there, and
+a run that read the package's source named that path, which the bench
+reads as a run outside its project (21 of 36). Those reads were of
+`chitragupta/`, never of a skill, so the hand count above keeps them.
+Start the bench without `PYTHONPATH` to avoid it.
+
 **A scorer bug found on the way.** The first scoring flagged `enrich`
 as run in 3 pointer runs. No run ran it: each had written a note to
 `revisions.md` through a quoted heredoc whose text named the command
