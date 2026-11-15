@@ -134,6 +134,9 @@ _CRITIQUE = re.compile(r"[Cc]ritique against the evidence packet")
 # rider, "Never write any of this to `rejected.md`", sits 6398 characters
 # from `deep-research`'s anchor, so the window is 6800. It applies to
 # the inline form only; a pointer-form step is read whole (below).
+# `deep-research` has since moved to the pointer form; the furthest
+# rider in an inline skill then ended 6286 characters from its anchor
+# (`tutorial-writer`).
 _STEP_TAIL_CHARS = 6800
 
 # The single-shot rule, stated once per step so a later edit cannot

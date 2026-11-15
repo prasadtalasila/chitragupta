@@ -260,6 +260,15 @@ folders. That works because:
 - **`.claude/` is scaffolded for every `--agent`**, so the files are
   there whichever harness a project uses.
 
+The same holds for deep-research's three agent definitions in
+`.claude/agents/`. Only Claude Code loads them as subagents; on Codex
+the skill runs each agent's work itself, and on OpenCode it dispatches
+a `general` subagent, and in both cases the step names the agent's file
+by its path from the project root, as the instructions to follow. So
+what an interviewer, a section writer or a reviewer does is written
+once, in its own file, and `SKILL.md` keeps only the dispatch: when,
+with what packet, and what to transcribe on return.
+
 The price is one rule: **a shared file names no skill and no harness
 tool.** OpenCode must be sent to `<name>-opencode`, and a reference that
 named the unsuffixed skill would send it to one its config denies, so a

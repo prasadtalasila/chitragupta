@@ -140,7 +140,9 @@ protocol from `.claude/agents/deep-research-interviewer.md`, which holds
 the whole interview: the rounds, the searches, judging each hit and the
 packet it returns. Give each its `TOPIC`, its `PERSPECTIVE` (name and
 focus), `ROUNDS` (per depth) and the `DRAFT PATH`, which it passes to
-`--log` on every retrieval call.
+`--log` on every retrieval call. With an outline, also give it its
+section's declared `queries:`, to run verbatim with `--origin declared`,
+and say that any reformulation is `--origin extended`.
 
 **Transcribe every packet before starting Phase 3**: each kept claim
 into `evidence.md`, one ``## `citekey` `` block with a `relevance:`
