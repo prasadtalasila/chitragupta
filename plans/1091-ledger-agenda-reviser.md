@@ -78,9 +78,9 @@ cited either.
 
 | Copy | Before | After |
 | --- | ---: | ---: |
-| `.claude/skills/agenda-reviser/SKILL.md` | 28,097 | 18,012 |
-| `.agents/skills/agenda-reviser/SKILL.md` | 28,172 | 18,087 |
-| `.opencode/skills/agenda-reviser-opencode/SKILL.md` | 28,205 | 18,084 |
+| `.claude/skills/agenda-reviser/SKILL.md` | 28,097 | 18,121 |
+| `.agents/skills/agenda-reviser/SKILL.md` | 28,172 | 18,196 |
+| `.opencode/skills/agenda-reviser-opencode/SKILL.md` | 28,205 | 18,193 |
 
 The cap in `tests/test_skill_size.py` falls from 29,000 to 18,500, with
 its reason. **It stays well above the 8,000 target.** What this file
@@ -239,7 +239,7 @@ repair references are `references/repair-*.md` in this skill's folder.
 | 287-309 | "Accept the repair only if **all** of:" + five bullets | stay; "this now couples classes that used to be independent" cut as history; the explanation of how `objective_new` is computed ("counts the items in `new` that carry `unattended: true`, matched by id as R4 requires") cut as a duplicate of `docs/AGENDA.md` ("Read `objective_new` as well as the delta"); the `math.md` bullet stays, its §12 now `docs/writing-standards/mathematics.md` §12 (PR 0b's split), and "this skill is the likeliest of all of them to break that mapping" cut as rationale |
 | 311-316 | "Otherwise revert the item … re-file the baseline" + fence | stays |
 | 318 | "`--baseline`'s target is also what every `agenda` call refiles on exit" | stays, shortened; "**Two attempts per item.**" stays |
-| 326 | "**The pass loop.**" | stays; `objective_after` and the strictly-falls terminator stay; "read from the payload rather than carried as a literal" cut as a duplicate of step 2's "never hardcode either"; the backstop wording stays |
+| 326 | "**The pass loop.**" | stays; `objective_after` and the strictly-falls terminator stay; "read from the payload rather than carried as a literal" cut as a duplicate of step 2's "never hardcode either"; the backstop wording stays, and it gains "one pass works every unattended item" and "`pass_bound` counts passes, never repairs" after a bench run misread the bound (see "The bench") |
 | 335 | "**One pass per invocation.**" | stays |
 | -- | (new) "Done when each item is accepted, reverted, escalated or refused, and the pass has stopped." | added |
 
@@ -314,8 +314,67 @@ the step that sent the reader there.
 
 ## The bench
 
-See the PR description and the report for the verdict; the after rows
-are in `bench/results/2026-11-15-agenda-reviser-shrink/tier2.json`.
+Skill `agenda-reviser`, Claude Code, skill-only. The task runs
+survey-writer first, seeds two short unquoted source runs and five prose
+findings, and asks for one pass. It reaches steps 1-7, both repair
+references for `prose` and `verbatim-run`, the swap revert and the
+retry re-file. **It cannot reach a `missing-citekey`, a stale span, an
+aid in `refresh_errors`, the sync refusal or a long run** (the seed
+makes none); for those only history and duplicated rationale moved, and
+no command left `SKILL.md`.
+
+Files in `bench/results/2026-11-15-agenda-reviser-shrink/`:
+`tier2.json` (after runs 1-6, the text before the `pass_bound` fix
+below), `before-rerun.json` (before runs 4-6, from a clean `origin/main`
+checkout), `after-confirm.json` (3 runs on the final text). A first
+after batch hit the account's usage limit (HTTP 429 in 2-3 seconds a
+run) and was discarded.
+
+**Verdict: pass** at 6 against 6 (`--compare` exit 0; 3 against 3 was
+inconclusive). Every gated command is unchanged except two that are
+not steps of this skill:
+
+- `draft style` 3/6 -> 0/6, and 0/3 in the confirmation runs. Step 4
+  now offers the command only to reproduce a finding, and step 5's
+  `--baseline` cycle runs the prose check itself on every repair, so no
+  run went without the prose findings: every after run repaired the
+  seeded `prose` items it reached (all five, except run 6, below). The
+  old file gave the command its own section and fence, which half the
+  before runs ran.
+- `draft dossier status` 2/6 -> 1/6: draft-reviser's step 1, which this
+  skill never named; the drift it reports is an agenda source.
+- The forbidden `enrich` fell 1/6 -> 0/6.
+
+All 9 after runs passed their gate and their prerequisite survey's gate.
+Seven of them opened `repair-prose.md` and `repair-verbatim-run.md`
+(the before arm's first 3 runs opened neither, its runs 4-6 one of
+three); every after run opened `verbatim-scan.md` and `draft-diff.md`.
+
+**Compliance, read from each after run's project** (`revisions.md` and
+the transcript), runs 1-6 then the 3 confirmation runs:
+
+| Question | Runs 1-6 | Confirmation |
+| --- | --- | --- |
+| Logged every repair attempt in `revisions.md`, reverts included | 6/6 | 3/3 |
+| Ran the gate and the `--baseline` recheck after every edit, before keeping it | 6/6 | 3/3 |
+| Stopped correctly: worked the list while the count strictly fell, no second pass | 5/6 | 3/3 |
+
+The count never stopped falling in any run (each accepted repair
+lowered it; the two `objective_new` 1 swaps were reverted and retried,
+which is the per-item rule), so the stop on a non-falling count was not
+exercised. **Run 6 stopped after three accepted repairs**, reading
+`pass_bound` (3) as a repair budget, and left 12 objective items open.
+The old text was as ambiguous ("Continue to the next item only while …
+Stop at `pass_bound`") and no before run misread it, but this text had
+done it once, so step 5 now says that one pass works every unattended
+item and that `pass_bound` counts passes, never repairs. The 3
+confirmation runs on that text each worked the list to 0.
+
+Two observations outside the skill: most runs in both arms ran
+`review agenda --accept` on the uncited-claim items because the task
+prompt asks for it, against the guardrail (one run in each arm refused,
+citing it); and concurrent runs wrote helper scripts to the same `/tmp`
+path, so one run's recheck once ran against another run's project.
 
 ## For the plan
 
