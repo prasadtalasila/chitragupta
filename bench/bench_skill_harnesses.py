@@ -64,14 +64,17 @@ sys.path.insert(0, str(REPO_ROOT))
 from tests.test_skill_harness_copies import SUFFIX, USER_SKILLS  # noqa: E402
 from tests.test_skill_references import NAMED_PATH  # noqa: E402
 
-from skill_bench_tasks import TAIL_WORDS, TIER2_TASKS  # noqa: E402  (bench/ is sys.path[0])
+from skill_bench_tasks import OUTLINE_TASKS, TAIL_WORDS, TIER2_TASKS  # noqa: E402  (bench/ is sys.path[0])
 from skill_commands import (  # noqa: E402
     GATED,
     commands_run,
     commands_run_in,
     compare,
     expected_commands,
+    handed_off,
+    handoffs,
     score_commands,
+    skill_files,
 )
 
 EXAMPLES = REPO_ROOT / "docs" / "examples"
@@ -385,11 +388,16 @@ TOOL_INPUT_KEYS = {"file_path", "filePath", "command", "path"}
 
 def score_run(source: Path, harness: str, skill: str, log: Path) -> dict:
     """Task 2's fields for one run, against the commands the harness's own
-    copy of the skill, in the scaffolded checkout, names."""
-    skill_md = source / SKILL_DIRS[harness] / f"{skill}{SUFFIX[harness]}" / "SKILL.md"
-    named = [source / m for m in SKILL_FILE.findall(skill_md.read_text("utf-8"))]
-    files = [skill_md, *dict.fromkeys(p for p in named if p.is_file() and p != skill_md)]
-    return score_commands(expected_commands(*files), commands_run(tool_input_list(log)))
+    copy of the skill, in the scaffolded checkout, names -- and those of
+    each skill it hands a step to -- plus how the run loaded each of
+    those skills (`skill_load`)."""
+    folder, name = SKILL_DIRS[harness], f"{skill}{SUFFIX[harness]}"
+    inputs = tool_input_list(log)
+    files = skill_files(source, folder, name, SKILL_FILE)
+    scored = score_commands(expected_commands(*files), commands_run(inputs))
+    targets = handed_off(source, folder, name)
+    scored["handoffs_loaded"] = {t: skill_load(log, inputs, folder, t) for t in targets}
+    return scored
 
 
 def tool_input_list(log: Path) -> list:
@@ -433,6 +441,46 @@ def references_read(log: Path) -> list:
         if match not in seen:
             seen.append(match)
     return seen
+
+
+def skill_load(log: Path, inputs: list, folder: str, name: str) -> "str | None":
+    """How a run loaded skill `name`: "skill" through the harness's skill
+    tool, "read" by opening its `SKILL.md` in `folder` with a file tool
+    or a shell command, None when the transcript shows neither.
+
+    Claude Code's `Skill` call carries `{"skill": name}` and OpenCode's
+    `skill` tool `{"name": name}`; Codex has no skill tool, so a read is
+    its only load. A read is not rare elsewhere either: in the 36 Claude
+    Code genre-writer transcripts of the 2026-11-13/14 baselines, 22
+    loaded `figure-drawer` by reading its `SKILL.md` and 14 through
+    `Skill`. A read of another harness's copy is not this harness's
+    skill, and is not counted.
+    """
+    called = False
+
+    def walk(node):
+        nonlocal called
+        if isinstance(node, dict):
+            state = node.get("state")
+            given = node.get("input") or (state.get("input") if isinstance(state, dict) else None)
+            tool = node.get("name") or node.get("tool")
+            if tool in ("Skill", "skill") and isinstance(given, dict):
+                called = called or name in (given.get("skill"), given.get("name"))
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            walk(json.loads(line))
+        except ValueError:
+            continue
+    if called:
+        return "skill"
+    path = re.compile(re.escape(f"{folder}/{name}/SKILL.md") + r"(?![\w.-])")
+    return "read" if any(path.search(one) for one in inputs) else None
 
 
 def gate(project: Path, draft: str) -> int:
@@ -480,6 +528,8 @@ def tier2_job(args, harness: str, skill: str, k: int, servers: "queue.Queue") ->
             servers.put(url)
     outcome.update(harness=harness, skill=skill, run=k, references=references_read(log))
     outcome["prompt"] = "skill-only" if args.skill_only else "full"
+    if args.outline and skill in OUTLINE_TASKS:
+        outcome["prompt"] += "+outline"
     # A run that resolved its project from this checkout or `--source`
     # measured the wrong skills; `--compare` leaves it out.
     outcome["outside_project"] = leaked(transcript_text(log))
@@ -495,7 +545,9 @@ def task_prompt(args, skill: str, prerequisite: bool = False) -> str:
     named, so only the skill can make a model run them), else its full
     one. A prerequisite always gets the full prompt: a reviser is measured
     on what it does to a complete survey, not on a survey's own skips."""
-    return TIER2_TASKS[skill].prompt(skill_only=args.skill_only and not prerequisite)
+    tasks = OUTLINE_TASKS if args.outline and not prerequisite else {}
+    task = tasks.get(skill, TIER2_TASKS[skill])
+    return task.prompt(skill_only=args.skill_only and not prerequisite)
 
 
 def tier2(args) -> list:
@@ -616,7 +668,7 @@ def self_check() -> None:
             encoding="utf-8",
         )
         assert references_read(log) == [".claude/skills-common/references/a.md"]
-        for name, task in TIER2_TASKS.items():
+        for name, task in [*TIER2_TASKS.items(), *OUTLINE_TASKS.items()]:
             only = task.prompt(skill_only=True).lower()
             named = [word for word in TAIL_WORDS if word in only]
             assert not named, f"{name}'s skill-only prompt names a closing step: {named}"
@@ -633,6 +685,7 @@ def self_check() -> None:
         _check_tier1_reads(project, log)
         _check_tier1_docs(project, log)
         _check_command_scoring(project)
+        _check_handoffs(project)
         _check_compare(project)
         _check_shell_shapes()
         (ref / "b.md").write_text("", encoding="utf-8")
@@ -766,11 +819,75 @@ def _check_command_scoring(project: Path) -> None:
     assert scored["forbidden_ran"] == ["corpus sync"], scored
 
 
+# (skill text, the skills it hands a step to and gets back from). The
+# first two are the real wordings, wrapped as the skills wrap them; the
+# rest name a sibling without handing it a step, and must not pull its
+# commands into the caller's expected set.
+HANDOFF_SHAPES = [
+    (
+        "Hand the drawing itself to `figure-drawer`, and come back to this\n   step",
+        ["figure-drawer"],
+    ),
+    ("**To redraw it, hand it to `figure-drawer`**\n  and come back to step 6", ["figure-drawer"]),
+    ("| Hand off to `corpus-reviser` -- not this skill |", []),
+    ("To change a survey, use `draft-reviser` instead.", []),
+    ("a shorter figure, drawn through `figure-drawer`. Never edit", []),
+    ("Hand it to `x`. Then come back to this step.", []),
+    ("If `figure-drawer` was not loaded, come back and run it yourself.", []),
+]
+
+
+def _check_handoffs(project: Path) -> None:
+    """A step handed to a sibling skill keeps its commands there: they are
+    the caller's expected commands, the sibling's references' too, on the
+    harness's own copies only; a sibling merely mentioned adds nothing; a
+    handoff cycle ends; and the run records how it loaded the sibling."""
+    for text, want in HANDOFF_SHAPES:
+        assert handoffs(text) == want, f"{text!r}: {handoffs(text)}, want {want}"
+    folder = project / SKILL_DIRS["opencode"]
+    for name, text in {
+        "c-opencode": "Run `python -m chitragupta.draft gate x`. Hand the loop to\n"
+        "`l-opencode`, and come back to this step. Hand it to `l`, and come back.\n"
+        "To revise, use `r-opencode` instead.\n",
+        "l-opencode": "Run `python -m chitragupta.review agenda x`, then read\n"
+        "`.claude/skills/l/references/loop.md`. Hand a check to `c-opencode`, and come back.\n",
+        "r-opencode": "Run `python -m chitragupta.draft diff x`.\n",
+    }.items():
+        (folder / name).mkdir(parents=True)
+        (folder / name / "SKILL.md").write_text(text, encoding="utf-8")
+    (project / ".claude/skills/l/references").mkdir(parents=True)
+    loop = project / ".claude/skills/l/references/loop.md"
+    loop.write_text("Then `python -m chitragupta.draft style x`.\n", encoding="utf-8")
+    assert handed_off(project, SKILL_DIRS["opencode"], "c-opencode") == ["l-opencode"]
+    files = skill_files(project, SKILL_DIRS["opencode"], "c-opencode", SKILL_FILE)
+    assert files[-1] == loop, "the handed-off skill's reference is read too"
+    log = project / "handoff.jsonl"
+    log.write_text("", encoding="utf-8")
+    scored = score_run(project, "opencode", "c", log)
+    want = ["draft gate", "review agenda", "draft style"]
+    assert scored["expected"] == want, f"no `r` command, no cycle: {scored['expected']}"
+    assert scored["handoffs_loaded"] == {"l-opencode": None}, scored
+    loads = [
+        ({"tool": "skill", "state": {"input": {"name": "l-opencode"}}}, "skill"),
+        ({"name": "Skill", "input": {"skill": "l-opencode"}}, "skill"),
+        ({"input": {"command": "cat .opencode/skills/l-opencode/SKILL.md"}}, "read"),
+        ({"input": {"filePath": f"{project}/.opencode/skills/l-opencode/SKILL.md"}}, "read"),
+        ({"input": {"filePath": ".claude/skills/l/SKILL.md"}}, None),
+        ({"tool": "skill", "state": {"input": {"name": "r-opencode"}}}, None),
+        ({"input": {"command": "cat .opencode/skills/l-opencode/SKILL.md.bak"}}, None),
+    ]
+    for event, how in loads:
+        log.write_text(json.dumps(event) + "\n", encoding="utf-8")
+        got = score_run(project, "opencode", "c", log)["handoffs_loaded"]["l-opencode"]
+        assert got == how, f"{event}: {got}, want {how}"
+
+
 # (one tool call's command, the command keys it ran). Each row is a shape
 # a real transcript produced or a reviewer found the scorer misreading.
 SHELL_SHAPES = [
     ("cat >> r.md <<'EOF'\nIt's done.\nEOF\npython -m chitragupta.draft gate x", ["draft gate"]),
     ("cat > n.md <<EOF\npython -m chitragupta.draft render x\nEOF", []),
+    ("cat >> r.md <<'EOF'\nrun `python -m chitragupta.enrich` first\nEOF", []),
     ("cat <<-EOF > n.md\n\tpython -m chitragupta.draft render x\n\tEOF\necho ok", []),
     ("echo it's\npython -m chitragupta.draft style x", ["draft style"]),
     ("python -m chitragupta.draft gate --help", []),
@@ -945,6 +1062,12 @@ def parse(argv) -> argparse.Namespace:
         action="store_true",
         help="tier 2: leave every task's closing steps out of its prompt, so only the "
         "skill asks for them (the arm a shrink is gated on)",
+    )
+    parser.add_argument(
+        "--outline",
+        action="store_true",
+        help="tier 2: survey-writer's task opens its dossier with an outline, which makes "
+        "the critique step's `draft dossier status` required and not optional",
     )
     parser.add_argument(
         "--source", type=Path, default=REPO_ROOT, help="the checkout whose skills are scaffolded"

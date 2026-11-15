@@ -266,10 +266,12 @@ example; "the revision skill the step names" for `draft-reviser`).
 
 ## If SK-0c chooses handoffs
 
-SK-0c is deciding whether a shared *procedure* is reached by a skill
-handoff rather than an `.md` pointer. If it chooses handoffs, these
-pointers in the new survey-writer would become handoffs, and this is
-what would move with each. Every one of these sections and files was
+**It did not.** SK-0c measured a skill handoff against an `.md`
+pointer and kept the pointers (plans/1091-skill-shrink.md, PR 0c,
+decided 2026-11-15), so nothing below is planned. It is kept as the
+record of what a handoff would have moved. Had it chosen handoffs,
+these pointers in the new survey-writer would have become handoffs,
+and this is what would have moved with each. Every one of these sections and files was
 written to be lifted out whole: each opens with its own condition and
 names no step number.
 
