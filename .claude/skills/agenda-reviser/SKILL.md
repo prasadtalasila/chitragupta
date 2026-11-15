@@ -95,6 +95,10 @@ read.
 
 ### 2. Take the baseline agenda
 
+Rebuild the section map first, with step 7's `dossier sections
+--citekeys --write`, so the baseline and the final scan read the same
+table. Then:
+
 ```bash
 python -m chitragupta.review agenda content/drafts/<path> --json
 ```
