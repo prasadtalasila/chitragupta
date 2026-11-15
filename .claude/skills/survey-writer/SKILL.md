@@ -198,56 +198,26 @@ if asked what bears on a survey, read
    equation, read `docs/writing-standards/genres/survey.md`. Done when
    each figure has both files and a caption.
 
-10. **Critique against the evidence packet, before gating.** Read the
-    dossier's `evidence.md` -- the `claim:`/`quote:` blocks step 2
-    recorded -- against the draft, section by section, and list in
+10. **Critique against the evidence packet, before gating.** This step
+    runs on every survey, once the draft is written and before step 11's
+    gate. Read the dossier's `evidence.md` -- the `claim:`/`quote:` blocks
+    step 2 recorded -- against the draft, section by section, and list in
     priority order up to five places where the prose claims more than
     its `claim:` supports, omits a kept `claim:`, or drifts from its
     wording. One inline judgement call: not a subagent dispatch and not
     a deterministic check.
 
-    **Run this step: it is never a condition of presenting, but it is not done
-    until you have run its commands.** Read
-    `.claude/skills-common/references/critique.md` now, before listing
-    anything, and work it through with `content/drafts/<slug>.md` as
-    `<draft>`. In outline:
-
-    1. Where the dossier has an `outline.md`, read what the corpus could not
-       answer:
-
-       ```bash
-       python -m chitragupta.draft dossier status content/drafts/<slug>.md
-       ```
-
-    2. Take the baseline:
-
-       ```bash
-       python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write
-       python -m chitragupta.review verbatim scan content/drafts/<slug>.md --write --json
-       python -m chitragupta.draft style content/drafts/<slug>.md --json
-       ```
-
-       If the scan's `tiers_not_run` is not empty, quote the reason: **genuine
-       restatement is only detected where the embedding tier can run**.
-
-    3. Repair at most three items, each edit with `Edit`, inside that section
-       only. Keep an edit only if all three checks pass the reference's test;
-       otherwise restore the text you kept:
-
-       ```bash
-       python -m chitragupta.draft gate content/drafts/<slug>.md
-       python -m chitragupta.review verbatim recheck content/drafts/<slug>.md \
-           --baseline content/review/<topic>/<stem>.verbatim.json --json
-       python -m chitragupta.draft style content/drafts/<slug>.md --json
-       ```
-
-       Read `style`'s count only as a number: it reports what §9 marks
-       decidable, and you fix none of them here.
-
-    4. Log every attempt, kept or reverted, in the dossier's `revisions.md`.
-
-    Done when every attempt is logged, or you have said that nothing
-    cleared the bar.
+    Read `.claude/skills-common/references/critique.md` now, before
+    listing anything, and follow it with `content/drafts/<slug>.md` as
+    `<draft>`; make each edit with `Edit`.
+    **This step is not done until the loop the reference describes has
+    run**: the baseline, then at most three repairs, each checked and
+    logged in the dossier's `revisions.md`. It is never a condition of
+    presenting. Come back with the list, each repair kept or reverted,
+    the scan's `tiers_not_run` reason if it gave one, and whether the
+    declared queries are exhausted; then continue to step 11. Done when
+    the loop has returned and every attempt is logged, or you have said
+    that nothing cleared the bar.
 11. **Gate before presenting.** Save the draft as
     `content/drafts/<slug>.md` (the canonical, source-of-truth format),
     then:
