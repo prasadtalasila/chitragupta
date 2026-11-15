@@ -19,7 +19,11 @@ What a shrink may move is prose: rationale and detail go to the skill's
 `references/` or `.claude/skills-common/references/`, behind a pointer
 that says when to read them. Every `python -m chitragupta...` command, every
 marker a draft must carry and every phrase a test reads from the raw file
-stay in `SKILL.md` (plans/1091-skill-shrink.md, Decision 2).
+stay in `SKILL.md` (plans/1091-skill-shrink.md, Decision 2), except where
+a step was measured holding as a pointer: the render step
+(`render-and-references.md`) and the critique loop (`critique.md`, for the
+skills in tests/test_skill_pregate_feedback_step.py's `_POINTER_FORM`;
+docs/HARNESS.md has both measurements).
 """
 
 import pytest
@@ -49,9 +53,10 @@ BUDGET = {
     "skill-bench": (5_000, None),
     "review-digest": (17_000, _LATER),
     "survey-writer": (
-        15_000,
-        "#1091: deduplicated from 32 KB; the rest is commands and tested text, "
-        "and the target is a guideline (plans/1091-skill-shrink.md, Decision 1)",
+        14_000,
+        "#1091: deduplicated from 32 KB, then the critique loop moved behind its "
+        "pointer; the rest is commands and tested text, and the target is a "
+        "guideline (plans/1091-skill-shrink.md, Decision 1)",
     ),
     "textbook-chapter-writer": (33_000, _LATER),
     "thesis-chapter-writer": (34_000, _LATER),
