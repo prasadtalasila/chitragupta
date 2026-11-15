@@ -319,3 +319,22 @@ the revision; before runs, 109-177.
   the wide pass re-searches "every sub-theme in `sections.md`"; the skill
   takes `retrieval.md`'s recorded queries first and falls back to
   `sections.md`'s headings. That predates this PR and is left as is.
+
+## After the shrink: the cost sentence opens the loop
+
+The bench above found the weak spot: the cost sentence came before the
+first search in 3 of 6 runs on the shrunk skill, and in none of the 3
+fresh runs on `main`, so the shrink did not cause it. The owner asked
+for it to be fixed in its own PR.
+
+The skill has always asked for the sentence "before the first search",
+in the section "Say what it costs, before you start", above the
+procedure. The procedure begins "Follow draft-reviser's loop, steps 1
+through 7", and a model following steps goes to step 1. The fix adds
+one paragraph as the first thing in `## The loop`, ahead of that
+sentence, in all three copies: read `scope.md`, give the cost sentence
+as the first thing written in the run, no search and no edit before it,
+then start step 1. The section above is unchanged and still says what
+the sentence holds. `tests/test_skill_corpus_reviser_cost.py` pins the
+paragraph and its place, and failed on all three copies before the
+edit.
