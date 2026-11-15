@@ -41,7 +41,12 @@ _LATER = "#1091: shrinks to its target in its own PR"
 BUDGET = {
     "agenda-reviser": (29_000, f"{_LATER}; draft diff closing step (#1194)"),
     "book-assembler": (20_000, _LATER),
-    "corpus-reviser": (13_000, _LATER),
+    "corpus-reviser": (
+        11_000,
+        "#1091: deduplicated from 12.8 KB; it states only how its pass differs from "
+        "draft-reviser's loop, and the rest is its guardrails, routing table, three "
+        "closing steps' commands and tested text (plans/1091-ledger-corpus-reviser.md)",
+    ),
     "deep-research": (41_000, _LATER),
     "demo-recorder": (6_000, None),
     "draft-reviser": (

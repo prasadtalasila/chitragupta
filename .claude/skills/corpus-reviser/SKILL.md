@@ -6,24 +6,14 @@ tags: [revision, dossier, citation, corpus]
 
 # corpus-reviser
 
-`draft-reviser` reads the dossier instead of the corpus, and re-searches
-only the sub-theme a change actually touches. That is the right default,
-and it is an economy rather than a rule about what anyone is allowed to
-ask for. This skill is the way out of it.
-
-It exists as a separate skill so the choice is yours and is made once,
-out loud. `draft-reviser` contains no instructions for a wide search, so
-it cannot drift into one; invoking this skill is how you say the cost is
-worth it. `SOUL.md` is why the distinction is a door rather than a gate:
-how wide a revision should be is a judgment about your draft, and a
-machine does not outrank you on one of those.
-
-**What this is not is a re-run of the genre skill.** That remains the one
-thing that is never right. It throws away the dossier -- every rejection
-and the reason for it, the recorded reader, the glossary, the steering
-you gave in chat -- and then pays to rediscover a worse version of it.
-This keeps all of that and spends tokens only on what is genuinely
-unknown.
+A wide revision pass: `draft-reviser`'s loop, with a search of every
+sub-theme the dossier records in place of its search of only the one a
+change touches. It keeps the dossier -- every rejection and its reason,
+the recorded reader, the glossary, the steering -- and spends tokens only
+on what is still unknown. Paths in this skill are from the project root,
+not from this skill's own folder. If the user asks why the wide pass is a
+separate skill rather than a mode, `docs/DRAFT-ITERATION.md` ("The scoped
+default, and the way out of it") has the answer.
 
 ## When to invoke
 
@@ -37,75 +27,60 @@ unknown.
 | User asks for a **new** draft | Use the matching genre skill |
 | You are not sure which of the two this is | Use `draft-reviser`, and say you did |
 
-That last row is not modesty. Being wrongly narrow costs one clarifying
-sentence; being wrongly wide costs the tokens, and the user did not
-agree to spend them.
-
-**Read-only over the corpus layer**, exactly as everywhere else. Never
-run `python -m chitragupta.corpus sync` and never run `python -m
-chitragupta.enrich`: both
-take the
-pipeline's write lock and can run for tens of minutes, and they are the
-user's to run.
-
-## Collection scoping (#195): inherit it, do not re-ask
-
-`scope.md` may carry a `collection:` line, written by the genre skill
-that produced this draft. If it does, **every retrieval call in this pass
-carries the same `--collection`**, and the user is not asked again.
-
-This matters more here than it does at drafting time. A draft grounded
-in one curated shelf that is then revised against the whole library has
-silently changed what it is made of, and the change is invisible in the
-diff: the citekeys are all real, the gate still passes, and nothing in
-`retrieval.md` records that the scope moved (#254).
-
-A missing line, or `- collection: (whole corpus)`, means search
-everything -- exactly as this skill behaved before this section existed.
-
-**This skill is the one exception.** A whole-corpus pass *is* a
-widening, and that is what the user asked for. So it may search outside
-the recorded collection -- but it says so first, in the cost statement,
-naming the collection it is about to search past, and it records the
-widening in `revisions.md` so the next reader knows the draft is no
-longer scoped to what `scope.md` says it is. It does not rewrite the
-`collection:` line: the user chose that, and only the user unchooses it.
-
 ## Say what it costs, before you start
 
-One sentence, before the first search, and let them stop you. A wide pass
-re-searches every sub-theme the dossier records and reads the whole draft,
-so it costs roughly what the original drafting run did, minus the
-clustering and the writing.
+One sentence, before the first search, and let the user stop you. A wide
+pass re-searches every sub-theme the dossier records and reads the whole
+draft, so it costs roughly what the original drafting run did, minus the
+clustering and the writing. If `scope.md` carries a `collection:` line,
+the same sentence names that collection as the one this pass searches
+past (below).
 
 If the ledger is empty or absent, stop and say so rather than revising
-around it. This skill is defined by going back to the corpus, so there is
+around it: this skill is defined by going back to the corpus, so there is
 nothing to fall back on.
+
+Done when the user has the cost sentence, or you have stopped on an
+empty ledger.
+
+## Collection scoping: say you are widening it
+
+`scope.md` may carry a `collection:` line, written by the genre skill
+that produced this draft; a missing line, or
+`- collection: (whole corpus)`, means it already searches everything. A
+whole-corpus pass *is* a widening, and that is what the user asked for,
+so its searches carry no `--collection`. A draft grounded in one curated
+shelf and re-checked against the whole library has changed what it is
+made of, and nothing in the diff shows it: the citekeys are all real and
+the gate still passes. So say so in the cost sentence, record the
+widening in `revisions.md`, and leave the `collection:` line as it
+stands: the user chose it, and only the user unchooses it.
 
 ## The loop
 
-Paths in this skill are from the project root, not from this skill's
-own folder.
-
 Follow `.claude/skills/draft-reviser/SKILL.md`'s `## The loop`, steps 1
 through 7, unchanged except for the two steps below. Read that file; do
-not reconstruct it from memory. It is the same scope check, the same
-edit discipline, the same dossier write-back and the same exit.
+not reconstruct it from memory. Then run this skill's own three closing
+steps, which follow.
 
 **Step 3 becomes a whole-draft read.** `python -m chitragupta.draft dossier sections
 content/drafts/<path>` still gives the outline, but here it is a work
 list rather than a filter: you read every section, because a wide pass
-is judging the whole draft against the corpus, not one claim.
+is judging the whole draft against the corpus, not one claim. Done when
+every section is read.
 
 **Step 4 stops being a decision.** In `draft-reviser` the question is
 whether to search at all, and the answer is usually no. Here it is
 already answered.
 
-Take the sub-themes from `retrieval.md`'s recorded queries where the
-dossier has them -- those are the questions this draft was actually built
-by asking. Fall back to the section headings in `sections.md` where it
-doesn't, which is the case for any draft written before `--log` was
-passed. One search each:
+Take the sub-themes from `retrieval.md`'s recorded queries -- those are
+the questions this draft was actually built by asking -- and fall back to
+the section headings in `sections.md` where it records none. Read
+`rejected.md` first: a candidate listed there with a reason is not
+re-retrieved and re-judged, because a wide search finds what was never
+weighed and is no licence to re-litigate what was. If a recorded reason
+has genuinely stopped holding (usually because the scope moved), say
+which one and why before re-opening it. Then one search each:
 
 ```bash
 python -m chitragupta.draft retrieve search "<sub-theme>" --k 15 --log content/drafts/<path>
@@ -113,120 +88,109 @@ python -m chitragupta.draft retrieve search "<sub-theme>" --k 15 --log content/d
 python -m chitragupta.draft retrieve evidence "<sub-theme>" --citekey <key> --log content/drafts/<path>
 ```
 
-`evidence` stays optional and stays for deepening an acceptance -- reach
-for it when a snippet is not enough to decide on a source you are minded
-to cite. Score what you keep the way `survey-writer` step 2 describes,
-and record both outcomes: kept into `evidence.md`, turned down into
-`rejected.md`. A block from before this run that carries only `support:`
-is never rewritten to `claim:`/`quote:` -- read it as `quote:` (the
-conservative reading) and leave it exactly as it stands.
+`evidence` is optional: reach for it when a snippet cannot settle a
+source you are minded to cite. Before recording what you kept and what
+you turned down, read `.claude/skills-common/references/genre-steps.md`
+§5. A block from before this run that carries only `support:` is read as
+`quote:` and left exactly as it stands.
 
-## What does not relax
+Done when every sub-theme has had its search, each with `--log`, and both
+outcomes are recorded in `evidence.md` and `rejected.md`.
 
-The cost is the only thing this skill changes. Everything that makes a
-revision cheaper *to repeat* still holds, and dropping any of it would
-turn a wide pass into the re-run this skill exists to avoid.
+**Steps 5 to 7 hold as written, and three of their rules bind harder
+here:**
 
-- **`rejected.md` is still consulted first, and still honoured.** A
-  candidate listed there with a reason is not re-retrieved and
-  re-judged. A wide search finds what was never weighed; it is not a
-  licence to re-litigate what was. If a recorded reason has genuinely
-  stopped holding -- usually because the scope moved -- say which one and
-  why before re-opening it.
-- **Every call carries `--log`.** The point of choosing the expensive
-  path deliberately is that the cost lands in `retrieval.md` and can be
-  looked at afterwards, instead of being guessed at.
 - **`Edit`, never `Write`.** A wide *search* does not imply a wide
-  *rewrite*. Most sections survive a re-check untouched, and rewriting
-  those costs thousands of output tokens to produce a diff nobody can
-  review.
-- **Never write a citekey** that isn't already in the draft, in
-  `evidence.md`, or in a `search()` result you just read. A fabricated
-  citekey is the one failure this whole pipeline exists to prevent, and
-  a long run is exactly where the temptation shows up.
-- **The dossier is written back** -- `scope.md` only if the user agreed
-  to a scope change, plus `evidence.md`, `rejected.md`, `sections.md`,
-  `steering.md`, and a `revisions.md` entry saying plainly that this pass
-  was wide and why, whose `Sections:` line names every section touched.
-  **`math.md` too, if the draft has one**: a wide rewrite rewords more
-  quantities than a scoped one
-  (`.claude/skills-common/references/figures-tables-equations.md` §6).
-- **Figures, tables and equations follow the same rules as in
-  `draft-reviser`.** Figures follow the draft's own genre, read from
-  `scope.md`'s `genre:` line, and a `deep-research` draft gets none,
-  wide pass or not. A figure exists in two forms that change together.
-  Tables, captioned figures and numbered equations renumber themselves,
-  so only their ids are a wide pass's concern, and a wide pass is the
-  one most likely to move one into another section.
-  `.claude/skills-common/references/figures-tables-equations.md`
-  §1, §2, §3, §4 and §5 have each rule; read the section for whatever
-  this pass touches.
-- **The gate is the exit.** Never present a draft that hasn't passed
-  `python -m chitragupta.draft gate`.
-- **Re-stamp the draft fingerprint once the gate passes** (#454): `python
-  -m chitragupta.draft dossier stamp content/drafts/<path>`. A wide pass
-  is the one most likely to have touched every section, so skipping this
-  is also the surest way to leave the next revision reading `CHANGED`
-  against a baseline this pass already accounted for.
-- **Run the prose check** -- `python -m chitragupta.draft style
-  content/drafts/<path>` -- after the gate and before presenting.
-  `draft-reviser`'s numbered steps 1-7 do not reach its unnumbered riders,
-  so this is written out here for the same reason the scan offer is.
-  Read `.claude/skills-common/references/prose-check.md` now and follow
-  it. **Fix none of the findings:** a wide pass rewrites against sources
-  the draft never cited, which makes it the pass most able to import another author's
-  spelling along with their point, and also the pass least entitled to
-  tidy prose nobody asked about. Findings go to `draft-reviser`'s
-  copy-edit mode, not into this pass.
-- **Run the verbatim scan.** Before presenting, rebuild the section map
-  and scan:
+  *rewrite*: most sections survive a re-check untouched.
+- **Step 6's `revisions.md` entry says plainly that this pass was wide
+  and why**, names any collection it searched past, and its `Sections:`
+  line names every section touched. A wide rewrite rewords more
+  quantities than a scoped one, so keep `math.md` in step if the draft
+  has one (`.claude/skills-common/references/figures-tables-equations.md`
+  §6), and when the pass adds or rewords a symbol, a condition or a
+  derivation, read `.claude/skills-common/references/mathematical-prose.md`
+  before writing it.
+- **When the pass touches a figure, a table or an equation**, read the
+  matching section of
+  `.claude/skills-common/references/figures-tables-equations.md` §1, §2,
+  §3, §4 and §5 before editing it. Figures follow the draft's own genre,
+  read from `scope.md`'s `genre:` line, and a `deep-research` draft gets
+  none, wide pass or not. A figure's two forms change together. Only
+  ids matter for tables, captioned figures and numbered equations, and a
+  wide pass is the one most likely to move one into another section.
 
-  ```bash
-  python -m chitragupta.draft dossier sections content/drafts/<path> --citekeys --write
-  python -m chitragupta.review verbatim scan content/drafts/<path>
-  ```
+### Run the prose check
 
-  The first command is not optional. A wide pass rewrites against sources
-  the draft may never have cited, so it is the pass most likely to have
-  changed which section leans on which paper -- and the embedding tier
-  compares each section against the citekeys that section's `sections.md`
-  row records.
+After step 7, and the stamp it ends on, before presenting:
 
-  It earns its place after a wide pass in particular: this skill rewrites
-  against sources the draft may never have cited, so it is the pass most
-  able to import someone else's phrasing into a paragraph that credits no
-  one. **A review aid, not a gate: it is never a condition of
-  presenting.**
+```bash
+python -m chitragupta.draft style content/drafts/<path>
+```
 
-  Read `.claude/skills-common/references/verbatim-scan.md`
-  now and follow it: what to show, what the scan could not check, and
-  how to keep the report. Repairing a finding is `agenda-reviser`'s
-  job, and only if the user asks.
-- **Show what changed, last** -- an unnumbered rider too:
-  `python -m chitragupta.draft diff content/drafts/<path> --format pdf`,
-  then read `.claude/skills/draft-reviser/references/draft-diff.md` now
-  and follow it.
+Read `.claude/skills-common/references/prose-check.md` now and follow it.
+A wide pass is the one most able to import another author's spelling
+along with their point, and the one least entitled to tidy prose nobody
+asked about: findings go to `draft-reviser`'s copy-edit mode, not into
+this pass.
+
+Done when every finding is reported and none is fixed.
+
+### Run the verbatim scan
+
+Before presenting, rebuild the section map and scan:
+
+```bash
+python -m chitragupta.draft dossier sections content/drafts/<path> --citekeys --write
+python -m chitragupta.review verbatim scan content/drafts/<path>
+```
+
+The first command is not optional. A wide pass rewrites against sources
+the draft may never have cited, so it is the pass most likely to have
+changed which section leans on which paper, and most able to import
+someone else's phrasing into a paragraph that credits no one. **A review
+aid, not a gate: it is never a condition of presenting.** Read
+`.claude/skills-common/references/verbatim-scan.md` now and follow it.
+Repairing a finding is `agenda-reviser`'s job, and only if the user asks.
+
+Done when the findings are shown.
+
+### Show what changed
+
+Last, once the `revisions.md` entry is written:
+
+```bash
+python -m chitragupta.draft diff content/drafts/<path> --format pdf
+```
+
+Read `.claude/skills/draft-reviser/references/draft-diff.md` now and
+follow it.
+
+Done when the user has the report.
 
 ## Guardrails
 
 - **Never invoke this skill on your own initiative.** It is the user's
   choice, and an unrequested wide pass is the most expensive thing that
-  can happen without anyone asking for it.
-- **Never re-run the genre skill.** If the request truly needs a new
+  can happen without anyone asking for it. When unsure, use
+  `draft-reviser` and say so: being wrongly narrow costs one clarifying
+  sentence; being wrongly wide costs tokens the user did not agree to
+  spend.
+- **Never re-run the genre skill.** It discards the dossier and pays to
+  rediscover a worse version of it. If the request truly needs a new
   draft, say that and hand off explicitly.
 - **Never run `python -m chitragupta.corpus sync` or `python -m chitragupta.enrich`.**
+  The corpus is read-only: both take the pipeline's write lock, can run
+  for tens of minutes, and are the user's to run.
 - **Never treat a wide search as permission to re-judge `rejected.md`.**
-- **Never silently change scope, reader or terminology.**
+  Honour it, and re-open a rejection only by saying which and why.
+- **Never write a citekey** that isn't already in the draft, in
+  `evidence.md`, or in a `search()` result you just read. A long run is
+  exactly where the temptation shows up.
+- **Never silently change scope, reader or terminology.** Change them
+  only as the user agreed in step 2, and record it in `scope.md`.
+- **The gate is the exit.** Never present a draft that hasn't passed
+  `python -m chitragupta.draft gate`.
 - **Report what the pass actually changed** -- including the sections you
   re-checked and left alone, which is the evidence that the cost bought
   something. Say how many sub-themes were searched and how many sources
   changed.
-
-## Sources
-
-The prose standards this skill inherits are documented, with
-per-principle attribution, in
-[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution).
-The reasoning for why the scoped default exists, and why the way out of
-it is a separate skill rather than a paragraph, is in
-[`docs/DRAFT-ITERATION.md`](../../../docs/DRAFT-ITERATION.md).
