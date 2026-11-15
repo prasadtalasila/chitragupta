@@ -256,12 +256,14 @@ and reports progress it never made. **Two attempts per item**: a second
 failure escalates to the human and the loop moves on, every earlier
 accepted repair intact.
 
-**The pass.** After each accepted repair, read `objective_after` from the
-same response. Continue to the next item only while
-`objective_class_count` **strictly falls**; stop at `pass_bound`, and if
-that stop is reached, say it is a backstop against a miscounting bug,
-not a budget. **One pass per invocation**: when the worklist is done,
-hand back rather than re-run the agenda on what the repairs surfaced.
+**The pass.** One pass works every unattended item on the worklist.
+After each accepted repair, read `objective_after` from the same
+response, and continue only while `objective_class_count` **strictly
+falls**. `pass_bound` counts passes, never repairs: an accepted repair
+does not count against it. If that stop is ever reached, say it is a
+backstop against a miscounting bug, not a budget. **One pass per
+invocation**: when the worklist is done, hand back rather than re-run
+the agenda on what the repairs surfaced.
 
 Done when each item is accepted, reverted, escalated or refused, and the
 pass has stopped.
