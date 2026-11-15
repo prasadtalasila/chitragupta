@@ -56,7 +56,12 @@ BUDGET = {
         "the rest is ten steps' commands, the guardrails and their pointers, and the "
         "target is a guideline (plans/1091-skill-shrink.md, Decision 1)",
     ),
-    "corpus-reviser": (13_000, _LATER),
+    "corpus-reviser": (
+        11_000,
+        "#1091: deduplicated from 12.8 KB; it states only how its pass differs from "
+        "draft-reviser's loop, and the rest is its guardrails, routing table, three "
+        "closing steps' commands and tested text (plans/1091-ledger-corpus-reviser.md)",
+    ),
     "deep-research": (41_000, _LATER),
     "demo-recorder": (6_000, None),
     "draft-reviser": (
