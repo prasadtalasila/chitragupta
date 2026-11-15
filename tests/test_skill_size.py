@@ -30,6 +30,7 @@ GENRE_TARGET = 12_000
 OTHER_TARGET = 8_000
 SLACK = 1_000
 GENRES = {
+    "review-digest",
     "survey-writer",
     "textbook-chapter-writer",
     "thesis-chapter-writer",
@@ -47,7 +48,12 @@ BUDGET = {
     "draft-reviser": (30_000, f"{_LATER}; draft diff closing step (#1194)"),
     "figure-drawer": (7_000, None),
     "skill-bench": (5_000, None),
-    "review-digest": (17_000, _LATER),
+    "review-digest": (
+        17_000,
+        "#1091: deduplicated, then the six passages #1173 cut restored; the rest is "
+        "commands, the digest format and tested text, and the target is a guideline "
+        "(plans/1091-skill-shrink.md, Decision 1)",
+    ),
     "survey-writer": (
         15_000,
         "#1091: deduplicated from 32 KB; the rest is commands and tested text, "
