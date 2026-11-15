@@ -390,5 +390,55 @@ should say:
 
 ## The bench
 
-See the commit that adds `bench/results/2026-11-15-tutorial-writer-shrink/`
-and the report on the branch for the verdict and per-run counts.
+Claude Code only, skill-only, `PYTHONPATH` unset, each run capped at
+3600 seconds. Rows in `bench/results/2026-11-15-tutorial-writer-shrink/`:
+`before.json` is the 3 recorded rows of
+`2026-11-14-skill-bench-skill-only` plus 3 fresh runs of `origin/main`
+at `b392448a` (whose tutorial-writer, shared references and drawer are
+byte-identical to this branch's base), renumbered 4-6; `after.json` is 6
+runs of this branch, in two batches of 3. The task gives the dossier no
+`outline.md`: no run in either arm had one.
+
+**3 against 3: inconclusive** (exit 3), on `draft dossier status` alone
+(3 to 2). **6 against 6: fail** (exit 1), on that row alone:
+
+| | Before | After |
+| --- | ---: | ---: |
+| Usable runs, none timed out, gate passed | 6 | 6 |
+| `draft dossier status` | 6 | 2 |
+| `review verbatim recheck` | 5 | 6 |
+| `draft dossier outline` (the step 6 check) | 0 | 5 |
+| every other command row | equal | equal, but `draft evidence` 0 to 1 and `figure sync` 0 to 1 |
+
+Per the brief, `draft dossier status` alone is the expected row: the
+loop runs it only where the dossier has an `outline.md`, and none did.
+What each after run wrote about the outline in `revisions.md`:
+
+| Run | Ran `dossier status` | `revisions.md` on the outline |
+| --- | --- | --- |
+| 1 | no | "No `outline.md`, so no declared queries to read." |
+| 2 | yes, with the baseline | "No outline.md, so no declared queries to read." |
+| 3 | yes, with the baseline | "No outline.md ..."; "Declared queries: none declared (no outline.md)." |
+| 4 | no | "No `outline.md`, so no declared-query report." |
+| 5 | no | nothing about the outline (the critique entry lists its gaps and three accepted repairs) |
+| 6 | no | "Declared queries: no `outline.md`, so no declared list to exhaust." |
+
+So the commands were not put back. The one `draft evidence` in run 6 was
+a mistyped `--citekey` lookup (meant as `draft retrieve evidence`), not a
+sidecar: no `.evidence.*` file was rendered in any run.
+
+**Counted by hand** from each after run's project and transcript:
+
+| | Runs 1-3 | Runs 4-6 |
+| --- | ---: | ---: |
+| `revisions.md` has a critique entry | 3 | 3 |
+| Baseline `verbatim scan --write` before the first recheck | 3 | 3 |
+| Opened `critique.md`, `genre-steps.md` and `references/tutorial.md` | 3 | 3 |
+| Opened `mathematical-prose.md` | 3 | 3 |
+| Executed the lesson's own commands (extracted from the draft, in a fresh directory) before the stamp | 3 | 3 |
+| `scope.md` has `## Verified environment` | 3 | 3 |
+
+The 3 fresh before runs also logged a critique entry and ran the lesson,
+and opened `critique.md`; none opened the new reference, which `main`'s
+skill does not name. Median run: 436 s for the three fresh before runs,
+416 s for the six after runs.
