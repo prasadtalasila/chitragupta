@@ -1,0 +1,206 @@
+[
+  {
+    "exit": 0,
+    "seconds": 53,
+    "harness": "claude",
+    "skill": "book-assembler",
+    "run": 1,
+    "references": [
+      ".claude/skills-common/references/book-steps.md",
+      ".claude/skills/book-assembler/references/latex-conventions.md",
+      ".claude/skills-common/references/prose-check.md",
+      ".claude/skills-common/references/verbatim-scan.md"
+    ],
+    "prompt": "skill-only",
+    "outside_project": false,
+    "expected": [
+      "draft spec",
+      "draft unit",
+      "draft registry check",
+      "draft gate",
+      "draft unit accept",
+      "draft spec status",
+      "draft spec sign",
+      "draft unit status",
+      "draft registry build",
+      "draft render",
+      "draft style",
+      "draft dossier sections",
+      "review verbatim scan",
+      "draft registry index",
+      "review figure"
+    ],
+    "ran_all": [
+      "draft spec status",
+      "draft unit status",
+      "draft spec show",
+      "draft registry build",
+      "draft registry check",
+      "draft render",
+      "draft gate",
+      "draft style",
+      "draft dossier sections",
+      "review verbatim scan"
+    ],
+    "ran": [
+      "draft spec status",
+      "draft unit status",
+      "draft registry build",
+      "draft registry check",
+      "draft render",
+      "draft gate",
+      "draft style",
+      "draft dossier sections",
+      "review verbatim scan"
+    ],
+    "missed": [
+      "draft spec",
+      "draft unit",
+      "draft unit accept",
+      "draft spec sign",
+      "draft registry index",
+      "review figure"
+    ],
+    "forbidden_ran": [],
+    "ran_unnamed": [
+      "draft spec show"
+    ],
+    "handoffs_loaded": {},
+    "gate": 0
+  },
+  {
+    "exit": 0,
+    "seconds": 45,
+    "harness": "claude",
+    "skill": "book-assembler",
+    "run": 2,
+    "references": [
+      ".claude/skills-common/references/book-steps.md",
+      ".claude/skills/book-assembler/references/latex-conventions.md",
+      ".claude/skills-common/references/prose-check.md",
+      ".claude/skills-common/references/verbatim-scan.md"
+    ],
+    "prompt": "skill-only",
+    "outside_project": false,
+    "expected": [
+      "draft spec",
+      "draft unit",
+      "draft registry check",
+      "draft gate",
+      "draft unit accept",
+      "draft spec status",
+      "draft spec sign",
+      "draft unit status",
+      "draft registry build",
+      "draft render",
+      "draft style",
+      "draft dossier sections",
+      "review verbatim scan",
+      "draft registry index",
+      "review figure"
+    ],
+    "ran_all": [
+      "draft spec status",
+      "draft unit status",
+      "draft spec show",
+      "draft registry build",
+      "draft registry check",
+      "draft render",
+      "draft gate",
+      "draft style",
+      "draft dossier sections",
+      "review verbatim scan"
+    ],
+    "ran": [
+      "draft spec status",
+      "draft unit status",
+      "draft registry build",
+      "draft registry check",
+      "draft render",
+      "draft gate",
+      "draft style",
+      "draft dossier sections",
+      "review verbatim scan"
+    ],
+    "missed": [
+      "draft spec",
+      "draft unit",
+      "draft unit accept",
+      "draft spec sign",
+      "draft registry index",
+      "review figure"
+    ],
+    "forbidden_ran": [],
+    "ran_unnamed": [
+      "draft spec show"
+    ],
+    "handoffs_loaded": {},
+    "gate": 0
+  },
+  {
+    "exit": 0,
+    "seconds": 48,
+    "harness": "claude",
+    "skill": "book-assembler",
+    "run": 3,
+    "references": [
+      ".claude/skills-common/references/book-steps.md",
+      ".claude/skills/book-assembler/references/latex-conventions.md",
+      ".claude/skills-common/references/prose-check.md",
+      ".claude/skills-common/references/verbatim-scan.md"
+    ],
+    "prompt": "skill-only",
+    "outside_project": false,
+    "expected": [
+      "draft spec",
+      "draft unit",
+      "draft registry check",
+      "draft gate",
+      "draft unit accept",
+      "draft spec status",
+      "draft spec sign",
+      "draft unit status",
+      "draft registry build",
+      "draft render",
+      "draft style",
+      "draft dossier sections",
+      "review verbatim scan",
+      "draft registry index",
+      "review figure"
+    ],
+    "ran_all": [
+      "draft spec status",
+      "draft unit status",
+      "draft registry build",
+      "draft registry check",
+      "draft render",
+      "draft gate",
+      "draft style",
+      "draft dossier sections",
+      "review verbatim scan"
+    ],
+    "ran": [
+      "draft spec status",
+      "draft unit status",
+      "draft registry build",
+      "draft registry check",
+      "draft render",
+      "draft gate",
+      "draft style",
+      "draft dossier sections",
+      "review verbatim scan"
+    ],
+    "missed": [
+      "draft spec",
+      "draft unit",
+      "draft unit accept",
+      "draft spec sign",
+      "draft registry index",
+      "review figure"
+    ],
+    "forbidden_ran": [],
+    "ran_unnamed": [],
+    "handoffs_loaded": {},
+    "gate": 0
+  }
+]
