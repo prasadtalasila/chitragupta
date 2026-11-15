@@ -166,6 +166,34 @@ def test_no_rider_has_drifted_back_into_a_genre_skill():
     assert not found, f"riders belong only in figure-drawer: {found}"
 
 
+# Wording that tells a model a Markdown figure may go without a caption.
+# Every figure has one (docs/writing-standards/figures.md §10), and
+# `draft style` reports a bare marker as `FigureNoCaption` (#421), so a
+# sentence like this asks for a draft the checker then flags. The tutorial
+# skill said "most of this genre's rare figures need no caption at all"
+# until #1091, and the drawer's placement table and FIGURE-DRAWER.md said
+# "if the figure warrants" a caption.
+_CAPTION_OPTIONAL = re.compile(
+    r"needs? no caption|if (?:this|the) figure warrants|warrants (?:one|a caption)",
+    re.IGNORECASE,
+)
+
+
+def test_nothing_a_markdown_figure_genre_reads_makes_its_caption_optional():
+    paths = [
+        *(SKILLS_DIR / g / "SKILL.md" for g, shape in _GENRES.items() if shape == _MARKDOWN_SHAPE),
+        SKILLS_DIR / DRAWER / "SKILL.md",
+        *sorted((SKILLS_DIR / DRAWER / "references").rglob("*.md")),
+        REPO_ROOT / "docs" / "FIGURE-DRAWER.md",
+    ]
+    found = {
+        str(p.relative_to(REPO_ROOT)): hits
+        for p in paths
+        if (hits := _CAPTION_OPTIONAL.findall(re.sub(r"\s+", " ", p.read_text(encoding="utf-8"))))
+    }
+    assert not found, f"every figure has a caption (figures.md §10, FigureNoCaption): {found}"
+
+
 def test_deep_research_draws_no_figure_and_names_no_drawer():
     assert f"`{DRAWER}`" not in _text("deep-research")
 

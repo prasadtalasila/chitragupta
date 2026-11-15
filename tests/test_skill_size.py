@@ -60,7 +60,12 @@ BUDGET = {
     ),
     "textbook-chapter-writer": (33_000, _LATER),
     "thesis-chapter-writer": (34_000, _LATER),
-    "tutorial-writer": (34_000, _LATER),
+    "tutorial-writer": (
+        17_000,
+        "#1091: deduplicated from 34 KB, critique loop behind its pointer; the "
+        "rest is commands, the run-it step and tested text, and the target is a "
+        "guideline (plans/1091-skill-shrink.md, Decision 1)",
+    ),
 }
 
 

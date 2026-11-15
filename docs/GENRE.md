@@ -191,8 +191,9 @@ more in this genre than in any other.
 ### 🛠 `tutorial-writer`
 
 A Diátaxis tutorial: a lesson a learner follows at a keyboard, start to
-finish, to a working result they can see. The governing analogy in the
-skill is a driving lesson: what matters is that the student can drive
+finish, to a working result they can see. The governing analogy in
+[its writing rules](writing-standards/genres/tutorial.md) is a driving
+lesson: what matters is that the student can drive
 afterwards, and getting from A to B is incidental.
 
 Its rule, from which everything else follows: **a tutorial that doesn't

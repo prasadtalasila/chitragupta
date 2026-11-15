@@ -8,7 +8,7 @@ the two ever disagree, that document wins and this file is the bug.
 
 | Draft | In the draft | Files |
 | --- | --- | --- |
-| `.md` (survey, tutorial, textbook chapter) | a line of its own, `<!-- figure: figures/<name> -->`; if the figure warrants a caption, a caption line directly below it (no blank line), and an inline `<!-- figureref: <name> -->` wherever prose points at it | `figures/<name>.tex` and `figures/<name>.txt` |
+| `.md` (survey, tutorial, textbook chapter) | a line of its own, `<!-- figure: figures/<name> -->`; its caption line directly below it (no blank line), and an inline `<!-- figureref: <name> -->` wherever prose points at it | `figures/<name>.tex` and `figures/<name>.txt` |
 | `.tex` (thesis chapter) | `\input{figures/<name>.tex}` then `%figure: figures/<name>` on the next line; a captioned figure goes inside a hand-written `figure` float with `\caption{...}` and `\label{fig:<id>}` | the same pair |
 
 Both files sit under the draft's topic directory,
