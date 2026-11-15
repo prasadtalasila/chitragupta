@@ -151,6 +151,23 @@ class TestFindingShape:
         assert style_tables.findings(fragment) == []
 
 
+class TestMessagesCiteTheTablesFile:
+    """§13 moved to `docs/writing-standards/tables.md` (#1212) and the
+    core keeps only a stub. Every message that cites §13 names the file
+    it lives in now, in the form `style_equations` prints."""
+
+    def test_every_cited_section_names_the_tables_file(self, tmp_path):
+        body = f"# S\n\n{TABLE}\nProse.\n\n{TABLE}\n: No id here.\n\nProse.\n\n{TABLE}\n{CAPTION}"
+        found = style_tables.findings(draft_with(body, tmp_path))
+        assert set(rules(found)) == {
+            "chitragupta.TableNoCaption",
+            "chitragupta.TableNoId",
+            "chitragupta.TableUnreferenced",
+        }
+        for finding in found:
+            assert "(docs/writing-standards/tables.md §13)." in finding["message"], finding
+
+
 class TestManyTablesReportTheSameAsFew:
     """m-77 (#511) was a hoisting change, so what needs pinning is that
     the *answer* did not move: `text.splitlines()` was called twice inside
