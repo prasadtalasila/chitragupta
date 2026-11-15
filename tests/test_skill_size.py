@@ -39,7 +39,12 @@ _LATER = "#1091: shrinks to its target in its own PR"
 
 # skill: (cap in bytes, why the cap is above the target, or None)
 BUDGET = {
-    "agenda-reviser": (29_000, f"{_LATER}; draft diff closing step (#1194)"),
+    "agenda-reviser": (
+        18_500,
+        "#1091: deduplicated from 28 KB; it runs unattended repairs, so every "
+        "guardrail stays inline beside its command, and the rest is commands and "
+        "tested text (plans/1091-ledger-agenda-reviser.md)",
+    ),
     "book-assembler": (20_000, _LATER),
     "corpus-reviser": (13_000, _LATER),
     "deep-research": (41_000, _LATER),

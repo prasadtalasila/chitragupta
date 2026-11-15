@@ -4,6 +4,14 @@ Read this when the item in hand is of class `prose`. The step that sent
 you here says which edit tool to use. Paths here are from the project
 root.
 
+The item's `summary` and `detail.message` name the rule and the match.
+Only an item marked `unattended` is yours: a finding its rule built with
+`repair: "review"` is surfaced instead, and the item already says so. On
+this checkout that is a `WideCodeLine` (a wide line in a block verified
+to run may be deliberate), an `AcronymCase`, and a dialect finding whose
+dialect came from the host-wide `config.toml` rather than `scope.md` or
+`--language`, or whose match starts with a capital letter.
+
 **Repair a `prose` item.** Apply the fix `draft style`'s rule names: expand
 an acronym at first use, add the `<!-- table: -->`, `<!-- tableref: -->` or
 `<!-- figureref: -->` marker a `TableNoCaption`/`TableUnreferenced`/
@@ -34,3 +42,7 @@ larger edit than a caption line, and the likeliest of this section's
 repairs to trip the `objective_delta` check in step 5 by introducing its
 own new acronym or wording drift -- treat that as the check doing its
 job, not a reason to loosen it.
+
+**Not done at the edit.** The repair is done only once the recheck
+the step that sent you here names has run and accepted it, or it has
+been reverted and logged.
