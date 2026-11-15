@@ -102,7 +102,7 @@ def _orphaned(text: str) -> "list[dict]":
                 eq_id,
                 _equation_captions.line_of(text, marker.start()),
                 f"`{eq_id}` names no `<!-- math -->` block directly below it, "
-                "so nothing numbers it (WRITING-STANDARDS.md §12).",
+                "so nothing numbers it (docs/writing-standards/mathematics.md §12).",
             )
         )
     return found
@@ -129,7 +129,7 @@ def findings(draft: Path) -> "list[dict]":
             equations,
             _equation_captions.references(text),
             "equation",
-            "WRITING-STANDARDS.md §12",
+            "docs/writing-standards/mathematics.md §12",
         )
     )
     return sorted(found, key=lambda finding: (finding["line"], finding["rule"]))

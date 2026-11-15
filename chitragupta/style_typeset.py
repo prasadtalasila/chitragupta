@@ -173,7 +173,7 @@ def _bare_urls(text: str) -> "list[dict]":
                 f"`{url}` is shown as a bare URL. Write it as a "
                 "`[descriptive text](url)` link instead, so the sentence reads "
                 "and the PDF has something to click "
-                "(WRITING-STANDARDS.md §14).",
+                "(docs/writing-standards/page.md §14).",
             )
         )
     return found
@@ -194,7 +194,7 @@ def _wide_code_lines(bodies: "list[tuple[int, str]]", why: str) -> "list[dict]":
                     first + index,
                     f"this code line is {len(raw.rstrip())} columns wide, over "
                     f"the {MAX_CODE_COLUMNS} a page fits. {why} "
-                    "(WRITING-STANDARDS.md §14).",
+                    "(docs/writing-standards/page.md §14).",
                     # A wide line may be deliberate -- a URL or literal in a
                     # block verified to run -- so a person decides (#836).
                     repair="review",
