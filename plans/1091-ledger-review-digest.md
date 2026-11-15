@@ -254,6 +254,43 @@ step number (`git grep` for "step" near "digest" in `docs/`,
 `chitragupta/` and the skills), and the two internal references ("step
 13's renders", "this skill's step 17") still point at the same steps.
 
+## Bench
+
+Claude Code, Tier 2, skill-only, 3 runs, against the 3 review-digest
+rows of `bench/results/2026-11-14-skill-bench-skill-only/tier2.json`.
+The after rows are in
+`bench/results/2026-11-15-review-digest-shrink/tier2.json`.
+`--compare` exits 0, **pass**:
+
+```text
+(timed out or raised)     0/3 -> 0/3
+(gate passed)             3/3 -> 3/3
+review digest             3/3 -> 3/3
+draft gate                3/3 -> 3/3
+draft retrieve search     3/3 -> 3/3
+draft figures             1/3 -> 3/3
+corpus ledger             3/3 -> 3/3
+draft dossier init        3/3 -> 3/3
+draft dossier sections    3/3 -> 3/3
+draft references          3/3 -> 3/3
+draft render              3/3 -> 3/3
+review synthesis          3/3 -> 3/3
+draft style               3/3 -> 3/3
+draft dossier stamp       3/3 -> 3/3
+review support            0/3 -> 0/3
+draft dossier export      0/3 -> 0/3
+draft evidence            0/3 -> 0/3
+```
+
+Every run's draft passed the gate. All three opened `genre-steps.md`,
+`digest-copying.md`, `mathematical-prose.md` and the new
+`references/digest.md` (the task asks for a repair pass); two also
+opened `prose-check.md`. None opened `render-and-references.md` or
+`collection-scoping.md`. The before runs opened `digest-copying.md`,
+`mathematical-prose.md` and `prose-check.md`. The optional
+`review support` pass and the backup export ran in no run, before or
+after.
+
 ## For the plan
 
 - PR 3's row can be marked done on this branch: all six passages are
