@@ -302,3 +302,52 @@ should say:
   owner, by the surgical-changes rule.
 - **Task 5, Step 2:** none of the four sites it names cites a thesis
   step; `docs/RENDERING-FLOW.md`'s two do, and one is updated.
+
+## Bench, 2026-11-15
+
+What was run: Claude Code only, tier 2, skill-only prompt,
+`thesis-chapter-writer`. The first after batch (3 runs, this branch)
+compared inconclusive against the 3 recorded before rows in
+`bench/results/2026-11-14-skill-bench-skill-only/tier2.json`, so 3 more
+runs of each arm were made. The before arm's second batch ran from an
+export of `origin/main` at `75afc3f8` (version 6.173.10), whose
+thesis skill is the unchanged inline one. The after arm's second batch
+ran from this branch.
+
+Rows are in `bench/results/2026-11-15-thesis-chapter-writer-shrink/`:
+`tier2.json` holds the 6 after rows and `before.json` the 6 before rows
+(runs 4 to 6 of each are the second batch). Every after run took 5 to 7
+minutes (before runs 5 to 8), exited 0 and passed the gate; none
+showed `HTTP 429` or a limit message.
+
+Verdict of `--compare` on the joined files: **pass** (exit 0). The
+first, 3-run comparison was inconclusive (exit 3), flagging only
+`review synthesis` 2/3 to 1/3 as "drop?".
+
+Commands that moved between the 6 before runs and the 6 after runs:
+
+- `review synthesis`: 3/6 to 1/6. Not flagged by the 6-run compare.
+- `review verbatim recheck`: 5/6 to 6/6.
+- `draft retrieve evidence`: 1/6 to 3/6.
+- Every other command counted the same, including `draft dossier status`
+  6/6 to 6/6. `review uncited`, `draft references`, `draft dossier
+  export`, `draft figures` and `figure sync` ran in none of the 12
+  runs, before or after.
+
+Hand checks, on the 6 after runs:
+
+- (a) `revisions.md` has a critique entry: 6 of 6.
+- (b) The baseline `review verbatim scan` ran before the first `review
+  verbatim recheck`: 6 of 6. All 6 ran a recheck, 3 each.
+- (c) The run opened each reference, from the row's `references` field:
+  `critique.md` 6 of 6, `genre-steps.md` 6 of 6, `references/thesis.md`
+  6 of 6.
+- (d) `draft render --format pdf` produced a PDF under
+  `content/rendered/`: 6 of 6.
+- (e) The draft is a `.tex` fragment with no `\documentclass`,
+  `\usepackage` or `\begin{document}`, and it uses `\citep` (26 to 34
+  uses): 6 of 6. Four also use `\citet`.
+- (f) The gate row field is 0: 6 of 6.
+
+Every after run's dossier had an `outline.md`, and `draft dossier
+status` ran in all 6.
