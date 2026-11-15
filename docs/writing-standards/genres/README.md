@@ -17,6 +17,9 @@ value. [survey.md](survey.md) is the first; `thesis-chapter.md` and
 [tutorial.md](tutorial.md) holds the hands-on lesson's rules.
 [textbook-chapter.md](textbook-chapter.md) holds the textbook chapter's.
 Each says:
+value. [survey.md](survey.md) is the first;
+[thesis-chapter.md](thesis-chapter.md) holds the thesis chapter's;
+`research-paper.md` is to come. Each says:
 
 - what the genre owes its reader;
 - its reread checklist, the genre's form of the core's §6;

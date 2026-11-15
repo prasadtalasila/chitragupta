@@ -42,6 +42,7 @@ genre, and a style file one house style.
 | Genre | [`writing-standards/genres/digest.md`](writing-standards/genres/digest.md) | none | what a verbatim digest owes its reader, its paragraph and the drafter's own sentences, its figures and equations, and its reread |
 | Genre | [`writing-standards/genres/tutorial.md`](writing-standards/genres/tutorial.md) | none | what a tutorial owes its learner, where it may cite, its beginner reread and self-check, and how free its figures and how rare its mathematics are |
 | Genre | [`writing-standards/genres/textbook-chapter.md`](writing-standards/genres/textbook-chapter.md) | none | what a textbook chapter owes its student, its house style, its reread, and how often its figures and numbered equations appear |
+| Genre | [`writing-standards/genres/thesis-chapter.md`](writing-standards/genres/thesis-chapter.md) | none | what a thesis chapter owes its examiner, its reread, and how rare its figures and numbered equations are |
 | Style | [`writing-standards/styles/README.md`](writing-standards/styles/README.md) | none | house styles to come; no style yet |
 
 Five rules keep the layers from going piecemeal:
