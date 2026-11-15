@@ -90,7 +90,7 @@ def _uncaptioned(text: str, figures: "list[_figure_captions.Figure]") -> "list[d
                 "this figure has no caption. Put one on the line directly "
                 "below the marker: a figure the reader meets without one "
                 "carries no number and nothing can refer to it "
-                "(WRITING-STANDARDS.md §10).",
+                "(docs/writing-standards/figures.md §10).",
             )
         )
     return found
@@ -120,7 +120,7 @@ def findings(draft: Path) -> "list[dict]":
             figures,
             _figure_captions.references(text),
             "figure",
-            "WRITING-STANDARDS.md §10",
+            "docs/writing-standards/figures.md §10",
         )
     )
     return sorted(found, key=lambda finding: (finding["line"], finding["rule"]))
