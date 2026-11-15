@@ -44,6 +44,11 @@ none with status `parsed`, say so plainly, naming what you checked and
 what you found, and stop there. Do not draft around it, do not sync, and
 do not cite.
 
+In a genre where citing is optional, an empty ledger does not stop the
+run: say so before you start, since the draft will carry no citations,
+and ask whether to proceed uncited or to sync first. Wait for the
+answer.
+
 ## 2. What the dossier is for
 
 Read this before opening the dossier, and again whenever you wonder
@@ -72,6 +77,10 @@ fixed in the draft, not in the table.
 instruction is invisible in the prose and has nowhere else to live. A
 revision that does not know about it will undo it, so it goes into
 `steering.md`, dated.
+
+A draft that cites nothing still gets a dossier and a section map: the
+reader, the scope, the glossary and the rejected candidates are what a
+revision needs, whether or not a single citation exists.
 
 ## 3. Opening the dossier
 

@@ -10,15 +10,9 @@ and for the skills that will read the result. **Assumed:** the core,
 [GENRE.md](../../GENRE.md) for which skill writes which genre.
 
 This folder holds one file per genre, named by the genre's `--genre`
-value. [survey.md](survey.md) and [digest.md](digest.md) are written;
-`thesis-chapter.md` and `research-paper.md` are to come. Each says:
-value. [survey.md](survey.md) is the first; `thesis-chapter.md` and
-`research-paper.md` are to come.
-[tutorial.md](tutorial.md) holds the hands-on lesson's rules.
-[textbook-chapter.md](textbook-chapter.md) holds the textbook chapter's.
-Each says:
-value. [survey.md](survey.md) is the first;
-[thesis-chapter.md](thesis-chapter.md) holds the thesis chapter's;
+value. [survey.md](survey.md), [digest.md](digest.md),
+[tutorial.md](tutorial.md), [textbook-chapter.md](textbook-chapter.md)
+and [thesis-chapter.md](thesis-chapter.md) are written;
 `research-paper.md` is to come. Each says:
 
 - what the genre owes its reader;
