@@ -266,12 +266,12 @@ example; "the revision skill the step names" for `draft-reviser`).
 
 ## If SK-0c chooses handoffs
 
-**It did not.** SK-0c measured a skill handoff against an `.md`
-pointer and kept the pointers (plans/1091-skill-shrink.md, PR 0c,
-decided 2026-11-15), so nothing below is planned. It is kept as the
-record of what a handoff would have moved. Had it chosen handoffs,
-these pointers in the new survey-writer would have become handoffs,
-and this is what would have moved with each. Every one of these sections and files was
+**It did not.** SK-0c measured a skill handoff against an `.md` pointer
+and kept the pointers (plans/1091-skill-shrink.md, PR 0c, decided
+2026-11-15), so nothing below is planned. It is kept as the record of
+what a handoff would have moved. Had it chosen handoffs, these pointers
+in the new survey-writer would have become handoffs, and this is what
+would have moved with each. Every one of these sections and files was
 written to be lifted out whole: each opens with its own condition and
 names no step number.
 
