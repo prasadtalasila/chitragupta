@@ -6,547 +6,257 @@ tags: [thesis, dissertation, latex, citation]
 
 # thesis-chapter-writer
 
-Genre-specific drafting agent for thesis-chapter output. The drafting
-layer (generative, on-demand, user-reviewed) -- distinct from
-`python -m chitragupta.corpus sync` (the corpus layer: deterministic, unattended-safe).
+Drafts a thesis chapter that argues toward a research question, as a
+standalone LaTeX fragment the user `\input`s into their own thesis,
+every claim cited from the ledger. Paths in this skill are from the
+project root, not from this skill's own folder.
 
-## Shared corpus layer (read, don't regenerate)
+## Before you start
 
-- `content/ledger.sqlite` -- per-citekey status, populated by `sync`
-- `papers/bibliography.bib` (gitignored, per-host) -- the source of truth for citekeys/metadata;
-  point the thesis document's `\addbibresource` (biblatex) or `\bibliography`
-  (bibtex) at this file directly rather than a copy
-- `content/parsed/<citekey>.txt` -- extracted PDF text
-- `chitragupta/retrieval.py` --
-  `python -m chitragupta.draft retrieve search "<q>" --k 15 --log <draft>`,
-  which returns a citekey, title, score and a 500-character snippet per
-  candidate. `... evidence "<q>" --citekey <key> --log <draft>` reads more of
-  one document when a snippet is not enough to judge it
-
-## Collection scoping (#195): draft from the shelf, not the library
-
-At step 0, before any retrieval, check whether the library is sorted
-into collections:
-
-```bash
-python -m chitragupta.corpus ledger --collections     # what exists, with counts
-```
-
-Paths in this skill are from the project root, not from this skill's
-own folder.
-
-If it reports none, say nothing, ask nothing, record
-`- collection: (whole corpus)` in `scope.md`'s header, and skip the rest
-of this section. Otherwise read
-`.claude/skills-common/references/collection-scoping.md` now and follow
-it for the whole run. If retrieval inside the shelf comes back thin, the
-honest fix to offer is a whole-corpus pass with `corpus-reviser`, which
-is the one skill allowed to widen.
-
-## The dossier: write down what produced the draft
-
-The chapter is only half of what this run produces. The other half is the
-judgment behind it -- the examiner you wrote for, the scope, the
-terminology the chapter settled on, which candidates were kept and
-**which were turned down and why** -- and it belongs on disk, not in this
-conversation. Without it the next revision has to re-retrieve and
-re-score the whole research question to change one paragraph.
-
-`chitragupta/dossier/` owns that state, in Markdown, one directory per draft at
-`content/dossiers/<the draft's path, minus its suffix>/`. Create it before
-you search (step 0) and fill it in as you go -- not at the end, when what
-you rejected has already fallen out of your context. `docs/DRAFT-ITERATION.md`
-is the full design.
-
-This skill writes both the dossier's Markdown files and, in the same
-directory, `provenance.json`: the machine-readable section-to-citekey
-record used for audit, beside the human-readable working state a later
-revision reads (reader, scope, glossary, rejected candidates and why,
-steering). Two shapes for two readers, one directory per draft.
-
-**Read-only means read-only: never run `python -m chitragupta.corpus sync`, and
-never
-run `python -m chitragupta.enrich` or any `chitragupta/enrich/*` build stage.**
-Both belong to the
-corpus layer, both take the pipeline's write lock, and either can run for
-tens of minutes -- a first full-corpus parse, or building the embedding
-index. They are the user's to run, not yours. If a semantic index would
-help and none exists, say so and use `chitragupta.retrieval.search()`; do not
-build one.
-
-**If the ledger is empty, stop.** Check before drafting anything:
+**The corpus is read-only: never run `python -m chitragupta.corpus sync`
+or `python -m chitragupta.enrich`.** Before the first retrieval, read
+`.claude/skills-common/references/genre-steps.md` §1: what the corpus
+holds, and why those are the user's to run. **If the ledger is empty,
+stop.** Check before drafting anything:
 
 ```bash
 python -m chitragupta.corpus ledger
 ```
 
-If it reports no items, or none with status `parsed`, say so plainly --
-name what you checked and what you found -- and stop there. Do not draft
-around it, do not sync, do not cite. Tell the user to run
-`.venv-full/bin/python -m chitragupta.corpus sync` and come back.
+If it reports nothing `parsed`, say what you checked and found, and stop.
+Tell the user to run `.venv-full/bin/python -m chitragupta.corpus sync`
+and come back.
 
 ## When to invoke
 
-| Situation | Action |
-| --- | --- |
-| User asks for a thesis chapter / dissertation section tied to an RQ | Invoke this skill |
-| User asks for a survey paper / lit review, not chapter-specific | Use `survey-writer` instead |
-| User asks for a textbook chapter / lecture notes | Use `textbook-chapter-writer` instead |
-| User asks for a hands-on tutorial | Use `tutorial-writer` instead |
-| User asks to change a chapter that **already exists** in `content/drafts/` | Use `draft-reviser` instead -- never re-run this skill to make a change |
-| Ledger is empty, or nothing is `parsed` | Say so and stop. **Never** run `python -m chitragupta.corpus sync` yourself |
+A survey or literature review is `survey-writer`'s, a textbook chapter
+`textbook-chapter-writer`'s, a hands-on tutorial `tutorial-writer`'s,
+and a change to a chapter in `content/drafts/` is `draft-reviser`'s:
+never re-run this skill to make one.
+
+## Collection scoping
+
+At step 0, before any retrieval, check whether the library is sorted
+into collections:
+
+```bash
+python -m chitragupta.corpus ledger --collections
+```
+
+If it reports none, say nothing, ask nothing, record
+`- collection: (whole corpus)` in `scope.md`'s header, and skip this
+section. Otherwise read
+`.claude/skills-common/references/collection-scoping.md` now and follow
+it for the whole run. If retrieval inside the shelf comes back thin, the
+honest fix to offer is a whole-corpus pass with `corpus-reviser`, which
+is the one skill allowed to widen.
 
 ## Prose standards
 
-Follow `docs/WRITING-STANDARDS.md` for the cross-genre rules: name the reader
-before drafting, define terms once, state scope up front, active voice with a
-named actor, ban "obviously/simply/just", and reread as the reader before
-presenting. That file also carries the attribution for where these
-principles come from -- Diátaxis, Last's *Technical Writing Essentials*, and
-Google's Technical Writing courses, all CC-licensed and all requiring credit.
-The genre-specific additions below layer on top of it. Read
-`.claude/skills-common/references/mathematical-prose.md` now and follow it:
-it governs the sentences around every symbol and derivation.
-
-### What a thesis chapter owes its reader
-
-Its reader is an examiner: a domain expert reading adversarially, looking for
-the claim that outruns its evidence. That shapes every rule below. Unlike the
-survey genre, this chapter **does** take a position -- but every step of the
-argument must be traceable to something cited, and the honest statement of a
-limitation is worth more than the paragraph that hides it.
-
-The genre boundary that matters most here: a chapter that only summarizes
-papers in sequence is a survey with a chapter heading. If the argument toward
-the RQ isn't visible in the section structure, the chapter isn't doing its
-job -- see `docs/WRITING-STANDARDS.md` §5.
+Follow `docs/WRITING-STANDARDS.md` for the rules every genre shares, and
+`docs/writing-standards/genres/thesis-chapter.md` for what a thesis
+chapter owes its examiner: read it before step 5. A chapter states and
+derives results, and a single formula brings in the rules for the
+sentences around it, so on every run: Read
+`.claude/skills-common/references/mathematical-prose.md` now and follow
+it while drafting. The works these standards come from are credited in
+[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution);
+if asked what bears on a thesis chapter, read
+`.claude/skills/thesis-chapter-writer/references/thesis.md` §5.
 
 ## Process
 
 0. **Name the reader's starting point, and open the dossier.** Before
-   searching, settle what an examiner in this subfield already knows, so
-   background is recapped where it's genuinely needed and not where it's
-   condescending. Settle too what the chapter will and won't cover, and
-   the slug it will be saved under. Then create the dossier and record
-   the same decisions there:
+   creating it, read `.claude/skills-common/references/genre-steps.md`
+   §2 and §3: the slug, `scope.md`, the dialect, the acronym vocabulary
+   and the fingerprint. Settle what an examiner in this subfield already
+   knows, and `<slug>` with the user; the glossary pins the chapter's
+   terminology, and the examiner's institution decides the dialect (an
+   Indian university is `en-IN` or `en-GB`). Then:
 
    ```bash
    python -m chitragupta.draft dossier init content/drafts/<slug>.tex --genre thesis-chapter
    ```
 
-   **Settle `<slug>` with the user before running that.** It is a path
-   under `content/drafts/` and it may contain directories: "the methods
-   chapter of `thesis/`" means
-   `content/drafts/thesis/methods.tex`, and a topic that will hold more
-   than one genre wants `content/drafts/<topic>/thesis-chapter.tex` so
-   they sit together. A flat `content/drafts/<slug>.tex` is the default
-   when neither applies. Ask rather than guess: the dossier
-   (`content/dossiers/<slug>/`) and every render
-   (`content/rendered/<the draft's own directory>/`) mirror whatever you
-   pick, so moving the draft later means moving both.
-   Fill in `scope.md`'s **Reader**, **Covers**, **Does not cover** and
-   **Glossary** now, while you are deciding them -- the glossary is where
-   the chapter's terminology gets pinned, so a revision doesn't drift off
-   it. Settle the **dialect** with the reader in the same breath and write
-   it to `scope.md`'s `language:` line, which ships unset -- the examiner's
-   institution decides it (an Indian university is `en-IN` or `en-GB`), and
-   a chapter whose dialect nobody chose silently gets the model's own
-   (`docs/WRITING-STANDARDS.md` §8). Read the acronym vocabulary too --
-   the vendored floor at `assets/style/acronyms.toml`, plus the user's own
-   file if `[style].acronyms` in `config.toml` points at one -- and use its
-   recorded expansion at an acronym's first use rather than inventing one.
-   `init` also stamps the corpus
-   fingerprint, which is what lets a
-   later revision tell whether the ledger has moved since.
-1. **Clarify the research question** the chapter serves, if not already given
-   by the user. The chapter's narrative arc should argue toward/around this RQ,
-   not just summarize papers in sequence.
-2. **Retrieve broadly, then filter.**
-
-   **First, check whether the dossier has an `outline.md`** -- a human
-   writes this file by hand (`dossier init --outline`, or added later)
-   with, per section, a heading, a `brief:` and/or `claim:` block, and
-   optional declared `queries:`:
+   Done when `scope.md` records the reader, the scope and `language:`.
+1. **Clarify the research question** the chapter serves, if the user has
+   not given it. Done when it is stated in one sentence.
+2. **Retrieve broadly, then filter.** First check for an `outline.md`:
 
    ```bash
    python -m chitragupta.draft dossier outline content/drafts/<slug>.tex --check
    ```
 
-   **If it exists and passes**, run each section's declared queries
-   **verbatim** instead of searching against the RQ's component concepts
-   yourself, logged `--origin declared` in place of the plain `--log`
-   below. Reformulate and re-search a section that comes up thin, logged
-   `--origin extended` instead -- that distinction is what lets
-   `dossier status` answer "did this chapter follow its outline?" from
-   `retrieval.md` afterwards, so log it honestly rather than as
-   `declared`.
+   If it passes, read `.claude/skills-common/references/genre-steps.md`
+   §4, then run each section's declared queries verbatim; a thin
+   section's reformulations are `--origin extended`.
+   `python -m chitragupta.review uncited` is the backstop for a `claim:`
+   you could not ground.
 
-   **A `claim:` section is content to ground, not steer from.** The
-   human's prose there is rewritten, not preserved: find a citekey
-   supporting each assertion (the section's declared queries first, then
-   the assertion's own wording if those don't cover it, logged
-   `--origin extended`), write the grounded sentence into the chapter
-   with its citation, and **drop, don't ship, any sentence you can't
-   ground** -- name what you dropped in your final summary to the user.
-   `python -m chitragupta.review uncited` is the backstop that
-   catches anything that slips through regardless.
+   ```bash
+   python -m chitragupta.draft retrieve search "<declared query>" --k 15 --collection "<from scope.md>" --origin declared --log content/drafts/<slug>.tex
+   ```
 
-   **No `outline.md`, or it fails `--check`:** search against the RQ and
-   its component concepts -- over-fetch rather than assuming the top few
-   hits are automatically the right ones:
+   With no `outline.md`, or one that fails `--check`, search against the
+   research question and its component concepts, over-fetching:
 
    ```bash
    python -m chitragupta.draft retrieve search "<concept>" --k 15 --collection "<from scope.md>" --log content/drafts/<slug>.tex
    ```
 
-   `--log` records the query and the call's size in the dossier's
-   `retrieval.md`. **Pass it on every call.** It is what makes the run's
-   cost measurable instead of estimated, and it is also the list a later
-   `dossier status` re-asks against the corpus to tell you which newly
-   synced papers this chapter has never seen -- a chapter drafted without
-   it can never be told that. This is
-   keyword overlap, not embeddings -- read each 500-character snippet and
-   judge relevance yourself; a high score is a proxy, not a verdict. Keep
-   only what actually supports part of the argument. Record the judgment in
-   the dossier while the snippets are still in front of you, before drafting
-   prose: the kept citekeys into `evidence.md`, one ``## `citekey` `` block
-   per source with a `relevance:` line, a `claim:` line -- what the source
-   establishes, in your own words, the only field the chapter may draft from
-   -- and, only where a quotation earns its place, a `quote:` line (verbatim,
-   quotation marks and attribution only); every candidate you turned
-   down into `rejected.md` with the query that surfaced it and a few words
-   on why ("shares vocabulary only", "wrong domain", "superseded by X"),
-   so the next revision doesn't re-judge the same papers. Then run
-   `python -m chitragupta.draft dossier check-evidence content/drafts/<slug>.tex`
-   -- advisory. Flags a citekey carrying more than one `evidence.md`
-   block (the first is the one every reader gets, so merge them), and a
-   `claim:` that reads like its `quote:` reworded.
-3. **Reformulate and re-search if a concept comes up thin.** Try synonyms
-   or adjacent terms and search again before concluding the corpus doesn't
-   cover something -- and if it genuinely doesn't after a real attempt, say
-   so to the user rather than forcing a weak citation into the argument.
-4. **Check for disagreement across kept sources.** If two sources conflict
-   on a point relevant to the RQ, surface that explicitly in the chapter
-   rather than silently picking a side.
-5. **Draft** as a LaTeX fragment (no `\documentclass`/`\begin{document}` --
-   this is `\input`-ed into the user's existing thesis document), citing
-   only from your scored-evidence file:
-   - Section/subsection structure that builds an argument toward the RQ
-   - Citations via `\citep{key}` / `\citet{key}` — never a bare invented key
-   - **Two or more citekeys per body paragraph wherever the evidence
-     allows.** A paragraph required to fuse several sources cannot be a
-     transcription of any one of them, which matters most in exactly the
-     chapter most exposed to it -- related work. Where one paper genuinely
-     is the only source for a point, keep it and mark it with
-     `% single-source: why` on the line above or below, no blank line
-     between. docs/WRITING-STANDARDS.md §11 is the rule; `python -m
-     chitragupta.review synthesis <draft>` reports it.
-6. **Never write a citekey you didn't get from `search()`.** If a citation
-   would strengthen the argument but isn't in the synced library, tell the
-   user in prose rather than inventing a key -- see AGENTS.md's citekey
-   invariant (fabricated placeholder references are exactly the failure
-   mode this rule exists to prevent).
+   Keep a source only if it supports part of the argument, not if it
+   merely shares the query's words. Before your first `evidence.md`
+   block, read `.claude/skills-common/references/genre-steps.md` §5.
+   Where a snippet cannot settle a source you mean to keep:
+
+   ```bash
+   python -m chitragupta.draft retrieve evidence "<concept>" --citekey <key> --log content/drafts/<slug>.tex
+   ```
+
+   Before drafting, record what survives in `evidence.md` and what
+   doesn't in `rejected.md`, then:
+
+   ```bash
+   python -m chitragupta.draft dossier check-evidence content/drafts/<slug>.tex
+   ```
+
+   Done when every query has run with `--log` and every candidate is in
+   one of the two files.
+3. **Reformulate and re-search if a concept comes up thin.** When one
+   does, read `.claude/skills-common/references/genre-steps.md` §6.
+   Done when each is covered, or reported thin after real attempts.
+4. **Check for disagreement across kept sources.** When two conflict on
+   a point relevant to the research question, read
+   `.claude/skills-common/references/genre-steps.md` §6. Done when each
+   conflict is noted for the chapter.
+5. **Draft** as a LaTeX fragment, with no `\documentclass` and no
+   `\begin{document}`, citing as `\citep{key}` or `\citet{key}` only
+   from `evidence.md`, in sections that build an argument toward the
+   research question. A body paragraph closes on two or more citekeys
+   wherever the evidence allows, or carries `% single-source: why` on
+   the line above or below it, with no blank line between
+   (`docs/WRITING-STANDARDS.md` §11;
+   `python -m chitragupta.review synthesis <draft>` reports it). A table
+   is real LaTeX with no marker (`docs/writing-standards/tables.md` §13):
+   `\begin{table}` with its own `\caption{...}\label{tab:<id>}`, referred
+   to as `Table~\ref{tab:<id>}`. Before writing a table, a captioned
+   figure or a numbered equation, read
+   `.claude/skills/thesis-chapter-writer/references/thesis.md` §1. Done
+   when every section is drafted.
+6. **Never write a citekey you didn't get from a retrieval result.** If
+   a citation would strengthen the argument but isn't in the synced
+   library, tell the user in prose rather than inventing a key. Done
+   when every key came from a retrieval result.
 7. **Log provenance.** Write
-   `content/dossiers/<draft path minus suffix>/provenance.json`:
-   `{"section": "...", "citekeys": [...]}` per section, for later audit (in
-   addition to the evidence file from step 2). It goes in the dossier
-   directory because it is state this run produced, not a report generated
-   from the finished draft -- the latter is the review layer's
-   `content/review/`, which no skill writes.
-8. **Map sections to citekeys in the dossier.** Save the fragment to
-   `content/drafts/<slug>.tex` first, then derive the map rather than
-   writing it by hand:
+   `content/dossiers/<draft path minus suffix>/provenance.json`, one
+   `{"section": "...", "citekeys": [...]}` per section. Before writing
+   it, read `.claude/skills/thesis-chapter-writer/references/thesis.md`
+   §2. Done when every section has an entry.
+8. **Map sections to citekeys.** Save the fragment to
+   `content/drafts/<slug>.tex`, then:
 
    ```bash
    python -m chitragupta.draft dossier sections content/drafts/<slug>.tex --citekeys --write
    ```
 
-   It reads `\citep`/`\citet` as readily as `[@key]` and tracks
-   `verbatim`/`lstlisting`/`minted`, so a `\section`-like line inside a
-   code environment is neither a heading nor a citation. The result is
-   the same mapping as step 7's provenance JSON, kept in the form a
-   reviser reads. Drop `--write` to see the table first; a citekey cited
-   above the first `\section` is reported on stderr rather than
-   attributed to a section that does not contain it.
-   A table in this genre is **written as real LaTeX**, and carries no
-   marker: `\begin{table}` with its own `\caption{...}\label{tab:<id>}`,
-   referred to as `Table~\ref{tab:<id>}`. That is
-   `docs/WRITING-STANDARDS.md` §13's carve-out, and it exists for the
-   same reason §10 keeps this genre's TikZ inline -- the fragment is
-   `\input` into the user's own thesis, where their own LaTeX
-   numbers the table consistently with their other chapters. The
-   Markdown marker vocabulary would be dropped by their build, leaving an
-   unnumbered table in a chapter that refers to a number. Introduce the
-   table before it appears and read a pattern off it afterwards; a
-   caption is not a reading.
-
-9. **Add a figure only if the argument needs one.** Place it beside the
-   framework, architecture or study design it captures, when prose
-   would otherwise take a paragraph to describe it --
-   `docs/WRITING-STANDARDS.md` §10's figures are occasional here, not
-   routine. Default to no figure.
-
-   When one is earned, it is a **pair of files**, and §10 is the
-   contract. This genre's native form is the TikZ picture -- vector art
-   that sets at the thesis's own font and line width, which is the whole
-   reason this genre gets one -- so the fragment carries the `\input`
-   inline and names the ASCII form in a marker comment:
+   A citekey it reports above the first `\section` belongs to no
+   section: fix the fragment, not the table. Done when it reports none.
+9. **Add a figure only if the argument needs one**; absence is the
+   default. A figure is a pair of files, `figures/<name>.tex` and
+   `figures/<name>.txt` (`docs/writing-standards/figures.md` §10). This
+   genre keeps the TikZ inline and names the ASCII form in a marker
+   comment:
 
    ```latex
    \input{figures/<name>.tex}
    %figure: figures/<name>
    ```
 
-   with both `content/drafts/<topic>/figures/<name>.tex` and
-   `content/drafts/<topic>/figures/<name>.txt` written -- the `.txt` in
-   §10's 7-bit alphabet, since a Unicode box character hard-fails
-   a thesis that
-   compiles with `pdflatex`. The renderer
-   swaps that `\input` for the `.txt` contents when it builds the `.md`
-   preview (step 12); `--format tex` and `--format pdf` get the TikZ.
-
    Hand the drawing itself to `figure-drawer`, and come back to this
-   step when it returns: it owns the layout metaphor and scaffold,
-   panel letters, the ASCII twin, the compile probe and the geometry
-   review. What stays here must hold even if that skill is never
-   loaded:
+   step when it returns. What holds even if that skill is never loaded:
 
-   - **The marker is a comment, never a second `\input`.** The fragment
-     on disk is what the user `\input`s into their own thesis, and
-     `\input{figures/<name>.txt}` makes their LaTeX read ASCII art
-     as LaTeX source and fail with `! Missing $ inserted.` -- a break in
-     their build that our own render would never show us.
+   - **The marker is a comment, never a second `\input`.**
    - **Check for TikZ, and that the figure compiles.** If
-     `figure-drawer` was not loaded, run `kpsewhich tikz.sty`
-     yourself: if it finds nothing, write the ASCII inline in
-     a `verbatim` environment instead, no pair and no marker, and say so in
-     chat. A figure you keep compiles on its own
-     first, with `lualatex`, the engine the pdf render uses: a malformed
-     one fails the whole pdf render, not just the figure.
-   - **A topic directory is required.** If step 0 settled on a flat
-     `content/drafts/<slug>.tex`, move the draft and its dossier before
-     adding a figure, or drop the figure. Figures under a flat draft
-     land in `content/drafts/figures/`, shared with every other flat
-     draft.
-   - **No citekey inside either figure file.** Step 11's gate reads the
-     fragment and does not follow `\input`, so a citekey in a node label
-     evades the one check this pipeline exists for. Cite in the prose
-     that introduces the figure.
+     `figure-drawer` was not loaded, run `kpsewhich tikz.sty`: if it
+     finds nothing, write the ASCII inline in a `verbatim` environment,
+     no pair and no marker, and say so in chat. A figure you keep
+     compiles on its own first, with `lualatex`, the engine the pdf
+     render uses: a malformed one fails the whole pdf render.
+   - **A topic directory is required.** Move a flat draft and its
+     dossier first, or drop the figure.
+   - **No citekey inside either figure file.** The gate does not follow
+     `\input`; cite in the prose that introduces the figure.
    - **Nothing redrawn from a source.**
-     A picture redrawn from a source paper's figure is the same
-     violation in different pixels.
-   - **A captioned figure is written as real LaTeX too, around the
-     inline `\input`** -- the same carve-out step 8 states for a table,
-     and for the same reason: `\begin{figure}\input{figures/<name>.tex}\caption{...}\label{fig:<id>}\end{figure}`,
-     referred to as `Figure~\ref{fig:<id>}`. **Never write
-     `\renewcommand{\thefigure}`.** The `figure` counter it would
-     override is what has to agree with the user's own thesis-wide
-     numbering once this fragment is `\input`-ed there -- a hand-typed
-     number is wrong the moment a chapter before it changes length, the
-     same defect issue 411 removes from every other genre's figures.
-   - **Tell the user what their thesis preamble must load.** This genre
-     is the one place the renderer's fix for #781 cannot reach. Its
-     figures are `\input` inside `figure` floats, and a float is a
-     group: `\usetikzlibrary` there defines its macros locally but sets
-     the loaded flag globally, so the *second* figure in their thesis
-     skips the load and finds no macros. This pipeline loads the union
-     in its own preamble for its own renders and cannot touch theirs.
-     Render the fragment and quote the line it prints:
+   - **A captioned figure is a real float** around the inline `\input`:
+     `\begin{figure}...\caption{...}\label{fig:<id>}\end{figure}`,
+     referred to as `Figure~\ref{fig:<id>}`. Never write
+     `\renewcommand{\thefigure}`.
+   - **Tell the user what their thesis preamble must load.** When a
+     render prints a `[tikz-libraries]`, `[unicode]` or `[floats]` line,
+     read `.claude/skills/figure-drawer/references/placement.md` §4,
+     quote the line, and tell the user what it means;
+     `.claude/skills/thesis-chapter-writer/references/thesis.md` §3
+     shows each line. Never edit their thesis or a figure file to work
+     around one.
 
-     ```text
-     [tikz-libraries] fit,positioning -- a fragment has no preamble; load these in the assembling document
-     ```
+   A numbered equation is real LaTeX too, with no marker:
+   `\begin{equation}...\label{eq:<id>}\end{equation}`, referred to as
+   `Equation~\ref{eq:<id>}`; any other displayed mathematics is
+   `\[...\]`. Done when each figure has both files, and each caption and
+   number is LaTeX's own.
 
-     Say plainly that `\usetikzlibrary{fit,positioning}` belongs in
-     their thesis preamble, beside `\usepackage{tikz}`. Never suggest
-     working around it inside a figure file: clearing the loaded flag
-     makes `positioning` append its placement transform to a global hook
-     once per figure, so the Nth figure shifts every node N times, with
-     the engine exiting 0 and nothing in the log. The preamble load
-     also saves the width of a figure they set in `\resizebox`, `\sbox`
-     or inline: a library loaded there prints its own line ends as
-     135pt to 147pt of blank space before the picture on the render's
-     page, and since that band is inside the box, `\resizebox` scales it
-     along with the picture (#1046).
-   - **The same goes for Unicode characters** the fragment carries
-     (`H₂O`, `𝑡`, `≤`, `Ⅳ`), which pdflatex's default fonts cannot print
-     (#948). When the render prints
+10. **Critique against the evidence packet, before gating.** This step
+    runs on every chapter, once the fragment is written and before step
+    11's gate. Read the dossier's `evidence.md` -- the `claim:`/`quote:`
+    blocks step 2 recorded -- against the fragment's own prose, section
+    by section, and list in priority order up to five places where the
+    prose claims more than its `claim:` supports, omits a kept `claim:`,
+    or drifts from its wording. One inline judgement call: not a
+    subagent dispatch and not a deterministic check.
 
-     ```text
-     [unicode] chitragupta-lualatex.tex and chitragupta-unicode.sty copied beside the fragment -- a fragment has no preamble; in the assembling document, under lualatex: \usepackage{fontspec}\usepackage{unicode-math}\input{chitragupta-lualatex}; under pdflatex: \usepackage{chitragupta-unicode}
-     ```
-
-     quote it, and tell the user what it means. **LuaLaTeX is the
-     recommended engine for the thesis itself** (#1037), as it is for
-     chitragupta's own pdf preview (#996): copy
-     `chitragupta-lualatex.tex` next to the thesis and load it after
-     `fontspec` and `unicode-math`, and every such character prints from
-     the same fonts the preview used. If their template forces pdflatex,
-     the opt-in is `chitragupta-unicode.sty` next to the thesis and
-     `\usepackage{chitragupta-unicode}` in its preamble; it never
-     overrides a glyph their preamble already gives a character, and
-     under LuaLaTeX it does nothing. The engine is their template's to
-     decide; never edit their thesis to change it. Never rewrite the
-     characters in the fragment to get the build through.
-   - **Float placement is theirs to opt into** (#1065). A fragment
-     whose figures the render saw prints a `[floats]` line and gets
-     `chitragupta-floats.tex` beside it: the float fractions the pdf
-     preview used, which keep a figure that fits on a text page off a
-     page of its own. Tell the user `\input{chitragupta-floats}` in their
-     thesis preamble gives the same placement, and that leaving it out
-     keeps their template's. It is a choice, not a fix, so never add it
-     to their thesis yourself.
-
-   **An equation gets the same carve-out, without the pair-of-files
-   ceremony.** Most displayed math in a chapter needs no number at all
-   -- `docs/WRITING-STANDARDS.md` §12's rule (standalone, the final step
-   of a derivation, or reused later) applies here exactly as it does
-   everywhere else, and this genre has no marker vocabulary to reach for
-   in the first place. Write ordinary math with `\[...\]` or `\(...\)`,
-   same as any other LaTeX document. When one does earn a number --
-   most often the closing line of a derivation the chapter cites again
-   -- write it as real LaTeX, the same reasoning step 8 gives a table
-   and step 9 gives a figure: `\begin{equation}...\label{eq:<id>}
-   \end{equation}`, referred to as `Equation~\ref{eq:<id>}`. The
-   fragment is `\input` into the user's own thesis, where their own
-   LaTeX numbers it consistently with every other chapter's
-   equations -- a hand-typed number, or a bare `\[...\]` for a result
-   the prose later calls "Equation 3", is wrong the moment an earlier
-   chapter changes length, the same defect this carve-out already
-   avoids for a table and a figure. Introduce the result before the
-   display and read it in the sentence that follows; do not simply
-   caption it and move on.
-
-10. **Critique against the evidence packet, before gating.** Read the
-    dossier's `evidence.md` -- the `claim:`/`quote:` blocks step 2
-    recorded -- against the fragment's own prose, section by section.
-    List, in priority order, up to five places where the prose claims
-    more than its `claim:` line supports, omits a kept `claim:` the
-    fragment never used, or drifts from the wording `claim:` actually
-    recorded. This is one inline judgement call, not a subagent
-    dispatch and not a deterministic check -- nothing in this pipeline
-    scores this automatically.
-
-    **Run this step: it is never a condition of presenting, but it is not done
-    until you have run its commands.** Read
-    `.claude/skills-common/references/critique.md` now, before listing
-    anything, and work it through with `content/drafts/<slug>.tex` as
-    `<draft>`. In outline:
-
-    1. Where the dossier has an `outline.md`, read what the corpus could not
-       answer:
-
-       ```bash
-       python -m chitragupta.draft dossier status content/drafts/<slug>.tex
-       ```
-
-    2. Take the baseline:
-
-       ```bash
-       python -m chitragupta.draft dossier sections content/drafts/<slug>.tex --citekeys --write
-       python -m chitragupta.review verbatim scan content/drafts/<slug>.tex --write --json
-       python -m chitragupta.draft style content/drafts/<slug>.tex --json
-       ```
-
-       If the scan's `tiers_not_run` is not empty, quote the reason: **genuine
-       restatement is only detected where the embedding tier can run**.
-       `style` reports only what WRITING-STANDARDS.md §9 marks decidable, and
-       this step is told to fix none of them: its count is a proxy for a new
-       defect, not a work list.
-
-    3. Repair at most three items, each edit with an `apply_patch` hunk,
-       inside that section only. Keep an edit only if all three checks pass
-       the reference's test; otherwise restore the text you kept:
-
-       ```bash
-       python -m chitragupta.draft gate content/drafts/<slug>.tex
-       python -m chitragupta.review verbatim recheck content/drafts/<slug>.tex \
-           --baseline content/review/<topic>/<stem>.verbatim.json --json
-       python -m chitragupta.draft style content/drafts/<slug>.tex --json
-       ```
-
-       Read `style`'s count only as a number: it reports what §9 marks
-       decidable, and you fix none of them here.
-
-    4. Log every attempt, kept or reverted, in the dossier's `revisions.md`.
-
-    If nothing on the list clears the bar, or the list was empty, say so and
-    continue to the gate.
-11. **Gate before presenting.** Save the fragment as `content/drafts/<slug>.tex`
-    (this remains the canonical deliverable -- the one meant to be `\input`-ed),
-    then run:
+    Read `.claude/skills-common/references/critique.md` now, before
+    listing anything, and follow it with `content/drafts/<slug>.tex` as
+    `<draft>`; make each edit with an `apply_patch` hunk.
+    **This step is not done until the loop the reference describes has
+    run**: the baseline, then at most three repairs, each checked and
+    logged in the dossier's `revisions.md`. It is never a condition of
+    presenting. Come back with the list, each repair kept or reverted,
+    the scan's `tiers_not_run` reason if it gave one, and whether the
+    declared queries are exhausted; then continue to step 11. Done when
+    the loop has returned and every attempt is logged, or you have said
+    that nothing cleared the bar.
+11. **Gate before presenting.** Save the fragment as
+    `content/drafts/<slug>.tex`, the canonical deliverable the user
+    `\input`s, then:
 
     ```bash
     python -m chitragupta.draft gate content/drafts/<slug>.tex
     ```
 
-    Fix and re-run until `OK`. Never present a draft that hasn't passed.
-12. **Render md and pdf previews.** The `.tex` fragment stays the canonical
-    deliverable exactly as-is -- don't wrap it in a preamble or change its
-    `\input`-able shape. Follow
-    `.claude/skills-common/references/render-and-references.md`
-    §2 for `content/drafts/<slug>.tex` in **md and pdf only**: pandoc's
-    LaTeX reader handles a preamble-less fragment fine, and both previews
-    land beside it as
-    `content/rendered/<topic>/<name>.{md,pdf}`. A rendering failure
-    never blocks presenting the `.tex` fragment, with one exception worth
-    chasing first: a pdf error naming a figure file means the fragment
-    will not build in the user's thesis either, so repair the figure or
-    drop it, rather than handing over a chapter that cannot be typeset.
-
-    **Then render the evidence sidecar**, per
-    `.claude/skills-common/references/render-and-references.md`
-    §3, in **pdf only**.
-
-    **This chapter emits one, and the reason it is safe to is the same
-    reason the References section below is not.** A sidecar is a
-    *separate, standalone document* -- `content/rendered/<topic>/
-    <name>.evidence.pdf`, with its own preamble -- never something your
-    thesis `\input`s. So none of the objections that keep a References
-    section out of the fragment apply to it: nothing lands mid-chapter,
-    nothing competes with the thesis-wide bibliography, and the fragment
-    you hand over is byte-for-byte what it was.
-
-    It is also the genre that most wants one. Your reader is an examiner
-    reading adversarially for the claim that outruns its evidence, and a
-    sidecar is exactly the artefact that lets them check a claim against
-    what the source actually said. It carries no `\bibliography` of its
-    own -- every citekey in it sits in a code span, so there is nothing
-    for citeproc to resolve.
-
-    `\citep{...}`/`\citet{...}` markers are read the same as `[@key]`
-    here, so the sidecar's contents come from this fragment's own
-    citations.
-
-    **Skip the reference's §1.** Unlike the Markdown-native genre skills,
-    don't run `python -m chitragupta.draft references` on this fragment
-    and don't add a manual References
-    section to it -- the fragment is designed to inherit the thesis's own
-    document-wide `\addbibresource`/`\bibliography` (the shared corpus
-    layer above), and a per-chapter list would duplicate that. The `.pdf`
-    preview still gets a real bibliography for free: `--citeproc` resolves
-    `\citep`/`\citet` against `bibliography.bib` and appends one
-    automatically, same as before this feature existed.
-
-    Note the preview renders that bibliography in IEEE style, with numeric
-    `[1]` markers, because that is what `render_output` now passes
-    `--csl`. That styles the *preview only* -- the `.tex` fragment is
-    unchanged, and the real thesis renders it in whatever style its own
-    document class and `\bibliographystyle` specify. Don't rewrite
-    `\citep`/`\citet` to match the preview.
-13. **Read it once as the examiner** (`docs/WRITING-STANDARDS.md` §6, in its
-    adversarial form). Check specifically for: a conclusion stated more
-    strongly than its cited evidence supports, a section that summarizes
-    rather than argues, notation or terminology that shifts mid-chapter, and
-    any claim carrying no citation that isn't genuinely your own contribution.
-    Where you find overreach, weaken the claim rather than adding a citation
-    that doesn't quite support it.
-14. **Record any steering.** If the user shaped this chapter in chat --
-    "argue it harder against X", "the RQ is narrower than that", "cut the
-    background recap" -- append it to the dossier's `steering.md`, dated.
-    It is invisible in the prose and has nowhere else to live; a revision
-    that doesn't know about it will undo it.
-15. **Run the prose check.** After the gate passes and before
+    On `FAIL`, fix the offending line -- correct the citekey or remove
+    the claim -- and re-run. Never show the user a draft that hasn't
+    passed. Done when it reports `OK`.
+12. **Render md and pdf previews, then the evidence sidecar.** The `.tex`
+    fragment stays the deliverable exactly as it is: never wrap it in a
+    preamble. Follow
+    `.claude/skills-common/references/render-and-references.md` §2 for
+    `content/drafts/<slug>.tex` in **md and pdf only**, then §3 in **pdf
+    only**. Skip its §1: the fragment gets no References section. A
+    rendering failure never blocks presenting the fragment, except a pdf
+    error naming a figure file: the fragment will not build in the
+    user's thesis either, so repair the figure or drop it. If the user
+    asks why there is no References section or why the sidecar is
+    rendered, read
+    `.claude/skills/thesis-chapter-writer/references/thesis.md` §4. Done
+    when each command has run or its warning is reported.
+13. **Read it once as the examiner, and record any steering.** Reread
+    against the checklist in
+    `docs/writing-standards/genres/thesis-chapter.md`, weakening any
+    claim that outruns its evidence. If the user shaped this chapter in
+    chat, append that to the dossier's `steering.md`, dated; read
+    `.claude/skills-common/references/genre-steps.md` §2 if unsure what
+    counts. Done when both are done.
+14. **Run the prose check.** After the gate passes and before
     presenting:
 
     ```bash
@@ -554,10 +264,10 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     ```
 
     Read `.claude/skills-common/references/prose-check.md` now and follow
-    it: what the check can and cannot see, and how to report what it
-    finds. If the user wants any finding acted on, that is
-    `draft-reviser`'s copy-edit mode, never an edit made here.
-16. **Run the verbatim scan.** Before presenting, rebuild the section map
+    it. If the user wants any finding acted on, that is
+    `draft-reviser`'s copy-edit mode, never an edit made here. Done when
+    every finding is reported.
+15. **Run the verbatim scan.** Before presenting, rebuild the section map
     and scan:
 
     ```bash
@@ -565,51 +275,21 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     python -m chitragupta.review verbatim scan content/drafts/<slug>.tex
     ```
 
-    The first command is not optional: a section map written earlier in
-    this run describes a draft you have since edited.
-
-    It matters most in the connective prose an examiner reads as your
-    own. **A review aid, not a gate: it cannot block the fragment, and it
-    is never a condition of presenting.**
-
-    Read `.claude/skills-common/references/verbatim-scan.md`
-    now and follow it: what to show, what the scan could not check, and
-    how to keep the report. Repairing a finding is `agenda-reviser`'s
-    job, and only if the user asks.
-17. **Stamp the draft fingerprint, then present.** Nothing edits the
-    fragment's text after this point, so this is where `dossier status`
-    records the baseline a later hand edit is compared against (#454):
+    The first command is not optional and not a repeat of step 8. It
+    matters most in the connective prose an examiner reads as your own.
+    **A review aid, not a gate: it is never a condition of presenting.**
+    Read `.claude/skills-common/references/verbatim-scan.md` now and
+    follow it. Repairing a finding is `agenda-reviser`'s job, and only
+    if the user asks. Done when the findings are shown.
+16. **Stamp the draft fingerprint, then present.** Read
+    `.claude/skills-common/references/genre-steps.md` §7 first, then:
 
     ```bash
     python -m chitragupta.draft dossier stamp content/drafts/<slug>.tex
     ```
 
-    Then present the `.tex` fragment (the deliverable to `\input`) plus, if
-    rendering succeeded, the `.md`/`.pdf` preview paths -- or the warning if
-    it didn't. Tell the user where the dossier is, that changes to this
-    chapter should go through `draft-reviser` rather than another run of this
-    skill, and that `content/drafts/` and `content/dossiers/` are gitignored
-    -- so `python -m chitragupta.draft dossier export <slug>` is how a draft and
-    its
-    working state get backed up.
-
-## Sources
-
-The prose standards this skill inherits are not original to this project.
-
-Full citations, licences and a per-principle attribution table are in
-[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution).
-All three works are openly licensed (CC-BY or CC-BY-SA) and require credit.
-
-What bears on *this* genre specifically:
-
-- **Google, *Technical Writing Courses* (CC-BY 4.0)** -- the curse of
-  knowledge, consistent terminology, defining each term once. Step 0's "what
-  does an examiner already know" is audience analysis in the form this genre
-  needs it.
-- **Last, *Technical Writing Essentials* (CC-BY 4.0)** -- scope and assumed
-  background stated up front; the argument against passive voice.
-- **Procida, *Diátaxis* (CC-BY-SA 4.0)** -- the genre-separation principle
-  behind the warning that a chapter which only summarises papers in sequence
-  is a survey with a chapter heading. A thesis chapter is not a Diátaxis
-  quadrant; only that insight transfers.
+    Present the `.tex` fragment, the deliverable to `\input`, as that
+    section says, with the preview paths or the render's warning. Changes
+    go through `draft-reviser`, and
+    `python -m chitragupta.draft dossier export <slug>` backs a draft
+    and its dossier up. Done when the user has the fragment.

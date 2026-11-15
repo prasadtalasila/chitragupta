@@ -541,8 +541,9 @@ exist until pandoc's reader has run:
   `tikzpicture` environment inside it, with exit `0` and no warning. The
   fourth row of the [figure substitution
   table](#-figure-substitution-four-combinations-one-real-no-op) assumes
-  the TikZ passes through, and `thesis-chapter-writer`'s step 9 says
-  `--format tex` and `--format pdf` get it. Passing `-f latex+raw_tex`
+  the TikZ passes through, and so does `thesis-chapter-writer`'s step
+  12, which reads a pdf error naming a figure file as a figure that
+  will not build in the user's thesis either. Passing `-f latex+raw_tex`
   leaves `\input{...}` as a raw command for LuaLaTeX to read, which
   restores the figure; nothing passes it yet. Reproduce it directly:
 
