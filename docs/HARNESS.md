@@ -361,7 +361,13 @@ loop as numbered steps, each with its commands and a "Done when", and
 a last step that returns to the caller. Each genre writer and
 deep-research converts its step in its own PR, benched; survey-writer
 was first (rows in
-`bench/results/2026-11-15-survey-writer-critique-pointer/`).
+`bench/results/2026-11-15-survey-writer-critique-pointer/`). In 6
+skill-only runs with an outline, every run opened the reference, ran
+`draft dossier status` before the baseline scan, logged a critique
+entry and passed the gate, as the inline step had. Without an outline
+the command is optional, and the pointer runs skipped it where the
+inline ones mostly ran it anyway; every other count held
+(plans/1091-ledger-survey-writer.md has the table).
 
 Two harness facts the bench had to work around, both recorded in the
 script: OpenCode takes its project directory from the inherited `PWD`,
