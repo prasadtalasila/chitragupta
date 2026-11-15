@@ -47,7 +47,7 @@ from chitragupta.review import _synthesis_render, _units
 # Not a quality threshold and not tunable: it is the number
 # `textbook-chapter-writer` step 4 already instructs against -- "before
 # reusing the same citekey a third time within one section, do one more
-# search() pass". Every section's run is reported whatever its length;
+# search pass". Every section's run is reported whatever its length;
 # this only decides which ones get their own line.
 RUN_REPORTED_AT = 3
 

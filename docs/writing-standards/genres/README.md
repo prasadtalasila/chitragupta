@@ -11,7 +11,9 @@ and for the skills that will read the result. **Assumed:** the core,
 
 This folder holds one file per genre, named by the genre's `--genre`
 value. [survey.md](survey.md) is the first; `thesis-chapter.md` and
-`research-paper.md` are to come. Each says:
+`research-paper.md` are to come.
+[textbook-chapter.md](textbook-chapter.md) holds the textbook chapter's.
+Each says:
 
 - what the genre owes its reader;
 - its reread checklist, the genre's form of the core's §6;
