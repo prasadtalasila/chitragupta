@@ -34,6 +34,7 @@ GENRE_TARGET = 12_000
 OTHER_TARGET = 8_000
 SLACK = 1_000
 GENRES = {
+    "review-digest",
     "survey-writer",
     "textbook-chapter-writer",
     "thesis-chapter-writer",
@@ -43,6 +44,7 @@ _LATER = "#1091: shrinks to its target in its own PR"
 
 # skill: (cap in bytes, why the cap is above the target, or None)
 BUDGET = {
+<<<<<<< HEAD
     "agenda-reviser": (29_000, f"{_LATER}; draft diff closing step (#1194)"),
     "book-assembler": (20_000, _LATER),
     "corpus-reviser": (13_000, _LATER),
@@ -58,15 +60,69 @@ BUDGET = {
     "figure-drawer": (7_000, None),
     "skill-bench": (5_000, None),
     "review-digest": (17_000, _LATER),
+=======
+    "agenda-reviser": (
+        18_500,
+        "#1091: deduplicated from 28 KB; it runs unattended repairs, so every "
+        "guardrail stays inline beside its command, and the rest is commands and "
+        "tested text (plans/1091-ledger-agenda-reviser.md)",
+    ),
+    "book-assembler": (
+        14_000,
+        "#1091: deduplicated from 20 KB into book-steps.md and latex-conventions.md; "
+        "the rest is ten steps' commands, the guardrails and their pointers, and the "
+        "target is a guideline (plans/1091-skill-shrink.md, Decision 1)",
+    ),
+    "corpus-reviser": (
+        11_000,
+        "#1091: deduplicated from 12.8 KB; it states only how its pass differs from "
+        "draft-reviser's loop, and the rest is its guardrails, routing table, three "
+        "closing steps' commands and tested text (plans/1091-ledger-corpus-reviser.md)",
+    ),
+    "deep-research": (41_000, _LATER),
+    "demo-recorder": (6_000, None),
+    "draft-reviser": (
+        23_000,
+        "#1091: deduplicated from 29 KB; agenda-reviser and corpus-reviser follow "
+        "its loop by step number, so every step stays complete inline, and the "
+        "rest is commands and tested text (plans/1091-ledger-draft-reviser.md)",
+    ),
+    "figure-drawer": (7_000, None),
+    "review-digest": (
+        17_000,
+        "#1091: deduplicated, then the six passages #1173 cut restored; the rest is "
+        "commands, the digest format and tested text, and the target is a guideline "
+        "(plans/1091-skill-shrink.md, Decision 1)",
+    ),
+    "skill-bench": (5_000, None),
+>>>>>>> origin/main
     "survey-writer": (
         14_000,
         "#1091: deduplicated from 32 KB, then the critique loop moved behind its "
         "pointer; the rest is commands and tested text, and the target is a "
         "guideline (plans/1091-skill-shrink.md, Decision 1)",
+<<<<<<< HEAD
+=======
     ),
-    "textbook-chapter-writer": (33_000, _LATER),
-    "thesis-chapter-writer": (34_000, _LATER),
-    "tutorial-writer": (34_000, _LATER),
+    "textbook-chapter-writer": (
+        16_000,
+        "#1091: deduplicated from 32 KB, with the critique loop behind its pointer; "
+        "the rest is commands, tested text and the steps an optional-citation genre "
+        "adds, and the target is a guideline (plans/1091-skill-shrink.md, Decision 1)",
+    ),
+    "thesis-chapter-writer": (
+        15_000,
+        "#1091: deduplicated from 34 KB with the critique loop behind its pointer; "
+        "the rest is commands, the figure stub and tested text, and the target is a "
+        "guideline (plans/1091-skill-shrink.md, Decision 1)",
+    ),
+    "tutorial-writer": (
+        17_000,
+        "#1091: deduplicated from 34 KB, critique loop behind its pointer; the "
+        "rest is commands, the run-it step and tested text, and the target is a "
+        "guideline (plans/1091-skill-shrink.md, Decision 1)",
+>>>>>>> origin/main
+    ),
 }
 
 

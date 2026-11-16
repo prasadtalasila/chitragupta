@@ -191,8 +191,9 @@ more in this genre than in any other.
 ### 🛠 `tutorial-writer`
 
 A Diátaxis tutorial: a lesson a learner follows at a keyboard, start to
-finish, to a working result they can see. The governing analogy in the
-skill is a driving lesson: what matters is that the student can drive
+finish, to a working result they can see. The governing analogy in
+[its writing rules](writing-standards/genres/tutorial.md) is a driving
+lesson: what matters is that the student can drive
 afterwards, and getting from A to B is incidental.
 
 Its rule, from which everything else follows: **a tutorial that doesn't
@@ -456,7 +457,8 @@ wrong.
 
 These rules are the same in every skill. Each is stated in each
 of the eleven `SKILL.md` files or, where several skills share the wording
-(the steps the genre writers share, the critique loop, the prose
+(the steps the genre writers share, the steps composing a book from
+accepted units takes, the critique loop, the prose
 check, the verbatim scan, collection scoping, building the References
 section and rendering, and the figure, table and equation rules a
 revision follows), once in a

@@ -134,7 +134,16 @@ server.
 2. **Commands stay in `SKILL.md`** (#1091 item 3): every
    `python -m chitragupta...` line, every marker a draft must carry, and
    every phrase a test reads from the raw file. Output samples (the
-   `text` fences in thesis step 9) may move.
+   `text` fences in thesis step 9) may move. **Two steps are measured
+   exceptions**, whose commands live in a shared reference behind a
+   pointer: the render step (`render-and-references.md`, measured
+   2026-10-30 to 11-02), and the critique loop (`critique.md`), decided
+   2026-11-15 on PR 0c's result for the four genre writers and
+   deep-research. A critique step moves in its own skill's PR, benched
+   for that skill. Its pointer says the step is not done until the loop
+   the reference describes has run, and
+   `tests/test_skill_pregate_feedback_step.py`'s `_POINTER_FORM` lists
+   the skills that have moved. survey-writer moved first.
 3. **What moves is decided by branch:** inline what every run needs;
    move behind a pointer what only some runs reach.
 4. **Every step ends on a one-line `Done when`.** Every pointer states
@@ -222,7 +231,12 @@ right before merging and merge main rather than amend.
   word (`tests/test_skill_references.py:70-74`); handoffs and harness
   phrases (`survey_subagents`, `critique_edit_tool` in
   `tests/fixtures/skill_harness_phrases.toml`) stay in `SKILL.md`.
-- A shared reference names no step number and contains no command.
+- A shared reference names no skill, no harness tool and no step
+  number of a step that points at it. A reference that holds a
+  procedure numbers its own steps, ends each on a `Done when`, and
+  returns to the step that sent the reader. A command a step requires
+  stays in that step's `SKILL.md`, except in the steps Decision 2
+  names; a reference may also repeat a command its caller carries.
 - Every `## N.` section of a reference is cited as `` `path` §N `` by
   some `SKILL.md`, identically in all three copies; sections are joined
   only by ", " or " and " (`tests/skill_text.py` `_CITED`).
@@ -239,11 +253,14 @@ exercises, each pinned by a test in the task named:
 1. **A rider leaves its window.** `expanded()` splices a whole reference
    at each citation, so a new citation placed just before the critique,
    prose-check or verbatim-scan pointer pushes that step's riders past
-   their 1,400, 2,000 or 5,900-character windows. Pinned by running
+   their 1,400, 2,000 or 6,800-character windows. Pinned by running
    `tests/test_skill_pregate_feedback_step.py`,
    `tests/test_skill_style_check_step.py` and
    `tests/test_skill_verbatim_scan_step.py` in PR 1 Task 5 and PR 2.
-   No citation goes inside those three steps.
+   No citation goes inside those three steps. A critique step in the
+   pointer form (Decision 2) is read whole, the step and then the
+   reference, so a spliced reference cannot push its riders out of a
+   window.
 2. **A model reads a pointer and skips the step.** Pinned by
    `skill-bench`'s per-command scoring (PR 0 Task 2) and the
    before/after rule in every shrink PR.
