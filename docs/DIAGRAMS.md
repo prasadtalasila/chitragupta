@@ -21,10 +21,10 @@ Read the one that matches your question and ignore the rest.
 
 One property holds in the eleven workflow views: **a genre skill loops on the citation
 gate until it exits 0, and shows you nothing before that.** All six
-genre skills' SKILL.md files carry that instruction, two of them in
-exactly these words: *"Fix and re-run until `OK`. Never present a draft
-that hasn't passed."* A gate failure is normally something you never
-see.
+genre skills' SKILL.md files carry that instruction, each in its own
+words; `deep-research`'s reads *"Fix and re-run until `OK`. Never
+present a draft that hasn't passed."* A gate failure is normally
+something you never see.
 
 **Drawing a figure is left out of every view.** When a genre skill
 decides a figure is warranted, it hands off to the `figure-drawer`
@@ -324,7 +324,7 @@ flowchart TB
   %% ─────────────── 5 · GATE ───────────────
   GATE{{"<b>THE CITATION GATE</b> · <code>chitragupta draft gate</code><br/>Is every citekey in this draft in the ledger as a parsed source?<br/><small>run twice: by the PostToolUse hook on every write under content/drafts/,<br/>and by the skill itself before it shows you anything</small>"}}
   BLOCK["<b>REFUSED</b> · exit 1<br/><small>the write is blocked and the chain stops</small>"]
-  ITER["<b>the skill fixes it and re-runs — itself</b><br/><small>“Fix and re-run until <code>OK</code>. Never present a draft that hasn't<br/>passed.” — every SKILL.md carries this instruction.<br/>It swaps the bad key for one retrieval actually returned, or drops<br/>the claim. You are shown nothing until the gate is green.</small>"]
+  ITER["<b>the skill fixes it and re-runs — itself</b><br/><small>“Fix and re-run until <code>OK</code>. Never present a draft that hasn't<br/>passed.” — deep-research's words; every genre skill says it.<br/>It swaps the bad key for one retrieval actually returned, or drops<br/>the claim. You are shown nothing until the gate is green.</small>"]
 
   %% ─────────────── 6 · PUBLISH ───────────────
   subgraph S5["<b>6 · PUBLISH</b> — stdlib only, no venv needed"]
@@ -507,11 +507,11 @@ flowchart TB
 
   RIX -- "<b>chitragupta/retrieval.py</b> · BM25 hits<br/><small>the default path</small>" --> DRF
   RPX -- "<b>chitragupta/retrieval_passages.py</b> · BM25 passage hits<br/><small>same ranker, one unit down — <code>--unit passage</code></small>" --> DRF
-  CHR -. "<b>chitragupta/enrich/embed_index.py</b> · semantic hits<br/><small><b>either this or BM25 — never both.</b> Only<br/>survey-writer and deep-research name it.</small>" .-> DRF
+  CHR -. "<b>chitragupta/enrich/embed_index.py</b> · semantic hits<br/><small><b>either this or BM25 — never both.</b> Used once<br/>built; the shared genre steps name it, no skill builds it.</small>" .-> DRF
   DOC -- "chitragupta/passages.py<br/>quotable passages — rung 1" --> DRF
   CPS -- "chitragupta/passages.py<br/>quotable passages — rung 2" --> DRF
   LED -- "chitragupta/references.py<br/>bib_fields → IEEE entries" --> DRF
-  DRF == "<b>chitragupta draft gate</b> — FAIL rewrites the draft in place,<br/>and the skill re-runs it until it exits 0" ==> DRF
+  DRF == "<b>chitragupta draft gate</b> — on FAIL the skill fixes the draft<br/>and re-runs it until it exits 0" ==> DRF
   DRF -- "chitragupta draft render<br/><small>only after the gate passes</small>" --> REN
   DRF -- "the review layer<br/><small>chitragupta review provenance · verbatim scan --write<br/>coverage · synthesis · figure · uncited · quotation --write<br/>agenda · support --write · union (a book, not a draft) · digest</small>" --> RVW
 
@@ -609,7 +609,7 @@ flowchart TB
   GATEIN --> G{"<b>chitragupta draft gate</b><br/>every citekey resolvable?"}
   G -- "yes · <b>exit 0</b>" --> GOOD["references → render<br/><small>the only path to a rendered draft</small>"]
   G -- "no · <b>exit 1</b>" --> GBAD["<b>the write is blocked.</b><br/><small>Treated like a failing test,<br/>not a lint warning.</small>"]
-  GBAD --> GLOOP["<b>the skill re-drafts and re-runs the gate</b><br/><small>“Fix and re-run until <code>OK</code>. Never present a draft<br/>that hasn't passed.” — all five SKILL.md files.<br/>This exit 1 is the only one nobody has to see:<br/>the loop is inside the skill, not in front of you.</small>"]
+  GBAD --> GLOOP["<b>the skill re-drafts and re-runs the gate</b><br/><small>“Fix and re-run until <code>OK</code>. Never present a draft<br/>that hasn't passed.” — deep-research's words;<br/>all six genre skills say it.<br/>This exit 1 is the only one nobody has to see:<br/>the loop is inside the skill, not in front of you.</small>"]
   GLOOP == "<b>loop until exit 0</b>" ==> G
   GLOOP -. "unless the paper genuinely isn't in the corpus —<br/>then it stops and tells you to sync" .-> E1
 
@@ -768,8 +768,10 @@ The corpus is the content. Nearly every sentence is a cited claim, so
 these are the two skills that pay off the enrichment layer. `docling`
 gives passages good enough to survive review; `embed` gives semantic
 recall, finding the paper that makes your point in words you did not
-search for. They are also the two genre skills whose SKILL.md names
-`chitragupta.enrich.embed_index` as an alternative to BM25.
+search for. The shared genre steps every writer reads
+(`.claude/skills-common/references/genre-steps.md` §1) name
+`chitragupta/enrich/embed_index.py` as the ranker retrieval uses once it
+is built, and these two genres gain the most from it.
 
 Both read the same corpus the rest of the pipeline does, and that corpus
 is the bibliography and nothing else, so every document either skill can
@@ -853,8 +855,9 @@ deliberately confined: `tutorial-writer` bans them mid-lesson and allows
 them only in a closing "Where to go next", and `textbook-chapter-writer`
 uses them for motivation and background.
 
-So the enrichment layer is mostly wasted here. Neither SKILL.md mentions
-`embed_index`; both use `chitragupta.retrieval.search()`, which is stdlib BM25.
+So the enrichment layer is mostly wasted here. Both skills read the same
+shared genre steps that name `embed_index`, but they search so little
+that `chitragupta.retrieval.search()`, which is stdlib BM25, serves them.
 Building a semantic index to place four citations is not worth the
 effort. The rendering they do want at the end is not an enrichment stage
 at all: `render_output` is the drafting layer's own publish step, and

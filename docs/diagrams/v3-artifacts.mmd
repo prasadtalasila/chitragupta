@@ -84,11 +84,11 @@ flowchart TB
 
   RIX -- "<b>chitragupta/retrieval.py</b> · BM25 hits<br/><small>the default path</small>" --> DRF
   RPX -- "<b>chitragupta/retrieval_passages.py</b> · BM25 passage hits<br/><small>same ranker, one unit down — <code>--unit passage</code></small>" --> DRF
-  CHR -. "<b>chitragupta/enrich/embed_index.py</b> · semantic hits<br/><small><b>either this or BM25 — never both.</b> Only<br/>survey-writer and deep-research name it.</small>" .-> DRF
+  CHR -. "<b>chitragupta/enrich/embed_index.py</b> · semantic hits<br/><small><b>either this or BM25 — never both.</b> Used once<br/>built; the shared genre steps name it, no skill builds it.</small>" .-> DRF
   DOC -- "chitragupta/passages.py<br/>quotable passages — rung 1" --> DRF
   CPS -- "chitragupta/passages.py<br/>quotable passages — rung 2" --> DRF
   LED -- "chitragupta/references.py<br/>bib_fields → IEEE entries" --> DRF
-  DRF == "<b>chitragupta draft gate</b> — FAIL rewrites the draft in place,<br/>and the skill re-runs it until it exits 0" ==> DRF
+  DRF == "<b>chitragupta draft gate</b> — on FAIL the skill fixes the draft<br/>and re-runs it until it exits 0" ==> DRF
   DRF -- "chitragupta draft render<br/><small>only after the gate passes</small>" --> REN
   DRF -- "the review layer<br/><small>chitragupta review provenance · verbatim scan --write<br/>coverage · synthesis · figure · uncited · quotation --write<br/>agenda · support --write · union (a book, not a draft) · digest</small>" --> RVW
 

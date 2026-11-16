@@ -307,13 +307,13 @@ It does not invent evidence entries to fill the file. An empty
 fabricated citekey.
 
 **Every one of the six drafting skills routes here for changes.** Each
-carries the rule twice. Once as a row in its own routing table: *user
-asks to change something that already exists -> use `draft-reviser`,
-never re-run this skill*. Once as a clause in its frontmatter
-`description`, which is the surface that decides which skill is picked in
-the first place. The table alone is not enough: it is read only after a
-skill has already been chosen. [TOKENS.md](TOKENS.md) explains why the
-rule exists.
+carries the rule twice. Once in the body, in the sentence that says
+which requests belong to other skills: *a change to a draft that already
+exists is `draft-reviser`'s, never another run of this skill*. Once as a
+clause in its frontmatter `description`, which is the surface that
+decides which skill is picked in the first place. The body alone is not
+enough: it is read only after a skill has already been chosen.
+[TOKENS.md](TOKENS.md) explains why the rule exists.
 
 The rule is a default: nothing enforces it, no hook checks it, and the
 only mechanical gate in the pipeline is `citation_gate`. That is
