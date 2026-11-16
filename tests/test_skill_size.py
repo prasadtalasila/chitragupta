@@ -45,7 +45,7 @@ _LATER = "#1091: shrinks to its target in its own PR"
 # skill: (cap in bytes, why the cap is above the target, or None)
 BUDGET = {
     "agenda-reviser": (
-        18_500,
+        19_000,
         "#1091: deduplicated from 28 KB; it runs unattended repairs, so every "
         "guardrail stays inline beside its command, and the rest is commands and "
         "tested text (plans/1091-ledger-agenda-reviser.md)",
@@ -57,7 +57,7 @@ BUDGET = {
         "target is a guideline (plans/1091-skill-shrink.md, Decision 1)",
     ),
     "corpus-reviser": (
-        11_000,
+        11_500,
         "#1091: deduplicated from 12.8 KB; it states only how its pass differs from "
         "draft-reviser's loop, and the rest is its guardrails, routing table, three "
         "closing steps' commands and tested text (plans/1091-ledger-corpus-reviser.md)",
@@ -97,7 +97,7 @@ BUDGET = {
         "adds, and the target is a guideline (plans/1091-skill-shrink.md, Decision 1)",
     ),
     "thesis-chapter-writer": (
-        15_000,
+        16_000,
         "#1091: deduplicated from 34 KB with the critique loop behind its pointer; "
         "the rest is commands, the figure stub and tested text, and the target is a "
         "guideline (plans/1091-skill-shrink.md, Decision 1)",

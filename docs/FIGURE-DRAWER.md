@@ -83,7 +83,7 @@ in the draft that names them:
 | Draft | In the draft | Files |
 | --- | --- | --- |
 | `.md` (survey, tutorial, textbook chapter) | `<!-- figure: figures/<name> -->` on a line of its own, its caption line directly below it, and `<!-- figureref: <name> -->` wherever prose points at it | `figures/<name>.tex` and `figures/<name>.txt` |
-| `.tex` (thesis chapter) | `\input{figures/<name>.tex}` then `%figure: figures/<name>`, inside a hand-written `figure` float with `\caption` and `\label` when captioned | the same pair |
+| `.tex` (thesis chapter) | `\input{figures/<name>.tex}` then `%figure: figures/<name>`, both inside a hand-written `figure` float with its `\caption` and `\label` | the same pair |
 
 The renderer puts the TikZ in the `tex` and `pdf` outputs and the ASCII
 form, in a code block, in `md`, `html` and `docx`. Nothing writes
@@ -268,15 +268,23 @@ show on the rendered page.
 ## 🎓 Thesis fragments
 
 A thesis chapter is a `.tex` fragment that you `\input` into your own
-thesis, so two things are yours to act on:
+thesis, so two things are yours to act on. A render made with
+`--fragment` names each on a line of its own; the md and pdf previews
+have preambles of their own and print neither.
 
 - **TikZ libraries.** When the render prints a `[tikz-libraries]` line,
   add the `\usetikzlibrary{...}` it names to your thesis preamble,
   beside `\usepackage{tikz}`. Keep the figure's own `\usetikzlibrary`
   line and add nothing else about loading, such as flag-clearing or a
   hook save and restore ([TIKZ-STYLE.md](TIKZ-STYLE.md) says why).
-- **Unicode.** When it prints a `[unicode]` line, copy
-  `chitragupta-unicode.sty` next to your thesis and load it.
+- **The engine and Unicode.** The pdf preview runs LuaLaTeX, and
+  LuaLaTeX is the recommended engine for your thesis too. When the
+  render prints a `[unicode]` line, copy `chitragupta-lualatex.tex` next
+  to your thesis and `\input` it after `fontspec` and `unicode-math`,
+  so every such character prints from the fonts the preview used. Only
+  if your template forces pdflatex, copy `chitragupta-unicode.sty`
+  instead and load it with `\usepackage{chitragupta-unicode}`: it
+  teaches pdflatex those characters and does nothing under LuaLaTeX.
 
 A third line, `[floats]`, is a choice rather than a fix. It copies
 `chitragupta-floats.tex` beside the fragment: `\input` it in your thesis

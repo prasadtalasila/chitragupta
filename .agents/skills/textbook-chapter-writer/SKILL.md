@@ -16,14 +16,15 @@ not from this skill's own folder.
 **The corpus is read-only: never run `python -m chitragupta.corpus sync`
 or `python -m chitragupta.enrich`.** Before the first retrieval, read
 `.claude/skills-common/references/genre-steps.md` §1: what the corpus
-holds, and why those are the user's to run. Its paragraph on an empty
-ledger does not apply to this genre, where citing is optional. Check:
+holds, and why those are the user's to run. Of its two paragraphs on an empty
+ledger, the one for a genre where citing is optional is this genre's.
+Check:
 
 ```bash
 python -m chitragupta.corpus ledger
 ```
 
-If it reports an empty ledger, say so before you start: the chapter is
+If it reports no items, or none `parsed`, say so before you start: the chapter is
 still possible, but it will carry no citations. Ask whether to proceed
 uncited or to sync first, and wait for the answer.
 
@@ -89,8 +90,10 @@ works these standards come from are credited in
 2. **State scope and prerequisites** near the top: what the chapter
    covers, what it deliberately doesn't, and what the student is assumed
    to know. Done when the opening says all three.
-3. **Motivation: establish the need before the mechanism.** First check
-   for an `outline.md`:
+3. **Motivation: establish the need before the mechanism.** Before
+   writing it, read
+   `.claude/skills/textbook-chapter-writer/references/textbook.md` §1
+   again. First check for an `outline.md`:
 
    ```bash
    python -m chitragupta.draft dossier outline content/drafts/<slug>.md --check
@@ -173,6 +176,9 @@ works these standards come from are credited in
      first, with `lualatex`: a malformed one fails the whole pdf render.
    - **No citekey inside either figure file.**
    - **Nothing redrawn from a source.**
+   - **The `.txt` form is 7-bit ASCII, and the caption is in the
+     draft**, never in a figure file. Never write the word "Figure" or
+     a number yourself: the renderer assigns both.
    - **A caption line directly below the marker**, and
      `<!-- figureref: <name> -->` where the prose points at it.
 

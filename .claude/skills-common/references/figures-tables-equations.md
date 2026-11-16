@@ -69,11 +69,11 @@ finding and a reader's problem.
 
 ## 4. A captioned figure renumbers itself too; its id does not
 
-Issue 411 gives a *captioned* figure the same contract, over the same
+A *captioned* figure has the same contract, over the same
 `<!-- figure: ... -->` marker §2 reads: a literal "Figure 2" in the
 prose is the defect, and the fix is an inline
 `<!-- figureref: <id> -->`. An **uncaptioned** figure has no id to
-protect and no number to write, but since #421 it is a finding of its
+protect and no number to write, but it is a finding of its
 own (`FigureNoCaption`) rather than an accepted state; the fix is a
 caption line, and it is the reader's gain, not a tidy-up.
 
@@ -85,7 +85,7 @@ those rather than eyeballing the markers.
 
 ## 5. An equation renumbers itself; its id does not
 
-Issue 457 gives the same contract to a *numbered* equation, over the
+A *numbered* equation has the same contract, over the
 `<!-- equation: id -->` marker `docs/WRITING-STANDARDS.md` §12 has the
 renderer resolve: a literal "Equation 3" in the prose is the defect, and
 the fix is an inline `<!-- equationref: <id> -->`.
@@ -119,8 +119,8 @@ render and read its output rather than trusting this list. A gap that
 is really code (`404`) gets a row in the file's one-column
 "Not mathematics" table, never a LaTeX row.
 
-**Every mapped symbol gets a meaning, in `math.md`'s `## Symbols`**
-(#1143), and nowhere else: not in the glossary (a `(`sym`)` slot or a
+**Every mapped symbol gets a meaning, in `math.md`'s `## Symbols`**,
+and nowhere else: not in the glossary (a `(`sym`)` slot or a
 `**`sym`**` bullet is reported, with the row to write instead) and not
 as a list in `scope.md`'s House style. One row per bare symbol
 (`m`, `T_oil`, `x_hat`; an expression such as `r(t)` or `T_c = 6` may

@@ -34,7 +34,7 @@ python -m chitragupta.draft retrieve search "<query>" --k 15 \
 Three rules, none of them negotiable:
 
 - **Every call, or none.** One unflagged call silently widens the scope
-  for that search: `retrieval.md`'s `collection` column (#254) will show
+  for that search: `retrieval.md`'s `collection` column will show
   it read as corpus-wide after the fact, but by then the run has already
   read outside the shelf -- the discipline has to hold while the run is
   happening, not just be checkable afterwards.

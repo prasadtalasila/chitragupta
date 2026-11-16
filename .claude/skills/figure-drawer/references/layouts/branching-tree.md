@@ -35,7 +35,7 @@ counts once per leg.
 Width and height are fractions of the render's 453pt text width and
 700pt text height, and slack is the share of the picture no named node
 fills, zone cards excluded. The probe sets the figure in the `article`
-class at 12pt in the render's own LuaLaTeX fonts (#1037), so the
+class at 12pt in the render's own LuaLaTeX fonts, so the
 fractions are the ones that print.
 
 | Source | Nodes | Edges | Width | Height | Slack |

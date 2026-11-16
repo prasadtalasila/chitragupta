@@ -513,11 +513,14 @@ outrank a human on a judgment call" under what this assistant will not
 do.
 
 So the way out is a second skill, `corpus-reviser`: a wide pass that
-re-searches every sub-theme in `sections.md` and reads the whole draft.
+re-searches every sub-theme the dossier records (the queries in
+`retrieval.md`, or the headings in `sections.md` where it records none)
+and reads the whole draft.
 It is invoked when the user asks for it, when an agreed scope change
 invalidated the old queries, or when the draft is being re-targeted at a
-different reader. Its cost is stated before it runs, instead of being
-discovered afterwards in `retrieval.md`.
+different reader. Its cost is stated before it runs, and written into
+`revisions.md` before the first search, instead of being discovered
+afterwards in `retrieval.md`.
 
 **Why a separate skill and not a mode.** A split only enforces
 anything if it removes a capability. `draft-reviser` contains no

@@ -9,8 +9,9 @@ repository's *own* documentation is held to, which is
 [HOUSE-STYLE.md](HOUSE-STYLE.md).
 
 Shared prose standards for every skill in `.claude/skills/`. Each drafting and
-revising SKILL.md points here rather than restating them, and adds only the
-rules specific to its own genre.
+revising SKILL.md points here rather than restating them. The rules
+specific to one genre are in that genre's file under
+`writing-standards/genres/`, which its SKILL.md cites.
 
 These are drawn from the technical-communication literature, primarily the
 [Diátaxis](https://diataxis.fr/) framework, Google's
@@ -21,7 +22,7 @@ do not all transfer**: "one path, no options, minimal explanation" is
 correct for `tutorial-writer` and actively wrong for `survey-writer`, where
 weighing alternatives *is* the deliverable. Take the audience discipline and
 the sentence-level craft from these sources; take the structural rules only
-from your own SKILL.md.
+from your own genre's file and SKILL.md.
 
 ## 🗂 The index: which file holds which rule
 
@@ -161,8 +162,8 @@ alternatives and weigh them, a tutorial must eliminate every choice.
 
 If, while drafting, you find yourself writing material that belongs to a
 different genre, **stop and say so to the user** rather than absorbing it.
-The routing tables in each genre SKILL.md ("When to invoke", or "What
-this genre is not" in `tutorial-writer`) exist for this case.
+The routing line or table in each genre SKILL.md ("When to invoke", or
+"What this genre is not" in `tutorial-writer`) exists for this case.
 
 ## 👓 6. Read it once as the reader
 
@@ -605,3 +606,11 @@ names.
 The element files under `docs/writing-standards/` were cut from this
 file unchanged after these checks ran, so where a check above names
 this file, it covers their text as it stood on the date given.
+
+The genre files under `docs/writing-standards/genres/` and each skill's
+own `references/` were filled in November 2026 by moving prose out of
+the `SKILL.md` files these checks covered. The moved prose is as
+checked. What was written during the move is new and has had no check:
+each step's `Done when` line, the condition on each pointer, and the
+connecting sentences of `genre-steps.md` and `book-steps.md`. No check
+has been rerun since.

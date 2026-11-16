@@ -270,3 +270,39 @@ def test_the_render_check_says_what_to_do_without_the_tools():
     assert "[missing-binary]" in references and "pdftoppm" in references
     text = _text(DRAWER)
     assert "say so in chat" in text[text.find("python -m chitragupta.figure look") :]
+
+
+# The same for a LaTeX fragment. "A captioned figure goes inside a
+# float" and "when captioned" read as though a thesis figure might have
+# no caption; every figure has one, and a thesis figure's is LaTeX's own
+# `\caption` in a `figure` float (#1091, the owner's 2026-11-16 answer).
+_TEX_CAPTION_OPTIONAL = re.compile(r"a captioned figure|when captioned", re.IGNORECASE)
+_THESIS = "thesis-chapter-writer"
+
+
+def test_nothing_a_latex_figure_genre_reads_makes_its_caption_optional():
+    paths = [
+        SKILLS_DIR / _THESIS / "SKILL.md",
+        *sorted((SKILLS_DIR / _THESIS / "references").rglob("*.md")),
+        SKILLS_DIR / DRAWER / "SKILL.md",
+        *sorted((SKILLS_DIR / DRAWER / "references").rglob("*.md")),
+        REPO_ROOT / "docs" / "FIGURE-DRAWER.md",
+        REPO_ROOT / "docs" / "writing-standards" / "genres" / "thesis-chapter.md",
+    ]
+    found = {
+        str(p.relative_to(REPO_ROOT)): hits
+        for p in paths
+        if (hits := _TEX_CAPTION_OPTIONAL.findall(re.sub(r"\s+", " ", p.read_text("utf-8"))))
+    }
+    assert not found, f"every thesis figure is a captioned float: {found}"
+
+
+def test_the_thesis_fragment_advice_names_the_lualatex_preamble():
+    # FIGURE-DRAWER.md told a reader to copy `chitragupta-unicode.sty` for
+    # a `[unicode]` line after the pdf render had moved to LuaLaTeX
+    # (#1037); the drawer's own placement.md §4 was corrected in #1223.
+    text = (REPO_ROOT / "docs" / "FIGURE-DRAWER.md").read_text("utf-8")
+    section = text[text.index("## 🎓 Thesis fragments") :]
+    section = section[: section.index("\n## ", 5)]
+    assert "chitragupta-lualatex.tex" in section
+    assert "LuaLaTeX" in section

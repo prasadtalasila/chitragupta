@@ -58,6 +58,20 @@ stands: the user chose it, and only the user unchooses it.
 
 ## The loop
 
+**Before step 1, say the cost sentence and put it on record.** If the
+draft has no dossier, bootstrap one first, as the loop's step 1 says:
+there is no `scope.md` to read and nowhere to record anything. Read
+`scope.md`, then write the one sentence "Say what it costs" describes
+as a message to the user, and append it to the dossier's `revisions.md`
+as the opening of this pass's entry: a dated heading, then a line
+`Cost stated before the first search: <the sentence>`. A sentence you
+only reason about is one the user never sees; the record is how they
+see it either way. No search and no edit to the draft comes before it.
+Then start step 1 unless they stop you, in which case end the entry
+with `Stopped before the first search.`; step 6 adds the rest of the
+entry under the same heading. Done when the sentence is in
+`revisions.md` and in your reply.
+
 Follow `.agents/skills/draft-reviser/SKILL.md`'s `## The loop`, steps 1
 through 7, unchanged except for the two steps below. Read that file; do
 not reconstruct it from memory. Then run this skill's own three closing

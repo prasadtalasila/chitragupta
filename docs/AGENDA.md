@@ -81,7 +81,7 @@ documentation uses everywhere else:
 
 This is a **review aid, not a gate**: every item below is evidence
 for a human judgement, ranked by class and then severity, never a
-verdict. `unattended` items are ones a future `agenda-reviser` may
+verdict. `unattended` items are ones `agenda-reviser` may
 act on without asking first; every other item is surfaced for a
 person to decide.
 
