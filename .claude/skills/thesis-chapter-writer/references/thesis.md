@@ -6,7 +6,7 @@ root.
 
 ## 1. Tables, figure floats and equations, written as real LaTeX
 
-Read this before you write a table, a captioned figure or a numbered
+Read this before you write a table, a figure float or a numbered
 equation into the fragment.
 
 **The fragment carries no marker vocabulary.** It is `\input` into the
@@ -16,8 +16,9 @@ would be dropped by their build, leaving an unnumbered object in a
 chapter whose prose refers to a number. So a table is a real
 `table` float with its own `\caption` and `\label`
 (`docs/writing-standards/tables.md` §13, "The `.tex` fragment writes its
-own"), and a captioned figure is a real `figure` float around the inline
-`\input` (`docs/writing-standards/figures.md` §10). Neither carries a
+own"), and every figure is a real `figure` float, with its own
+`\caption` and `\label`, around the inline `\input`
+(`docs/writing-standards/figures.md` §10). Neither carries a
 number written by hand: a hand-typed number, or a `\renewcommand` of a
 counter, is wrong the moment a chapter before this one changes length.
 

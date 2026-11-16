@@ -139,8 +139,8 @@ if asked what bears on a thesis chapter, read
    `python -m chitragupta.review synthesis <draft>` reports it). A table
    is real LaTeX with no marker (`docs/writing-standards/tables.md` §13):
    `\begin{table}` with its own `\caption{...}\label{tab:<id>}`, referred
-   to as `Table~\ref{tab:<id>}`. Before writing a table, a captioned
-   figure or a numbered equation, read
+   to as `Table~\ref{tab:<id>}`. Before writing a table, a figure
+   float or a numbered equation, read
    `.claude/skills/thesis-chapter-writer/references/thesis.md` §1. Done
    when every section is drafted.
 6. **Never write a citekey you didn't get from a retrieval result.** If
@@ -187,7 +187,8 @@ if asked what bears on a thesis chapter, read
    - **No citekey inside either figure file.** The gate does not follow
      `\input`; cite in the prose that introduces the figure.
    - **Nothing redrawn from a source.**
-   - **A captioned figure is a real float** around the inline `\input`:
+   - **Every figure is a real float with its caption**, around the
+     inline `\input`:
      `\begin{figure}...\caption{...}\label{fig:<id>}\end{figure}`,
      referred to as `Figure~\ref{fig:<id>}`. Never write
      `\renewcommand{\thefigure}`.
