@@ -368,10 +368,10 @@ loop:
 3. `python -m chitragupta.draft dossier sections <draft> --citekeys --write`:
    heading to line range, with the citekeys under each, rebuilt from the
    draft itself.
-4. Read *only* the affected sections, at those line ranges, and edit
-   inside them.
-5. Re-search only if the change genuinely opens new ground, consulting
+4. Re-search only if the change genuinely opens new ground, consulting
    `rejected.md` first so the same candidates aren't re-judged.
+5. Read *only* the affected sections, at those line ranges, and edit
+   inside them.
 6. Update `evidence.md` / `rejected.md` / `sections.md` for whatever
    changed, append to `revisions.md` and `steering.md`.
 7. Re-gate (`python -m chitragupta.draft gate`), rebuild references,
@@ -379,9 +379,9 @@ loop:
    after the gate passes, so a draft that fails it is never stamped as
    accepted.
 
-Steps 3 and 4 are where the output-token saving lives: a scoped edit
+Steps 3 and 5 are where the output-token saving lives: a scoped edit
 inside one section replaces an estimated ~4.6k-token whole-file rewrite.
-Steps 1, 2 and 5 are where the input-token saving lives: no retrieval
+Steps 1, 2 and 4 are where the input-token saving lives: no retrieval
 pass at all in the common case.
 
 ### 📝 The copy-edit pass, and the entry it leaves
@@ -390,8 +390,8 @@ One class of revision inverts every economy above: a grammar pass, a
 spelling fix, a dialect conversion, a rephrasing to meet a style
 guideline. It reads the whole draft and edits every section, and it is
 still the cheap path, because what makes the ordinary loop cheap is
-skipping *retrieval*, and this pass skips it entirely. Steps 4 and 5
-short-circuit to "no, and never": a copy-edit that needs a search has
+skipping *retrieval*, and this pass skips it entirely. Step 4
+short-circuits to "no, and never": a copy-edit that needs a search has
 stopped being one.
 
 What it leaves behind is one `revisions.md` entry for the whole document,

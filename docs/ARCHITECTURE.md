@@ -725,15 +725,19 @@ and the genre skills (docs/PACKAGING.md says why both survive). A layer's
 package may nest as deep as its code wants; its *command surface* does
 not. What the rule forbids is reaching *into* a layer's package from the
 command line. A layer's submodules carry no `__main__` block, so
-`python -m chitragupta.a.b` exits 0 with empty output, which for the gate
-is a silent pass on a draft nothing checked. `chitragupta review verbatim
-scan` is not that: it is one layer, one aid, and one subcommand owned
-by that aid's own parser. The submodules inside `chitragupta/enrich/` and
-`chitragupta/review/` carry no `__main__` block, so
-`python -m chitragupta.enrich.docling_parse` or
-`python -m chitragupta.review.verbatim_check` imports a module and exits 0 having
-done nothing. That is a trap, but a silent and harmless one, and it is
-the price of there being exactly one `--help` per layer.
+`python -m chitragupta.a.b` on a plain module exits 0 with empty output,
+which for the gate is a silent pass on a draft nothing checked.
+`chitragupta review verbatim scan` is not that: it is one layer, one
+aid, and one subcommand owned by that aid's own parser. The submodules
+inside `chitragupta/enrich/` and `chitragupta/review/` carry no
+`__main__` block. A plain module such as
+`python -m chitragupta.enrich.docling_parse` imports and exits 0 having
+done nothing. A subpackage has no `__main__` block either, so
+`python -m chitragupta.review.verbatim_check` exits 1 instead, with
+Python's own "is a package and cannot be directly executed". The first
+is a trap, but a silent and harmless one; the second is not even
+silent. Both are the price of there being exactly one `--help` per
+layer.
 
 The drafting layer's thirteen commands carry the same trap without moving
 into a package. `citation_gate.py`, `dossier/`, `references.py`,
@@ -743,8 +747,10 @@ into a package. `citation_gate.py`, `dossier/`, `references.py`,
 module or package, never gathered into a shared drafting subpackage the
 way `enrich/`'s stages are. `chitragupta/draft.py` beside them is the
 layer's one front door, and none of them carries a `__main__` block.
-So `python -m chitragupta.dossier`, or any of the other twelve, is the same
-silent no-op as the nested form above.
+So `python -m chitragupta.references`, or any other plain module of the
+thirteen, is the same silent no-op as the nested form above, and
+`python -m chitragupta.dossier`, or any other package of them, exits 1
+with Python's error.
 
 One module refuses instead: `chitragupta/sync.py`. Silence is an
 acceptable price everywhere above because nobody schedules those
