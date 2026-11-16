@@ -1340,7 +1340,26 @@ the model's reasoning in six runs of six. Every thesis figure is a
 captioned float. `docs/FIGURE-DRAWER.md` gives the LuaLaTeX advice.
 No skill file names an issue or a pull request, and a test holds that.
 
+**The fixes were benched before they shipped**, 3 skill-only runs each
+on Claude Code, rows in `bench/results/2026-11-16-wrap-up/`:
+
+| Skill | `--compare` against its last rows | Read by hand |
+| --- | --- | --- |
+| survey-writer | inconclusive, on three rows the scorer miscounted | all 3 passed the gate and rendered; a `quote:` line and an evidence sidecar in 3 of 3, where the shrunk skill gave 1 of 6 |
+| corpus-reviser | pass | the cost line in `revisions.md` before the first search, 3 of 3 |
+| review-digest | pass | all 3 passed the gate; the new outline check ran in 2 of 3 |
+| agenda-reviser | pass | all 3 passed the gate and left no unattended item |
+
+The survey rows the scorer miscounted are `draft references`,
+`draft render` and `draft evidence`, which one run ran through a shell
+function it had defined (`p references ...`). The scorer does not follow
+a command behind a shell function or a variable, as it did not follow
+one in a heredoc body until #1214.
+
 **Left open.**
+
+- The bench scorer does not count a command run through a shell
+  function or a variable that holds it.
 
 - A thesis run never renders with `--fragment`, so the `[tikz-libraries]`,
   `[unicode]` and `[floats]` lines the thesis skill is told to quote are
