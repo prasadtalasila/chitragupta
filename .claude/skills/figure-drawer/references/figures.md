@@ -144,7 +144,7 @@ Never wrap a figure in `\resizebox` or `\scalebox`, and never set
 `scale=` on the picture. The scale lives in the draft that `\input`s the
 figure, not in the figure file, which is why it is the rule that gets
 broken. Measured on six hand-written figures in one acmart sigconf paper
-(9pt body), each wrapped in `\resizebox{\textwidth}{!}{...}` (#1012):
+(9pt body), each wrapped in `\resizebox{\textwidth}{!}{...}`:
 
 | Figure | Natural width | Scale applied | Smallest type printed at |
 | --- | --- | --- | --- |
@@ -160,7 +160,7 @@ Six figures, six type sizes, none of them chosen. Laid out again to fit
 changed layouts, not just sizes: `rag-stages` went from two rows to
 three, and `retrieval`'s dense route wrapped. Three of those redrawn
 figures are `assets/tikz/exemplars/`, since laid out again to the
-render's 453pt (#1050).
+render's 453pt.
 
 So, in order:
 
@@ -256,11 +256,11 @@ If the figure uses `positioning`, `matrix`, `fit` or `tree`, put its
 in the figure file and write nothing else about loading: no clearing of
 `\tikz@library@...@loaded`, and no saving or restoring of
 `\tikz@node@reset@hook`. The renderer collects those lines and loads the
-union in its own preamble (#781). A load *inside* the figure float is
+union in its own preamble. A load *inside* the figure float is
 the bug that multiplied node spacing in this project's own book. A
 load while TeX is setting a line (the figure inside `\sbox`, inline in
 text, or in a `standalone` preview) also prints the library files' line
-ends as 135pt to 147pt of blank width before the picture (#1046), so any
+ends as 135pt to 147pt of blank width before the picture, so any
 preview you build loads the libraries in its preamble.
 `docs/TIKZ-STYLE.md` has the detail.
 

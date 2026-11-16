@@ -107,9 +107,9 @@ book; renumbering the author's headings does not, and is the revising
 skill's call, through the step that sent you here.
 
 **A self-numbered *chapter title* is a different clash, and this is
-the wrong lever for it** (#804). A unit headed `# Chapter 1: Why
+the wrong lever for it**. A unit headed `# Chapter 1: Why
 Anyone Pays`, or an appendix headed `# Appendix A: The Mathematics You
-Need` (#1137), is numbered twice by the `book` class, but
+Need`, is numbered twice by the `book` class, but
 `secnumdepth{-2}` pays a document-level price for a chapter-level
 problem. Measured on one real book, four passes each:
 
@@ -139,14 +139,14 @@ SKILL.md's step 7 for the author to delete.
 turns into `\caption{...\label{tab:<id>}}`, so the `book` class numbers
 them itself. **Which shape it uses follows the `\setcounter{secnumdepth}`
 the skeleton sets**, and both were measured rather than assumed (with
-pdflatex, and again under LuaLaTeX for #1037, the same): at the
+pdflatex, and again under LuaLaTeX, the same): at the
 skeleton's `2`, tables read "1.1", "2.1", "2.2" -- reset per chapter,
 which is what a book gets by default; at `-2` (a book whose units number
 their own headings, overriding in `preamble.tex`), they read "1", "2",
 "3" -- flat and continuous. Either way the numbers are unique and every
 `\ref` resolves, so there is nothing to configure for the tables
-themselves. Captioned figures (`\label{fig:<id>}`, issue 411) and
-numbered equations (`\label{eq:<id>}`, #457) are numbered by the book in
+themselves. Captioned figures (`\label{fig:<id>}`) and
+numbered equations (`\label{eq:<id>}`) are numbered by the book in
 the same way. What does not survive is a duplicate id across units,
 which SKILL.md's step 5 checks for before composing.
 
@@ -155,7 +155,7 @@ which SKILL.md's step 5 checks for before composing.
 Read this before composing `book.tex`, on every run: it places every
 outline entry that is not an ordinary chapter, and the bibliography.
 
-Three part ids are reserved (#1137), and `spec` refuses an outline that
+Three part ids are reserved, and `spec` refuses an outline that
 puts one out of place: `{#front}` is the first part, `{#appendices}`
 follows every other part, `{#back}` is the last. None of them prints a
 `\part` page; each switches the `book` class into a mode instead:
@@ -185,8 +185,8 @@ said nothing of:
 `\cleardoublepage` before `\phantomsection` puts the contents entry on
 the list's own page; `\listoffigures` adds none of its own.
 
-**An outline with none of the three reserved parts** is one written
-before #1137, and assembles as it always did: `\input{glossary}` then `\input{notation}`
+**An outline with none of the three reserved parts** is an older
+one, and assembles as it always did: `\input{glossary}` then `\input{notation}`
 under `\backmatter`, each only if step 3 wrote it, then the
 bibliography, and no list of figures or tables.
 
@@ -351,7 +351,7 @@ node's placement shift N times. Measured on a three-float document:
 71.26pt, then 128.17pt, then 185.07pt, with the engine exiting 0 and
 nothing but `Overfull \hbox` in the log. That is how figures that fit in
 their single-chapter PDF spilled off the page of this project's own
-assembled book (#781).
+assembled book.
 
 **Take the union from the renders, not by guessing.** Each
 `draft render --fragment` prints one line per unit whose figures ask for
@@ -379,7 +379,7 @@ one as `loads-library-by-hand`.
 ### Figure placement
 
 `chitragupta-floats.tex`, for the same `--fragment`
-reason (#1065). LaTeX's class defaults move a figure about half a
+reason. LaTeX's class defaults move a figure about half a
 page tall onto a page of its own, centred with blank space above and
 below. On this project's reference book that cost three pages, and
 `draft render` now sets different float fractions for a standalone
@@ -398,17 +398,17 @@ ragged page bottom instead. A book that wants other fractions sets them
 in its `preamble.tex`, which loads after.
 
 The same file writes a `chitragupta float page:` line to `book.log` for
-each figure still alone on a page (#1065): a figure taller than 0.85 of
+each figure still alone on a page: a figure taller than 0.85 of
 the text height cannot share a page with text, which is why the fix is a
 shorter figure. An empty list means no figure is alone on a page, but
 only if the skeleton loads that file: it is what writes these lines.
 
 ### Unicode characters
 
-The book is LuaLaTeX, with the render's fonts
-(#1037). A unit's text reaches LaTeX as its author wrote it (`H₂O`,
+The book is LuaLaTeX, with the render's fonts. A unit's text reaches
+LaTeX as its author wrote it (`H₂O`,
 `𝑡`, `≤`, `Ⅳ`), and the book prints it from the same font chain as a
-unit's own pdf (#996), so a chapter looks the same in both. Every unit
+unit's own pdf, so a chapter looks the same in both. Every unit
 rendered with `--fragment` that contains such a character prints one
 line and gets the font header copied beside it, into the book's
 directory under `content/rendered/`:
@@ -432,7 +432,7 @@ Read this when the user asks why the book builds with LuaLaTeX and
 `bibtexu`, when a pass or `bibtexu` exits non-zero, or when a book's
 `preamble.tex` carries pdflatex-only lines.
 
-**Build the book with LuaLaTeX** (#1037): `lualatex`, `bibtexu`, then
+**Build the book with LuaLaTeX**: `lualatex`, `bibtexu`, then
 `lualatex` twice, from the book's own directory, as SKILL.md's step 9
 gives them; with `{#index}`, then `registry index` and one more
 `lualatex` pass.
@@ -475,7 +475,7 @@ placing them, and when checking those pages in the PDF.
 `registry build --glossary --notation` writes `glossary.tex` and
 `notation.tex` beside `book.tex` from the accepted units' `scope.md`
 glossaries and `math.md` `## Symbols` tables (a symbol's meaning
-lives in `math.md` since #1143, never in the glossary); each carries
+lives in `math.md`, never in the glossary); each carries
 its own `\chapter*`, `\addcontentsline` and `\markboth`, so
 `book.tex` holds one `\input` each, where the outline's `{#glossary}`
 and `{#symbols}` entries put them (§3). A page step 3 did not write
@@ -484,7 +484,7 @@ and `{#symbols}` entries put them (§3). A page step 3 did not write
 - every page after the first is headed GLOSSARY or LIST OF SYMBOLS, as
   the lists, bibliography and index are headed with their own names.
   `\chapter*` sets no running head, so a page without the `\markboth`
-  carries the last appendix's chapter and section titles (#1182);
+  carries the last appendix's chapter and section titles;
 - a term with several definitions prints each, numbered, in outline
   order; identical definitions print once;
 - every definition ends with `\Cref{<unit-id>}`, which resolves to
@@ -508,7 +508,7 @@ second sign-off reads them.
 
 ## 9. The index
 
-**The index** (#1168, docs/book/BOOK-INDEX.md). Read this only when
+**The index** (docs/book/BOOK-INDEX.md). Read this only when
 the outline has `### Index {#index}`; without it, none of this is
 written and the build is the four passes of §7.
 

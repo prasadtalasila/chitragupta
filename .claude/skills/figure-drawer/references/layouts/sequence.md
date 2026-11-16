@@ -49,7 +49,7 @@ Width and height are fractions of the render's 453pt text width and
 fills, zone cards excluded. A sequence is mostly empty by design: the
 messages run through space, not through boxes, so its slack is high.
 The probe sets the figure in the `article` class at 12pt in the
-render's own LuaLaTeX fonts (#1037), so the fractions are the ones that
+render's own LuaLaTeX fonts, so the fractions are the ones that
 print.
 
 | Source | Nodes | Edges | Width | Height | Slack |
