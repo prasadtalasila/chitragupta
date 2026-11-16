@@ -90,7 +90,12 @@ _GENRE_SKILLS = {
 # command of the loop (see the module docstring). Every other genre skill
 # keeps the commands inline. Each later PR that converts a skill moves it
 # here, and nothing else in this file changes.
-_POINTER_FORM = {"survey-writer"}
+_POINTER_FORM = {
+    "survey-writer",
+    "textbook-chapter-writer",
+    "thesis-chapter-writer",
+    "tutorial-writer",
+}
 
 # The sentence that makes a pointer step hold: without it, one Claude Code
 # run in 2026-10 read a bare "read critique.md and follow it" and went
