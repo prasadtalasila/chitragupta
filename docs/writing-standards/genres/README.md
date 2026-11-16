@@ -15,10 +15,6 @@ value. [survey.md](survey.md), [digest.md](digest.md),
 [thesis-chapter.md](thesis-chapter.md) and
 [deep-research.md](deep-research.md) are written; `research-paper.md`
 is to come. Each says:
-value. [survey.md](survey.md), [digest.md](digest.md),
-[tutorial.md](tutorial.md), [textbook-chapter.md](textbook-chapter.md)
-and [thesis-chapter.md](thesis-chapter.md) are written;
-`research-paper.md` is to come. Each says:
 
 - what the genre owes its reader;
 - its reread checklist, the genre's form of the core's §6;
