@@ -62,7 +62,13 @@ BUDGET = {
         "draft-reviser's loop, and the rest is its guardrails, routing table, three "
         "closing steps' commands and tested text (plans/1091-ledger-corpus-reviser.md)",
     ),
-    "deep-research": (41_000, _LATER),
+    "deep-research": (
+        20_000,
+        "#1091: deduplicated from 41 KB against genre-steps, its agents' own files "
+        "and report.md, the critique loop behind its pointer; seven phases of "
+        "dispatch packets, transcription and commands remain, and the target is "
+        "a guideline (plans/1091-skill-shrink.md, Decision 1)",
+    ),
     "demo-recorder": (6_000, None),
     "draft-reviser": (
         23_000,

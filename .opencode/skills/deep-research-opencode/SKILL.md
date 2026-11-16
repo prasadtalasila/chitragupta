@@ -6,233 +6,86 @@ tags: [deep-research, multi-perspective, storm, citation]
 
 # deep-research-opencode
 
-Every claim must resolve to one of:
+Every claim resolves to a real citekey from `content/ledger.sqlite`,
+cited `[@citekey]`, or is stated plainly as "not found in the corpus":
+never invented, never smoothed over. Paths in this skill are from the
+project root, not from this skill's own folder. The method is Stanford
+OVAL's STORM by way of hadufer/claude-storm (MIT), retooled for a closed
+corpus; `.claude/skills/deep-research/references/report.md` carries the
+attribution and the adaptation, and
+`.claude/skills/deep-research/references/report.md` §6 the honesty rules
+the report is held to.
 
-- a real **citekey** from `content/ledger.sqlite` (via `chitragupta.retrieval.search()`
-  or `chitragupta.enrich.embed_index.search()` if that stack has been built), cited
-  `[@citekey]`; or
-- stated plainly as "not found in the corpus" -- never invented, never
-  smoothed over.
+## Before you start
 
-This is a heavier, slower alternative to `survey-writer-opencode` for when the user
-wants genuine multi-perspective depth (contradiction mapping, ranked
-findings, self peer-review) rather than a single-pass literature survey.
-It reads the same shared corpus layer as the other genre skills.
-
-Adapted from hadufer/claude-storm (MIT), itself an implementation of
-Stanford OVAL's STORM method (Shao et al., NAACL 2024) fused with Nav
-Toor's 4-prompt adaptation, and retooled to cite only real citekeys
-instead of live web sources. `.claude/skills/deep-research/references/report.md`
-(paths in this skill are from the project root) carries the attribution
-and the adaptation in full.
-
-## Shared corpus layer (read, don't regenerate)
-
-- `content/ledger.sqlite` -- per-citekey status, populated by `sync`
-- `papers/bibliography.bib` (gitignored, per-host) -- source of truth for citekeys/metadata
-- `chitragupta/retrieval.py` -- `search(query, k, snippet_chars)`, keyword overlap
-- `chitragupta/enrich/embed_index.py` -- `search(query, k, snippet_chars)`, semantic
-  (if built for this corpus -- check `content/chroma/` first)
-- `chitragupta/enrich/corpus.py` -- builds the enrichment corpus from the ledger
-  and
-  nothing else, so every document it yields is citable, keyed by its citekey
-
-## Collection scoping (#195): deliberately not used here
-
-Every other genre skill offers to scope retrieval to one curated Zotero
-collection and threads `--collection` through its searches. **This skill
-does not, and neither do its agents.** That is a decision, not an
-oversight -- do not "fix" it by copying the section in from
-`survey-writer-opencode`.
-
-The reason is what this skill is for. Its whole method is to attack a
-question from several perspectives at once, each interviewer chasing a
-different framing, and then to map where those framings *disagree*. A
-curated shelf is one person's answer to "what is this topic about",
-already filtered by the judgement being interrogated. Scoping to it
-would narrow every perspective to the same pre-agreed subset and quietly
-delete the contradictions this skill exists to surface -- the report would
-look consistent because it had been prevented from seeing anything that
-would make it otherwise.
-
-There is measured reason to expect that, not just principle. A 19-item
-shelf surfaced ten papers a whole-corpus search never returned, and the
-whole-corpus search surfaced far more that the shelf did not hold
-(`bench/RESULTS.md`, 2026-08-19): the two are different rankings, not
-subsets. For a single-thesis genre, picking one is a reasonable trade.
-For a genre whose output is a contradiction map, taking the narrower one
-by default is the wrong half.
-
-So: **search the whole corpus, always.** If a user asks for a
-collection-scoped deep-research report, say what it costs -- that the
-contradiction mapping in Phase 3 will only see disagreements that survive
-inside the shelf -- and let them decide with that in hand.
-
-## The dossier: write down what produced the draft
-
-The report is only half of what this run produces. The other half is the
-judgment behind it -- the reader, the scope, the glossary, which
-candidates were kept, **which were turned down and why**, and where the
-perspectives found the corpus disagreeing with itself -- and it belongs
-on disk, not in this conversation. Without it, changing one paragraph
-next month means running seven phases and a dozen subagents again.
-
-`chitragupta/dossier/` owns that state, in Markdown, one directory per draft at
-`content/dossiers/<the draft's path, minus its suffix>/`. Create it before
-Phase 1's first retrieval call and fill it in as you go -- not at the end,
-when what you rejected has already fallen out of your context.
-`docs/DRAFT-ITERATION.md` is the full design.
-
-**The main run owns the dossier. A subagent never writes it.** Treat that
-as a rule of this skill, not a preference. `deep-research-interviewer`,
-`deep-research-writer` and `peer-reviewer` each run in their own context,
-hand back a packet, and then that context is gone -- and each of their
-definitions in `.claude/agents/` tells them to return their output rather
-than write a file. So anything of theirs worth keeping is yours to
-transcribe, in the phase that dispatched them, before you move on:
-
-- **After Phase 2**, each interviewer packet's kept claims and their
-  citekeys go into `evidence.md`, one ``## `citekey` `` block per source
-  with a `relevance:` line, a `claim:` line -- the packet's claim, in the
-  interviewer's own words, the only field a later phase may draft prose
-  from -- and, only where the packet genuinely singled out a passage worth
-  quoting, a `quote:` line (verbatim, quotation marks and attribution
-  only). The citekeys the packet lists as *discarded during filtering* go
-  into `rejected.md` -- one row each with the query that surfaced it and a
-  few words on why it was turned down. That discarded list exists nowhere
-  but the packet, and re-retrieving and re-judging those same papers is the
-  single most expensive thing a later session repeats.
-- **After Phase 3**, record the contradictions themselves -- the conflict,
-  both sides, both citekeys -- next to the citekeys they concern in
-  `evidence.md`, so a revision can see the disagreement without rebuilding
-  the map from scratch.
-- **After Phase 5**, every writer's `### Sources added` block goes into
-  `evidence.md` and its `### Candidates discarded` block into
-  `rejected.md`. A citekey found by a writer re-searching a thin subpoint
-  is otherwise cited in the report and recorded nowhere, and one it turned
-  down is lost entirely. At `quick` depth you are that writer -- record
-  what you find the same way.
-
-The `peer-reviewer` packets are the one exception, and only because Phase
-7(a)'s reconciled scorecard is already their durable record: it ships in
-the report itself, including the concerns logged but left unaddressed.
-Keep that row honest and the reviewers need no separate transcription;
-drop the below-threshold concerns from it and four reviews die with the
-run.
-
-Do not ask a subagent to write into `content/dossiers/`, and do not treat
-a returned packet as durable because you can still see it. If you haven't
-transcribed it, it is gone when the phase closes.
-
-**Then dispatch from the file rather than from your context.** Phase 5
-hands each section writer a command that reads its rows back:
-
-```bash
-python -m chitragupta.draft dossier brief content/drafts/deep-research-<slug>.md --section "<heading>"
-```
-
-Pasting the same claims into four dispatch prompts spends them as
-*output*, which costs five times what a cached input token costs and is
-spent once per writer; a pointer costs about forty tokens and the writer
-reads the rows inside its own context, which is discarded when it exits.
-`docs/TOKENS.md` has the arithmetic. This does not shrink what you are
-already carrying -- nothing can, a context is append-only between
-compactions -- so treat the transcription as the durability half and this
-as the cost half, and note the second only works if you did the first.
-Which is the other reason to prefer it: `brief` exits non-zero and names
-the citekey when a block is missing, so a transcription you skipped
-surfaces here instead of silently.
-
-**The dossier is not the provenance JSON, and neither replaces the
-other -- this skill writes both.**
-`content/dossiers/<draft path minus suffix>/provenance.json`
-(Phase 7c) is the machine record of section -> citekey, for tooling. The
-dossier is the human-readable working state: reader, scope, glossary,
-kept evidence, rejected candidates and why, contradictions, and the
-user's steering.
-
-**Read-only means read-only: never run `python -m chitragupta.corpus sync`, and
-never
-run `python -m chitragupta.enrich` or any `chitragupta/enrich/*` build stage.**
-Both belong to the
-corpus layer, both take the pipeline's write lock, and either can run for
-tens of minutes -- a first full-corpus parse, or building the embedding
-index. They are the user's to run, not yours. If a semantic index would
-help and none exists, say so and use `chitragupta.retrieval.search()`; do not
-build one.
-
-**If the ledger is empty, stop.** Check before drafting anything:
+**The corpus is read-only: never run `python -m chitragupta.corpus sync`
+or `python -m chitragupta.enrich`.** Before the first retrieval, read
+`.claude/skills-common/references/genre-steps.md` §1: what the corpus
+holds, and why those are the user's to run. **If the ledger is empty,
+stop.** Check before drafting anything:
 
 ```bash
 python -m chitragupta.corpus ledger
 ```
 
-If it reports no items, or none with status `parsed`, say so plainly --
-name what you checked and what you found -- and stop there. Do not draft
-around it, do not sync, do not cite. Tell the user to run
-`.venv-full/bin/python -m chitragupta.corpus sync` and come back.
+If it reports nothing `parsed`, say what you checked and found, and stop.
+Tell the user to run `.venv-full/bin/python -m chitragupta.corpus sync`
+and come back.
 
 ## When to invoke
 
-| Situation | Action |
-| --- | --- |
-| User asks for "deep research", a multi-perspective analysis, or an in-depth report with contradiction mapping / peer review | Invoke this skill |
-| User asks for a standard literature survey / background section | Use `survey-writer-opencode` instead -- faster, single-pass |
-| User asks for a thesis chapter | Use `thesis-chapter-writer-opencode` instead |
-| User asks for a textbook chapter / lecture notes | Use `textbook-chapter-writer-opencode` instead |
-| User asks for a hands-on tutorial | Use `tutorial-writer-opencode` instead |
-| User asks to change a report that **already exists** in `content/drafts/` | Use `draft-reviser-opencode` instead -- never re-run this skill to make a change |
-| Ledger is empty, or nothing is `parsed` | Say so and stop. **Never** run `python -m chitragupta.corpus sync` yourself |
+A standard literature survey is `survey-writer-opencode`'s (faster,
+single-pass), a thesis chapter `thesis-chapter-writer-opencode`'s, a
+textbook chapter `textbook-chapter-writer-opencode`'s, a hands-on tutorial
+`tutorial-writer-opencode`'s, and a change to a report in
+`content/drafts/` is `draft-reviser-opencode`'s: never re-run this skill
+to make one. Tell the user up front that this is a heavy, multi-phase run
+that dispatches several subagents. Create a `todowrite` list with the 7
+phases below and work through them in order.
 
-Tell the user up front that this is a heavy, multi-phase run before
-starting -- it dispatches several subagents and does many retrieval calls.
-Create a `todowrite` list with the 7 phases below and work through them in
-order.
+## Collection scoping: deliberately not used here
+
+Search the whole corpus, always: no `--collection`, here or in any
+agent this skill dispatches. A curated shelf would narrow every
+perspective to one pre-agreed subset and hide the disagreements Phase 3
+exists to map. If a user asks for a collection-scoped report, say that
+cost and let them decide; `.claude/skills/deep-research/references/report.md`
+§3 has the reasoning and its measurement.
+
+## The dossier
+
+Read `.claude/skills-common/references/genre-steps.md` §2 before Phase 1:
+what the dossier holds and why it is filled in as you go.
+
+**The main run owns the dossier. A subagent never writes it.**
+`deep-research-interviewer`, `deep-research-writer` and `peer-reviewer`
+each run in their own context, return a packet instead of writing a
+file, and lose that context when they exit. Whatever of theirs is worth
+keeping is yours to transcribe, in the phase that dispatched them,
+before you move on: Phases 2, 3 and 5 say what goes where. Never ask a
+subagent to write into `content/dossiers/`, and do not treat a packet as
+durable because you can still see it. The `peer-reviewer` packets are
+the one exception: Phase 7(a)'s reconciled scorecard ships in the report
+and is their record, so it keeps the concerns logged and left
+unaddressed.
+
+Phase 5 then dispatches from the file rather than from your context:
+pasted claims cost output tokens once per writer (`docs/TOKENS.md`), and
+`brief` exits non-zero naming a citekey whose block is missing.
 
 ## Prose standards
 
-Follow `docs/WRITING-STANDARDS.md` for the cross-genre rules, and its
-"Sources and attribution" section for where they come from. Two apply with
-particular force to a multi-agent pipeline, because parallel writers drift
-apart in ways a single-author draft doesn't:
-
-- **Terminology is fixed at outline time, not at polish time.** When you
-  dispatch Phase 5 writers, hand each one the same glossary of terms and
-  their agreed definitions. Reconciling four writers who each named the same
-  concept differently is a Phase 6 problem you can avoid entirely here.
-- **Scope is stated in the report, not just held in your head.** The Phase 6
-  lead says what this report covers and what it doesn't -- including which
-  sub-questions the corpus couldn't answer.
-- **This genre does not use `docs/WRITING-STANDARDS.md` §10's figures.**
-  Every other genre in this pipeline calibrates how freely it uses
-  them; this one uses none, by design. If a section genuinely needs a
-  visual, say so in the report rather than adding one.
-- **§13's tables do apply**, and matter here more than elsewhere: a
-  contradiction map or a per-perspective comparison is this genre's
-  natural shape. Every table carries a caption line and an
-  `<!-- table: <id> -->` marker, is referred to with an inline
-  `<!-- tableref: <id> -->`, and has a sentence beside it reading a
-  pattern off it. Section writers work in parallel, so **check the ids
-  for collisions at synthesis** the same way their `math.md` rows are
-  reconciled -- two sections that both wrote `<!-- table: comparison -->`
-  produce one broken cross-reference in the assembled report.
-- **§12's mathematics does apply**, unlike §10's figures. A quantity
-  carried over from a source -- a threshold, an effect size, a bound --
-  goes in a code span as ASCII with a row in the dossier's `math.md`, so
-  the pdf sets it as mathematics and the `.md` stays readable. Section
-  writers are dispatched in parallel and each sees only its own slice, so
-  **collect their rows into one `math.md` at synthesis**, `## Symbols`
-  meanings included, and reconcile a symbol two sections spelled
-  differently rather than keeping both.
-  **Number sparingly, and only at synthesis.** §12's numbering rule --
-  standalone, the final step of a derivation, or reused elsewhere --
-  rarely fires within one section writer's slice; it is more likely to
-  fire *across* sections, when the Phase 6 lead notices two writers
-  independently derived the same bound and a later section reuses it.
-  Add the `<!-- equation: id -->` marker and its `<!-- equationref: id
-  -->` at that point, not per-section, and **check for id collisions the
-  same way as the table ids**: two section writers deriving unrelated
-  results in parallel can pick the same short id.
+Follow `docs/WRITING-STANDARDS.md` for the rules every genre shares, and
+`docs/writing-standards/genres/deep-research.md` for what this report owes
+its reader: read it before Phase 4. This genre uses no figures
+(`docs/writing-standards/figures.md` §10). Every table carries a caption
+line, an `<!-- table: <id> -->` marker and an inline `<!-- tableref: <id>
+-->` (`docs/writing-standards/tables.md` §13); a quantity follows
+`docs/writing-standards/mathematics.md` §12, with a row in the dossier's
+`math.md`. The works these standards come from are credited in
+[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution);
+if asked what bears on this genre, read
+`.claude/skills/deep-research/references/report.md` §9.
 
 ## Depth presets
 
@@ -247,194 +100,116 @@ apart in ways a single-author draft doesn't:
 ## Phase 1 -- Perspective discovery
 
 **Before any retrieval, name the reader and the scope, and open the
-dossier.** Settle who this report is for (a research group? a decision
-the user has to make? a chapter's background?) and what it will and won't
-cover, then create the dossier:
+dossier.** Read `.claude/skills-common/references/genre-steps.md` §3
+first: the path, `scope.md`, the dialect, the acronym vocabulary and the
+fingerprint. Settle the path with the user; the flat
+`content/drafts/deep-research-<slug>.md` is the default. Whichever you
+choose, use it verbatim everywhere below: every `--log`, each subagent's
+`DRAFT PATH`, the gate and Phase 7(d), since the dossier mirrors it.
 
 ```bash
 python -m chitragupta.draft dossier init content/drafts/deep-research-<slug>.md --genre deep-research
 ```
 
-Give it the same path Phase 7(d) will save to -- the dossier mirrors its
-draft's path, and one opened under a different name is found by nothing
-later.
-
-**Settle that path with the user first.** It may contain directories:
-"deep research for the `books/software-engineering` book" means
-`content/drafts/books/software-engineering/deep-research.md`, and a
-topic that will hold more than one genre wants
-`content/drafts/<topic>/deep-research.md` so they sit together -- that
-is the layout the shipped example content uses. The flat
-`content/drafts/deep-research-<slug>.md` above is the default when
-neither applies. Ask rather than guess: the dossier
-(`content/dossiers/<the same path minus its suffix>/`) and every render
-(`content/rendered/<the draft's own directory>/`) mirror whatever you
-pick, so moving the report later means moving both. Whichever you
-choose, use it verbatim everywhere below -- the `--log` argument in
-every retrieval call, the `DRAFT PATH` handed to each subagent, the gate,
-and Phase 7(d).
-
-Fill in `scope.md`'s **Reader**, **Covers**, **Does not cover** and
-**Glossary** now, while you are deciding them; Phase 4 fixes the final
-reader sentence and glossary and updates that same file. Settle the
-**dialect** with the reader in the same breath and write it to
-`scope.md`'s `language:` line, which ships unset: a report whose dialect
-nobody chose silently gets the model's own, and this genre writes more
-prose than any other here (`docs/WRITING-STANDARDS.md` §8). Read the
-acronym vocabulary too -- the vendored floor at
-`assets/style/acronyms.toml`, plus the user's own file if
-`[style].acronyms` in `config.toml` points at one -- and use its recorded
-expansion at an acronym's first use rather than inventing one. `init`
-also stamps the corpus fingerprint, which is what lets a later revision
-tell whether the ledger has moved since. It only creates files that are
-missing, so re-running it can't overwrite what you've filled in.
-
-**If the dossier has an `outline.md`** (`dossier init --outline`, or
-added later), check it before doing anything else:
+Then check for an `outline.md`:
 
 ```bash
 python -m chitragupta.draft dossier outline content/drafts/deep-research-<slug>.md --check
 ```
 
-If it exists and passes, its sections are the report's declared
-structure -- read it instead of deriving structure from a broad call.
-Each section's declared `queries:` are what Phase 2's interviewer
-subagents run verbatim (`--origin declared` on any `--log` call they
-make) rather than inventing their own; a section that comes up thin
-still gets reformulation, logged `--origin extended` instead -- that
-distinction is what lets `dossier status` answer "did this report follow
-its outline?" from `retrieval.md` afterwards. Derive the interview
-personas below from the outline's own section headings rather than from
-a broad call's raw returns, since the human has already named the angles
-that matter. A section declaring `claim:` is content to ground, not
-steer from: find a citekey per assertion and drop what can't be
-grounded, exactly as the other genre skills do -- `python -m
-chitragupta.review uncited` is the backstop.
+If it passes, read `.claude/skills-common/references/genre-steps.md` §4.
+Its sections are the report's declared structure, its declared
+`queries:` are what Phase 2's interviewers run verbatim
+(`--origin declared`; a thin section's reformulations are
+`--origin extended`), and its headings name the personas.
+`python -m chitragupta.review uncited` is the backstop for a `claim:`
+you could not ground. With no `outline.md`, or one that fails `--check`,
+read `.claude/skills/deep-research/references/report.md` §2 and derive
+the personas from 1-2 broad retrieval calls on the topic.
 
-**No `outline.md`, or it fails `--check`:** run 1-2 broad retrieval calls
-on the topic itself and skim what the corpus actually returns -- titles,
-sub-fields, recurring angles. Derive 1-2 **corpus-specific** personas
-from what's actually there, for `standard`/`deep` depth (skip for
-`quick`). Then map the remaining slots onto these five lenses, **adapted
-and renamed to fit the topic** (drop one that genuinely doesn't apply):
-
-1. **The Practitioner** -- what does applying this in practice surface that
-   the papers gloss over?
-2. **The Academic** -- what does the retrieved literature actually claim,
-   and where do sources in this corpus disagree with each other?
-3. **The Skeptic** -- the strongest limitation the corpus itself admits to
-   (or a gap it fails to address).
-4. **The Adoption/Incentives analyst** -- who would use this and why; what
-   incentives shape the work (adapt or drop if inapplicable).
-5. **The Historian** -- what earlier approaches does this build on or react
-   against.
-
-Always add the **Basic fact writer**. State your final persona list before
-dispatching. `.claude/skills/deep-research/references/report.md` §2 has how
-STORM discovers personas, which the retrieval calls above stand in for.
+Always add the **Basic fact writer**, and state the final persona list
+before dispatching. Done when `scope.md` records the reader, the scope
+and `language:`, and the persona list is stated.
 
 ## Phase 2 -- Multi-perspective grounded interviews (parallel)
 
 Dispatch one `deep-research-interviewer` subagent per persona, **all in
 parallel** (multiple `task` calls in a single message). OpenCode has no
-subagent of that name, so dispatch the `general` one and give it the protocol from
-`.claude/skills/deep-research/references/report.md` §3 plus the
-packet schema from
-`.claude/agents/deep-research-interviewer.md` (or tell it to `read` that
-file).
+subagent of that name, so dispatch the `general` one and give it the
+protocol from `.claude/agents/deep-research-interviewer.md`, which holds
+the whole interview: the rounds, the searches, judging each hit and the
+packet it returns. Give each its `TOPIC`, its `PERSPECTIVE` (name and
+focus), `ROUNDS` (per depth) and the `DRAFT PATH`, which it passes to
+`--log` on every retrieval call. With an outline, also give it its
+section's declared `queries:`, to run verbatim with `--origin declared`,
+and say that any reformulation is `--origin extended`.
 
-Give each subagent: `TOPIC`, its `PERSPECTIVE` (name + focus), `ROUNDS` (per
-depth), and the `DRAFT PATH` (`content/drafts/deep-research-<slug>.md`) so it
-can pass `--log` on every retrieval call. Without that path the queries this
-report was built from are never recorded, and a later `dossier status` can
-never tell it which newly synced papers it has not seen. Appending is
-concurrency-safe, so all of them logging in parallel is fine.
+**Transcribe every packet before starting Phase 3**: each kept claim
+into `evidence.md`, one ``## `citekey` `` block with a `relevance:`
+line, the packet's claim as `claim:` and a `quote:` only where the
+packet singled out a passage; each discarded citekey into `rejected.md`
+with the query that surfaced it and why it did not hold up. That list
+exists nowhere but the packet. Read
+`.claude/skills-common/references/genre-steps.md` §5 for both formats
+and the warnings of the self-check:
 
-Each returns: core position, grounded key claims cited by real citekey, an
-only-this-perspective insight, strongest evidence, open questions, and the
-citekeys consulted -- the discarded ones carrying the query that surfaced
-each and one clause on why it did not hold up, which is what `rejected.md`
-needs and what you would otherwise have to invent.
+```bash
+python -m chitragupta.draft dossier check-evidence content/drafts/deep-research-<slug>.md
+```
 
-**Transcribe every packet into the dossier before starting Phase 3** --
-kept claims and their citekeys into `evidence.md`, the packet's discarded
-citekeys into `rejected.md` with the query and the reason. The
-interviewers cannot do this for you, and six packets sitting in your
-context are not a record. Then run
-`python -m chitragupta.draft dossier check-evidence content/drafts/deep-research-<slug>.md`
--- advisory. Flags a citekey carrying more than one `evidence.md` block
-(the first is the one every reader gets, so merge them), and a `claim:`
-that reads like its own `quote:` reworded; a reword warning is a cue to
-re-read the transcription, not to keep rewording until it goes quiet.
-
-No web fallback: if a perspective's searches turn up nothing relevant after
-reasonable reformulation, that's a real "thin coverage" finding to report,
-not something to paper over.
-
-Citekeys need no de-duplication/global-renumbering step (unlike
-claude-storm's URL-globalization algorithm) -- see
-`.claude/skills/deep-research/references/report.md` §4 for why a
-citekey is already the stable, project-wide identifier.
+A perspective that found nothing after real reformulation is a
+thin-coverage finding to report
+(`.claude/skills-common/references/genre-steps.md` §6). Done when every
+packet is transcribed and `check-evidence` has run.
 
 ## Phase 3 -- Contradiction map
 
-1. **Direct contradictions** -- where perspectives cite sources that
-   disagree, with the specific conflicting claims (both sides, by citekey).
-2. **Strongest vs weakest evidence** -- which perspective's claims are
-   best/worst supported by what's actually in the corpus.
+From the transcribed packets, map:
+
+1. **Direct contradictions** -- the conflicting claims, both sides by
+   citekey.
+2. **Strongest vs weakest evidence** -- which perspective's claims the
+   corpus supports best and worst.
 3. **The resolving question** -- what the corpus would need to answer to
    settle the biggest contradiction.
-4. **Universal agreement** -- what every perspective's findings agree on.
-5. **The blind spot** -- what no perspective's searches turned up at all.
+4. **Universal agreement** -- what every perspective agrees on.
+5. **The blind spot** -- what no perspective's searches turned up.
 
-Record the contradictions in `evidence.md` beside the citekeys they
-concern, and the blind spot in `scope.md`'s **Does not cover**. Both are
-findings of this run that the report's own prose states only in passing,
-and a revision that doesn't know about them will smooth them over.
+Record each contradiction in `evidence.md` beside the citekeys it
+concerns, and the blind spot in `scope.md`'s **Does not cover**: a
+revision that doesn't know about them will smooth them over. Done when
+both are recorded.
 
 ## Phase 4 -- Outline
 
-Sketch a draft outline from general topic knowledge, then refine using the
-interview findings and contradiction map. No "Summary"/"Introduction"
-heading (the lead comes in Phase 6).
+Sketch an outline from general topic knowledge, then refine it with the
+interviews and the contradiction map. No "Summary" or "Introduction"
+heading: the lead comes in Phase 6. Fix two things the parallel writers
+would otherwise get wrong: **the reader**, one concrete sentence
+(`docs/WRITING-STANDARDS.md` §1), and **the glossary**, each recurring
+term with the one definition every writer uses. Write both into
+`scope.md` over Phase 1's versions; the writers get the glossary from
+that file.
 
-Also fix, at this point, two things Phase 5 will otherwise get wrong in
-parallel: **the reader** (who this report is for, one concrete sentence --
-see `docs/WRITING-STANDARDS.md` §1) and **the glossary** (each recurring term
-with the one definition every section writer must use). Pass both to every
-dispatched writer alongside their section fragment and citekeys.
-
-Update `scope.md`'s **Reader** and **Glossary** with what you settle on
-here, over the provisional versions from Phase 1, and hand the writers the
-glossary from that file. One glossary, in one place: a second copy kept
-only in this conversation is the drift Phase 4 exists to prevent.
-
-**Then write the plan into `sections.md`** -- one row per outline section
-with the kept citekeys that section will stand on, chosen from Phase 2's
-transcribed evidence. This is the decision you would otherwise make
-inside the Phase 5 dispatch prompt, and putting it in the file is what
-lets that prompt be one line: `dossier brief --section` resolves a
-section name through these rows. A section you haven't assigned evidence
-to yet gets a row with an empty citekey cell rather than no row at all --
-an empty cell is a gap to fill, a missing row reads as a mistyped section
-name, and Phase 5 has to be able to tell those apart. Phase 7(e)
-reconciles the file against what the finished report actually cites, so
-this is a plan now and a record then.
+**Then write the plan into `sections.md`**: one row per outline section,
+with the kept citekeys it will stand on. `dossier brief --section`
+resolves a section through these rows, so a section with no evidence yet
+gets a row with an empty citekey cell, never no row: an empty cell is a
+gap to fill, a missing row reads as a mistyped section name. Phase 7(e)
+replaces this plan with what the report cites. Done when `scope.md` and
+`sections.md` hold the reader, the glossary and a row per section.
 
 ## Phase 5 -- Cited section writing (parallel)
 
-Phase 4 already chose each section's citekeys and wrote them into
-`sections.md`. Before dispatching, check that those rows actually
-resolve to transcribed evidence:
+Before dispatching, check that each section's rows resolve to
+transcribed evidence, without reading the evidence back into your own
+context:
 
 ```bash
 python -m chitragupta.draft dossier brief content/drafts/deep-research-<slug>.md \
   --section "<section heading>" --check
 ```
 
-`--check` prints how many of the row's citekeys have a block and names
-any that don't, without printing the blocks -- so you find a missed
-transcription without reading the evidence back into your own context.
 Fix a gap now: a writer dispatched against an empty brief writes an
 ungrounded section that reads exactly like a grounded one.
 
@@ -447,178 +222,98 @@ evidence:
 Your evidence: python -m chitragupta.draft dossier brief content/drafts/deep-research-<slug>.md --section "<heading>"
 ```
 
-**Do not paste the kept claims into the prompt.** That is the whole of
-this phase's cost saving, and it is in the output pool -- see "The
-dossier" above and `docs/TOKENS.md`. If a writer needs something the
-rows don't carry (a term, a constraint from the user's steering), give it
-that, not the evidence it can read for itself.
-
+**Do not paste the kept claims into the prompt.** Give a writer only what
+the rows don't carry (a term, a constraint from the user's steering).
 OpenCode has no `deep-research-writer`, so use the `general` subagent with
-`.claude/agents/deep-research-writer.md`'s instructions -- the command
-line goes in the prompt either way. For `quick`, write inline: you are
-the writer, the packets are already in your context, and running `brief`
-against yourself would only add tokens. Cap concurrency per
+`.claude/agents/deep-research-writer.md`'s instructions, and the `brief`
+line for its section. For `quick`, write each section inline: you are the
+writer, the packets are already in your context, so skip `brief` and
+follow that file's "Writing standards", "Citation protocol" and "If a
+subpoint is thin" yourself. Cap concurrency per
 `.claude/skills/deep-research/references/report.md` §1.
 
-Inline `[@citekey]` citations, neutral tone, every sentence grounded, no
-per-section reference list. A writer may re-search a thin subpoint -- only
-against this project's corpus, never inventing a citekey.
-
-Tell every writer the paragraph rule explicitly, since each one sees only
-its own brief: **a body paragraph closes on two or more citekeys wherever
-the packet allows**, organised around what its sources agree and disagree
-about rather than summarising them one at a time. A paragraph fusing
-several sources cannot be a transcription of any one of them. Where the
-packet genuinely holds one source for a point, keep it and mark it with
-`<!-- single-source: why -->` adjacent to the paragraph, no blank line
-between. docs/WRITING-STANDARDS.md §11 is the rule; `python -m
-chitragupta.review synthesis <draft>` reports it once the report is
-assembled.
-
 When the writers return, copy each `### Sources added` block into
-`evidence.md` yourself, as a `relevance:`/`claim:` block per citekey (why
-the writer kept it, in the writer's own words -- add a `quote:` only if
-the writer's block singled out a passage worth quoting verbatim), and each
-`### Candidates discarded` block into `rejected.md`. These are citekeys
-that never passed through Phase 2, so nothing else in the run has them.
+`evidence.md` yourself, as a `relevance:`/`claim:` block per citekey in
+the writer's words (a `quote:` only if the block singled out a passage),
+and each `### Candidates discarded` block into `rejected.md`. These
+citekeys never passed through Phase 2, so nothing else in the run has
+them; at `quick` depth, record what you found the same way. Done when
+every section is written and every block is transcribed.
 
 ## Phase 6 -- Polish + synthesis briefing
 
 **(a) Lead:** `## Summary`, <=4 cited paragraphs, opening with a scope
-statement -- what this report covers, what it doesn't, and which
-sub-questions the corpus couldn't answer. Remove repetition across sections.
+statement: what this report covers, what it doesn't, and which
+sub-questions the corpus couldn't answer. Remove repetition across
+sections.
 
-**(a2) Reconcile across sections.** Parallel writers produce specific,
-predictable seams; fix them here rather than leaving them for the reviewers:
+**(a2) Reconcile across sections.** Fix the seams parallel writers leave
+(`docs/writing-standards/genres/deep-research.md`, "The reread"), then
+read the assembled draft once as the Phase 4 reader. Collect every
+writer's `math.md` rows into one, `## Symbols` included, and check table
+and equation ids for collisions; number an equation only here, adding
+`<!-- equation: <id> -->` and `<!-- equationref: <id> -->`. A body
+paragraph closes on two or more citekeys wherever the packet allows, or
+carries `<!-- single-source: why -->` beside it
+(`docs/WRITING-STANDARDS.md` §11);
+`python -m chitragupta.review synthesis <draft>` reports it.
 
-- the same concept named two ways, or one name used for two concepts
-- a term defined independently in two sections
-- notation that shifts between sections
-- the same finding stated at different strengths in two places
-- a claim that section 3 assumes but only section 5 establishes
+**(b) Synthesis briefing**, in the shape of
+`.claude/skills/deep-research/references/report.md` §5's template: an
+executive summary, 5 key findings ranked by reliability, the hidden
+connection visible only across perspectives combined, the actionable
+insight for the user's role, and the frontier question.
 
-Then read the assembled draft once as the Phase 4 reader
-(`docs/WRITING-STANDARDS.md` §6) -- a pass over the whole document, which no
-individual section writer was in a position to do.
-
-**(b) Synthesis briefing:** one-paragraph executive summary; 5 key findings
-ranked by reliability (perspectives supporting/challenging each, cited by
-citekey); the hidden connection visible only across perspectives combined;
-the actionable insight for the user's role; the frontier question.
+Done when the lead, the reconciled body and the briefing are written.
 
 ## Phase 7 -- Peer review + assembly
 
-**(a) Peer review.** STORM's documented weakness is skipping self-critique
-entirely; a single self-review pass (below, `quick` depth) is one fix, but
-one voice reviewing its own work shares its own blind spots. For
-`standard`/`deep`, use the panel described in
-`.claude/skills/deep-research/references/report.md` §7 instead
-(idea credited to
-[Imbad0202/academic-research-skills](https://github.com/Imbad0202/academic-research-skills)'s
-Stage-3 peer review -- see the README's Acknowledgements; nothing from that
-repository's text is reused here, only the idea of an independent panel
-plus an adversarial reviewer):
-
-- Dispatch four `peer-reviewer` subagents **in parallel**, one per role --
-  `domain-accuracy`, `methodology-rigor`, `clarity-completeness`,
-  `devils-advocate` -- each given the full draft, the `DRAFT PATH`
-  (`content/drafts/deep-research-<slug>.md`, for `--log` -- see
-  `.claude/agents/peer-reviewer.md`), and nothing else (no reviewer sees
-  another's critique). OpenCode has no subagent of that name, so use
-  the `general` one with `.claude/agents/peer-reviewer.md`'s instructions
-  for the assigned role.
-- **Reconcile under the concession threshold** (this project's own rule,
-  not upstream's): any `high`-severity concern from *any* reviewer, or any
-  concern of `medium` or `high` severity raised independently by *2 or
-  more* reviewers, must be addressed
-  before presenting -- either revise the claim/citation, or state the
-  concern openly in the peer-review scorecard as an unresolved issue. It
-  may not be silently dropped. `low`/single-reviewer `medium` concerns are
-  logged in the scorecard but don't block presenting.
-- Act as the reconciling editor yourself: read all four verdicts
-  (`ready`/`needs revision`/`reject`), decide what the draft actually needs
-  in light of them, revise where the threshold above requires it, and
-  record the final scorecard.
-
-For `quick` depth, do a single inline self-critique instead (no subagent
-dispatch): confidence score (1-10) per key finding with justification;
-weakest link and what would verify it; bias check (did one perspective's
-sources dominate); a missing 6th perspective; overall grade.
+**(a) Peer review.** For `standard`/`deep`, dispatch four `peer-reviewer`
+subagents **in parallel**, one per role -- `domain-accuracy`,
+`methodology-rigor`, `clarity-completeness`, `devils-advocate` -- each
+given the full draft, the `DRAFT PATH` (for `--log`) and its `ROLE`, and
+nothing else: no reviewer sees another's critique. OpenCode has no
+subagent of that name, so use the `general` one with
+`.claude/agents/peer-reviewer.md`'s instructions for the assigned role.
+Then act as the reconciling editor under
+`.claude/skills/deep-research/references/report.md` §7's concession
+threshold: any `high` concern, or any `medium` or `high` one raised by two
+or more reviewers, is revised or stated in the scorecard as unresolved,
+never silently dropped. For `quick`, critique inline yourself, as §7 ends
+by describing. Done when the scorecard is recorded.
 
 **(b) Assemble** per `.claude/skills/deep-research/references/report.md`
-§5's template: Title -> Summary ->
-Synthesis briefing -> article body -> Contradiction map -> Peer-review
-scorecard -> References (citekeys with title/year from the ledger, not URLs).
+§5's template: Title -> Summary -> Synthesis briefing -> article body ->
+Contradiction map -> Peer-review scorecard -> References. Citekeys need
+no renumbering (`.claude/skills/deep-research/references/report.md` §4).
+Done when the report is assembled.
 
-**(c) Save, log provenance, critique, and gate.** Save the assembled report to
-`content/drafts/deep-research-<slug>.md` first -- the gate reads a file, and
-every other skill in this repo saves before gating. Then write
-`content/dossiers/<draft path minus suffix>/provenance.json`
-covering every section's citekeys. This is the machine record, and it is
-not the dossier: the JSON maps section -> citekey for tooling, while the
-dossier holds the working state a human or a later revision reads. Write
-both.
+**(c) Save, log provenance, critique, and gate.** Save the assembled
+report to `content/drafts/deep-research-<slug>.md` first: the gate reads
+a file. Then write
+`content/dossiers/<draft path minus suffix>/provenance.json`, mapping
+every section to its citekeys for tooling. It is not the dossier, which
+holds the working state a later revision reads: write both.
 
 **Then critique against the evidence packet, before gating.** Read the
 dossier's `evidence.md` -- the `relevance:`/`claim:`/`quote:` blocks
-Phase 5 recorded -- against the assembled report's own prose, section by
-section. This is separate from (a)'s peer review above: peer review
-judges rigor and coverage across five personas and produces a scorecard
-a human reads; this is a narrower, single-pass check of whether each
-section's prose still matches what its own `claim:` lines say, with an
-external, deterministic accept/reject test rather than a reviewer's
-verdict. List, in priority order, up to five places where the prose
-claims more than its `claim:` line supports, omits a kept `claim:` the
-report never used, or drifts from the wording `claim:` actually
-recorded. This is one inline judgement call, not a subagent dispatch and
-not a deterministic check -- nothing in this pipeline scores this
-automatically.
+Phases 2 and 5 recorded -- against the assembled report's own prose,
+section by section, and list in priority order up to five places where
+the prose claims more than its `claim:` supports, omits a kept `claim:`,
+or drifts from its wording. One inline judgement call: not a subagent
+dispatch, not a deterministic check, and narrower than (a)'s peer
+review, which judges rigor and coverage for a human to read.
 
-**Run this step: it is never a condition of presenting, but it is not done
-until you have run its commands.** Read
-`.claude/skills-common/references/critique.md` now, before listing anything,
-and work it through with `content/drafts/deep-research-<slug>.md` as
-`<draft>`. In outline:
-
-1. Where the dossier has an `outline.md`, read what the corpus could not
-   answer:
-
-   ```bash
-   python -m chitragupta.draft dossier status content/drafts/deep-research-<slug>.md
-   ```
-
-2. Take the baseline:
-
-   ```bash
-   python -m chitragupta.draft dossier sections content/drafts/deep-research-<slug>.md --citekeys --write
-   python -m chitragupta.review verbatim scan content/drafts/deep-research-<slug>.md --write --json
-   python -m chitragupta.draft style content/drafts/deep-research-<slug>.md --json
-   ```
-
-   If the scan's `tiers_not_run` is not empty, quote the reason: **genuine
-   restatement is only detected where the embedding tier can run**. `style`
-   reports only what WRITING-STANDARDS.md §9 marks decidable, and this step is
-   told to fix none of them: its count is a proxy for a new defect, not a work
-   list.
-
-3. Repair at most three items, each edit with `edit`, inside that section
-   only. Keep an edit only if all three checks pass the reference's test;
-   otherwise restore the text you kept:
-
-   ```bash
-   python -m chitragupta.draft gate content/drafts/deep-research-<slug>.md
-   python -m chitragupta.review verbatim recheck content/drafts/deep-research-<slug>.md \
-       --baseline content/review/<topic>/<stem>.verbatim.json --json
-   python -m chitragupta.draft style content/drafts/deep-research-<slug>.md --json
-   ```
-
-   Read `style`'s count only as a number: it reports what §9 marks
-   decidable, and you fix none of them here.
-
-4. Log every attempt, kept or reverted, in the dossier's `revisions.md`.
-
-If nothing on the list clears the bar, or the list was empty, say so and
-continue to the gate.
+Read `.claude/skills-common/references/critique.md` now, before listing
+anything, and follow it with `content/drafts/deep-research-<slug>.md` as
+`<draft>`; make each edit with `edit`.
+**This step is not done until the loop the reference describes has
+run**: the baseline, then at most three repairs, each checked and logged
+in the dossier's `revisions.md`. It is never a condition of presenting.
+Come back with the list, each repair kept or reverted, the scan's
+`tiers_not_run` reason if it gave one, and whether the declared queries
+are exhausted. Done when the loop has returned and every attempt is
+logged, or you have said that nothing cleared the bar.
 
 **Then gate:**
 
@@ -627,50 +322,35 @@ python -m chitragupta.draft gate content/drafts/deep-research-<slug>.md
 ```
 
 Fix and re-run until `OK`. Never present a draft that hasn't passed.
+Done when it reports `OK`.
 
-**(d) Save and render.** Write to `content/drafts/deep-research-<slug>.md`
-(the canonical, source-of-truth format). Then follow
-`.claude/skills-common/references/render-and-references.md`
-§1, §2 and §3 for that draft: fill in the `## References` section
-(`.claude/skills/deep-research/references/report.md` §5's template) from
-exactly the gated citekeys, render tex, pdf and md, then the evidence
-sidecar in pdf and md. The step is not done until `draft references`,
-`draft render` and `draft evidence` have run.
+**(d) Save and render.** The draft saved in (c) is the canonical,
+source-of-truth format. Follow
+`.claude/skills-common/references/render-and-references.md` §1, §2 and
+§3 for it: fill in the `## References` heading the template left
+bare from exactly the gated citekeys, render tex, pdf and md, then the
+evidence sidecar in pdf and md. If the user asks why this report emits a
+sidecar, or why the closing checks below matter more here, read
+`.claude/skills/deep-research/references/report.md` §5 and §8. Done when
+`draft references`, `draft render` and `draft evidence` have run, or
+each warning is reported.
 
-**Deep research emits one, and has the strongest claim to it of the five
-genres:** showing its work *is* the product here. A report that reconciles
-several perspectives and names where the corpus disagrees with itself is
-read by someone who wants to check a contradiction against what each
-source actually said, and the sidecar is where they do that.
+**(e) Close the dossier.** Replace Phase 4's plan in `sections.md` with
+what the finished report actually cites, derived rather than corrected
+by hand:
 
-**(e) Close the dossier.** Two things are still only in this conversation:
+```bash
+python -m chitragupta.draft dossier sections content/drafts/deep-research-<slug>.md \
+    --citekeys --write
+```
 
-- **The section map.** Reconcile `sections.md` against the finished
-  report: Phase 4 wrote the *plan* there, and the writers moved off it --
-  a citekey one of them added by re-searching (its `### Sources added`
-  block) is cited and unlisted, and one it was handed but never used is
-  listed and uncited. Replace the plan with what the report actually
-  cites, derived rather than corrected by hand:
-
-  ```bash
-  python -m chitragupta.draft dossier sections content/drafts/deep-research-<slug>.md \
-      --citekeys --write
-  ```
-
-  It overwrites the file with the heading -> citekey relation read out of
-  the report itself, which is the same relation as (c)'s provenance JSON,
-  written for the reviser rather than for tooling. **Do this only here,
-  never before Phase 5.** Phase 4's rows are a plan for sections that do
-  not exist yet, and deriving from a report that isn't written would
-  replace that plan with an empty table -- the one thing `brief` cannot
-  tell apart from a mistyped section name. Run it once the report is
-  final, and read its stderr: a citekey cited above the first heading is
-  reported rather than filed under a section that doesn't contain it.
-- **The steering.** If the user shaped this run in chat -- "drop the
-  adoption perspective", "shorter", "deep depth", "don't lead with
-  tooling" -- append it to `steering.md`, dated. It is invisible in the
-  prose and has nowhere else to live; a revision that doesn't know about
-  it will undo it.
+**Only here, never before Phase 5**: deriving from a report not yet
+written replaces the plan with an empty table, which `brief` cannot tell
+from a mistyped section name. Read its stderr: a citekey cited above
+the first heading is reported, not filed. If the user shaped this run in
+chat, append that to `steering.md`, dated
+(`.claude/skills-common/references/genre-steps.md` §2). Done when both
+are done.
 
 **(f) Run the prose check.** After the gate passes and before presenting:
 
@@ -678,14 +358,10 @@ source actually said, and the sidecar is where they do that.
 python -m chitragupta.draft style content/drafts/deep-research-<slug>.md
 ```
 
-Read `.claude/skills-common/references/prose-check.md` now and follow it:
-what the check can and cannot see, and how to report what it finds. If the
-user wants any finding acted on, that is `draft-reviser-opencode`'s copy-edit mode,
-never an edit made here.
-
-This is the first time anything reads the whole report at once: a dozen
-subagents wrote sections independently, so a defect marker in one and
-en-US spelling in another are exactly what no writer was placed to notice.
+Read `.claude/skills-common/references/prose-check.md` now and follow it.
+If the user wants any finding acted on, that is `draft-reviser-opencode`'s
+copy-edit mode, never an edit made here. Done when every finding is
+reported.
 
 **(g) Run the verbatim scan.** Before presenting, rebuild the section map
 and scan:
@@ -696,74 +372,24 @@ python -m chitragupta.draft dossier sections content/drafts/deep-research-<slug>
 python -m chitragupta.review verbatim scan content/drafts/deep-research-<slug>.md
 ```
 
-The first command is not optional and not a repeat of step (c): a section
-map written before the synthesis pass describes a report you have since
-edited.
+The first command is not optional and not a repeat of (e) or (c): a
+section map written before an edit describes a report you have since
+changed. **A review aid, not a gate: it cannot block the report, and it
+is never a condition of presenting.** Read
+`.claude/skills-common/references/verbatim-scan.md` now and follow it.
+Repairing a finding is `agenda-reviser-opencode`'s job, and only if the user
+asks. Done when the findings are shown.
 
-This genre earns the check more than most: a dozen subagents wrote sections
-independently, so no single context ever saw the whole report, and the
-synthesis prose stitching their sections together cites nothing at all.
-**A review aid, not a gate: it cannot block the report, and it is never a
-condition of presenting.**
-
-Read `.claude/skills-common/references/verbatim-scan.md`
-now and follow it: what to show, what the scan could not check, and
-how to keep the report. Repairing a finding is `agenda-reviser-opencode`'s
-job, and only if the user asks.
-
-**(h) Stamp the draft fingerprint, then present.** Nothing edits the
-report's text after this point, so this is where `dossier status`
-records the baseline a later hand edit is compared against (#454):
+**(h) Stamp the draft fingerprint, then present.** Read
+`.claude/skills-common/references/genre-steps.md` §7 first, then:
 
 ```bash
 python -m chitragupta.draft dossier stamp content/drafts/deep-research-<slug>.md
 ```
 
-Then present. Give the user: headline finding, the single most
-important contradiction, the actionable insight, the overall grade, any
-unresolved peer-review concern left in the scorecard, the citekey count,
-the saved path, and the render outcome (paths to the `.tex`/`.pdf` if they
-succeeded, or the warning if not). Then tell them where the dossier is,
-that changes to this report should go through `draft-reviser-opencode` rather than
-another run of this skill -- seven phases and a dozen subagents is the
-wrong price for an edit -- and that `content/drafts/` and
-`content/dossiers/` are gitignored, so
-`python -m chitragupta.draft dossier export deep-research-<slug>` is how the
-report and
-its working state get backed up.
-
-## Guardrails
-
-- **Grounded by default, closed-corpus.** Every claim traces to a real
-  citekey, or is stated as not found. Never fabricate a citekey, a quote,
-  or a finding. `.claude/skills/deep-research/references/report.md` §6
-  has the honesty rules the report is held to.
-- **Parallelize, with a cap.** Dispatch same-phase `task` calls in one message;
-  bound concurrency per
-  `.claude/skills/deep-research/references/report.md` §1.
-- **Be honest about cost.** This is intentionally heavy and slower than
-  `survey-writer-opencode` -- point users there if they want something faster.
-
-## Sources
-
-The prose standards this skill inherits are not original to this project.
-
-Full citations, licences and a per-principle attribution table are in
-[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution).
-All three works are openly licensed (CC-BY or CC-BY-SA) and require credit.
-
-What bears on *this* genre specifically:
-
-- **Google, *Technical Writing Courses* (CC-BY 4.0)** -- using the same term
-  for the same concept throughout is the direct ancestor of the Phase 4
-  glossary. In a single-author document that rule is a style preference; in
-  a pipeline dispatching parallel section writers it is the difference
-  between one report and four stitched together, which is why it is
-  enforced structurally at outline time rather than left to Phase 6 polish.
-- **Last, *Technical Writing Essentials* (CC-BY 4.0)** -- the introduction
-  checklist -- scope ("what will and will not be covered") plus the reader's
-  assumed background -- behind Phase 6's scope statement.
-- **Procida, *Diátaxis* (CC-BY-SA 4.0)** -- the genre-separation principle.
-  A multi-perspective research report is not a Diátaxis quadrant, and none
-  of the tutorial/how-to structural rules apply; what transfers is the
-  requirement that the report know which single job it is doing.
+Give the user: the headline finding, the single most important
+contradiction, the actionable insight, the overall grade, any unresolved
+peer-review concern, the citekey count, the saved path and the render
+outcome. Changes go through `draft-reviser-opencode`, not another run of this
+skill, and `python -m chitragupta.draft dossier export deep-research-<slug>`
+backs the report and its dossier up. Done when the user has the report.
