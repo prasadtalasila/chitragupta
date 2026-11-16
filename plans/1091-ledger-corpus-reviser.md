@@ -320,21 +320,42 @@ the revision; before runs, 109-177.
   takes `retrieval.md`'s recorded queries first and falls back to
   `sections.md`'s headings. That predates this PR and is left as is.
 
-## After the shrink: the cost sentence opens the loop
+## After the shrink: the cost sentence opens the loop, on record
 
 The bench above found the weak spot: the cost sentence came before the
-first search in 3 of 6 runs on the shrunk skill, and in none of the 3
-fresh runs on `main`, so the shrink did not cause it. The owner asked
-for it to be fixed in its own PR.
+first search, as text the user would see, in 3 of 6 runs on the shrunk
+skill. The owner asked for it to be fixed.
 
 The skill has always asked for the sentence "before the first search",
 in the section "Say what it costs, before you start", above the
 procedure. The procedure begins "Follow draft-reviser's loop, steps 1
-through 7", and a model following steps goes to step 1. The fix adds
-one paragraph as the first thing in `## The loop`, ahead of that
-sentence, in all three copies: read `scope.md`, give the cost sentence
-as the first thing written in the run, no search and no edit before it,
-then start step 1. The section above is unchanged and still says what
-the sentence holds. `tests/test_skill_corpus_reviser_cost.py` pins the
-paragraph and its place, and failed on all three copies before the
-edit.
+through 7", and a model following steps goes to step 1.
+
+**Placement alone made it worse.** A paragraph opening `## The loop`
+with "say the cost sentence", in two wordings, was run 3 times each.
+In all 6 runs the model formed the sentence at the right moment, after
+reading `scope.md` and before the first search, and in all 6 it left
+the sentence in its reasoning: none wrote it as text before searching,
+and two closing summaries said it had been "stated at the start". The
+second wording said outright that a sentence only reasoned about is one
+the user never sees; it changed nothing.
+
+**What shipped puts it on record.** The paragraph that opens the loop
+now has the sentence written as a message and appended to
+`revisions.md`, as the opening of the pass's entry, on a line beginning
+`Cost stated before the first search:`; no search and no edit to the
+draft comes before it, and step 6 adds the rest of the entry under the
+same heading. A record is visible whichever way the reply is shown, and
+a bench can check it. A pause that waits for the user was not taken: it
+would change every unattended run.
+
+`tests/test_skill_corpus_reviser_cost.py` pins the paragraph, its place
+ahead of draft-reviser's steps, and the recorded line, in all three
+copies; it failed on each before the edit.
+
+**Bench, 2026-11-16**, Claude Code, skill-only, 3 runs, rows in
+`bench/results/2026-11-16-corpus-reviser-cost/`: the line was written
+to `revisions.md` before the first search in 3 of 3 (at tool calls 6,
+5 and 5; the first search at 8, 6 and 8), and each run's gate and its
+prerequisite survey's passed. As visible text the sentence came before
+the first search in 1 of the 3.
