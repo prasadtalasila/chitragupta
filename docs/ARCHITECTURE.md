@@ -732,7 +732,7 @@ aid, and one subcommand owned by that aid's own parser. The submodules
 inside `chitragupta/enrich/` and `chitragupta/review/` carry no
 `__main__` block. A plain module such as
 `python -m chitragupta.enrich.docling_parse` imports and exits 0 having
-done nothing. A subpackage such as
+done nothing. A subpackage has no `__main__` block either, so
 `python -m chitragupta.review.verbatim_check` exits 1 instead, with
 Python's own "is a package and cannot be directly executed". The first
 is a trap, but a silent and harmless one; the second is not even
