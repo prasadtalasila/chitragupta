@@ -260,6 +260,15 @@ folders. That works because:
 - **`.claude/` is scaffolded for every `--agent`**, so the files are
   there whichever harness a project uses.
 
+The same holds for deep-research's three agent definitions in
+`.claude/agents/`. Only Claude Code loads them as subagents; on Codex
+the skill runs each agent's work itself, and on OpenCode it dispatches
+a `general` subagent, and in both cases the step names the agent's file
+by its path from the project root, as the instructions to follow. So
+what an interviewer, a section writer or a reviewer does is written
+once, in its own file, and `SKILL.md` keeps only the dispatch: when,
+with what packet, and what to transcribe on return.
+
 The price is one rule: **a shared file names no skill and no harness
 tool.** OpenCode must be sent to `<name>-opencode`, and a reference that
 named the unsuffixed skill would send it to one its config denies, so a
@@ -370,7 +379,14 @@ skill-only runs with an outline, every run opened the reference, ran
 entry and passed the gate, as the inline step had. Without an outline
 the command is optional, and the pointer runs skipped it where the
 inline ones mostly ran it anyway; every other count held
-(plans/1091-ledger-survey-writer.md has the table).
+(plans/1091-ledger-survey-writer.md has the table). deep-research's
+step moved the same way, in a shrink that also left what its subagents
+do to their own files (rows in
+`bench/results/2026-11-15-deep-research-shrink/`): in 6 skill-only runs
+with an outline every run dispatched all three kinds of subagent, ran
+`draft dossier status` before the baseline scan, logged a critique
+entry and passed the gate, as the inline step had, and `--compare`
+passed (plans/1091-ledger-deep-research.md).
 
 Two harness facts the bench had to work around, both recorded in the
 script: OpenCode takes its project directory from the inherited `PWD`,
