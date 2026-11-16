@@ -44,23 +44,6 @@ _LATER = "#1091: shrinks to its target in its own PR"
 
 # skill: (cap in bytes, why the cap is above the target, or None)
 BUDGET = {
-<<<<<<< HEAD
-    "agenda-reviser": (29_000, f"{_LATER}; draft diff closing step (#1194)"),
-    "book-assembler": (20_000, _LATER),
-    "corpus-reviser": (13_000, _LATER),
-    "deep-research": (
-        20_000,
-        "#1091: deduplicated from 41 KB against genre-steps, its agents' own files "
-        "and report.md, the critique loop behind its pointer; seven phases of "
-        "dispatch packets, transcription and commands remain, and the target is "
-        "a guideline (plans/1091-skill-shrink.md, Decision 1)",
-    ),
-    "demo-recorder": (6_000, None),
-    "draft-reviser": (30_000, f"{_LATER}; draft diff closing step (#1194)"),
-    "figure-drawer": (7_000, None),
-    "skill-bench": (5_000, None),
-    "review-digest": (17_000, _LATER),
-=======
     "agenda-reviser": (
         18_500,
         "#1091: deduplicated from 28 KB; it runs unattended repairs, so every "
@@ -79,7 +62,13 @@ BUDGET = {
         "draft-reviser's loop, and the rest is its guardrails, routing table, three "
         "closing steps' commands and tested text (plans/1091-ledger-corpus-reviser.md)",
     ),
-    "deep-research": (41_000, _LATER),
+    "deep-research": (
+        20_000,
+        "#1091: deduplicated from 41 KB against genre-steps, its agents' own files "
+        "and report.md, the critique loop behind its pointer; seven phases of "
+        "dispatch packets, transcription and commands remain, and the target is "
+        "a guideline (plans/1091-skill-shrink.md, Decision 1)",
+    ),
     "demo-recorder": (6_000, None),
     "draft-reviser": (
         23_000,
@@ -95,14 +84,11 @@ BUDGET = {
         "(plans/1091-skill-shrink.md, Decision 1)",
     ),
     "skill-bench": (5_000, None),
->>>>>>> origin/main
     "survey-writer": (
         14_000,
         "#1091: deduplicated from 32 KB, then the critique loop moved behind its "
         "pointer; the rest is commands and tested text, and the target is a "
         "guideline (plans/1091-skill-shrink.md, Decision 1)",
-<<<<<<< HEAD
-=======
     ),
     "textbook-chapter-writer": (
         16_000,
@@ -121,7 +107,6 @@ BUDGET = {
         "#1091: deduplicated from 34 KB, critique loop behind its pointer; the "
         "rest is commands, the run-it step and tested text, and the target is a "
         "guideline (plans/1091-skill-shrink.md, Decision 1)",
->>>>>>> origin/main
     ),
 }
 
