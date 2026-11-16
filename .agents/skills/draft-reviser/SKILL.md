@@ -282,8 +282,10 @@ Fix and re-run until the gate reports `OK`. **Never present a draft that
 hasn't passed.** A `[missing-binary]` or `[error]` from a render is a
 one-line warning in chat and does not block presenting.
 
-Once the gate passes, and not before, re-stamp the draft fingerprint
-(`.claude/skills-common/references/genre-steps.md` §7 has why):
+Once the gate passes, and not before, re-stamp the draft fingerprint:
+stamping first would record a fingerprint for a draft that was never
+accepted (`.claude/skills-common/references/genre-steps.md` §7 says
+what the fingerprint is for):
 
 ```bash
 python -m chitragupta.draft dossier stamp content/drafts/<path>

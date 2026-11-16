@@ -327,8 +327,8 @@ skill's remaining cost is **structural to the genre**: seven phases, a
 dozen subagents, and six packets that have to enter the orchestrator for
 Phase 3 to compare them against each other. A cheaper multi-perspective
 report is a different skill, not a further optimisation of this one;
-`survey-writer` is that skill, and the guardrails already say to point
-users there.
+`survey-writer` is that skill, and `deep-research`'s "When to invoke"
+already points users there.
 
 The two halves only work together.
 `.claude/skills/deep-research/SKILL.md` requires the Phase 2

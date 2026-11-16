@@ -25,9 +25,10 @@ a finding is a defect.
 | Situation | Action |
 | --- | --- |
 | User asks to work the review agenda, fix an unattended finding, or clean up what an agenda run found | Invoke this skill |
+| An agenda was just run and the user asks "what do I do about these" | Invoke this skill |
 | The user wants the agenda **run** but says nothing about fixing it | Run `review agenda <draft>` and show them. Do not start repairing |
 | The finding is real but the user disagrees that it needs changing | They are right by default: record it and move on (`SOUL.md`: a machine does not outrank a person on a judgment call) |
-| Any other change to an existing draft, including wording no agenda item names (that is copy-edit mode) | Use `draft-reviser` |
+| Any other change to an existing draft, including re-grounding after a sync moved the corpus and wording no agenda item names (that is copy-edit mode) | Use `draft-reviser` |
 | User asks to re-check the whole draft against the corpus | Use `corpus-reviser` |
 | User asks for a **new** draft | Use the matching genre skill |
 | The draft has no dossier | Bootstrap one as `draft-reviser` describes, then continue here. `revisions.md` is where this skill's record goes, so it has to exist |
@@ -70,7 +71,7 @@ not reconstruct it from memory. Its steps map onto this loop like this:
 | 3, map onto sections | Step 4: only the section that owns the item |
 | 4, search | Never: a repair adds no source |
 | 5, edit in place | Step 4: the exact span the item names |
-| 6, write the dossier back | Step 6: `revisions.md` only, the one dossier file this skill may write |
+| 6, write the dossier back | Step 6: `revisions.md` only, the one dossier file this skill writes by hand; the section map it rebuilds in steps 2 and 7 is derived from the draft |
 | 7, gate | Step 5, after every repair. No `references`, no `render`, and never `dossier stamp` |
 | prose check, verbatim scan, draft diff | Step 5 refreshes the prose check each cycle; step 7 runs the scan and the diff |
 
@@ -260,8 +261,8 @@ accepted repair intact.
 After each accepted repair, read `objective_after` from the same
 response, and continue only while `objective_class_count` **strictly
 falls**. `pass_bound` counts passes, never repairs: an accepted repair
-does not count against it. If that stop is ever reached, say it is a
-backstop against a miscounting bug, not a budget. **One pass per
+does not count against it. Stop at `pass_bound` if it is ever reached,
+and say it is a backstop against a miscounting bug, not a budget. **One pass per
 invocation**: when the worklist is done, hand back rather than re-run
 the agenda on what the repairs surfaced.
 
@@ -329,6 +330,9 @@ Each is one of R1-R12 in
 argued in
 [`docs/AUTO-IMPROVEMENT-RATIONALE.md`](../../../docs/AUTO-IMPROVEMENT-RATIONALE.md).
 
+- **Never run this on a verbatim digest.** Its `verbatim-run` repair
+  paraphrases copied text unattended, and on a digest that is the whole
+  text. Say so and stop.
 - **Never start this on your own initiative**: not from a hook, a
   scheduled job, the end of a genre skill's run, or `draft-reviser`. A
   person asking is the only trigger.
