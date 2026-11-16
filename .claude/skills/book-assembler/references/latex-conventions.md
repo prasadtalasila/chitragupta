@@ -185,8 +185,8 @@ said nothing of:
 `\cleardoublepage` before `\phantomsection` puts the contents entry on
 the list's own page; `\listoffigures` adds none of its own.
 
-**An outline with none of the three reserved parts** is an older
-one, and assembles as it always did: `\input{glossary}` then `\input{notation}`
+**An outline with none of the three reserved parts** is one written
+before they existed, and assembles as it always did: `\input{glossary}` then `\input{notation}`
 under `\backmatter`, each only if step 3 wrote it, then the
 bibliography, and no list of figures or tables.
 

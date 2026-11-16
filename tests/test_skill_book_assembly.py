@@ -283,5 +283,5 @@ def test_the_index_is_built_only_with_its_outline_entry_and_prints_last():
     assert skeleton.index(r"\makeindex[noautomatic,intoc]") < skeleton.index("{hyperref}")
     assert skeleton.index(r"\bibliography{bibliography}") < skeleton.index(r"\printindex")
     conventions = CONVENTIONS.read_text(encoding="utf-8")
-    assert "**The index** (#1168" in conventions
+    assert "**The index** (docs/book/BOOK-INDEX.md)" in conventions
     assert "Front and back matter" in conventions
