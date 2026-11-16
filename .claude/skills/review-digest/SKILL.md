@@ -112,8 +112,10 @@ keep source wording out of the draft, this one says what replaces it.
 0. **Name the reader and the scope, and open the dossier.** Before
    creating it, read `.claude/skills-common/references/genre-steps.md`
    §2 and §3: the path, `scope.md`, the dialect, the acronym vocabulary
-   and the fingerprint. Settle the path with the user: a topic that
-   holds other genres wants `content/drafts/<topic>/<name>.md`. Then:
+   and the fingerprint. Settle the path with the user. A digest always has a
+   topic directory, `content/drafts/<topic>/<name>.md`: §3's flat default
+   does not apply here, since the figure crops go in the topic's
+   `figures/`. Then:
 
    ```bash
    python -m chitragupta.draft dossier init content/drafts/<topic>/<name>.md --genre digest
@@ -122,10 +124,24 @@ keep source wording out of the draft, this one says what replaces it.
    Done when `scope.md` records the reader, the scope, the glossary and
    `language:`.
 
-1. **Retrieve per theme, over-fetching.** Settle three to six themes
-   with the user. If the dossier has an `outline.md`, it settles them:
-   read `.claude/skills-common/references/genre-steps.md` §4 and run its
-   queries verbatim. For each theme:
+1. **Retrieve per theme, over-fetching.** First check for an
+   `outline.md`:
+
+   ```bash
+   python -m chitragupta.draft dossier outline content/drafts/<topic>/<name>.md --check
+   ```
+
+   If it passes, it settles the themes: read
+   `.claude/skills-common/references/genre-steps.md` §4, then run each
+   section's declared queries verbatim; a thin theme's reformulations
+   are `--origin extended`.
+
+   ```bash
+   python -m chitragupta.draft retrieve search "<declared query>" --k 15 --origin declared --log content/drafts/<topic>/<name>.md
+   ```
+
+   With no `outline.md`, or one that fails `--check`, settle three to
+   six themes with the user, and for each theme:
 
    ```bash
    python -m chitragupta.draft retrieve search "<query>" --k 15 --log content/drafts/<topic>/<name>.md
@@ -140,7 +156,10 @@ keep source wording out of the draft, this one says what replaces it.
    difference: a digest records, for each kept source, one `quote:`
    holding the passage you lean on most, verbatim, with no quotation
    marks and no page. `claim:` stays in your own words and is what your
-   `see` sentences are drafted from. `review quotation` checks the
+   `see` sentences are drafted from. §5's two rules on drafting, prose
+   only from `claim:` and a `quote:` only inside quotation marks, do not
+   bind a digest's body: it is copied runs, each closed by its citation,
+   with no marks. `review quotation` checks the
    `quote:`; `review digest` checks every other copied run where it
    stands. Done when every candidate is in `evidence.md` or
    `rejected.md`.

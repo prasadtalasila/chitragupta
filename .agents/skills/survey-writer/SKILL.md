@@ -107,8 +107,10 @@ if asked what bears on a survey, read
    python -m chitragupta.draft retrieve evidence "<sub-theme>" --citekey <key> --log content/drafts/<slug>.md
    ```
 
-   Before drafting, record what survives in `evidence.md` and what
-   doesn't in `rejected.md`, then:
+   Before drafting, record what survives in `evidence.md`: a
+   `relevance:` line, a `claim:` line in your own words and, where a
+   passage is worth showing the reader as the source wrote it, a
+   `quote:` line. Record what doesn't in `rejected.md`, then:
 
    ```bash
    python -m chitragupta.draft dossier check-evidence content/drafts/<slug>.md
@@ -188,6 +190,9 @@ if asked what bears on a survey, read
      first, with `lualatex`: a malformed one fails the whole pdf render.
    - **No citekey inside either figure file.**
    - **Nothing redrawn from a source.**
+   - **The `.txt` form is 7-bit ASCII, and the caption is in the
+     draft**, never in a figure file. Never write the word "Figure" or
+     a number yourself: the renderer assigns both.
    - **A caption line directly below the marker**, and
      `<!-- figureref: <name> -->` where the prose points at it.
 
@@ -235,7 +240,9 @@ if asked what bears on a survey, read
 13. **Render tex, pdf and md, then the evidence sidecar.** Follow
     `.claude/skills-common/references/render-and-references.md` §2 and
     §3 for the same draft: tex, pdf and md, then the sidecar in pdf and
-    md. If the user asks why a survey emits one, read
+    md. **A survey emits one**: its reader is mapping a field and wants
+    to see what the sources actually said, which the sidecar shows from
+    the `quote:` lines. If the user asks for more on why, read
     `.claude/skills/survey-writer/references/survey.md` §3. Done when
     each command has run or its warning is reported.
 14. **Read it once as the reader, and record any steering.** Reread
@@ -243,7 +250,8 @@ if asked what bears on a survey, read
     If the user shaped this draft in chat, append that to the dossier's
     `steering.md`, dated; read
     `.claude/skills-common/references/genre-steps.md` §2 if unsure what
-    counts. Done when both are done.
+    counts. If the reread changes a citation, run step 11's gate again.
+    Done when both are done.
 15. **Run the prose check.** After the gate passes and before
     presenting:
 

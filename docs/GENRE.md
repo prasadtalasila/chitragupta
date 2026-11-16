@@ -598,8 +598,8 @@ is not.
 
 ## 🚧 The boundaries, and why they are enforced
 
-Every skill carries a "When to invoke" table whose rows are mostly
-*other* skills. The rows are there because the genre boundary is the
+Every skill carries a "When to invoke" line or table that mostly names
+*other* skills. They are named because the genre boundary is the
 thing most likely to be crossed: crossing it feels helpful at the time.
 
 Crossing it is costly because neighbouring genres have opposite rules.

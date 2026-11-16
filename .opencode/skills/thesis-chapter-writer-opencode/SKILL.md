@@ -188,6 +188,9 @@ if asked what bears on a thesis chapter, read
    - **No citekey inside either figure file.** The gate does not follow
      `\input`; cite in the prose that introduces the figure.
    - **Nothing redrawn from a source.**
+   - **The `.txt` form is 7-bit ASCII**: a Unicode box character
+     hard-fails a thesis that compiles with `pdflatex`. The caption is
+     in the fragment's float, never in a figure file.
    - **Every figure is a real float with its caption**, around the
      inline `\input`:
      `\begin{figure}...\caption{...}\label{fig:<id>}\end{figure}`,
@@ -257,7 +260,8 @@ if asked what bears on a thesis chapter, read
     claim that outruns its evidence. If the user shaped this chapter in
     chat, append that to the dossier's `steering.md`, dated; read
     `.claude/skills-common/references/genre-steps.md` §2 if unsure what
-    counts. Done when both are done.
+    counts. If the reread changes a citation, run step 11's gate again.
+    Done when both are done.
 14. **Run the prose check.** After the gate passes and before
     presenting:
 

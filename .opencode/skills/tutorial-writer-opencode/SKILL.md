@@ -22,8 +22,9 @@ in this skill are from the project root, not from this skill's own folder.
 | **Reference** | Needs a fact, fast | Not a skill here |
 | **Survey / thesis chapter** | Academic reader | `survey-writer-opencode` / `thesis-chapter-writer-opencode` |
 
-If the user actually wants one of the others, tell them so and write that
-instead. Changing a tutorial that **already exists** in `content/drafts/`
+If the user actually wants one of the others, tell them so: hand it to
+the skill its row names, or, for a how-to guide, write it as a short
+procedure. Changing a tutorial that **already exists** in `content/drafts/`
 is `draft-reviser-opencode`'s, never another run of this skill: a fresh run
 rewrites a lesson that already works and throws away its dossier.
 
@@ -42,8 +43,9 @@ if asked what bears on a tutorial, read
 **The corpus is read-only: never run `python -m chitragupta.corpus sync`
 or `python -m chitragupta.enrich`.** Before the first retrieval, read
 `.claude/skills-common/references/genre-steps.md` §1: what the corpus
-holds, and why those are the user's to run, but not its empty-ledger
-rule, which this genre replaces below. Check the ledger first:
+holds, and why those are the user's to run. Of its two paragraphs
+on an empty ledger, the one for a genre where citing is optional is this
+genre's. Check the ledger first:
 
 ```bash
 python -m chitragupta.corpus ledger
@@ -138,7 +140,8 @@ is the one skill allowed to widen.
    `python -m chitragupta.review synthesis <draft>` reports
    `unit: document`). If you searched, read
    `.claude/skills-common/references/genre-steps.md` §5 before recording
-   `evidence.md` and `rejected.md`, then:
+   `evidence.md` and `rejected.md`, with one difference: this genre
+   captures no `quote:` line. Then:
 
    ```bash
    python -m chitragupta.draft dossier check-evidence content/drafts/<slug>.md
@@ -199,6 +202,9 @@ is the one skill allowed to widen.
    - **No citekey inside either figure file.** Step 13's gate does not
      follow `\input`.
    - **Nothing redrawn from a source.**
+   - **The `.txt` form is 7-bit ASCII, and the caption is in the
+     draft**, never in a figure file. Never write the word "Figure" or
+     a number yourself: the renderer assigns both.
    - **A caption line directly below the marker**, no blank line
      between, and `<!-- figureref: <name> -->` where a step points at
      it. Every figure has one.
@@ -245,8 +251,8 @@ is the one skill allowed to widen.
     presenting. Come back with the list, each repair kept or reverted,
     the scan's `tiers_not_run` reason if it gave one, and whether the
     declared queries are exhausted; then continue to step 13. Done when
-    the loop has returned and every attempt is logged, or you have said
-    that nothing cleared the bar.
+    the loop has returned and every attempt is logged, you have said
+    that nothing cleared the bar, or the lesson cites nothing.
 13. **Gate any citations.** Save the draft as `content/drafts/<slug>.md`.
     If it contains any `[@citekey]`, run:
 

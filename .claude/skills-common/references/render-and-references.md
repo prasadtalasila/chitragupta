@@ -1,9 +1,10 @@
 # Building the References section and rendering a draft
 
-Read this once the draft has passed the citation gate, at the step that
-sends you here. That step says which sections apply and which formats to
-render; `<draft>` below is the draft's path, as the step gives it (for
-example `content/drafts/<slug>.md`).
+Read this once the draft has passed the citation gate, or cites nothing
+and so has none to pass, at the step that sends you here. That step says
+which sections apply and which formats to render; `<draft>` below is the
+draft's path, as the step gives it (for example
+`content/drafts/<slug>.md`).
 
 ## 1. Build the References section
 
