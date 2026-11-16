@@ -3,10 +3,11 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps
-> use checkbox (`- [ ]`) syntax for tracking.
+> use checkbox (`- [x]`) syntax for tracking.
 
-Status: **PR 0 merged (`9cbaf678`); PRs 0b, 0c and 1 built and in
-review; PRs 2-8 not started.**
+Status: **built.** Every PR of the series is merged; "How it ended"
+below has what each became, where the plan was wrong, and what is left
+open.
 Written 2026-11-13 against `9aa75085`
 (6.170.2), branched from `a76b9ba1` (6.172.0), for
 issue [1091](https://github.com/prasadtalasila/chitragupta/issues/1091).
@@ -604,7 +605,7 @@ Rules that keep it from going piecemeal, written into the index:
 
 - Create: `tests/test_writing_standards_layers.py`
 
-- [ ] **Step 1:** Write the tests:
+- [x] **Step 1:** Write the tests:
   - `test_every_file_is_in_the_index`: every `.md` under
     `docs/writing-standards/` is linked from the index table in
     `docs/WRITING-STANDARDS.md`.
@@ -618,9 +619,9 @@ Rules that keep it from going piecemeal, written into the index:
     link names a heading in the core.
   - `test_section_numbers_are_unique`: no number heads two sections
     across the layer files.
-- [ ] **Step 2:** Run it against today's single file. Expected: the
+- [x] **Step 2:** Run it against today's single file. Expected: the
   index test fails (there is no index yet), and the other three pass.
-- [ ] **Step 3:** Commit.
+- [x] **Step 3:** Commit.
 
 ### Task 2: move the element sections and write the index
 
@@ -634,18 +635,18 @@ Rules that keep it from going piecemeal, written into the index:
   section it reads (§2, which stays in the core) moves; expected
   unchanged
 
-- [ ] **Step 1:** Move §10, §12, §13 and §14 verbatim, and demote §12's
+- [x] **Step 1:** Move §10, §12, §13 and §14 verbatim, and demote §12's
   two unnumbered `##` headings to `###`. Leave the stubs, rewrite the
   three in-section links, update the two `style_*` messages, and write
   the index. `tests/test_render_output_math*.py` only name "Not
   mathematics" and read nothing from the file, so they are unaffected.
-- [ ] **Step 2:** Run `pytest tests/test_writing_standards_layers.py
+- [x] **Step 2:** Run `pytest tests/test_writing_standards_layers.py
   tests/test_style_assets_match_the_standard.py tests/test_skill_table_step.py -q`.
   Done when it is green.
-- [ ] **Step 3:** Run the full suite and `mkdocs build --strict`, the
+- [x] **Step 3:** Run the full suite and `mkdocs build --strict`, the
   docs workflow's link check (`.github/workflows/docs.yml:97`). Done
   when both are green.
-- [ ] **Step 4:** Bench Tier 1 for all skills on the server
+- [x] **Step 4:** Bench Tier 1 for all skills on the server
   (`skill-bench`, Tier 1 only). Done when it passes as on main.
 
   **Tier 1 does not yet see this move.** On `main` it scores only the
@@ -657,7 +658,7 @@ Rules that keep it from going piecemeal, written into the index:
   branch `feat-1091-tier1-docs-reads` (2026-11-14), and Step 4 runs with
   that extension, on `main` and on this branch alike. Until it merges,
   a Tier 1 pass here says nothing about the moved sections.
-- [ ] **Step 5:** Commit, PR with its sub-issue. After merge, comment on
+- [x] **Step 5:** Commit, PR with its sub-issue. After merge, comment on
   #1178 and update `plans/1179-research-paper-genre.md`'s "The writing
   rules": research-paper's rules go in
   `docs/writing-standards/genres/research-paper.md`, what only the skill
@@ -1009,9 +1010,9 @@ recorded survey-writer's baseline from `main`.
   `test_each_copy_is_under_its_cap` message: "move prose to references/;
   commands stay in SKILL.md")
 
-- [ ] **Step 1:** Make the changes. Run both remedy tests. Done when they
+- [x] **Step 1:** Make the changes. Run both remedy tests. Done when they
   pass, now covering `skills-common/`.
-- [ ] **Step 2:** Commit.
+- [x] **Step 2:** Commit.
 
 ### Task 2: `genre-steps.md`
 
@@ -1038,9 +1039,9 @@ The figure section the comparison proposed is not here: what it held is
 yourself"), so skills cite that. A section for LaTeX fragments (thesis
 now, research-paper later) is left for the PR that needs it twice.
 
-- [ ] **Step 1:** Write the file. Its first line is distinct from every
+- [x] **Step 1:** Write the file. Its first line is distinct from every
   other reference's, because Tier 1 scores a read by it.
-- [ ] **Step 2:** No commit yet: `tests/test_skill_references.py`
+- [x] **Step 2:** No commit yet: `tests/test_skill_references.py`
   fails on an uncited section until Task 4 cites it, so Tasks 2–4 land
   as one commit.
 
@@ -1067,7 +1068,7 @@ its first words, where it went (file and §), or "cut" with the reason
 (a duplicate of X, a restatement of `--help`, history). A row with no
 destination fails review.
 
-- [ ] **Step 1:** Write both files and the ledger. No commit yet (see
+- [x] **Step 1:** Write both files and the ledger. No commit yet (see
   Task 2).
 
 ### Task 4: the new survey-writer `SKILL.md`, in all three copies
@@ -1099,16 +1100,16 @@ list at the top of the move ledger. Note for each whether the test reads
 the raw file or `expanded()`: only a phrase read through `expanded()`
 may move into a cited reference.
 
-- [ ] **Step 1:** Rewrite the `.claude` copy. Merge only tail steps 14 and
+- [x] **Step 1:** Rewrite the `.claude` copy. Merge only tail steps 14 and
   15 (reread, record steering); steps 1, 2, 2a, 9 and 10 keep their
   numbers.
-- [ ] **Step 2:** Port to the other two copies, keeping every phrase-map
+- [x] **Step 2:** Port to the other two copies, keeping every phrase-map
   difference. Run `pytest tests/test_skill_harness_copies.py -q`. Done
   when it is green.
-- [ ] **Step 3:** Lower the cap. Run `pytest tests/test_skill_*.py
+- [x] **Step 3:** Lower the cap. Run `pytest tests/test_skill_*.py
   tests/test_init.py tests/test_tikz_scaffolds.py -q`. Done when it is
   green and all three copies are at or under 12,000 bytes.
-- [ ] **Step 4:** Commit.
+- [x] **Step 4:** Commit.
 
 ### Task 5: docs, step references and the bench
 
@@ -1124,15 +1125,15 @@ may move into a cited reference.
   DEVELOPER.md's, which names only four of the eight today, catches up
 - Modify: `pyproject.toml` (patch bump)
 
-- [ ] **Step 1:** Update every reference, then run
+- [x] **Step 1:** Update every reference, then run
   `grep -rn "survey-writer.*step\|step [0-9]*.*survey" docs chitragupta .claude`
   and check each hit. Done when every hit names the right step.
-- [ ] **Step 2:** Run the full suite with coverage. Done when it is green
+- [x] **Step 2:** Run the full suite with coverage. Done when it is green
   at 100%.
-- [ ] **Step 3:** Push and open PR 1 with "Part of #1091". On the
+- [x] **Step 3:** Push and open PR 1 with "Part of #1091". On the
   server, `skill-bench` for survey-writer. Done when `--compare` exits 0
   and its table is on the PR and in `docs/HARNESS.md`.
-- [ ] **Step 4:** Fable-model review, then merge.
+- [x] **Step 4:** Fable-model review, then merge.
 
 ---
 
@@ -1149,15 +1150,15 @@ per skill, with these differences. Baselines for all three come from
 - Modify: `.claude/skills/figure-drawer/references/placement.md` §4
 - Modify: `.claude/skills/tutorial-writer/SKILL.md` step 9 (all copies)
 
-- [ ] **Step 1:** `placement.md` §4 says the pdf render is LuaLaTeX with
+- [x] **Step 1:** `placement.md` §4 says the pdf render is LuaLaTeX with
   `chitragupta-lualatex.tex` (#1037), as thesis step 9 does, and carries
   the `\resizebox` note (#1046); `chitragupta-unicode.sty` is named only
   where it still applies. Run `pytest tests/test_skill_figure_router.py
   tests/test_figure_rule_ids.py -q`.
-- [ ] **Step 2:** Tutorial step 9 loses "most of this genre's rare
+- [x] **Step 2:** Tutorial step 9 loses "most of this genre's rare
   figures need no caption at all": every figure has a caption, as
   `figures.md` §10 and `FigureNoCaption` (#421) say.
-- [ ] **Step 3:** Commit.
+- [x] **Step 3:** Commit.
 
 ### Task 2: textbook-chapter-writer
 
@@ -1211,15 +1212,15 @@ tutorial merge nothing: their reread sits mid-process (textbook 9,
 tutorial 10), away from steering, so their internal references
 (textbook `:315` "step 14", tutorial `:361` "step 15") stay valid.
 
-- [ ] **Step 1:** Each skill at or under 12,000 bytes in all three
+- [x] **Step 1:** Each skill at or under 12,000 bytes in all three
   copies; caps lowered with reason `None`. A skill that real
   deduplication leaves above 12,000 goes back to the user (Decision 1).
-- [ ] **Step 2:** Update `docs/WRITING-STANDARDS.md:561`,
+- [x] **Step 2:** Update `docs/WRITING-STANDARDS.md:561`,
   `chitragupta/review/synthesis.py:48`, `chitragupta/review/_units.py:22`
   and `docs/PROMPTS.md:76` ("19-step") where a step changed.
-- [ ] **Step 3:** Full suite at 100%; `skill-bench` for all three, each
+- [x] **Step 3:** Full suite at 100%; `skill-bench` for all three, each
   `--compare` exiting 0; results on the PR and in `docs/HARNESS.md`.
-- [ ] **Step 4:** Fable-model review, merge, then comment on #1178: cite
+- [x] **Step 4:** Fable-model review, merge, then comment on #1178: cite
   `genre-steps.md`, write the rules in `genres/research-paper.md`, add
   the skill to `GENRES` in `tests/test_skill_size.py`, start at or under
   12,000 bytes.
@@ -1245,6 +1246,116 @@ this file when it starts.
 
 Separate from this series: demo-recorder's install table lost its
 manual sources in #1190; #1206 restores them.
+
+## How it ended
+
+Recorded 2026-11-16, when the last PR merged. The tasks above are as
+planned; each skill's ledger (`plans/1091-ledger-<skill>.md`) says how
+it was built and why.
+
+| PR | Merged as | `SKILL.md`, bytes (Claude Code copy) | Bench on Claude Code |
+| --- | --- | --- | --- |
+| 0, SK-0 | #1209 | none shrunk | baselines recorded |
+| 0b, SK-0b | #1212 | none shrunk | Tier 1, 10 of 11 |
+| 0c, SK-0c | #1214 | none shrunk | pointer and handoff both held |
+| 1, SK-1 | #1215, #1217 | survey-writer 31,779 to 13,688 | pass |
+| 2, SK-2 | #1223 | textbook 32,215 to 15,380; thesis 33,773 to 14,933; tutorial 33,562 to 16,809 | pass, pass, one optional row |
+| 3, SK-3 | #1220 | review-digest 16,881 to 16,765 | pass |
+| 4, SK-4 | #1219 | draft-reviser 29,016 to 22,600 | pass |
+| 5, SK-5 | #1221 | agenda-reviser 28,097 to 18,521 | pass at 6 against 6 |
+| 6, SK-6 | #1218 | book-assembler 19,704 to 13,806 | pass |
+| 7, SK-7 | #1222 | corpus-reviser 12,762 to 10,945 | pass at 6 against 6 |
+| 8, SK-8 | #1224 | deep-research 40,760 to 19,303 | pass at 6 against 6 |
+
+Sizes are as the series closes, after the review fixes below put some
+text back. Two small PRs sit beside the rows: #1216 (the two checker
+messages that still named the old path, and Tier 1's strictness about
+an emoji) and the wrap-up PR that carries this section.
+
+**Where the plan was wrong.**
+
+- **No skill reached its byte target**, and the owner ruled on
+  2026-11-14 that the targets are guidelines (Decision 1). What stays
+  is commands, guardrails, text the tests read, and one `Done when` a
+  step. Two estimates were far off: draft-reviser's 5.3 KB floor, since
+  agenda-reviser and corpus-reviser follow its loop by step number and
+  every step has to stay whole; and deep-research's 10 to 12 KB, since
+  three dispatch sites and the transcription of every packet stay with
+  the main run.
+- **"One reference file per skill" does not fit a skill with modes.**
+  draft-reviser keeps its five mode references and agenda-reviser its
+  three repair references, each read only on its own branch.
+- **A genre file is named by the genre's `--genre` value**:
+  `textbook-chapter.md` and `thesis-chapter.md`, not `textbook.md` and
+  `thesis.md`.
+- **The plan's Task 2 for §12's two `##` headings** would have changed
+  a rule, and was not done (PR #1212).
+- **The critique loop's commands did move behind its pointer**, in all
+  five skills that run it, reversing Decision 2 for that step
+  (Decision 2 as amended; #1217, #1223, #1224).
+- **Codex and OpenCode never became usable for judging a shrink.**
+  Every Codex run ends when it sends a rendered figure to the local
+  model, which has no vision projector (#1210). The series gated on
+  Claude Code alone.
+
+**What the benches found, beyond pass and fail.** Each was a defect in a
+skill's wording that no unit test could see, and each is fixed:
+
+- agenda-reviser read `pass_bound` as a limit on repairs and stopped
+  with items open (#1221);
+- deep-research never handed its interviewers their section's declared
+  queries (#1224);
+- a tutorial figure was allowed to go without a caption while the style
+  check flagged it (#1223).
+
+One optional command fell wherever the critique loop moved behind its
+pointer: `draft dossier status`, which the loop runs only where the
+dossier has an `outline.md`. With the commands in front of it a model
+ran it anyway; behind the pointer it follows the condition. With an
+outline it ran in every run.
+
+**The review before the release.** Two reviewers who had not built
+anything compared every skill with its text before the series
+(`a9c69d74`), walking each ledger. No guardrail on citekeys, the
+read-only corpus or the gate was lost. They found fifteen things, fixed
+in the wrap-up PR; the ones that matter most:
+
+- three figure rules had been left to a bare citation in the four genre
+  writers (the 7-bit text form, the caption in the draft, no hand-written
+  "Figure" or number);
+- review-digest pointed at a shared section whose drafting rules forbid
+  how a digest is written;
+- agenda-reviser no longer sent re-grounding to draft-reviser, and had
+  lost the sentence that stops it at `pass_bound`;
+- survey-writer's evidence step no longer named the `quote:` field, and
+  the reason a survey emits an evidence sidecar sat behind a pointer
+  read only on request. Runs of the shrunk skill wrote a quoted passage
+  less often (1 of 6 against 3 of 6), which is the one measured cost of
+  moving text out of sight. Both are back in the step.
+
+**Also done in the wrap-up PR.** corpus-reviser's cost sentence now
+opens its loop and is written to `revisions.md` before the first
+search, after two wordings that only asked for it to be said left it in
+the model's reasoning in six runs of six. Every thesis figure is a
+captioned float. `docs/FIGURE-DRAWER.md` gives the LuaLaTeX advice.
+No skill file names an issue or a pull request, and a test holds that.
+
+**Left open.**
+
+- A thesis run never renders with `--fragment`, so the `[tikz-libraries]`,
+  `[unicode]` and `[floats]` lines the thesis skill is told to quote are
+  never printed. Settling it adds a render to every thesis run.
+- A direct request to figure-drawer enters draft-reviser's loop at step
+  6, so no revision is marked and "Show what changed" has no baseline
+  for that pass.
+- agenda-reviser runs one pass an invocation, so `pass_bound` can never
+  be reached within one.
+- `latex-conventions.md` §5 says the bibliography is built by `bibtex`
+  where the build runs `bibtexu`.
+- The overlap checks in `docs/WRITING-STANDARDS.md` have not been rerun
+  since the prose moved, and the sentences written during the move have
+  had none.
+- The front-matter descriptions are untouched, as planned.
 
 ## After the series
 
