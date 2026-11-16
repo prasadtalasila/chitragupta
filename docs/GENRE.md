@@ -326,8 +326,9 @@ skill instead of an exception: `corpus-reviser`, below.
 
 `corpus-reviser` is not a genre either. Like `draft-reviser` it changes
 a draft that already exists, with one difference: it re-searches every
-sub-theme in `sections.md` and reads the whole draft, instead of the one
-sub-theme a change touches.
+sub-theme the dossier records (the queries in `retrieval.md`, or the
+section headings in `sections.md` where it records none) and reads the
+whole draft, instead of the one sub-theme a change touches.
 
 It is a separate skill so that the choice is yours and is made by
 structure. `draft-reviser` contains no instructions for a wide search,
@@ -342,7 +343,9 @@ the draft is being re-targeted at a different reader. Anything else,
 including repairing citations after a sync moved the corpus, is
 `draft-reviser`. When it is unclear, the skills are told to
 pick `draft-reviser` and say so: being wrongly narrow costs a clarifying
-sentence, being wrongly wide costs the tokens.
+sentence, being wrongly wide costs the tokens. Before its first search
+it says what the pass will cost and writes that sentence into
+`revisions.md`, so the cost is on record before it is spent.
 
 It keeps what makes it cheaper than re-running the genre skill. It
 consults and honours `rejected.md`, logs every call to `retrieval.md`,
