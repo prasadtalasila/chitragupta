@@ -376,7 +376,14 @@ skill-only runs with an outline, every run opened the reference, ran
 entry and passed the gate, as the inline step had. Without an outline
 the command is optional, and the pointer runs skipped it where the
 inline ones mostly ran it anyway; every other count held
-(plans/1091-ledger-survey-writer.md has the table).
+(plans/1091-ledger-survey-writer.md has the table). deep-research's
+step moved the same way, in a shrink that also left what its subagents
+do to their own files (rows in
+`bench/results/2026-11-15-deep-research-shrink/`): in 6 skill-only runs
+with an outline every run dispatched all three kinds of subagent, ran
+`draft dossier status` before the baseline scan, logged a critique
+entry and passed the gate, as the inline step had, and `--compare`
+passed (plans/1091-ledger-deep-research.md).
 
 Two harness facts the bench had to work around, both recorded in the
 script: OpenCode takes its project directory from the inherited `PWD`,

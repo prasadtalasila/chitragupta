@@ -57,9 +57,9 @@ now says it is the whole interview. §8 and §9 are new.
 
 | Copy | Before | After |
 | --- | ---: | ---: |
-| `.claude/skills/deep-research/SKILL.md` | 40,760 | 19,141 |
-| `.agents/skills/deep-research/SKILL.md` | 40,779 | 19,156 |
-| `.opencode/skills/deep-research-opencode/SKILL.md` | 40,927 | 19,278 |
+| `.claude/skills/deep-research/SKILL.md` | 40,760 | 19,303 |
+| `.agents/skills/deep-research/SKILL.md` | 40,779 | 19,318 |
+| `.opencode/skills/deep-research-opencode/SKILL.md` | 40,927 | 19,440 |
 | `.claude/skills/deep-research/references/report.md` | 10,312 | 13,834 |
 | `.claude/agents/deep-research-interviewer.md` | 6,279 | 6,258 |
 | `docs/writing-standards/genres/deep-research.md` | new | 4,474 |
@@ -366,9 +366,12 @@ the agent files are `.claude/agents/<name>.md`.
 
 Each phase and each Phase 7 step gained a one-line `Done when`
 (Decision 4), and each pointer a condition. Phase 5 names the writer
-file's sections for a `quick` run. The genre file's opening paragraph,
-and `report.md`'s §2, §3, §8 and §9 openers saying when to read them,
-are new; everything else in them is one of the rows above.
+file's sections for a `quick` run. Phase 2's dispatch packet gained each
+section's declared `queries:` and the origin to log them with, after the
+bench showed a run's interviewers logging none as declared without it.
+The genre file's opening paragraph, and `report.md`'s §2, §3, §8 and
+§9 openers saying when to read them, are new; everything else in them
+is one of the rows above.
 
 ## The critique step and the rider window
 
@@ -391,14 +394,99 @@ can go.
 
 ## The bench
 
-Pending: filled in from the after runs.
+Claude Code only, skill-only, `--timeout 3600`, `PYTHONPATH` unset, one
+batch of 3 at a time. Rows in
+`bench/results/2026-11-15-deep-research-shrink/`:
+
+- `before.json`: 6 runs of `main`'s deep-research. Runs 1-3 are the
+  recorded skill-only baseline
+  (`2026-11-14-skill-bench-skill-only/tier2.json`); runs 4-6 ran from a
+  clean archive of `origin/main` at `a7bb1609`, whose `SKILL.md` is the
+  same 40,760 bytes and whose `critique.md` is the loop this branch
+  points at.
+- `after.json`: 6 runs of this branch's final text (`9baaebcd`), in two
+  batches of 3.
+- `after-first-text.json`: the first after batch, 3 runs of `e5e9d50c`,
+  before the declared queries joined Phase 2's dispatch packet. Kept as
+  a record, not compared: it measured an earlier text (below).
+
+**The first after batch against the 3 recorded rows exited 3**, on
+`review verbatim recheck` alone (2/3 -> 1/3). By hand, both runs the
+scorer counted as missing it did run the recheck, from a script they
+wrote with a heredoc and then ran, which the scorer deliberately does
+not count (`bench/skill_commands.py` reads heredoc bodies as data). The
+same batch showed a real drop the scorer cannot see: in one run of three
+the interviewers logged none of their searches as `--origin declared`
+(0 of 15; 5 to 7 in every other run of either arm), so the main run had
+to re-issue all six declared queries. Old and new Phase 1 both said the
+interviewers run the declared queries with that origin, but neither put
+them in the dispatch packet; `9baaebcd` adds them. Both after batches
+below measure that text.
+
+**6 against 6, `--compare` exits 0 (pass).** Every command row holds
+(6/6 on both sides) except `review synthesis`, 0/6 -> 6/6 (Phase 6(a2)
+now names it as a check of the assembled report), and `review verbatim
+recheck`, 5/6 -> 4/6, inside the pass rule. No run timed out; every
+run's draft passed the gate.
+
+**Does the bench see what a subagent runs? Yes.** `claude -p
+--output-format stream-json` records a subagent's tool calls in the same
+transcript, each with `parent_tool_use_id` set, and `tool_input_list`
+walks every line, so `commands_run` counts them. In the recorded before
+runs, `draft retrieve search` and `draft retrieve evidence` were run
+only by subagents in some runs and still appear in `ran_all`. What the
+scorer does not see is a command run from a script the model wrote
+first, in whichever context.
+
+Counted by hand from each run's transcript and project (before: all 6,
+the recorded baseline's transcripts being still on disk):
+
+| | Before (6) | After (6) |
+| --- | ---: | ---: |
+| Every phase ran, through the stamp | 6 | 6 |
+| Interviewers dispatched (6 or 7 a run) | 6 | 6 |
+| Section writers dispatched (6 a run) | 6 | 6 |
+| Peer reviewers dispatched (4 a run) | 6 | 6 |
+| Interviewers logged the declared queries as `declared` | 6 | 6 |
+| Draft passed the gate | 6 | 6 |
+| `draft references`, `draft render`, `dossier stamp` ran | 6 | 6 |
+| `revisions.md` has a critique entry | 6 | 6 |
+| `draft dossier status` at or before the baseline scan | 6 | 6 |
+| `review verbatim recheck` ran, by hand (scorer) | 6 (5) | 6 (4) |
+| Opened `critique.md` (`references`) | 6 | 6 |
+
+Every after run opened `genre-steps.md`, `report.md`, `critique.md`,
+`render-and-references.md` and `verbatim-scan.md`, and 5 of 6
+`prose-check.md` (the sixth ran `draft style` and reported its findings
+without opening it). No main context read an agent file: on Claude Code
+the subagents load them as their instructions, which is the path this
+measures; the Codex and OpenCode paths are not benched. No transcript
+held an HTTP 429, and no run ended in seconds (518 to 1,303 s after,
+561 to 812 s before). A second after batch first cut off by a usage
+limit (all three runs exited 1 after about 95 s, gate 2) was discarded
+and rerun.
+
+**The exhaustion sentence** (`critique.md` step 5) in the after runs:
+stated in visible text in 4 of 6, in `revisions.md` only in 1, and in
+neither in 1. In before runs 4-6: visible text in 2, `revisions.md`
+only in 1. Whether the remaining run composed it in its reasoning
+cannot be told: `claude -p` records thinking blocks with their text
+withheld (890 characters across 60 blocks in one run).
+
+`draft evidence` ran in every run. In 4 of 6 after runs the evidence
+blocks carried no `quote:`, so no sidecar was written, which
+`render-and-references.md` §3 calls the expected answer; every before
+run recorded quotes and wrote one. The skill's text on `quote:` is
+unchanged in substance ("only where the packet singled out a passage"),
+so this reads as how these runs judged their packets, not a lost step;
+it is worth watching.
 
 ## For the plan
 
 `plans/1091-skill-shrink.md` is not edited on this branch. What it
 should say:
 
-- **PRs 3-8 table, row 8:** the target is 8,000 and the result 19.1 KB;
+- **PRs 3-8 table, row 8:** the target is 8,000 and the result 19.4 KB;
   the cap is 20,000 with a reason. The 6.4 KB floor left out the three
   dispatch sites and the transcription paragraphs.
 - **"consider splitting phases across its subagent boundary":** done as
