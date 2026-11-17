@@ -126,7 +126,9 @@ them. Four are easy to breach by accident:
   `resolved`, no objective-class finding is `new`, and the total has not
   risen, else the edit reverts.
 - **R10**: a new aid is registered in both `review.AIDS` and
-  `review._registry.AIDS`, and appears in AGENTS.md, CLI.md, the README
+  `review._registry.AIDS`, has its help line in
+  `chitragupta/command_help.py` (whose absence is a `KeyError` at
+  import), and appears in AGENTS.md, CLI.md, the README
   tables and `mkdocs.yml`. `review/_registry.py` raises `RuntimeError`
   when the two dicts disagree, so a half-registered aid fails at import.
   A missing `mkdocs.yml` entry is the silent one: missing nav is INFO,
