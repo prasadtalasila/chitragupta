@@ -27,9 +27,6 @@ class TestTruncate:
         text = "read-only view of what that run recorded -- takes no lock"
         assert truncate(text, 45) == "Read-only view of what that run recorded"
 
-    def test_a_first_sentence_is_kept_when_the_whole_does_not_fit(self):
-        assert truncate("Create a skeleton. Then more text.", 25) == "Create a skeleton"
-
     def test_an_abbreviation_is_not_a_sentence_end(self):
         """`vs. the` is mid-sentence; cutting there printed "torch vs"."""
         text = "probe and report: OS binaries, torch vs. the GPU driver, and a great deal more"
@@ -46,6 +43,14 @@ class TestTruncate:
 
     def test_one_word_longer_than_the_limit_is_cut_hard(self):
         assert truncate("x" * 100, 45) == "X" + "x" * 41 + "..."
+
+    def test_an_abbreviation_with_a_capital_after_it_is_not_a_cut(self):
+        """No sentence cuts at all: `e.g. Foo` once printed as "E.g"."""
+        text = "e.g. Foo is a long example that will not fit in the limit we give"
+        assert truncate(text, 45) == "E.g. Foo is a long example that will not..."
+
+    def test_a_word_cut_that_keeps_too_little_falls_back_to_a_hard_cut(self):
+        assert truncate("a " + "x" * 80, 45) == "A " + "x" * 40 + "..."
 
     def test_a_word_cut_after_a_full_stop_does_not_print_four_dots(self):
         assert truncate("torch vs. the GPU driver and a lot more", 14) == "Torch vs..."

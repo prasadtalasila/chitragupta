@@ -2,8 +2,8 @@
 
 Status: **PR 1 built, not merged; design approved by the owner 2026-11-17.**
 PR 1 changed the truncation rule on the way: a line that fits is kept
-whole, and a sentence ends only at a full stop followed by a capital
-(see the PR 1 task plan's ledgered rulings).
+whole, there are no sentence cuts (only ` -- ` clauses), and a word cut
+that keeps under half the line becomes a hard cut.
 Written 2026-11-17.
 
 **Written for:** whoever implements #1230 (PR 1) and its follow-up (PR 2).
