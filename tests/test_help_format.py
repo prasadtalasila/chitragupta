@@ -7,7 +7,11 @@ full text lives one level down in that command's own `--help`.
 """
 
 import ast
+import sys
 
+import pytest
+
+from chitragupta import help_format
 from chitragupta.help_format import commands_block, truncate
 from tests.conftest import run_python
 
@@ -58,3 +62,61 @@ def test_help_index_is_import_light():
         "chitragupta.help_format",
         "chitragupta.progname",
     }
+
+
+class TestDispatcherParser:
+    def test_parser_kwargs_suggests_only_on_314(self, monkeypatch):
+        """`suggest_on_error` raises TypeError on 3.12 and 3.13, which
+        pyproject.toml still supports."""
+        monkeypatch.setattr(sys, "version_info", (3, 14, 0))
+        assert help_format.parser_kwargs() == {"suggest_on_error": True}
+        monkeypatch.setattr(sys, "version_info", (3, 13, 5))
+        assert help_format.parser_kwargs() == {}
+
+    def test_dispatcher_help_matches_click(self, monkeypatch, capsys):
+        monkeypatch.setenv("COLUMNS", "80")
+        parser = help_format.dispatcher_parser(
+            "chitragupta corpus",
+            "The corpus layer.",
+            [("sync", "bib file -> ledger"), ("ledger", "read it -- no lock")],
+            "verb",
+        )
+        parser.print_help()
+        assert capsys.readouterr().out == (
+            "Usage: chitragupta corpus [OPTIONS] COMMAND [ARGS]...\n\n"
+            "  The corpus layer.\n\n"
+            "Options:\n  -h, --help  Show this message and exit.\n\n"
+            "Commands:\n  sync    Bib file -> ledger\n  ledger  Read it\n\n"
+            "  Run 'chitragupta corpus COMMAND --help' for a command's flags.\n"
+        )
+
+    def test_a_long_description_wraps_indented(self, monkeypatch, capsys):
+        monkeypatch.setenv("COLUMNS", "40")
+        parser = help_format.dispatcher_parser("x", "word " * 20, [("a", "s")], "verb")
+        parser.print_help()
+        lines = capsys.readouterr().out.splitlines()
+        body = lines[2 : lines.index("Options:") - 1]
+        assert len(body) > 1
+        assert all(line.startswith("  word") and len(line) <= 40 for line in body)
+
+    def test_choices_and_hint_override_the_rows(self, capsys):
+        parser = help_format.dispatcher_parser(
+            "x", "d", [("a", "s"), ("  b", "t")], "verb", choices=["a"], hint="Go."
+        )
+        parser.print_help()
+        assert capsys.readouterr().out.endswith("\n  Go.\n")
+        with pytest.raises(SystemExit):
+            parser.parse_args(["b"])
+
+    def test_the_command_and_the_rest_parse_as_before(self):
+        parser = help_format.dispatcher_parser("x", "d", [("sync", "s")], "verb")
+        args = parser.parse_args(["sync", "--help", "a"])
+        assert (args.verb, args.rest) == ("sync", ["--help", "a"])
+        assert parser.parse_args([]).verb is None
+
+    def test_an_unknown_command_still_names_the_choices(self, capsys):
+        parser = help_format.dispatcher_parser("x", "d", [("sync", "s")], "verb")
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args(["bogus"])
+        assert excinfo.value.code == 2
+        assert "invalid choice: 'bogus'" in capsys.readouterr().err
