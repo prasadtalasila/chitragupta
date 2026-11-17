@@ -450,9 +450,8 @@ USAGE = """Usage: python -m chitragupta.draft gate [OPTIONS] FILE...
   verified, 1 = at least one unresolved citekey, 2 = bad usage,
   3 = the ledger could not be read, so nothing was checked.
 
-  Takes no options: every argument is a file to check. Reads only
-  content/ledger.sqlite via stdlib sqlite3, so it runs under a bare
-  python3 with no venv.
+  Every argument is a file to check. Reads only content/ledger.sqlite
+  via stdlib sqlite3, so it runs under a bare python3 with no venv.
 
 Options:
   -h, --help  Show this message and exit."""

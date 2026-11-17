@@ -272,3 +272,10 @@ def test_no_parser_hardcodes_the_module_form():
         if 'prog="python -m' in path.read_text(encoding="utf-8")
     ]
     assert hardcoded == []
+
+
+def test_every_click_parser_gets_the_version_dependent_keywords(monkeypatch):
+    """On 3.14 that is suggest_on_error; a keyword 3.13 accepts stands in
+    for it here, so the path that applies them runs on every CI leg."""
+    monkeypatch.setattr(help_format, "parser_kwargs", lambda: {"allow_abbrev": False})
+    assert help_format.ClickParser(prog="x").allow_abbrev is False
