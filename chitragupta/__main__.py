@@ -51,7 +51,7 @@ import argparse
 import importlib
 import sys
 
-from chitragupta.command_help import HELP
+from chitragupta.command_help import HELP, verbs
 from chitragupta.help_format import dispatcher_parser
 from chitragupta.progname import prog_for
 
@@ -117,9 +117,9 @@ def tree_rows() -> list[tuple[str, str]]:
     chitragupta/command_help.py, never from the layers, which is what
     keeps asking for help from importing any of them."""
     rows = []
-    for name, (one_line, verbs) in HELP.items():
+    for name, (one_line, _) in HELP.items():
         rows.append((name, one_line))
-        rows.extend((f"  {verb}", text) for verb, text in verbs.items())
+        rows.extend((f"  {verb}", text) for verb, text in verbs(name).items())
     return rows
 
 
