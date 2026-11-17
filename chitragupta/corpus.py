@@ -78,22 +78,20 @@ import argparse
 import importlib
 import sys
 
+from chitragupta.command_help import verbs
+from chitragupta.help_format import dispatcher_parser
 from chitragupta.progname import prog_for
 
+# The help strings live in chitragupta/command_help.py, the one place
+# `chitragupta --help`'s tree can read them without importing a layer.
 VERBS = {
-    "sync": ("chitragupta.sync", "bib file -> ledger -> PDF text: the deterministic corpus run"),
-    "ledger": (
-        "chitragupta.ledger_cli",
-        "read-only view of what that run recorded -- takes no lock",
-    ),
-    "topics": (
-        "chitragupta.seed_topics",
-        "read-only view of which papers each seed topic matched -- takes no lock",
-    ),
-    "discover": (
-        "chitragupta.discover",
-        "resolve a phrase to a topic and walk its papers and neighbours -- takes no lock",
-    ),
+    verb: (module, verbs("corpus")[verb])
+    for verb, module in {
+        "sync": "chitragupta.sync",
+        "ledger": "chitragupta.ledger_cli",
+        "topics": "chitragupta.seed_topics",
+        "discover": "chitragupta.discover",
+    }.items()
 }
 
 # What `--help` prints, deliberately *not* this module's docstring (#152).
@@ -107,21 +105,8 @@ DESCRIPTION = "The corpus layer: bring the ledger up to date, or read what it re
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog=prog_for("corpus"),
-        description=DESCRIPTION,
-    )
-    parser.add_argument(
-        "verb",
-        choices=sorted(VERBS),
-        nargs="?",
-        help=" / ".join(f"{name} -- {help_text}" for name, (_, help_text) in VERBS.items()),
-    )
-    # Everything after the verb belongs to that command's own parser, not
-    # this one -- REMAINDER rather than a second set of flags means a verb
-    # can take `-h`/`--help` of its own and this parser never sees it.
-    parser.add_argument("rest", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
-    return parser
+    rows = [(verb, text) for verb, (_, text) in VERBS.items()]
+    return dispatcher_parser(prog_for("corpus"), DESCRIPTION, rows, "verb")
 
 
 def main(argv=None) -> int:

@@ -243,3 +243,33 @@ class TestTheExitCodeContractSurvivesTheDispatch:
         result = run_python("-m", "chitragupta.corpus", "sync", "--bogus-flag")
         assert result.returncode == 2
         assert "--bogus-flag" in result.stderr
+
+
+class TestHelpIsOneCommandPerLine:
+    """#1230: argparse wrapped the verb list into one paragraph. It now
+    prints the way click does, one command and one cut line per row."""
+
+    def test_help_matches_click(self, monkeypatch, capsys):
+        monkeypatch.setenv("COLUMNS", "80")
+        monkeypatch.setattr("sys.argv", ["chitragupta"])
+        with pytest.raises(SystemExit) as excinfo:
+            entrypoint.main(["--help"])
+        assert excinfo.value.code == 0
+        assert capsys.readouterr().out == (
+            "Usage: chitragupta corpus [OPTIONS] COMMAND [ARGS]...\n\n"
+            "  The corpus layer: bring the ledger up to date, or read what it recorded.\n\n"
+            "Options:\n  -h, --help  Show this message and exit.\n\n"
+            "Commands:\n"
+            "  sync      Bib file -> ledger -> PDF text: the deterministic corpus run\n"
+            "  ledger    Read-only view of what that run recorded -- takes no lock\n"
+            "  topics    Read-only view of which papers each seed topic matched\n"
+            "  discover  Resolve a phrase to a topic and walk its papers and neighbours\n\n"
+            "  Run 'chitragupta corpus COMMAND --help' for a command's flags.\n"
+        )
+
+    def test_verbs_and_help_index_agree(self):
+        from chitragupta import command_help
+
+        assert {verb: text for verb, (_, text) in entrypoint.VERBS.items()} == (
+            command_help.verbs("corpus")
+        )

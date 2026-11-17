@@ -115,45 +115,29 @@ from chitragupta import (
     tldr,
     unit,
 )
+from chitragupta.command_help import verbs
+from chitragupta.help_format import dispatcher_parser
 from chitragupta.progname import prog_for
 
+# The help strings live in chitragupta/command_help.py, the one place
+# `chitragupta --help`'s tree can read them without importing a layer.
 VERBS = {
-    "gate": (citation_gate, "verify every citekey in a draft against the ledger"),
-    "dossier": (
-        dossier,
-        "the working state behind a draft: create it, inspect it, back it up, restore it",
-    ),
-    "retrieve": (retrieval, "BM25 retrieval over the synced corpus"),
-    "references": (references, "an IEEE reference list built from a draft's own cited citekeys"),
-    "evidence": (
-        evidence_appendix,
-        "the evidence sidecar rendered beside a draft: each "
-        "cited source and the spans its dossier marked quotable",
-    ),
-    "render": (render_output, "render a Pandoc-markdown or LaTeX draft to tex/pdf/docx"),
-    "style": (
-        style_check,
-        "check a draft's prose against docs/WRITING-STANDARDS.md -- a review aid, never a gate",
-    ),
-    "spec": (spec, "the outline a book is generated from, and the human sign-off on it"),
-    "unit": (unit, "one section's generation contract, and the record of its acceptance"),
-    "registry": (
-        registry,
-        "terminology, claims and cross-references over a book's "
-        "accepted units -- a review aid, never a gate",
-    ),
-    "tldr": (
-        tldr,
-        "a one-paragraph summary per citekey, cached beside a fingerprint of its parsed text",
-    ),
-    "figures": (
-        draft_figures,
-        "one paper's figures to look at while drafting -- never to reproduce",
-    ),
-    "diff": (
-        draft_diff,
-        "what changed",
-    ),
+    verb: (module, verbs("draft")[verb])
+    for verb, module in {
+        "gate": citation_gate,
+        "dossier": dossier,
+        "retrieve": retrieval,
+        "references": references,
+        "evidence": evidence_appendix,
+        "render": render_output,
+        "style": style_check,
+        "spec": spec,
+        "unit": unit,
+        "registry": registry,
+        "tldr": tldr,
+        "figures": draft_figures,
+        "diff": draft_diff,
+    }.items()
 }
 
 
@@ -164,21 +148,8 @@ DESCRIPTION = "The drafting layer: work on one draft -- gate it, cite it, render
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog=prog_for("draft"),
-        description=DESCRIPTION,
-    )
-    parser.add_argument(
-        "verb",
-        choices=sorted(VERBS),
-        nargs="?",
-        help=" / ".join(f"{name} -- {help_text}" for name, (_, help_text) in VERBS.items()),
-    )
-    # Everything after the verb belongs to that module's own parser, not
-    # this one -- REMAINDER rather than a second set of flags means a verb
-    # can take `-h`/`--help` of its own and this parser never sees it.
-    parser.add_argument("rest", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
-    return parser
+    rows = [(verb, text) for verb, (_, text) in VERBS.items()]
+    return dispatcher_parser(prog_for("draft"), DESCRIPTION, rows, "verb")
 
 
 def main(argv=None) -> int:

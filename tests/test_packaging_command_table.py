@@ -136,8 +136,17 @@ def _help(*module_args) -> str:
 
 
 def _choices(help_text: str) -> set:
-    """The `{a,b,c}` set argparse prints in its own usage line for a
-    subparsers action or a choices-constrained positional."""
+    """What the reader is offered to type next.
+
+    A dispatcher (#1230) prints a click-style `Commands:` list, one
+    command per row at a two-space indent; a row indented further is a
+    layer's verb shown in the front door's tree, not a choice there.
+    Every other parser still prints argparse's `{a,b,c}` in its usage
+    line, for a subparsers action or a choices-constrained positional."""
+    _, found, rest = help_text.partition("\nCommands:\n")
+    if found:
+        rows = rest.split("\n\n", 1)[0].splitlines()
+        return {row.split()[0] for row in rows if row[2] != " "}
     match = CHOICES_RE.search(help_text)
     return set(match.group(1).split(",")) if match else set()
 

@@ -51,6 +51,8 @@ import argparse
 import importlib
 import sys
 
+from chitragupta.command_help import HELP, verbs
+from chitragupta.help_format import dispatcher_parser
 from chitragupta.progname import prog_for
 
 # Imported lazily, by name, for the reason `chitragupta/corpus.py` gives
@@ -59,16 +61,13 @@ from chitragupta.progname import prog_for
 # `enrich`'s imports, several of which are absent unless the optional
 # group is installed.
 LAYERS = {
-    "corpus": ("chitragupta.corpus", "bring the ledger up to date, or read what it recorded"),
-    "draft": ("chitragupta.draft", "work on one draft -- gate it, cite it, render it"),
-    "review": (
-        "chitragupta.review.__main__",
-        "eleven read-only aids over a finished draft; never a gate",
-    ),
-    "enrich": (
-        "chitragupta.enrich.__main__",
-        "Docling -> embeddings/Chroma -> BERTopic -> topic graph: seven stages, whole corpus",
-    ),
+    name: (module, HELP[name][0])
+    for name, module in {
+        "corpus": "chitragupta.corpus",
+        "draft": "chitragupta.draft",
+        "review": "chitragupta.review.__main__",
+        "enrich": "chitragupta.enrich.__main__",
+    }.items()
 }
 
 # Package-level commands (#258's "package itself" table): only meaningful
@@ -78,26 +77,13 @@ LAYERS = {
 # point into one of its four layers. Dispatched the same way as LAYERS,
 # in CHOICES below, so this stays the only place the distinction is drawn.
 COMMANDS = {
-    "init": (
-        "chitragupta.init",
-        "scaffold a project directory -- config.toml, .claude/, "
-        "papers/, content/ and the prose docs",
-    ),
-    "doctor": (
-        "chitragupta.doctor",
-        "probe and report: OS binaries, the enrich extra, torch vs. the GPU "
-        "driver, a competing distribution, hook launchers, OpenCode skills, pdf fonts",
-    ),
-    "install": (
-        "chitragupta.install",
-        "run the install_full_pipeline.sh stages a pip install "
-        "cannot do itself -- os-deps, gpu-torch",
-    ),
-    "figure": (
-        "chitragupta.figure.__main__",
-        "start, check and look at one figure, and keep the house block current"
-        " -- sync, check, new, look",
-    ),
+    name: (module, HELP[name][0])
+    for name, module in {
+        "init": "chitragupta.init",
+        "doctor": "chitragupta.doctor",
+        "install": "chitragupta.install",
+        "figure": "chitragupta.figure.__main__",
+    }.items()
 }
 
 CHOICES = {**LAYERS, **COMMANDS}
@@ -125,19 +111,31 @@ def _version() -> str:
         return "unknown"
 
 
+def tree_rows() -> list[tuple[str, str]]:
+    """Each layer or command, then its verbs indented under it: the
+    two-level tree `chitragupta --help` prints (#1230). Read from
+    chitragupta/command_help.py, never from the layers, which is what
+    keeps asking for help from importing any of them."""
+    rows = []
+    for name, (one_line, _) in HELP.items():
+        rows.append((name, one_line))
+        rows.extend((f"  {verb}", text) for verb, text in verbs(name).items())
+    return rows
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog=prog_for(""), description=DESCRIPTION)
-    parser.add_argument("--version", action="version", version=_version())
-    parser.add_argument(
+    prog = prog_for("")
+    parser = dispatcher_parser(
+        prog,
+        DESCRIPTION,
+        tree_rows(),
         "layer",
         choices=sorted(CHOICES),
-        nargs="?",
-        help=" / ".join(f"{name} -- {help_text}" for name, (_, help_text) in CHOICES.items()),
+        hint=f"Run '{prog} COMMAND --help' for a command's commands and flags.",
     )
-    # REMAINDER, so a layer can take its own `-h`/`--help` and this parser
-    # never sees it -- the same contract chitragupta/draft.py uses for its
-    # verbs.
-    parser.add_argument("rest", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--version", action="version", version=_version(), help="Show the version and exit."
+    )
     return parser
 
 

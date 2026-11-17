@@ -175,3 +175,54 @@ class TestTheExitCodeContractSurvivesTheDispatch:
         result = run_python("-m", "chitragupta.draft", "retrieve", "search")
         assert result.returncode == 2
         assert "query" in result.stderr
+
+
+class TestHelpIsOneCommandPerLine:
+    """#1230: argparse wrapped thirteen verbs into one twenty-line
+    paragraph. It now prints one command and one cut line per row."""
+
+    def test_help_lists_one_command_per_line(self, monkeypatch, capsys):
+        monkeypatch.setenv("COLUMNS", "80")
+        monkeypatch.setattr("sys.argv", ["chitragupta"])
+        with pytest.raises(SystemExit) as excinfo:
+            entrypoint.main(["--help"])
+        assert excinfo.value.code == 0
+        out = capsys.readouterr().out
+        for verb in entrypoint.VERBS:
+            assert f"\n  {verb} " in out
+        assert " / " not in out
+        assert out.endswith("Run 'chitragupta draft COMMAND --help' for a command's flags.\n")
+
+    def test_verbs_and_help_index_agree(self):
+        from chitragupta import command_help
+
+        assert {verb: text for verb, (_, text) in entrypoint.VERBS.items()} == (
+            command_help.verbs("draft")
+        )
+
+
+_THIRD_PARTY = (
+    "print(sorted({m.split('.')[0] for m in sys.modules}"
+    " - set(sys.stdlib_module_names) - {'chitragupta', '__main__'}))"
+)
+
+
+def test_gate_adds_only_the_stdlib_help_modules():
+    """`draft gate` must run on a bare interpreter. #1230 gave the
+    dispatcher two help modules; test_help_format.py proves they import
+    only the standard library, and this proves the gate path loads them
+    and nothing third-party. The baseline child holds whatever start-up
+    shims this interpreter has, so the test reads the same in any venv."""
+    gate = run_python(
+        "-c",
+        "import runpy, sys\n"
+        "sys.argv = ['x', 'gate', '--help']\n"
+        "try:\n    runpy.run_module('chitragupta.draft', run_name='__main__')\n"
+        "except SystemExit:\n    pass\n"
+        f"{_THIRD_PARTY}\n"
+        "print('chitragupta.help_format' in sys.modules)",
+    )
+    baseline = run_python("-c", f"import sys\n{_THIRD_PARTY}")
+    *_, third_party, loaded_help = gate.stdout.splitlines()
+    assert third_party == baseline.stdout.strip()
+    assert loaded_help == "True"
