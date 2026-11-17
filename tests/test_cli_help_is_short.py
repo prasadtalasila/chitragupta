@@ -75,8 +75,17 @@ class TestHelpStaysShort:
     def test_the_whole_help_fits_a_screen(self, module_path):
         """The observable half. The check above can be satisfied by a
         short `description` while `epilog` grows instead, which is the
-        same failure by another route."""
-        assert len(_help(module_path).splitlines()) <= _MAX_HELP_LINES
+        same failure by another route.
+
+        The front door's `Commands:` list is the one part exempt: since
+        #1230 it is a tree of every layer's verbs, one per line, so its
+        length is the command surface's, not prose that grew. Everything
+        above it is still held to a screen."""
+        text = _help(module_path)
+        head, _, _ = text.partition("\nCommands:\n")
+        assert len(head.splitlines()) <= _MAX_HELP_LINES
+        if module_path != "chitragupta":
+            assert len(text.splitlines()) <= _MAX_HELP_LINES
 
     def test_it_does_not_reprint_the_docstrings_prose(self, module_path):
         """Every one of these docstrings cites docs/ARCHITECTURE.md while

@@ -474,6 +474,15 @@ interpreter is already on `PATH`. Two later sections,
 `.venv-full/bin/python` in full instead, because a cron job or a systemd
 unit has no shell to have activated anything in.
 
+`chitragupta --help` prints every layer with its verbs indented
+underneath, one command per line, so you can find a command without
+this page. `chitragupta corpus --help` and `chitragupta draft --help`
+list their own verbs the same way. A line that doesn't fit the terminal
+is shortened and ends in `...`. The full text, and every flag, is in
+that command's own `--help`, for example
+`chitragupta draft gate --help`. On Python 3.14 and later, a mistyped
+command gets a "did you mean" suggestion.
+
 Three commands set a project up rather than work in one: `init`,
 `doctor` and `install`. [PACKAGING.md](PACKAGING.md) has the design
 behind them.

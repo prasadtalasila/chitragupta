@@ -64,10 +64,10 @@ class ClickFormatter(argparse.HelpFormatter):
     """`Usage:` rather than `usage:`, and the description indented two
     spaces under it, as click prints them."""
 
-    def add_usage(self, usage, actions, groups, prefix=None):
+    def add_usage(self, usage, actions, groups, prefix=None) -> None:
         super().add_usage(usage, actions, groups, prefix="Usage: ")
 
-    def _fill_text(self, text, width, indent):
+    def _fill_text(self, text, width, indent) -> str:
         pad = indent + "  "
         return textwrap.fill(
             " ".join(text.split()), width, initial_indent=pad, subsequent_indent=pad

@@ -199,3 +199,30 @@ class TestHelpIsOneCommandPerLine:
         assert {verb: text for verb, (_, text) in entrypoint.VERBS.items()} == (
             command_help.verbs("draft")
         )
+
+
+_THIRD_PARTY = (
+    "print(sorted({m.split('.')[0] for m in sys.modules}"
+    " - set(sys.stdlib_module_names) - {'chitragupta', '__main__'}))"
+)
+
+
+def test_gate_adds_only_the_stdlib_help_modules():
+    """`draft gate` must run on a bare interpreter. #1230 gave the
+    dispatcher two help modules; test_help_format.py proves they import
+    only the standard library, and this proves the gate path loads them
+    and nothing third-party. The baseline child holds whatever start-up
+    shims this interpreter has, so the test reads the same in any venv."""
+    gate = run_python(
+        "-c",
+        "import runpy, sys\n"
+        "sys.argv = ['x', 'gate', '--help']\n"
+        "try:\n    runpy.run_module('chitragupta.draft', run_name='__main__')\n"
+        "except SystemExit:\n    pass\n"
+        f"{_THIRD_PARTY}\n"
+        "print('chitragupta.help_format' in sys.modules)",
+    )
+    baseline = run_python("-c", f"import sys\n{_THIRD_PARTY}")
+    *_, third_party, loaded_help = gate.stdout.splitlines()
+    assert third_party == baseline.stdout.strip()
+    assert loaded_help == "True"
