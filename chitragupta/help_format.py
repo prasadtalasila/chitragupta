@@ -75,6 +75,13 @@ class _Dispatcher(argparse.ArgumentParser):
     """An argparse parser whose help ends with a click-style `Commands:`
     list. The list is display only: what parses is `choices`."""
 
+    def __init__(
+        self, *args, command_rows: list[tuple[str, str]], command_hint: str, **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.command_rows = command_rows
+        self.command_hint = command_hint
+
     def format_help(self) -> str:
         width = shutil.get_terminal_size().columns
         block = commands_block(self.command_rows, width)
@@ -100,10 +107,10 @@ def dispatcher_parser(
         usage=USAGE,
         formatter_class=ClickFormatter,
         add_help=False,
+        command_rows=rows,
+        command_hint=hint or f"Run '{prog} COMMAND --help' for a command's flags.",
         **parser_kwargs(),
     )
-    parser.command_rows = rows
-    parser.command_hint = hint or f"Run '{prog} COMMAND --help' for a command's flags."
     parser._optionals.title = "Options"
     parser.add_argument("-h", "--help", action="help", help="Show this message and exit.")
     parser.add_argument(
