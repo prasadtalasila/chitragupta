@@ -17,12 +17,23 @@ from tests.conftest import run_python
 
 
 class TestTruncate:
-    def test_a_clause_that_fits_is_kept_and_the_rest_dropped(self):
-        text = "read-only view of what that run recorded -- takes no lock"
-        assert truncate(text, 66) == "Read-only view of what that run recorded"
+    def test_text_that_fits_whole_is_kept_whole(self):
+        """A clause break is a place to cut, not a reason to: the line
+        keeps everything that fits."""
+        text = "retrieval surfaced it -- did the draft cite it?"
+        assert truncate(text, 60) == "Retrieval surfaced it -- did the draft cite it?"
 
-    def test_a_first_sentence_is_kept(self):
-        assert truncate("Create a skeleton. Then more text.", 60) == "Create a skeleton"
+    def test_a_clause_is_kept_when_the_whole_does_not_fit(self):
+        text = "read-only view of what that run recorded -- takes no lock"
+        assert truncate(text, 45) == "Read-only view of what that run recorded"
+
+    def test_a_first_sentence_is_kept_when_the_whole_does_not_fit(self):
+        assert truncate("Create a skeleton. Then more text.", 25) == "Create a skeleton"
+
+    def test_an_abbreviation_is_not_a_sentence_end(self):
+        """`vs. the` is mid-sentence; cutting there printed "torch vs"."""
+        text = "probe and report: OS binaries, torch vs. the GPU driver, and a great deal more"
+        assert truncate(text, 50) == "Probe and report: OS binaries, torch vs. the..."
 
     def test_text_that_fits_whole_is_capitalised_and_loses_its_full_stop(self):
         assert truncate("what changed.", 60) == "What changed"
@@ -35,6 +46,9 @@ class TestTruncate:
 
     def test_one_word_longer_than_the_limit_is_cut_hard(self):
         assert truncate("x" * 100, 45) == "X" + "x" * 41 + "..."
+
+    def test_a_word_cut_after_a_full_stop_does_not_print_four_dots(self):
+        assert truncate("torch vs. the GPU driver and a lot more", 14) == "Torch vs..."
 
 
 class TestCommandsBlock:
@@ -86,7 +100,7 @@ class TestDispatcherParser:
             "Usage: chitragupta corpus [OPTIONS] COMMAND [ARGS]...\n\n"
             "  The corpus layer.\n\n"
             "Options:\n  -h, --help  Show this message and exit.\n\n"
-            "Commands:\n  sync    Bib file -> ledger\n  ledger  Read it\n\n"
+            "Commands:\n  sync    Bib file -> ledger\n  ledger  Read it -- no lock\n\n"
             "  Run 'chitragupta corpus COMMAND --help' for a command's flags.\n"
         )
 

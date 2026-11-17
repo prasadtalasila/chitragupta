@@ -10,25 +10,33 @@ the top-level tree must never pay for a layer's imports.
 """
 
 import argparse
+import re
 import shutil
 import sys
 import textwrap
 
 USAGE = "%(prog)s [OPTIONS] COMMAND [ARGS]..."
+_SENTENCE_END = re.compile(r"\. (?=[A-Z])")
 
 
 def truncate(text: str, limit: int) -> str:
-    """The first sentence or ` -- ` clause if it fits, else a word cut
-    marked `...`. Never edits the source string, only what is printed."""
+    """The whole line if it fits; else its first sentence or ` -- `
+    clause if that fits; else a word cut marked `...`. Never edits the
+    source string, only what is printed.
+
+    A sentence ends at a full stop followed by a capital, so `vs. the`
+    is not a place to cut."""
     text = text.strip()
-    breaks = [i for i in (text.find(". "), text.find(" -- ")) if i > 0]
-    if breaks and min(breaks) <= limit:
-        out = text[: min(breaks)]
-    elif len(text) <= limit:
+    if len(text) <= limit:
         out = text.rstrip(".")
     else:
-        head = text[: limit - 3]
-        out = (head.rsplit(" ", 1)[0] if " " in head else head).rstrip(",:;") + "..."
+        sentence = _SENTENCE_END.search(text)
+        breaks = [i for i in (sentence.start() if sentence else -1, text.find(" -- ")) if i > 0]
+        if breaks and min(breaks) <= limit:
+            out = text[: min(breaks)]
+        else:
+            head = text[: limit - 3]
+            out = (head.rsplit(" ", 1)[0] if " " in head else head).rstrip(",:;.") + "..."
     return out[:1].upper() + out[1:]
 
 

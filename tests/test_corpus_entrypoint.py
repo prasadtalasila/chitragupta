@@ -261,7 +261,7 @@ class TestHelpIsOneCommandPerLine:
             "Options:\n  -h, --help  Show this message and exit.\n\n"
             "Commands:\n"
             "  sync      Bib file -> ledger -> PDF text: the deterministic corpus run\n"
-            "  ledger    Read-only view of what that run recorded\n"
+            "  ledger    Read-only view of what that run recorded -- takes no lock\n"
             "  topics    Read-only view of which papers each seed topic matched\n"
             "  discover  Resolve a phrase to a topic and walk its papers and neighbours\n\n"
             "  Run 'chitragupta corpus COMMAND --help' for a command's flags.\n"
