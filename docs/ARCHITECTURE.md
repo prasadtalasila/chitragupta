@@ -752,6 +752,12 @@ The dispatchers and the top-level tree read their one-line help from
 `chitragupta/command_help.py`, so asking for help imports no layer.
 `draft gate` is the one exception: it is not argparse, so it keeps its
 help as hand-written text in the same layout, and imports nothing new.
+Three alternatives were turned down. Click itself, or `rich-argparse`,
+would add a dependency to the core, which is the standard library plus
+`bibtexparser`, and `draft gate` must run on a bare interpreter.
+argparse subparsers in the front door would restate every layer's flags
+there, a second place for them to drift, which `chitragupta/__main__.py`'s
+docstring rules out.
 
 The drafting layer's thirteen commands carry the same trap without moving
 into a package. `citation_gate.py`, `dossier/`, `references.py`,
