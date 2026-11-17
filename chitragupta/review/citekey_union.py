@@ -68,6 +68,7 @@ from chitragupta import citation_gate, config, review, spec, unit
 from chitragupta.review import _emit
 from chitragupta.review import _book_paths, _citekey_union_includes, _citekey_union_render
 from chitragupta.review._citekey_union_result import UnionResult, UnitInput
+from chitragupta.help_format import ClickParser
 
 
 def _recorded_citekeys(book: Path, unit_id: str) -> list[str]:
@@ -170,7 +171,7 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
     """This aid's flags, declared once here so chitragupta/review/__main__.py
     never restates them."""
     if parser is None:
-        parser = argparse.ArgumentParser(
+        parser = ClickParser(
             description="Report whether an assembled book carries every citekey its units do.",
         )
     parser.add_argument("draft", help="Path to the assembled document (e.g. book.tex)")

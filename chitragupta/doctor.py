@@ -61,6 +61,7 @@ from pathlib import Path
 
 from chitragupta import install, launcher_configs, pdf_fonts, programs
 from chitragupta.progname import prog_for
+from chitragupta.help_format import ClickParser
 
 DESCRIPTION = (
     "Report the toolchain's state -- OS binaries, the enrich "
@@ -265,7 +266,7 @@ def _check_pdf_fonts() -> list[str]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    return argparse.ArgumentParser(prog=prog_for("doctor"), description=DESCRIPTION)
+    return ClickParser(prog=prog_for("doctor"), description=DESCRIPTION)
 
 
 def main(argv=None) -> int:

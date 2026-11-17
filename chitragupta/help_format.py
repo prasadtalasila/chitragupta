@@ -72,6 +72,11 @@ class ClickFormatter(argparse.HelpFormatter):
             usage = " ".join(["%(prog)s", *_usage_parts(actions)])
         return super()._format_usage(usage, actions, groups, prefix)
 
+    def _get_default_metavar_for_positional(self, action) -> str:
+        # The same name the collapsed usage line prints, so `PHRASE` in
+        # `Usage:` is `PHRASE` under `Arguments:` too.
+        return action.dest.upper()
+
     def _expand_help(self, action) -> str:
         text = super()._expand_help(action)
         return text[:1].upper() + text[1:]

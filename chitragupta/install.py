@@ -46,6 +46,7 @@ from pathlib import Path
 
 from chitragupta import programs
 from chitragupta.progname import prog_for
+from chitragupta.help_format import ClickParser
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 # Same reason chitragupta/init.py computes this rather than importing
@@ -179,7 +180,7 @@ def _run_gpu_torch() -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog=prog_for("install"), description=DESCRIPTION)
+    parser = ClickParser(prog=prog_for("install"), description=DESCRIPTION)
     parser.add_argument("stage", choices=sorted(STAGES), help=_STAGE_HELP)
     return parser
 

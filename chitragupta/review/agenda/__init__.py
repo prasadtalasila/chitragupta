@@ -62,6 +62,7 @@ from chitragupta.review.agenda import (
     _sources,
     _stale,
 )
+from chitragupta.help_format import ClickParser
 
 # plans/f-auto-improvement-adoption.md's Decision 2: a backstop against a
 # miscounting bug in the future agenda-reviser re-run loop, not a cost
@@ -165,7 +166,7 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
     follows.
     """
     if parser is None:
-        parser = argparse.ArgumentParser(
+        parser = ClickParser(
             description="One ranked, deduplicated worklist merged across every other aid.",
         )
     parser.add_argument("draft", help="Markdown draft to check")

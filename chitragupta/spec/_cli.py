@@ -30,6 +30,8 @@ from chitragupta.spec import (
 )
 from chitragupta.spec import _align, _scaffold, _seed
 from chitragupta.spec._read import read_spec, report_problems
+from chitragupta.help_format import ClickParser
+from chitragupta.progname import prog_for
 
 _BOOK_HELP = "The book's directory under content/drafts/ (it need not exist yet)"
 
@@ -253,8 +255,8 @@ def _parser() -> argparse.ArgumentParser:
     their own commands: the check and the flags that reach it stay in one
     file, and this one stops growing a subparser block per feature.
     """
-    parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.draft spec",
+    parser = ClickParser(
+        prog=f"{prog_for('draft')} spec",
         description="The outline a book is generated from, and the human "
         "sign-off on it. Stdlib only. Writes under content/specs/, except "
         "`seed`, which hands a chapter's structure to its dossier through "

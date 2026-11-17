@@ -8,6 +8,7 @@ full text lives one level down in that command's own `--help`.
 
 import ast
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -178,7 +179,7 @@ class TestClickParser:
         assert out == (
             "Usage: x [OPTIONS] PHRASE\n\n"
             "  Does a thing.\n\n"
-            "Arguments:\n  phrase      A topic to look up\n\n"
+            "Arguments:\n  PHRASE      A topic to look up\n\n"
             "Options:\n"
             "  -h, --help  Show this message and exit.\n"
             "  --json      Machine-readable output\n"
@@ -238,3 +239,36 @@ class TestClickParser:
         out = self._help(parser, monkeypatch, capsys)
         assert "  a  Shown\n" in out
         assert "Hidden" not in out
+
+
+_PACKAGE = Path(__file__).resolve().parent.parent / "chitragupta"
+
+
+def _sources() -> list[Path]:
+    files = sorted(_PACKAGE.rglob("*.py"))
+    # Non-vacuous: a glob that matched nothing would pass every check below.
+    assert len(files) > 100
+    return files
+
+
+def test_every_parser_is_a_click_parser():
+    """A parser built from plain argparse prints the old look, so a new
+    command would silently be the one --help that differs (#1230)."""
+    plain = [
+        str(path.relative_to(_PACKAGE.parent))
+        for path in _sources()
+        if path.name != "help_format.py"
+        and "argparse.ArgumentParser(" in path.read_text(encoding="utf-8")
+    ]
+    assert plain == []
+
+
+def test_no_parser_hardcodes_the_module_form():
+    """`prog="python -m ..."` names the module form even when the reader
+    typed `chitragupta`; progname.prog_for chooses the one they used."""
+    hardcoded = [
+        str(path.relative_to(_PACKAGE.parent))
+        for path in _sources()
+        if 'prog="python -m' in path.read_text(encoding="utf-8")
+    ]
+    assert hardcoded == []

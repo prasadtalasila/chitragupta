@@ -39,7 +39,6 @@ the file (idempotent) -- built from exactly the citekeys `<file.md>`
 cites.
 """
 
-import argparse
 import re
 import sys
 from pathlib import Path
@@ -48,6 +47,8 @@ from chitragupta import citation_gate, config, ledger
 from chitragupta.reference_entries import entries
 from chitragupta.references_renumber import renumber
 from chitragupta.references_section import section_end, section_start
+from chitragupta.help_format import ClickParser
+from chitragupta.progname import prog_for
 
 
 def used_citekeys(text: str, *, latex: bool = False) -> list[str]:
@@ -190,8 +191,8 @@ def apply(path: Path, heading: str = "References") -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.draft references",
+    parser = ClickParser(
+        prog=f"{prog_for('draft')} references",
         description="Append/replace a References section built from a "
         "Markdown draft's own cited citekeys.",
     )

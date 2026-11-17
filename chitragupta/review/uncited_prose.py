@@ -62,6 +62,7 @@ from pathlib import Path
 from chitragupta import config, review
 from chitragupta.review import _emit
 from chitragupta.review import _claims, _uncited_render, _units
+from chitragupta.help_format import ClickParser
 
 
 @dataclass
@@ -167,7 +168,7 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
     if parser is None:
         # A one-line description rather than this module's docstring, for
         # the reason chitragupta/corpus.py's DESCRIPTION gives (#152).
-        parser = argparse.ArgumentParser(
+        parser = ClickParser(
             description="Report which sentences of a draft carry no citation.",
         )
     parser.add_argument("draft", help="Path to the draft to check")

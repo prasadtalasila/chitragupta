@@ -26,6 +26,7 @@ import sqlite3
 import sys
 
 from chitragupta import bib_collections, config, ledger
+from chitragupta.progname import prog_for
 
 _STATUS_LABELS = {
     "parsed": "parsed",
@@ -54,10 +55,11 @@ def _print_item(row) -> None:
 
 
 def main(argv: "list[str] | None" = None) -> int:
-    import argparse
 
-    parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.corpus ledger",
+    from chitragupta.help_format import ClickParser
+
+    parser = ClickParser(
+        prog=f"{prog_for('corpus')} ledger",
         description="Show what the corpus layer holds. Read-only, takes no lock, "
         "and runs with the bare system python3.",
     )

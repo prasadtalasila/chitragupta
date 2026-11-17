@@ -7,7 +7,6 @@ same reason: this package has no `__main__.py`, because
 (docs/ARCHITECTURE.md's one-entry-point-per-layer invariant).
 """
 
-import argparse
 import json
 import sys
 from pathlib import Path
@@ -29,6 +28,8 @@ from chitragupta.unit import (
     record_text,
     state,
 )
+from chitragupta.help_format import ClickParser
+from chitragupta.progname import prog_for
 
 _BOOK_HELP = "The book's directory under content/drafts/"
 
@@ -251,8 +252,8 @@ def _cmd_status(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.draft unit",
+    parser = ClickParser(
+        prog=f"{prog_for('draft')} unit",
         description="One section's generation contract, and the record of its "
         "acceptance. Writes only under content/specs/.",
     )

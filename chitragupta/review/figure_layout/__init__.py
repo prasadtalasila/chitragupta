@@ -127,6 +127,7 @@ from chitragupta.review.figure_layout._source import (
     overlong_nodes,
     stranded_arrowheads,
 )
+from chitragupta.help_format import ClickParser
 
 # Re-exported so the aid is one import for a caller and one name in
 # `review.AIDS`, while the three modules behind it stay split by what
@@ -235,7 +236,7 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
     """This aid's flags, declared here so the entry point never restates
     them -- `citation_coverage.build_parser`'s own contract."""
     if parser is None:
-        parser = argparse.ArgumentParser(
+        parser = ClickParser(
             description="Report what a draft's TikZ figures' own geometry says.",
         )
     parser.add_argument("draft", help="Path to the draft whose figures to check")

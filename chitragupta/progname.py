@@ -1,6 +1,6 @@
 """What `--help` should call this command, given how it was started.
 
-Every layer's parser hardcoded `prog="python -m chitragupta.<layer>"`
+Every layer's parser hardcoded its `prog` to the module form
 because that was the only way to reach it. There are two ways now -- the
 console script this package installs, and the module form the hooks and
 skills keep using (docs/PACKAGING.md says why both survive) -- and a

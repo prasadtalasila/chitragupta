@@ -32,6 +32,8 @@ from chitragupta.draft_diff._views import VersionView, from_draft, from_file, fr
 from chitragupta.render_output._gate import UngatedDraft
 from chitragupta.render_output._math import MathMappingError
 from chitragupta.render_output._math import mapping_path as math_mapping_path
+from chitragupta.help_format import ClickParser
+from chitragupta.progname import prog_for
 
 _STILL_CITABLE = "still citable"
 
@@ -57,8 +59,8 @@ _FAILURES = (
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.draft diff",
+    parser = ClickParser(
+        prog=f"{prog_for('draft')} diff",
         description=(
             "What changed in a draft since a snapshot: a change report, "
             "and with --format pdf a redline. A review copy, never a deliverable."

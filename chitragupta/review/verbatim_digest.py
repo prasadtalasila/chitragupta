@@ -56,6 +56,7 @@ from chitragupta.review import (
     _digest_runs,
     _emit,
 )
+from chitragupta.help_format import ClickParser
 
 AID = "digest"
 
@@ -95,7 +96,7 @@ def _command(draft: Path, args: argparse.Namespace) -> str:
 
 def build_parser(parser=None) -> argparse.ArgumentParser:
     if parser is None:
-        parser = argparse.ArgumentParser(
+        parser = ClickParser(
             description="How much of a verbatim digest is not the sources' own words.",
         )
     parser.add_argument("draft", help="The digest to check, under content/drafts/")

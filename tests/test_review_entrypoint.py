@@ -103,7 +103,7 @@ class TestTheSubcommandsAreTheAids:
         wired in, without needing a corpus."""
         result = run_python("-m", "chitragupta.review", aid, "--help")
         assert result.returncode == 0
-        assert f"usage: python -m chitragupta.review {aid}" in result.stdout
+        assert f"Usage: python -m chitragupta.review {aid}" in result.stdout
 
     def test_no_aid_prints_the_layers_usage_and_exits_zero(self):
         """ "Tell me how to use this" is not an error -- the same rule

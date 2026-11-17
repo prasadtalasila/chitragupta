@@ -79,6 +79,7 @@ import sys
 from chitragupta import ledger
 from chitragupta.progname import prog_for
 from chitragupta.review._registry import AIDS
+from chitragupta.help_format import ClickParser
 
 
 # What `--help` prints, deliberately *not* this module's docstring (#152)
@@ -88,7 +89,7 @@ DESCRIPTION = "The review layer: eleven read-only aids over a finished draft. No
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = ClickParser(
         prog=prog_for("review"),
         description=DESCRIPTION,
     )

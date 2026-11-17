@@ -72,6 +72,7 @@ from chitragupta.review import _emit
 from chitragupta.dossier import DossierError, dossier_dir
 from chitragupta.review import _quotation_render
 from chitragupta.review._quotation_match import Checked, check_one
+from chitragupta.help_format import ClickParser
 
 
 # What `build_report` could see, before any verdict (#838). Three
@@ -177,7 +178,7 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
     if parser is None:
         # A one-line description rather than this module's docstring, for
         # the reason chitragupta/corpus.py's DESCRIPTION gives (#152).
-        parser = argparse.ArgumentParser(
+        parser = ClickParser(
             description="Check each quoted span against the source it is attributed to.",
         )
     parser.add_argument("draft", help="Path to the draft to check")

@@ -36,13 +36,13 @@ because it is the kind of thing a later convenience edit adds without
 noticing.
 """
 
-import argparse
 import json
 import sys
 
 from chitragupta import config, ledger
 from chitragupta.citekey_safety import citekey_path
 from chitragupta.progname import prog_for
+from chitragupta.help_format import ClickParser
 
 # Said once, here, so the CLI and any other caller quote the same
 # command. Naming the stage rather than the bare entry point matters: a
@@ -155,7 +155,7 @@ def _print_human(citekey: str, records: list) -> None:
 
 
 def main(argv: "list[str] | None" = None) -> int:
-    parser = argparse.ArgumentParser(
+    parser = ClickParser(
         prog=f"{prog_for('draft')} figures",
         description=(
             "The figures of one synced paper: caption, page, the string to cite each by, "

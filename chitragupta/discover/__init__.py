@@ -38,6 +38,7 @@ from chitragupta.discover import (
 )
 from chitragupta.discover._views import emit as _emit, hops_view, own_view
 from chitragupta.progname import prog_for
+from chitragupta.help_format import ClickParser
 
 DESCRIPTION = (
     "Discover topics in the synced corpus: resolve a phrase to a topic, "
@@ -49,7 +50,7 @@ DESCRIPTION = (
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog=f"{prog_for('corpus')} discover", description=DESCRIPTION)
+    parser = ClickParser(prog=f"{prog_for('corpus')} discover", description=DESCRIPTION)
     parser.add_argument(
         "phrase",
         nargs="*",

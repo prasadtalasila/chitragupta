@@ -51,6 +51,7 @@ from chitragupta.review import _emit
 from chitragupta.passages import Passage, distinctive, source_passages
 from chitragupta.review import _claim_support_render as _render
 from chitragupta.review import citation_provenance
+from chitragupta.help_format import ClickParser
 
 
 @dataclass
@@ -239,7 +240,7 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
     if parser is None:
         # A one-line description rather than this module's docstring, for
         # the reason chitragupta/corpus.py's DESCRIPTION gives (#152).
-        parser = argparse.ArgumentParser(
+        parser = ClickParser(
             description="Does the cited source actually entail the claim citing it?",
         )
     parser.add_argument("draft", help="Path to the draft to check")

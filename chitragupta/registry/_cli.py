@@ -7,7 +7,6 @@ package has no `__main__.py`, because `python -m chitragupta.draft registry` is
 the one front door.
 """
 
-import argparse
 import subprocess
 import sys
 
@@ -19,6 +18,8 @@ from chitragupta.registry import _index_cli, _pages, _symbols, _terms
 from chitragupta.registry import build, excerpt, findings, registry_dir
 from chitragupta.render_output._errors import ConversionError, MissingBinary
 from chitragupta.render_output._markdown_to_latex import markdown_to_latex
+from chitragupta.help_format import ClickParser
+from chitragupta.progname import prog_for
 
 _BOOK_HELP = "The book's directory under content/drafts/"
 
@@ -194,8 +195,8 @@ def _cmd_excerpt(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.draft registry",
+    parser = ClickParser(
+        prog=f"{prog_for('draft')} registry",
         description="Terminology, claims and cross-references over a book's "
         "accepted units. A review aid: `check` never blocks; `build --glossary` "
         "refuses to write a page it would have to leave terms out of.",

@@ -45,6 +45,7 @@ from pathlib import Path
 
 from chitragupta import config
 from chitragupta.progname import prog_for
+from chitragupta.help_format import ClickParser
 
 DESCRIPTION = "Show which corpus papers each hand-authored seed topic matched."
 
@@ -217,7 +218,7 @@ def report(data: dict, phrase: "str | None" = None) -> str:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog=f"{prog_for('corpus')} topics", description=DESCRIPTION)
+    parser = ClickParser(prog=f"{prog_for('corpus')} topics", description=DESCRIPTION)
     parser.add_argument(
         "--topic",
         metavar="PHRASE",

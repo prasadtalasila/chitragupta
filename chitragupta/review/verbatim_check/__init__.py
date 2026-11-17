@@ -81,12 +81,7 @@ from chitragupta.review.verbatim_check._allowlist import (
     _mask_allowlisted_stemmed,
 )
 from chitragupta.review.verbatim_check._baseline import _BASELINE_FIELDS, load_baseline
-from chitragupta.review.verbatim_check._corpus import (
-    norm,
-    pages,
-    pdf_path,
-    sentences_citing,
-)
+from chitragupta.review.verbatim_check._corpus import norm, pages, pdf_path, sentences_citing
 from chitragupta.review.verbatim_check._masking import (
     _lower_offsets,
     _mask_for_scan,
@@ -120,6 +115,7 @@ from chitragupta.review.verbatim_check._scan_cmd import (
 )
 from chitragupta.review.verbatim_check._scan_render import render_scan_markdown
 from chitragupta.review.verbatim_check._shared import _line_at, _newline_offsets, finding_id
+from chitragupta.help_format import ClickParser
 
 
 def _bounded_int(minimum: int, name: str) -> Callable[[str], int]:
@@ -157,7 +153,7 @@ def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.Argu
     if parser is None:
         # A one-line description rather than this module's docstring, for
         # the reason chitragupta/corpus.py's DESCRIPTION gives (#152).
-        parser = argparse.ArgumentParser(
+        parser = ClickParser(
             description="Report how much wording a draft shares with the sources it cites.",
         )
     sub = parser.add_subparsers(dest="mode")
