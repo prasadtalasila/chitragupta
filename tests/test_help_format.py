@@ -139,3 +139,102 @@ class TestDispatcherParser:
             parser.parse_args(["bogus"])
         assert excinfo.value.code == 2
         assert "invalid choice: 'bogus'" in capsys.readouterr().err
+
+
+class TestClickParser:
+    """PR 2 of #1230: every parser in chitragupta/ prints the click look,
+    not only the three dispatchers."""
+
+    @staticmethod
+    def _help(parser, monkeypatch, capsys) -> str:
+        monkeypatch.setenv("COLUMNS", "80")
+        parser.print_help()
+        return capsys.readouterr().out
+
+    def test_a_leaf_collapses_its_usage(self):
+        parser = help_format.ClickParser(prog="x")
+        parser.add_argument("one")
+        parser.add_argument("maybe", nargs="?")
+        parser.add_argument("pair", nargs=2)
+        parser.add_argument("--flag", action="store_true")
+        parser.add_argument("phrase", nargs="*")
+        assert parser.format_usage() == "Usage: x [OPTIONS] ONE [MAYBE] PAIR PAIR [PHRASE]...\n"
+        plus = help_format.ClickParser(prog="g")
+        plus.add_argument("file", nargs="+", metavar="FILE")
+        assert plus.format_usage() == "Usage: g [OPTIONS] FILE...\n"
+
+    def test_no_options_means_no_options_placeholder(self):
+        parser = help_format.ClickParser(prog="x", add_help=False)
+        parser.add_argument("one")
+        assert parser.format_usage() == "Usage: x ONE\n"
+
+    def test_positionals_are_listed_under_arguments_and_options_capitalised(
+        self, monkeypatch, capsys
+    ):
+        parser = help_format.ClickParser(prog="x", description="Does a thing.")
+        parser.add_argument("phrase", help="a topic to look up")
+        parser.add_argument("--json", action="store_true", help="machine-readable output")
+        out = self._help(parser, monkeypatch, capsys)
+        assert out == (
+            "Usage: x [OPTIONS] PHRASE\n\n"
+            "  Does a thing.\n\n"
+            "Arguments:\n  phrase      A topic to look up\n\n"
+            "Options:\n"
+            "  -h, --help  Show this message and exit.\n"
+            "  --json      Machine-readable output\n"
+        )
+
+    def test_subcommands_render_as_a_commands_block_in_registration_order(
+        self, monkeypatch, capsys
+    ):
+        parser = help_format.ClickParser(prog="d", description="Dossier.")
+        sub = parser.add_subparsers(dest="command", required=True)
+        sub.add_parser("init", help="create a dossier skeleton for a draft")
+        sub.add_parser("status", help="what a dossier holds")
+        out = self._help(parser, monkeypatch, capsys)
+        assert out == (
+            "Usage: d [OPTIONS] COMMAND [ARGS]...\n\n"
+            "  Dossier.\n\n"
+            "Options:\n  -h, --help  Show this message and exit.\n\n"
+            "Commands:\n"
+            "  init    Create a dossier skeleton for a draft\n"
+            "  status  What a dossier holds\n\n"
+            "  Run 'd COMMAND --help' for a command's flags.\n"
+        )
+
+    def test_a_subparser_is_a_click_parser(self):
+        parser = help_format.ClickParser(prog="d")
+        child = parser.add_subparsers(dest="command").add_parser("init", help="i")
+        assert isinstance(child, help_format.ClickParser)
+        assert child.format_usage() == "Usage: d init [OPTIONS]\n"
+
+    def test_a_parser_with_commands_and_its_own_options_reads_both(self, monkeypatch, capsys):
+        parser = help_format.ClickParser(prog="v")
+        parser.add_argument("--json", action="store_true", help="json")
+        sub = parser.add_subparsers(dest="mode")
+        sub.add_parser("scan", help="whole-draft scan")
+        out = self._help(parser, monkeypatch, capsys)
+        assert out.startswith("Usage: v [OPTIONS] COMMAND [ARGS]...\n")
+        assert "  --json      Json\n" in out
+        assert "Commands:\n  scan  Whole-draft scan\n" in out
+
+    def test_a_usage_error_prints_the_collapsed_usage_on_stderr_and_exits_2(self, capsys):
+        parser = help_format.ClickParser(prog="x")
+        parser.add_argument("one")
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args([])
+        assert excinfo.value.code == 2
+        err = capsys.readouterr().err
+        assert err.startswith("Usage: x [OPTIONS] ONE\n")
+        assert "required: one" in err
+
+    def test_an_epilog_still_prints(self, monkeypatch, capsys):
+        parser = help_format.ClickParser(prog="r", epilog="search ranks the corpus.")
+        assert self._help(parser, monkeypatch, capsys).endswith("\n  search ranks the corpus.\n")
+
+    def test_explicit_rows_win_over_subparsers(self, monkeypatch, capsys):
+        parser = help_format.ClickParser(prog="x", command_rows=[("a", "shown")])
+        parser.add_subparsers(dest="c").add_parser("b", help="hidden")
+        out = self._help(parser, monkeypatch, capsys)
+        assert "  a  Shown\n" in out
+        assert "Hidden" not in out
