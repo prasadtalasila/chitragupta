@@ -1,6 +1,6 @@
 # Click-style `--help`, one command per line (#1230)
 
-Status: **PR 1 built, not merged; design approved by the owner 2026-11-17.**
+Status: **PR 1 merged as #1234 (6.175.0); PR 2 built, not merged.**
 PR 1 changed the truncation rule on the way: a line that fits is kept
 whole, there are no sentence cuts (only ` -- ` clauses), and a word cut
 that keeps under half the line becomes a hard cut.

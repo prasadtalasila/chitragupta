@@ -4,7 +4,9 @@
 > superpowers:executing-plans to implement this plan task by task. Steps
 > use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **plan, not built.** Written 2026-11-17.
+Status: **built, not merged.** Written 2026-11-17. On the way: `[OPTIONS]`
+shows whenever a parser has any option, `--help` included, as click's
+does; positionals are named in upper case under `Arguments:` too.
 
 **Goal:** give every leaf `--help` the click look PR 1 gave the
 dispatchers. Examples are `chitragupta corpus discover --help`,
