@@ -175,3 +175,27 @@ class TestTheExitCodeContractSurvivesTheDispatch:
         result = run_python("-m", "chitragupta.draft", "retrieve", "search")
         assert result.returncode == 2
         assert "query" in result.stderr
+
+
+class TestHelpIsOneCommandPerLine:
+    """#1230: argparse wrapped thirteen verbs into one twenty-line
+    paragraph. It now prints one command and one cut line per row."""
+
+    def test_help_lists_one_command_per_line(self, monkeypatch, capsys):
+        monkeypatch.setenv("COLUMNS", "80")
+        monkeypatch.setattr("sys.argv", ["chitragupta"])
+        with pytest.raises(SystemExit) as excinfo:
+            entrypoint.main(["--help"])
+        assert excinfo.value.code == 0
+        out = capsys.readouterr().out
+        for verb in entrypoint.VERBS:
+            assert f"\n  {verb} " in out
+        assert " / " not in out
+        assert out.endswith("Run 'chitragupta draft COMMAND --help' for a command's flags.\n")
+
+    def test_verbs_and_help_index_agree(self):
+        from chitragupta import command_help
+
+        assert {verb: text for verb, (_, text) in entrypoint.VERBS.items()} == (
+            command_help.verbs("draft")
+        )
