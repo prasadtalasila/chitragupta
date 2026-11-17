@@ -1,4 +1,4 @@
-"""Click-style `--help` for the command dispatchers (#1230).
+"""Click-style `--help` for every command in this package (#1230).
 
 The front door and the corpus and draft layers each list their commands.
 argparse would wrap that list into one paragraph; this module prints it
@@ -58,11 +58,35 @@ def parser_kwargs() -> dict:
 
 
 class ClickFormatter(argparse.HelpFormatter):
-    """`Usage:` rather than `usage:`, and the description indented two
-    spaces under it, as click prints them."""
+    """`Usage:` rather than `usage:`, the usage line collapsed to
+    `[OPTIONS]` and the positionals, the description indented two spaces
+    under it, and every help line capitalised, as click prints them."""
 
     def add_usage(self, usage, actions, groups, prefix=None) -> None:
-        super().add_usage(usage, actions, groups, prefix="Usage: ")
+        # argparse passes prefix="" when it computes a subcommand's prog
+        # from this one's usage; only the printed form gets the label.
+        super().add_usage(usage, actions, groups, "Usage: " if prefix is None else prefix)
+
+    def _format_usage(self, usage, actions, groups, prefix) -> str:
+        if usage is None:
+            usage = " ".join(["%(prog)s", *_usage_parts(actions)])
+        return super()._format_usage(usage, actions, groups, prefix)
+
+    def _get_default_metavar_for_positional(self, action) -> str:
+        # Upper case, as the collapsed usage line names a positional; a
+        # positional with `choices` still lists them here, as argparse does.
+        return action.dest.upper()
+
+    def _expand_help(self, action) -> str:
+        """Capitalised like click's, unless the line opens with something
+        the reader would type -- one of the argument's choices, or a token
+        such as `enrich/gpu-torch` -- whose case is part of its value."""
+        text = super()._expand_help(action)
+        first = text.split(" ", 1)[0]
+        word = first.replace("-", "").replace("'", "")
+        if not word.isalpha() or first in (action.choices or ()):
+            return text
+        return text[:1].upper() + text[1:]
 
     def _fill_text(self, text, width, indent) -> str:
         pad = indent + "  "
@@ -71,21 +95,82 @@ class ClickFormatter(argparse.HelpFormatter):
         )
 
 
-class _Dispatcher(argparse.ArgumentParser):
-    """An argparse parser whose help ends with a click-style `Commands:`
-    list. The list is display only: what parses is `choices`."""
+def _usage_parts(actions) -> list[str]:
+    """`[OPTIONS]` when there is any option, `--help` included, then each
+    positional by its metavar, shaped by its nargs; a subcommand group is
+    `COMMAND [ARGS]...`. Click's usage line, which never lists flags."""
+    options = any(a.option_strings and a.help != argparse.SUPPRESS for a in actions)
+    parts = ["[OPTIONS]"] if options else []
+    for action in actions:
+        if isinstance(action, argparse._SubParsersAction):
+            parts.append("COMMAND [ARGS]...")
+        elif not action.option_strings and action.help != argparse.SUPPRESS:
+            parts.append(_positional_usage(action))
+    return parts
+
+
+def _positional_usage(action) -> str:
+    name = action.metavar if isinstance(action.metavar, str) else action.dest.upper()
+    if action.nargs == "?":
+        return f"[{name}]"
+    if action.nargs == "*":
+        return f"[{name}]..."
+    if action.nargs == "+":
+        return f"{name}..."
+    if isinstance(action.nargs, int):
+        return " ".join([name] * action.nargs)
+    return name
+
+
+class ClickParser(argparse.ArgumentParser):
+    """The parser every command in this package is built from (#1230).
+
+    Click's help -- `Usage:`, `Arguments:`, `Options:`, and a `Commands:`
+    list for a parser with subcommands -- from the standard library, so
+    nothing that must run on a bare interpreter gains a dependency.
+    argparse builds a subcommand's parser with its parent's class, so a
+    subcommand gets the same look without asking for it.
+
+    `command_rows` replaces the list a subcommand group would give: a
+    dispatcher forwards its command verbatim and has no group to read."""
 
     def __init__(
-        self, *args, command_rows: list[tuple[str, str]], command_hint: str, **kwargs
+        self,
+        *args,
+        command_rows: list[tuple[str, str]] | None = None,
+        command_hint: str | None = None,
+        **kwargs,
     ) -> None:
-        super().__init__(*args, **kwargs)
+        kwargs.setdefault("formatter_class", ClickFormatter)
+        add_help = kwargs.pop("add_help", True)
+        for key, value in parser_kwargs().items():
+            kwargs.setdefault(key, value)
+        super().__init__(*args, add_help=False, **kwargs)
         self.command_rows = command_rows
         self.command_hint = command_hint
+        self._optionals.title = "Options"
+        self._positionals.title = "Arguments"
+        if add_help:
+            self.add_argument("-h", "--help", action="help", help="Show this message and exit.")
+
+    def add_subparsers(self, **kwargs) -> argparse._SubParsersAction:
+        kwargs.setdefault("metavar", "COMMAND")
+        kwargs.setdefault("help", argparse.SUPPRESS)
+        return super().add_subparsers(**kwargs)
+
+    def _rows(self) -> list[tuple[str, str]]:
+        if self.command_rows is not None:
+            return self.command_rows
+        groups = [a for a in self._actions if isinstance(a, argparse._SubParsersAction)]
+        return [(c.dest, c.help or "") for g in groups for c in g._choices_actions]
 
     def format_help(self) -> str:
-        width = shutil.get_terminal_size().columns
-        block = commands_block(self.command_rows, width)
-        return f"{super().format_help()}\nCommands:\n{block}\n\n  {self.command_hint}\n"
+        rows = self._rows()
+        if not rows:
+            return super().format_help()
+        block = commands_block(rows, shutil.get_terminal_size().columns)
+        hint = self.command_hint or f"Run '{self.prog} COMMAND --help' for a command's flags."
+        return f"{super().format_help()}\nCommands:\n{block}\n\n  {hint}\n"
 
 
 def dispatcher_parser(
@@ -101,18 +186,13 @@ def dispatcher_parser(
 
     REMAINDER, so a command can take its own `-h`/`--help` and this
     parser never sees it."""
-    parser = _Dispatcher(
+    parser = ClickParser(
         prog=prog,
         description=description,
         usage=USAGE,
-        formatter_class=ClickFormatter,
-        add_help=False,
         command_rows=rows,
-        command_hint=hint or f"Run '{prog} COMMAND --help' for a command's flags.",
-        **parser_kwargs(),
+        command_hint=hint,
     )
-    parser._optionals.title = "Options"
-    parser.add_argument("-h", "--help", action="help", help="Show this message and exit.")
     parser.add_argument(
         dest,
         choices=choices if choices is not None else [name for name, _ in rows],

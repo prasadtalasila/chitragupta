@@ -62,6 +62,7 @@ from chitragupta import config, install, programs, style_exceptions
 from chitragupta.style_language import resolve_language, rule_filter
 from chitragupta.style_report import report
 from chitragupta.style_rules import PYTHON_CHECKS, with_repair
+from chitragupta.progname import prog_for
 
 
 class MissingBinary(RuntimeError):
@@ -228,10 +229,11 @@ def check(draft: Path, override: str | None = None, propose: bool = True) -> dic
 
 
 def build_parser() -> Any:
-    import argparse  # local, so importing this module stays cheap for the hook
+    # Local, so importing this module stays cheap for the hook.
+    from chitragupta.help_format import ClickParser
 
-    parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.draft style",
+    parser = ClickParser(
+        prog=f"{prog_for('draft')} style",
         description="Check a draft's prose against docs/WRITING-STANDARDS.md. "
         "A review aid: it exits 0 whatever it finds.",
     )

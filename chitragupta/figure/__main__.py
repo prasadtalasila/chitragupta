@@ -52,14 +52,14 @@ from chitragupta.figure._sync import Outcome, run
 from chitragupta.config_path import OutsideContentDir
 from chitragupta.page import PAGES, page_for
 from chitragupta.progname import prog_for
-from chitragupta.render_output._cli import _build_parser as _render_parser
-from chitragupta.render_output._cli import _rendered
+from chitragupta.render_output._cli import _build_parser as _render_parser, _rendered
 from chitragupta.render_output._errors import MissingBinary, _require
 from chitragupta.render_output._figures import _require_tikz
+from chitragupta.help_format import ClickParser
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+def build_parser() -> ClickParser:
+    parser = ClickParser(
         prog=prog_for("figure"),
         description="Start, check and look at one figure, and keep the house block current.",
     )

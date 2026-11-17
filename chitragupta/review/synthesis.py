@@ -42,6 +42,7 @@ from pathlib import Path
 from chitragupta import citation_gate, config, review
 from chitragupta.review import _emit
 from chitragupta.review import _synthesis_render, _units
+from chitragupta.help_format import ClickParser
 
 # The run length at which a section's block structure is worth itemising.
 # Not a quality threshold and not tunable: it is the number
@@ -195,7 +196,7 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
     if parser is None:
         # A one-line description rather than this module's docstring, for
         # the reason chitragupta/corpus.py's DESCRIPTION gives (#152).
-        parser = argparse.ArgumentParser(
+        parser = ClickParser(
             description="Report how many sources each unit of a draft rests on.",
         )
     parser.add_argument("draft", help="Path to the draft to check")

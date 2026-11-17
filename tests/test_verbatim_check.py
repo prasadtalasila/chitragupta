@@ -2981,7 +2981,7 @@ class TestMainInProcess:
 
     def test_no_argv_prints_usage_and_exits_zero(self, capsys):
         assert vc.main([]) == 0
-        assert "usage:" in capsys.readouterr().out
+        assert "Usage:" in capsys.readouterr().out
 
     def test_dispatches_a_mode(self, isolated_config, tmp_path, capsys):
         draft = _content_draft(tmp_path, "Nothing to see here at all.\n")
@@ -3137,17 +3137,17 @@ class TestCliDispatch:
         # that. The claim under test is unchanged, only its spelling.
         result = run_python("-m", "chitragupta.review", "verbatim")
         assert result.returncode == 0
-        assert "usage: python -m chitragupta.review verbatim" in result.stdout
+        assert "Usage: python -m chitragupta.review verbatim" in result.stdout
 
     def test_overlap_mode_missing_arguments_exits_cleanly(self, tmp_path):
         result = run_python("-m", "chitragupta.review", "verbatim", "overlap", "only-one-arg")
         assert result.returncode == 2
-        assert "usage: python -m chitragupta.review verbatim overlap" in result.stderr
+        assert "Usage: python -m chitragupta.review verbatim overlap" in result.stderr
 
     def test_scan_mode_missing_draft_exits_cleanly(self, tmp_path):
         result = run_python("-m", "chitragupta.review", "verbatim", "scan")
         assert result.returncode == 2
-        assert "usage: python -m chitragupta.review verbatim scan" in result.stderr
+        assert "Usage: python -m chitragupta.review verbatim scan" in result.stderr
 
     def test_overlap_mode_extra_positional_argument_exits_cleanly(self, tmp_path):
         # Regression: a third positional argument used to be silently
@@ -3222,7 +3222,7 @@ class TestCliDispatch:
     def test_locate_mode_missing_arguments_exits_cleanly(self, tmp_path):
         result = run_python("-m", "chitragupta.review", "verbatim", "locate", "only-one-arg")
         assert result.returncode == 2
-        assert "usage: python -m chitragupta.review verbatim locate" in result.stderr
+        assert "Usage: python -m chitragupta.review verbatim locate" in result.stderr
 
 
 # ---------------------------------------------------------------------

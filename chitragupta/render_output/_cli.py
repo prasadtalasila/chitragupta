@@ -12,6 +12,8 @@ from chitragupta.page import ARTICLE
 from chitragupta.render_output._errors import ConversionError, MissingBinary, OutsideContentDir
 from chitragupta.render_output._figures import _figure_refs
 from chitragupta.render_output._math import MathMappingError
+from chitragupta.help_format import ClickParser
+from chitragupta.progname import prog_for
 
 
 def _format_arg(value: str) -> str:
@@ -113,8 +115,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parses arguments, does the work, and formats the output.
     """
 
-    parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.draft render",
+    parser = ClickParser(
+        prog=f"{prog_for('draft')} render",
         description="Render a Pandoc-markdown or LaTeX draft to tex/pdf/docx.",
     )
     parser.add_argument("input", help="Path to the draft file (Markdown or LaTeX)")

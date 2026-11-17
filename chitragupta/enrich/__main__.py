@@ -83,6 +83,7 @@ from chitragupta.enrich.stages import (  # noqa: F401
 # pylint: enable=unused-import
 from chitragupta import config, ledger, logging_setup, runlock
 from chitragupta.progname import prog_for
+from chitragupta.help_format import ClickParser
 
 # A fixed name, not __name__: this file is the layer's entry point, so
 # Python sets __name__ to "__main__", which sits outside the logger tree
@@ -115,7 +116,7 @@ DESCRIPTION = (
 def parse_args() -> argparse.Namespace:
     # prog, because argparse would otherwise derive "__main__.py" from
     # sys.argv[0] and print a usage line nobody can type.
-    parser = argparse.ArgumentParser(prog=prog_for("enrich"), description=DESCRIPTION)
+    parser = ClickParser(prog=prog_for("enrich"), description=DESCRIPTION)
     parser.add_argument(
         "--target",
         choices=["host", "docker"],

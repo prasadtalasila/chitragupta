@@ -44,6 +44,7 @@ from chitragupta import citation_gate, config, ledger, review
 from chitragupta.review import _emit
 from chitragupta.passages import Passage, distinctive, source_passages
 from chitragupta.review import _blocks, _citation_provenance_render, _claim_sentence
+from chitragupta.help_format import ClickParser
 
 
 @dataclass
@@ -219,7 +220,7 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
     restates them.
     """
     if parser is None:
-        parser = argparse.ArgumentParser(
+        parser = ClickParser(
             description="Report what in each cited source supports the claim citing it.",
         )
     parser.add_argument("draft", help="Markdown draft to check")

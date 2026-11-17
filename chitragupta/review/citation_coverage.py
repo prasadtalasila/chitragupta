@@ -43,6 +43,7 @@ from chitragupta import config, retrieval, review
 from chitragupta.review import _emit
 from chitragupta.citation_gate import extract_citekeys_from_line
 from chitragupta.review import _citation_coverage_render
+from chitragupta.help_format import ClickParser
 
 
 @dataclass
@@ -167,7 +168,7 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
     if parser is None:
         # A one-line description rather than this module's docstring, for
         # the reason chitragupta/corpus.py's DESCRIPTION gives (#152).
-        parser = argparse.ArgumentParser(
+        parser = ClickParser(
             description="Report whether a draft cites the sources retrieval surfaces for a query.",
         )
     parser.add_argument("draft", help="Path to the draft to check")

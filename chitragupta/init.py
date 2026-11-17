@@ -48,6 +48,7 @@ from pathlib import Path
 
 from chitragupta.developer_skills import developer_skills, is_developer_only
 from chitragupta.progname import prog_for
+from chitragupta.help_format import ClickParser
 
 # Deliberately not `from chitragupta.config import PACKAGE_ROOT`: that
 # module raises at import time when no `config.toml` exists yet
@@ -369,7 +370,7 @@ def scaffold(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog=prog_for("init"), description=DESCRIPTION)
+    parser = ClickParser(prog=prog_for("init"), description=DESCRIPTION)
     parser.add_argument(
         "dir", nargs="?", default=".", type=Path, help="Where to write the project (default: .)"
     )

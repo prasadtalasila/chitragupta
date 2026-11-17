@@ -31,7 +31,6 @@ is a one-way dependency of this module; none imports back, and only
 `sync_decide` reaches `sync_residue`.
 """
 
-import argparse
 import logging
 import sys
 import time
@@ -50,6 +49,8 @@ from chitragupta import (
     sync_pool,
     sync_report,
 )
+from chitragupta.help_format import ClickParser
+from chitragupta.progname import prog_for
 
 # A fixed name, not __name__. Until 5.2.0 this module was itself the CLI
 # entrypoint (python -m chitragupta.sync), and Python sets __name__ to
@@ -337,8 +338,8 @@ def _exit_code(tally, kinds, suspicious) -> int:
 def main(argv: "list[str] | None" = None) -> int:
     """`python -m chitragupta.corpus sync`. Reached only through chitragupta/corpus.py,
     which is why this file has no `__main__` block of its own."""
-    parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.corpus sync",
+    parser = ClickParser(
+        prog=f"{prog_for('corpus')} sync",
         description="Sync content/ledger.sqlite from the bib file "
         "(the corpus layer -- deterministic).",
     )

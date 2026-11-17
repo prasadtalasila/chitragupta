@@ -480,8 +480,11 @@ this page. `chitragupta corpus --help` and `chitragupta draft --help`
 list their own verbs the same way. A line that doesn't fit the terminal
 is shortened and ends in `...`. The full text, and every flag, is in
 that command's own `--help`, for example
-`chitragupta draft gate --help`. On Python 3.14 and later, a mistyped
-command gets a "did you mean" suggestion.
+`chitragupta draft gate --help`. Every command's `--help` has the same
+layout: `Usage:` with its arguments, then `Arguments:` and `Options:`,
+and a `Commands:` list for a command that has its own subcommands, such
+as `chitragupta draft dossier --help`. On Python 3.14 and later, a
+mistyped command gets a "did you mean" suggestion.
 
 Three commands set a project up rather than work in one: `init`,
 `doctor` and `install`. [PACKAGING.md](PACKAGING.md) has the design

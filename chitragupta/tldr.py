@@ -53,7 +53,6 @@ Usage:
     python -m chitragupta.draft tldr show <citekey> [--json]
 """
 
-import argparse
 import hashlib
 import json
 import sys
@@ -61,6 +60,8 @@ from pathlib import Path
 
 from chitragupta import _abstract, config, ledger, ledger_paths
 from chitragupta.citekey_safety import UnsafeCitekey, citekey_path
+from chitragupta.help_format import ClickParser
+from chitragupta.progname import prog_for
 
 
 class TldrError(Exception):
@@ -242,8 +243,8 @@ def _cmd_show(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.draft tldr",
+    parser = ClickParser(
+        prog=f"{prog_for('draft')} tldr",
         description="A one-paragraph summary per citekey, cached beside a "
         "fingerprint of its parsed text.",
     )

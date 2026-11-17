@@ -536,6 +536,7 @@ the last stage derives and the `corpus discover` reader built on it;
 | Feature | What it gives you | Detail |
 | --- | --- | --- |
 | One CLI, one level deep | `chitragupta <layer> <verb>`, four layers plus `init`/`doctor`/`install`/`figure` | [PACKAGING.md](PACKAGING.md) |
+| `--help` everywhere | `chitragupta --help` lists every layer with its verbs, one per line; every command's own `--help` has the same layout, `Usage:`, `Arguments:`, `Options:` and, where it has subcommands, `Commands:` | [CLI.md](CLI.md#-every-command-and-flag) |
 | `chitragupta init` | scaffolds a project directory to draft in | [PACKAGING.md](PACKAGING.md) |
 | `chitragupta doctor` | tells you what is missing and what to type next | [CLI.md](CLI.md) |
 | `chitragupta figure sync` | keeps the house figure-style block current in every figure file, and never overwrites one you edited | [CLI.md](CLI.md#-chitragupta-figure-sync) |

@@ -41,6 +41,7 @@ from chitragupta.retrieval import (
     search,
     short_query_terms,
 )
+from chitragupta.progname import prog_for
 
 EVIDENCE_CHARS = 600
 EVIDENCE_WINDOWS = 2
@@ -106,10 +107,11 @@ def _print_results(results: list[SearchResult]) -> int:
 
 
 def _build_parser() -> Any:
-    import argparse
 
-    parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.draft retrieve",
+    from chitragupta.help_format import ClickParser
+
+    parser = ClickParser(
+        prog=f"{prog_for('draft')} retrieve",
         description="BM25 retrieval over the synced corpus. Read-only, takes no "
         "lock, and runs with the bare system python3.",
         epilog="`search` ranks the corpus and hands back a snippet to judge each "

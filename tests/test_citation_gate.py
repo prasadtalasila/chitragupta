@@ -812,7 +812,7 @@ class TestCliEntrypoint:
     def test_no_args_prints_usage_and_exits_2(self, isolated_config):
         result = run_python("-m", "chitragupta.draft", "gate")
         assert result.returncode == 2
-        assert "usage:" in result.stderr
+        assert "Usage:" in result.stderr
 
     @pytest.mark.parametrize("flag", ["-h", "--help"])
     def test_help_prints_usage_and_exits_0(self, isolated_config, flag):
@@ -823,8 +823,17 @@ class TestCliEntrypoint:
         stderr and exit 2."""
         result = run_python("-m", "chitragupta.draft", "gate", flag)
         assert result.returncode == 0
-        assert "usage:" in result.stdout
+        assert "Usage:" in result.stdout
         assert "Traceback" not in result.stderr
+
+    def test_gate_help_reads_like_click(self, isolated_config):
+        """Hand-written, because the gate is not argparse, but laid out
+        the way every other command's --help is (#1230)."""
+        out = run_python("-m", "chitragupta.draft", "gate", "--help").stdout
+        assert out.startswith(
+            "Usage: python -m chitragupta.draft gate [OPTIONS] FILE...\n\n  Fail if"
+        )
+        assert out.endswith("\nOptions:\n  -h, --help  Show this message and exit.\n")
 
     def test_runs_with_bare_system_python3_no_bibtexparser(
         self, system_python, isolated_config, tmp_path

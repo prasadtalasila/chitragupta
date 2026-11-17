@@ -739,6 +739,26 @@ is a trap, but a silent and harmless one; the second is not even
 silent. Both are the price of there being exactly one `--help` per
 layer.
 
+**One look for every `--help` (#1230).** Every parser under
+`chitragupta/` is a `ClickParser` from `chitragupta/help_format.py`,
+the standard library's `argparse` laid out the way Python's click
+prints it: `Usage:` collapsed to `[OPTIONS]` and the positionals,
+`Arguments:`, `Options:`, and a `Commands:` list for a parser with
+subcommands. argparse builds a subcommand's parser with its parent's
+class, so a subcommand gets the look without asking. Two source scans in
+`tests/test_help_format.py` fail on a plain `argparse.ArgumentParser`
+and on a `prog` hard-coded to the module form, which `prog_for` replaces.
+The dispatchers and the top-level tree read their one-line help from
+`chitragupta/command_help.py`, so asking for help imports no layer.
+`draft gate` is the one exception: it is not argparse, so it keeps its
+help as hand-written text in the same layout, and imports nothing new.
+Three alternatives were turned down. Click itself, or `rich-argparse`,
+would add a dependency to the core, which is the standard library plus
+`bibtexparser`, and `draft gate` must run on a bare interpreter.
+argparse subparsers in the front door would restate every layer's flags
+there, a second place for them to drift, which `chitragupta/__main__.py`'s
+docstring rules out.
+
 The drafting layer's thirteen commands carry the same trap without moving
 into a package. `citation_gate.py`, `dossier/`, `references.py`,
 `evidence_appendix.py`, `render_output/`, `retrieval.py`,

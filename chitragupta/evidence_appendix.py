@@ -54,7 +54,6 @@ Usage:
     python -m chitragupta.draft evidence <file.md> [--format md|tex|pdf]
 """
 
-import argparse
 import subprocess
 import sys
 from pathlib import Path
@@ -63,6 +62,8 @@ from chitragupta import _private_use, citation_gate, config, ledger, reference_e
 from chitragupta.dossier import citekeys_by_section, dossier_dir
 from chitragupta.dossier._citekeys import evidence_blocks
 from chitragupta.dossier._evidence_check import fields
+from chitragupta.help_format import ClickParser
+from chitragupta.progname import prog_for
 
 # Where a key the draft cites but `sections.md` files nowhere is
 # collected. Named rather than dropped, and named rather than filed under
@@ -256,8 +257,8 @@ def main(argv: list[str] | None = None) -> int:
     # here too, and this is the one check, not a second copy of it.
     from chitragupta.render_output._cli import _format_arg
 
-    parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.draft evidence",
+    parser = ClickParser(
+        prog=f"{prog_for('draft')} evidence",
         description="Render the evidence sidecar beside a draft: each cited "
         "source and the verbatim spans its dossier marked quotable.",
     )

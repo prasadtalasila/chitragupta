@@ -17,7 +17,6 @@ modules -- `python -m chitragupta.draft dossier` is this layer's one front
 door, and a package `__main__.py` would quietly open a second one.
 """
 
-import argparse
 import sys
 
 from chitragupta.dossier._archive import _cmd_export, _cmd_restore
@@ -34,6 +33,8 @@ from chitragupta.dossier._outline import _cmd_outline
 from chitragupta.dossier._prune import _cmd_prune
 from chitragupta.dossier._status import _cmd_status
 from chitragupta.dossier._versions import VersionError, _cmd_snapshot, _cmd_versions
+from chitragupta.help_format import ClickParser
+from chitragupta.progname import prog_for
 
 _DRAFT_PATH_HELP = "Path to the draft under content/drafts/"
 
@@ -243,8 +244,8 @@ def _add_restore_parser(sub) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        prog="python -m chitragupta.draft dossier",
+    parser = ClickParser(
+        prog=f"{prog_for('draft')} dossier",
         description="The working state behind a draft: create it, inspect it, "
         "back it up, restore it. Stdlib only; never writes to the "
         "corpus layer.",
