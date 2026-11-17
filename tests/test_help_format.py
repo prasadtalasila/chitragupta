@@ -279,3 +279,23 @@ def test_every_click_parser_gets_the_version_dependent_keywords(monkeypatch):
     for it here, so the path that applies them runs on every CI leg."""
     monkeypatch.setattr(help_format, "parser_kwargs", lambda: {"allow_abbrev": False})
     assert help_format.ClickParser(prog="x").allow_abbrev is False
+
+
+class TestCapitalisingNeverChangesAValue:
+    """Help that opens with a literal the reader would type -- a choice,
+    or `enrich/gpu-torch/os-deps` -- keeps its case; capitalising it
+    printed "Md" and "Enrich/gpu-torch" (#1230 review)."""
+
+    def test_a_help_line_that_opens_with_a_choice_keeps_its_case(self, monkeypatch, capsys):
+        parser = help_format.ClickParser(prog="x")
+        parser.add_argument("--format", choices=["md", "html"], help="md writes markdown")
+        monkeypatch.setenv("COLUMNS", "80")
+        parser.print_help()
+        assert "  md writes markdown" in capsys.readouterr().out
+
+    def test_a_help_line_that_opens_with_a_non_word_keeps_its_case(self, monkeypatch, capsys):
+        parser = help_format.ClickParser(prog="x")
+        parser.add_argument("stage", help="enrich/gpu-torch run a stage")
+        monkeypatch.setenv("COLUMNS", "80")
+        parser.print_help()
+        assert "  enrich/gpu-torch run a stage" in capsys.readouterr().out

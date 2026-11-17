@@ -1,4 +1,4 @@
-"""Click-style `--help` for the command dispatchers (#1230).
+"""Click-style `--help` for every command in this package (#1230).
 
 The front door and the corpus and draft layers each list their commands.
 argparse would wrap that list into one paragraph; this module prints it
@@ -73,12 +73,19 @@ class ClickFormatter(argparse.HelpFormatter):
         return super()._format_usage(usage, actions, groups, prefix)
 
     def _get_default_metavar_for_positional(self, action) -> str:
-        # The same name the collapsed usage line prints, so `PHRASE` in
-        # `Usage:` is `PHRASE` under `Arguments:` too.
+        # Upper case, as the collapsed usage line names a positional; a
+        # positional with `choices` still lists them here, as argparse does.
         return action.dest.upper()
 
     def _expand_help(self, action) -> str:
+        """Capitalised like click's, unless the line opens with something
+        the reader would type -- one of the argument's choices, or a token
+        such as `enrich/gpu-torch` -- whose case is part of its value."""
         text = super()._expand_help(action)
+        first = text.split(" ", 1)[0]
+        word = first.replace("-", "").replace("'", "")
+        if not word.isalpha() or first in (action.choices or ()):
+            return text
         return text[:1].upper() + text[1:]
 
     def _fill_text(self, text, width, indent) -> str:
