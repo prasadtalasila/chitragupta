@@ -441,16 +441,21 @@ def _could_not_read(exc: Exception) -> int:
     return ledger.EXIT_UNREADABLE
 
 
-USAGE = """usage: python -m chitragupta.draft gate <file> [<file> ...]
+# Laid out the way every argparse command's --help is (#1230), by hand,
+# because this file must not import anything a bare python3 lacks.
+USAGE = """Usage: python -m chitragupta.draft gate [OPTIONS] FILE...
 
-Fail if a draft cites a citekey the ledger doesn't hold as a parsed
-source: in the .bib, and its PDF parsed. Exit 0 = every
-citation verified, 1 = at least one unresolved citekey, 2 = bad usage,
-3 = the ledger could not be read, so nothing was checked.
+  Fail if a draft cites a citekey the ledger doesn't hold as a parsed
+  source: in the .bib, and its PDF parsed. Exit 0 = every citation
+  verified, 1 = at least one unresolved citekey, 2 = bad usage,
+  3 = the ledger could not be read, so nothing was checked.
 
-Takes no options: every argument is a file to check. Reads only
-content/ledger.sqlite via stdlib sqlite3, so it runs under a bare
-python3 with no venv."""
+  Takes no options: every argument is a file to check. Reads only
+  content/ledger.sqlite via stdlib sqlite3, so it runs under a bare
+  python3 with no venv.
+
+Options:
+  -h, --help  Show this message and exit."""
 
 
 def main(argv: list[str] | None = None) -> int:
