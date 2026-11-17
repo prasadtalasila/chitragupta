@@ -12,6 +12,7 @@ finished loading, and the entry point imports it at the top.
 """
 
 from chitragupta import review
+from chitragupta.command_help import verbs
 from chitragupta.review import (
     agenda,
     citation_coverage,
@@ -28,18 +29,23 @@ from chitragupta.review import (
 
 # Keyed by review.AIDS, so a new aid cannot appear here without also
 # appearing in the dict that owns the report suffixes.
+# The help strings live in chitragupta/command_help.py, so `chitragupta
+# --help`'s tree can print them without importing a single aid.
 AIDS = {
-    "provenance": (citation_provenance, "what in the source supports this claim?"),
-    "verbatim": (verbatim_check, "verbatim overlap with one source, or with the whole corpus"),
-    "coverage": (citation_coverage, "retrieval surfaced it -- did the draft cite it?"),
-    "synthesis": (synthesis, "how many sources does each unit of the draft rest on?"),
-    "figure": (figure_layout, "what a TikZ figure's own geometry says about it"),
-    "uncited": (uncited_prose, "which sentences of the draft carry no citation?"),
-    "quotation": (quotation, "is each quoted span really in the source it cites?"),
-    "agenda": (agenda, "one ranked, deduplicated worklist across every other aid"),
-    "support": (claim_support, "does the cited source entail this claim?"),
-    "union": (citekey_union, "does the assembly still carry every unit's citekeys?"),
-    "digest": (verbatim_digest, "how much of a verbatim digest is not the sources' own words?"),
+    aid: (module, verbs("review")[aid])
+    for aid, module in {
+        "provenance": citation_provenance,
+        "verbatim": verbatim_check,
+        "coverage": citation_coverage,
+        "synthesis": synthesis,
+        "figure": figure_layout,
+        "uncited": uncited_prose,
+        "quotation": quotation,
+        "agenda": agenda,
+        "support": claim_support,
+        "union": citekey_union,
+        "digest": verbatim_digest,
+    }.items()
 }
 
 # A raise rather than an assert: `python -O` strips assertions, and this

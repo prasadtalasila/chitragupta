@@ -37,7 +37,10 @@ class TestDispatch:
 
         words = "zero one two three four five six seven eight nine ten eleven twelve thirteen"
         count = words.split()[len(AIDS)]
+        from chitragupta import command_help
+
         assert f"{count} read-only aids" in entry.LAYERS["review"][1]
+        assert f"{count} read-only aids" in command_help.HELP["review"][0]
         assert f"{count} read-only aids" in review_main.DESCRIPTION
 
     @pytest.mark.parametrize("layer", ["corpus", "draft", "review", "enrich"])
@@ -113,3 +116,76 @@ class TestTheModuleFormSurvives:
         result = run_python("-m", "chitragupta", check=False)
         assert result.returncode == 0
         assert "corpus" in result.stdout
+
+
+class TestTheHelpTree:
+    """#1230: `chitragupta --help` named the layers but none of their
+    verbs. It now prints a two-level tree, read from an import-light
+    index so that asking for help never loads a layer."""
+
+    def _help(self, monkeypatch, capsys) -> str:
+        monkeypatch.setenv("COLUMNS", "80")
+        monkeypatch.setattr("sys.argv", ["chitragupta"])
+        with pytest.raises(SystemExit) as excinfo:
+            entry.main(["--help"])
+        assert excinfo.value.code == 0
+        return capsys.readouterr().out
+
+    def test_help_shows_every_layers_verbs(self, monkeypatch, capsys):
+        from chitragupta import command_help
+
+        out = self._help(monkeypatch, capsys)
+        for name, (_, verbs) in command_help.HELP.items():
+            assert f"\n  {name} " in out
+            for verb in verbs:
+                assert f"\n    {verb} " in out
+        assert out.endswith(
+            "Run 'chitragupta COMMAND --help' for a command's commands and flags.\n"
+        )
+
+    def test_the_version_flag_reads_like_click(self, monkeypatch, capsys):
+        assert "--version   Show the version and exit." in self._help(monkeypatch, capsys)
+
+    def test_a_verb_is_not_a_top_level_command(self, capsys):
+        """The tree is display only: `sync` is corpus's, not the front door's."""
+        with pytest.raises(SystemExit) as excinfo:
+            entry.main(["sync"])
+        assert excinfo.value.code == 2
+        assert "invalid choice: 'sync'" in capsys.readouterr().err
+
+    def test_help_does_not_import_any_layer(self):
+        result = run_python(
+            "-c",
+            "import sys\n"
+            "from chitragupta import __main__ as entry\n"
+            "try:\n    entry.main(['--help'])\n"
+            "except SystemExit:\n    pass\n"
+            "print(sorted(m for m in sys.modules if m.startswith('chitragupta')))",
+        )
+        loaded = result.stdout.splitlines()[-1]
+        for layer in (
+            "chitragupta.draft",
+            "chitragupta.corpus",
+            "chitragupta.review.__main__",
+            "chitragupta.enrich.__main__",
+            "chitragupta.figure.__main__",
+        ):
+            assert f"'{layer}'" not in loaded
+
+    def test_help_survives_a_broken_enrich(self, monkeypatch, capsys):
+        monkeypatch.setitem(sys.modules, "chitragupta.enrich", None)
+        assert "enrich" in self._help(monkeypatch, capsys)
+
+    def test_review_and_figure_help_come_from_the_index(self):
+        import argparse
+
+        from chitragupta import command_help
+        from chitragupta.figure.__main__ import build_parser
+        from chitragupta.review._registry import AIDS
+
+        assert {aid: text for aid, (_, text) in AIDS.items()} == command_help.verbs("review")
+        subparsers = next(
+            a for a in build_parser()._actions if isinstance(a, argparse._SubParsersAction)
+        )
+        figure = {a.dest: a.help for a in subparsers._choices_actions}
+        assert figure == command_help.verbs("figure")
