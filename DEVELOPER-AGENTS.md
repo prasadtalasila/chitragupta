@@ -1155,12 +1155,24 @@ of commits:
   requires an existing user to change how they invoke or configure the
   pipeline.
 
-Every tag gets a GitHub Release with the wheel/sdist attached, but only
-a **PATCH-free** tag (X.0.0 or X.Y.0) also publishes to PyPI.
-`.github/workflows/release.yml`'s `publish-pypi` job skips a tag ending
-anything other than `.0`, since a published version can never be
-reused and a PATCH release doesn't need `pip install chitragupta-cli`
-to see it immediately. `docs/PACKAGING.md` has the reasoning.
+**Only a MAJOR or MINOR version is released.** A PATCH version is
+merged to `main` with its bump and stops there: no tag, no GitHub
+Release, no PyPI upload. Its changes reach users with the next MINOR or
+MAJOR release, whose notes cover them.
+
+`.github/workflows/release.yml` enforces this, so it does not rest on
+memory. It runs only for a tag shaped `vX.Y.0`, and its `release` job
+refuses any other tag; the `publish-pypi` job runs only after that job
+has. A `vX.Y.Z` tag pushed by mistake starts nothing: delete it
+(`git push origin :refs/tags/vX.Y.Z`). `docs/PACKAGING.md` has the
+reasoning.
+
+Every PR still raises the version, a PATCH one included.
+`scripts/check_version_bump.py` compares against `main`, not against the
+tags, so an untagged PATCH version on `main` is spent like any other.
+Its "never been released" warning looks for the `vX.Y.0` tag of `main`'s
+version, and stays quiet while `main` sits on a PATCH above a released
+MINOR.
 
 Release notes go in the GitHub Release body, not the git tag message.
 `.github/RELEASE_TEMPLATE.md` has the shape to follow. GitHub does *not*
@@ -1178,6 +1190,7 @@ not merely started:
    `pyproject.toml` as part of the same branch. `release.yml` verifies
    the pushed tag against `pyproject.toml`'s version on `main`, so the
    bump has to land *before* the tag exists, i.e. in this PR, not after.
+   A PATCH bump is never tagged, and it lands in the PR all the same.
 3. Run the [OpenCodeReview plugin](#-reviewing-before-you-push-the-opencodereview-plugin)
    over the branch and act on what it finds. Nothing invokes it for you
    (it is not in CI and not a dependency), so if this step is skipped it
@@ -1260,12 +1273,16 @@ not merely started:
    last possible moment and refuses rather than merging a collision,
    which catches the case step 8 structurally cannot: a PR that merges in
    the seconds after your check.
-10. Tag `v<version>`, and **read `main`'s `pyproject.toml` again first**
-   rather than trusting the number you bumped to. The merge closes the
-   window before it; nothing closes the one after it, and a tag pushed
-   on a collided version names somebody else's content.
-11. Confirm `.github/workflows/release.yml` completed and the resulting
-   GitHub Release has its assets attached: `chitragupta-<version>.zip`,
-   `chitragupta-docker-<version>.zip`, and the wheel and sdist. This is
-   the deliverable, not the tag or the merge by
-   itself.
+10. **A MAJOR or MINOR version only:** tag `v<version>`, and **read
+   `main`'s `pyproject.toml` again first** rather than trusting the
+   number you bumped to. The merge closes the window before it; nothing
+   closes the one after it, and a tag pushed on a collided version names
+   somebody else's content. **A PATCH version is done at step 9:** push
+   no tag and make no release.
+11. **A MAJOR or MINOR version only:** confirm
+   `.github/workflows/release.yml` completed, the resulting GitHub
+   Release has its assets attached (`chitragupta-<version>.zip`,
+   `chitragupta-docker-<version>.zip`, and the wheel and sdist), and
+   the version is on PyPI. This is the deliverable, not the tag or the
+   merge by itself. Write the release notes to cover every PATCH merged
+   since the previous release as well.

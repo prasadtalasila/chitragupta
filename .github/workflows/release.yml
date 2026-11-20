@@ -1,9 +1,15 @@
 name: Release
 
+# Only a major or minor version is released: vX.0.0 or vX.Y.0. A patch
+# version (X.Y.Z, Z > 0) is merged to main and never tagged, so it gets
+# no GitHub Release and no PyPI upload; its changes ship with the next
+# minor (DEVELOPER-AGENTS.md, "Versioning and releases"). In a filter
+# pattern `+` repeats the character before it and `.` is literal, so
+# this matches v6.177.0 and not v6.177.1 or v6.177.10.
 on:
   push:
     tags:
-      - 'v*'
+      - 'v[0-9]+.[0-9]+.0'
 
 # Each tag is its own github.ref, so this only ever cancels a re-run of
 # the *same* tag (e.g. a force-pushed/re-pushed tag) -- never one
@@ -18,7 +24,11 @@ permissions:
   contents: write
 
 jobs:
+  # The tag filter above already keeps a patch tag from starting a run.
+  # This guard is the second line, for a run started some other way (a
+  # re-run, a trigger widened later): no job here may release a patch.
   release:
+    if: endsWith(github.ref_name, '.0')
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -122,19 +132,13 @@ jobs:
   # deliberately: a PyPI failure then leaves a complete, downloadable
   # release behind rather than a tag with no artefacts.
   #
-  # Only a major or minor release publishes here. `endsWith(github.ref_name,
-  # '.0')` is true for X.0.0 and X.Y.0, false for X.Y.Z with Z > 0 -- and
-  # PyPI never accepts a re-upload of a version number, not even a
-  # deleted or yanked one, so a run of PATCH releases (docs-only fixes,
-  # CI-only changes -- DEVELOPER-AGENTS.md's "Versioning and releases")
-  # was each permanently spending a slot on the index for a change a PyPI
-  # install doesn't need to see quickly. A patch tag still gets a GitHub
-  # Release with the wheel/sdist attached -- the `release` job above runs
-  # unconditionally -- it just does not also reach PyPI; `pip install
-  # chitragupta-cli` always resolves to the latest X.Y.0 either way.
+  # No guard of its own: `needs: release` skips this job whenever the
+  # release job is skipped, and that job's `if:` is what keeps a patch
+  # tag out. PyPI never accepts a re-upload of a version number, not
+  # even a deleted or yanked one, so a version reaches the index only
+  # after its GitHub Release exists.
   publish-pypi:
     needs: release
-    if: endsWith(github.ref_name, '.0')
     runs-on: ubuntu-26.04
     environment: pypi
     permissions:
@@ -153,8 +157,7 @@ jobs:
       # The publisher is registered on PyPI against this repository, this
       # workflow filename and the `pypi` environment above -- every major
       # or minor tag since v6.7.0 that reached this job has published
-      # cleanly (docs/PACKAGING.md); a PATCH tag no longer reaches it at
-      # all, per the `if:` above, rather than reaching it and failing.
+      # cleanly (docs/PACKAGING.md); a PATCH tag starts no run at all.
       # A failure here now is a real regression (a renamed environment,
       # a changed OIDC trust relationship, a PyPI-side outage), not the expected
       # state: it was only expected once, before that first tag, and this

@@ -314,6 +314,16 @@ class TestUnreleased:
         """`v6.2.0` is not released just because `v6.2.0-rc1` exists."""
         assert check.unreleased("6.2.0", ["v6.2.0-rc1"]) is not None
 
+    def test_a_patch_base_is_silent_once_its_minor_is_tagged(self, check):
+        """A patch version is never tagged or released, so main sitting
+        on one owes nothing as long as its X.Y.0 was released."""
+        assert check.unreleased("6.2.3", ["v6.1.0", "v6.2.0"]) is None
+
+    def test_a_patch_base_reports_its_untagged_minor_not_itself(self, check):
+        found = check.unreleased("6.2.3", ["v6.1.0"])
+        assert "git tag -a v6.2.0" in found
+        assert "v6.2.3" not in found
+
 
 class TestTheWarningDoesNotGate:
     """The exit code belongs to problems(); this must never touch it."""
