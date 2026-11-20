@@ -11,16 +11,13 @@ covered here:** the measured cost of each backend, which is
 
 Two backends ship: `pdftotext` (the default) and `docling`. Two more were
 evaluated on this corpus and removed: `markitdown`, which fuses adjacent
-words (see ["Why markitdown was removed"](#-why-markitdown-was-removed)),
-and `grobid`, whose header metadata the bib file already supplies (see
-["Why GROBID was removed"](#-why-grobid-was-removed)). A proposal to bring
-GROBID back in a *different* role, beside docling, for a citation graph,
-is in
+words ([why](#-why-markitdown-was-removed)), and `grobid`, whose header
+metadata the bib file already supplies
+([why](#-why-grobid-was-removed)). A proposal to bring GROBID back beside
+docling, for a citation graph, is in
 [GROBID-CITATION-GRAPH.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/GROBID-CITATION-GRAPH.md).
-
-Four newer parsers (**marker**, **surya**, **xberg**, **unstructured**)
-were surveyed and none adopted; the analysis is in ["Four newer backends,
-evaluated and not adopted"](#-four-newer-backends-evaluated-and-not-adopted).
+Four newer parsers were surveyed and none adopted
+([analysis](#-four-newer-backends-evaluated-and-not-adopted)).
 
 ## ⚖ Comparison table
 
@@ -36,9 +33,9 @@ evaluated and not adopted"](#-four-newer-backends-evaluated-and-not-adopted).
 `[parser].backend` is a tier, not a ladder: you pick one, and if it is
 unavailable `sync` warns and skips parsing rather than substituting the
 other ([ARCHITECTURE.md](ARCHITECTURE.md#-ladders-and-tiers)). The
-enrichment layer's `docling` stage is separate: it always uses docling,
-whatever `[parser].backend` says, and writes `content/docling/`, which
-BM25 never reads.
+enrichment layer's `docling` stage always uses docling, whatever
+`[parser].backend` says, and writes `content/docling/`, which BM25 never
+reads.
 
 | If you need | Set | Because |
 | --- | --- | --- |
@@ -49,46 +46,37 @@ BM25 never reads.
 
 ### 🧱 What `docling` costs
 
-**The ~42x figure is the OCR-on ceiling.** It was measured with
-Docling's OCR stage on, which is Docling's default but not this
-project's (`[parser].ocr = false`). Measured over the whole corpus,
-turning OCR off is **2.08x** faster serially and up to **4.79x** at 24
-workers. [PERFORMANCE.md](PERFORMANCE.md) is the figure to plan against:
-a full 501-PDF serial parse takes 55m 30s with OCR off against 1h 56m
-with it on.
-
-Turning OCR off has a cost: it drops text that the PDF stores as a
-bitmap instead of as characters, which on this sample was mostly
-publisher furniture and figure sub-captions but on one document included
-two whole tables. See
+**The ~42x figure is the OCR-on ceiling**, Docling's default but not this
+project's (`[parser].ocr = false`). Over the whole corpus, OCR off is
+**2.08x** faster serially and up to **4.79x** at 24 workers; a full
+501-PDF serial parse takes 55m 30s with OCR off against 1h 56m with it
+on. OCR off drops text the PDF stores as a bitmap, mostly publisher
+furniture and figure sub-captions on this sample but two whole tables in
+one document. See
 [PERFORMANCE.md](PERFORMANCE.md#-parserocr----the-largest-single-lever-and-a-trade).
 
 **Its output is not reproducible under concurrency.** With a worker
 pool, dense reference blocks are grouped into elements slightly
 differently between runs, so a quoted span can change across a re-parse.
 Ranking is unaffected, because `chitragupta/retrieval.py` tokenises on
-runs of `[a-z0-9]`. Docling exposes no determinism setting. `pdftotext`
-does not have this property. The measured rates and the
-artifact-by-artifact contract are in
+runs of `[a-z0-9]`. Docling exposes no determinism setting; `pdftotext`
+does not have the problem. The measured rates are in
 [ARCHITECTURE.md](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
 
-It also carries a system dependency nothing else in this repository has,
-and a missing one produces a thoroughly misleading error; see
+It also needs system libraries nothing else here needs, and a missing
+one produces a misleading error; see
 ["docling fails every document with an OpenCV recursion error"](#-docling-fails-every-document-with-an-opencv-recursion-error).
 
 ## 🧪 Four newer backends, evaluated and not adopted
 
 Surveyed 2026-08-05 from each project's own documentation, without a
-trial run: **marker**,
-**surya**, **xberg** and **unstructured**, all against docling as the
-incumbent. Nothing was adopted. This is recorded so the next person asking
-"should we switch parsers?" starts from the analysis instead of repeating
-it, and so the one finding that would break a naive swap is written down.
+trial run: **marker**, **surya**, **xberg** and **unstructured**, against
+docling as the incumbent. Nothing was adopted.
 
 ### 🏷 What "fit" means here
 
-Parsing a PDF is not enough. This repository depends on specific docling
-behaviours, and a replacement has to supply all of them:
+A replacement has to supply every docling behaviour this repository
+depends on:
 
 | What the repo uses | Where |
 | --- | --- |
@@ -120,93 +108,63 @@ behaviours, and a replacement has to supply all of them:
 
 **marker and surya moved OCR and layout to a locally-spawned inference
 server** (vLLM on GPU, llama.cpp on CPU) in their 2026 rewrites. Workers
-become HTTP clients of one shared server instead of each holding its own
-CUDA context, so this repository's `ProcessPoolExecutor` +
-`init_worker` GPU round-robin does not carry over. Adopting either would
-be an architecture change, not a backend substitution. See
-[PARALLELISM.md](PARALLELISM.md#-components).
-
-The cost applies only with OCR on. Under `--disable_ocr` marker starts no
-server at all: layout comes from an in-process `rf-detr` detector, text
-from `pdftext`, tables from CPU heuristics. This project already runs
-with OCR off by default, so that is the configuration that matters, and
-in it marker is close in shape to docling's own architecture.
+become HTTP clients of one shared server, so this repository's
+`ProcessPoolExecutor` + `init_worker` GPU round-robin does not carry over
+([PARALLELISM.md](PARALLELISM.md#-components)). That cost applies only
+with OCR on. Under `--disable_ocr`, this project's default configuration,
+marker starts no server: layout comes from an in-process `rf-detr`
+detector, text from `pdftext`, tables from CPU heuristics, which is close
+in shape to docling.
 
 ### 📊 Where each one lands
 
-1. **surya: do not target directly.** It is the primitive marker is
-   built on. Using it means rebuilding page assembly, Markdown emission,
-   image cropping and caption pairing, all work marker has already done.
+1. **surya: do not target directly.** It is marker's primitive layer;
+   using it means rebuilding everything marker already does.
 2. **marker: the strongest candidate, and only with OCR off.** It still
-   needs a JSON→passage/figures mapping layer (mechanical, bounded), and
-   **custom figure↔caption linking**, which is undocumented. The
-   OpenRAIL-M weight licence applies even with the VLM disabled.
-3. **xberg: best licence and CPU story, too new to trust.** Plain MIT
-   with no weight carve-out, CPU-first, and it sidesteps the
-   fork-versus-CUDA-context problem entirely by having no persistent CUDA
-   context. But the v1.0 line was days old, and figure/caption pairing
-   could not be confirmed. This repository has a documented habit
-   (markitdown, GROBID) of adopting on the strength of documentation and
-   removing after measurement; xberg would need a measured pilot first.
+   needs a JSON→passage/figures mapping layer and custom figure↔caption
+   linking, and the OpenRAIL-M weight licence applies even with the VLM
+   disabled.
+3. **xberg: best licence and CPU story, too new to trust.** It would
+   need a measured pilot first.
 4. **unstructured: most work, least gain.** No native Markdown export
-   (this repo would own a permanent `Element`→Markdown renderer),
-   undocumented caption linking, the heaviest system-dependency
-   footprint, and the least certain GPU story.
+   and the heaviest system dependencies.
 
 ### 🏁 Conclusion of the alternatives review
 
-**Stay on docling.** Its weaknesses, speed and non-determinism under
-concurrency, are known, measured and written down
-([ARCHITECTURE.md](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not)),
-which is worth more than an unmeasured alternative's undocumented ones.
-marker, xberg and unstructured share one blocker:
-**figure↔caption auto-linking is undocumented in all three**, and
-`_figure_records` depends on it.
-
-If this is revisited, marker with OCR off is the one to pilot, and the
-pilot must measure against the real 501-PDF corpus, the measurement that
-removed markitdown and GROBID.
+**Stay on docling.** Its weaknesses are measured and written down, which
+is worth more than an unmeasured alternative's. marker, xberg and
+unstructured share one blocker: **figure↔caption auto-linking is
+undocumented in all three**, and `_figure_records` depends on it. If
+this is revisited, pilot marker with OCR off against the real 501-PDF
+corpus, the measurement that removed markitdown and GROBID.
 
 ## 🗑 Why GROBID was removed
 
-GROBID's role here was bibliographic-quality header and reference
-extraction, and it only ever called one endpoint
-(`/api/processHeaderDocument`) for title/authors/abstract. That is
-metadata `papers/bibliography.bib` already provides for every document
-the project cares about: the goal is to parse the PDFs the bib file
-names, and those arrive with real metadata already attached via
-`chitragupta/bib_reader.py`.
+GROBID only ever called `/api/processHeaderDocument`, for
+title/authors/abstract: metadata `papers/bibliography.bib` already
+supplies, via `chitragupta/bib_reader.py`, for every PDF the project
+parses.
 
-What only GROBID offered was parsing a paper's own reference list into
-structured author/title/year/DOI records, via the
-`/api/processFulltextDocument` endpoint this repo never called. That
-serves *corpus discovery* ("which papers do my papers cite that I don't
-have yet"), not grounding. Extracted references are not in the bib file,
-so per AGENTS.md's citekey invariant no draft may cite them, and since
-`chitragupta/enrich/corpus.py` sources the enrichment corpus from the ledger and
-nothing else, there is nowhere to index them either. A discovered paper
-enters this project the way every other one does: catalogue it in your
-reference manager, re-export, and re-run `python -m chitragupta.corpus sync`.
+What only GROBID offered was parsing a paper's reference list into
+structured records (`/api/processFulltextDocument`, never called here).
+That serves corpus discovery, not grounding. Extracted references are not
+in the bib file, so per AGENTS.md's citekey invariant no draft may cite
+them, and `chitragupta/enrich/corpus.py` sources the enrichment corpus
+from the ledger only, so there is nowhere to index them either. A
+discovered paper enters the way every other one does: catalogue it,
+re-export, and re-run `python -m chitragupta.corpus sync`.
 
-Against that, the operational cost was a JDK 21 pinned exactly (its
-bundled Kotlin compiler cannot parse a JDK 25 version string), a
-multi-GB multi-minute Gradle build, and a long-running service on port
-8070. That was not worth paying for a capability the project doesn't use.
-
-If corpus-growth-by-snowballing later becomes a real workflow, the case
-to revisit is for `/api/processFulltextDocument` specifically, not the
-header endpoint that was here.
+The cost was an exactly pinned JDK 21, a multi-GB Gradle build, and a
+long-running service on port 8070. If snowballing ever becomes a real
+workflow, the case to revisit is for `/api/processFulltextDocument`, not
+the header endpoint.
 
 ## 🗑 Why markitdown was removed
 
-Removed after it was measured on this repository's own corpus instead
-of judged by its stated feature set.
-
 **The symptom.** Over the same 10 CPS papers, `markitdown` produced
 **3,647 alphabetic tokens longer than 20 characters (4.17% of all
-tokens)** against `pdftotext`'s **9 (0.01%)**, a factor of 400, and
-23% fewer total words, because words were being *fused* together, not
-dropped. It is visible directly in retrieval snippets:
+tokens)** against `pdftotext`'s **9 (0.01%)**, and 23% fewer words,
+because words were being fused together:
 
 ```text
 isaninputtooranoutputfromafunction
@@ -214,51 +172,34 @@ AnnualReviewsinControl51(2021)357-373
 theapplicationofthevery same principles
 ```
 
-**Why that matters.** `chitragupta/retrieval.py` is BM25 over tokens split on
-runs of `[a-z0-9]`, so a fused run is one token: a query for "cyber
-physical" cannot match text fused into `cyberphysicalsystems`. The result
-is a silent ranking failure, not a cosmetic one.
+`chitragupta/retrieval.py` is BM25 over tokens split on runs of
+`[a-z0-9]`, so a query for "cyber physical" cannot match
+`cyberphysicalsystems`: a silent ranking failure.
 
-**The cause.** `markitdown` extracts PDFs via `pdfplumber`, calling
-`page.extract_text()` with no arguments. pdfplumber's default
-`x_tolerance` is 3 points: glyphs closer than that are treated as one
-word. These papers set inter-word spacing below 3pt. Measured on four
-of them, dropping to `x_tolerance=1` eliminated every over-long token
-(179 -> 0, 83 -> 0, 164 -> 0, 141 -> 0) and roughly doubled the word
-count. `pdftotext` reads the same files correctly, so the spacing
-information is present in the PDFs; the cause is the extractor's
-threshold, not damaged input.
+**The cause.** `markitdown` calls pdfplumber's `page.extract_text()`,
+whose default `x_tolerance` of 3 points merges glyphs closer than that.
+These papers set inter-word spacing below 3pt. On four of them,
+`x_tolerance=1` eliminated every over-long token (179 -> 0, 83 -> 0,
+164 -> 0, 141 -> 0). `markitdown` hardcodes the tolerance and its
+`convert()` never forwards `**kwargs`, so it cannot be fixed through its
+public API. Its own source says the heuristic is "not for multi-column
+text layouts in scientific documents".
 
-**Why it wasn't fixable here.** `markitdown`'s PDF converter hardcodes
-both `page.extract_text()` and `extract_words(x_tolerance=3,
-y_tolerance=3)`. Its `convert()` accepts `**kwargs` but never forwards
-them, so the tolerance is unreachable through its public API. Its own
-source comments that the heuristic is "not for multi-column text layouts
-in scientific documents", which describes this entire corpus.
-
-**What replaced it.** Nothing: `markitdown` was worse than `pdftotext`
-on text and worse than `docling` on structure. Using `pdfplumber`
-directly with a tuned tolerance was considered and deferred: no current
-use case needs a backend between the two that ship.
-
-**What was added instead.** A parse-quality guard
-(`chitragupta/pdf_text.quality_warning`, wired into `sync`) that warns when more
-than 1% of a document's words exceed 20 characters. The two backends sit
-three orders of magnitude apart on that measure, so the threshold does
-not need precise tuning. A backend that starts fusing words is reported
-by `sync` on its first run rather than noticed by eye in a retrieval
-snippet.
+**What replaced it.** Nothing: it was worse than `pdftotext` on text and
+worse than `docling` on structure. Using `pdfplumber` directly with a
+tuned tolerance was deferred: no current use case needs a third backend.
+Instead, a parse-quality guard (`chitragupta/pdf_text.quality_warning`,
+wired into `sync`) warns when more than 1% of a document's words exceed
+20 characters. The two backends sit three orders of magnitude apart on
+that measure, so the threshold needs no precise tuning.
 
 ## 🐛 docling fails every document with an OpenCV recursion error
 
-The `os-deps` stage prevents this; it is recorded here because
-the error message points at nothing useful, and because a host provisioned
-some other way will hit it again.
+The `os-deps` stage prevents this. A host provisioned some other way will
+hit it, and the error points at nothing useful.
 
-**The symptom.** With `[parser].backend = "docling"`, `python -m
-chitragupta.corpus sync`
-prints a bare `sys.path` listing before the bibliography progress and then
-fails every document it had to parse:
+**The symptom.** With `[parser].backend = "docling"`, `sync` prints a
+bare `sys.path` listing and then fails every document it had to parse:
 
 ```text
 ['/workspace', '/usr/lib/python313.zip', ..., '/workspace/.venv-full/lib/python3.13/site-packages']
@@ -266,44 +207,29 @@ fails every document it had to parse:
 FAILED  shao_use_2021: ERROR: recursion is detected during loading of "cv2" binary extensions. Check OpenCV installation.
 ```
 
-There is no recursion, and OpenCV is installed correctly. Both halves of
-that message are wrong.
+There is no recursion, and OpenCV is installed correctly.
 
-**The mask.** `cv2/__init__.py` sets `sys.OpenCV_LOADER = True` at the top
-of its bootstrap and deletes it at the bottom. If the *first* `import cv2`
-in a process dies partway, the flag leaks, and every later `import cv2`
-in that process, or in any process forked from it, reports the recursion
-error instead of the real reason. The stray `sys.path` line is cv2's own
-`print(sys.path)` on that path. Reproduce the mask directly:
+**The mask.** `cv2/__init__.py` sets `sys.OpenCV_LOADER = True` during
+its bootstrap. If the first `import cv2` dies partway, the flag leaks,
+and every later import in that process or its forks reports the
+recursion error (and prints `sys.path`). To reproduce the mask:
 
 ```console
 $ python -c "import sys; sys.OpenCV_LOADER = True; import cv2"
 ImportError: ERROR: recursion is detected during loading of "cv2" binary extensions.
 ```
 
-**Why sync turns that into a whole-run failure.** `chitragupta/pdf_text/_startup.py`'s
-`prestart_pool()` starts a forkserver whose preload imports `docling` while
-the parent reads the bibliography, which is why the print lands *before*
-the progress lines. `forkserver.main()` catches `ImportError` and discards
-it, so the genuine failure is swallowed and the poisoned flag survives in
-the server process. Every worker forked from it then re-imports cv2 and
-reports the mask. `chitragupta/pdf_text.preload_modules`' docstring already named
-this as a known gap; here it hides the cause of a failed run.
+`prestart_pool()` (`chitragupta/pdf_text/_startup.py`) preloads
+`docling` in a forkserver, whose `main()` discards the `ImportError`, so
+every forked worker inherits the poisoned flag.
 
-**The real cause.** OpenCV is a transitive dependency nothing here asks
-for: the enrich group's `docling` pulls `docling-slim[standard]`, which
-pulls `rapidocr`, which requires the `opencv-python` distribution *by
-name*. That is the GUI-linked wheel. Its `cv2.abi3.so` vendors Qt but not
-`libGL.so.1`, `libglib-2.0.so.0`, or the X libraries. `ldd` resolves
-those to the system, and a base image installed with
-`--no-install-recommends` has none of them. So the first import raises,
-and installing exactly those libraries fixes it.
-
-The precise first-error string is inferred, not captured: the mask
-is what reaches the log, and by the time this was diagnosed the host had
-been repaired. On a missing `libGL.so.1` the loader's message is
-`ImportError: libGL.so.1: cannot open shared object file`. What is
-confirmed is the mask mechanism (reproduced below) and the remedy.
+**The real cause.** The enrich group's `docling` pulls
+`docling-slim[standard]`, which pulls `rapidocr`, which requires the
+GUI-linked `opencv-python` distribution by name. Its `cv2.abi3.so` needs
+`libGL.so.1`, `libglib-2.0.so.0` and the X libraries from the system,
+and a base image installed with `--no-install-recommends` has none of
+them. The exact first error is inferred, not captured; the mask
+mechanism and the remedy are confirmed.
 
 **The fix.** `libgl1` and GLib are in the `os-deps` package list, so
 `chitragupta install os-deps` covers it. By hand:
@@ -312,35 +238,26 @@ confirmed is the mask mechanism (reproduced below) and the remedy.
 sudo apt-get install -y libgl1 libglib2.0-0t64   # libglib2.0-0 before Ubuntu 24.04 / Debian 13
 ```
 
-**To see the real error instead of the mask,** run the parse serially.
-The import then happens in-process, with no preload to swallow it and no
-second attempt to trigger the flag:
+**To see the real error instead of the mask,** run the parse serially,
+so the import happens in-process with no preload to swallow it:
 
 ```console
 PARSER_WORKERS=1 python -m chitragupta.corpus sync
 ```
 
-**Why `opencv-python-headless` is not the fix.** It is the right wheel for
-a container, but `rapidocr` requires `opencv-python` by distribution name
-and arrives through `docling-slim[standard]`, which is not droppable. A
-constraint would install both distributions; they own the same `cv2/`
-directory and clobber each other. Swapping to headless would have to be
-post-install surgery (uninstall one, install the other, after the enrich
-group) in the style of `ensure_gpu_torch`, and was not worth it against
-two apt packages.
+**Why `opencv-python-headless` is not the fix.** `rapidocr` requires
+`opencv-python` by name, so a constraint would install both
+distributions into the same `cv2/` directory. Swapping after install was
+not worth it against two apt packages.
 
 ## 🐛 docling silently empties every formula on a GPU host
 
-The `os-deps` stage prevents this, like the OpenCV entry above. It is
-recorded at more length, because this one does not fail the
-run, does not fail the document, and produces output that is
-byte-for-byte what you would get from the setting you did not choose. It
-only happens with `[parser].formulas` (or `[enrich].docling_formulas`)
-turned on, which is not the default.
+The `os-deps` stage prevents this too. It happens only with
+`[parser].formulas` (or `[enrich].docling_formulas`) turned on, which is
+not the default, and it fails neither the run nor the document.
 
 **What it looks like.** A `sync` that keeps going, with one line per
-affected document buried in a log that is already full of docling's own
-table-recovery warnings:
+affected document buried among docling's table-recovery warnings:
 
 ```text
 [vaillant_towards_2022] Error processing code/formula batch: Command '['/usr/bin/gcc',
@@ -355,39 +272,26 @@ and, further up, the compile that failed:
 ```
 
 **The cause.** torch's default Linux wheel bundles triton. With a GPU
-visible, triton compiles a small C shim (`backends/nvidia/driver.c`) the
-first time a CUDA kernel is launched: a real `gcc` invocation, at
-runtime, that `#include`s `Python.h`. A host with no CPython development
-headers fails it. Nothing in this project asks for triton, and nothing
-asks gcc to run; both arrive with torch and fire only under `--gpus`,
-which is why a CPU-only host never sees this.
+visible, triton compiles a small C shim (`backends/nvidia/driver.c`) at
+the first CUDA kernel launch, a runtime `gcc` call that `#include`s
+`Python.h`. A host with no CPython development headers fails it. A
+CPU-only host never sees this.
 
-**Why it does not look like a failure.** docling catches the exception per
-batch (`docling/models/stages/code_formula/code_formula_vlm_model.py`),
-logs the line above, and assigns `""` to every element in the batch. The
-document then converts successfully and the ledger records it as parsed.
+**Why it does not look like a failure.** docling catches the exception
+per batch and assigns `""` to every formula in it; the document converts
+and the ledger records it as parsed. The Markdown serializer then writes
+`<!-- formula-not-decoded -->` for each, exactly the `formulas = false`
+output, after paying for the model download and the extra pass per page.
 
-What reaches the corpus text is exactly the `formulas = false` behaviour.
-`docling_core`'s Markdown serializer, which both parses go through
-(`pdf_text/_backends.py`'s `export_to_markdown()` and
-`enrich/docling_parse.py`'s alike), writes
-`<!-- formula-not-decoded -->` for a `FormulaItem` whose `text` is empty
-but whose `orig` is not, and the failure clears only `text`. So the
-marker stays, and it does tell you a formula was there. But the run
-reported success, paid for the model download and the extra pass per
-page, and produced the output you would have got for free with the key
-switched off.
-
-**How to tell, if you no longer have the log.** The two states are cleanly
-separable, because a successful recognition writes LaTeX between `$$`
-delimiters and leaves no marker at all:
+**How to tell, if you no longer have the log.** A successful recognition
+writes LaTeX between `$$` delimiters and leaves no marker:
 
 ```console
 grep -l 'formula-not-decoded' content/parsed/*.txt | wc -l   # 0 when healthy
 grep -l '\$\$' content/parsed/*.txt | wc -l                  # 0 is the tell
 ```
 
-Measured on this project's own 497-document corpus, both states:
+On this project's 497-document corpus:
 
 | `[parser].formulas` | Docs with a marker | Docs with `$$` LaTeX |
 | --- | --- | --- |
@@ -395,42 +299,31 @@ Measured on this project's own 497-document corpus, both states:
 | `true`, model ran | 0 | 151 |
 | `true`, this failure | as `false` | 0 |
 
-So one marker *while the key is on* is enough for the diagnosis: the two
-never coexist, and a healthy `true` run produces none. The `false` row is
-the measurement
-[CONFIG.md](CONFIG.md#-formulas-and-why-it-is-not-the-enrich-key) records;
-the `true` row was measured on the same corpus after this key was turned
-on.
+So one marker while the key is on is enough for the diagnosis. The
+`false` row is the measurement
+[CONFIG.md](CONFIG.md#-formulas-and-why-it-is-not-the-enrich-key)
+records.
 
-**Re-running does not repair it, and the two settings recover
-differently.** Both caches key on the *input* PDF, which has not changed,
-so fixing the host and re-running leaves every already-parsed document
-exactly as it was. Which lever clears it depends on which parse produced
-the damage:
+**Re-running does not repair it.** Both caches key on the input PDF,
+which has not changed, and the two settings recover differently:
 
 ```console
 sudo apt-get install -y python3-dev gcc     # or re-run the os-deps stage
 
-# [parser].formulas -- the corpus parse. Skips on
-# ledger.upsert_reference's (size, mtime) of the PDF; --reparse overrides it.
+# [parser].formulas -- the corpus parse; --reparse overrides the
+# (size, mtime) skip.
 python -m chitragupta.corpus sync --reparse
 
-# [enrich].docling_formulas -- the enrichment parse. `--reparse` is a
-# `corpus sync` flag and does not reach this stage. Its cache does record
-# the formulas setting (chitragupta/enrich/_docling_cache.py), but that
-# setting has not changed either, so the entries still match. Delete the
-# cache file, which invalidates every entry at once:
+# [enrich].docling_formulas -- the enrichment parse. --reparse does not
+# reach it, and its cache entries still match, so delete the cache file:
 rm content/docling_cache.json
 python -m chitragupta.enrich --stages docling
 ```
 
-**The fix.** `python3-dev` and `gcc` are in the `os-deps` package list, so
-`bash scripts/install_full_pipeline.sh os-deps` (equivalently `chitragupta
+**The fix.** `python3-dev` and `gcc` are in the `os-deps` package list,
+so `bash scripts/install_full_pipeline.sh os-deps` (or `chitragupta
 install os-deps`) covers it. A host provisioned another way, or a
 long-running container that has not re-run `os-deps`, needs the apt line
-above by hand.
-
-**If you do not want formula recognition,** the cheaper answer is to leave
-`[parser].formulas = false`. docling then writes
-`<!-- formula-not-decoded -->` and never loads the model that needs
-triton at all.
+above by hand. If you do not want formula recognition, leave
+`[parser].formulas = false`: docling then never loads the model that
+needs triton.

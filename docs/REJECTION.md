@@ -10,84 +10,56 @@ which is [CLI.md](CLI.md).
 Turning a source *down* is the judgment the rest of this pipeline rests
 on. A two-stage retrieval read built to make rejection cheaper was
 withdrawn before it shipped, and parts of it were kept. The reasoning is
-recorded because it is reusable and the mistake is easy to make twice.
+recorded because the mistake is easy to make twice.
 
-Related reading:
-
--
-  [TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md)
-  covers where the tokens go. This document assumes
-  its two-pool framing, and the accounting below is worked through there
-  with the caching multipliers applied.
-- [DRAFT-ITERATION.md](DRAFT-ITERATION.md) covers the dossier: what it
-  holds, and how a draft is revised without re-running the pipeline.
-- [RETRIEVAL.md](RETRIEVAL.md) covers how the corpus is ranked, what a
-  snippet contains, and what `evidence` does.
-- [PERFORMANCE.md](PERFORMANCE.md) has *measured* costs. Nothing here
-  belongs there: every token figure below is derived from file sizes and
-  documented defaults, and is labelled an estimate each time it appears.
-
-## 🧭 Table of contents
-
-- [Why rejection and not selection](#-why-rejection-and-not-selection)
-- [What the two-stage read costs](#-what-the-two-stage-read-costs)
-- [The bug the split exposed](#-the-bug-the-split-exposed)
-- [Why it does not generalise across genres](#-why-it-does-not-generalise-across-genres)
-- [Was it worth building at all?](#-was-it-worth-building-at-all)
-- [Recording how a rejection was made](#-recording-how-a-rejection-was-made)
-- [Why deep-research keeps the boundary alone](#-why-deep-research-keeps-the-boundary-alone)
-- [Should any of this be configurable?](#-should-any-of-this-be-configurable)
-- [What was decided](#-what-was-decided)
+This page assumes the two-pool token framing of
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md),
+which works the accounting through with caching applied.
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md) covers the dossier. Every token
+figure below is an estimate derived from file sizes and documented
+defaults; measured costs are in [PERFORMANCE.md](PERFORMANCE.md).
 
 ## 💡 Why rejection and not selection
 
 A genre skill retrieves fifteen candidates per query and keeps about
-three. Almost all of its retrieval work is therefore *rejection*, and
-rejection has three properties that selection does not.
+three. Almost all of its retrieval work is therefore *rejection*, which
+has three properties selection does not.
 
 **It is invisible in the output.** A source wrongly kept shows up as a
 citation someone can check: `citation_gate` verifies the citekey,
 `citation_provenance` scores the claim against the source, and a reader
-can disagree. A source wrongly rejected leaves no trace in the draft, so
-nothing downstream can find it.
+can disagree. A source wrongly rejected leaves no trace in the draft.
 
 **It is sticky.** [DRAFT-ITERATION.md](DRAFT-ITERATION.md) records
-rejected candidates in `rejected.md` so a later revision does not
-re-search and re-judge the same papers, the most expensive thing a fresh
-session does. `draft-reviser` is instructed:
-if a candidate is listed there with a reason, **do not retrieve and
-re-judge it**. That instruction is what makes revision cheap, and it is
-also what makes a rejection permanent. Acceptances get revisited every
-time the draft is edited; rejections do not get revisited at all.
+rejected candidates in `rejected.md`, and `draft-reviser` is instructed
+not to retrieve and re-judge a candidate listed there with a reason.
+That is what makes revision cheap, and also what makes a rejection
+permanent: acceptances are revisited every time the draft is edited,
+rejections never.
 
-The one place a rejection is deliberately re-surfaced is the drift
-sweep's `reconsider` list: a declined paper that the dossier's own
-queries still reach, carried with the reason it was declined. Even there
-the paper is not re-judged from scratch: re-grounding weighs the recorded
-reason and re-opens the paper only if that reason has stopped holding
+The one deliberate exception is the drift sweep's `reconsider` list: a
+declined paper the dossier's queries still reach, carried with its
+reason. Re-grounding weighs that reason and re-opens the paper only if
+it has stopped holding
 ([DRAFT-ITERATION.md](DRAFT-ITERATION.md#-re-grounding-after-the-corpus-moves)).
-The rule runs the other way too: a re-grounding pass may not write an
-unpursued candidate into `rejected.md` to make a drift report look tidy,
-because that would manufacture a permanent judgment out of a title.
+Conversely, a re-grounding pass may not write an unpursued candidate
+into `rejected.md` to tidy a drift report, because that would
+manufacture a permanent judgment out of a title.
 
-**It propagates into claims.** A survey's deliverable includes what the
-corpus does *not* cover. `deep-research` reports a "blind spot" and is
-told that "no appropriate answer can be formulated from this
-corpus" is a valid, honest output. Both of those turn a rejection into an
-assertion about the world. A false rejection omits a source and also
-manufactures a gap.
+**It propagates into claims.** A survey reports what the corpus does
+*not* cover, and `deep-research` reports "blind spots" and may answer
+that "no appropriate answer can be formulated from this corpus". A false
+rejection therefore omits a source and also manufactures a gap.
 
-The question is therefore how much evidence should stand behind the one
-decision the pipeline never revisits.
+The question is how much evidence should stand behind the one decision
+the pipeline never revisits.
 
 ## ⚡ What the two-stage read costs
 
 As built, it split retrieval into `triage` (a short window, for ruling
 candidates out) and `evidence` (query-scored passages, for the survivors
-only). The numbers below were meant to justify it, and the arithmetic is
-easy to get backwards.
-
-Per sub-theme at `k=15`, in characters of payload reaching the caller:
+only). Per sub-theme at `k=15`, in characters of payload reaching the
+caller:
 
 | | Payload | vs one-stage |
 | --- | --- | --- |
@@ -96,67 +68,55 @@ Per sub-theme at `k=15`, in characters of payload reaching the caller:
 | Two-stage, 5 survive | 2,400 + 5 x 1,200 = **8,400** | +12% |
 | Two-stage, 8 survive | 2,400 + 8 x 1,200 = **12,000** | +60% |
 
-Three things follow.
-
-**The saving is conditional on rejecting hard.** Two-stage beats
-one-stage below about five survivors and loses above eight. So the
-economics depend on a skill following an instruction. Models are
-agreeable, so the likely failure is passing candidates through, which
-makes it worse than what it replaced, and nothing reports that failure.
+**The saving is conditional on rejecting hard.** Two-stage wins below
+about five survivors and loses above eight. Models are agreeable, so the
+likely failure is passing candidates through, which costs more than
+one-stage, and nothing reports it.
 
 **It is a constant factor on a cost that was already removed.** The
-original analysis behind the two changes that removed it put it
-plainly: fix the *structural* cost first (no revision path at all, so
-changing a paragraph meant re-running the pipeline), and the
-context-trimming second, because it is "a constant factor on a run you'd
-no longer need to make". The dossier removed the structural cost. This is
-the lesser half.
+structural cost was having no revision path, so that changing a
+paragraph meant re-running the pipeline. The dossier removed that;
+context-trimming is "a constant factor on a run you'd no longer need to
+make".
 
-**The reliable reduction is somewhere else.** The two cost pools
-are orchestrator-resident (re-sent every remaining turn) and subagent
-one-shot (paid once). Two-stage reduces *bytes retrieved*. The subagent
+**The reliable reduction is somewhere else.** The two cost pools are
+orchestrator-resident (re-sent every remaining turn) and subagent
+one-shot (paid once). Two-stage reduces *bytes retrieved*; the subagent
 boundary changes *which pool those bytes land in*. That effect is
 larger and more certain, needs no retrieval change, and works the same
 for every genre.
 
 ## 🐛 The bug the split exposed
 
-The `_snippet` this work started from anchored its window on the first
-occurrence of whichever query term came out of the term set first.
-`terms` is a Python `set`, and
-string hashing is randomised per process, so **the same query on the same
-document returned a different snippet from one run to the next**,
-confirmed across four hash seeds with four different windows.
+The original `_snippet` anchored its window on the first occurrence of
+whichever query term came out of a Python `set` first. String hashing is
+randomised per process, so **the same query on the same document
+returned a different snippet from one run to the next** (four hash
+seeds, four windows).
 
-At a 500-character window this was a quality wobble; you got enough
-context either way. Once `triage` cut the window to 160 characters and
-made it the sole basis for rejecting a candidate, the same defect meant
-an **irreproducible rejection**: run the same triage twice, discard a
-different set of papers. And because `rejected.md` is trusted rather than
-re-checked, whichever set won got entrenched for every later revision.
+At a 500-character window that was a quality wobble. Once `triage` cut
+the window to 160 characters and made it the sole basis for rejection,
+it meant an **irreproducible rejection**, which `rejected.md` then
+entrenched for every later revision.
 
-There was a second, related error of ordering. `evidence` scored its
-windows properly by distinct-term coverage; `triage` inherited the
-arbitrary snippet. The stage whose decision *cannot be undone* was
-reading the worse evidence, and the stage that only ever runs on
-candidates already accepted got the better machinery. `search` and
-`evidence` share one deterministic, best-covering chooser. It is the
-part of this work that outlived the split.
+The ordering was also wrong. `evidence` scored its windows by
+distinct-term coverage while `triage` inherited the arbitrary snippet,
+so the stage whose decision cannot be undone read the worse evidence.
+`search` and `evidence` now share one deterministic, best-covering
+chooser, the part of this work that outlived the split.
 
-Two lessons worth keeping, independent of two-stage:
+Two lessons worth keeping:
 
 - **Shrinking a window promotes the quality of window selection from a
-  nicety to a correctness property.** The bug predated this work and sat
-  in `search()` on `main` for everyone; making the window smaller is what
-  made it matter.
+  nicety to a correctness property.** The bug had been in `search()` for
+  every caller; the smaller window made it matter.
 - **Put the better machinery under the irreversible decision.** The
-  instinct is to spend care on the thing you keep. The thing you discard
-  is where a mistake cannot be recovered.
+  thing you discard is where a mistake cannot be recovered.
 
 ## ⚠ Why it does not generalise across genres
 
 Two-stage was designed against `survey-writer`'s profile (over-fetch at
-`k=15`, keep about three), and its saving is conditional on that shape.
+`k=15`, keep about three).
 
 | Genre | Citekeys in the measured example | Fit | Dominant problem |
 | --- | --- | --- | --- |
@@ -166,94 +126,71 @@ Two-stage was designed against `survey-writer`'s profile (over-fetch at
 | `thesis-chapter-writer` | 26 | Mixed | Discards the sources that qualify an argument |
 | `deep-research` | 11 | **Worst** | Solves a problem it does not have; breaks one it does |
 
-The counts are from the example drafts measured when this was decided,
-not from today's sample project. The argument rests on each genre's
-citation profile rather than on any one file.
+The counts are from the example drafts measured at the time; the
+argument rests on each genre's citation profile, not on any one file.
 
-**`tutorial-writer`** cites only in a closing "Where to go next"
-section: one to three pointers. The machinery is overhead against a
-saving of a few hundred characters, on a skill whose stated virtue is a
-single clean path. Its actual bottleneck is verifying the lesson runs,
-which retrieval does not touch.
+**`tutorial-writer`** cites one to three pointers in a closing section.
+The machinery is overhead against a saving of a few hundred characters;
+its real bottleneck is verifying the lesson runs.
 
-**`textbook-chapter-writer`** cites for motivation: the "this is a real
-problem people care about" claim, which is what an abstract states, so a
-short window is already sufficient. It is the least harmed and the
-least helped, since the saving is noise against a handful of citations.
+**`textbook-chapter-writer`** cites for motivation, which an abstract
+states, so a short window already suffices. It is the least harmed and
+the least helped.
 
-**`survey-writer`** is the genre it fits. The specific exposure is the
-gap analysis and the comparison table: a false rejection converts covered
-ground into a *reported gap*, which is a wrong claim in the output rather
-than a missing one.
+**`survey-writer`** is the genre it fits. Its exposure is the gap
+analysis and comparison table: a false rejection turns covered ground
+into a *reported gap*, a wrong claim rather than a missing one.
 
-**`thesis-chapter-writer`** builds an argument tied to a research
-question, so it needs sources weighed against each other, including the
-ones that complicate the claim. Those qualifications live in discussion
-and limitations sections. Triage favours sources that state their
-position early, which biases a chapter toward agreement and strengthens
-its argument without notice by discarding the sources that push back.
+**`thesis-chapter-writer`** needs the sources that complicate its
+argument, and those qualifications live in discussion and limitations
+sections. Triage favours sources that state their position early, which
+quietly biases a chapter toward agreement.
 
-**`deep-research`** is covered in its own section below.
+**`deep-research`** has [its own section](#-why-deep-research-keeps-the-boundary-alone).
 
 ## ❓ Was it worth building at all?
 
-The split was not worth it, and most of what was built alongside it
-was. Those are separable, and conflating them is what made the question
-hard to answer.
+The split was not worth it; most of what was built alongside it was.
 
-What is worth keeping whether or not retrieval is split in two:
+Kept, independent of any split:
 
 - **The window chooser.** `_windows` is anchored on every occurrence of
   every term, scored by distinct-term coverage, de-overlapped and
-  deterministic. It replaced a snippet that was both arbitrary and
-  irreproducible, and it serves one-stage `search()` too. Every
-  caller in the repository is better off, including callers that never
-  triage.
+  deterministic. It serves one-stage `search()` too.
 - **The retrieval CLI.** `python -m chitragupta.draft retrieve` replaced
-  `python -c "from chitragupta import retrieval; ..."` one-liners whose output
-  shape was whatever each skill's author happened to write, and which had
-  nowhere to hang a flag.
+  ad-hoc `python -c` one-liners whose output shape varied per skill and
+  which had nowhere to hang a flag.
 - **`evidence` as a command.** "Show me the passages of this paper that
-  bear on this query" is a useful operation on its own, for a drafter
-  checking a claim, for a reviser, or for a human. It does not need a triage
-  stage in front of it.
-- **`--log` and `retrieval.md`.** Measurement is what turns the estimates
-  in this document into numbers, and a still-open issue tracks doing so.
-  Without it, the break-even claim stays an argument forever.
+  bear on this query" is useful on its own, without a triage stage.
+- **`--log` and `retrieval.md`.** Measurement is what would turn the
+  estimates here into numbers; a still-open issue tracks doing so.
 
-What is *not* carrying its weight:
+Not carrying its weight:
 
 - **`triage` as the default drafting path.** Its saving is conditional,
-  narrow, unmeasured, and applied cleanly to one of the five drafting
-  genres that existed when it was weighed. It
-  buys an estimated 20% of one cost pool in the best case, and costs 60%
-  more in the plausible bad case. Against that it introduces an
-  irreversible, entrenched decision made on a third of the evidence, and
-  doubles the retrieval instructions in every skill that adopts it.
+  unmeasured, and fits one of the five drafting genres. It buys an
+  estimated 20% of one cost pool at best and costs 60% more in the
+  plausible bad case, while adding an irreversible, entrenched decision
+  made on a third of the evidence and doubling the retrieval
+  instructions in every skill that adopts it.
 
-The split was removed before merging. Keeping it as an available
-mode was considered and rejected in turn: an option nobody defaults to is
-an option nobody tests, its presence would keep inviting the
-"light/thorough" toggle that
+The split was removed before merging. Keeping it as an optional mode was
+also rejected: an option nobody defaults to is an option nobody tests,
+it would keep inviting the "light/thorough" toggle
 [the configuration section](#-should-any-of-this-be-configurable) argues
-against, and it is cheap to reinstate from this document if that still-open
-measurement issue ever finds a case for it. `search()` plus the subagent
-boundary is the drafting path.
+against, and it is cheap to reinstate from this page if measurement
+ever finds a case for it.
 
-Two smaller things also came out of building it. The
-non-determinism bug was found only because shrinking the window made it
-load-bearing; it had been shipping in `search()` for every caller. And
-the arithmetic table above exists because an earlier version of the
-defaults (3 windows of 700 characters) lost to one-stage in *every*
-scenario and nobody had checked. No test pins that arithmetic: it went
-with the `triage` path, and `chitragupta/retrieval_cli.py`'s "a lookup
-rather than a mandatory stage" comment points back here.
+The arithmetic table above exists because an earlier default (3 windows
+of 700 characters) lost to one-stage in *every* scenario and nobody had
+checked. No test pins that arithmetic: it went with the `triage` path,
+and `chitragupta/retrieval_cli.py`'s "a lookup rather than a mandatory
+stage" comment points back here.
 
 ## ✍ Recording how a rejection was made
 
-`rejected.md` records *that* a candidate was turned down and
-*why*, but not *on what evidence*. Those differ by nearly an order of
-magnitude:
+`rejected.md` records *that* a candidate was turned down and *why*, but
+not *on what evidence*. Those differ by nearly an order of magnitude:
 
 | Rejection made at | Evidence behind it | Invalidated by |
 | --- | --- | --- |
@@ -262,155 +199,112 @@ magnitude:
 | one-stage `search` | ~500 characters | nothing |
 | **evidence** | ~1,200 characters, two query-scored passages | the claim changing |
 
-A scope rejection is permanently valid until the scope moves, and
-re-fetching it is pure waste. A triage rejection is the weakest judgment
-the system could make, and was indistinguishable from the strongest.
+Recording the stage would let `draft-reviser` apply a tiered rule: never
+re-fetch a scope rejection (re-read `scope.md`), trust an evidence
+rejection, and **re-check triage rejections when the change touches that
+sub-theme**. It would also let a gap analysis say honestly how many
+candidates were ruled out unread, and give `dossier status` a health
+signal.
 
-Recording the stage would let `draft-reviser` apply a tiered rule instead
-of a flat one: never re-fetch a scope rejection (re-read `scope.md`
-instead), trust an evidence rejection, and **re-check triage rejections
-when the change being made touches that sub-theme**. Revision stays cheap
-by default and gets careful where it is risky. It would also let
-a survey's gap analysis be honest ("12 of 19 candidates were ruled out
-on a 160-character window and never read" is a real caveat on a claimed
-gap), and give `dossier status` a health signal worth printing.
+The tension is who writes the label. A model can fill one more column
+in wrong, and a wrong label is worse than none because it is trusted.
+The alternatives are to **derive** it by joining `rejected.md` to
+`retrieval.md` on the query (mechanical, but joining on free text is
+fragile), or to **have the tool write it** via a `dossier reject`
+subcommand (most reliable, but it trades away the "Markdown a human can
+freely edit" property the dossier rests on).
 
-The design tension is who writes the label. A model filling in one more
-column can fill it in wrong, and a wrong label is worse than none because
-it is trusted. Two alternatives: **derive** it by joining `rejected.md`
-to `retrieval.md` on the query that surfaced the candidate (mechanical,
-but joining on free text is fragile), or **have the tool write it** via a
-`dossier reject` subcommand (most reliable, but trades away the
-"Markdown a human can freely edit" property the dossier rests on).
-
-**Unbuilt.** With `triage` removed, the weakest tier in the table above
-has no producer. What remains is the gap between a scope rejection and
-an `evidence` rejection. A coarser mechanism covers part of it at no
-cost: the drift sweep's `reconsider` list
-re-surfaces a declined paper *with its reason* whenever the dossier's
-queries still reach it, and leaves the judgment to a reader. That covers
-the "re-check when the change touches that sub-theme" half without
-anyone having to label a stage. The stage column remains the better
-answer for an honest gap analysis, and is blocked on the question of who
-writes it.
+**Unbuilt.** With `triage` removed, the weakest tier has no producer.
+The drift sweep's `reconsider` list covers the "re-check when the change
+touches that sub-theme" half at no cost. The stage column remains the
+better answer for an honest gap analysis, and is blocked on who writes
+it.
 
 ## 🤖 Why deep-research keeps the boundary alone
 
-`deep-research` is the worst fit for the split, for reasons that are
-independent of each other.
+`deep-research` is the worst fit for the split, for four independent
+reasons.
 
 **It has already paid for the mechanism that matters.** Its interviewers
-run in subagents, so everything they read is already one-shot rather than
-orchestrator-resident. Two-stage inside a subagent optimises the cheap
-pool. Meanwhile it adds cost the boundary was buying out: each `evidence`
-call is a separate process (ledger open, index read), and at standard
-depth (6 personas x 3 rounds x up to 3 reformulations, roughly 54
-triage calls), five survivors each means on the order of 270 further
-process starts. Each is also a *turn* inside a subagent with its own
-context budget, so more turns means more chance it exhausts context or
-drifts before producing its packet.
+run in subagents, so what they read is already one-shot. Two-stage
+inside a subagent optimises the cheap pool while adding cost: at
+standard depth (6 personas x 3 rounds x up to 3 reformulations, roughly
+54 triage calls), five survivors each means on the order of 270 further
+process starts, each also a turn inside a subagent's own context budget.
 
 **Contradiction mapping needs the disagreement that triage discards.**
-Finding where sources conflict is the skill's purpose, and
-disagreement is stated in discussion and limitations sections, not
-near a keyword hit. Best-covering-the-query-terms is still not "where
-this paper qualifies its claim". A paper whose abstract agrees and whose
-discussion dissents is either kept for the wrong reason or dropped before
-anyone reads the dissent.
+Disagreement is stated in discussion and limitations sections, not near
+a keyword hit. A paper whose abstract agrees and whose discussion
+dissents is kept for the wrong reason or dropped unread.
 
-**It turns honest findings into artifacts of the screen.** The skill is
-told that "no appropriate answer can be formulated from this corpus" is a
-valid output, and it reports a blind spot and thin-coverage areas. Under
-hard triage those statements silently mean "nothing survived a
-160-character screen", a much weaker claim presented as a strong one,
-which makes the report untruthful as well as inefficient.
+**It turns honest findings into artifacts of the screen.** Under hard
+triage, "no appropriate answer can be formulated from this corpus" and a
+reported blind spot silently mean "nothing survived a 160-character
+screen", a weak claim presented as a strong one.
 
 **Persona diversity is the method.** STORM's measured gain comes from
-perspectives finding *different* things. "Reject hard at triage" is a
-uniform pressure across all six personas, narrowing each toward the same
-high-scoring core, which the multi-perspective design exists to
-prevent.
+perspectives finding *different* things. "Reject hard at triage" pushes
+all six personas toward the same high-scoring core.
 
-The right way to cut `deep-research`'s cost is where it spends: the interview
-packets held resident across Phases 3-7, not the retrieval inside Phase 2. The
-residency itself cannot be undone from inside a run, so what `dossier brief`
-collects is the *re-emission* of those packets into four dispatch prompts, in
-the output pool.
-See
-[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md#-what-the-dossier-actually-recovers).
-It does not
-reopen the case for triage: the reads this section is about still happen inside
-subagents, where they are billed once.
+The place to cut `deep-research`'s cost is the interview packets held
+resident across Phases 3-7, not the retrieval inside Phase 2. What
+`dossier brief` collects is the *re-emission* of those packets into four
+dispatch prompts
+([TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md#-what-the-dossier-actually-recovers)).
+That does not reopen the case for triage: these reads still happen
+inside subagents, where they are billed once.
 
 ## ⚙ Should any of this be configurable?
 
-There is precedent for judgment thresholds in `config.toml`:
-`PROVENANCE_WEAK_SCORE` and `PROVENANCE_GOOD_SCORE` are two. So
-the instinct to move `160`, `500`, `600` and `2` there is reasonable. It
-is still the wrong call, for four reasons.
+`PROVENANCE_WEAK_SCORE` and `PROVENANCE_GOOD_SCORE` are precedent for
+judgment thresholds in `config.toml`, so moving `160`, `500`, `600` and
+`2` there is tempting. It is the wrong call, for four reasons.
 
 **They are not independent knobs.** The break-even is a *function* of
 `TRIAGE_CHARS`, `EVIDENCE_CHARS`, `EVIDENCE_WINDOWS` and `k` together.
-Exposing them separately invites combinations that silently invert the
-design's purpose, as the 3-windows-of-700 default did. No test pins the
-documented arithmetic, and a config value could not be pinned by one
-anyway.
+Separate settings invite combinations that silently invert the design,
+as the 3-windows-of-700 default did, and a config value could not be
+pinned by a test.
 
 **The flexibility already exists at a better granularity.** `--chars`,
-`--windows` and `--k` are per-call: explicit at the call site, visible in
-`retrieval.md`, and not silently global. Config would make the same
-choice *invisible*.
+`--windows` and `--k` are per-call, explicit at the call site and
+visible in `retrieval.md`. Config would make the same choice invisible.
 
 **`config.toml` is gitignored per-host data.** A dossier's rejections
-would then depend on a setting recorded nowhere and differing per
-machine. This repository guards against that; see
-[ARCHITECTURE.md](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not)
-and the `bench/repro_check.py` work that found two runs of the *same*
-configuration are not exempt.
+would depend on a setting recorded nowhere and differing per machine;
+see
+[ARCHITECTURE.md](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
 
 **One global toggle re-creates the mistake.** The right regime is
-genre-dependent. A single value every skill reads is one-size-fits-all
-again.
+genre-dependent.
 
 ### 🔀 On switching regimes between runs
 
-The two-stage read is removed, so this is not a live proposal. The
-argument applies to *any* future setting that changes how much evidence
-a rejection rests on.
+This applies to *any* future setting that changes how much evidence a
+rejection rests on.
 
-The appealing version of this is a dial: a light revision uses two
-stages, a thorough one uses a single stage. That has the economics
-backwards: one-stage is a flat 7,500 characters; two-stage at three
-survivors is 6,000. Two-stage is cheap *when you reject hard* and
-expensive when you do not, and "thorough" means keeping more survivors,
-which makes it cost more. A
-boolean labelled light/thorough would mislabel its own cost model. The
-dial would be better as a *depth preset*, the shape
-`deep-research` already uses (`quick`/`standard`/`deep`), where one name
-moves several parameters coherently.
+A light/thorough dial has the economics backwards: two-stage is cheap
+only when you reject hard, and "thorough" means keeping more survivors,
+which costs more than one-stage's flat 7,500 characters. A dial would be
+better as a *depth preset* like `deep-research`'s
+`quick`/`standard`/`deep`, where one name moves several parameters
+coherently.
 
-The stronger objection is what switching does to the dossier:
-
-**A mixed dossier ratchets downward, and the weakest setting wins
-permanently.** `rejected.md` accumulates across runs and is trusted by
-later revisions. Run one light pass and its 160-character rejections sit
-in the file forever; a later thorough revision reads them and skips
-re-judging. So a cheap run's decisions contaminate every careful run that
-follows. Rejections are sticky and acceptances are not, so the mixture
-does not average; it degrades to the least careful setting ever used.
-
-That makes [recording the stage](#-recording-how-a-rejection-was-made) a
-prerequisite for configurability, not a companion feature. It
-also destroys the comparability `retrieval.md` exists to provide: if the
-regime varies per run and is not recorded, its totals cannot distinguish
-a cheap run from a cheap setting.
+The stronger objection: **a mixed dossier ratchets downward, and the
+weakest setting wins permanently.** `rejected.md` accumulates across
+runs and is trusted by later revisions, so one light pass's
+160-character rejections are skipped by every careful run that follows.
+Rejections are sticky and acceptances are not, so the mixture degrades
+to the least careful setting ever used. That makes
+[recording the stage](#-recording-how-a-rejection-was-made) a
+prerequisite for configurability. Without it, `retrieval.md`'s totals
+also cannot distinguish a cheap run from a cheap setting.
 
 **Recommendation.** Do not add the four numbers to config. If a dial is
 wanted, add named profiles (`thorough` = one-stage at 500; `frugal` =
-triage/evidence) chosen *per genre by default* and overridable per
-invocation, and land the stage column first, so a dossier can say which
-regime produced each entry. Revisit once the still-open measurement
-issue has established whether the window sizes matter on a real corpus.
+triage/evidence) chosen per genre by default and overridable per
+invocation, and land the stage column first. Revisit once measurement
+has shown whether the window sizes matter on a real corpus.
 
 ## ⚖ What was decided
 
@@ -420,9 +314,9 @@ issue has established whether the window sizes matter on a real corpus.
   rejection decision is reproducible and reads the best-covering passage.
 - **The broad rollout is cancelled.** The issue proposing to "wire
   the remaining four genre skills to the dossier *and* two-stage
-  retrieval" is closed as not planned: it bundled a good idea with a bad
-  one. The dossier half shipped on its own: every drafting genre skill
-  opens a dossier with `dossier init`, which `draft-reviser` reads.
+  retrieval" is closed as not planned. The dossier half shipped on its
+  own: every drafting genre skill opens a dossier with `dossier init`,
+  which `draft-reviser` reads.
 - **`triage` is removed**, along with `TRIAGE_CHARS`, its CLI subcommand,
   and the reject-hard instruction in every skill. `search()` plus the
   subagent boundary is the drafting path. `evidence` remains as a lookup

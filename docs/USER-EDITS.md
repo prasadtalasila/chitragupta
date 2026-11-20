@@ -2,112 +2,72 @@
 
 Status: **reference.**
 
-**Written for** an author who wants to open `content/drafts/<slug>.md`
-in their own editor (to fix a sentence, tighten a paragraph, or
-reword something they already know how they want phrased) instead of
-asking a skill to do it, and then wants the pipeline to pick the
-edit up cleanly on the next revision. **Assumed:** you already have a
-finished, gated draft with a dossier under `content/dossiers/`
+**Written for** an author who wants to edit `content/drafts/<slug>.md`
+in their own editor instead of asking a skill, and then have the
+pipeline pick the edit up cleanly on the next revision. **Assumed:** you
+already have a finished, gated draft with a dossier under
+`content/dossiers/`
 ([WRITING-PROCESS.md](WRITING-PROCESS.md#-phase-2-write-a-first-draft)
-if you don't yet). **Not covered here:** the mechanism this rests on
+if you don't yet). **Not covered here:** the draft fingerprint this
+rests on and the drift classes it checks
 ([DOSSIER.md](DOSSIER.md#-the-draft-fingerprint-feature-roadmapmds-e3)),
-or asking a skill to make the change for you instead of doing it by hand
+or asking a skill to make the change for you
 ([WRITING-PROCESS.md](WRITING-PROCESS.md#-phase-3-revise-a-draft)).
 
-Related reading:
-
-- [WRITING-PROCESS.md](WRITING-PROCESS.md#-handing-a-hand-edited-draft-back-for-the-next-iteration)
-  has the short version of this page, inside the full write/revise
-  walkthrough.
-- [DOSSIER.md](DOSSIER.md#-the-draft-fingerprint-feature-roadmapmds-e3)
-  has the draft fingerprint's format and the five drift classes it checks,
-  which this page walks through from the user's side.
-- [DRAFT-ITERATION.md](DRAFT-ITERATION.md#-revising-a-draft) has the
-  reasoning behind `draft-reviser`'s loop, for whoever is changing the
-  drafting layer itself rather than using it.
-- [WRITING-STANDARDS.md](WRITING-STANDARDS.md) has the prose, figure,
-  table and equation rules, which bind a hand edit as much as a skill's
-  own edit.
-
-## 🧭 Table of contents
-
-- [Why hand-edit at all](#-why-hand-edit-at-all)
-- [Step 1: edit the file, at the same path](#-step-1-edit-the-file-at-the-same-path)
-- [Step 2: leave the dossier alone](#-step-2-leave-the-dossier-alone)
-- [Step 3: hand it back](#-step-3-hand-it-back)
-- [What `draft-reviser` finds, and offers one at a time](#-what-draft-reviser-finds-and-offers-one-at-a-time)
-- [The one thing it offers separately: re-grounding your new wording](#-the-one-thing-it-offers-separately-re-grounding-your-new-wording)
-- [Edit by edit: what the dossier records and what notices](#-edit-by-edit-what-the-dossier-records-and-what-notices)
-- [Traps specific to a hand edit](#-traps-specific-to-a-hand-edit)
-- [What this is not](#-what-this-is-not)
-- [Worked example](#-worked-example)
+[WRITING-PROCESS.md](WRITING-PROCESS.md#-handing-a-hand-edited-draft-back-for-the-next-iteration)
+has the short version of this page.
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md) binds a hand edit as much
+as a skill's own edit.
 
 ## 🎯 Why hand-edit at all
 
-Nothing about this pipeline requires you to route every change through
-a skill. Asking `draft-reviser` for "shorten the third paragraph" costs
-a model turn and, if the change opens new ground, a retrieval call. If
-you already know the three words you want changed, opening the file and
-changing them is cheaper. No drafting-layer step on plain
-prose needs a skill to perform it.
+Asking `draft-reviser` for a change costs a model turn and sometimes a
+retrieval call. If you already know the three words you want changed,
+changing them yourself is cheaper; no step on plain prose needs a skill.
 
-What you give up by doing it yourself is the bookkeeping a skill does as
-it edits: nothing updates `sections.md`, `evidence.md` or `steering.md`
-for you, and nothing tells the citation gate your edit happened until
-you ask for something next. The rest of this page is about that
-bookkeeping. You do not have to restore it by hand, but knowing what is
-out of sync keeps the *next* revision cheap.
+What you give up is the bookkeeping a skill does as it edits: nothing
+updates `sections.md`, `evidence.md` or `steering.md` for you. You do
+not have to restore it by hand, but knowing what is out of sync keeps
+the *next* revision cheap.
 
 ## ✅ Step 1: edit the file, at the same path
 
 Open `content/drafts/<slug>.md` and change it directly, with whatever
-editor you like. Two constraints apply, and both matter:
+editor you like.
 
-- **Keep the path.** There is no `dossier rename`. Saving the same
-  content under a different filename orphans its dossier:
-  `content/dossiers/<the old path minus its suffix>/` still exists, but
-  nothing will ever find it from the new path again, and a
-  fresh `dossier init` on the new path starts from nothing.
-- **Ordinary prose changes are unconditionally safe.** Nothing checks
-  your wording as you type, and nothing needs to. The one mechanical
-  gate in this pipeline is `citation_gate`, and it runs on the file you
-  saved regardless of who wrote the last sentence.
+- **Keep the path.** There is no `dossier rename`. Saving under a
+  different filename orphans the dossier at
+  `content/dossiers/<the old path minus its suffix>/`, and a fresh
+  `dossier init` on the new path starts from nothing.
+- **Ordinary prose changes are unconditionally safe.** The one
+  mechanical gate, `citation_gate`, runs on the file you saved
+  regardless of who wrote the last sentence.
 
-Nothing runs automatically when you save. You do not have to open a
-terminal, run a command, or tell the pipeline anything at this point;
-the next section covers when that changes.
+Nothing runs automatically when you save, and you need not tell the
+pipeline anything yet.
 
 ## 🗂 Step 2: leave the dossier alone
 
 Do not hand-edit anything under `content/dossiers/<slug>/`:
 `evidence.md`, `rejected.md`, `sections.md`, `scope.md`,
 `steering.md`, `retrieval.md`, `revisions.md`, and `math.md` or
-`outline.md` where the draft has them. Three reasons, in
-order of how often they bite:
+`outline.md` where the draft has them:
 
 - **A fabricated `evidence.md` block is the same failure class as a
-  fabricated citekey.** Writing a `claim:`/`quote:` pair for a source
-  you have not actually re-checked against `content/ledger.sqlite` is
-  exactly what [CLAUDE.md](../CLAUDE.md)'s one rule exists to prevent,
-  even though nothing enforces it the way `citation_gate` enforces a
-  citekey.
-- **The bookkeeping is generated, and hand-writing it just gets
-  overwritten or contradicted.** `sections.md` is rebuilt wholesale by
-  `python -m chitragupta.draft dossier sections <draft> --citekeys
-  --write`; a hand edit to it survives only until the next run.
-- **It's the wrong layer for what you're trying to say.** If you want to
-  record *why* you made a change, that belongs in `steering.md`, and the
-  right way to get it there is to say it in the request you hand the
-  draft back with (Step 3), not to type an entry into the file
-  yourself. `draft-reviser` appends it, dated, in your own words.
-
-The only file this page asks you to touch is the draft itself.
+  fabricated citekey.** A `claim:`/`quote:` pair for a source you have
+  not re-checked is what [CLAUDE.md](../CLAUDE.md)'s one rule exists to
+  prevent, even though nothing enforces it the way `citation_gate`
+  enforces a citekey.
+- **The bookkeeping is generated.** `sections.md` is rebuilt wholesale
+  by `python -m chitragupta.draft dossier sections <draft> --citekeys
+  --write`, so a hand edit to it survives only until the next run.
+- **It's the wrong layer.** To record *why* you made a change, say it
+  in the request you hand the draft back with (Step 3), and
+  `draft-reviser` appends it to `steering.md`, dated, in your words.
 
 ## 🔁 Step 3: hand it back
 
-You don't need a special phrase. Ask for whatever you actually want
-next, the same way you would for a change you hadn't already started by
-hand:
+You don't need a special phrase. Ask for whatever you want next:
 
 - "I tightened the intro. Can you check the rest reads consistently
   with it?"
@@ -115,26 +75,20 @@ hand:
 - "I reworded the claim about latency in section 2. Can you find a
   source for the new number?"
 
-Or run the status check yourself first, if you want to see what the
-pipeline noticed before asking for anything:
+Or run the status check yourself first:
 
 ```bash
 python -m chitragupta.draft dossier status content/drafts/<slug>.md
 ```
 
-Either way, the first thing that happens, inside `draft-reviser` or
-in the output of that command, is a comparison between a digest of
-the draft's current text and the one recorded at the last
-`dossier stamp`. The rest of this page walks through that comparison.
+Either way, the first step compares a digest of the draft's current
+text with the one recorded at the last `dossier stamp`.
 
 ## 🔍 What `draft-reviser` finds, and offers one at a time
 
-A changed digest by itself only means *the draft moved since it was last
-stamped*. Most hand edits are prose a reviser has no reason to act on,
-so a changed digest alone is not a problem, and `status` doesn't
-chase it as one. It gates five more specific checks
-([DOSSIER.md](DOSSIER.md#-the-draft-fingerprint-feature-roadmapmds-e3)
-has the full format):
+A changed digest only means *the draft moved since it was last
+stamped*, which is not a problem by itself. It gates five more specific
+checks:
 
 | What changed by hand | What `status` reports | What `draft-reviser` offers |
 | --- | --- | --- |
@@ -145,64 +99,51 @@ has the full format):
 | You moved a section or subsection without renaming it | nothing: the check compares the set of heading titles, not their order | nothing is needed; the same command puts the `sections.md` rows back in draft order, and each citekey follows the lines it moved with |
 | You reworded or deleted text `math.md` maps to LaTeX | a `math.md` row appearing nowhere in the draft | update the row's key to the new span text, or drop the row if the quantity was cut |
 
-Three things about how these are offered:
+How these are offered:
 
-- **One at a time, in the reviser's own words**, and it acts only on
-  what you agree to. It never applies a repair unasked, and it never
-  blocks the rest of your revision on a finding you haven't answered
-  yet. You can say "leave that one, just do what I originally asked"
-  and it will.
-- **`not recorded` is not the same as `CHANGED`.** If the draft has
-  never been stamped, `status` says so once and doesn't treat it as
-  drift to chase, because there is nothing to compare against yet. It
-  runs none of the five checks either, so for an unstamped draft
-  `python -m chitragupta.review agenda <draft>` is what still notices a
-  removed citation: its `recorded-but-uncited` item needs no stamp.
+- **One at a time, in the reviser's own words**, acting only on what you
+  agree to. It never applies a repair unasked and never blocks the rest
+  of your revision on an unanswered finding.
+- **`not recorded` is not the same as `CHANGED`.** An unstamped draft
+  has nothing to compare against, so `status` says so once and runs none
+  of the five checks. `python -m chitragupta.review agenda <draft>`
+  still notices a removed citation: its `recorded-but-uncited` item needs
+  no stamp.
 - **`dossier status --json` leaves the fingerprint out.** It reports
   corpus drift only. Read the plain-text output for the five findings.
 
-Nothing here is a gate. A hand-edited draft that's never handed back for
-a stamp just makes the *next* revision a little less efficient (the
-skill re-derives what it would otherwise have read straight off
-`sections.md`). It cannot make the draft wrong, because
-`python -m chitragupta.draft gate` still stands between any draft and
-its citekeys, on every render, regardless of how the draft got to its
-current state.
+Nothing here is a gate. A hand-edited draft never re-stamped only makes
+the next revision less efficient. It cannot make the draft wrong, because
+`python -m chitragupta.draft gate` still checks its citekeys on every
+render.
 
 ## 🎯 The one thing it offers separately: re-grounding your new wording
 
-If the section you hand-edited has a `queries:` line declared for it in
-`outline.md`, `draft-reviser` makes a second, separate offer once the
-five findings above are settled, never folded into the same prompt as
-those:
+If the section you hand-edited has a `queries:` line in `outline.md`,
+`draft-reviser` makes a second, separate offer once the five findings
+are settled:
 
 > *"Since you hand-edited `<heading>`, I can also re-run that section's
 > own declared query (currently `<query, shown to you verbatim>`)
 > with your new wording appended: ITER-RETGEN with you in the generation
 > slot, not a model. Want me to?"*
 
-Accepting runs the section's query a second time, `--y-prev` set to your
-new prose (the retrieval CLI bounds this at 1500 characters on a word
-boundary and reports if anything was cut), merges the two rounds by
-citekey, and caps back to `--k`. This is
+Accepting runs the section's query a second time with `--y-prev` set
+to your new prose (bounded at 1500 characters on a word boundary, with a
+report if anything was cut), merges the two rounds by citekey, and caps
+back to `--k`. This is
 [ITER-RETGEN](https://github.com/prasadtalasila/chitragupta/blob/main/docs/RAG.md)
-(Shao et al., *Findings of EMNLP 2023*) with a
-person standing in the generation slot instead of a model. It is the
-same mechanism a skill would use to refine its own draft against feedback,
-running here because *your* rewrite is the feedback.
+(Shao et al., *Findings of EMNLP 2023*) with your rewrite as the
+feedback.
 
-Declining, or having no `outline.md` at all, is the common case:
-`outline.md` is opt-in, most sections have no declared query, and
-`draft-reviser` says so and moves on instead of silently degrading into
-something else. This runs at most once per section per revision session;
-it is two rounds, not a loop.
+Declining, or having no `outline.md`, is the common case, and
+`draft-reviser` says so and moves on. It runs at most once per section
+per revision session: two rounds, not a loop.
 
 ## 🗺 Edit by edit: what the dossier records and what notices
 
-Nothing in the dossier updates itself when you save. A skill or a
-repair command someone runs is the only thing that ever writes it, and
-the table below says which records each kind of edit leaves behind and
-what eventually reports them.
+Only a skill or a repair command writes the dossier. Which records
+each kind of edit leaves behind, and what reports them:
 
 | Your edit | What the dossier records about it | What notices | The repair |
 | --- | --- | --- | --- |
@@ -220,59 +161,43 @@ it does not run on an ordinary draft in `content/drafts/`.
 
 ## ⚠ Traps specific to a hand edit
 
-Everything in [WRITING-STANDARDS.md](WRITING-STANDARDS.md) binds a hand
-edit exactly as hard as it binds a skill's own edit. Typing the change
-yourself relaxes no rule, and nothing mechanical watches for these
-while you type:
+Typing the change yourself relaxes no rule, and nothing watches for
+these while you type:
 
-- **A figure exists twice.** Every figure is a TikZ picture in
-  `figures/<name>.tex` and a plain-ASCII diagram in
-  `figures/<name>.txt`, found from the same `<!-- figure: ... -->`
-  marker. Relabel a box or rename a component in the draft's prose and
-  you've usually also touched what the figure depicts. Update both
-  forms, or the PDF and the Markdown preview silently disagree about the
-  same figure until a reader notices. A panelled figure's letters are
-  part of the pair too: adding or reordering a panel re-letters every
-  panel after it, in both forms.
-- **Table, figure and equation ids don't renumber themselves the way
-  their displayed numbers do.** The renderer assigns every number, so a
-  literal "Table 3" or "Figure 2" typed into your new prose is already
-  wrong the moment another one is inserted above it. Write
-  `<!-- tableref: <id> -->` / `<!-- figureref: <id> -->` instead. What a
-  hand edit can break is the id itself: deleting a table, figure or
-  numbered equation that something else still points at, or copying one
-  into another section along with its id.
-- **These are caught, but only after you hand the draft back.**
-  `python -m chitragupta.draft style` is what surfaces
-  `TableUnreferenced`, `TableUnknownRef`, `TableDuplicateId`,
-  `FigureUnreferenced`, `FigureUnknownRef`, `FigureDuplicateId`,
-  `EquationUnreferenced`, `EquationUnknownRef` and
-  `EquationDuplicateId`, and `python -m chitragupta.draft render` prints
-  the `[math]` warnings. None of it runs while you're editing in your
-  own editor, only once `draft-reviser` (or you, by hand) runs the same
-  commands it would.
-- **A whole-document pass (grammar, dialect, hedging) is still worth
-  asking a skill for instead of doing by hand.** `draft-reviser`'s
-  copy-edit mode reads `scope.md`'s recorded `language:` line so the
-  convention it applies is the one already agreed, and it refuses to let
-  a wording pass silently change a claim
+- **A figure exists twice**, as TikZ in `figures/<name>.tex` and ASCII
+  in `figures/<name>.txt`, found from the same `<!-- figure: ... -->`
+  marker. Relabel a component in the prose and you have usually touched
+  what the figure depicts. Update both forms, or the PDF and the
+  Markdown preview silently disagree. Adding or reordering a panel
+  re-letters every panel after it, in both forms.
+- **Ids don't renumber themselves the way displayed numbers do.** A
+  literal "Table 3" typed into your prose is wrong once another table is
+  inserted above it; write `<!-- tableref: <id> -->` /
+  `<!-- figureref: <id> -->` instead. What a hand edit can break is the
+  id itself: deleting a table, figure or numbered equation something
+  still points at, or copying one along with its id.
+- **These are caught only after you hand the draft back.**
+  `python -m chitragupta.draft style` surfaces `TableUnreferenced`,
+  `TableUnknownRef`, `TableDuplicateId`, `FigureUnreferenced`,
+  `FigureUnknownRef`, `FigureDuplicateId`, `EquationUnreferenced`,
+  `EquationUnknownRef` and `EquationDuplicateId`, and
+  `python -m chitragupta.draft render` prints the `[math]` warnings.
+- **Ask a skill for a whole-document pass (grammar, dialect, hedging).**
+  `draft-reviser`'s copy-edit mode applies `scope.md`'s recorded
+  `language:` line and refuses to let a wording pass silently change a
+  claim
   ([DRAFT-ITERATION.md](DRAFT-ITERATION.md#-the-copy-edit-pass-and-the-entry-it-leaves)).
-  A hand edit has no such guardrail, so it's on you not to let "read
-  better" turn into "claims something new."
+  A hand edit has no such guardrail.
 
 ## 🚫 What this is not
 
-- **Not a way to add a new claim for free.** Typing a new sentence with
-  a fact in it and no citation is exactly what
+- **Not a way to add a new claim for free.** A new uncited fact is what
   [REVIEW.md](REVIEW.md)'s uncited-claim aid and
-  `python -m chitragupta.review agenda` are for catching on the next
-  pass. A hand edit still has to be grounded, even though no skill
-  wrote it.
-- **Not a way to introduce a citekey.** `citation_gate` reads the draft
-  file itself, not who last edited it, and refuses one that was never
-  synced from your own `.bib` export (see [CLAUDE.md](../CLAUDE.md)'s
-  one rule). If the fact you're adding needs a source, ask `draft-reviser`
-  for it instead of typing a citekey you remember from somewhere else.
+  `python -m chitragupta.review agenda` catch on the next pass.
+- **Not a way to introduce a citekey.** `citation_gate` refuses one that
+  was never synced from your own `.bib` export (see
+  [CLAUDE.md](../CLAUDE.md)'s one rule). If the fact needs a source, ask
+  `draft-reviser` for it instead of typing a citekey you remember.
 - **Not a substitute for the gate before presenting.** Whatever you
   changed by hand, run (or have `draft-reviser` run)
   `python -m chitragupta.draft gate`,
@@ -282,10 +207,9 @@ while you type:
 
 ## 🧪 Worked example
 
-You open `content/drafts/dt-overview/survey.md`, reword the topic sentence of
-section 2 so it leads with the claim more directly, and delete every
-citation to a paper you decided doesn't actually support the draft.
-You save the file and nothing else.
+You open `content/drafts/dt-overview/survey.md`, reword the topic
+sentence of section 2, and delete every citation to a paper you decided
+doesn't support the draft. You save the file and nothing else.
 
 Later, you ask: *"I tightened section 2 and cut the factory paper's citations.
 Can you check the rest of the draft still reads consistently?"*
@@ -293,10 +217,9 @@ Can you check the rest of the draft still reads consistently?"*
 `draft-reviser` runs `dossier status`, sees `CHANGED since last stamp`,
 and reports one finding: `sample_dt_factory_2022` has an `evidence.md`
 block with no matching citation in the draft. It offers to prune the
-block. You agree.
-If section 2 has a declared query in `outline.md`, it then offers, once,
-to re-run that query with your new topic sentence as `--y-prev`. You
-decline, because you're confident the paragraph is fine as reworded. It reads
-the rest of the draft for the consistency check you asked for,
-edits nothing else, appends one line to `steering.md` dated today, runs
-the gate, and re-stamps the fingerprint once it passes.
+block. You agree. If section 2 has a declared query in `outline.md`, it
+then offers, once, to re-run that query with your new topic sentence as
+`--y-prev`; you decline. It reads the rest of the draft for the
+consistency check you asked for, edits nothing else, appends one line to
+`steering.md` dated today, runs the gate, and re-stamps the fingerprint
+once it passes.
