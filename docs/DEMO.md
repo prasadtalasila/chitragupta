@@ -68,7 +68,8 @@ command is covered. Three groups of commands are absent on purpose:
 
 ## 🛠 How they were made
 
-Terminal segments: `asciinema` recorded a real shell session (112x32)
+Terminal segments: `asciinema` recorded a real shell session (112x32
+for the video, 80x32 for `demo.svg`)
 against `docs/examples/sample-project`. Installed package resolution was
 shown via `pip install --dry-run`, and everything after that was a real
 `python -m chitragupta.*` invocation. The non-narrative span (the
@@ -93,8 +94,10 @@ The two segments are encoded separately and joined: `demo.mp4` with
 `demo.gif` (`fps=10`, `scale=640`, a single `palettegen`/`paletteuse`
 pass) re-encoded from `demo.mp4`. A segment can be re-recorded alone:
 cut `demo.mp4` on the keyframe where the browser segment starts and
-stream-copy the other half. `demo-webapp.png` is the topic-1 frame of
-the browser capture, and `demo.svg` is the terminal segment only.
+stream-copy the other half. `demo-webapp.png` is a separate still of
+the topic map with topic-1 selected, captured at 1040x600 and twice the
+pixel density so the README can show it near its own size, and
+`demo.svg` is the terminal segment only.
 
 Nothing in either segment touched a real project. The sample project's
 committed drafts, dossiers and reviews were only read; the commands that

@@ -56,12 +56,14 @@ are binaries and never go into git.
 3. **Record.** From the repository root:
 
    ```bash
-   PY=<venv python> asciinema rec --cols 112 --rows 32 --idle-time-limit 2 \
+   PY=<venv python> asciinema rec --cols 80 --rows 32 --idle-time-limit 2 \
      -c 'bash .claude/skills/demo-recorder/scripts/tour.sh' "$OUT/tour.cast"
    ```
 
    Without a terminal of your own, wrap it in `script -qec '...' /dev/null`
-   with `TERM=xterm-256color` set.
+   with `TERM=xterm-256color` set. Keep 80 columns: the README shows
+   `demo.svg` in a column about 830px wide, and a wider terminal is
+   shrunk until its text is smaller than the page's.
 4. **Retime.** Speed up the `pip install` scroll:
 
    ```bash
@@ -79,14 +81,17 @@ are binaries and never go into git.
    ```bash
    NODE_PATH="$(npm root -g)" CHROME_PATH=<chrome> \
      node .claude/skills/demo-recorder/scripts/capture_topic_map.js \
-     docs/examples/sample-project/content/topic_map.html "$OUT/frames"
+     docs/examples/sample-project/content/topic_map.html "$OUT/frames" \
+     "$OUT/demo-webapp.png"
    ffmpeg -y -framerate 10 -i "$OUT/frames/f%04d.png" \
      -c:v libx264 -pix_fmt yuv420p "$OUT/topic-map.mp4"
    ```
 
    It clicks the first five topic dots and opens the hierarchy tree,
    150 frames in all. Fewer means a selector (`#dot-N`, `#treebox`)
-   moved in the viewer: fix the script.
+   moved in the viewer: fix the script. The third argument also writes
+   the README's still, topic-1 selected at 1040x600 and twice the pixel
+   density, which becomes `docs/images/demo-webapp.png`.
 7. **Join.** Bring the GIF to the same size and rate, then concatenate
    and make the WebM:
 

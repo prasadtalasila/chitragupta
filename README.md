@@ -34,14 +34,14 @@ against it. This does the same to citations.
 <img src="docs/images/demo.svg" alt="Animated terminal recording: syncing
 the corpus, discovering its topics, reading a gate-passed draft and its
 dossier, and running the review agenda, against the committed sample
-project." width="760">
+project." width="840">
 </p>
 
 <p align="center">
 <a href="https://github.com/prasadtalasila/chitragupta/blob/main/docs/DEMO.md"
 ><img src="docs/images/demo-webapp.png"
 alt="The offline topic-graph viewer, showing a selected topic's papers
-and neighbours" width="380"></a>
+and neighbours" width="1040"></a>
 <br>
 <sub>The recording above is the terminal half only; <a
 href="https://github.com/prasadtalasila/chitragupta/blob/main/docs/DEMO.md"
@@ -122,7 +122,7 @@ nothing reaches phase 5 without passing phase 4.
             publishing and the advisory review aids are grouped as the
             part the author runs on a finished draft. A failing gate sends
             the draft back to be rewritten."
-       width="100%">
+       width="542">
 </p>
 
 Two properties of the spine alone make the guarantee hold, and both are

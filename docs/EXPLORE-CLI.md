@@ -1,4 +1,4 @@
-# ⌨ Explore the Graph — CLI
+# ⌨ Explore the graph from the CLI
 
 Status: **how-to.**
 

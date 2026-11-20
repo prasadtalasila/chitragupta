@@ -14,9 +14,9 @@ normalisations, which are
 never gating, which are [ARCHITECTURE.md](ARCHITECTURE.md)'s.
 
 A verbatim digest is **a survey written in the sources' words**. It
-has a survey's shape -- a reader and a scope, a framing, one section
+has a survey's shape (a reader and a scope, a framing, one section
 per theme, a comparison table, the disagreements made visible, a gap
-analysis -- and a survey's paragraph, which braids passages from two or
+analysis) and a survey's paragraph, which braids passages from two or
 more papers around what they agree and disagree on. Its body is copied
 exactly from parsed PDFs in the corpus; each copied run ends with a
 citation; there are no quotation marks; equations are typeset; and the
@@ -85,8 +85,8 @@ analysis.
 
 "Copied exactly" means every letter and digit in the source's order.
 The matcher compares letters and digits only and drops the source's
-reference markers, so the drafter cleans the parse's typography --
-spacing, run-together words, math italics, `◦ C` -- without losing a
+reference markers, so the drafter cleans the parse's typography
+(spacing, run-together words, math italics, `◦ C`) without losing a
 match, and typesets the equations a run explains in the house math form
 ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12) from the source's
 `formula` passages. The skill's shared reference,
@@ -169,7 +169,7 @@ Only a run that breaks is split into sentences, and only to show where:
 An undeclared sentence of the drafter's own carries `unquoted-text`
 always, and `unsupported-text` as well when the support test fails, so
 one sentence can be two items; the fraction counts its words once. A
-declared one -- `see`, `own`, a table row -- is checked for support
+declared one (`see`, `own`, a table row) is checked for support
 only, and raises `unsupported-text` or nothing.
 
 `dangling-reference` is listed and counted, and moves no fraction: the

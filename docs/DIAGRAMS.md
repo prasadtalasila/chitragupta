@@ -66,7 +66,7 @@ all the work: phase 1 is the only entrance (citekeys come from your
 BibTeX export and nowhere else), and phase 4 is the only exit, with no arrow
 around it. This is the version in [the README](../README.md#-how-it-works).
 
-The `GATE FAIL` arrow loops back to **drafting**, not to you. A failing
+The `FAIL` arrow loops back to **drafting**, not to you. A failing
 gate is normally invisible: the skill discards the unsupported claim,
 rewrites it and runs the gate again. You only get involved in the rarer
 case where the paper isn't in the corpus yet, and that means going back
@@ -106,38 +106,39 @@ and does not block the pipeline.
     "tertiaryBorderColor": "#D55E00"
   }
 }}%%
-flowchart LR
+flowchart TB
 
-  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Add papers, export<br/>BibTeX + Export Files"]
+  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/>add papers, export BibTeX and files"]
 
-  P1["<b>2 · SYNC</b><br/><i>the corpus layer — deterministic, no LLM</i><br/><br/>read bib → update ledger<br/>→ extract PDF text"]
+  P1["<b>2 · SYNC</b><br/><i>deterministic, no LLM</i><br/>read bib → ledger → PDF text"]
 
-  P2["<b>3 · DRAFT</b><br/><i>the drafting layer — generative</i><br/><br/>Ask a genre skill:<br/><i>“write a survey section on …”</i><br/>only use text from<br/>the parsed corpus"]
+  P2["<b>3 · DRAFT</b><br/><i>a genre skill, generative</i><br/>uses only the parsed corpus"]
 
-  P3{{"<b>4 · VERIFY</b><br/><i>machine-<br/>enforced</i><br/><br/>CITATION GATE"}}
+  P3{{"<b>4 · VERIFY</b><br/>CITATION GATE"}}
 
-  P4["<b>5 · PUBLISH</b><br/><i>as markdown, tex, pdf</i>"]
+  P4["<b>5 · PUBLISH</b><br/><i>markdown, tex, pdf</i>"]
 
-  DOSS[("<b>DOSSIER</b><br/><i>machine-facing working state</i>")]
+  DOSS[("<b>DOSSIER</b><br/><i>working state</i>")]
 
-  REV["<b>REVIEW</b><br/><i>author advisory"]
+  REV["<b>REVIEW</b><br/><i>advisory aids</i>"]
 
   P0 e1@==> P1 e2@==> P2
   e1@{ animate: true }
   e2@{ animate: true }
-  P3 e3@== "CITATION GATE PASS" ==> P4
+  P3 e3@== "PASS" ==> P4
   e3@{ animate: true }
   subgraph LLM
     direction TB
     P2 ==> P3
-    P2 <-. "writes it, then reads it back" .-> DOSS
-    P3 -- "GATE FAIL · <b>loop until it passes</b>" --> P2
+    P2 <-. "writes, reads back" .-> DOSS
+    P3 -- "FAIL · loop until it passes" --> P2
   end
 
   subgraph Author Proofs
-    P4 -. "run it on a finished draft" .-> REV
-    REV -. "a finding you act on —<br/>revise from the dossier, don't re-draft" .-> P2
+    direction TB
+    P4 -. "on a finished draft" .-> REV
   end
+  REV -. "a finding: revise from the dossier" .-> P2
 
   class P0 flow
   class P1 flow
@@ -1324,7 +1325,7 @@ one into a slide deck or a paper without copying it out of this document:
 | Path | What it is |
 | --- | --- |
 | `docs/diagrams/<name>.mmd` | the Mermaid source, with a title line |
-| `docs/diagrams/svg/<name>.svg` | for the web: GitHub, the docs site, a browser. ~1900px wide on white |
+| `docs/diagrams/svg/<name>.svg` | for the web: GitHub, the docs site, a browser. On white, at the diagram's own width, laid out on a 1900px page |
 | `docs/diagrams/pdf/<name>.pdf` | for a paper or slides: vector, one page cropped to the diagram, text selectable |
 
 **Use the SVG only where a browser draws it.** Mermaid writes a

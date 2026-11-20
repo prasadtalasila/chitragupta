@@ -1,4 +1,4 @@
-# 🕸 Explore the Graph — Web
+# 🕸 Explore the graph in the web app
 
 Status: **how-to.**
 

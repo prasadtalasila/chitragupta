@@ -262,7 +262,7 @@ If *every* card is full the list is empty and the run parses on the CPU,
 measured 4.7x slower with OCR off and 1.8x with it on (OCR is CPU work
 either way, so it narrows the gap). The run is slower, but it finishes.
 
-### 🛟 CUDA-OOM fallback — `_extract_docling()`
+### 🛟 CUDA-OOM fallback in `_extract_docling()`
 
 The backstop for what `usable_devices()` can't see: another process can
 fill a card in the second between the check and the model load. A parse
@@ -286,7 +286,7 @@ by hand since nvidia-smi ignores it and torch does not. Falls back to
 torch only where the driver's CLI is absent, so that the question is
 answered without importing torch into the parent.
 
-### ⏱ `_as_they_land()` — `chitragupta/sync_pool.py`
+### ⏱ `_as_they_land()` in `chitragupta/sync_pool.py`
 
 Yields futures as they complete, abandoning the run if the **whole pool**
 goes silent for `[parser].stall_timeout`.
