@@ -17,118 +17,60 @@ title: "The full workflow — every module, every artifact"
 }}%%
 flowchart TB
 
-  %% ─────────────── 1 · CURATE ───────────────
-  subgraph S0["<b>1 · CURATE</b> — you, in Zotero. The pipeline never fetches a paper."]
-    direction TB
-    ZOT[("Zotero library")]
-    BIB["<b>papers/bibliography.bib</b><br/><i>the source of truth for citekeys</i>"]
-    ATT[/"<b>papers/bibliography/files/&lt;id&gt;/*.pdf</b><br/><small>the companion folder Zotero writes beside the .bib —<br/>never rename it, the <code>file</code> fields are relative paths</small>"/]
-    ZOT -- "Export · BibTeX + Export Files" --> BIB
-    ZOT --> ATT
-  end
+    ZOT[("<b>1 · CURATE</b><br/>your Zotero library")]
+    BIB["<b>papers/bibliography.bib</b> + <b>files/</b><br/>the source of truth for citekeys"]
+    ZOT -- "Export, with files" --> BIB
 
-  %% ─────────────── 2 · SYNC ───────────────
-  subgraph S1["<b>2 · SYNC</b> — the corpus layer · deterministic, no LLM, safe to run unattended · <code>chitragupta corpus sync</code> · holds the run lock"]
-    direction TB
-    BR["<b>chitragupta/bib_reader.py</b><br/><small>the only module that reads the .bib</small>"]
-    LED[("<b>content/ledger.sqlite</b><br/><small>one row per citekey: status, bib_fields,<br/>PDF fingerprint — re-parse only what moved</small>")]
-    PT["<b>chitragupta/pdf_text/</b> — extract text<br/><small>backend <code>pdftotext</code> · or <code>docling</code><br/>serial by default; opt-in worker pool</small>"]
-    TXT[/"<b>content/parsed/&lt;citekey&gt;.txt</b>"/]
-    ADV["<i>reported, never fatal:</i><br/>near-duplicates · parse-quality warning · stale citekeys<br/><small>deletion needs <code>--remove-stale</code></small>"]
-    BR --> LED --> PT --> TXT --> ADV
-  end
+    LED[("<b>2 · SYNC</b>, holds the lock<br/><b>content/ledger.sqlite</b><br/>one row per citekey, via <code>bib_reader.py</code>")]
+    PT["<b>pdf_text/</b><br/>pdftotext or docling<br/><i>reports duplicates, stale keys</i>"]
+    TXT["<b>content/parsed/&lt;citekey&gt;.txt</b>"]
+    LED --> PT --> TXT
 
-  %% ─────────────── 3 · RETRIEVE ───────────────
-  subgraph S2["<b>3 · RETRIEVE</b> — the only evidence a writer is given · <b>one ranker or the other, never both</b>"]
-    direction LR
-    XOR{{"which ranker?<br/><small>the genre skill picks</small>"}}
-    BM25["<b>chitragupta/retrieval.py</b> · BM25<br/><small>stdlib keyword overlap, cached term-frequency index.<br/><b>the default every skill starts from</b></small>"]
-    EMB["<b>chitragupta/enrich/embed_index.py</b> · semantic<br/><small>same <code>search(q, k)</code> signature, so it is a drop-in.<br/>Named as the alternative by <code>survey-writer</code><br/>and <code>deep-research</code> — and only by those two.</small>"]
-    PASS["<b>chitragupta/passages.py</b> · evidence ladder<br/><small>docling sidecar → page → pdftotext</small>"]
+    XOR{{"<b>3 · RETRIEVE</b><br/>one ranker, never both"}}
+    BM25["<b>retrieval.py</b> · BM25<br/>the default"]
+    EMB["<b>embed_index.py</b> · semantic<br/>if chroma/ exists"]
+    PASS["<b>passages.py</b><br/>the evidence ladder"]
     XOR -- "default" --> BM25
-    XOR -. "only if content/chroma/ was built" .-> EMB
+    XOR -.-> EMB
     BM25 --> PASS
     EMB --> PASS
-  end
 
-  %% ─────────────── 4 · DRAFT ───────────────
-  subgraph S3["<b>4 · DRAFT</b> — the drafting layer · generative, on demand, reviewed by you"]
-    direction TB
-    SKILLS["<b>.claude/skills/</b> — six genre skills<br/>survey-writer · thesis-chapter-writer · textbook-chapter-writer<br/>tutorial-writer · deep-research · review-digest"]
-    DRAFT[/"<b>content/drafts/&lt;slug&gt;.md | .tex</b>"/]
+    SKILLS["<b>4 · DRAFT</b>: genre skills<br/><code>.claude/skills/</code>"]
+    DRAFT["<b>content/drafts/&lt;slug&gt;</b>"]
     SKILLS --> DRAFT
-  end
 
-  %% ─────────────── 5 · GATE ───────────────
-  GATE{{"<b>THE CITATION GATE</b> · <code>chitragupta draft gate</code><br/>Is every citekey in this draft in the ledger as a parsed source?<br/><small>run twice: by the PostToolUse hook on every write under content/drafts/,<br/>and by the skill itself before it shows you anything</small>"}}
-  BLOCK["<b>REFUSED</b> · exit 1<br/><small>the write is blocked and the chain stops</small>"]
-  ITER["<b>the skill fixes it and re-runs — itself</b><br/><small>“Fix and re-run until <code>OK</code>. Never present a draft that hasn't<br/>passed.” — deep-research's words; every genre skill says it.<br/>It swaps the bad key for one retrieval actually returned, or drops<br/>the claim. You are shown nothing until the gate is green.</small>"]
+  GATE{{"<b>5 · THE CITATION GATE</b><br/>every citekey parsed in the ledger?"}}
+  BLOCK["<b>REFUSED</b> · exit 1<br/>the write is blocked"]
+  ITER["<b>the skill fixes it</b><br/>and re-runs the gate"]
 
-  %% ─────────────── 6 · PUBLISH ───────────────
-  subgraph S5["<b>6 · PUBLISH</b> — stdlib only, no venv needed"]
-    direction TB
-    REFS["<b>chitragupta draft references</b><br/><small>IEEE ## References, numbered by first appearance,<br/>built only from citekeys the draft actually cites.<br/>Skipped for thesis .tex fragments, where the<br/>surrounding LaTeX owns the bibliography.</small>"]
-    REND["<b>chitragupta draft render</b><br/><small>pandoc --citeproc + assets/csl/ieee.csl</small>"]
-    OUT[/"<b>content/rendered/&lt;slug&gt;.pdf | .tex | .docx | .md</b>"/]
+    REFS["<b>6 · PUBLISH</b>: draft references<br/>IEEE list of cited keys"]
+    REND["<b>draft render</b><br/>pandoc + citeproc"]
+    OUT["<b>content/rendered/&lt;slug&gt;</b>"]
     REFS --> REND --> OUT
-  end
 
-  %% ─────────────── ENRICHMENT (side branch) ───────────────
-  subgraph SH["<b>OPTIONAL · ENRICHMENT LAYER</b><br/><code>chitragupta enrich --stages …</code> · same run lock"]
-    direction TB
-    H1["<b>docling</b> — <i>reads the PDF itself, not content/parsed/</i><br/><small><b>content/docling/&lt;doc&gt;.md</b> — layout-aware text<br/><b>&lt;doc&gt;.passages.json</b> — the quotable-passage sidecar<br/><b>&lt;doc&gt;_artifacts/</b> — figure bitmaps, rendered one at a time<br/><b>&lt;doc&gt;.figures.json</b> — page, caption, cite string per figure<br/>the last two only when <code>[enrich].docling_images</code> is on</small>"]
-    H2["<b>embed</b><br/><small>content/chroma/ — drop-in search(q,k)</small>"]
-    H3["<b>bertopic</b><br/><small>content/topics.json — emergent clusters</small>"]
-    H3K["<b>extract-keywords</b><br/><small>content/keywords.toml — the papers' own declared keywords, aggregated; regenerated each run</small>"]
-    H4["<b>seed-topics</b><br/><small>content/topic_seeds.json — seed phrases, yours unioned with extracted keywords, many-to-many</small>"]
-    H5["<b>converge</b><br/><small>content/topic_set.json — bertopic's clusters and seed-topics' phrases, joined</small>"]
-    H6["<b>topic-graph</b><br/><small>content/topic_graph.json — how the topics relate: shared-member and semantic edges</small>"]
-    H1 --> H2 --> H3 --> H3K --> H4 --> H5 --> H6
-  end
+  SH["<b>OPTIONAL · ENRICHMENT</b>, same lock<br/>docling · embed · bertopic · extract-keywords<br/>seed-topics · converge · topic-graph"]
 
-  %% ─────────────── AIDS (side branch) ───────────────
-  subgraph SA["<b>REVIEW AIDS</b> — run these afterwards; none of them is a gate"]
-    direction TB
-    A1["<b>chitragupta review provenance</b><br/><small>what in the source supports this claim?</small>"]
-    A2["<b>chitragupta review verbatim</b><br/><small>verbatim overlap · locate a phrase by page<br/><i>the scan runs at the end of every skill</i></small>"]
-    A3["<b>chitragupta review coverage</b><br/><small>retrieval surfaced it — did the draft cite it?</small>"]
-    A4["<b>chitragupta review synthesis</b><br/><small>how many sources does each unit rest on?</small>"]
-    A5["<b>chitragupta review figure</b><br/><small>overlapping nodes · protrusion · overlong labels</small>"]
-    A6["<b>chitragupta review uncited</b><br/><small>which sentences cite nothing at all?</small>"]
-    A7["<b>chitragupta review quotation</b><br/><small>is each quoted span really in that source?</small>"]
-    A8["<b>chitragupta review agenda</b><br/><small>merges the eight draft-level aids into one ranked worklist</small>"]
-    A9["<b>chitragupta review support</b><br/><small>does the source entail this claim?</small>"]
-    A10["<b>chitragupta review union</b><br/><small>did assembling the book lose a unit's citekey?</small>"]
-    A11["<b>chitragupta review digest</b><br/><small>how much of a verbatim digest is not the sources' words?</small>"]
-  end
+  SA["<b>REVIEW AIDS</b>, never a gate<br/>provenance · verbatim · coverage · synthesis<br/>figure · uncited · quotation · agenda<br/>support · union · digest"]
 
-  %% ─────────────── SPINE ───────────────
-  BIB --> BR
-  ATT --> PT
+  BIB --> LED
   TXT --> XOR
   PASS --> SKILLS
   DRAFT --> GATE
   GATE -- "FAIL" --> BLOCK
   BLOCK --> ITER
-  ITER == "re-draft · <b>loop until it passes</b>" ==> SKILLS
-  GATE == "PASS · exit 0" ==> REFS
-  LED == "the ledger is the<br/>only authority the<br/>gate consults" ==> GATE
-  LED --> REFS
-  ATT -. "the PDF, direct" .-> H1
-  H1 -.-> PASS
-  H2 -.-> EMB
-  DRAFT --> SA
+  ITER == "until it passes" ==> SKILLS
+  GATE == "PASS" ==> REFS
+  BIB -. "the PDFs" .-> SH
+  SH -.-> EMB
+  OUT -. "afterwards" .-> SA
 
-  %% ─────────────── STYLE ───────────────
-
-  class BR,PT,BM25,PASS,REFS,REND flow
-  class ZOT,BIB,ATT,LED,TXT,DRAFT,OUT alt
+  class PT,BM25,PASS,REFS,REND flow
+  class ZOT,BIB,LED,TXT,DRAFT,OUT alt
   class GATE,XOR key
   class BLOCK key
   class ITER flow
   class SKILLS flow
-  class A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,ADV absent
-  class H1,H2,H3,EMB absent
+  class EMB,SH,SA absent
 
   %% house roles: generated by scripts/render_diagrams.py --sync
   classDef flow fill:#E6F1F7,stroke:#0072B2,stroke-width:1.4px,color:#1A1A1A

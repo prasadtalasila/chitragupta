@@ -56,12 +56,14 @@ are binaries and never go into git.
 3. **Record.** From the repository root:
 
    ```bash
-   PY=<venv python> asciinema rec --cols 112 --rows 32 --idle-time-limit 2 \
+   PY=<venv python> asciinema rec --cols 80 --rows 32 --idle-time-limit 2 \
      -c 'bash .claude/skills/demo-recorder/scripts/tour.sh' "$OUT/tour.cast"
    ```
 
    Without a terminal of your own, wrap it in `script -qec '...' /dev/null`
-   with `TERM=xterm-256color` set.
+   with `TERM=xterm-256color` set. Keep 80 columns: the README shows
+   `demo.svg` in a column about 830px wide, and a wider terminal is
+   shrunk until its text is smaller than the page's.
 4. **Retime.** Speed up the `pip install` scroll:
 
    ```bash
@@ -77,22 +79,26 @@ are binaries and never go into git.
 6. **Capture the topic map.**
 
    ```bash
-   NODE_PATH="$(npm root -g)" CHROME_PATH=<chrome> \
+   NODE_PATH="$(npm root -g)" CHROME_PATH=<chrome> CAPTURE_VIEWPORT=1040x957 \
      node .claude/skills/demo-recorder/scripts/capture_topic_map.js \
-     docs/examples/sample-project/content/topic_map.html "$OUT/frames"
-   ffmpeg -y -framerate 10 -i "$OUT/frames/f%04d.png" \
-     -c:v libx264 -pix_fmt yuv420p "$OUT/topic-map.mp4"
+     docs/examples/sample-project/content/topic_map.html "$OUT/frames" \
+     "$OUT/demo-webapp.png"
+   ffmpeg -y -framerate 10 -i "$OUT/frames/f%04d.png" -vf scale=704:648 \
+     -c:v libx264 -crf 28 -pix_fmt yuv420p "$OUT/topic-map.mp4"
    ```
 
    It clicks the first five topic dots and opens the hierarchy tree,
    150 frames in all. Fewer means a selector (`#dot-N`, `#treebox`)
-   moved in the viewer: fix the script.
-7. **Join.** Bring the GIF to the same size and rate, then concatenate
-   and make the WebM:
+   moved in the viewer: fix the script. The third argument also writes
+   the README's still, topic-1 selected at 1040x600 and twice the pixel
+   density, which becomes `docs/images/demo-webapp.png`.
+7. **Join.** Pad the GIF (80 columns, about 691x647) to the same
+   704x648 and rate, so the terminal text stays at full size, then
+   concatenate and make the WebM:
 
    ```bash
-   ffmpeg -y -i "$OUT/tour.gif" -vf "fps=10,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2" \
-     -c:v libx264 -pix_fmt yuv420p "$OUT/tour.mp4"
+   ffmpeg -y -i "$OUT/tour.gif" -vf "fps=10,pad=704:648:(ow-iw)/2:(oh-ih)/2" \
+     -c:v libx264 -crf 28 -pix_fmt yuv420p "$OUT/tour.mp4"
    printf "file '%s'\n" "$OUT/tour.mp4" "$OUT/topic-map.mp4" > "$OUT/concat.txt"
    ffmpeg -y -f concat -safe 0 -i "$OUT/concat.txt" -c copy "$OUT/demo.mp4"
    ffmpeg -y -i "$OUT/demo.mp4" -c:v libvpx-vp9 -b:v 0 -crf 40 "$OUT/demo.webm"

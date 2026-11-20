@@ -14,10 +14,10 @@ they start editing `chitragupta/`.
 
 | If you are... | Read | Then stop |
 | --- | --- | --- |
-| **Drafting content** with this pipeline (a survey, thesis chapter, textbook chapter, tutorial, deep-research report) or revising one | **[AGENTS.md](AGENTS.md)** | That file and the skill you are running are the whole contract. You do not need anything below |
-| **Changing this repository's own code**: anything under `chitragupta/`, `scripts/`, `tests/`, `bench/`, `.github/`, `assets/webapp/` | **`DEVELOPER-AGENTS.md`**, which governs, then **[docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md)** for what the code must look like | -- |
+| **Drafting content** with this pipeline (a survey, thesis chapter, textbook chapter, tutorial, deep-research report) or revising one | **[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)** | That file and the skill you are running are the whole contract. You do not need anything below |
+| **Changing this repository's own code**: anything under `chitragupta/`, `scripts/`, `tests/`, `bench/`, `.github/`, `assets/webapp/` | **`DEVELOPER-AGENTS.md`**, which governs, then **[docs/CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md)** for what the code must look like | -- |
 | **Changing this repository's prose**: `docs/`, `README.md`, or these files | `DEVELOPER-AGENTS.md` for the commit/PR conventions | -- |
-| **In a `pip install`ed, `chitragupta init`-scaffolded project directory**, with no `chitragupta/`, `scripts/`, `tests/`, `bench/` or `.github/` to change (`chitragupta init` deliberately does not scaffold them; see [docs/PACKAGING.md](docs/PACKAGING.md)) | **[AGENTS.md](AGENTS.md)**. The drafting row above is your whole contract, same as anyone else | You have no `DEVELOPER-AGENTS.md` route here, and that is correct: nothing is missing. Changing the pipeline's own code means changing the git checkout it was installed from, which is a different project directory entirely |
+| **In a `pip install`ed, `chitragupta init`-scaffolded project directory**, with no `chitragupta/`, `scripts/`, `tests/`, `bench/` or `.github/` to change (`chitragupta init` deliberately does not scaffold them; see [docs/PACKAGING.md](docs/PACKAGING.md)) | **[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)**. The drafting row above is your whole contract, same as anyone else | You have no `DEVELOPER-AGENTS.md` route here, and that is correct: nothing is missing. Changing the pipeline's own code means changing the git checkout it was installed from, which is a different project directory entirely |
 
 Doing both in one session is normal, for example drafting with the
 pipeline and then fixing a bug you hit. Re-read this table at the switch:
@@ -36,7 +36,9 @@ it is the tie-breaker when two files seem to disagree.
 Never fabricate, guess, generate or rewrite a citekey: not in a draft,
 not in a test fixture, not in an example in a doc. Fabricated placeholder
 references have reached real published papers, and this project exists to
-prevent that. [AGENTS.md](AGENTS.md) states the rule in operational terms;
+prevent that.
+[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)
+states the rule in operational terms;
 [SOUL.md](SOUL.md) explains why it cannot bend.
 
 ## 💡 Why this file is a router and not the guidance itself
@@ -59,5 +61,6 @@ one file:
    `CLAUDE.md`, `AGENTS.md`, or neither. This file therefore duplicates
    no guidance and imports nothing. Whichever of the two an agent picks
    up, it finds a pointer to the other by name instead of half a ruleset.
-   [AGENTS.md](AGENTS.md) carries the same pointer in the other
+   [AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)
+   carries the same pointer in the other
    direction, and has since before this file existed.

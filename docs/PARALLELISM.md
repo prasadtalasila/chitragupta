@@ -7,27 +7,6 @@ Status: **implemented.**
 which worker count to choose on your own machine; that is
 [PERFORMANCE.md](PERFORMANCE.md), written for someone running it.
 
-How the PDF parse path runs work in parallel, what each component is for,
-and what is planned next.
-
-This document describes the code as it is. For what any of it *costs*,
-see [PERFORMANCE.md](PERFORMANCE.md); for how a setting is spelled,
-[CONFIG.md](CONFIG.md); for the measurements themselves,
-`bench/RESULTS.md` and `git log`.
-
-## 🧭 Table of contents
-
-- [Two words for two different things](#-two-words-for-two-different-things)
-- [Where parallelism lives](#-where-parallelism-lives)
-- [The parse path, end to end](#-the-parse-path-end-to-end)
-- [Components](#-components)
-- [Worker lifecycle](#-worker-lifecycle)
-- [How the worker count is decided](#-how-the-worker-count-is-decided)
-- [Failure and interruption](#-failure-and-interruption)
-- [Concurrency control: one writer at a time](#-concurrency-control-one-writer-at-a-time)
-- [What is deliberately serial](#-what-is-deliberately-serial)
-- [Roadmap](#-roadmap)
-
 ## 🏷 Two words for two different things
 
 This repository uses **parallelism** and **concurrency control** for
@@ -38,19 +17,14 @@ different mechanisms, and keeps them apart on purpose.
 | **Parallelism** | Several documents parsed at the same instant across several CPUs and GPUs, to cut the wall clock of **one** run | `chitragupta/sync_pool.py`'s worker pool, `chitragupta/pdf_text/` |
 | **Concurrency control** | Stopping two **separate** runs from corrupting `content/` when they overlap | `chitragupta/runlock.py` |
 
-The two solve unrelated problems with unrelated solutions. Parallelism is an
-opt-in speed feature, off by default; concurrency control is always on and
-exists purely for safety. A reader who conflates them goes looking for the run
-lock inside the worker pool and finds nothing.
-
-Where no distinction is needed, "concurrent" is used loosely for "more
-than one thing in flight", matching `concurrent.futures`, the stdlib
-module all of this is built on.
+Parallelism is an opt-in speed feature, off by default; concurrency
+control is always on and exists purely for safety. Elsewhere,
+"concurrent" loosely means "more than one thing in flight", as in
+`concurrent.futures`.
 
 ## 📍 Where parallelism lives
 
-Only the PDF parse is parallel. Everything else is fast enough to be
-serial, and is.
+Only the PDF parse is parallel.
 
 ```text
   bib file ──► ledger ──► PARSE ──► retrieval ──► drafting ──► render
@@ -75,24 +49,18 @@ Two entry points reach it, sharing the same machinery:
    process_pool_context · prestart_pool · init_worker · usable_devices
 ```
 
-`chitragupta/enrich/_docling_pool.py` keeps its own `_executor_for` instead
-of importing `sync_pool`'s, so `chitragupta/enrich/` never depends on the
-core entry point; the dependency runs the other way everywhere else. Both
-delegate every *policy* decision to `pdf_text`, so "how many workers, which
-start method, which GPU" is answered in exactly one place.
+`chitragupta/enrich/_docling_pool.py` keeps its own `_executor_for` so
+that `chitragupta/enrich/` never depends on the core entry point. Both
+delegate every *policy* decision to `pdf_text`, so "how many workers,
+which start method, which GPU" is answered in one place.
 
-**The two entry points disagree on what `[parser].backend` means to them.**
-`chitragupta/sync.py` follows it: a `pdftotext`-configured sync never touches
-GPU or docling-worker sizing at all. `chitragupta/enrich/` always runs
-Docling (it has no other backend), regardless of what `[parser].backend`
-says, since that setting governs the corpus layer's own parse, not
-enrichment's. `resolve_workers`, `worker_ceiling`, `gpu_count` and
-`usable_devices` therefore all take an explicit `docling: bool` argument
-instead of reading `config.PARSER` themselves: `chitragupta/sync.py` passes
-`config.PARSER == "docling"`, `chitragupta/enrich/` always passes `True`.
-Reading `config.PARSER` directly would make every GPU on a
-`pdftotext`-configured host (the shipped default) invisible to
-enrichment's own pool.
+**The two entry points disagree on what `[parser].backend` means.**
+`chitragupta/sync.py` follows it; `chitragupta/enrich/` always runs
+Docling. So `resolve_workers`, `worker_ceiling`, `gpu_count` and
+`usable_devices` take an explicit `docling: bool` (sync passes
+`config.PARSER == "docling"`, enrich passes `True`). Reading
+`config.PARSER` directly would hide every GPU on a `pdftotext`-configured
+host (the shipped default) from enrichment's pool.
 
 ## 🔄 The parse path, end to end
 
@@ -136,8 +104,7 @@ enrichment's own pool.
 
 Only the extraction crosses the process boundary. Everything touching
 shared state stays on the main process: **sqlite has a single writer**,
-and replaying results in bibliography order is what makes two identical
-runs print identically.
+and bibliography-order replay makes identical runs print identically.
 
 ## 🧩 Components
 
@@ -145,61 +112,37 @@ All in `chitragupta/pdf_text/` unless noted.
 
 ### 🧮 `resolve_workers(n_docs, docling) -> (workers, complaint)`
 
-```text
-   what you asked for ──┐
-   what the machine     ├──► min(…) ──► max(1, …) ──► workers
-     can sustain      ──┤
-   how many documents ──┘
-     actually need it
-```
-
-The third ceiling matters more than it looks: standing up 12 workers to
-parse 3 documents pays 12 model loads to save two documents' work.
-
-An over-large request is **clamped and said out loud on stderr**. It is
-never silently obeyed (which thrashes) and never silently ignored (which
-leaves someone believing they configured something they didn't).
+The minimum of what you asked for, what the machine can sustain and how many
+documents need a parse, floored at 1. The last ceiling stops 12 workers paying
+12 model loads to parse 3 documents. An over-large request is **clamped and said
+out loud on stderr**, never silently obeyed (which thrashes) or silently
+ignored.
 
 ### 📏 `worker_ceiling(docling)`
 
 The machine ceiling alone: `allowed_cpus() // _CPUS_PER_DOCLING_WORKER`
-when `docling` is true, `allowed_cpus()` otherwise. Separate from
-`resolve_workers` because it is the one ceiling independent of the
-document count, so `prestart_pool` can consult it before the bibliography
-has been read.
-
-`allowed_cpus()` counts the CPUs **this process may run on**
-(`os.sched_getaffinity`), not the machine's. On a container the two
-differ, and sizing off the machine's total oversubscribes.
+when `docling` is true, `allowed_cpus()` otherwise. It is independent of
+the document count, so `prestart_pool` can consult it before the
+bibliography is read. `allowed_cpus()` counts the CPUs **this process may
+run on** (`os.sched_getaffinity`), which in a container is fewer than the
+machine's.
 
 > **The divisor of 4 is measurably too conservative**: 32 workers beat
 > the 12 it permits by ~1.4x. Not yet changed; see [Roadmap](#-roadmap).
 
 ### 🧵 `docling_threads(workers)`
 
-Divides docling's own `num_threads` down so `workers × threads` still
-fits the machine. Capped at docling's default of 4, so a single-worker
-run gets exactly what docling would have picked on its own.
-
-Measured to matter far less than it looks: forcing 1/2/4/8 at 12 workers
-moves a full-corpus run by 1.9%, and 8 was only reachable by patching
-the cap for the experiment, not through any setting. It is kept because
-dividing down is still correct when the product would exceed the
-machine, not because it buys throughput.
+Divides docling's `num_threads` down so `workers × threads` fits the
+machine, capped at docling's default of 4. Forcing 1/2/4/8 at 12 workers
+moves a full-corpus run by only 1.9%; it is kept because dividing down
+is still correct when the product would exceed the machine.
 
 ### 🔀 `process_pool_context()`
 
-Chooses the start method and configures it:
-
-```text
-   auto ──► forkserver, if the platform has it and CUDA is untouched
-        └─► spawn otherwise (Windows, or CUDA already initialised)
-```
-
-**Never plain `fork`.** By the time the pool is built, this process holds
-the run lock and the ledger open as live sqlite connections, and SQLite's
-own documentation says not to carry an open connection across `fork()`.
-It also measured no faster than `forkserver`.
+Chooses `forkserver` if the platform has it and CUDA is untouched, `spawn`
+otherwise. **Never plain `fork`.** This process holds the run lock and the
+ledger as live sqlite connections, which SQLite's documentation says not to
+carry across `fork()`. It also measured no faster than `forkserver`.
 
 ### 🚀 `prestart_pool()`
 
@@ -217,85 +160,59 @@ whose ceiling is 1 regardless of what was asked for.
 
 ### 🔧 `init_worker(counter, lock, devices)`
 
-Pool initialiser. Each worker claims one CUDA device round-robin:
-
-```text
-   shared counter ──(under lock)──► i ──► cuda:devices[i % len(devices)]
-```
-
-The index comes from a shared counter instead of a PID or position,
-because a pool creates workers lazily and numbers none of them. Without
-this, docling's
-`AcceleratorDevice.AUTO` resolves to `cuda:0` in *every* process and every
-worker piles onto one card.
-
-`devices` is a **list of cards**, not a count, so a card that has no
-memory free stays out of the rotation entirely.
+Pool initialiser. Each worker takes index `i` from a shared counter
+under a lock and claims `cuda:devices[i % len(devices)]`, because a pool
+creates workers lazily and numbers none of them. Without it, docling's `AcceleratorDevice.AUTO`
+resolves to `cuda:0` in every process. `devices` is a **list of cards**,
+not a count, so a card with no memory free stays out of the rotation.
 
 ### 🖥 `usable_devices(docling)`
 
 `gpu_count(docling)` narrowed to the cards with at least 2.5 GiB free
-(`nvidia-smi --query-gpu=index,memory.free`), which is a docling worker's
-~1.7 GiB of models plus its CUDA context, plus room to be wrong.
+(a docling worker's ~1.7 GiB of models, its CUDA context, and margin).
 
-This exists because of a real run. GPU 0 was holding 44.4 GiB of a
-previous run's orphaned workers when a 24-worker sync started. Four
-workers were assigned to it and could not load a model at all. A worker
-that fails takes ~19s where a working one takes minutes, and the pool
-hands the next document to whoever is free first, so **those four
-claimed and failed 334 of the corpus's 456 documents**. A poisoned worker
-is worse than useless: it draws in the whole queue.
+A worker on a full card fails in ~19s, and the pool hands the next
+document to whoever is free first, so it draws in the whole queue: in
+one real run, four such workers **claimed and failed 334 of 456
+documents**.
 
 Two details:
 
 - **`CUDA_VISIBLE_DEVICES` is applied to the mapping, not just the
-  count.** nvidia-smi reports *physical* indices; `CUDA_VISIBLE_DEVICES=3,1`
-  makes physical card 3 into this process's `cuda:0`. Checking free memory
-  at index 0 would read the wrong card and skip the wrong one.
-- **Every unknown means "usable".** No nvidia-smi, a reading it won't
-  give, or a device list naming UUIDs (which can't be resolved to an index
-  without torch) all leave the full list in place. Refusing a GPU on the
-  strength of a measurement we don't have is the worse mistake, and the
+  count.** nvidia-smi reports *physical* indices, so with
+  `CUDA_VISIBLE_DEVICES=3,1` this process's `cuda:0` is physical card 3.
+- **Every unknown means "usable".** No nvidia-smi, an unreadable
+  value, or a device list naming UUIDs all leave the full list in place.
+  Refusing a GPU without a measurement is the worse mistake, and the
   fallback below recovers from a bad assignment anyway.
 
-If *every* card is full the list is empty and the run parses on the CPU,
-measured 4.7x slower with OCR off and 1.8x with it on (OCR is CPU work
-either way, so it narrows the gap). The run is slower, but it finishes.
+If *every* card is full the run parses on the CPU, 4.7x slower with OCR
+off and 1.8x with it on, but it finishes.
 
-### 🛟 CUDA-OOM fallback — `_extract_docling()`
+### 🛟 CUDA-OOM fallback in `_extract_docling()`
 
-The backstop for what `usable_devices()` can't see: another process can
-fill a card in the second between the check and the model load. A parse
-that fails with either OOM message shape demotes that worker to `cpu`
-for the rest of the run and retries the document immediately. The two
-shapes are `CUDA out of memory` (torch's own allocator) and `CUDA error:
-out of memory` (the driver refusing underneath it; 240 of the 334
-failures above, and the one with no dedicated exception type). The
-converter cache is keyed on the device, so moving the worker rebuilds
-it.
-
-A CUDA OOM that survives the CPU retry is marked `transient`, so the
-ledger retries it next run instead of writing the document off as
-unparseable, since the machine was at fault and not the PDF.
+The backstop for a card filled between the check and the model load. A
+parse that fails with `CUDA out of memory` (torch's allocator) or
+`CUDA error: out of memory` (the driver; 240 of the 334 failures above)
+demotes that worker to `cpu` for the rest of the run, rebuilding its
+device-keyed converter, and retries the document at once. An OOM that
+survives the CPU retry is marked `transient`.
 
 ### 🔢 `gpu_count(docling)`
 
-`0` outright when `docling` is false, because this pool has no GPU path.
-Otherwise reads `nvidia-smi --list-gpus`, applying `CUDA_VISIBLE_DEVICES`
-by hand since nvidia-smi ignores it and torch does not. Falls back to
-torch only where the driver's CLI is absent, so that the question is
-answered without importing torch into the parent.
+`0` when `docling` is false. Otherwise reads `nvidia-smi --list-gpus`,
+applying `CUDA_VISIBLE_DEVICES` by hand since nvidia-smi ignores it, and
+falls back to torch only where the driver's CLI is absent, so the parent
+need not import torch.
 
-### ⏱ `_as_they_land()` — `chitragupta/sync_pool.py`
+### ⏱ `_as_they_land()` in `chitragupta/sync_pool.py`
 
 Yields futures as they complete, abandoning the run if the **whole pool**
-goes silent for `[parser].stall_timeout`.
-
-Deliberately not a per-document deadline: with several workers,
-completions arrive constantly, so silence across the entire pool
-distinguishes a hung worker from a merely slow document far better than
-any per-document number could. That matters when the slowest legitimate
-document takes 246s. A warning fires at half the budget first.
+goes silent for `[parser].stall_timeout`. Deliberately not a
+per-document deadline: with several workers, completions arrive
+constantly, so pool-wide silence separates a hung worker from a slow
+document (the slowest legitimate one takes 246s) better than any
+per-document number. A warning fires at half the budget.
 
 ## ♻ Worker lifecycle
 
@@ -310,13 +227,11 @@ What a cold worker pays before producing anything:
                ~0.3s        3.24s                    0.13s            5.17s
 ```
 
-The converter is **built once per worker and reused** across that
-worker's whole shard: `DocumentConverter.initialized_pipelines` is an
-*instance* attribute, so one converter per document reloads every model
-per document.
-
-The ~5s model load is per process and shareable by no start method, which
-is why `forkserver` is worth a fixed 1-2s rather than a multiple.
+The converter is **built once per worker and reused**:
+`DocumentConverter.initialized_pipelines` is an *instance* attribute, so
+one converter per document would reload every model per document. The
+~5s model load is per process and shareable by no start method, which is
+why `forkserver` saves a fixed 1-2s rather than a multiple.
 
 ## ⚖ How the worker count is decided
 
@@ -327,12 +242,8 @@ is why `forkserver` is worth a fixed 1-2s rather than a multiple.
   [parser].workers = "auto"  ──┴─► min(requested, worker_ceiling(docling), n_docs)
 ```
 
-`1` is not "a pool of one"; it is a different code path. A routine sync
-re-parses zero-to-few documents, since the ledger skips anything whose
-bytes have not changed, so pool setup would cost more than it saves.
-Parallelism is for first-time and bulk runs.
-
-Each backend gets the concurrency it can use:
+`1` is a different code path, not "a pool of one": a routine sync
+re-parses few documents, so pool setup would cost more than it saves.
 
 | Backend | Executor | Why |
 | --- | --- | --- |
@@ -341,66 +252,48 @@ Each backend gets the concurrency it can use:
 
 ### 🧠 Why there is no memory term
 
-Those three ceilings are CPU and workload; **RAM is not one of them**,
-by design. `"auto"` resolves to 24 workers on a 96-CPU host whatever the
-machine's memory.
+**RAM is not one of the ceilings**, by design: `"auto"` resolves to 24
+workers on a 96-CPU host whatever its memory. A memory ceiling floors at
+one worker, and a single worker whose memory grows with the document
+exceeds RAM at any width, so it would make failure rarer without making
+it impossible. The per-document term is bounded instead:
+`chitragupta/enrich/_docling_crops.py` renders each figure crop and
+releases it, so a docling worker peaks at about 4.2 GiB whatever the
+document ([PERFORMANCE.md](PERFORMANCE.md#-memory-bounded-per-document)).
+At that bound, 24 workers is ~101 GiB against 251 GB on that host.
 
-A memory ceiling cannot be sufficient: it floors at one worker, and a
-single worker whose memory grows with the document exceeds RAM at any
-width. It would make a failure rarer without making it impossible. The
-per-document term is bounded instead. `chitragupta/enrich/_docling_crops.py`
-renders each figure crop and releases it, so a docling worker peaks at
-about 4.2 GiB whatever the document's length, page size, image scale or
-accelerator ([PERFORMANCE.md](PERFORMANCE.md#-memory-bounded-per-document)
-has the measurements). At that bound, 24 workers is ~101 GiB against
-251 GB on the 96-CPU host.
+No `available_bytes // per_worker_estimate` term exists: the estimate
+could only be fitted from one corpus on one machine, and would serialise
+runs on smaller hosts never at risk.
 
-No `available_bytes // per_worker_estimate` term exists. Any
-such term would need a per-worker byte estimate, which could only be
-fitted from one corpus on one machine, and would then serialise runs on
-smaller hosts that were never at risk. The same reasoning that keeps
-`_CPUS_PER_DOCLING_WORKER` at 4 (see the roadmap below) applies to a
-number nobody has measured across machines.
-
-What remains true, and is not covered: a cgroup CPU *quota*
-(`docker --cpus=2`) still throttles without narrowing the affinity mask,
-so an explicit `[parser].workers` is still the answer there.
+Not covered: a cgroup CPU *quota* (`docker --cpus=2`) throttles without
+narrowing the affinity mask, so set `[parser].workers` explicitly there.
 
 ## 🐛 Failure and interruption
 
 | Event | Behaviour |
 | --- | --- |
-| One document fails | Reported, marked `parse_failed` as **deterministic**: the backend read this PDF and could not parse it, so it is **not** retried until the file changes or `--reparse`. The batch continues |
-| One document runs out of time | `[parser].document_timeout` expired: reported, marked `parse_failed`, and **named in the summary on its own line**. The fix is that setting, not the PDF, so it is **not** retried until `--reparse`. The batch continues |
-| Writing one document's output fails | An `OSError` writing its `.txt` or passages sidecar (disk full, permissions) is the machine, not the PDF: marked a **transient** failure and retried next run. The batch continues, and every other document's result is kept |
-| A worker dies (OOM killer) | `BrokenProcessPool` is handled: it takes the whole pool, so **every document without a result yet** is marked a transient failure. The run still writes its ledger, prints its summary, and exits nonzero |
-| The pool goes silent | Watchdog warns at half `stall_timeout`, then abandons the outstanding documents as **transient** failures; they were never given a fair attempt, so they are retried next run |
+| One document fails | Marked `parse_failed` as **deterministic**, **not** retried until the file changes or `--reparse`. The batch continues |
+| One document runs out of time | `[parser].document_timeout` expired: marked `parse_failed` and **named in the summary on its own line**. The fix is that setting, so it is **not** retried until `--reparse`. The batch continues |
+| Writing one document's output fails | An `OSError` (disk full, permissions) is the machine, not the PDF: a **transient** failure, retried next run. The batch continues |
+| A worker dies (OOM killer) | `BrokenProcessPool` takes the whole pool, so **every document without a result yet** is a transient failure. The run still writes its ledger, prints its summary, and exits nonzero |
+| The pool goes silent | Watchdog warns at half `stall_timeout`, then abandons the outstanding documents as **transient** failures, retried next run |
 | Ctrl+C | `interrupt_guard` terminates workers (SIGTERM, grace period, then kill) and `os._exit`s |
 
-**The enrichment pool answers a dead worker differently, and the rows
-above are the corpus layer's.**
-`chitragupta/enrich/_docling_pool.py` rebuilds the pool and hands the
-unfinished jobs back to it, up to `_MAX_POOL_REBUILDS` (2) more times.
-Each rebuild halves `workers`, because memory pressure is the realistic
-cause of a death and retrying at the same width reproduces it. It hands
-the jobs over smallest-first, because the document that killed the pool
-cannot be identified but is disproportionately the one biggest-first
-submitted first. Only what no pool landed is reported failed. A rebuilt
-pool that lands nothing at all ends the loop early instead of spending
-another build's model loads on the same answer.
-
-`sync_pool.py` deliberately does not do this. Its unfinished documents
-are marked *transient* and retried on the next run, and one of its
-documents costs seconds where a docling parse costs minutes, so
-abandoning a batch there is a smaller mistake.
+These rows are the corpus layer's. **The enrichment pool answers a dead
+worker differently:** `chitragupta/enrich/_docling_pool.py` rebuilds the
+pool up to `_MAX_POOL_REBUILDS` (2) more times, halving `workers` each
+time (memory pressure is the realistic cause) and resubmitting
+smallest-first (the unidentifiable culprit was likely submitted early by
+biggest-first). A rebuilt pool that lands nothing ends the loop early. `sync_pool.py`
+deliberately does not do this: its unfinished documents are retried next
+run, and each costs seconds where a docling parse costs minutes.
 
 Ctrl+C needs an explicit SIGINT handler because `except KeyboardInterrupt`
-around the result loop **does not work**: the loop stops consuming, the
-handler never runs, and the process sits until in-flight workers finish,
-which takes minutes per document with docling.
-
-Skipping interpreter shutdown is safe because the ledger commits
-incrementally and synchronously: whatever finished is already on disk.
+around the result loop **does not work**: the loop stops consuming and
+the process sits until in-flight workers finish. Skipping interpreter
+shutdown is safe because the ledger commits incrementally: whatever
+finished is already on disk.
 
 ## 🔒 Concurrency control: one writer at a time
 
@@ -413,25 +306,20 @@ as opposed to two documents.
   readers (citation_gate, retrieval, ledger) ──► unaffected throughout
 ```
 
-The lock is a dedicated sqlite file instead of the ledger itself, so
-holding the lock does not force the ledger's six commit points into one
-transaction
-([DESIGN.md](DESIGN.md) has where they are, and why the one that batches
-the bibliography-upsert loop still keeps finished rows on a crash).
-`BEGIN IMMEDIATE` takes a RESERVED lock, which does not block readers, and
-after `kill -9` it is released immediately. Staleness handles itself,
-with no PID liveness check and no platform-specific code.
-
-Full conflict policy in [DESIGN.md](DESIGN.md).
+The lock is a dedicated sqlite file, not the ledger, so holding it does
+not force the ledger's six commit points into one transaction.
+`BEGIN IMMEDIATE` takes a RESERVED lock, which does not block readers and
+is released immediately after `kill -9`, so staleness needs no PID check
+and no platform-specific code. [DESIGN.md](DESIGN.md) has the commit
+points, why the batched bibliography-upsert loop still keeps finished
+rows on a crash, and the full conflict policy.
 
 ## 🚫 What is deliberately serial
 
-- **Ledger writes**: sqlite has a single writer.
-- **Result application**: replayed in bibliography order, so output is
-  reproducible run to run.
-- **The default**: `workers = 1` until someone opts in.
-- **Everything outside the parse**: retrieval, gating and rendering are
-  fast enough that concurrency would add risk for no measurable gain.
+Ledger writes (sqlite has a single writer), result application (in
+bibliography order, for reproducible output), the default
+(`workers = 1`), and everything outside the parse, where concurrency
+would add risk for no measurable gain.
 
 ## 🗺 Roadmap
 
@@ -440,33 +328,27 @@ Ordered by measured benefit over risk. Figures in
 
 ### ▶ 1. Stop hard-coding `_CPUS_PER_DOCLING_WORKER = 4`
 
-The largest known win, at ~1.4x. The constant models a docling worker as
-occupying 4 CPUs; measured, it occupies closer to one. 32 workers beat
-the 12 the constant permits, and docling's `num_threads` is worth 1.9%.
-
-The target is a *region*, not a point: 32 and 48 workers land within 0.9%
-of each other over three runs each, so the fix is "a much smaller
-divisor", not a specific replacement number.
-
-What blocks it is generality, not effort. It was validated on one machine
-and one corpus, and a CPU-only machine (where the GPU does none of the
-work) would likely want a different value. It needs a per-backend
-measured default, or a short calibration run.
+The largest known win, at ~1.4x. The constant models a docling worker
+as occupying 4 CPUs; measured, it is closer to one, and 32 workers beat
+the 12 it permits. The target is a region: 32 and 48 workers land within
+0.9% of each other over three runs each, so the fix is "a much smaller
+divisor". What blocks it is generality: it was validated on one machine
+and one corpus, and a CPU-only machine would likely want a different
+value. It needs a per-backend measured default, or a short calibration
+run.
 
 ### ▶ 2. Selective OCR
 
-OCR costs 2.1x to 2.9x serially and 3.1x to 4.8x at 12 to 24 workers
-(two corpus runs, [PERFORMANCE.md](PERFORMANCE.md#-parserocr----the-largest-single-lever-and-a-trade)),
-to recover content
-in a minority of documents: of 16 sampled, 8 changed and ~2 materially.
-Detecting bitmap-heavy pages cheaply and running OCR only there converts
-a global tax into a per-document one.
+OCR costs 2.1x to 2.9x serially and 3.1x to 4.8x at 12 to 24 workers,
+to recover content in a minority of documents (of 16 sampled, ~2
+materially). Running it only on bitmap-heavy pages would make a global
+tax per-document.
 
 ### ▶ 3. Cache the model load across runs
 
-~5s per worker per run, shareable by no start method. Irrelevant to a
-bulk parse, dominant for a three-document top-up. Needs a resident pool,
-which is a large change to a pipeline whose appeal is being a batch job.
+~5s per worker per run: irrelevant to a bulk parse, dominant for a
+three-document top-up. Needs a resident pool, a large change to a batch
+pipeline.
 
 ### ▶ 4. Batch inference across documents
 
@@ -475,16 +357,13 @@ docling exposes no batch API, so this is upstream work.
 
 ### 🚫 Not planned
 
-- **Intra-document splitting.** The 675-page outlier looks like a
-  critical-path problem and is not at this corpus size: its floor binds
-  only beyond ~35x parallelism, and LPT scheduling already handles it.
+- **Intra-document splitting.** The 675-page outlier's floor binds only
+  beyond ~35x parallelism, and LPT scheduling already handles it.
 - **Threads for docling.** It holds the GIL.
 - **Bit-reproducible output under load.** docling exposes no determinism
-  setting, and torch's *raises* rather than degrades on ops with no
-  deterministic implementation. What that costs is stated artifact by
-  artifact in
-  [ARCHITECTURE.md](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not);
-  it is a real cost of raising `workers`, not only a curiosity.
+  setting, and torch's *raises* on ops with no deterministic
+  implementation. The cost is stated in
+  [ARCHITECTURE.md](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
 
 ### ❓ Open questions
 
@@ -493,10 +372,7 @@ docling exposes no batch API, so this is upstream work.
 - **Where is the OCR optimum?** Swept only to 24 workers, still improving
   there.
 
-What *is* settled: past ~32 workers the curve **plateaus rather than
-reversing**; 32 and 48 land within 0.9% of each other over three runs
-each. Two costs flatten it, both growing with the pool: per-worker
-startup rises to 12.7% of the run at 48 workers, and the CPU climbs from
-56% to 78% busy host-wide. Neither the GPUs, `num_threads`, nor the
-long-document tail is involved. So the divisor above is much too large,
-but which smaller value to use is what the first open question blocks.
+Settled: past ~32 workers the curve **plateaus rather than reversing**.
+Per-worker startup (12.7% of the run at 48 workers) and host CPU (56% to
+78% busy) flatten it; the GPUs, `num_threads` and the long-document tail
+do not.

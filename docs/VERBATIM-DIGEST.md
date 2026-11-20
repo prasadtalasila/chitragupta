@@ -14,9 +14,9 @@ normalisations, which are
 never gating, which are [ARCHITECTURE.md](ARCHITECTURE.md)'s.
 
 A verbatim digest is **a survey written in the sources' words**. It
-has a survey's shape -- a reader and a scope, a framing, one section
+has a survey's shape (a reader and a scope, a framing, one section
 per theme, a comparison table, the disagreements made visible, a gap
-analysis -- and a survey's paragraph, which braids passages from two or
+analysis) and a survey's paragraph, which braids passages from two or
 more papers around what they agree and disagree on. Its body is copied
 exactly from parsed PDFs in the corpus; each copied run ends with a
 citation; there are no quotation marks; equations are typeset; and the
@@ -85,8 +85,8 @@ analysis.
 
 "Copied exactly" means every letter and digit in the source's order.
 The matcher compares letters and digits only and drops the source's
-reference markers, so the drafter cleans the parse's typography --
-spacing, run-together words, math italics, `◦ C` -- without losing a
+reference markers, so the drafter cleans the parse's typography
+(spacing, run-together words, math italics, `◦ C`) without losing a
 match, and typesets the equations a run explains in the house math form
 ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12) from the source's
 `formula` passages. The skill's shared reference,
@@ -169,7 +169,7 @@ Only a run that breaks is split into sentences, and only to show where:
 An undeclared sentence of the drafter's own carries `unquoted-text`
 always, and `unsupported-text` as well when the support test fails, so
 one sentence can be two items; the fraction counts its words once. A
-declared one -- `see`, `own`, a table row -- is checked for support
+declared one (`see`, `own`, a table row) is checked for support
 only, and raises `unsupported-text` or nothing.
 
 `dangling-reference` is listed and counted, and moves no fraction: the
@@ -284,7 +284,9 @@ Where the corpus was enriched with the Docling stage and
 `[enrich].docling_images` on, `python -m chitragupta.draft figures
 <citekey>` lists a paper's figures with a caption, a page, a crop and
 the exact string to cite each by. Every other genre may only look at a
-crop; [AGENTS.md](../AGENTS.md) records the one exception for the
+crop;
+[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)
+records the one exception for the
 digest. Private study text in the sources' own words may show the
 sources' own figures: the skill copies the crop into the topic's
 `figures/` directory and places it directly after the run it belongs
@@ -346,7 +348,9 @@ one line, and the digest is built from the prose alone.
 drafter's. A digest keeps that rule by construction: every copied run
 ends with the citation that names its source, the dossier records each
 source's main passage as a `quote:`, and the digest is never a source for any
-other draft. [AGENTS.md](../AGENTS.md)'s statement that verbatim wording
+other draft.
+[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)
+'s statement that verbatim wording
 has one legitimate home outside the draft names the digest as the one
 genre that is that home, and [PLAGIARISM.md](PLAGIARISM.md)'s verbatim
 scan is what catches the digest's wording if it ever reaches a draft

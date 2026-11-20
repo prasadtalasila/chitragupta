@@ -17,70 +17,48 @@ title: "Appendix — one draft, end to end, in time order"
 }}%%
 sequenceDiagram
     autonumber
-    actor You as You
-    participant Z as Zotero
-    participant Sync as chitragupta corpus sync<br/>(corpus layer)
-    participant Led as content/<br/>ledger.sqlite
-    participant Ret as chitragupta.retrieval<br/>+ chitragupta.passages
-    participant Skill as genre skill<br/>(.claude/skills/)
-    participant Hook as PostToolUse hook
-    participant Gate as chitragupta draft gate
-    participant Ref as chitragupta draft references
-    participant Ren as chitragupta draft render<br/>(pandoc / TeX Live)
+    actor You
+    participant C as corpus<br/>sync + ledger
+    participant Skill as genre skill
+    participant Gate as draft gate
 
     rect rgba(255,247,237,0.6)
-    Note over You,Z: CURATE — the only step that adds a paper
-    You->>Z: add papers, then Export BibTeX + files
-    Z-->>You: papers/bibliography.bib + attachment tree
+    Note over You: CURATE in Zotero
     end
 
     rect rgba(238,242,255,0.6)
-    Note over Sync,Led: SYNC — deterministic, incremental, holds the run lock
-    You->>Sync: chitragupta corpus sync
-    Sync->>Sync: take content/pipeline.lock.db
-    Sync->>Led: upsert one row per citekey
-    Led-->>Sync: which PDFs actually changed
-    Sync->>Sync: extract text → content/parsed/*.txt
-    Sync->>Led: mark parsed / parse_failed / no_pdf
-    Sync-->>You: summary + stale list + exit 0 | 1 | 2
+    Note over You,C: SYNC, holding the lock
+    You->>C: corpus sync
+    C->>C: parse changed PDFs
+    C-->>You: exit 0, 1 or 2
     end
 
     rect rgba(240,253,244,0.6)
-    Note over You,Skill: DRAFT — the generative half
-    You->>Skill: "write a survey section on digital twin composability"
-    Skill->>Led: is the ledger populated?
-    Led-->>Skill: N citekeys parsed
-    Skill->>Ret: search(query, k)
-    Ret-->>Skill: ranked snippets, each tied to a real citekey
-    Skill->>Skill: write content/drafts/<slug>.md
+    Note over You,Skill: DRAFT
+    You->>Skill: "write a survey …"
+    Skill->>C: search
+    C-->>Skill: snippets, real citekeys
+    Skill->>Skill: write the draft
     end
 
     rect rgba(254,242,242,0.7)
-    Note over Hook,Gate: VERIFY — enforced mechanically, twice
-    Hook->>Gate: every Write/Edit under content/drafts/
-    Gate->>Led: are these citekeys in the ledger, each with a parsed PDF?
-    loop until the gate exits 0 — you are shown nothing before that
-        alt any citekey unresolved
-            Led-->>Gate: no
-            Gate-->>Hook: FAIL (exit 1)
-            Hook-->>Skill: the write is blocked
-            Skill->>Skill: swap the key for one retrieval returned,<br/>or drop the claim — never invent one
+    Note over Skill,Gate: VERIFY, every write
+    loop until exit 0
+        Skill->>Gate: hook runs the gate
+        Gate->>C: citekeys parsed?
+        alt unresolved
+            Gate-->>Skill: FAIL, blocked
+            Skill->>Skill: swap or drop
         else all resolvable
-            Led-->>Gate: yes
-            Gate-->>Skill: PASS (exit 0)
+            Gate-->>Skill: PASS
         end
     end
-    Skill->>Gate: runs the gate again itself, before showing you anything
-    Note right of Skill: If the paper genuinely isn't in the corpus,<br/>the loop stops and the skill tells you to<br/>add it in Zotero and re-run sync.
+    Skill->>Gate: runs it again itself
     end
 
     rect rgba(250,245,255,0.6)
-    Note over Ref,Ren: PUBLISH
-    Skill->>Ref: python -m chitragupta.draft references <draft>
-    Ref->>Led: bib_fields for exactly the cited citekeys
-    Ref-->>Skill: a ## References section, numbered by first appearance
-    Skill->>Ren: chitragupta.draft render --format pdf
-    Ren-->>You: content/rendered/<slug>.pdf
+    Note over You,Skill: PUBLISH
+    Skill-->>You: references, render: the PDF
     end
 
-    Note over You,Ren: Layer 4, the review layer — afterwards, never a gate:<br/>chitragupta review provenance · verbatim · coverage · synthesis<br/>figure · uncited · quotation · agenda · support · union · digest<br/>the skill runs verbatim scan itself, the rest are yours to run<br/>reports land in content/review/, mirroring the draft
+    Note over You,Gate: REVIEW afterwards, never a gate

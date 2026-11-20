@@ -9,8 +9,8 @@ A divine record keeper who keeps the ledger of deeds and audits souls against it
 Chitragupta is the registrar of the Hindu cosmos: the deity who
 maintains the complete record of every action of every being, from
 birth to death. When a soul arrives in Yama's court, it is Chitragupta
-who produces the account. It is the itemized record, not an impression
-or a summary, and judgment is passed on the strength of it.
+who produces the itemized account, and judgment is passed on the
+strength of it.
 
 He is depicted holding a pen (*lekhani*), an inkpot, and the ledger
 itself. His name is usually parsed as *chitra* + *gupta*: "the one in
@@ -18,26 +18,21 @@ whom all the records reside, kept safe."
 
 ## 💡 Why the name fits this project
 
-This pipeline turns a curated BibTeX bibliography into grounded surveys,
-thesis chapters, textbook chapters, tutorials, deep-research reports
-and books, with every citation
-mechanically verified against a ledger of real, parsed PDFs. Its one
-hard invariant is that a citekey is never fabricated. The
-correspondence with Chitragupta holds point for point:
+This pipeline turns a curated BibTeX bibliography into grounded drafts
+and books, with every citation mechanically verified against a ledger of
+real, parsed PDFs. The correspondence holds point for point:
 
 1. **The ledger is the whole identity.** Other knowledge deities
    preside over learning broadly; Chitragupta *is* his ledger. This
    project's center of gravity is `content/ledger.sqlite`, a
    complete, per-citekey record of what exists and what state it is
-   in. The project shares his essential character as well as his
-   domain.
+   in.
 
 2. **He records; he never composes.** Chitragupta's authority comes
    precisely from the fact that no entry in his book was invented.
-   That is this project's hard invariant, stated almost verbatim in
-   AGENTS.md: a citekey exists in the record only because a real parse
-   of a real PDF put it there. The pipeline never invents a citekey
-   and never renames one.
+   That is this project's hard invariant: a citekey exists in the
+   record only because a real parse of a real PDF put it there, and the
+   pipeline never invents or renames one.
 
 3. **Judgment happens against the record.** In Yama's court, claims
    about a life are checked against the book, and the book wins. That

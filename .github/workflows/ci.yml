@@ -29,7 +29,7 @@ on:
 
 # A push to the same branch/PR while a previous run is still going
 # (routine during iterative fix-and-repush work, e.g. addressing a
-# Copilot review comment) cancels that stale, now-superseded run
+# review comment) cancels that stale, now-superseded run
 # instead of letting both consume CI minutes -- github.ref is stable
 # per branch/PR, so this only ever cancels an earlier run of the same
 # ref, never a different branch's.

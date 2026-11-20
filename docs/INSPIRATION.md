@@ -338,7 +338,8 @@ load-bearing as the borrowings.
   than an encoder's window (score chunks, pool the best) rather than
   first-512-token truncation. That is a trap the enrich layer had
   already measured and fixed independently
-  ([TOPIC-MODELLING.md](TOPIC-MODELLING.md) §4), which is why this
+  ([TOPIC-MODELLING.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOPIC-MODELLING.md)
+  §4), which is why this
   entry corroborates rather than introduces it. *Not taken:* the whole
   training/distillation stack, since there is no labelled relevance
   data in a personal corpus, and fine-tuning is out of scope.
@@ -397,7 +398,8 @@ over the open web all break the invariant that a `.bib` export is the
 only entrance to this corpus ([SOUL.md](../SOUL.md)). Louvain community
 detection is duplication: the merge-tree cut answers the same question
 and is already measured
-([TOPIC-MODELLING.md](TOPIC-MODELLING.md)). Multi-conversation chat and
+([TOPIC-MODELLING.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOPIC-MODELLING.md)).
+Multi-conversation chat and
 thinking-block display are interface features for a different product.
 A per-task retry counter was declined because `sync_pool`'s
 `failure_kind` already encodes the decision a counter would

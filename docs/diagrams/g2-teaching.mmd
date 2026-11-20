@@ -15,30 +15,29 @@ title: "Genre B — teaching writers: tutorial-writer, textbook-chapter-writer"
     "tertiaryBorderColor": "#D55E00"
   }
 }}%%
-flowchart LR
+flowchart TB
 
-  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>A handful of grounding papers is<br/>enough. Breadth buys you<br/>very little in this genre.<br/><br/><b>papers/bibliography.bib</b>"]
+  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/>a handful of grounding papers"]
 
-  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>chitragupta corpus sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
+  P1["<b>2 · SYNC</b><br/><code>chitragupta corpus sync</code><br/>ledger + parsed text"]
 
-  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s> · <s>extract-keywords</s> · <s>seed-topics</s> · <s>converge</s> · <s>topic-graph</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>chitragupta.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is the drafting layer's own publish step<br/><small><code>chitragupta draft render</code> — it was never<br/>enrichment work, and is deliberately not a stage</small>"]
+  HEAVY["<b>ENRICHMENT</b><br/>not worth it here: BM25 is enough"]
 
-  P2["<b>3 · DRAFT</b><br/><i>mostly original content</i><br/><br/><b>tutorial-writer</b> — one path, keyboard-first,<br/>verified to actually run. Citations are<br/><b>banned mid-lesson</b>; they live only in<br/>a closing “Where to go next”.<br/><br/><b>textbook-chapter-writer</b> — objectives,<br/>worked examples, exercises. Cites for<br/><b>motivation and background only</b>.<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
+  P2["<b>3 · DRAFT</b><br/><b>tutorial-writer</b>: cites only in “Where to go next”<br/><b>textbook-chapter-writer</b>: cites for background"]
 
-  P3{{"<b>4 · VERIFY</b><br/><code>chitragupta draft gate</code><br/><br/><small><b>May legitimately pass with<br/>zero citations.</b> Both SKILL.md<br/>files say so explicitly — this is<br/>the one genre where an empty<br/>reference list is correct.</small>"}}
+  P3{{"<b>4 · VERIFY</b><br/><code>chitragupta draft gate</code><br/>may pass with zero citations"}}
 
-  FIX["<b>DISCARD DRAFT</b><br/><small>drop the claim; the lesson<br/>rarely needed it in the first place</small>"]
+  FIX["<b>DISCARD DRAFT</b><br/>drop the claim"]
 
-  P4["<b>5 · PUBLISH</b><br/><br/><code>chitragupta draft references</code><br/><small><b>tutorial-writer</b> keeps the default<br/><code>References</code> heading, which the<br/>render swaps for citeproc's<br/>single bibliography</small><br/><br/><code>chitragupta draft render --format pdf</code>"]
+  P4["<b>5 · PUBLISH</b><br/><code>draft references</code><br/><code>draft render</code>"]
 
-  RISK["<b>the real failure mode here isn't a bad citekey</b><br/><small>It is writing the wrong genre: a tutorial that explains<br/>instead of instructing, or a chapter that instructs instead<br/>of explaining. Both SKILL.md files open by warning about<br/>exactly that — and no gate in this repository can catch it.<br/><b>You are the check.</b></small>"]
+  RISK["<b>the real risk</b><br/>writing the wrong genre; no gate catches it"]
 
   P0 ==> P1 ==> P2 ==> P3
-  P1 -. "publish step only" .-> HEAVY
-  HEAVY -.-> P4
-  P3 == "PASS · exit 0<br/>(often trivially)" ==> P4
-  P3 -- "FAIL · exit 1" --> FIX
-  FIX == "re-draft · <b>loop until it passes</b>" ==> P2
+  P1 -.-> HEAVY
+  P3 == "PASS" ==> P4
+  P3 -- "FAIL" --> FIX
+  FIX == "re-draft" ==> P2
   P2 -.-> RISK
 
   class P0 flow

@@ -2,43 +2,23 @@
 
 Status: **reference.**
 
-Prose is the axis an unattended loop can improve *best*, which is the
-reverse of the usual intuition that language is the soft part and citations
-the hard one. This document says why, what the objective function is, and
-which of a user's preferences outlive the draft that prompted them.
+Prose is the axis an unattended loop can improve *best*. This page says
+why, what the objective function is, and which of a user's preferences
+outlive the draft that prompted them.
 
 **Written for** someone weighing the language-and-style half of
-[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md), or working on the language
-roadmap.
-It assumes [WRITING-STANDARDS.md](WRITING-STANDARDS.md), which is the
-standard being checked against, and
-[DRAFT-ITERATION.md](DRAFT-ITERATION.md) for the dossier.
-
-**Not covered here:** the loop's own machinery (the agenda aid, the
-skill, the requirements), which is
-[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md), and why the line falls where
-it does, which is
-[AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md).
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md), which owns the loop's
+machinery. It assumes [WRITING-STANDARDS.md](WRITING-STANDARDS.md), the
+standard being checked against, and [DRAFT-ITERATION.md](DRAFT-ITERATION.md)
+for the dossier. Why the line falls where it does is
+[AUTO-IMPROVEMENT-RATIONALE.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/AUTO-IMPROVEMENT-RATIONALE.md).
 
 What is built: the sanctioned edit path (`draft-reviser`'s copy-edit
-mode), the recorded target (`scope.md`'s `language:` line, and
-[WRITING-STANDARDS.md](WRITING-STANDARDS.md) §8), the detector
-(`python -m chitragupta.draft style`), its automatic invocation (a
-`PostToolUse` hook per write, and a step in every drafting and revising
-skill), the per-host boilerplate allowlist and the per-host acronym
-vocabulary. What is open, and covered by no issue: a cross-draft dialect
-default, reconciling plain (non-acronym) glossary terms across drafts,
-and noticing recurring refusals. [What persists across
-drafts](#-what-persists-across-drafts) has each.
-
-## 🧭 Table of contents
-
-- [The rule that decides everything](#-the-rule-that-decides-everything)
-- [Why a readability index is a trap](#-why-a-readability-index-is-a-trap)
-- [The objective function already exists](#-the-objective-function-already-exists)
-- [What is binary, and what only looks it](#-what-is-binary-and-what-only-looks-it)
-- [What persists across drafts](#-what-persists-across-drafts)
-- [Relationship to the language roadmap](#-relationship-to-the-language-roadmap)
+mode), the recorded target (`scope.md`'s `language:` line), the detector
+(`python -m chitragupta.draft style`) and its automatic invocation, the
+per-host boilerplate allowlist and the per-host acronym vocabulary. What
+is open, and covered by no issue, is listed under [What persists across
+drafts](#-what-persists-across-drafts).
 
 ## 🔑 The rule that decides everything
 
@@ -48,90 +28,71 @@ drafts](#-what-persists-across-drafts) has each.
 > From [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#-the-requirements),
 > which owns the wording.
 
-The reason behind R3 is that a continuous score invites the loop to
-optimise the score instead of the draft, and keeping to binary checks is
-the whole reason prose can carry an unattended loop at all. It is also why the
-specification counts findings rather than scoring quality: a count of
-binary conformance failures is safe to drive to zero, and a quality
-score is not safe to maximise.
+A continuous score invites the loop to optimise the score instead of the
+draft. That is why the specification counts findings rather than scoring
+quality: a count of binary conformance failures is safe to drive to zero,
+and a quality score is not safe to maximise.
 
-Applied to language, the rule cuts the axis cleanly in two. "Apply §2" is
-binary: "obviously" is present or it is not. "Improve the readability" is
-not, and no amount of care in the prompt makes it so.
+Applied to language, the rule cuts the axis in two. "Apply §2" is binary:
+"obviously" is present or it is not. "Improve the readability" is not, and
+no amount of care in the prompt makes it so.
 
 ## ⚠ Why a readability index is a trap
 
 Flesch-Kincaid and its relatives look like the `val_bpb` this pipeline is
-missing: one number, cheaply computed, no model needed, comparable across
-revisions. They are the wrong number, and the failure is plain to see.
+missing: one number, cheaply computed, comparable across revisions. They
+are functions of sentence length and syllable count. A loop minimising
+grade level will split sentences past the point where the argument
+survives the break, and will replace precise technical vocabulary with
+shorter, vaguer words, because to the metric a polysyllabic term is
+indistinguishable from bad writing. The result scores better and reads
+worse, and every one of those edits passes its own re-check. That is
+Goodhart's law with a specific mechanism.
 
-The indices are functions of sentence length and syllable count. A loop
-minimising grade level will split sentences past the point where the
-argument survives the break, and will replace precise technical
-vocabulary with shorter, vaguer words, because to the metric a
-polysyllabic term is indistinguishable from bad writing. The result scores
-better and reads worse, and every one of those edits passes its own
-re-check.
-
-That is Goodhart's law with a specific mechanism. It is worth stating
-because the index is otherwise an attractive candidate: it is the sort of
-check that would be adopted for being *measurable* rather than for being
-*right*.
-
-An index may still be reported. A grade level that moves sharply
-between revisions is worth a human's attention. It may never be the thing
-being optimised.
+An index may still be reported: a grade level that moves sharply between
+revisions is worth a human's attention. It may never be the thing being
+optimised.
 
 ## 🎯 The objective function already exists
 
 [WRITING-STANDARDS.md](WRITING-STANDARDS.md) is the objective function.
-Its §2 and §4 are conformance rules with a decidable answer.
-
-The rule-by-rule triage is
+Its §2 and §4 are conformance rules with a decidable answer. The
+rule-by-rule triage is
 [WRITING-STANDARDS.md §9](WRITING-STANDARDS.md#-9-what-is-checked-mechanically-and-what-is-not),
 which names for each rule whether it is decidable and whether a machine
 may act on it unattended. It lives there, in one place, so the two pages
-cannot drift into disagreeing about the same rule. In one line, §9 says
-that the *top* of that list is autoresearchable and the bottom is a
-review aid's output for a human.
+cannot drift into disagreeing about the same rule.
 
-The apparatus around it, and none of it needs a model:
+The apparatus around it, none of which needs a model:
 
-- **The recorded dialect.** The draft's dialect is a `language:` line
-  in the dossier's `scope.md` (BCP-47: `en-GB`, `en-IN`, `en-US`), so the
-  target is on disk instead of restated in chat each session. That is
-  the *recorded target* an unattended pass needs; `draft-reviser` reads
-  `scope.md` before any edit.
-- **The copy-edit mode.** `draft-reviser` has a copy-edit branch: the
-  sanctioned path for a whole-document edit that touches no evidence.
+- **The recorded dialect.** A `language:` line in the dossier's
+  `scope.md` (BCP-47: `en-GB`, `en-IN`, `en-US`) puts the target on disk
+  instead of in chat. `draft-reviser` reads `scope.md` before any edit.
+- **The copy-edit mode.** `draft-reviser`'s sanctioned path for a
+  whole-document edit that touches no evidence.
 - **The detector.** `python -m chitragupta.draft style` checks dialect
-  consistency against that line, §2's defect markers, acronyms, table,
-  figure and equation ids and references, and what has to fit the page
-  (§9 lists every rule). It always exits 0, and is a review aid, never a
-  gate. That is the *detector* and the *re-check*.
+  consistency, §2's defect markers, acronyms, table, figure and equation
+  ids and references, and what has to fit the page (§9 lists every rule).
+  It always exits 0, and is a review aid, never a gate.
 - **Automatic invocation.** A `PostToolUse` hook
   (`.claude/hooks/style_check_hook.py`) runs the detector on every write,
-  and every drafting and revising skill runs it before presenting, so a
-  prose finding arrives without a human remembering to ask for it.
+  and every drafting and revising skill runs it before presenting.
 
-Detector, recorded target, re-check, and a sanctioned edit path make up
-the whole loop, and every deterministic part of it costs zero tokens.
-This is also why the language half sits on the cheap rungs of
-[the cost ladder](AUTO-IMPROVEMENT.md#-the-cost-ladder), and therefore why
-it is the half worth building first.
+Every deterministic part of that loop costs zero tokens, which is why the
+language half sits on the cheap rungs of
+[the cost ladder](AUTO-IMPROVEMENT.md#-the-cost-ladder) and is the half
+worth building first.
 
-The dialect issue already records one caution. §2's list is English
-literals and §4's voice rules are an Anglophone convention. A non-English
-draft needs them adapted, not transliterated, so none of this generalises
-to the multilingual track for free.
+One caution: §2's list is English literals and §4's voice rules are an
+Anglophone convention. A non-English draft needs them adapted, not
+transliterated, so none of this generalises to the multilingual track
+for free.
 
 ## ⚖ What is binary, and what only looks it
 
-Wider than §9, and for a different purpose: §9 is normative over
-`WRITING-STANDARDS.md`'s own rules, and this is the inventory of
-everything an unattended loop might reach for, most of which that document
-never mentions. Where the two overlap, **§9 is the one that governs**; the
-rows below restate its verdicts only so the inventory reads as one list.
+This is the inventory of everything an unattended loop might reach for,
+most of which `WRITING-STANDARDS.md` never mentions. Where the two
+overlap, **§9 is the one that governs**.
 
 | Property | Binary? | Unattended? |
 | --- | --- | --- |
@@ -148,85 +109,66 @@ rows below restate its verdicts only so the inventory reads as one list.
 | Sentence length, hedging density, passive-voice ratio | **no: these are scores** | surfaced only |
 | Readability index | **no** | reported, never optimised |
 | Whether a paragraph leads with its point | heuristic | surfaced |
-| Whether a source supports a claim | no | never ([why](AUTO-IMPROVEMENT-RATIONALE.md#-why-provenance-is-excluded)) |
+| Whether a source supports a claim | no | never ([why](https://github.com/prasadtalasila/chitragupta/blob/main/docs/AUTO-IMPROVEMENT-RATIONALE.md#-why-provenance-is-excluded)) |
 
 ## 🗄 What persists across drafts
 
-A user of this pipeline writes many documents over years (a survey, a
-thesis chapter, a textbook chapter, tutorials), and each one starts
-from a blank slate on everything except the corpus. Their house style is
-re-derived, or re-stated in chat, every time.
-
-The relevant precedent is the dialect issue's framing: a preference "had
-nowhere on disk to live", so it silently reverted to the model's default.
-Four more preferences have the same shape. Each has a per-draft artefact;
-two are reconciled across drafts and two are open:
+A user writes many documents over years, and each starts from a blank
+slate on everything except the corpus, so their house style is
+re-derived or re-stated in chat every time. A preference with "nowhere on
+disk to live" silently reverts to the model's default. Four preferences
+have that shape; two are reconciled across drafts and two are open:
 
 - **Dialect and house style (open).** The `language:` line is per-draft
   by design, because a thesis at an Indian university and an IEEE
   submission legitimately differ. But a user who has chosen `en-GB` four
   times has a default, and re-choosing it is friction rather than a
   decision.
-- **The glossary (acronyms built, plain terms open).** Every dossier
-  carries one. An author writing a thesis, a survey and a textbook chapter
-  on the same subject should not define "digital twin" three different
-  ways. The acronym-shaped slice is built: `[style].acronyms` in
-  `config.toml` gives a user's own expansions a per-host home
-  (`content/acronyms.toml`, the same gitignored footing as the
-  boilerplate allowlist below), every genre skill drafts from it, and
-  `python -m chitragupta.draft style` reports when a draft's own
-  glossary has drifted from it
-  (`chitragupta/style_acronym_drift.py`, `draft-reviser`'s
-  acronym-realignment mode fixes what that reports). For a plain term
-  ("digital twin" spelled three ways with no acronym in sight) there is
-  still no reconciliation.
+- **The glossary (acronyms built, plain terms open).** An author writing
+  a thesis, a survey and a textbook chapter on one subject should not
+  define "digital twin" three ways. `[style].acronyms` in `config.toml`
+  gives a user's own expansions a per-host home (`content/acronyms.toml`,
+  gitignored like the allowlist below), every genre skill drafts from it,
+  `python -m chitragupta.draft style` reports when a draft's glossary has
+  drifted from it (`chitragupta/style_acronym_drift.py`), and
+  `draft-reviser`'s acronym-realignment mode fixes what that reports. A
+  plain term with no acronym still has no reconciliation.
 - **The boilerplate allowlist (built).** `content/verbatim_allowlist.toml`
-  is per-host, gitignored data on the same footing as `config.toml`, and
-  is not version-controlled. A phrase waved through once does not get
-  re-flagged in the next draft on the *same* host, because the file is
-  one per clone, not one per draft. "Auditable" means "in this host's own
-  file," not "visible in the project's git history to every
-  contributor." See
-  [PLAGIARISM.md](PLAGIARISM.md#-the-boilerplate-allowlist) for the
-  design and why.
-- **Recurring refusals (open).** A user who declines the same kind of source in
-  four drafts has a policy, not four coincidences. `rejected.md` records
-  each refusal with a reason; nothing reads those reasons across drafts to
-  notice the pattern.
+  is per-host, gitignored data on the same footing as `config.toml`. A
+  phrase waved through once is not re-flagged in the next draft on the
+  *same* host. "Auditable" means "in this host's own file," not "visible
+  in the project's git history." See
+  [PLAGIARISM.md](PLAGIARISM.md#-the-boilerplate-allowlist).
+- **Recurring refusals (open).** A user who declines the same kind of
+  source in four drafts has a policy. `rejected.md` records each refusal
+  with a reason; nothing reads those reasons across drafts.
 
-The asymmetry between proposing and accepting has to hold at this level
-too. In autoresearch the human edits `program.md` and the agent never
-does; here `program.md` is the skills, `docs/WRITING-STANDARDS.md`, and
-these standing preferences. A loop that rewrote its own standards from
-its own accepted-edit statistics would be a machine revising the terms of
-its own supervision. The loop proposes and the human accepts, as
-everywhere else in this pipeline, one level up.
+The asymmetry between proposing and accepting holds at this level too. In
+autoresearch the human edits `program.md` and the agent never does; here
+`program.md` is the skills, `docs/WRITING-STANDARDS.md`, and these
+standing preferences. A loop that rewrote its own standards from its own
+accepted-edit statistics would be a machine revising the terms of its
+own supervision. The loop proposes and the human accepts, one level up.
 
-What that means concretely: a cross-draft pass may *report* that `en-GB`
-was chosen four times out of four, or that a term is defined three ways,
-and may offer the edit. It may not write the preference file itself.
-
+So a cross-draft pass may *report* that `en-GB` was chosen four times out
+of four, or that a term is defined three ways, and may offer the edit. It
+may not write the preference file itself.
 `python -m chitragupta.draft dossier acronyms-suggest --apply` follows
-the same rule: it writes `content/acronyms.toml` only when a
-person at a terminal types `--apply`, for the draft they named, in that
-one run. Nothing here runs it on a schedule, inside a revision loop, or
-because a threshold was crossed. The human typing the flag *is* the
-acceptance this rule requires.
+the same rule: it writes `content/acronyms.toml` only when a person at a
+terminal types `--apply`, for the draft they named, in that one run, and
+never on a schedule, inside a revision loop or because a threshold was
+crossed. The human typing the flag *is* the acceptance.
 
 ## 🗺 Relationship to the language roadmap
 
-Of the language roadmap's items, three serve this loop and are built:
-the copy-edit mode (the sanctioned edit path), the recorded dialect (the
-recorded target), and the detector with its automatic invocation (the
-binary check and the re-check). Without the detector there is no binary
-check, and without a binary check the prose class of
-[the agenda](AUTO-IMPROVEMENT.md#-item-classes) could not be acted on at
-all. The render-language items (render-language plumbing, localisable
-references) and multilingual corpus support are unrelated to this loop;
-see the caution about non-English drafts above.
+Three of the language roadmap's items serve this loop and are built: the
+copy-edit mode, the recorded dialect, and the detector with its automatic
+invocation. Without the detector there is no binary check, and without
+one the prose class of [the agenda](AUTO-IMPROVEMENT.md#-item-classes)
+could not be acted on at all. The render-language items and multilingual
+corpus support are unrelated to this loop.
 
-The detector is decidable but not a gate. The reason is narrower than
-"prose is soft": the gate is measured against the ledger, which is
-ground truth, and a dialect check is measured against a line someone
-typed, which can be wrong or stale. See
-[ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4".
+The detector is decidable but not a gate, for a narrower reason than
+"prose is soft": the gate is measured against the ledger, which is ground
+truth, and a dialect check against a line someone typed, which can be
+wrong or stale. See [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4".

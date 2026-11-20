@@ -1,4 +1,4 @@
-# 📐 The workflow, drawn thirteen ways
+# 📐 The workflow, drawn fourteen ways
 
 Status: **reference.**
 
@@ -38,7 +38,7 @@ check ([figure-checks/README.md](figure-checks/README.md)).
 
 The fenced `mermaid` blocks below are the source of truth, and GitHub
 renders them inline, so a change to the pipeline and a change to its
-diagram land in the same diff. `docs/diagrams/` carries the same thirteen as
+diagram land in the same diff. `docs/diagrams/` carries the same fourteen as
 standalone `.mmd` sources and `.svg` exports, for slides, a paper, or a
 viewer that doesn't render Mermaid, and does the same for every diagram
 in the other documents; see [Editing these](#-editing-these) at the end.
@@ -66,7 +66,7 @@ all the work: phase 1 is the only entrance (citekeys come from your
 BibTeX export and nowhere else), and phase 4 is the only exit, with no arrow
 around it. This is the version in [the README](../README.md#-how-it-works).
 
-The `GATE FAIL` arrow loops back to **drafting**, not to you. A failing
+The `FAIL` arrow loops back to **drafting**, not to you. A failing
 gate is normally invisible: the skill discards the unsupported claim,
 rewrites it and runs the gate again. You only get involved in the rarer
 case where the paper isn't in the corpus yet, and that means going back
@@ -106,38 +106,39 @@ and does not block the pipeline.
     "tertiaryBorderColor": "#D55E00"
   }
 }}%%
-flowchart LR
+flowchart TB
 
-  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Add papers, export<br/>BibTeX + Export Files"]
+  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/>add papers, export BibTeX and files"]
 
-  P1["<b>2 · SYNC</b><br/><i>the corpus layer — deterministic, no LLM</i><br/><br/>read bib → update ledger<br/>→ extract PDF text"]
+  P1["<b>2 · SYNC</b><br/><i>deterministic, no LLM</i><br/>read bib → ledger → PDF text"]
 
-  P2["<b>3 · DRAFT</b><br/><i>the drafting layer — generative</i><br/><br/>Ask a genre skill:<br/><i>“write a survey section on …”</i><br/>only use text from<br/>the parsed corpus"]
+  P2["<b>3 · DRAFT</b><br/><i>a genre skill, generative</i><br/>uses only the parsed corpus"]
 
-  P3{{"<b>4 · VERIFY</b><br/><i>machine-<br/>enforced</i><br/><br/>CITATION GATE"}}
+  P3{{"<b>4 · VERIFY</b><br/>CITATION GATE"}}
 
-  P4["<b>5 · PUBLISH</b><br/><i>as markdown, tex, pdf</i>"]
+  P4["<b>5 · PUBLISH</b><br/><i>markdown, tex, pdf</i>"]
 
-  DOSS[("<b>DOSSIER</b><br/><i>machine-facing working state</i>")]
+  DOSS[("<b>DOSSIER</b><br/><i>working state</i>")]
 
-  REV["<b>REVIEW</b><br/><i>author advisory"]
+  REV["<b>REVIEW</b><br/><i>advisory aids</i>"]
 
   P0 e1@==> P1 e2@==> P2
   e1@{ animate: true }
   e2@{ animate: true }
-  P3 e3@== "CITATION GATE PASS" ==> P4
+  P3 e3@== "PASS" ==> P4
   e3@{ animate: true }
   subgraph LLM
     direction TB
     P2 ==> P3
-    P2 <-. "writes it, then reads it back" .-> DOSS
-    P3 -- "GATE FAIL · <b>loop until it passes</b>" --> P2
+    P2 <-. "writes, reads back" .-> DOSS
+    P3 -- "FAIL · loop until it passes" --> P2
   end
 
   subgraph Author Proofs
-    P4 -. "run it on a finished draft" .-> REV
-    REV -. "a finding you act on —<br/>revise from the dossier, don't re-draft" .-> P2
+    direction TB
+    P4 -. "on a finished draft" .-> REV
   end
+  REV -. "a finding: revise from the dossier" .-> P2
 
   class P0 flow
   class P1 flow
@@ -185,47 +186,44 @@ feedback you have.
 }}%%
 flowchart TB
 
-  A["<b>1 · Export from Zotero</b><br/><code>papers/bibliography.bib</code><br/><small>Format: BibTeX &nbsp;·&nbsp; tick <b>Export Files</b></small>"]
-  A1{{"Did you tick<br/><b>Export Files</b>?"}}
-  ATRAP["<b>The trap.</b> Without it you get metadata and no PDFs.<br/>Every entry then reports <i>no PDF attachment</i> — not an error,<br/>just an empty corpus. Same if you rename the companion folder:<br/><code>bib_reader</code> resolves <code>file</code> fields relative to the .bib.<br/><small>docs/ZOTERO.md</small>"]
+  A["<b>1 · Export from Zotero</b><br/>BibTeX, tick <b>Export Files</b>"]
+  A1{{"Ticked<br/><b>Export Files</b>?"}}
+  ATRAP["<b>The trap.</b> No PDFs,<br/>so an empty corpus (ZOTERO.md)"]
 
-  B["<b>2 · Make a config</b><br/><code>cp config.toml.example config.toml</code><br/><small>every key is optional — but the file must exist,<br/>or <code>chitragupta.config</code> refuses to import</small>"]
+  B["<b>2 · Make a config</b><br/><code>cp config.toml.example config.toml</code>"]
 
-  C["<b>3 · Install</b><br/><code>pipx install poetry</code><br/><code>bash scripts/install_full_pipeline.sh all</code><br/><small><b>all</b> = OS packages (pdftotext, TeX Live, Pandoc) + Python.<br/>No stage argument = Python only.</small>"]
+  C["<b>3 · Install</b><br/><code>install_full_pipeline.sh all</code>"]
 
-  D["<b>4 · Sync the corpus</b><br/><code>source .venv-full/bin/activate</code><br/><code>python -m chitragupta.corpus sync</code><br/><small>needs the venv — this is the one command that does</small>"]
+  D["<b>4 · Sync the corpus</b><br/><code>chitragupta corpus sync</code><br/>needs the venv"]
   D1{{"exit code?"}}
-  DFAIL["<b>1</b> — something didn't parse.<br/><small>The summary names each one.<br/>Fix or remove it; re-running is cheap.</small>"]
-  DBUSY["<b>2</b> — another run holds the lock.<br/><small>Nothing was lost. Try again later.</small>"]
+  DFAIL["<b>1</b>: a document didn't parse<br/><b>2</b>: another run holds the lock"]
 
-  E["<b>5 · Look at what it found</b><br/><code>python -m chitragupta.corpus ledger</code><br/><small>read-only, takes no lock, needs no venv —<br/>safe to run <i>while</i> a sync is going</small>"]
-  E1{{"Rows with status<br/><code>parsed</code>?"}}
-  EEMPTY["Nothing is citable yet.<br/><small>Almost always the Export Files trap above.<br/><code>--status no_pdf</code> tells you which entries and why.</small>"]
+  E["<b>5 · Look at what it found</b><br/><code>chitragupta corpus ledger</code>"]
+  E1{{"Any rows<br/><code>parsed</code>?"}}
+  EEMPTY["Nothing is citable yet;<br/>usually the Export Files trap"]
 
-  F["<b>6 · Ask for a draft</b><br/><i>“write a survey section on digital twin composability”</i><br/><small>in Claude Code. The matching skill in <code>.claude/skills/</code><br/>picks it up and runs its own gate → references → render chain,<br/><b>looping on the gate until it exits 0</b> before showing you anything.</small>"]
+  F["<b>6 · Ask for a draft</b><br/><i>“write a survey section on …”</i><br/>the skill loops on the gate"]
 
-  G["<b>7 · Or drive that chain by hand</b><br/><code>python -m chitragupta.draft gate &lt;draft&gt;</code> &nbsp;<i>← fix and repeat until OK</i><br/><code>python -m chitragupta.draft references &lt;draft&gt;</code><br/><code>python -m chitragupta.draft render &lt;draft&gt; --format pdf</code><br/><small>bare <code>python</code> — none of these need the venv</small>"]
+  G["<b>7 · Or by hand</b><br/><code>draft gate</code> → <code>references</code> → <code>render</code>"]
 
   DONE(["<b>content/rendered/&lt;slug&gt;.pdf</b>"])
 
   A --> A1
+  A1 -- yes --> B --> C --> D --> D1
+  D1 -- "<b>0</b>" --> E --> E1
+  E1 -- yes --> F --> DONE
+  F -. "manually" .-> G
+  G --> DONE
   A1 -- no --> ATRAP
   ATRAP -. "re-export" .-> A
-  A1 -- yes --> B --> C --> D --> D1
-  D1 -- "1" --> DFAIL
-  D1 -- "2" --> DBUSY
-  DBUSY -. "re-run" .-> D
+  D1 -- "1 or 2" --> DFAIL
   DFAIL -. "re-run" .-> D
-  D1 -- "<b>0</b> — corpus in sync" --> E --> E1
   E1 -- no --> EEMPTY
   EEMPTY -. "fix the export" .-> A
-  E1 -- yes --> F --> DONE
-  F -. "same chain, manually" .-> G
-  G --> DONE
 
   class A,B,C,D,E,F,G flow
   class A1,D1,E1 flow
-  class ATRAP,EEMPTY,DFAIL,DBUSY key
+  class ATRAP,EEMPTY,DFAIL,DFAIL key
   class DONE alt
 
   %% house roles: generated by scripts/render_diagrams.py --sync
@@ -279,118 +277,60 @@ the lightweight default when it doesn't.
 }}%%
 flowchart TB
 
-  %% ─────────────── 1 · CURATE ───────────────
-  subgraph S0["<b>1 · CURATE</b> — you, in Zotero. The pipeline never fetches a paper."]
-    direction TB
-    ZOT[("Zotero library")]
-    BIB["<b>papers/bibliography.bib</b><br/><i>the source of truth for citekeys</i>"]
-    ATT[/"<b>papers/bibliography/files/&lt;id&gt;/*.pdf</b><br/><small>the companion folder Zotero writes beside the .bib —<br/>never rename it, the <code>file</code> fields are relative paths</small>"/]
-    ZOT -- "Export · BibTeX + Export Files" --> BIB
-    ZOT --> ATT
-  end
+    ZOT[("<b>1 · CURATE</b><br/>your Zotero library")]
+    BIB["<b>papers/bibliography.bib</b> + <b>files/</b><br/>the source of truth for citekeys"]
+    ZOT -- "Export, with files" --> BIB
 
-  %% ─────────────── 2 · SYNC ───────────────
-  subgraph S1["<b>2 · SYNC</b> — the corpus layer · deterministic, no LLM, safe to run unattended · <code>chitragupta corpus sync</code> · holds the run lock"]
-    direction TB
-    BR["<b>chitragupta/bib_reader.py</b><br/><small>the only module that reads the .bib</small>"]
-    LED[("<b>content/ledger.sqlite</b><br/><small>one row per citekey: status, bib_fields,<br/>PDF fingerprint — re-parse only what moved</small>")]
-    PT["<b>chitragupta/pdf_text/</b> — extract text<br/><small>backend <code>pdftotext</code> · or <code>docling</code><br/>serial by default; opt-in worker pool</small>"]
-    TXT[/"<b>content/parsed/&lt;citekey&gt;.txt</b>"/]
-    ADV["<i>reported, never fatal:</i><br/>near-duplicates · parse-quality warning · stale citekeys<br/><small>deletion needs <code>--remove-stale</code></small>"]
-    BR --> LED --> PT --> TXT --> ADV
-  end
+    LED[("<b>2 · SYNC</b>, holds the lock<br/><b>content/ledger.sqlite</b><br/>one row per citekey, via <code>bib_reader.py</code>")]
+    PT["<b>pdf_text/</b><br/>pdftotext or docling<br/><i>reports duplicates, stale keys</i>"]
+    TXT["<b>content/parsed/&lt;citekey&gt;.txt</b>"]
+    LED --> PT --> TXT
 
-  %% ─────────────── 3 · RETRIEVE ───────────────
-  subgraph S2["<b>3 · RETRIEVE</b> — the only evidence a writer is given · <b>one ranker or the other, never both</b>"]
-    direction LR
-    XOR{{"which ranker?<br/><small>the genre skill picks</small>"}}
-    BM25["<b>chitragupta/retrieval.py</b> · BM25<br/><small>stdlib keyword overlap, cached term-frequency index.<br/><b>the default every skill starts from</b></small>"]
-    EMB["<b>chitragupta/enrich/embed_index.py</b> · semantic<br/><small>same <code>search(q, k)</code> signature, so it is a drop-in.<br/>Named as the alternative by <code>survey-writer</code><br/>and <code>deep-research</code> — and only by those two.</small>"]
-    PASS["<b>chitragupta/passages.py</b> · evidence ladder<br/><small>docling sidecar → page → pdftotext</small>"]
+    XOR{{"<b>3 · RETRIEVE</b><br/>one ranker, never both"}}
+    BM25["<b>retrieval.py</b> · BM25<br/>the default"]
+    EMB["<b>embed_index.py</b> · semantic<br/>if chroma/ exists"]
+    PASS["<b>passages.py</b><br/>the evidence ladder"]
     XOR -- "default" --> BM25
-    XOR -. "only if content/chroma/ was built" .-> EMB
+    XOR -.-> EMB
     BM25 --> PASS
     EMB --> PASS
-  end
 
-  %% ─────────────── 4 · DRAFT ───────────────
-  subgraph S3["<b>4 · DRAFT</b> — the drafting layer · generative, on demand, reviewed by you"]
-    direction TB
-    SKILLS["<b>.claude/skills/</b> — six genre skills<br/>survey-writer · thesis-chapter-writer · textbook-chapter-writer<br/>tutorial-writer · deep-research · review-digest"]
-    DRAFT[/"<b>content/drafts/&lt;slug&gt;.md | .tex</b>"/]
+    SKILLS["<b>4 · DRAFT</b>: genre skills<br/><code>.claude/skills/</code>"]
+    DRAFT["<b>content/drafts/&lt;slug&gt;</b>"]
     SKILLS --> DRAFT
-  end
 
-  %% ─────────────── 5 · GATE ───────────────
-  GATE{{"<b>THE CITATION GATE</b> · <code>chitragupta draft gate</code><br/>Is every citekey in this draft in the ledger as a parsed source?<br/><small>run twice: by the PostToolUse hook on every write under content/drafts/,<br/>and by the skill itself before it shows you anything</small>"}}
-  BLOCK["<b>REFUSED</b> · exit 1<br/><small>the write is blocked and the chain stops</small>"]
-  ITER["<b>the skill fixes it and re-runs — itself</b><br/><small>“Fix and re-run until <code>OK</code>. Never present a draft that hasn't<br/>passed.” — deep-research's words; every genre skill says it.<br/>It swaps the bad key for one retrieval actually returned, or drops<br/>the claim. You are shown nothing until the gate is green.</small>"]
+  GATE{{"<b>5 · THE CITATION GATE</b><br/>every citekey parsed in the ledger?"}}
+  BLOCK["<b>REFUSED</b> · exit 1<br/>the write is blocked"]
+  ITER["<b>the skill fixes it</b><br/>and re-runs the gate"]
 
-  %% ─────────────── 6 · PUBLISH ───────────────
-  subgraph S5["<b>6 · PUBLISH</b> — stdlib only, no venv needed"]
-    direction TB
-    REFS["<b>chitragupta draft references</b><br/><small>IEEE ## References, numbered by first appearance,<br/>built only from citekeys the draft actually cites.<br/>Skipped for thesis .tex fragments, where the<br/>surrounding LaTeX owns the bibliography.</small>"]
-    REND["<b>chitragupta draft render</b><br/><small>pandoc --citeproc + assets/csl/ieee.csl</small>"]
-    OUT[/"<b>content/rendered/&lt;slug&gt;.pdf | .tex | .docx | .md</b>"/]
+    REFS["<b>6 · PUBLISH</b>: draft references<br/>IEEE list of cited keys"]
+    REND["<b>draft render</b><br/>pandoc + citeproc"]
+    OUT["<b>content/rendered/&lt;slug&gt;</b>"]
     REFS --> REND --> OUT
-  end
 
-  %% ─────────────── ENRICHMENT (side branch) ───────────────
-  subgraph SH["<b>OPTIONAL · ENRICHMENT LAYER</b><br/><code>chitragupta enrich --stages …</code> · same run lock"]
-    direction TB
-    H1["<b>docling</b> — <i>reads the PDF itself, not content/parsed/</i><br/><small><b>content/docling/&lt;doc&gt;.md</b> — layout-aware text<br/><b>&lt;doc&gt;.passages.json</b> — the quotable-passage sidecar<br/><b>&lt;doc&gt;_artifacts/</b> — figure bitmaps, rendered one at a time<br/><b>&lt;doc&gt;.figures.json</b> — page, caption, cite string per figure<br/>the last two only when <code>[enrich].docling_images</code> is on</small>"]
-    H2["<b>embed</b><br/><small>content/chroma/ — drop-in search(q,k)</small>"]
-    H3["<b>bertopic</b><br/><small>content/topics.json — emergent clusters</small>"]
-    H3K["<b>extract-keywords</b><br/><small>content/keywords.toml — the papers' own declared keywords, aggregated; regenerated each run</small>"]
-    H4["<b>seed-topics</b><br/><small>content/topic_seeds.json — seed phrases, yours unioned with extracted keywords, many-to-many</small>"]
-    H5["<b>converge</b><br/><small>content/topic_set.json — bertopic's clusters and seed-topics' phrases, joined</small>"]
-    H6["<b>topic-graph</b><br/><small>content/topic_graph.json — how the topics relate: shared-member and semantic edges</small>"]
-    H1 --> H2 --> H3 --> H3K --> H4 --> H5 --> H6
-  end
+  SH["<b>OPTIONAL · ENRICHMENT</b>, same lock<br/>docling · embed · bertopic · extract-keywords<br/>seed-topics · converge · topic-graph"]
 
-  %% ─────────────── AIDS (side branch) ───────────────
-  subgraph SA["<b>REVIEW AIDS</b> — run these afterwards; none of them is a gate"]
-    direction TB
-    A1["<b>chitragupta review provenance</b><br/><small>what in the source supports this claim?</small>"]
-    A2["<b>chitragupta review verbatim</b><br/><small>verbatim overlap · locate a phrase by page<br/><i>the scan runs at the end of every skill</i></small>"]
-    A3["<b>chitragupta review coverage</b><br/><small>retrieval surfaced it — did the draft cite it?</small>"]
-    A4["<b>chitragupta review synthesis</b><br/><small>how many sources does each unit rest on?</small>"]
-    A5["<b>chitragupta review figure</b><br/><small>overlapping nodes · protrusion · overlong labels</small>"]
-    A6["<b>chitragupta review uncited</b><br/><small>which sentences cite nothing at all?</small>"]
-    A7["<b>chitragupta review quotation</b><br/><small>is each quoted span really in that source?</small>"]
-    A8["<b>chitragupta review agenda</b><br/><small>merges the eight draft-level aids into one ranked worklist</small>"]
-    A9["<b>chitragupta review support</b><br/><small>does the source entail this claim?</small>"]
-    A10["<b>chitragupta review union</b><br/><small>did assembling the book lose a unit's citekey?</small>"]
-    A11["<b>chitragupta review digest</b><br/><small>how much of a verbatim digest is not the sources' words?</small>"]
-  end
+  SA["<b>REVIEW AIDS</b>, never a gate<br/>provenance · verbatim · coverage · synthesis<br/>figure · uncited · quotation · agenda<br/>support · union · digest"]
 
-  %% ─────────────── SPINE ───────────────
-  BIB --> BR
-  ATT --> PT
+  BIB --> LED
   TXT --> XOR
   PASS --> SKILLS
   DRAFT --> GATE
   GATE -- "FAIL" --> BLOCK
   BLOCK --> ITER
-  ITER == "re-draft · <b>loop until it passes</b>" ==> SKILLS
-  GATE == "PASS · exit 0" ==> REFS
-  LED == "the ledger is the<br/>only authority the<br/>gate consults" ==> GATE
-  LED --> REFS
-  ATT -. "the PDF, direct" .-> H1
-  H1 -.-> PASS
-  H2 -.-> EMB
-  DRAFT --> SA
+  ITER == "until it passes" ==> SKILLS
+  GATE == "PASS" ==> REFS
+  BIB -. "the PDFs" .-> SH
+  SH -.-> EMB
+  OUT -. "afterwards" .-> SA
 
-  %% ─────────────── STYLE ───────────────
-
-  class BR,PT,BM25,PASS,REFS,REND flow
-  class ZOT,BIB,ATT,LED,TXT,DRAFT,OUT alt
+  class PT,BM25,PASS,REFS,REND flow
+  class ZOT,BIB,LED,TXT,DRAFT,OUT alt
   class GATE,XOR key
   class BLOCK key
   class ITER flow
   class SKILLS flow
-  class A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,ADV absent
-  class H1,H2,H3,EMB absent
+  class EMB,SH,SA absent
 
   %% house roles: generated by scripts/render_diagrams.py --sync
   classDef flow fill:#E6F1F7,stroke:#0072B2,stroke-width:1.4px,color:#1A1A1A
@@ -440,87 +380,31 @@ see DEVELOPER.md's "Figures and copyright".
 }}%%
 flowchart TB
 
-  subgraph IN["<b>YOURS</b> — hand-curated, gitignored, per host"]
-    direction LR
-    BIB[/"papers/bibliography.bib"/]
-    PDF[/"<b>papers/bibliography/files/&lt;id&gt;/*.pdf</b><br/><small>Zotero's companion folder, written beside the .bib<br/>by <b>Export Files</b> — renaming it breaks every<br/><code>file</code> field silently</small>"/]
-    CFG[/"config.toml"/]
-  end
+  IN["<b>YOURS</b>, per host<br/><code>papers/bibliography.bib</code><br/><code>papers/bibliography/files/</code><br/><code>config.toml</code>"]
 
-  subgraph GEN["<b>GENERATED</b> — <code>content/</code>, all of it disposable: delete it and re-run"]
-    direction TB
+  L1["<b>corpus sync</b> writes<br/><code>ledger.sqlite</code><br/><code>parsed/*.txt</code>, <code>*.passages.json</code><br/><code>pipeline.lock.db</code> while running"]
 
-    subgraph L1["written by <code>chitragupta corpus sync</code> — the corpus layer"]
-      direction LR
-      LED[("content/ledger.sqlite")]
-      TXT[/"content/parsed/&lt;citekey&gt;.txt<br/><small>form feeds between pages, either backend</small>"/]
-      CPS[/"content/parsed/&lt;citekey&gt;.passages.json<br/><small>only with <code>[parser].backend = docling</code>;<br/>cleared before every re-parse</small>"/]
-    end
+  L2["<b>enrichment</b> writes, opt-in<br/><code>docling/</code> · <code>chroma/</code><br/><code>topics.json</code> · <code>topic_set.json</code><br/><code>topic_seeds.json</code> · <code>topic_graph.json</code>"]
 
-    subgraph L2["written by the enrichment layer — opt-in"]
-      direction LR
-      DOC[/"<b>content/docling/&lt;doc&gt;.md</b><br/>+ &lt;doc&gt;.passages.json<br/><b>+ &lt;doc&gt;_artifacts/*.png</b> — figure bitmaps<br/><b>+ &lt;doc&gt;.figures.json</b> — page, caption, cite string<br/><small>the last two only when <code>[enrich].docling_images</code><br/>is on; Docling reads the <b>PDF</b>, never content/parsed/</small>"/]
-      CHR[("content/chroma/")]
-      TOP[/"content/topics.json"/]
-      SED[/"content/topic_seeds.json"/]
-      CVG[/"content/topic_set.json"/]
-      TGR[/"content/topic_graph.json"/]
-    end
+  L3["<b>caches</b>, safe to delete<br/><code>retrieval_index.json</code><br/><code>retrieval_passage_index.json</code><br/><code>docling_cache.json</code><br/><code>topic_embed_cache.json</code>"]
 
-    subgraph L3["caches — rebuilt on demand, safe to delete, cost only time"]
-      direction LR
-      RIX[/"content/retrieval_index.json"/]
-      RPX[/"content/retrieval_passage_index.json"/]
-      DCA[/"content/docling_cache.json"/]
-      TCA[/"content/topic_embed_cache.json"/]
-    end
+  L4["<b>through a skill</b><br/><code>drafts/</code> · <code>rendered/</code> · <code>review/</code>"]
 
-    subgraph L4["written by you, through a skill"]
-      direction LR
-      DRF[/"content/drafts/&lt;slug&gt;.md | .tex"/]
-      REN[/"content/rendered/&lt;slug&gt;.pdf | .tex | .docx | .md"/]
-      RVW[/"content/review/&lt;slug&gt;.{provenance,verbatim,coverage,synthesis,figure,uncited,quotation,agenda,support,union,digest}.md<br/><small>the draft's path under drafts/, mirrored · renders land beside them</small>"/]
-    end
 
-    LCK[/"content/pipeline.lock.db<br/><small>held by whichever writer is running</small>"/]
-  end
+  IN -- "bib_reader, pdf_text" --> L1
+  IN -- "docling_parse" --> L2
+  L1 -- "embed_index, topic_*" --> L2
+  L1 -- "retrieval caches" --> L3
+  L3 -- "BM25" --> L4
+  L2 -. "semantic, passages" .-> L4
+  L1 -- "references, passages" --> L4
+  L4 == "<b>draft gate</b>, until exit 0" ==> L4
+  L2 ~~~ L3
 
-  CFG -. "read once at import,<br/>env vars override" .-> GEN
 
-  BIB -- "chitragupta/bib_reader.py" --> LED
-  PDF -- "chitragupta/pdf_text/" --> TXT
-  PDF -- "chitragupta/pdf_text/<br/><small>docling backend only</small>" --> CPS
-  LED -- "which PDFs need a parse" --> TXT
-  LED -- "chitragupta/enrich/corpus.py<br/><small>every row, keyed by <code>citekey</code></small>" --> DOC
-  TXT -- "chitragupta/enrich/embed_index.py" --> CHR
-  PDF -- "chitragupta/enrich/docling_parse.py" --> DOC
-  CPS -. "<b>chitragupta/enrich/_docling_reuse.py</b><br/><small>adopts the corpus layer's parse<br/>instead of repeating it</small>" .-> DOC
-  DOC --> CHR
-  TXT -- "chitragupta/enrich/topic_model.py<br/><small>whole-doc embeddings — its own cache,<br/>not the Chroma collection</small>" --> TOP
-  TXT -- "chitragupta/enrich/topic_seeding.py<br/><small>the seed phrases, hand-written and extracted,<br/>matched against the same embeddings</small>" --> SED
-  TOP -- "chitragupta/enrich/topic_converge.py<br/><small>emergent clusters and named phrases, joined</small>" --> CVG
-  SED --> CVG
-  CVG -- "chitragupta/enrich/topic_graph.py<br/><small>how the topics relate — shared-member<br/>and semantic edges, both explainable by papers</small>" --> TGR
-
-  TXT -- "chitragupta/retrieval_cache.py" --> RIX
-  CPS -- "chitragupta/retrieval_passages_cache.py" --> RPX
-
-  RIX -- "<b>chitragupta/retrieval.py</b> · BM25 hits<br/><small>the default path</small>" --> DRF
-  RPX -- "<b>chitragupta/retrieval_passages.py</b> · BM25 passage hits<br/><small>same ranker, one unit down — <code>--unit passage</code></small>" --> DRF
-  CHR -. "<b>chitragupta/enrich/embed_index.py</b> · semantic hits<br/><small><b>either this or BM25 — never both.</b> Used once<br/>built; the shared genre steps name it, no skill builds it.</small>" .-> DRF
-  DOC -- "chitragupta/passages.py<br/>quotable passages — rung 1" --> DRF
-  CPS -- "chitragupta/passages.py<br/>quotable passages — rung 2" --> DRF
-  LED -- "chitragupta/references.py<br/>bib_fields → IEEE entries" --> DRF
-  DRF == "<b>chitragupta draft gate</b> — on FAIL the skill fixes the draft<br/>and re-runs it until it exits 0" ==> DRF
-  DRF -- "chitragupta draft render<br/><small>only after the gate passes</small>" --> REN
-  DRF -- "the review layer<br/><small>chitragupta review provenance · verbatim scan --write<br/>coverage · synthesis · figure · uncited · quotation --write<br/>agenda · support --write · union (a book, not a draft) · digest</small>" --> RVW
-
-  class BIB,PDF,CFG key
-  class LED,TXT,CPS flow
-  class DOC,CHR,TOP,SED,CVG,TGR absent
-  class RIX,DCA,TCA absent
-  class DRF,REN,RVW alt
-  class LCK flow
+  class IN key
+  class L1,L4 alt
+  class L2,L3 absent
 
   %% house roles: generated by scripts/render_diagrams.py --sync
   classDef flow fill:#E6F1F7,stroke:#0072B2,stroke-width:1.4px,color:#1A1A1A
@@ -565,59 +449,48 @@ reaches nobody, because the skill loops on it itself.
 }}%%
 flowchart TB
 
-  START(["<code>chitragupta corpus sync</code>"]) --> Q2
+  START(["<code>chitragupta corpus sync</code>"]) --> Q1
 
-  Q2{"<b>config.toml present?</b><br/><small>read once at import,<br/>before anything else happens</small>"}
-  Q2 -- no --> EC["<b>refuses to import</b><br/><small>cp config.toml.example config.toml</small>"]
-  Q2 -- yes --> Q1
+  Q1{{"<b>config present,<br/>lock free, .bib readable?</b>"}}
+  Q1 -- yes --> LOOP
+  Q1 -- no --> E2["<b>stops early</b><br/>no config: refuses to import<br/>lock held: <b>exit 2</b>, nothing lost<br/>no .bib: FileNotFoundError"]
 
-  Q1{"<b>run lock free?</b><br/><small>content/pipeline.lock.db</small>"}
-  Q1 -- "no · another writer holds it" --> E2["<b>exit 2</b><br/>cycle skipped, no work lost<br/><small>readers were never blocked</small>"]
-  Q1 -- yes --> Q3
+  LOOP["<b>for each citekey</b><br/>upsert the ledger row"] --> Q4
 
-  Q3{"<b>bibliography.bib readable?</b>"}
-  Q3 -- no --> EF["<b>FileNotFoundError</b><br/><small>export from Zotero first</small>"]
-  Q3 -- yes --> LOOP
-
-  LOOP["<b>for each citekey in the bib</b><br/><small>upsert the ledger row</small>"] --> Q4
-
-  Q4{"<b>has a resolvable PDF?</b>"}
-  Q4 -- no --> SN["status <code>no_pdf</code><br/><small>reported with a reason;<br/>the run still succeeds</small>"]
+  Q4{{"<b>resolvable PDF?</b>"}}
   Q4 -- yes --> Q5
+  Q4 -- no --> SN["<code>no_pdf</code>"]
 
-  Q5{"<b>bytes changed since<br/>the last parse?</b><br/><small>size+mtime, then sha256</small>"}
-  Q5 -- no --> SK["<b>skipped</b><br/><small>this is why a re-run costs<br/>close to nothing</small>"]
-  Q5 -- yes --> PARSE["<b>parse the PDF</b><br/><small>pdftotext or docling ·<br/>serial, or a clamped worker pool</small>"]
+  Q5{{"<b>bytes changed?</b>"}}
+  Q5 -- yes --> PARSE["<b>parse the PDF</b>"]
+  Q5 -- no --> SK["<b>skipped</b>"]
 
   PARSE --> Q6
-  Q6{"<b>parse result</b>"}
-  Q6 -- "complete" --> OK["status <code>parsed</code><br/><small>content/parsed/&lt;citekey&gt;.txt written</small>"]
-  Q6 -- "partial success" --> PF
-  Q6 -- "backend can't read it" --> PF["status <code>parse_failed</code> · <i>deterministic</i><br/><small>never retried — same minutes, same answer —<br/>but fails every run until fixed</small>"]
-  Q6 -- "worker died · timeout · CUDA OOM · write failed" --> PT2["status <code>parse_failed</code> · <i>transient</i><br/><small>retried automatically next run</small>"]
+  Q6{{"<b>parse<br/>result</b>"}}
+  Q6 -- "complete" --> OK["<code>parsed</code>"]
+  Q6 -- "failed" --> PF["<code>parse_failed</code><br/>transient ones retried"]
 
   OK --> AGG
   SN --> AGG
   SK --> AGG
   PF --> AGG
-  PT2 --> AGG
 
-  AGG{"<b>anything unresolved?</b>"} -- no --> E0["<b>exit 0</b><br/>corpus in sync"]
-  AGG -- yes --> E1["<b>exit 1</b><br/>corpus not in sync,<br/>human attention needed"]
+  AGG{{"<b>anything<br/>unresolved?</b>"}} -- no --> E0["<b>exit 0</b><br/>corpus in sync"]
+  AGG -- yes --> E1["<b>exit 1</b><br/>needs attention"]
 
-  E0 --> GATEIN(["a skill drafts against this corpus"])
-  GATEIN --> G{"<b>chitragupta draft gate</b><br/>every citekey resolvable?"}
-  G -- "yes · <b>exit 0</b>" --> GOOD["references → render<br/><small>the only path to a rendered draft</small>"]
-  G -- "no · <b>exit 1</b>" --> GBAD["<b>the write is blocked.</b><br/><small>Treated like a failing test,<br/>not a lint warning.</small>"]
-  GBAD --> GLOOP["<b>the skill re-drafts and re-runs the gate</b><br/><small>“Fix and re-run until <code>OK</code>. Never present a draft<br/>that hasn't passed.” — deep-research's words;<br/>all six genre skills say it.<br/>This exit 1 is the only one nobody has to see:<br/>the loop is inside the skill, not in front of you.</small>"]
-  GLOOP == "<b>loop until exit 0</b>" ==> G
-  GLOOP -. "unless the paper genuinely isn't in the corpus —<br/>then it stops and tells you to sync" .-> E1
+  E0 --> GATEIN(["a skill drafts"])
+  GATEIN --> G{{"<b>draft gate</b><br/>every citekey<br/>resolvable?"}}
+  G -- "<b>exit 0</b>" --> GOOD["references → render"]
+  G -- "<b>exit 1</b>" --> GBAD["<b>the write is blocked</b>"]
+  GBAD --> GLOOP["<b>the skill re-drafts</b><br/>and re-runs the gate"]
+  GLOOP == "<b>until exit 0</b>" ==> G
+  GLOOP -. "paper not in corpus:<br/>it tells you to sync" .-> E1
 
-  class Q1,Q2,Q3,Q4,Q5,Q6,AGG,LOOP,PARSE,G flow
+  class Q1,Q4,Q5,Q6,AGG,LOOP,PARSE,G flow
   class E0,OK,SK,GOOD alt
   class GLOOP flow
-  class E2,SN,PT2 flow
-  class E1,PF,EC,EF key
+  class E2,SN flow
+  class E1,PF key
   class GBAD key
 
   %% house roles: generated by scripts/render_diagrams.py --sync
@@ -670,68 +543,60 @@ flowchart TB
 
   subgraph PRE["<b>before the pool exists</b>"]
     direction TB
-    P1["<b>prestart_pool()</b><br/><small>forkserver begins importing torch + docling<br/>in the background — and declines outright when<br/>no pool is coming (pdftotext, or workers = 1)</small>"]
-    P2["<b>read bibliography.bib</b> — ~2.5s<br/><small>deliberately started <i>after</i> the pre-start, so the<br/>import overlaps the read: a fixed ~1.5-2s saved</small>"]
-    P3["<b>ask the ledger</b><br/><small>which documents actually need a parse</small>"]
+    P1["<b>prestart_pool()</b><br/>imports torch + docling in the background"]
+    P2["<b>read bibliography.bib</b><br/>overlaps the import, ~1.5-2s saved"]
+    P3["<b>ask the ledger</b><br/>which documents need a parse"]
     P1 -.-> P2 --> P3
   end
 
-  W{{"<b>resolve_workers(n_docs)</b><br/><code>max(1, min(requested, ceiling, n_docs))</code>"}}
+  W{{"<b>resolve_workers(n_docs)</b>"}}
 
-  subgraph CEIL["<b>the ceiling is the host's, not the request's</b>"]
+  subgraph CEIL["<b>the ceiling is the host's</b>"]
     direction TB
-    C1["<b>allowed_cpus()</b> = <code>len(os.sched_getaffinity(0))</code><br/><small>the CPUs <i>this process</i> may run on — not <code>os.cpu_count()</code>.<br/>On the dev machine those are 48 and 96.</small>"]
-    C2["<b>÷ 4 for docling</b><br/><small>one worker was measured holding ~300% CPU.<br/>A later full-corpus sweep found the divisor<br/>too conservative by ~1.41x — not yet changed.</small>"]
-    C3["<b>clamped <i>and</i> reported</b><br/><small>silently obeying thrashes; silently ignoring leaves<br/>someone believing they configured something they didn't</small>"]
+    C1["<b>allowed_cpus()</b><br/>CPUs this process may use"]
+    C2["<b>÷ 4 for docling</b><br/>one worker uses ~300% CPU"]
+    C3["<b>clamped and reported</b>"]
     C1 --> C2 --> C3
   end
 
-  SER["<b>workers = 1 — the default</b><br/><small>a genuinely different code path: no executor,<br/>no pickling, no subprocess. Incremental skipping<br/>means a routine run has almost nothing to do,<br/>so pool setup would cost more than it saves.</small>"]
+  SER["<b>workers = 1</b>, the default<br/>no executor, no pickling"]
 
-  subgraph POOL["<b>the pool</b> — each backend gets the concurrency it can use"]
+  subgraph POOL["<b>the pool</b>"]
     direction TB
     EXE{{"backend?"}}
-    TP["<b>ThreadPoolExecutor</b> · <code>pdftotext</code><br/><small>external subprocess — releases the GIL.<br/>Processes would add pickling and spawn cost<br/>to buy the same OS-level concurrency.</small>"]
-    PP["<b>ProcessPoolExecutor</b> · <code>docling</code><br/><small>runs in-process and holds the GIL.<br/><b>forkserver</b> or <b>spawn</b>, never plain fork —<br/>a forked child inherits a broken CUDA context.</small>"]
-    LPT["<b>submit biggest-file-first</b><br/><small>one 675-page document is 5% of the corpus's pages.<br/>Picked up last it would define the wall clock by itself.<br/>File size, not page count — counting pages needs a<br/>PDF library the corpus layer refuses to depend on.</small>"]
-    DEV["<b>init_worker</b> — one CUDA card each<br/><small>a shared counter under a lock, round-robin over<br/><code>usable_devices()</code> (≥ 2.5 GiB free). Without this,<br/>docling's <code>AcceleratorDevice.AUTO</code> resolves to<br/><code>cuda:0</code> in <i>every</i> process.</small>"]
+    TP["<b>ThreadPoolExecutor</b><br/><code>pdftotext</code> releases the GIL"]
+    PP["<b>ProcessPoolExecutor</b><br/><code>docling</code>; forkserver, never fork"]
+    LPT["<b>biggest file first</b><br/>so one long PDF never runs last"]
+    DEV["<b>init_worker</b><br/>one CUDA card per worker"]
     EXE -- pdftotext --> TP
     EXE -- docling --> PP
     TP --> LPT
     PP --> LPT --> DEV
+    FAIL["<b>five failure modes</b><br/>dead worker · hung pool · slow document<br/>CUDA OOM · Ctrl+C"]
+    DEV --> FAIL
   end
 
-  RET["<b>workers return</b> <code>(citekey, out_path, exception)</code><br/><small>the exception is <i>returned</i>, not raised, so both the value<br/>and its type survive pickling — <code>sync</code> reports<br/><code>ExtractionError</code> and <code>BackendUnavailable</code> differently</small>"]
+  RET["<b>workers return</b> the exception<br/>instead of raising it"]
 
-  subgraph FAIL["<b>five failure modes, each handled where it can be</b>"]
-    direction TB
-    F1["<b>a dead worker</b> → <code>BrokenProcessPool</code><br/><small>results collected with <code>as_completed</code>, not <code>map</code>,<br/>so documents that already finished are kept</small>"]
-    F2["<b>a hung pool</b> → stall watchdog<br/><small>fires when <i>no</i> document completes for <code>stall_timeout</code>;<br/>warns at half. Not a per-document deadline — no threshold<br/>separates a hang from the legitimate 246s document.</small>"]
-    F3["<b>a slow document</b> → <code>document_timeout</code><br/><small>a real kill for pdftotext; a cooperative between-stages<br/>check for docling. Not equally strong, and said so.</small>"]
-    F4["<b>CUDA OOM</b> → demote that worker to CPU<br/><small>for the rest of the run, and retry immediately.<br/>Surviving the CPU retry marks it <i>transient</i>.</small>"]
-    F5["<b>Ctrl+C</b> → explicit SIGINT handler<br/><small><code>except KeyboardInterrupt</code> around <code>as_completed()</code><br/>never fires. Terminate, grace, <code>kill()</code>, <code>os._exit</code> —<br/>safe only because the ledger commits incrementally.</small>"]
-  end
+  PARENT["<b>the parent writes</b><br/>every ledger write, in bib order"]
 
-  PARENT["<b>the parent keeps what only the parent can do</b><br/>every ledger and cache write · results replayed <b>in bib order</b><br/><small>sqlite has a single writer, and the parent is the only place<br/>that can order results deterministically</small>"]
+  PARTIAL["<b>partial success is a failure</b><br/>raised before anything is written"]
 
-  PARTIAL["<b>partial success is a failure</b><br/><small><code>convert(raises_on_error=True)</code> raises only on FAILURE.<br/>A PARTIAL_SUCCESS would hand the citation gate a source that<br/>silently ends at page k of n — so both call sites check the<br/>status and raise <i>before</i> anything is written.</small>"]
-
-  LOCK["<b>and around all of it: one writer at a time</b><br/><code>content/pipeline.lock.db</code> · a dedicated sqlite file under <code>BEGIN IMMEDIATE</code><br/><small>a RESERVED lock does not block readers, so the gate, retrieval and the<br/>drafting skills keep working during a run. A second writer gets SQLITE_BUSY<br/>and exits 2. A killed holder releases it immediately — no staleness heuristic.</small>"]
+  LOCK["<b>one writer at a time</b><br/><code>pipeline.lock.db</code>; a second writer exits 2"]
 
   P3 --> W
   CEIL -.-> W
   W -- "= 1" --> SER
   W -- "&gt; 1" --> EXE
-  DEV --> RET
+  FAIL --> RET
   SER --> RET
   RET --> PARTIAL --> PARENT
-  FAIL -.-> RET
   LOCK -.-> PRE
 
   class P1,P2,P3,C1,C2,C3,SER flow
   class W,EXE flow
   class TP,PP,LPT,DEV alt
-  class F1,F2,F3,F4,F5,PARTIAL key
+  class FAIL,PARTIAL key
   class RET,PARENT flow
   class LOCK flow
 
@@ -801,31 +666,31 @@ question in this genre.
     "tertiaryBorderColor": "#D55E00"
   }
 }}%%
-flowchart LR
+flowchart TB
 
-  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Breadth is the whole job here.<br/>A thin corpus shows up<br/>immediately as a thin survey.<br/><br/><b>papers/bibliography.bib</b><br/><small>the only source either skill can reach —<br/>everything retrieval returns is citable</small>"]
+  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/>breadth is the whole job"]
 
-  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>chitragupta corpus sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
+  P1["<b>2 · SYNC</b><br/><code>chitragupta corpus sync</code><br/>ledger + parsed text"]
 
-  HEAVY["<b>ENRICHMENT — worth it for this genre</b><br/><code>chitragupta enrich --stages docling,embed</code><br/><br/><b>docling</b> → layout-aware .md + .passages.json<br/><small>better quotable passages, so claims survive review</small><br/><br/><b>embed</b> → content/chroma/<br/><small>semantic recall: finds the paper that argues the<br/>point in different words. <b>Both skills name<br/><code>embed_index.search()</code> by hand.</b></small>"]
+  HEAVY["<b>ENRICHMENT</b>, worth it here<br/><code>docling</code>: better passages<br/><code>embed</code>: semantic recall"]
 
-  P2["<b>3 · DRAFT</b><br/><i>every sentence is a cited claim</i><br/><br/><b>survey-writer</b> — over-fetch <code>k=15</code>,<br/>hand-cluster into 2-4 sub-themes,<br/>comparison table + gap analysis<br/><br/><b>deep-research</b> — perspectives,<br/>parallel interviews, contradiction map,<br/>then cited sections<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
+  P2["<b>3 · DRAFT</b><br/><i>every sentence a cited claim</i><br/><b>survey-writer</b> · <b>deep-research</b>"]
 
-  P3{{"<b>4 · VERIFY</b><br/><code>chitragupta draft gate</code><br/><br/>Highest citation density<br/>in the repo, so this<br/>is the genre where<br/>the gate earns its keep"}}
+  P3{{"<b>4 · VERIFY</b><br/><code>chitragupta draft gate</code><br/>densest citations: the gate earns its keep"}}
 
-  FIX["<b>DISCARD DRAFT</b><br/><small>swap the key for one retrieval<br/>actually returned, or drop the claim.<br/>Never invent one.</small>"]
+  FIX["<b>DISCARD DRAFT</b><br/>swap in a retrieved key, or drop the claim"]
 
-  P4["<b>5 · PUBLISH</b><br/><br/><code>chitragupta draft references</code> → IEEE list<br/><code>chitragupta draft render --format tex</code><br/><code>--format pdf</code> · <code>--format md</code><br/><br/><b>content/rendered/&lt;slug&gt;.pdf</b>"]
+  P4["<b>5 · PUBLISH</b><br/><code>draft references</code> · <code>draft render</code>"]
 
-  AID["<b>LAYER 4 · REVIEW — afterwards, never a gate</b><br/><code>chitragupta review provenance</code> · <code>chitragupta review verbatim</code><br/><code>chitragupta review coverage</code> · <code>chitragupta review synthesis</code><br/><code>chitragupta review figure</code> · <code>chitragupta review uncited</code><br/><code>chitragupta review quotation</code> · <code>chitragupta review agenda</code><br/><code>chitragupta review support</code> · <code>chitragupta review union</code><br/><code>chitragupta review digest</code><br/><small>“retrieval surfaced it — did the draft cite it?”<br/>only meaningful when the corpus <i>is</i> the argument</small>"]
+  AID["<b>REVIEW</b>, afterwards, never a gate<br/><code>coverage</code> matters most in this genre"]
 
-  BERT["<b>bertopic</b> → content/topics.json<br/><small>no skill calls this. It is for <i>you</i>, deciding what<br/>the survey should even be about.</small>"]
+  BERT["<b>bertopic</b><br/>for you, choosing the topic; no skill calls it"]
 
   P0 ==> P1 ==> P2 ==> P3
   P1 ==> HEAVY ==> P2
-  P3 == "PASS · exit 0" ==> P4
-  P3 -- "FAIL · exit 1" --> FIX
-  FIX == "re-draft · <b>loop until it passes</b>" ==> P2
+  P3 == "PASS" ==> P4
+  P3 -- "FAIL" --> FIX
+  FIX == "re-draft" ==> P2
   P4 -.-> AID
   P1 -.-> BERT -.-> P0
 
@@ -888,30 +753,29 @@ can catch it.
     "tertiaryBorderColor": "#D55E00"
   }
 }}%%
-flowchart LR
+flowchart TB
 
-  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>A handful of grounding papers is<br/>enough. Breadth buys you<br/>very little in this genre.<br/><br/><b>papers/bibliography.bib</b>"]
+  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/>a handful of grounding papers"]
 
-  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>chitragupta corpus sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
+  P1["<b>2 · SYNC</b><br/><code>chitragupta corpus sync</code><br/>ledger + parsed text"]
 
-  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s> · <s>extract-keywords</s> · <s>seed-topics</s> · <s>converge</s> · <s>topic-graph</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>chitragupta.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is the drafting layer's own publish step<br/><small><code>chitragupta draft render</code> — it was never<br/>enrichment work, and is deliberately not a stage</small>"]
+  HEAVY["<b>ENRICHMENT</b><br/>not worth it here: BM25 is enough"]
 
-  P2["<b>3 · DRAFT</b><br/><i>mostly original content</i><br/><br/><b>tutorial-writer</b> — one path, keyboard-first,<br/>verified to actually run. Citations are<br/><b>banned mid-lesson</b>; they live only in<br/>a closing “Where to go next”.<br/><br/><b>textbook-chapter-writer</b> — objectives,<br/>worked examples, exercises. Cites for<br/><b>motivation and background only</b>.<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
+  P2["<b>3 · DRAFT</b><br/><b>tutorial-writer</b>: cites only in “Where to go next”<br/><b>textbook-chapter-writer</b>: cites for background"]
 
-  P3{{"<b>4 · VERIFY</b><br/><code>chitragupta draft gate</code><br/><br/><small><b>May legitimately pass with<br/>zero citations.</b> Both SKILL.md<br/>files say so explicitly — this is<br/>the one genre where an empty<br/>reference list is correct.</small>"}}
+  P3{{"<b>4 · VERIFY</b><br/><code>chitragupta draft gate</code><br/>may pass with zero citations"}}
 
-  FIX["<b>DISCARD DRAFT</b><br/><small>drop the claim; the lesson<br/>rarely needed it in the first place</small>"]
+  FIX["<b>DISCARD DRAFT</b><br/>drop the claim"]
 
-  P4["<b>5 · PUBLISH</b><br/><br/><code>chitragupta draft references</code><br/><small><b>tutorial-writer</b> keeps the default<br/><code>References</code> heading, which the<br/>render swaps for citeproc's<br/>single bibliography</small><br/><br/><code>chitragupta draft render --format pdf</code>"]
+  P4["<b>5 · PUBLISH</b><br/><code>draft references</code><br/><code>draft render</code>"]
 
-  RISK["<b>the real failure mode here isn't a bad citekey</b><br/><small>It is writing the wrong genre: a tutorial that explains<br/>instead of instructing, or a chapter that instructs instead<br/>of explaining. Both SKILL.md files open by warning about<br/>exactly that — and no gate in this repository can catch it.<br/><b>You are the check.</b></small>"]
+  RISK["<b>the real risk</b><br/>writing the wrong genre; no gate catches it"]
 
   P0 ==> P1 ==> P2 ==> P3
-  P1 -. "publish step only" .-> HEAVY
-  HEAVY -.-> P4
-  P3 == "PASS · exit 0<br/>(often trivially)" ==> P4
-  P3 -- "FAIL · exit 1" --> FIX
-  FIX == "re-draft · <b>loop until it passes</b>" ==> P2
+  P1 -.-> HEAVY
+  P3 == "PASS" ==> P4
+  P3 -- "FAIL" --> FIX
+  FIX == "re-draft" ==> P2
   P2 -.-> RISK
 
   class P0 flow
@@ -965,30 +829,29 @@ rule is the same as in the other four skills.
     "tertiaryBorderColor": "#D55E00"
   }
 }}%%
-flowchart LR
+flowchart TB
 
-  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/><br/>Depth over breadth: everything<br/>bearing on one research question.<br/><br/><b>papers/bibliography.bib</b><br/><small>this same .bib is very likely already<br/>your thesis's <code>\\bibliography</code> — which is<br/>why the two stay consistent for free</small>"]
+  P0["<b>1 · CURATE</b><br/><i>you, in Zotero</i><br/>depth on one research question"]
 
-  P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>chitragupta corpus sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
+  P1["<b>2 · SYNC</b><br/><code>chitragupta corpus sync</code><br/>ledger + parsed text"]
 
-  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s> · <s>extract-keywords</s> · <s>seed-topics</s> · <s>converge</s> · <s>topic-graph</s><br/><small>SKILL.md names <code>chitragupta/retrieval.py</code> alone —<br/><b>BM25, <code>k=15</code>, then filter by hand</b></small><br/><br/><b>render</b> is <i>not</i> an enrichment stage<br/><small>it is the drafting layer's own publish step, and here<br/>even that is disposable: <code>--format md</code>/<code>--format pdf</code><br/>to <i>look</i> at the chapter. The artifact that matters<br/>is the .tex you <code>\\input</code>. “A rendering failure<br/>never blocks presenting the draft.”</small>"]
+  HEAVY["<b>ENRICHMENT</b><br/>not worth it here: BM25, then filter by hand"]
 
-  P2["<b>3 · DRAFT</b><br/><i>RQ-driven narrative</i><br/><br/>A standalone <b>.tex fragment</b> —<br/><code>\\citep</code> / <code>\\citet</code>, <b>no preamble</b>,<br/>meant to be <code>\\input</code> by your own<br/>thesis document.<br/><br/><b>content/drafts/&lt;slug&gt;.tex</b>"]
+  P2["<b>3 · DRAFT</b><br/><i>RQ-driven narrative</i><br/>a <code>.tex</code> fragment, <code>\citep</code>, no preamble"]
 
-  P3{{"<b>4 · VERIFY</b><br/><code>chitragupta draft gate</code><br/><br/><small>Reads <code>\\citep</code>/<code>\\citet</code> as<br/>readily as Markdown <code>[@key]</code>,<br/>so the .tex path is gated<br/>exactly as hard</small>"}}
+  P3{{"<b>4 · VERIFY</b><br/><code>chitragupta draft gate</code><br/>reads <code>\citep</code> as readily as Markdown"}}
 
-  FIX["<b>DISCARD DRAFT</b><br/><small>“Fix and re-run until <code>OK</code>.<br/>Never present a draft<br/>that hasn't passed.”</small>"]
+  FIX["<b>DISCARD DRAFT</b><br/>fix and re-run until OK"]
 
-  P4["<b>5 · PUBLISH</b> — <i>the odd one out</i><br/><br/><b>❌ <s>chitragupta draft references</s> — deliberately skipped</b><br/><small>the only genre that skips it. Your thesis's own<br/>bibliography owns the reference list; a second<br/>one inside the fragment would collide with it.</small><br/><br/><code>chitragupta draft render --format md | pdf</code><br/><small>a preview for you, not the deliverable</small>"]
+  P4["<b>5 · PUBLISH</b>, the odd one out<br/>no <code>draft references</code>: your thesis owns them<br/><code>draft render</code> is a preview"]
 
-  OUT["<b>the actual output</b><br/><code>\\input{chapter-4}</code><br/><small>into your own thesis, compiled by your own<br/>LaTeX toolchain against your own .bib</small>"]
+  OUT["<b>the actual output</b><br/><code>\input{chapter-4}</code> in your thesis"]
 
   P0 ==> P1 ==> P2 ==> P3
-  P1 -. "publish step only" .-> HEAVY
-  HEAVY -.-> P4
-  P3 == "PASS · exit 0" ==> P4
-  P3 -- "FAIL · exit 1" --> FIX
-  FIX == "re-draft · <b>loop until it passes</b>" ==> P2
+  P1 -.-> HEAVY
+  P3 == "PASS" ==> P4
+  P3 -- "FAIL" --> FIX
+  FIX == "re-draft" ==> P2
   P4 ==> OUT
 
   class P0 flow
@@ -1011,7 +874,7 @@ flowchart LR
 
 ## 📎 Appendix
 
-These two answer narrower questions than the groups above, and are kept
+These three answer narrower questions than the groups above, and are kept
 separate for that reason.
 
 ### ⏱ One draft, in time order
@@ -1041,73 +904,51 @@ that wraps both of them.
 }}%%
 sequenceDiagram
     autonumber
-    actor You as You
-    participant Z as Zotero
-    participant Sync as chitragupta corpus sync<br/>(corpus layer)
-    participant Led as content/<br/>ledger.sqlite
-    participant Ret as chitragupta.retrieval<br/>+ chitragupta.passages
-    participant Skill as genre skill<br/>(.claude/skills/)
-    participant Hook as PostToolUse hook
-    participant Gate as chitragupta draft gate
-    participant Ref as chitragupta draft references
-    participant Ren as chitragupta draft render<br/>(pandoc / TeX Live)
+    actor You
+    participant C as corpus<br/>sync + ledger
+    participant Skill as genre skill
+    participant Gate as draft gate
 
     rect rgba(255,247,237,0.6)
-    Note over You,Z: CURATE — the only step that adds a paper
-    You->>Z: add papers, then Export BibTeX + files
-    Z-->>You: papers/bibliography.bib + attachment tree
+    Note over You: CURATE in Zotero
     end
 
     rect rgba(238,242,255,0.6)
-    Note over Sync,Led: SYNC — deterministic, incremental, holds the run lock
-    You->>Sync: chitragupta corpus sync
-    Sync->>Sync: take content/pipeline.lock.db
-    Sync->>Led: upsert one row per citekey
-    Led-->>Sync: which PDFs actually changed
-    Sync->>Sync: extract text → content/parsed/*.txt
-    Sync->>Led: mark parsed / parse_failed / no_pdf
-    Sync-->>You: summary + stale list + exit 0 | 1 | 2
+    Note over You,C: SYNC, holding the lock
+    You->>C: corpus sync
+    C->>C: parse changed PDFs
+    C-->>You: exit 0, 1 or 2
     end
 
     rect rgba(240,253,244,0.6)
-    Note over You,Skill: DRAFT — the generative half
-    You->>Skill: "write a survey section on digital twin composability"
-    Skill->>Led: is the ledger populated?
-    Led-->>Skill: N citekeys parsed
-    Skill->>Ret: search(query, k)
-    Ret-->>Skill: ranked snippets, each tied to a real citekey
-    Skill->>Skill: write content/drafts/<slug>.md
+    Note over You,Skill: DRAFT
+    You->>Skill: "write a survey …"
+    Skill->>C: search
+    C-->>Skill: snippets, real citekeys
+    Skill->>Skill: write the draft
     end
 
     rect rgba(254,242,242,0.7)
-    Note over Hook,Gate: VERIFY — enforced mechanically, twice
-    Hook->>Gate: every Write/Edit under content/drafts/
-    Gate->>Led: are these citekeys in the ledger, each with a parsed PDF?
-    loop until the gate exits 0 — you are shown nothing before that
-        alt any citekey unresolved
-            Led-->>Gate: no
-            Gate-->>Hook: FAIL (exit 1)
-            Hook-->>Skill: the write is blocked
-            Skill->>Skill: swap the key for one retrieval returned,<br/>or drop the claim — never invent one
+    Note over Skill,Gate: VERIFY, every write
+    loop until exit 0
+        Skill->>Gate: hook runs the gate
+        Gate->>C: citekeys parsed?
+        alt unresolved
+            Gate-->>Skill: FAIL, blocked
+            Skill->>Skill: swap or drop
         else all resolvable
-            Led-->>Gate: yes
-            Gate-->>Skill: PASS (exit 0)
+            Gate-->>Skill: PASS
         end
     end
-    Skill->>Gate: runs the gate again itself, before showing you anything
-    Note right of Skill: If the paper genuinely isn't in the corpus,<br/>the loop stops and the skill tells you to<br/>add it in Zotero and re-run sync.
+    Skill->>Gate: runs it again itself
     end
 
     rect rgba(250,245,255,0.6)
-    Note over Ref,Ren: PUBLISH
-    Skill->>Ref: python -m chitragupta.draft references <draft>
-    Ref->>Led: bib_fields for exactly the cited citekeys
-    Ref-->>Skill: a ## References section, numbered by first appearance
-    Skill->>Ren: chitragupta.draft render --format pdf
-    Ren-->>You: content/rendered/<slug>.pdf
+    Note over You,Skill: PUBLISH
+    Skill-->>You: references, render: the PDF
     end
 
-    Note over You,Ren: Layer 4, the review layer — afterwards, never a gate:<br/>chitragupta review provenance · verbatim · coverage · synthesis<br/>figure · uncited · quotation · agenda · support · union · digest<br/>the skill runs verbatim scan itself, the rest are yours to run<br/>reports land in content/review/, mirroring the draft
+    Note over You,Gate: REVIEW afterwards, never a gate
 ```
 
 ### 📖 The life of a single citekey
@@ -1116,6 +957,9 @@ The ledger's own state machine, for when the question is "why can't I
 cite this paper?". `parsed` is the only state that makes a citekey
 citable, and the self-loop on it is the incremental path that makes a
 routine re-run nearly free.
+`parse_failed` covers two kinds of failure: a transient one (a worker
+died, a timeout) is retried on the next sync, and a deterministic one
+only under `sync --reparse`.
 
 Note that `stale` deletes nothing. A bib export that comes back short a
 citekey is far more often a botched re-export or a `BIB_FILE` pointing at
@@ -1140,41 +984,77 @@ re-run with `--remove-stale`.
 stateDiagram-v2
     direction TB
 
-    [*] --> discovered : appears in bibliography.bib<br/>(chitragupta.bib_reader)
+    [*] --> discovered : appears in the .bib
 
-    discovered --> no_pdf : no resolvable<br/>file field
-    discovered --> parsing : PDF found and<br/>its bytes changed
+    discovered --> no_pdf : no file field
+    discovered --> parsing : PDF bytes changed
 
-    no_pdf --> parsing : you attach the PDF in<br/>Zotero and re-export
+    no_pdf --> parsing : you re-export with the PDF
 
-    parsing --> parsed : text extracted in full
-    parsing --> failed_deterministic : backend cannot read this<br/>PDF, or parsed it only partly
-    parsing --> failed_transient : worker died, timeout,<br/>CUDA OOM, broken pool,<br/>write failed (disk full)
+    parsing --> parsed : text extracted
+    parsing --> parse_failed : could not extract
+    parse_failed --> parsing : transient: next sync<br/>otherwise: --reparse
 
-    failed_transient --> parsing : retried automatically<br/>on the next sync
-    failed_deterministic --> parsing : only on<br/>sync --reparse
+    parsed --> parsing : PDF bytes changed
+    parsed --> parsed : unchanged, skipped
 
-    parsed --> parsing : PDF bytes changed<br/>(size+mtime, then sha256)
-    parsed --> parsed : bytes unchanged, skipped —<br/>the incremental path
+    parsed --> stale : left the .bib
+    no_pdf --> stale : left the .bib
+    stale --> parsed : export fixed, re-synced
+    stale --> [*] : sync --remove-stale
 
-    parsed --> stale : dropped out of<br/>bibliography.bib
-    no_pdf --> stale : dropped out of<br/>bibliography.bib
-    stale --> parsed : it was a botched re-export —<br/>fix the export and re-sync
-    stale --> [*] : sync --remove-stale<br/>opt-in, after you read the list
+  %% house roles: generated by scripts/render_diagrams.py --sync
+  classDef flow fill:#E6F1F7,stroke:#0072B2,stroke-width:1.4px,color:#1A1A1A
+  classDef alt fill:#E6F5F1,stroke:#009E73,stroke-width:1.4px,color:#1A1A1A
+  classDef key fill:#FBEFE6,stroke:#D55E00,stroke-width:2px,color:#1A1A1A
+  classDef absent fill:#FFFFFF,stroke:#8C8C8C,stroke-width:1.2px,stroke-dasharray:4 3,color:#1A1A1A
+```
 
-    note right of parsed
-        Only this state makes the citekey citable.
-        chitragupta draft gate resolves a citekey against
-        the ledger, so a row that is not here
-        cannot appear in a draft that renders.
-    end note
+### 🗺 Ladders and tiers, mapped
 
-    note left of failed_deterministic
-        Never silent, never pointlessly expensive.
-        Not re-parsed — the same minutes would
-        reach the same answer — but every run
-        exits 1 until a human deals with it.
-    end note
+The six automatic-or-chosen decisions from
+[LADDERS.md](LADDERS.md#-the-mapping),
+each read left to right: the decision, what implements it, and what it
+leaves on disk. Tiers are chosen before a run; ladders descend on their
+own at run time. Two decisions leave nothing on disk, so neither shows up
+in a backup. LADDERS.md holds the same mapping as a table.
+
+```mermaid
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "fontSize": "14px",
+    "primaryColor": "#E6F1F7",
+    "primaryBorderColor": "#0072B2",
+    "primaryTextColor": "#1A1A1A",
+    "lineColor": "#0072B2",
+    "secondaryColor": "#E6F5F1",
+    "secondaryBorderColor": "#009E73",
+    "tertiaryColor": "#FBEFE6",
+    "tertiaryBorderColor": "#D55E00"
+  }
+}}%%
+flowchart TB
+
+  subgraph TIERS["<b>TIERS</b>: you choose, before the run"]
+    direction LR
+    PB["<b>parser backend</b><br/>config.toml"] --> M1["<code>pdf_text/</code>"] --> O1[/"parsed .txt"/]
+    IN["<b>interpreter</b><br/>the command"] --> M2["<code>pyproject</code> groups"] --> O2(["nothing"])
+    RF["<b>render format</b><br/><code>--format</code>"] --> M3["<code>render_output/</code>"] --> O3[/"rendered/"/]
+  end
+
+  subgraph LADDERS["<b>LADDERS</b>: the code descends, at run time"]
+    direction LR
+    EP["<b>evidence passages</b>"] --> M4["<code>passages.py</code>"] --> O4(["nothing: decides<br/>what may be quoted"])
+    ET["<b>enrichment text</b>"] --> M5["<code>embed_index.py</code>"] --> O5[/"chroma/"/]
+    AC["<b>accelerator</b>"] --> M6["<code>pdf_text/</code>"] --> O6(["nothing: decides<br/>parse speed"])
+  end
+
+  TIERS ~~~ LADDERS
+
+  class PB,IN,RF flow
+  class EP,ET,AC alt
+  class O2,O4,O6 absent
 
   %% house roles: generated by scripts/render_diagrams.py --sync
   classDef flow fill:#E6F1F7,stroke:#0072B2,stroke-width:1.4px,color:#1A1A1A
@@ -1318,13 +1198,13 @@ Each diagram is plain Mermaid in a fenced block above. GitHub renders
 them, and so does any Mermaid-aware editor. **That block is the source of
 truth.**
 
-The same thirteen are also checked in as standalone files, so you can drop
+The same fourteen are also checked in as standalone files, so you can drop
 one into a slide deck or a paper without copying it out of this document:
 
 | Path | What it is |
 | --- | --- |
 | `docs/diagrams/<name>.mmd` | the Mermaid source, with a title line |
-| `docs/diagrams/svg/<name>.svg` | for the web: GitHub, the docs site, a browser. ~1900px wide on white |
+| `docs/diagrams/svg/<name>.svg` | for the web: GitHub, the docs site, a browser. On white, at the diagram's own width, laid out on a 1900px page |
 | `docs/diagrams/pdf/<name>.pdf` | for a paper or slides: vector, one page cropped to the diagram, text selectable |
 
 **Use the SVG only where a browser draws it.** Mermaid writes a
@@ -1349,6 +1229,7 @@ words collapse.
 | Genre C: LaTeX-native | `g3-thesis` |
 | Appendix: one draft, in time order | `extra-sequence` |
 | Appendix: the life of a single citekey | `extra-ledger-state` |
+| Appendix: ladders and tiers, mapped | `ladders-mapping` |
 | Topic discovery: the resolution ladder | `t1-discovery-ladder` |
 | Topic discovery: the two graphs | `t2-topic-graphs` |
 
@@ -1363,7 +1244,7 @@ line directly above its fence names it:
 
 `--sync` refuses a block with no such line, and a name used twice, so no
 diagram in the documentation goes without an export or overwrites
-another's. There are sixteen:
+another's. There are fifteen:
 
 | Diagram | In | `<name>` |
 | --- | --- | --- |
@@ -1377,7 +1258,6 @@ another's. There are sixteen:
 | The citation graph | [GROBID-CITATION-GRAPH.md](GROBID-CITATION-GRAPH.md) | `grobid-citation-graph` |
 | The terms | [LADDERS.md](LADDERS.md) | `ladders-terms` |
 | The pipeline in one pass | [LADDERS.md](LADDERS.md) | `ladders-pipeline` |
-| The mapping | [LADDERS.md](LADDERS.md) | `ladders-mapping` |
 | A single-context skill | [PROMPTS.md](PROMPTS.md) | `prompts-single-context` |
 | The orchestrating context | [PROMPTS.md](PROMPTS.md) | `prompts-orchestrator` |
 | A dispatched subagent's context | [PROMPTS.md](PROMPTS.md) | `prompts-subagent` |

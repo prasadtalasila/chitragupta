@@ -2,49 +2,33 @@
 
 Status: **reference.**
 
-**Written for** anyone reading an agenda report for the first time and
-wanting to know what each part of it means before acting on any of it.
+**Written for** anyone reading an agenda report for the first time.
 **Assumed:** nothing. **Not covered here:** the flags
 ([CLI.md](CLI.md#-chitragupta-review-agenda)), what each individual aid
 measures ([REVIEW.md](REVIEW.md)), and the unattended-repair loop's
 design ([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)).
 
-An agenda is one ranked, deduplicated worklist merged across eight of
-the review aids, so you read one document instead of eight. It reads
-every aid except itself, `union` (which reads a book, not a draft) and
-`digest` (whose classes describe a verbatim digest only). Produce one
-with:
+An agenda is one ranked, deduplicated worklist merged from eight review
+aids: every aid except itself, `union` (which reads a book) and
+`digest` (whose classes describe a verbatim digest only; for the same
+reason `agenda-reviser` must never run on a digest, where its
+`verbatim-run` repair would paraphrase the whole text,
+[VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)).
 
 ```bash
 chitragupta review agenda content/drafts/dt/survey.md
 ```
 
-It writes `content/review/dt/survey.agenda.md` and a `.json` sibling,
-mirroring the draft's own path.
-
-**It is a review aid, not a gate.** It exits 0 whatever it finds, blocks
-nothing, and takes no lock. Nothing in it can stop a draft being
-rendered, submitted or read.
-
-## 🧭 Table of contents
-
-- [The one thing to know before reading one](#-the-one-thing-to-know-before-reading-one)
-- [A complete agenda](#-a-complete-agenda)
-- [Section by section](#-section-by-section)
-- [The item line](#-the-item-line)
-- [The classes](#-the-classes)
-- [Unattended versus surfaced](#-unattended-versus-surfaced)
-- [Two sections that appear only sometimes](#-two-sections-that-appear-only-sometimes)
-- [The JSON sibling](#-the-json-sibling)
-- [Acting on an agenda](#-acting-on-an-agenda)
+This writes `content/review/dt/survey.agenda.md` and a `.json` sibling,
+mirroring the draft's path. **It is a review aid, not a gate:** it exits
+0 whatever it finds, blocks nothing and takes no lock.
 
 ## ⚠ The one thing to know before reading one
 
 **The agenda reads the other aids' filed JSON. It does not run them.**
 
-An aid whose report has never been written is listed as absent in
-`## Sources`, not computed on the fly. So the usual sequence is: run the
-aids you want with `--write`, then run the agenda.
+An aid with no written report is listed as absent in `## Sources`, so
+run the aids you want with `--write` first:
 
 ```bash
 chitragupta review verbatim scan content/drafts/dt/survey.md --write
@@ -53,17 +37,15 @@ chitragupta review support content/drafts/dt/survey.md --write
 chitragupta review agenda content/drafts/dt/survey.md
 ```
 
-The one exception is `--baseline`, which re-runs the aids itself; see
-[Acting on an agenda](#-acting-on-an-agenda).
+Only `--baseline` re-runs the aids
+([Acting on an agenda](#-acting-on-an-agenda)).
 
 ## 📄 A complete agenda
 
-This is the whole file, from a real run over the sample project's survey
+A real run over the sample project's survey
 ([the committed original](examples/sample-project/content/review/dt-overview/survey.agenda.md)),
-abridged by dropping repeated item lines. Its `Command:` line is
-quoted exactly as the committed report records it, in the module form;
-`chitragupta review agenda <draft>` is the same command and is what this
-documentation uses everywhere else:
+with repeated item lines dropped. Its `Command:` uses the module form of
+`chitragupta review agenda <draft>`:
 
 ```markdown
 # Agenda: content/drafts/dt-overview/survey.md
@@ -100,12 +82,6 @@ person to decide.
 - Recorded-but-uncited citekeys: read
 - Accepted items: none recorded for this draft
 
-One aid is never listed here: `review digest`, whose classes describe a
-verbatim digest and nothing else, so the agenda never reads it. For the
-same reason `agenda-reviser` must never be run on a digest: its
-`verbatim-run` repair paraphrases copied text unattended, which on a
-digest is the whole text ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)).
-
 ## Summary
 
 - 11 verbatim-run
@@ -135,17 +111,12 @@ digest is the whole text ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)).
 
 ### unsupported-claim
 
-- `401e348db58b` [surfaced] (6. Conclusion):
-  `[@sample_dt_factory_2022]` scores no support found: Across the sample
-  corpus, the recurring finding is that twins succeed on honesty
 - `289df3c9be7c` [surfaced] (5. Gaps): `[@sample_dt_overview_2024]`
   scores weak: Fidelity is argued to be purchased "decision by
   decision", yet no paper offers a
 
 ### uncited-claim
 
-- `89452ab2d5ad` [surfaced] (2. Keeping the twin true): A twin is only
-  as trustworthy as its last synchronisation.
 - `13645296d189` [surfaced] (5. Gaps): Three gaps stand out.
 ```
 
@@ -153,35 +124,33 @@ digest is the whole text ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)).
 
 | Section | What it is | What to do with it |
 | --- | --- | --- |
-| `# Agenda: <draft>` | the heading, naming the draft this is about | check it is the draft you meant; an agenda for a stale path is the commonest confusion |
-| The `>` notice | the review-layer contract, repeated in every aid's report | it is there because a file outlives the session that made it; a reader months later must not mistake it for a verdict |
-| `- Draft:` / `- Command:` / `- chitragupta <version>` | provenance: what was read, by what command, at what version | re-run the `Command:` line verbatim to reproduce the report |
-| `## How to read this` | the same contract in prose, plus the `unattended` rule | read once; it is identical in every agenda |
-| `## Sources` | one line per input: each aid, the prose check, dossier drift, the recorded-but-uncited citekeys and the acceptance record, saying whether it was read and in what state | **read this before the findings.** A short agenda with four aids "not run" is not a clean draft |
-| `## Summary` | counts per class, worst class first | tells you the shape of the work before you read a single item |
-| `## Findings` | the items themselves, grouped by class, ranked by class then severity | the worklist |
+| `# Agenda: <draft>` | the draft | check it is the one you meant; a stale path is the commonest confusion |
+| The `>` notice | the review-layer contract | there so a later reader does not take the file for a verdict |
+| `- Draft:` / `- Command:` / `- chitragupta <version>` | provenance | re-run the `Command:` line to reproduce the report |
+| `## How to read this` | the same contract, plus the `unattended` rule | identical in every agenda |
+| `## Sources` | per input (each aid, the prose check, dossier drift, recorded-but-uncited citekeys, the acceptance record): whether it was read, and its state | **read this before the findings.** A short agenda with four aids "not run" is not a clean draft |
+| `## Summary` | counts per class, worst first | the shape of the work |
+| `## Findings` | the items, grouped and ranked by class then severity | the worklist |
 
-People tend to skip `## Sources`, and should not. An aid's line says
-one of these:
+An aid's line in `## Sources` says one of:
 
-- **read**: the aid's report was found and merged.
-- **not run**: no report exists. Nothing from that aid is in this
-  agenda, and its absence is not evidence of anything.
-- **read, no item class defined**: the aid ran and was read, but its
-  findings do not map to an agenda class. `synthesis` and `figure` are
-  reported for a human, and deliberately contribute no worklist item.
-- **read, nothing checked**: the quotation aid ran but had no dossier,
-  or no quote the draft cites, so it looked at nothing.
-- **stale**: the aid's report is older than the draft. Re-run that aid.
-- **not refreshed**: under `--baseline`, the aid's refresh failed, so
-  its findings are an earlier run's and are not counted.
+- **read**: its report was found and merged.
+- **not run**: no report exists; its absence is not evidence of
+  anything.
+- **read, no item class defined**: its findings map to no agenda class.
+  `synthesis` and `figure` are for a human and deliberately add no item.
+- **read, nothing checked**: the quotation aid had no dossier, or no
+  quote the draft cites.
+- **stale**: the report is older than the draft. Re-run that aid.
+- **not refreshed**: under `--baseline`, its refresh failed, so its
+  findings are an earlier run's and are not counted.
 
-The other inputs have their own states. The prose check is **partial**
-when `vale` is not on `PATH`. Dossier drift and the recorded-but-uncited
-citekeys are **not available** for a draft with no dossier, and drift is
-read without the ledger when the corpus is unavailable. The accepted
-items line says how many acceptances are recorded, or that the record is
-**unreadable**, in which case nothing is suppressed.
+The prose check is **partial** without `vale` on `PATH`. Dossier drift
+and recorded-but-uncited citekeys are **not available** without a
+dossier, and drift is read without the ledger when the corpus is
+unavailable. The accepted items line gives the count of acceptances,
+or says the record is **unreadable**, in which case nothing is
+suppressed.
 
 ## 📌 The item line
 
@@ -194,25 +163,21 @@ Every finding is one line with four parts:
 
 | Part | Meaning |
 | --- | --- |
-| **id** (`289df3c9be7c`) | a stable 12-character handle for this finding. It is what `--accept` takes, and what a repair skill uses to look the finding's full payload up in the raising aid's own JSON |
+| **id** (`289df3c9be7c`) | a stable 12-character handle: what `--accept` takes, and the key to the full payload in the raising aid's JSON |
 | **disposition** | `[unattended]` or `[surfaced]`; see below |
-| **section anchor** | which heading of the draft the finding sits under, so you can go straight there. Absent for a finding that is not about one section |
-| **summary** | one line of what was found. Deliberately thin: the full payload lives in the raising aid's own report, keyed by the id |
+| **section anchor** | the draft heading the finding sits under; absent if it concerns no one section |
+| **summary** | one deliberately thin line; the full payload is in the raising aid's report |
 
-A `verbatim-run` line is followed by its excerpt: where it sits in the
-source and the draft, then the copied words. A skip-gram match shows
-both sides, the words that differ marked, as in the verbatim scan's own
-report ([the example above](#-a-complete-agenda) has one of each).
-
-The id is stable while the finding's identity is unchanged. Edit the
-sentence and it becomes a different finding with a different id. That
-is what makes `--accept` safe: an acceptance cannot silently carry over
-to text you have since rewritten.
+A `verbatim-run` line is followed by its excerpt: its place in source
+and draft, then the copied words. A skip-gram match shows both sides
+with the differing words marked ([the example](#-a-complete-agenda)
+has one of each). The id is stable while the finding's identity is.
+Edit the sentence and it gets a new id, so an acceptance cannot carry
+over to rewritten text.
 
 ## 🏷 The classes
 
-In rank order: the worklist lists classes in this order, then by
-severity within a class.
+In rank order; within a class, items rank by severity.
 
 | Class | Raised by | Means |
 | --- | --- | --- |
@@ -232,70 +197,61 @@ reason behind each class's disposition.
 
 | | Meaning | Classes |
 | --- | --- | --- |
-| `[unattended]` | mechanically re-checkable: a future automated pass may repair it **without asking first** | `prose` (except a finding its rule marks `repair: "review"`: `WideCodeLine`, `AcronymCase`, a `BareCitekey` set as code or naming a key with no parsed PDF, and dialect findings when the dialect came from `config.toml` rather than the author or the match starts with a capital letter), `verbatim-run` at severity `short` from the `exact` or `skip-gram` tier (an `embedding`-tier run, or a run marked `names`, mostly copied proper names, is surfaced), `missing-citekey` |
-| `[surfaced]` | a judgement about meaning that only a person can make | `unsupported-claim`, `claim-support`, `uncited-claim`, `recorded-but-uncited`, `misquoted` |
+| `[unattended]` | mechanically re-checkable: an automated pass may repair it **without asking first** | `prose`, except findings marked `repair: "review"` (`WideCodeLine`, `AcronymCase`, a `BareCitekey` set as code or naming a key with no parsed PDF, and dialect findings when the dialect came from `config.toml` or the match starts with a capital); `verbatim-run` at severity `short` from the `exact` or `skip-gram` tier (an `embedding`-tier run, or one marked `names`, mostly proper names, is surfaced); `missing-citekey` |
+| `[surfaced]` | a judgement about meaning only a person can make | `unsupported-claim`, `claim-support`, `uncited-claim`, `recorded-but-uncited`, `misquoted` |
 
-The dividing line is whether the repair can be verified by re-running
-a check, which is a different question from whether it is easy. A
-defect marker either is or is not still in the
-sentence. Whether a source really supports a claim is not settled by any
-re-run, so no loop may close it on your behalf.
+The line is whether a re-run of a check can verify the repair, not
+whether it is easy. A defect marker is or is not still in the sentence;
+whether a source supports a claim is settled by no re-run, so no loop
+may close it for you.
 
 A `missing-citekey` is unattended, but its repair is to **de-cite the
-sentence**, which then surfaces as an `uncited-claim` on the next agenda
-for you to decide. The problem is not resolved silently; it moves to the
-column where a person decides. The `missing-citekey` item itself, and
-the `recorded-but-uncited` item the removed marker leaves, persist while
-`evidence.md` or `sections.md` still hold the key. The author clears
-both with `dossier prune` for an `evidence.md` block, and with `dossier
-sections --citekeys --write` for a key recorded only in `sections.md`,
-which `prune` refuses.
+sentence**, which surfaces as an `uncited-claim` on the next agenda for
+you to decide. The `missing-citekey` item, and the
+`recorded-but-uncited` item the removed marker leaves, persist while
+`evidence.md` or `sections.md` hold the key. The author clears them
+with `dossier prune` for an `evidence.md` block, or `dossier sections
+--citekeys --write` for a key only in `sections.md`, which `prune`
+refuses.
 
 ## 🔁 Two sections that appear only sometimes
 
-**`## Refused as stale`.** An item whose exact draft text has changed
-since the aid found it is dropped from the worklist and listed here
-instead, with its id, class, section, summary and the reason. It is a
-refusal, not a failure: repairing a finding against text that no longer
-exists is worse than not repairing it. Refused items are not counted in
-the objective, and the finding is re-derived on the next run against the
-current text.
+**`## Refused as stale`.** An item whose draft text has changed since
+the aid found it is listed here (id, class, section, summary, reason)
+instead of in the worklist, because repairing text that no longer
+exists is worse than not repairing it. It is not counted in the
+objective and is re-derived on the next run. An aid marked `stale` in
+`## Sources` is different: an mtime check that a whole report predates
+the draft.
 
-This is different from an aid marked `stale` in `## Sources`, which is
-an mtime comparison saying a whole report predates the draft.
-
-**Accepted items.** An item you have considered and decided stands is
-recorded, and is then absent from the worklist while the finding's
-identity is unchanged:
+**Accepted items.** An item you decide stands is recorded, and is
+absent from the worklist while the finding's identity is unchanged:
 
 ```bash
 chitragupta review agenda content/drafts/dt/survey.md --accept 289df3c9be7c
 ```
 
 Only `claim-support`, `uncited-claim` and `unsupported-claim` may be
-accepted. Every other class is refused with **exit code 2**, so you
-cannot accept away a misquotation or a missing citekey.
+accepted. Any other class exits **2**, so you cannot accept away a
+misquotation or a missing citekey.
 
 ## 🧾 The JSON sibling
 
-The `.json` is an additional serialisation of exactly what the Markdown
-prints, never a second computation. It carries the envelope every aid's
-JSON carries, plus:
+The `.json` serialises exactly what the Markdown prints, never a second
+computation: every aid's envelope, plus:
 
 | Key | What it holds |
 | --- | --- |
 | `sources` | per aid: `available` and `stale`; the prose check adds `partial`; dossier drift adds `corpus_available`; the acceptance record adds `count` |
-| `items` | one object per worklist entry: `id`, `class`, `section`, `citekey`, `line`, `unattended`, `summary`, and a `detail` object whose shape is specific to the class |
-| `objective_class_count` | how many `unattended` items this agenda holds; a repair loop watches this number fall |
-| `pass_bound` | the backstop on how many repair passes may be taken |
+| `items` | per entry: `id`, `class`, `section`, `citekey`, `line`, `unattended`, `summary`, and a class-specific `detail` object |
+| `objective_class_count` | how many `unattended` items there are; a repair loop watches it fall |
+| `pass_bound` | the backstop on repair passes |
 | `stale_spans` | what this run refused as stale |
-| `accepted` | each stored acceptance, with a `suppressed` flag saying whether this run's worklist was shorter for it |
+| `accepted` | each stored acceptance, with a `suppressed` flag for whether it shortened this worklist |
 
-`objective_class_count` and `pass_bound` are carried as data rather
-than as constants in a skill's prose, because a skill cannot import a
-Python constant and a hardcoded number goes stale silently.
-
-One item, in full:
+The count and bound are data, not constants in a skill's prose, because
+a skill cannot import a Python constant and a hardcoded number goes
+stale silently. One item:
 
 ```json
 {
@@ -313,64 +269,44 @@ One item, in full:
 }
 ```
 
-Note `detail.verbatim_id`: the agenda's own detail is thin by design.
-The full repair payload lives in the raising aid's report
-(`survey.verbatim.json` here), keyed by that id. A tool acting on an item
-looks it up there rather than expecting the agenda to carry everything.
+The detail is thin by design: the full repair payload is in the raising
+aid's report (`survey.verbatim.json`), keyed by `detail.verbatim_id`.
 
 ## 🛠 Acting on an agenda
 
-Read `## Sources` first, then `## Summary`, then the `[surfaced]`
-items. Those need your judgement, and a machine will never close them
-for you.
-
-To hand the `[unattended]` ones off, ask to "work the review agenda".
-`agenda-reviser` repairs them one at a time, re-running
-`chitragupta draft gate` and a baseline recheck after each, and logs
-every attempt (refusals and reverts included) in the dossier's
-`revisions.md`.
-
-To check that a round of edits actually helped:
+Read `## Sources`, then `## Summary`, then the `[surfaced]` items,
+which need your judgement. To hand off the `[unattended]` ones, ask to
+"work the review agenda": `agenda-reviser` repairs them one at a time,
+re-running `chitragupta draft gate` and a baseline recheck after each,
+and logs every attempt (refusals and reverts included) in
+`revisions.md`. To check that a round of edits helped:
 
 ```bash
 chitragupta review agenda content/drafts/dt/survey.md \
     --baseline content/review/dt/survey.agenda.json
 ```
 
-This is the one mode that re-runs the aids (at `--formats md`, so each
-aid's `.tex`/`.pdf` goes stale against its `.md` until a full-format run
-follows). It reports every finding as `resolved`, `persisting`, `new` or
-`accepted`, with `objective_before`, `objective_after` and
-`objective_delta`.
+This re-runs the aids (at `--formats md`, so their `.tex`/`.pdf` go
+stale until a full-format run) and reports each finding as `resolved`,
+`persisting`, `new` or `accepted`, with `objective_before`,
+`objective_after` and `objective_delta`. Without a synced ledger it
+says to run `chitragupta corpus sync` and exits 1, changing nothing;
+plain `review agenda` needs no ledger.
 
-Re-running the aids needs the ledger, so this mode checks for one
-first. With no ledger, or one that needs a sync, it says to run
-`chitragupta corpus sync` and exits 1 without changing anything. The
-plain `review agenda` does not need one.
+Read `not_refreshed` first: the aids whose refresh failed (a refusal,
+an exit 0 that wrote nothing, as `support` does without the enrich
+stack, or an exception). Their `.json` is an earlier run's, so their
+items are left out of all four groups and both counts, on both sides,
+and the filed report marks them `refreshed: false` under `sources.aids`
+and **not refreshed** in its header. A driver must stop or surface such
+an aid, never count its missing items as progress; `verbatim` matters
+most, being the only aid with unattended items. An aid that raised does
+not stop the run: `refresh_errors` (and
+`sources.aids.<aid>.refresh_error`) gives the exception's one-line
+reason.
 
-Read `not_refreshed` before either. It lists the aids whose
-refresh failed this run: a refusal, an exit 0 that wrote nothing (as
-`support` does without the enrich stack), or an exception. Their `.json`
-on disk is an earlier run's, so their items are left out of all four
-groups and both counts, on the baseline's side as well as this run's. A
-driver must stop or surface such an aid, and never count the missing
-items as progress. `verbatim` is the one that matters for the count,
-being the only aid whose items can be unattended. The filed report
-marks each one `refreshed: false` under `sources.aids`, and its header
-calls it **not refreshed**. The items are still listed there, but they
-do not count towards `objective_class_count`.
-
-An aid that raised does not stop the run. It is listed in
-`not_refreshed` like the others, and `refresh_errors` maps it to the
-exception's one-line reason. The filed report has the same line under
-`sources.aids.<aid>.refresh_error`, and the header quotes it.
-
-Read `objective_new` as well as the delta. A repair that resolves one
-finding and introduces another leaves `objective_delta` at 0, which is
-indistinguishable from having changed nothing. `objective_new` counts
-the unattended items in `new`, so that swap shows as 1. The plain-text
-form prints it at the end of the objective line, as `3 -> 3 (+0), 1 new`.
-
-Under `--baseline --json`, stdout carries the comparison payload and no
-`items` key at all; the worklist still lands in the filed `.json` report
-as usual.
+Read `objective_new` too: a repair that resolves one finding and adds
+another leaves `objective_delta` at 0, but `objective_new` (the
+unattended items in `new`) shows 1, as in `3 -> 3 (+0), 1 new`. Under
+`--baseline --json`, stdout carries the comparison payload with no
+`items` key; the worklist still lands in the filed `.json`.

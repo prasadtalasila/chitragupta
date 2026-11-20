@@ -22,7 +22,7 @@ the part worth reading before changing anything here. A tag-existence test
 looks like the obvious check and is blind to a real window: between a PR
 merging and its tag being pushed, the version is spent and no tag records
 it. On this repository that window has been as short as 34 seconds and, at
-the other extreme, lasts as long as it takes a person to reach step 8 of
+the other extreme, lasts as long as it takes a person to reach step 7 of
 DEVELOPER-AGENTS.md's cycle. Comparing against `main` needs no tag to
 exist, so it closes that window; the tag check is kept as a cheap second
 line for the odd state where a tag runs ahead of `main`.
@@ -295,7 +295,7 @@ def blocks_a_merge() -> bool:
     be run from the branch being merged.
 
     DEVELOPER-AGENTS.md's "Merging" section owns the rest -- why this is
-    not a duplicate of the CI run, why the cycle's step 8 cannot close
+    not a duplicate of the CI run, why the cycle's step 7 cannot close
     the window, and why there is no override.
     """
     subprocess.run(["git", "fetch", "origin", "--tags", "--quiet"], check=False, cwd=REPO_ROOT)

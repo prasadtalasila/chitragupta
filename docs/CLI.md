@@ -2,74 +2,21 @@
 
 Status: **reference.**
 
-**Written for** anyone running this pipeline, at any level of
-familiarity: it is the reference you keep open beside a terminal.
-**Assumed:** nothing beyond [README.md](../README.md)'s Quickstart.
-**Not covered here:** why any of it is built the way it is.
-[ARCHITECTURE.md](ARCHITECTURE.md) has the shape and
-[DESIGN.md](DESIGN.md) the constraints. Both are written for someone
-changing the code rather than running it.
+**Written for** anyone running this pipeline: it is the reference you
+keep open beside a terminal. **Assumed:** nothing beyond
+[README.md](../README.md)'s Quickstart. **Not covered here:** why any of
+it is built the way it is; [ARCHITECTURE.md](ARCHITECTURE.md) has the
+shape and [DESIGN.md](DESIGN.md) the constraints.
 
 Every command this repository provides, every flag it accepts, and which
-interpreter each one needs. [README.md](../README.md)'s Quickstart is the
-short path; this is the full set.
-
-## 🧭 Table of contents
-
-- [Installing](#-installing)
-- [Which interpreter](#-which-interpreter)
-- [The full first run, step by step](#-the-full-first-run-step-by-step)
-- [Every command and flag](#-every-command-and-flag)
-  - [`chitragupta init`](#-chitragupta-init)
-  - [`chitragupta doctor`](#-chitragupta-doctor)
-  - [`chitragupta install`](#-chitragupta-install)
-  - [`chitragupta corpus sync`](#-chitragupta-corpus-sync)
-  - [What else still references a citekey you are about to remove](#-what-else-still-references-a-citekey-you-are-about-to-remove)
-  - [When `sync` re-parses a document it already parsed](#-when-sync-re-parses-a-document-it-already-parsed)
-  - [`chitragupta corpus ledger`](#-chitragupta-corpus-ledger)
-  - [`chitragupta corpus topics`](#-chitragupta-corpus-topics)
-  - [`chitragupta corpus discover`](#-chitragupta-corpus-discover)
-  - [`chitragupta draft gate`](#-chitragupta-draft-gate)
-  - [`chitragupta draft references`](#-chitragupta-draft-references)
-  - [`chitragupta draft evidence`](#-chitragupta-draft-evidence)
-  - [`chitragupta draft dossier`](#-chitragupta-draft-dossier)
-  - [`chitragupta draft retrieve`](#-chitragupta-draft-retrieve)
-  - [`chitragupta draft render`](#-chitragupta-draft-render)
-  - [`chitragupta draft style`](#-chitragupta-draft-style)
-  - [`chitragupta draft spec`](#-chitragupta-draft-spec)
-  - [`chitragupta draft unit`](#-chitragupta-draft-unit)
-  - [`chitragupta draft registry`](#-chitragupta-draft-registry)
-  - [`chitragupta draft tldr`](#-chitragupta-draft-tldr)
-  - [`chitragupta draft figures`](#-chitragupta-draft-figures)
-  - [`chitragupta draft diff`](#-chitragupta-draft-diff)
-  - [`chitragupta review agenda`](#-chitragupta-review-agenda)
-  - [`chitragupta review figure`](#-chitragupta-review-figure)
-  - [`chitragupta review coverage`](#-chitragupta-review-coverage)
-  - [`chitragupta review provenance`](#-chitragupta-review-provenance)
-  - [`chitragupta review support`](#-chitragupta-review-support)
-  - [`chitragupta review union`](#-chitragupta-review-union)
-  - [`chitragupta review synthesis`](#-chitragupta-review-synthesis)
-  - [`chitragupta review uncited`](#-chitragupta-review-uncited)
-  - [`chitragupta review quotation`](#-chitragupta-review-quotation)
-  - [`chitragupta review digest`](#-chitragupta-review-digest)
-  - [`chitragupta review verbatim`](#-chitragupta-review-verbatim)
-  - [`chitragupta figure sync`](#-chitragupta-figure-sync)
-  - [`chitragupta figure check`](#-chitragupta-figure-check)
-  - [`chitragupta figure new`](#-chitragupta-figure-new)
-  - [`chitragupta figure look`](#-chitragupta-figure-look)
-  - [`chitragupta enrich`](#-chitragupta-enrich)
-  - [`scripts/install_full_pipeline.sh`](#-scriptsinstall_full_pipelinesh)
-  - [`scripts/release.py`](#-scriptsreleasepy)
-- [Running sync on a schedule](#-running-sync-on-a-schedule)
-- [Environment variables](#-environment-variables)
+interpreter each one needs.
 
 ## 🔧 Installing
 
 **On Windows or WSL2, read [WINDOWS.md](WINDOWS.md) first.** Both work,
-and CI runs a blocking `windows-latest` leg. Native Windows, though, needs
-a POSIX shell for the command below and installs three OS binaries by
-hand, and WSL2 has one filesystem-layout trap to know about before you
-clone. Everything else on this page applies unchanged.
+and CI runs a blocking `windows-latest` leg, but native Windows needs a
+POSIX shell and three OS binaries installed by hand, and WSL2 has one
+filesystem-layout trap. Everything else on this page applies unchanged.
 
 There are two install paths. Both land in a venv named `.venv-full`, and
 everything below this section is identical either way:
@@ -91,58 +38,38 @@ bash scripts/install_full_pipeline.sh all
 source .venv-full/bin/activate
 ```
 
-Both paths use the same venv name on purpose. `.venv-full` is what
-keeps a bare `pip install` from hitting Debian/Ubuntu's PEP 668
-`externally-managed-environment` error. It is also what lets Claude
-Code's hooks import `chitragupta`, for as long as `.venv-full` stays
-activated in whatever shell you launch Claude Code from, because the
-hooks launch as bare `python` resolved from `PATH`
-([HOOKS.md](HOOKS.md#-the-launcher-contract)). Nothing in the installed package
-special-cases that name; it's a plain `python3 -m venv` either way, and
-the checkout path's own `install_full_pipeline.sh` already creates
-`.venv-full` if it doesn't exist and reuses it unchanged if it does
-(`poetry.toml`'s `virtualenvs.create = false`).
+A venv keeps `pip install` clear of Debian/Ubuntu's PEP 668
+`externally-managed-environment` error, and while it is activated in
+the shell you launch Claude Code from, the hooks can import
+`chitragupta` ([HOOKS.md](HOOKS.md#-the-launcher-contract)).
 
 `chitragupta init DIR` writes the same project directory a checkout
-gives you (`config.toml` from `config.toml.example`, `.claude/`,
-`papers/`, `content/{drafts,dossiers,specs,review,rendered}/`, `assets/`
-and the prose docs), so everything from
-[step 1](#-the-full-first-run-step-by-step) onward reads the same
-regardless of which path got you here. Add `--agent codex` or `--agent
-opencode` to write `.codex/` and `.agents/`, or `.opencode/`, as well;
-the option can be repeated ([LLM-AGENTS.md](LLM-AGENTS.md)).
+gives you (`config.toml`, `.claude/`, `papers/`,
+`content/{drafts,dossiers,specs,review,rendered}/`, `assets/` and the
+prose docs). Add `--agent codex` or `--agent opencode`, repeatable, to
+write that harness's folders too ([LLM-AGENTS.md](LLM-AGENTS.md)).
 
-The base `pip install chitragupta-cli` above already covers tiers 1
-and 2 ([Which interpreter](#-which-interpreter) below), which is
-everything except the enrichment layer. `chitragupta install <stage>`
-refuses three stage names by pointing at the pip command that reaches
-them, instead of running something with a different meaning than the
-argument implies. Once `.venv-full` above is activated, run these
-directly instead of the refused stage:
+The base `pip install chitragupta-cli` covers tiers 1 and 2
+([Which interpreter](#-which-interpreter)), everything except the
+enrichment layer. `chitragupta install <stage>` refuses three stage
+names by pointing at the pip command that reaches them:
 
 ```bash
 # chitragupta install python-deps refuses, naming `chitragupta install enrich`,
 # whose pip equivalent is:
 pip install 'chitragupta-cli[enrich]'   # tier 3 -- chitragupta enrich (docling, embeddings, topic clustering)
 
-# chitragupta install dev-deps refuses, naming this. There is no
-# pip-installed equivalent of tests/ to run pytest against, though --
-# only a checkout ships the test suite itself, so this extra is not
-# useful outside one.
+# chitragupta install dev-deps refuses, naming this. Only a checkout ships
+# the test suite, so this extra is not useful outside one.
 pip install 'chitragupta-cli[dev]'
 
-# The enrich extra, installed by the CLI rather than by hand: pip
-# install 'chitragupta-cli[enrich]' does the same thing, but this pins
-# the version to the chitragupta already running, so asking for an extra
-# cannot upgrade the tool underneath the command that asked. It is what
-# docker/Dockerfile.claude's user reaches for -- that image ships the
-# CLI and deliberately leaves torch out.
+# The enrich extra, pinned to the chitragupta already running, so asking
+# for an extra cannot upgrade the tool underneath the command that asked.
 chitragupta install enrich
 
 # chitragupta install all refuses, naming `chitragupta install enrich`
-# (above) plus this, run separately -- os-deps and gpu-torch are the
-# stages that actually run (Debian/Ubuntu + root; `chitragupta doctor`
-# reports what it's missing on any other host):
+# plus this (Debian/Ubuntu + root; `chitragupta doctor` reports what is
+# missing on any other host):
 chitragupta install os-deps
 ```
 
@@ -152,19 +79,11 @@ the command stays `chitragupta` (`cg` for short).
 
 ## ⚖ Which interpreter
 
-Three tiers. Commands below are written with the interpreter they need.
-
-`python` throughout means "your Python 3 interpreter". Nothing here
-inspects the name, so `python3` is equally correct if that is what your
-machine provides; on Debian and Ubuntu without `python-is-python3`,
-it is the only one. The tiers distinguish environments, not names: a
-bare interpreter from `PATH` for tier 1, against the project's venv for
-tiers 2 and 3.
-
-One place is not free to choose: `.claude/settings.json` launches the hooks
-by a name that has to resolve without a human present, and a name that does
-not resolve there fails silently. It says `python`, and
-[HOOKS.md](HOOKS.md#-the-launcher-contract) records why.
+Three tiers. `python` means your Python 3 interpreter; `python3` is
+equally correct. The tiers distinguish environments, not names. The
+one place the name is fixed is `.claude/settings.json`, which launches
+the hooks as `python` ([HOOKS.md](HOOKS.md#-the-launcher-contract) says
+why).
 
 | Tier | Interpreter | Commands |
 | --- | --- | --- |
@@ -177,143 +96,76 @@ Tier 1 is deliberate. The chain that enforces the one rule
 `chitragupta.draft render`) imports nothing outside the standard
 library, so a broken, missing or wrong-Python virtual environment
 cannot block it.
-`docs/ARCHITECTURE.md` has the
-[full reasoning](ARCHITECTURE.md#-which-interpreter-and-why).
+[ARCHITECTURE.md](ARCHITECTURE.md#-which-interpreter-and-why) has the
+full reasoning. `draft render` shells out to `pandoc` and LuaLaTeX, and
+`review verbatim` to `pdftotext`, but those are OS packages, not Python
+dependencies.
 
-For a `pip install`ed reader there is one environment, not three, and
-the tiers collapse to a different distinction: which commands need the
-`enrich` extra and which don't. The console script,
-`chitragupta <layer> <verb>`, reaches every command below exactly as
-`python -m chitragupta.<layer> <verb>` does, because both resolve to the
-same installed package *once that interpreter is the venv's own*. The
-module form is kept working, instead of being replaced, because the
-hooks and every genre skill invoke `python -m chitragupta.draft gate`:
-it is the one command that must survive a broken environment, console
-script included, and `chitragupta/hook_launchers.py` checks that it
-still can. A bare `pip install chitragupta-cli` therefore covers tiers 1
-and 2 (`bibtexparser` is a main, non-optional dependency, so
-`chitragupta corpus sync` needs nothing extra). Only tier 3
-(`chitragupta enrich`) needs the enrich extra, through
-`chitragupta install enrich` or `pip install 'chitragupta-cli[enrich]'`
-by hand, the same as `python-deps` needing the enrich group from a
-checkout. `chitragupta doctor` reports which you have. Use
-whichever form you like by hand, but don't change what a hook or a skill
-invokes.
+For a `pip install`ed project there is one environment, and the tiers
+collapse to whether a command needs the `enrich` extra: only tier 3
+does. `chitragupta <layer> <verb>` and `python -m chitragupta.<layer>
+<verb>` reach the same command once that interpreter is the venv's own.
+The module form is kept because the hooks and every genre skill invoke
+`python -m chitragupta.draft gate`; use either form by hand, but don't
+change what a hook or a skill invokes.
 
-Tier 1's "stdlib only" promise covers less in an installed project.
-"Cannot be blocked by a broken venv" is true of the *code*: the gate
-chain imports nothing outside the standard library once it is running.
-It is not true of *finding the right interpreter to run it with*, which
-is a different failure. In a checkout, `-m` puts `cwd` on `sys.path`,
-so any `python`/`python3` on `PATH` reaches `chitragupta/` regardless of
-which interpreter it is. An
-`init`-ed project has no `chitragupta/` beside it to find that way. The
-package exists only in the venv that installed it, so
-`python -m chitragupta.draft gate` needs the venv's own `bin/` on `PATH`
-(activated, or a session started from a shell that already had it).
-Without that, a bare `python` there is some other interpreter that
-happens to resolve, and it cannot import `chitragupta` at all. With the
-venv's `bin/` on `PATH`, all three hooks behave correctly with no extra
-configuration. Without it, `python -m chitragupta.draft gate` fails, and
-`citation_gate_hook.py` reports that as an environment fault, distinct
-from a bad citekey, instead of blaming the draft.
+In an `init`-ed project, tier 1's promise covers the code, not finding
+the interpreter. A checkout's `-m` finds `chitragupta/` beside it from
+any `python`; an installed project has none, so
+`python -m chitragupta.draft gate` needs the venv's `bin/` on `PATH`.
+Without it, `citation_gate_hook.py` reports an environment fault,
+distinct from a bad citekey.
 
-Two commands look like they belong in a higher tier and don't:
-
-- `chitragupta.draft render` (`chitragupta/render_output/`) needs only stdlib
-  plus
-  `chitragupta.config`/`chitragupta.citation_gate`/`chitragupta.references`. It
-  shells out to the
-  `pandoc`/LuaLaTeX binaries and fonts, which are OS packages rather than Python
-  dependencies.
-- `chitragupta.review`'s `coverage` and `verbatim` aids are built on
-  `chitragupta.retrieval` and `chitragupta.config`, both stdlib. `verbatim`
-  calls the
-  `pdftotext` binary, again an OS package.
-
-Using the wrong interpreter is the most likely first error you will hit:
+The most likely first error is the wrong interpreter:
 `ModuleNotFoundError: No module named 'bibtexparser'` means you ran
 `python -m chitragupta.corpus sync` instead of `.venv-full/bin/python -m
 chitragupta.corpus sync`.
 
 ## 🚀 The full first run, step by step
 
-Every command this project exposes appears below at least once, in the
-order a first run reaches it. Flags are shown only where a first run
-would want one; [Every command and flag](#-every-command-and-flag) is
-the exhaustive reference, and each command's own section links from the
-table of contents.
-
-The walkthrough has two parts with the same steps in the same order.
-They differ only in which of the two equivalent forms invokes each
-command; [Which interpreter](#-which-interpreter) explains why both
-exist and when each one resolves. Pick whichever you'll type; nothing
-else in this walkthrough depends on which you use, and the module form
-works either way if you switch mid-session.
+Every command appears below at least once, in the order a first run
+reaches it; [Every command and flag](#-every-command-and-flag) is the
+exhaustive reference.
 
 ### ⌨ As the `chitragupta` command
 
-Once the package is installed, with `.venv-full/bin/activate` sourced
-either way (see [Installing](#-installing)).
+With `.venv-full/bin/activate` sourced (see [Installing](#-installing)):
 
 ```bash
-# 1. Install, and get a project directory -- see Installing above for
-#    both paths (pip install + chitragupta init, or a git checkout).
-#    Nothing below this step differs by which one you took.
+# 1. Install, and get a project directory -- see Installing above.
 
-# 2. Export your reference manager's library to BibTeX at
-#    papers/bibliography.bib (create papers/ if needed -- it's gitignored,
-#    so neither path above populates it). Skipping this makes step 4 fail
-#    immediately with a FileNotFoundError telling you to do exactly this.
-#    Zotero specifics, including the attachment-path trap that silently
-#    leaves every entry without a PDF, are in ZOTERO.md.
+# 2. Export your library to BibTeX at papers/bibliography.bib (gitignored,
+#    so no install path populates it). ZOTERO.md has Zotero specifics.
 mkdir -p papers && cp /path/to/your/exported-library.bib papers/bibliography.bib
 
-# 3. Create your config, if step 1 didn't already. `chitragupta init`
-#    writes config.toml for you; on a git checkout you copy the template
-#    yourself, and every command refuses to run without it, naming this
-#    exact fix. Every key in it is optional -- see CONFIG.md.
+# 3. Create your config (`chitragupta init` already did). See CONFIG.md.
 cp config.toml.example config.toml   # git checkout only
 
-# 4. Sync the corpus from papers/bibliography.bib. Needs the virtual
-#    environment, and only one sync (or enrichment run) can write at a
-#    time -- a second one exits 2 at once rather than waiting.
+# 4. Sync the corpus. Needs the venv; only one sync (or enrichment run)
+#    can write at a time -- a second one exits 2 at once.
 chitragupta corpus sync
 # chitragupta corpus sync --reparse         # re-extract text even if the PDF is unchanged
 # chitragupta corpus sync --remove-stale    # only after reading the stale list it prints
 
-# 5. Inspect what it found. Read-only, takes no lock (so it works while a
-#    sync is running), and needs no venv.
+# 5. Inspect what it found. Read-only, takes no lock, needs no venv.
 chitragupta corpus ledger
 # chitragupta corpus ledger --list
 # chitragupta corpus ledger --status parse_failed
 # chitragupta corpus ledger --citekey talasila_composable_2025
 # chitragupta corpus ledger --collections    # your Zotero collection names, if the export kept them
 
-# 5b. Optional: name the topics you care about, in your own words, in
-#     content/seed_topics.toml (start from assets/style/topics.toml.example),
-#     match them against the corpus, and read which papers landed under
-#     each. A paper can appear under several topics at once; the report
-#     also names the papers no topic of yours describes. The matching
-#     needs the venv, reading the result does not.
+# 5b. Optional: name your topics in content/seed_topics.toml and see
+#     which papers match each.
 # chitragupta enrich --stages seed-topics
 chitragupta corpus topics
 # chitragupta corpus topics --topic "digital twin"
 
-# 6. Optional, and only when you want it: the enrichment layer.
-#    Layout-aware parsing, semantic search and topic clustering over the
-#    whole corpus. Nothing below needs it, and no skill builds it for you
-#    -- RETRIEVAL.md says which stage is worth your time. Takes the same
-#    write lock as sync.
+# 6. Optional: the enrichment layer. Nothing below needs it --
+#    RETRIEVAL.md says which stage is worth your time.
 chitragupta enrich --stages docling,embed
 # chitragupta enrich --stages docling --for-draft content/drafts/<slug>.md
 
-# 7. Search the corpus yourself, the same way a skill does. Read-only.
-#    `--log` takes the draft whose dossier records the call, so retrieval
-#    cost can be totalled later -- omit it for a one-off look.
-#    `--unit passage` ranks paragraphs rather than whole documents and
-#    hands back the paragraph that scored, with its page -- RETRIEVAL.md
-#    has when that is the unit you want.
+# 7. Search the corpus the way a skill does. Read-only.
 chitragupta draft retrieve search "digital twin composability" --k 15
 chitragupta draft retrieve search "digital twin composability" --unit passage
 chitragupta draft retrieve evidence "calibration" --citekey talasila_composable_2025 \
@@ -322,36 +174,26 @@ chitragupta draft retrieve evidence "calibration" --citekey talasila_composable_
 # 8. In your coding agent (Claude Code, Codex or OpenCode), ask for a draft, e.g.:
 #    "write a survey section on digital twin composability"
 #    "draft a thesis chapter on runtime verification for autonomous robots"
-#    "write a textbook chapter introducing digital twin asset reuse"
-#    "write a tutorial that builds a minimal digital twin asset from scratch"
-# The matching skill in that agent's skills folder picks this up automatically,
-# including its own gate -> references -> render chain (chitragupta draft <verb>),
-# and writes a dossier beside the draft as it goes. LLM-AGENTS.md has each
-# agent's setup and skill names.
+# The matching skill runs its own gate -> references -> render chain and
+# writes a dossier beside the draft. LLM-AGENTS.md has each agent's setup.
 
-# 9. Re-run any step of that chain by hand (no venv needed for these).
-#    All three read only under content/ -- a draft kept outside it is
-#    refused, so that one directory stays the whole record of the work.
-#    `render` runs the gate first, in every format: a draft citing a key
-#    the ledger does not hold is refused, naming the key, and nothing is
-#    written.
+# 9. Re-run that chain by hand (no venv needed). `render` runs the gate
+#    first and refuses a draft citing a key the ledger does not hold.
 chitragupta draft gate content/drafts/<slug>.md
-chitragupta draft references content/drafts/<slug>.md --heading "References"   # --heading default: "References"
-chitragupta draft render content/drafts/<slug>.md --format pdf   # also: --csl, --no-collapse-citations,
-chitragupta draft render content/drafts/<slug>.md --format tex   #       --documentclass, --fontsize,
-chitragupta draft render content/drafts/<slug>.md --format docx  #       --margin (--help for all)
+chitragupta draft references content/drafts/<slug>.md --heading "References"
+chitragupta draft render content/drafts/<slug>.md --format pdf
+chitragupta draft render content/drafts/<slug>.md --format tex
+chitragupta draft render content/drafts/<slug>.md --format docx
 chitragupta draft render content/drafts/<slug>.md --format md    # numbered Markdown copy, no pandoc needed
 
-# 10. Read and maintain the draft's dossier -- what was kept, what was
-#    rejected and why, and whether the corpus has moved under it since.
+# 10. Read and maintain the draft's dossier.
 chitragupta draft dossier list
 chitragupta draft dossier brief content/drafts/<slug>.md
 chitragupta draft dossier sections content/drafts/<slug>.md --citekeys --write
 chitragupta draft dossier status --all --json
 chitragupta draft dossier export <slug>
 
-# 11. Check the draft against its sources. Review aids, not gates: a skill
-#     runs the verbatim scan for you, and none of them can block a draft.
+# 11. Check the draft against its sources. Review aids, not gates.
 chitragupta review provenance content/drafts/<slug>.md            # what in each source supports the claim citing it
 chitragupta review verbatim overlap content/drafts/<slug>.md <citekey>  # wording shared with that one source
 chitragupta review verbatim scan content/drafts/<slug>.md        # ...with *any* parsed source, cited or not
@@ -368,10 +210,8 @@ chitragupta review union content/rendered/<book>/book.tex          # did assembl
 # mirroring the draft's path -- printing stays the default
 ```
 
-Two commands are not part of a first run at all, and are listed here only
-so this walkthrough is complete. Both are for working *on* this
-repository rather than drafting with it, so only their checkout form
-exists; neither has a console-script equivalent:
+Two commands are for working *on* this repository, so only their
+checkout form exists:
 
 ```bash
 bash scripts/install_full_pipeline.sh dev-deps   # pytest, pytest-cov, actionlint and the git hooks
@@ -382,72 +222,10 @@ python3 scripts/release.py                       # bundles release/chitragupta-<
 
 ### 🐍 As the module form (`python -m chitragupta.<layer>`)
 
-The same eleven steps, without the explanations; the numbered comments
-above have those. This is the form hooks and skills invoke, and the one
-form guaranteed to work regardless of how the package got here
-(checkout with an active venv, or `pip install`). Steps 1-3 (install,
-export, config) don't change and are reproduced here only so the
-numbering matches:
-
-```bash
-# 1. Install, and get a project directory -- see Installing above.
-
-# 2. Export your reference manager's library.
-mkdir -p papers && cp /path/to/your/exported-library.bib papers/bibliography.bib
-
-# 3. Create your config, if step 1 didn't already.
-cp config.toml.example config.toml   # git checkout only
-
-# 4.
-python -m chitragupta.corpus sync
-# python -m chitragupta.corpus sync --reparse
-# python -m chitragupta.corpus sync --remove-stale
-
-# 5.
-python -m chitragupta.corpus ledger
-# python -m chitragupta.corpus ledger --list
-# python -m chitragupta.corpus ledger --status parse_failed
-# python -m chitragupta.corpus ledger --citekey talasila_composable_2025
-
-# 6.
-python -m chitragupta.enrich --stages docling,embed
-# python -m chitragupta.enrich --stages docling --for-draft content/drafts/<slug>.md
-
-# 7.
-python -m chitragupta.draft retrieve search "digital twin composability" --k 15
-python -m chitragupta.draft retrieve search "digital twin composability" --unit passage
-python -m chitragupta.draft retrieve evidence "calibration" --citekey talasila_composable_2025 \
-    --log content/drafts/<slug>.md
-
-# 8. (In your coding agent -- the matching skill invokes this form itself.)
-
-# 9.
-python -m chitragupta.draft gate content/drafts/<slug>.md
-python -m chitragupta.draft references content/drafts/<slug>.md --heading "References"
-python -m chitragupta.draft render content/drafts/<slug>.md --format pdf
-python -m chitragupta.draft render content/drafts/<slug>.md --format tex
-python -m chitragupta.draft render content/drafts/<slug>.md --format docx
-python -m chitragupta.draft render content/drafts/<slug>.md --format md
-
-# 10.
-python -m chitragupta.draft dossier list
-python -m chitragupta.draft dossier brief content/drafts/<slug>.md
-python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write
-python -m chitragupta.draft dossier status --all --json
-python -m chitragupta.draft dossier export <slug>
-
-# 11.
-python -m chitragupta.review provenance content/drafts/<slug>.md
-python -m chitragupta.review verbatim overlap content/drafts/<slug>.md <citekey>
-python -m chitragupta.review verbatim scan content/drafts/<slug>.md
-python -m chitragupta.review verbatim locate <citekey> "a phrase to find"
-python -m chitragupta.review coverage content/drafts/<slug>.md --query "digital twin composability"
-python -m chitragupta.review synthesis content/drafts/<slug>.md
-python -m chitragupta.review figure content/drafts/<topic>/<slug>.md
-python -m chitragupta.review uncited content/drafts/<slug>.md
-python -m chitragupta.review quotation content/drafts/<slug>.md
-python -m chitragupta.review agenda content/drafts/<slug>.md
-```
+Every command above is also `python -m chitragupta.<layer> <verb>`, for
+example `python -m chitragupta.corpus sync` or
+`python -m chitragupta.draft gate content/drafts/<slug>.md`. This is the
+form hooks and skills invoke, and it works however the package got here.
 
 ### 📦 Checkout and `pip install` side by side
 
@@ -459,32 +237,15 @@ checkout copies `config.toml.example` and runs
 
 ## ⌨ Every command and flag
 
-Defaults shown are the value used when the flag is omitted.
+Defaults shown are the value used when the flag is omitted. Examples
+use the console script; `python -m chitragupta.<layer> <verb>` reaches
+the same command. Activate `.venv-full` first. The scheduling and
+environment-variable sections spell out `.venv-full/bin/python`
+because a cron job or systemd unit has activated nothing.
 
-Examples below show the installed package's console script,
-`chitragupta <layer> <verb>`. From a git checkout without the package
-installed, `python -m chitragupta.<layer> <verb>` reaches the exact same
-command; [Which interpreter](#-which-interpreter) has which form needs
-which environment, and why both are kept working on purpose. Either
-way, `source .venv-full/bin/activate` once first (as in
-[the full first run](#-the-full-first-run-step-by-step)) so the right
-interpreter is already on `PATH`. Two later sections,
-[Running sync on a schedule](#-running-sync-on-a-schedule) and
-[Environment variables](#-environment-variables), spell out
-`.venv-full/bin/python` in full instead, because a cron job or a systemd
-unit has no shell to have activated anything in.
-
-`chitragupta --help` prints every layer with its verbs indented
-underneath, one command per line, so you can find a command without
-this page. `chitragupta corpus --help` and `chitragupta draft --help`
-list their own verbs the same way. A line that doesn't fit the terminal
-is shortened and ends in `...`. The full text, and every flag, is in
-that command's own `--help`, for example
-`chitragupta draft gate --help`. Every command's `--help` has the same
-layout: `Usage:` with its arguments, then `Arguments:` and `Options:`,
-and a `Commands:` list for a command that has its own subcommands, such
-as `chitragupta draft dossier --help`. On Python 3.14 and later, a
-mistyped command gets a "did you mean" suggestion.
+Run `chitragupta --help` for every layer and verb, and
+`<command> --help` (for example `chitragupta draft gate --help`) for
+every flag.
 
 Three commands set a project up rather than work in one: `init`,
 `doctor` and `install`. [PACKAGING.md](PACKAGING.md) has the design
@@ -549,49 +310,27 @@ chitragupta corpus sync
 The exit code is the whole API an unattended caller has. The two
 nonzero completion codes split by *remedy*:
 
-- **1**: this host could not produce documents it was asked for. A
+- **1**: this host could not produce documents it was asked for: a
   parse failure in this run, a deterministic one left by a previous run
   (not retried, so it stays nonzero until you deal with it), or the
   parse backend being unavailable. The remedy is on this machine.
 - **3**: everything asked for was parsed, but the bibliography
-  promises something that is not there. The bib file yielded no
-  references against a non-empty ledger, a PDF the bib file points at
-  cannot be read (whether because it is not on disk or because this
-  host cannot open it), two entries share one citekey, the BibTeX
-  parser dropped an entry (usually unbalanced braces), or a citekey was
-  skipped because it cannot be a filename. The remedy is
-  in the bib file or on the disk it points at.
+  promises something that is not there: the bib file yielded no
+  references against a non-empty ledger, a PDF it points at is missing
+  or unreadable, two entries share one citekey, the BibTeX parser
+  dropped an entry (usually unbalanced braces), or a citekey was
+  skipped because it cannot be a filename. The remedy is in the bib
+  file or on the disk it points at.
 
-A dropped entry or an unusable citekey means this run's read of the bib
-file is short of the file itself, so `--remove-stale` deletes nothing on
-it: the stale list is printed as a report, preceded by `Refusing to
-prune: ...`, because a citekey missing from that read may be missing
-only from the read. A shared citekey does not stop the prune: it still
-counts as present, so it cannot make another row look stale. The
-summary line names every one of these counts (`Bib file: 1 entry
-dropped unparsed by bibtexparser -- see the WARNING above.`), so the
-last line of a log says why the exit was 3.
+`1` wins when both hold; `!= 0` means "anything went wrong". After a
+dropped entry or unusable citekey, `--remove-stale` deletes nothing and
+prints `Refusing to prune: ...`, since the run read less than the bib
+file holds. A shared citekey is named in a `WARNING` and *none* of its
+entries is synced, because the pipeline does not guess which paper the
+key means. An entry type outside BibTeX's standard list (`@software`,
+`@online` and the rest of biblatex's) is ignored by design, silently.
 
-An entry type outside BibTeX's standard list (`@software`, `@online`,
-`@dataset` and the rest of biblatex's) is ignored by design: it is
-not synced, and nothing is printed about it. It is not a dropped entry
-either, so it neither exits 3 nor stops a prune. A ledger row whose
-entry has become such a type reads as stale, like a removed entry's.
-
-A shared citekey is named in a `WARNING` and *none* of its entries is
-synced, because the pipeline does not guess which paper the key means.
-The row the ledger already has for it is left as it was (not
-overwritten, not listed as stale and not pruned by `--remove-stale`)
-until you give each entry its own key and re-export.
-
-A run reporting **3** is therefore also asserting that nothing failed to
-parse, which is what makes the two worth telling apart. `1` wins when
-both hold, since a lost document is the more actionable of the two. A
-caller that only wants "did anything go wrong" reads `!= 0`.
-
-Three of the summary's `no-PDF breakdown` reasons set the exit code,
-because a caller that reads only the code would otherwise never see
-them. They are the only no-PDF reasons that do:
+Three of the summary's `no-PDF breakdown` reasons set the exit code:
 
 | `no-PDF breakdown` reason | Exit | Why |
 | --- | --- | --- |
@@ -602,59 +341,33 @@ them. They are the only no-PDF reasons that do:
 | `non-PDF attachment only` | 0 | Typically an HTML snapshot saved instead of the PDF. Invisible to retrieval, but not a hole |
 | `malformed file field` | 0 | This project could not parse the `file` field's `Desc:path:mimetype` shape |
 
-The split is by *remedy*: the first three mean a document the corpus was
-promised and did not get, and the run must not report success. The other
-three mean an item that never had a PDF here.
+There is deliberately no flag to suppress the first three; fix the path
+or drop the `file` field.
 
 #### 📎 Why an attachment has to live beside the bib file
 
-A `.bib` export is data someone else's tool wrote (a reference manager,
-or a collaborator who sent you theirs), and a `file` field in one may
-name any file on the host. Without a limit, a field reading
-`/etc/passwd` or `~/.ssh/id_rsa` would have that file parsed into
-`content/parsed/`, indexed by `retrieve search`, and quotable into a
-draft as corpus evidence. So an attachment is accepted only where it
-resolves inside the
-directory the `.bib` itself lives in (`papers/` by default, wherever
-`[bib] path` points otherwise). A relative path, and an absolute one
-landing in the same tree, both resolve; the refusal names the offending
-path on stderr.
+A `.bib` export is data someone else's tool wrote, and its `file` field
+may name any file on the host. Without a limit, `/etc/passwd` or
+`~/.ssh/id_rsa` could be parsed into `content/parsed/` and quoted into
+a draft. So an attachment is accepted only where it *resolves* inside
+the directory the `.bib` lives in (`papers/` by default, or wherever
+`[bib] path` points); the refusal names the path on stderr. Symlinking
+the whole of `papers/` elsewhere is fine; symlinking a subdirectory of
+it (to a Zotero storage directory, say) is refused. Point `[bib] path`
+at the real location instead.
 
-Resolution is what "inside" means, so a symlink answers for where it
-lands. Symlinking the whole of `papers/` somewhere else is
-fine, because both sides resolve to the same tree; symlinking a
-*subdirectory* of it (`papers/files` pointing at a Zotero storage
-directory, say) is refused, because the attachments then live outside
-the tree the `.bib` does. Point `[bib] path` at the real location
-instead of symlinking into it.
-
-The same rule applies on the way back *out*. `parsed_path` and
-`pdf_path` are columns of `content/ledger.sqlite`, a gitignored sqlite
-file under a `content/` tree that may be shared, so a row is untrusted
-input too. A row
-whose `parsed_path` does not resolve inside `content/parsed/` reads as
-having no parsed text: `search`, `evidence`, `tldr`, `verbatim` and the
-enrichment stages all decline it and say so, and the next
-`corpus sync` re-parses the document rather than skipping it.
-
-Both columns are stored *relative*: `parsed_path` as `<citekey>.txt`
-under the `parsed/` directory of `[content].dir` (default
-`content/parsed/`), and `pdf_path` relative to the bib file's resolved
-directory. A project you move, a `content/` directory you rename, or a
-ledger you use from a container and then from the host therefore
-re-parses nothing. [MIGRATION.md](MIGRATION.md) walks through moving a
-project step by step.
-
-If a stale path in your bib file is expected and you would rather the
-scheduled run stayed green, fix the path or drop the `file` field;
-there is deliberately no flag to suppress it.
+The same rule applies on the way out. A ledger row whose `parsed_path`
+does not resolve inside `content/parsed/` reads as having no parsed
+text: `search`, `evidence`, `tldr`, `verbatim` and the enrichment
+stages decline it, and the next `corpus sync` re-parses it. Both path
+columns are stored relative, so moving a project or its `content/`
+directory re-parses nothing ([MIGRATION.md](MIGRATION.md)).
 
 ### 🧾 What else still references a citekey you are about to remove
 
-The ledger row is not the only place a citekey lives. Whenever a run has
-stale citekeys to report (in the default report-only mode, and again
-just before `--remove-stale` deletes anything), `sync` scans five other
-artefacts and names what still points at each one:
+Whenever a run has stale citekeys to report (in report-only mode, and
+again just before `--remove-stale` deletes anything), `sync` names what
+else still points at each one:
 
 | Artefact | Where it lives | Counted as |
 | --- | --- | --- |
@@ -674,62 +387,21 @@ artefacts and names what still points at each one:
 Review the 1 stale item(s) above, then re-run with --remove-stale ...
 ```
 
-The scan only reports. Nothing above is deleted, rewritten or created; the
-only thing `--remove-stale` removes is still the ledger row. Pruning a
-citekey out of a dossier's `evidence.md` would destroy evidence you
-transcribed by hand, so that decision stays yours. A citekey nothing else
-references says so, on its own line, and the existing "re-run with
-`--remove-stale`" prompt is unchanged either way.
-
-A citekey is matched as an exact string, bounded so `smith_2024` never
-answers for `smith_2024b`; there is no fuzzy matching and none is wanted,
-since the citekey comes from your own BibTeX export. `content/chroma/` is
-only opened if it already exists and the `enrich` extra is installed;
-otherwise you get a `NOTE:` line saying the class was not scanned, instead
-of a silent zero. The chroma collection is namespaced by
-`[enrich].embedding_model`, so a corpus embedded under a different model reads as
-zero vectors here; that is a true statement about the collection this
-configuration would use.
-
-A file the scan cannot read is noted and does not stop the scan. A
-killed enrichment run can leave `topic_graph.json`, `topic_set.json`,
-`topics.json` or an overlap index truncated. The scan names that file on
-a `NOTE:` line and carries on, so the stale list still prints; its hits
-are then missing from the report, which is what the note is there to
-say.
-
-The classes differ in how long a hit lasts. A dossier mention was
-transcribed by a human and stays stale until a human removes it; that
-is the hit to act on. The topic membership and topic graph classes are
-the opposite: both files are regenerated wholesale by the next
-enrichment run, so a hit there expires on its own. It is reported
-because you asked what still references the citekey, and needs no
-action from you. The overlap index sits in between: per-document
-fingerprints persist, but are rebuilt for the documents that change.
-
-The `--remove-stale` run skips the scan entirely when the bib file
-yielded **zero** references, because the refusal described above is
-about to be raised and a residue report for every row in your ledger
-would bury it.
+The scan only reports; `--remove-stale` removes only the ledger row,
+because pruning a dossier's `evidence.md` would destroy evidence you
+transcribed by hand. A dossier mention is the hit to act on; topic hits
+expire at the next enrichment run. Citekeys match exactly. A class that
+could not be scanned (no `content/chroma/`, no `enrich` extra, a
+truncated file) gets a `NOTE:` line rather than a silent zero.
 
 ### ♻ When `sync` re-parses a document it already parsed
 
-A PDF whose bytes haven't changed is not re-parsed, which is what makes
-the second run nearly free. There is one deliberate exception: `sync`
-treats a document it calls `parsed` whose passage sidecar is missing or
-unreadable as one that needs parsing again.
-
-That covers two cases. A `.txt` or a sidecar you delete by hand is
-restored by this check. A sidecar that is there but cannot be read (cut
-short or damaged by hand) is re-parsed under either backend rather than
-read as "no passages". An *empty* sidecar is readable: it is what a parse that found
-no prose writes, and it does not trigger a re-parse.
-
-It costs one re-parse each, once (6.65s per PDF serial, 0.62s at twelve
-workers; see [PERFORMANCE.md](PERFORMANCE.md)), and the run reports
-them the way it reports any other parse. You need do nothing, though
-`chitragupta corpus sync --reparse` forces it all at once if you would
-rather not wait for the next run.
+A PDF whose bytes haven't changed is not re-parsed. The one exception:
+a `parsed` document whose passage sidecar is missing or unreadable is
+parsed again, so a `.txt` or sidecar deleted or damaged by hand is
+restored. An *empty* sidecar is what a parse that found no prose writes,
+and does not trigger a re-parse. It costs one parse each, once
+([PERFORMANCE.md](PERFORMANCE.md)); `--reparse` forces all of them now.
 
 ### 🗄 `chitragupta corpus ledger`
 
@@ -756,25 +428,23 @@ chitragupta corpus ledger
 ```
 
 Exits `0` with no ledger yet, or one that needs a sync to migrate it,
-printing the instruction: those are steps in clone -> sync, not faults.
-Exits `3` with the cause on stderr when the ledger is there but SQLite
-will not read it (an interrupted write's journal, a lock held past the
-timeout, a damaged or unopenable file). The session-start hook reports
-that as a fault of its own rather than as a missing `config.toml`. A
-stale ledger still exits `0` here, unlike the gate.
+printing the instruction. Exits `3` with the cause on stderr when SQLite
+will not read the ledger (an interrupted write's journal, a lock held
+past the timeout, a damaged file). A stale ledger still exits `0` here,
+unlike the gate.
 
-Collections need a Better BibTeX export with JabRef fields enabled.
-Zotero's own exporter drops them, in which case `--collections` prints
-nothing and says why. See
-[ZOTERO.md](ZOTERO.md#-keeping-your-collections-optional). Asking for a
-parent collection selects everything beneath it, matching is
-case-insensitive, and it is per-segment rather than by substring.
+Collections need a Better BibTeX export with JabRef fields enabled
+([ZOTERO.md](ZOTERO.md#-keeping-your-collections-optional)); without
+them `--collections` prints nothing and says why. A parent collection
+selects everything beneath it; matching is case-insensitive and
+per-segment.
 
 ### 🏷 `chitragupta corpus topics`
 
 Read-only view of which papers matched each of your seed topics.
-**Takes no lock and needs no venv**, though what it reads is written by a
-stage that needs both. With no flags it prints every topic.
+**Takes no lock and needs no venv**, though what it reads is written by
+`chitragupta enrich --stages seed-topics`. With no flags it prints every
+topic.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
@@ -787,124 +457,56 @@ chitragupta corpus topics
 ```
 
 Exits `1` when no report has been written yet, or when `--topic` names a
-phrase the report does not hold. This is the same "you asked about
-something that isn't there" exit `ledger --citekey` already uses.
-
-Seed topics are phrases you write yourself in `content/seed_topics.toml`
-(start from `assets/style/topics.toml.example`), matched against the
-corpus by `chitragupta enrich --stages seed-topics`. A phrase is one
-topic and is never split into words, and a paper is listed under every
-topic it matched, not only its closest. This report is therefore
-many-to-many, unlike `content/topics.json`, where BERTopic gives each
-document exactly one topic id. The papers that matched no topic at all
-are listed too; that list is the point of the report when you are
-deciding what to draft next. See
+phrase the report does not hold. A paper is listed under every topic it
+matched, and the papers that matched none are listed too. See
 [CONFIG.md](CONFIG.md#-seed-topics-organising-the-corpus-by-phrases-you-wrote).
 
 ### 🕸 `chitragupta corpus discover`
 
-Resolve any phrase to a topic the corpus has, list a topic's
-papers with their bibliographic entries and the *other* topics each
-paper belongs to, walk to the linked topics, or invert the question
-with `--paper`. **Takes no lock.** The topic-topic relations come from
-`content/topic_graph.json`, written by `chitragupta enrich --stages
-topic-graph`; this command derives none of them itself.
-[TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) is the reference for how each
-relation and each resolution rung is computed.
+Resolve a phrase to a topic the corpus has, list a topic's papers and
+linked topics, or invert the question with `--paper`. **Takes no lock.**
+The relations come from `content/topic_graph.json`, written by
+`chitragupta enrich --stages topic-graph`.
+[TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) explains each relation and the
+resolution ladder; [EXPLORE-CLI.md](EXPLORE-CLI.md) walks the views.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `PHRASE ...` | -- | A topic to look up: a known label, a near-miss, or any free phrase. Omitted, every topic is listed |
 | `--paper CITEKEY` | -- | Show this paper's topics instead of resolving a phrase |
-| `--groups N` | -- | Cut the stored merge tree into as close to N groups as it allows and list them, each labelled by its biggest member; this is the app's resolution slider as a view. Reports the count actually reached (a tree that never joins an outlier cannot reach one group) and the merge distance cut at. Its own view: composes with `--json` only, exits `2` on a target below one, and exits `1` when the artefact stores no hierarchy |
-| `--compare TOPIC TOPIC ...` | -- | Compare two to six topics: pairwise shared citekeys, the papers held by all of them, the bridge papers held by two or more (with their formatted ledger entries), and the edges among the named topics with their evidence. Names resolve through the usual ladder. Its own view: composes with `--json` only; exits `2` past six topics (named, never silently truncated) and `1` when the phrases collapse onto fewer than two distinct topics |
-| `--clusters` | -- | The stored MCL partitions of both edge families and the two lists where they disagree. This is the app's disagreement grid as a view, read from the artefact's `communities` (this side clusters nothing). Its own view: composes with `--inflation` and `--json` only; exits `1` naming the stored range when the inflation has no partition, or naming the enrich stage when the artefact predates the field |
-| `--inflation X` | `2.0` | Which stored inflation `--clusters` reads (the slider's own steps: 1.2 to 4.0 by 0.1) |
-| `--path TOPIC TOPIC` | -- | The strongest chain between two topics over one family, hop by hop, each hop with its evidence (shared citekeys, or the bridging pair), walked from the artefact's stored next-hop matrices and never searched here. Requires `--family`; "no path over this family" is a real answer and exits `0`. Its own view: composes with `--json` only; exits `1` naming the enrich stage when the artefact predates the matrices |
-| `--family F` | -- | Which edge family to read one family's answer over: `overlap` or `semantic`, never one fused weight. Required by `--path`; optional on `--hops`, where it narrows the walk rather than the output |
-| `--why TOPIC TOPIC` | -- | Why is there no overlap edge between these two topics? Shared citekeys, both sizes, the corpus size, the hypergeometric tail, and the gate's verdict. This is the terminal twin of the app's absence view, plus the one number the app cannot show: the artefact's stored threshold. Its own view: composes with `--json` but with no phrase and no `--paper`, and exits `1` when a name resolves to no topic or both resolve to the same one |
-| `--hops N` | -- | With a phrase: print the topic's neighbourhood as rings by hop distance instead of the flat topic view: ring one typed by which family reached each neighbour, deeper rings by distance alone, and a count of what the topic cannot reach. `N` is a positive count, or `all` for everything reachable. Add `--family F` to measure over one family: without it the walk is over both, so a topic one shared paper plus one cosine hop away sits on the same ring as a topic two shared papers out. The prose and the `--json` `families` both say which were walked |
-| `--origins LIST` | every class | Show only topics of these origins, comma-separated: `seed` (you wrote the phrase in `content/seed_topics.toml`), `keyword` (the extractor proposed it into `content/keywords.toml`), `corroborated` (both files name it, so two independent sources agree), `emergent` (the topic model found it on its own). Filters the artefacts every view reads, so it composes with all of them: the list, `--json`, `--html` and `--app`. **`seed` and `keyword` each include the corroborated topics** (a topic you named must not be hidden from you because the extractor agreed), so `corroborated` is how you ask for that intersection alone. Exits `1` on an unknown class or a selection that names none |
+| `--groups N` | -- | Cut the stored merge tree into as close to N groups as it allows. Composes with `--json` only; exits `2` below one, `1` when the artefact stores no hierarchy |
+| `--compare TOPIC TOPIC ...` | -- | Compare two to six topics: shared citekeys, bridge papers, and the edges among them. Composes with `--json` only; exits `2` past six topics, `1` when the phrases collapse onto fewer than two topics |
+| `--clusters` | -- | The stored MCL partitions of both edge families and where they disagree. Composes with `--inflation` and `--json` only; exits `1` when the inflation has no partition or the artefact predates the field |
+| `--inflation X` | `2.0` | Which stored inflation `--clusters` reads (1.2 to 4.0 by 0.1) |
+| `--path TOPIC TOPIC` | -- | The strongest chain between two topics over one family, each hop with its evidence. Requires `--family`; "no path" exits `0`. Composes with `--json` only; exits `1` when the artefact predates the matrices |
+| `--family F` | -- | `overlap` or `semantic`, never one fused weight. Required by `--path`; optional on `--hops` |
+| `--why TOPIC TOPIC` | -- | Why there is no overlap edge between two topics, with the stored threshold. Composes with `--json` only; exits `1` when a name resolves to no topic or both to the same one |
+| `--hops N` | -- | With a phrase: the topic's neighbourhood as rings by hop distance. `N` is a positive count or `all`; add `--family F` to walk one family |
+| `--origins LIST` | every class | Only topics of these origins: `seed`, `keyword`, `corroborated`, `emergent`. **`seed` and `keyword` each include the corroborated topics**, so `corroborated` alone asks for that intersection. Composes with every view; `--path` refuses a narrowing `--origins` (exit `2`). Exits `1` on an unknown class |
 | `--json` | off | Machine-readable output |
 | `--out FILE` | -- | Also write the topic view as a Markdown overview: papers, linked topics, and verbatim member-paper snippets |
 | `--k N` | `5` | Results to show when falling back to paper search |
-| `--html FILE` | -- | Write the whole topic graph as one self-contained HTML page (inline data, script and styles; works from `file://`) and exit. Composes with `--json`, which reports the write as `{"written": FILE}` rather than as a sentence |
-| `--app DIR` | -- | Write the topic graph as an interactive app directory (cytoscape.js canvas grouped by a slidable cut of the stored merge tree, type-ahead multi-topic search, provenance-coloured nodes, paper panel), openable from `file://` with no server (docs/EXPLORE-WEB.md has the tour). Composes with `--json` exactly as `--html` does |
+| `--html FILE` | -- | Write the whole topic graph as one self-contained HTML page and exit. With `--json`, reports the write as `{"written": FILE}` |
+| `--app DIR` | -- | Write the topic graph as an interactive app directory, openable from `file://` ([EXPLORE-WEB.md](EXPLORE-WEB.md)). Composes with `--json` as `--html` does |
 
 ```bash
 chitragupta corpus discover
 # chitragupta corpus discover "digital twin"
-# chitragupta corpus discover "cyber replica" --json
 # chitragupta corpus discover "digital twin" --out overview.md
 # chitragupta corpus discover --paper kritzinger_digital_2018
-# chitragupta corpus discover --why "digital twin" "physical twin"
-# chitragupta corpus discover --groups 8
 # chitragupta corpus discover --compare "digital twin" "physical twin" "application"
-# chitragupta corpus discover --clusters --inflation 2.0
 # chitragupta corpus discover --path "digital twin" "devops" --family overlap
-# chitragupta corpus discover --html topics.html
-# chitragupta corpus discover --html topics.html --json
-# chitragupta corpus discover --app topicapp/
-# chitragupta corpus discover --origins seed,corroborated
 # chitragupta corpus discover --app topicapp/ --origins emergent
 ```
 
-Two stored fields are *positional*, so the filter has to deal with them
-rather than pass them through. `communities` (one cluster id per topic)
-is filtered in step, so `--clusters --origins ...` reports each surviving
-topic's own stored cluster. `paths` cannot be: it holds next-hop indices
-into the edge lists and a stored route may run through a topic the filter
-removed, so `--path` **does not compose with a narrowing `--origins`**
-and says so, exiting `2` like every other refused view combination. The
-field is dropped from a filtered `--app` export for the same reason, and
-the app then walks the graph in the browser as it does for any older
-artefact.
-
-`--origins` filters what the command *reads*, not what one view prints:
-a phrase naming a filtered-out topic falls through the resolution ladder
-like any unknown phrase, and an exported page or app directory contains
-only the classes asked for rather than hiding them on screen. The app
-opens showing exactly what shipped, with a **Nodes** picker in the header
-for narrowing further; a class this export left out is shown disabled and
-says which `--origins` run excluded it, so "filtered out at export" stays
-distinguishable from "this corpus has none". Beside it an **Edges**
-picker does the same for the two edge families, which is the app's
-counterpart to `--family` on `--path` and `--hops`.
-
-A free phrase resolves through a ladder (exact label, fuzzy label, then a
-hybrid of BM25 over each topic's own vocabulary fused with cosine against
-the stored topic centroids, its fused candidates rescored by the
-`[enrich].rerank_model` cross-encoder when `[enrich].rerank` is on), and
-the output names which rung answered (`resolved_via`). When the hybrid
-rung matches several topics, the view adds a `neighbourhood` ranking:
-personalised PageRank over the topic graph, seeded from every candidate. A
-phrase no topic claims falls back to `retrieval.search()` over papers,
-clearly labelled a search result rather than a topic membership. Without
-the `enrich` extra installed, or with a model that will not load, the
-semantic rung (and the rescoring) is skipped with a one-line note and
-resolution degrades to the lexical rungs. Exits `1` when the graph
-artefact is missing (naming the stage to run), when `--paper` names a
-citekey in no topic, when a phrase resolves nowhere and even the fallback
-finds nothing, and when an `--out`, `--html` or `--app` target cannot be
-written. The `--out` one is raised *after* the topic view has already
-printed, so it is the one `discover` failure where the command both
-answered the question and returned nonzero. A script driving `--out`
-therefore has to check the exit status: stdout carries the topic view
-either way, and the plain-text line naming the path and the OS error goes
-to **stderr**, so `discover "x" --json --out FILE > view.json` leaves a
-valid JSON file even when the write fails.
-
-`--html`'s write failure goes to **stderr** too, and for the rule rather
-than for that reason: a failure line is diagnostics in either mode, so
-the stream does not depend on `--json`. What `--html` has instead of a
-printed view is nothing at all before the write, so a failed
-`discover --html FILE --json > out.json` leaves `out.json` empty and the
-exit status is the only thing to read. The success line is the half that
-does depend on the flag, because under `--json` it *is* the payload.
-`--app` follows `--html`'s contract on every point above: nothing on
-stdout before the write, the failure line on stderr naming the
-directory, and the success report shaped by `--json`.
+Exits `1` when the graph artefact is missing (naming the stage to run),
+when `--paper` names a citekey in no topic, when a phrase resolves
+nowhere and even the paper-search fallback finds nothing, and when an
+`--out`, `--html` or `--app` target cannot be written. The write
+failure goes to **stderr**. For `--out` it comes after the view has
+printed, so check the exit status; `--html` and `--app` print nothing
+before the write.
 
 ### ✅ `chitragupta draft gate`
 
@@ -929,55 +531,41 @@ chitragupta draft gate content/drafts/survey.md
 #             3 = the ledger could not be read, so nothing was checked.
 ```
 
-A file that resolves outside `content/` is reported as a `FAIL` for that
-document, and the remaining files are still checked. The contract is that
-you hand this command several drafts and get a verdict on each, so one
-unusable path must not hide the others. It exits 1 rather than the usage
-code 2 for the same reason: this is a document that did not pass,
-alongside the rest.
+A file outside `content/` is a `FAIL` for that document and the rest
+are still checked, so one bad path cannot hide the others; it exits 1,
+not the usage code 2, because it is a document that did not pass.
 
-**Exit 3 is never a verdict.** It means the ledger is there but could
-not be read: a journal left by an interrupted write (a killed `corpus
-sync`), another process holding the write lock, a damaged file, or a
-ledger that needs a sync to migrate it. The gate then checks no draft at
-all, citation-free ones included, prints nothing on stdout, and says on
-stderr what happened and what to do. It only reports, and never repairs:
-rolling back an interrupted write changes your data, so that happens
-when you run `chitragupta corpus sync`, whose writer does it on opening
-the ledger. A *missing* ledger is different: every key is then unsourced,
-so a cited key fails with exit 1
-and a citation-free draft passes.
+**Exit 3 is never a verdict.** The ledger is there but could not be
+read (an interrupted write's journal, another process holding the
+lock, a damaged file, or one needing a sync to migrate). The gate then
+checks nothing, prints nothing on stdout, and says on stderr what to
+do. It never repairs: `chitragupta corpus sync` rolls back an
+interrupted write when it opens the ledger. A *missing* ledger is
+different: a cited key fails with exit 1 and a citation-free draft
+passes.
 
 **Check the spelling in any script or CI step that runs this.**
-`chitragupta/citation_gate.py` carries no `__main__` block, because the
-drafting layer has one entry point and this is it (see
-[ARCHITECTURE.md](ARCHITECTURE.md#-which-interpreter-and-why)). So
-`python -m chitragupta.citation_gate <draft>` does not error: it imports the
-module and exits **0** with empty stdout. For every other command in this
-layer that trap is a harmless no-op, but for the gate it means an
-automated caller gets a **silent, unconditional pass** on a draft nothing
-ever checked. `chitragupta draft` with no arguments prints the layer's
-usage and exits 0, which is the fastest way to confirm a spelling.
+`chitragupta/citation_gate.py` has no `__main__` block
+([ARCHITECTURE.md](ARCHITECTURE.md#-which-interpreter-and-why)), so
+`python -m chitragupta.citation_gate <draft>` imports the module and
+exits **0** with empty stdout: a **silent, unconditional pass** on a
+draft nothing checked. `chitragupta draft` with no arguments prints the
+layer's usage, the fastest way to confirm a spelling.
 
 ### 📚 `chitragupta draft references`
 
 Append or replace a `References` section built from a draft's own cited
-citekeys.
-
-Entries are IEEE-style and numbered by first appearance in the draft,
-which is the order pandoc's citeproc numbers citations in, so this list and the
-rendered PDF's bibliography agree on which source is `[1]`. Each entry
-ends with its citekey in a code span, because the draft's own inline
-markers are still `[@citekey]`:
+citekeys. Entries are IEEE-style, numbered by first appearance (the
+order citeproc numbers in, so this list and the PDF agree on `[1]`),
+and each ends with its citekey in a code span:
 
 ```text
 [1] J. Doe and R. Roe, "A Paper," *IEEE Trans. Testing*, vol. 3, pp. 1–9, 2024. `doe_paper_2024`
 ```
 
 Authors, venue, volume and pages come from the ledger's `bib_fields`
-column, which `sync` populates from the bib file. A row synced before
-that column existed has no fields to format, so its entry degrades to
-title and year until the next `chitragupta corpus sync`.
+column; a row synced before that column existed degrades to title and
+year until the next `chitragupta corpus sync`.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
@@ -994,49 +582,19 @@ chitragupta draft references content/drafts/survey.md
 
 Render the **evidence sidecar** beside a draft: each cited source, and
 the verbatim spans its dossier marked quotable, grouped by the section
-that leans on them.
+that leans on them. `content/drafts/dt/survey.md` produces
+`content/rendered/dt/survey.evidence.{md,tex,pdf}`. A sidecar is
+**never committed** (`.gitignore` excludes
+`content/rendered/**/*.evidence.*`), because it carries verbatim
+wording from copyrighted sources.
 
-```text
-## Approaches to model synchronisation
-
-### J. Doe and R. Roe, "A Paper," *IEEE Trans. Testing*, 2024. `doe_paper_2024`
-
-> "the verbatim span, exactly as evidence.md's quote: field holds it"
-```
-
-It lands beside the render rather than inside the draft:
-`content/drafts/dt/survey.md` produces
-`content/rendered/dt/survey.evidence.{md,tex,pdf}`, next to
-`survey.{md,tex,pdf}`. A sidecar is **never committed**:
-`.gitignore` excludes `content/rendered/**/*.evidence.*` even under the
-example topic whose renders are otherwise tracked, because a sidecar
-carries verbatim wording from copyrighted sources.
-
-Four things it will not do, each of them structural rather than checked:
-
-- **It prints only `quote:`.** Not `claim:`, which is the drafter's own
-  words, and above all not a legacy `support:`, which in practice holds a
-  raw 600-character retrieval window. A skill meeting a `support:`-only
-  block reads it as a quote (see
-  [DRAFT-ITERATION.md](DRAFT-ITERATION.md)); a command that *prints* the
-  field deliberately does not.
-- **It cannot introduce a citekey.** Its universe is the draft's own
-  citations, so a source the dossier holds but the draft never cites is
-  dropped, the same rule `references` follows.
-- **It adds no citations to anything.** Every citekey it prints sits in a
-  code span, which the gate blanks, so
-  `chitragupta draft gate` over a sidecar reports
-  `0 citations ... OK` and the draft's own `[1]`, `[2]` numbering is
-  untouched.
-- **It writes nothing when there is nothing to show.** No dossier, or no
-  `quote:` anywhere in it, and it prints `no quoted evidence recorded`
-  and exits **0**. That is the expected answer for a tutorial, and for
-  any dossier still carrying only pre-A2 blocks, and is not a failure.
-
-It reads both `[@citekey]` and `\citep{...}`, so a `thesis-chapter-writer`
-`.tex` fragment gets a sidecar too. The sidecar is a standalone document
-with its own preamble, never something a thesis `\input`s, which is why
-that genre emits one rather than declining.
+It prints only `quote:` fields, never `claim:` or a legacy `support:`
+([DOSSIER.md](DOSSIER.md)). Its universe is the draft's own citations,
+so it cannot introduce a citekey, and every citekey it prints sits in a
+code span the gate blanks, so it adds no citation. With no dossier or
+no `quote:` it prints `no quoted evidence recorded` and exits **0**.
+It reads both `[@citekey]` and `\citep{...}`, so a thesis `.tex`
+fragment gets a standalone sidecar too.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
@@ -1054,251 +612,87 @@ chitragupta draft evidence content/drafts/dt/survey.md --format pdf
 ### 🗂 `chitragupta draft dossier`
 
 The working state behind a draft: create it, inspect it, back it up,
-restore it. A dossier lives at `content/dossiers/` plus the draft's path
-relative to `content/drafts/`, minus the suffix, so
-`content/drafts/dt/survey.md` gets `content/dossiers/dt/survey/`.
-
-It holds eight Markdown files. `README.md` explains the other seven to
-whoever opens the directory next; those seven are:
-
-- `scope.md`: the reader, the dialect, the scope, the glossary.
-- `evidence.md`: the kept evidence.
-- `rejected.md`: the rejected candidates, and why.
-- `sections.md`: which section cites which citekey.
-- `steering.md`: the user's steering.
-- `revisions.md`: a revision log.
-- `retrieval.md`: every retrieval call, the Zotero collection it was
-  scoped to (empty for a corpus-wide call), whether the query was
-  declared in `outline.md` or added to extend it (empty for neither),
-  plus a `mark-revision` boundary per revision pass.
-
-A ninth, `outline.md`, is opt-in (`init --outline`) rather than one of
-the seven every dossier gets: the human's own per-section
-brief/claim/declared-queries file, read and validated by the `outline`
-subcommand below. See "The human's own outline" further down.
-
-[DRAFT-ITERATION.md](DRAFT-ITERATION.md) is the design.
-
-Stdlib only, and never a gate: it takes no lock and only ever opens the
-ledger read-only.
-
-Two "missing" cases are deliberately different, because one is actionable
-and the other isn't:
-
-| Situation | `status` does |
-| --- | --- |
-| No ledger, or an unreadable one | Reports the dossier as usual, says the drift check is unavailable, **exits 0** |
-| No dossier for this draft | Prints the `init` command to create one, **exits 1** |
-
-So `chitragupta draft dossier status <draft> >/dev/null` is a usable
-test for "does this draft have a dossier yet", while a machine with no
-corpus built still gets a full report of what it has.
-
-That test only works without `--json`. Adding it puts the command on the
-machine-readable path, which reports a missing dossier as an almost-empty
-entry and **exits 0**, like every other `--json` call. That is consistent
-with "the caller branches on the contents", but it matters if you were
-relying on the exit code. Check `recorded` and `draft` in the payload
-instead.
-
-`status --all` is the other direction: one drift report over *every*
-dossier, for after a `sync` that added or removed papers. It **always
-exits 0**, because some drafts having drifted is the normal state of a
-live corpus and not a failure, so a caller branches on the contents and
-not the status code. It reports two different things per dossier:
-
-- **missing**: a citekey the dossier declares (an `evidence.md` heading
-  or a `sections.md` cell) that has left the ledger or whose PDF no
-  longer parses, listed with the sections citing it. A defect. A
-  backticked word in `evidence.md` prose is not a declaration.
-- **candidates**: papers now in the ledger that one of the dossier's own
-  `retrieval.md` queries would surface in its top 15, minus everything
-  already kept *or rejected*. A query recorded against a Zotero
-  collection is re-ranked over that collection only, matching what the
-  call searched, so a collection-scoped draft is not reported as drift
-  against papers outside the shelf it was scoped to. A decision,
-  not a defect.
-- **reconsider**: papers the draft already declined that those queries
-  still reach, carried with the recorded reason. Not drift (it is true on
-  every sweep), so it never marks a dossier stale and prints only
-  alongside a real finding; `--json` always carries it.
-
-Like every other read here it takes no lock and writes nothing: the
-ledger is opened read-only and the BM25 index used for matching is built
-in memory and discarded, leaving `content/retrieval_index.json`
-untouched. A sweep costs about 2s cold and 0.2-0.4s warm on this
-project's own corpus, and 50 dossiers cost only 0.19s more than one
-(see [PERFORMANCE.md](PERFORMANCE.md#-what-a-drift-sweep-costs) and
-[DRAFT-ITERATION.md](DRAFT-ITERATION.md#-drift-across-every-dossier)).
-
-`brief` is the one subcommand written for a *subagent* rather than a
-person. A skill that dispatches parallel section writers has to give each
-one its evidence, and pasting that evidence into the dispatch prompt
-spends it as output (the 5x direction), once per writer. `brief` is what
-the prompt points at instead: the writer runs it in its own context, and
-that context is discarded when it exits. It selects by citekey, or by a
-section named in `sections.md`, and refuses to dump the whole of
-`evidence.md`, since a caller reaching for it is trying not to read that.
-See [DRAFT-ITERATION.md](DRAFT-ITERATION.md#-dispatching-from-the-dossier)
-and [TOKENS.md](TOKENS.md).
-
-Its exit code is the contract, because a dispatch prompt cannot read a
-paragraph. **0 when it printed at least one block, 1 when it could not
-print any.** It prints none in four cases:
-
-- there is no dossier;
-- the section is unknown;
-- the section's row assigns no citekeys;
-- none of the asked-for citekeys was transcribed.
-
-The last three are different gaps, and the message says which.
-
-Everything except the evidence itself goes to stderr, so stdout is only
-ever the blocks. A citekey with no block is named in a warning rather
-than dropped: the run that found it never transcribed it, so that
-material is gone rather than mislaid.
-
-#### The human's own outline
-
-`outline.md` (`init --outline`) is a single-draft sibling to the book
-track's `spec.md`, not a second copy of it;
-[WRITE-A-BOOK.md](WRITE-A-BOOK.md) explains why a book's outline and a
-survey's don't share one file. Per
-`##`-or-deeper heading, the human declares intent about prose they
-supply rather than leaving a skill to guess: `brief:` (steering,
-consumed once, never appears in the draft) and/or one or more `claim:`
-blocks (rewritten; every sentence that can't be grounded in the corpus
-is reported instead of shipped), plus an optional `queries:` list. A
-section needs at least a brief or a claim; `queries:` is optional even
-then, since plenty of sections are pure framing prose with nothing to
-search for. Run a broad search or two on the topic
-(`chitragupta draft retrieve search "<topic>"`) before filling this in
-by hand: the corpus may not support the sections of an outline written
-blind.
-
-Declared queries bind by default: a genre skill runs them verbatim
-instead of inventing sub-themes. `--origin extended` on the skill's own
-`retrieve` calls covers a section that came up thin, logged distinctly
-so `chitragupta draft dossier status` can report whether a draft ran
-what `outline.md` declared. "Did this draft follow my outline?" can
-then be checked instead of taken on trust. `outline` itself only reads
-and validates; it never calls retrieval and never writes `sections.md`
-or `evidence.md`. Deciding what's kept stays the genre skill's job, the
-same way it already is without an `outline.md` at all.
-
-```bash
-chitragupta draft dossier init content/drafts/survey.md --genre survey --outline
-chitragupta draft dossier outline content/drafts/survey.md
-chitragupta draft dossier outline content/drafts/survey.md --check
-```
+restore it. `content/drafts/dt/survey.md` gets
+`content/dossiers/dt/survey/`. [DOSSIER.md](DOSSIER.md) describes every
+file in it (including the opt-in `outline.md`) and
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md) the design. Stdlib only, never
+a gate: it takes no lock and opens the ledger read-only.
 
 | Subcommand | What it does |
 | --- | --- |
-| `init <draft> --genre G` | Create the skeleton. Only ever adds missing files, so it is safe to re-run |
-| `status <draft>` | What each file holds, the draft's section count, and whether the corpus moved since. With an `outline.md`, also which declared queries ran, which returned nothing (`no evidence`), and which were never issued |
+| `init <draft> --genre G` | Create the skeleton. Only adds missing files, so it is safe to re-run |
+| `status <draft>` | What each file holds, the section count, and whether the corpus moved since; with an `outline.md`, which declared queries ran, returned nothing (`no evidence`) or were never issued |
 | `status --all` | Corpus drift over every dossier: broken citations and new candidates. Always exits 0 |
-| `sections <draft>` | Heading -> line range, for reading and editing one section instead of the file |
-| `sections <draft> --citekeys` | The dossier's `sections.md` table, derived from the draft: each heading with the citekeys cited under it. `--write` puts it in the dossier |
-| `outline <draft>` | Read and validate `outline.md`, the human's own per-section brief/claim/declared queries. A section is a `##`-or-deeper heading; a level-1 line is the file's own title and is passed over. **Exits 1** if there's no `outline.md`, or if a section has neither a `brief:` nor a `claim:` block |
-| `mark-revision <draft>` | Record a revision-session boundary in `retrieval.md`, so `status` can total retrieval cost per revision instead of only as one lifetime figure. Also keeps a numbered snapshot of the draft and its figures under the dossier's `versions/`, skipped when the draft is unchanged since the latest one |
-| `snapshot <draft> --label TEXT` | Keep the draft as it is now, with both forms of every figure it names, as a named version (`002-sent-to-supervisor`) for `draft diff --against`. Always taken, even when unchanged |
-| `versions <draft>` | Every snapshot the dossier holds, oldest first: number, date, trigger, and its label or revision label |
-| `stamp <draft>` | Record the draft's current text digest in `scope.md`, so `status` can report `CHANGED since last stamp` on a later hand edit. Run after `gate` passes, never before |
-| `set-language <draft> <language>` | Record the draft's dialect (a BCP-47 tag: `en-GB`, `en-US`, `en-IN`) in `scope.md`, so `chitragupta.draft style` can check it |
-| `acronyms-suggest <draft>` | Acronyms this draft's glossary or prose defines that aren't in `[style].acronyms` yet. Prints only; writes nothing |
-| `acronyms-suggest <draft> --apply` | The same, then writes the new entries to your acronyms file (creating it if absent). Refuses if `[style].acronyms` is unset, rather than writing into the vendored `assets/style/acronyms.toml` |
-| `brief <draft> [citekey ...]` | The kept-evidence blocks for a section or a citekey list, for a subagent to read. **Exits 1 if nothing resolves** |
-| `check-evidence <draft>` | Advisory, two checks over `evidence.md`. First, any citekey carrying **more than one block**: the first is the one every reader gets, so the rest are text nothing will read. Then: does any `claim:` read like its own `quote:` with the words moved? Never blocks a draft from being read; exits 1 if the target has no dossier yet (same convention as `brief`/`status`), 0 otherwise |
-| `prune <draft>` | The `evidence.md` blocks for citekeys the draft no longer cites, as a **dry run**, one line per citekey saying what would happen. Exits 0 |
-| `prune <draft> --apply` | The same, and removes them. Deletes by line span, so the file's own line endings survive; `evidence.md` only, never `sections.md` (use `sections --citekeys --write`) and never `rejected.md` |
-| `prune <draft> --citekey <key>` | Restrict to one citekey (repeatable). Exits **1** if a named citekey was refused (still cited, unrecorded, `sections.md`-only, or carrying more than one block), so a script that asked for a specific key hears about it |
+| `sections <draft>` | Heading -> line range, for editing one section instead of the file |
+| `sections <draft> --citekeys` | The `sections.md` table derived from the draft: each heading with the citekeys cited under it |
+| `outline <draft>` | Read and validate `outline.md` (sections are `##`-or-deeper headings). **Exits 1** if there's no `outline.md`, or a section has neither a `brief:` nor a `claim:` |
+| `mark-revision <draft>` | Record a revision boundary in `retrieval.md`, so `status` totals retrieval cost per revision, and keep a numbered snapshot of the draft and its figures under `versions/` (skipped when unchanged) |
+| `snapshot <draft> --label TEXT` | Keep the draft and its figures as a named version (`002-sent-to-supervisor`) for `draft diff --against`. Always taken |
+| `versions <draft>` | Every snapshot, oldest first: number, date, trigger, label |
+| `stamp <draft>` | Record the draft's text digest in `scope.md`, so `status` reports `CHANGED since last stamp` after a hand edit. Run after `gate` passes, never before |
+| `set-language <draft> <language>` | Record the draft's dialect (a BCP-47 tag: `en-GB`, `en-US`, `en-IN`) in `scope.md` for `draft style` |
+| `acronyms-suggest <draft>` | Acronyms this draft defines that aren't in `[style].acronyms` yet. Prints only |
+| `acronyms-suggest <draft> --apply` | The same, then writes them to your acronyms file. Refuses if `[style].acronyms` is unset, rather than writing into the vendored `assets/style/acronyms.toml` |
+| `brief <draft> [citekey ...]` | The kept-evidence blocks for a section or citekeys, for a subagent to read. **Exits 1 if nothing resolves** |
+| `check-evidence <draft>` | Advisory: a citekey with **more than one block** (readers get only the first), and a `claim:` that reads like its own `quote:` with the words moved. Exits 1 only when there is no dossier |
+| `prune <draft>` | A **dry run** listing the `evidence.md` blocks for citekeys the draft no longer cites. Exits 0 |
+| `prune <draft> --apply` | The same, and removes them by line span, from `evidence.md` only, never `sections.md` or `rejected.md` |
+| `prune <draft> --citekey <key>` | Restrict to one citekey (repeatable). Exits **1** if a named citekey was refused (still cited, unrecorded, `sections.md`-only, or with more than one block) |
 | `list` | Every dossier on this machine |
 | `export [<name> ...]` | Bundle drafts + dossiers to a `.tar.gz` |
 | `restore <archive>` | Unpack a bundle. **Dry run unless `--force`** |
 
 | Flag | Applies to | What it does |
 | --- | --- | --- |
-| `--genre GENRE` | `init` | Required: `survey`, `thesis-chapter`, `textbook-chapter`, `tutorial`, `deep-research`, `digest`, `research-paper`. `research-paper` also gets a `paper.md` for the paper-level inputs |
-| `--outline` | `init` | Also create `outline.md`. Opt-in, since most dossiers don't have one |
-| `--all` | `status` | Report every dossier instead of one draft. Mutually exclusive with a draft path |
-| `--json` | `status` | Emit the drift report as JSON, for `draft-reviser` rather than a terminal |
-| `--label TEXT` | `mark-revision` | Short name for this revision. Optional; an unlabelled marker is numbered by order instead (`revision 1`, `revision 2`, ...). Stored as the snapshot's description, never as its label |
-| `--label TEXT` | `snapshot` | Required: the milestone's name, as the author gave it. Not all digits, unique within the draft, and holding at least one ASCII letter or digit |
-| `--json` | `versions` | Emit the list as JSON, each snapshot's path relative to `content/` |
-| `--citekeys` | `sections` | Print the derived `sections.md` table instead of the outline. A citekey cited above the first heading is reported on stderr, never filed under a section that doesn't contain it |
-| `--write` | `sections` | With `--citekeys`: write the table into the dossier's `sections.md`, replacing what is there. Refused without `--citekeys`, and refused when the dossier doesn't exist |
-| `--check` | `outline`, `brief` | With `outline`: report shape problems without printing the sections. With `brief`: report what resolves, and what doesn't, without printing the blocks. This is what an orchestrator runs before dispatching |
-| `--section NAME` | `brief` | Take the citekeys from that `sections.md` row. Matches without the section's numbering; an ambiguous name matches nothing rather than guessing |
-| `--score` | `check-evidence` | Also print each warning's overlap score. Off by default, so there is nothing to reword against until it drops |
+| `--genre GENRE` | `init` | Required: `survey`, `thesis-chapter`, `textbook-chapter`, `tutorial`, `deep-research`, `digest`, `research-paper` (which also gets a `paper.md`) |
+| `--outline` | `init` | Also create `outline.md`. Opt-in |
+| `--all` | `status` | Report every dossier. Mutually exclusive with a draft path |
+| `--json` | `status`, `versions` | Emit JSON, for `draft-reviser` rather than a terminal |
+| `--label TEXT` | `mark-revision` | Optional name for this revision; unlabelled markers are numbered (`revision 1`, ...) |
+| `--label TEXT` | `snapshot` | Required: the milestone's name. Not all digits, unique within the draft, with at least one ASCII letter or digit |
+| `--citekeys` | `sections` | Print the derived `sections.md` table. A citekey cited above the first heading is reported on stderr |
+| `--write` | `sections` | With `--citekeys`: replace the dossier's `sections.md`. Refused without `--citekeys` or a dossier |
+| `--check` | `outline`, `brief` | Report shape problems, or what resolves, without printing the content. What an orchestrator runs before dispatching |
+| `--section NAME` | `brief` | Take the citekeys from that `sections.md` row, matched without numbering; an ambiguous name matches nothing |
+| `--score` | `check-evidence` | Also print each warning's overlap score. Off by default, so there is nothing to reword against |
 | `--out FILE` | `export` | Archive path (default `drafts-<name>-<date>.tar.gz`) |
-| `--with-rendered` | `export` | Include `content/rendered/` and the non-Markdown review renders too (large: they hold the PDFs) |
-| `--force` | `restore` | Actually write, overwriting what is already there |
+| `--with-rendered` | `export` | Include `content/rendered/` and the non-Markdown review renders (large) |
+| `--force` | `restore` | Actually write, overwriting what is there |
 
 ```bash
-chitragupta draft dossier init content/drafts/survey.md --genre survey
-chitragupta draft dossier status content/drafts/survey.md
-chitragupta draft dossier sections content/drafts/survey.md
-# Derive the section -> citekey map instead of writing it by hand
+chitragupta draft dossier init content/drafts/survey.md --genre survey --outline
 chitragupta draft dossier sections content/drafts/survey.md --citekeys --write
-
-# Before a revision session's first retrieval call
 chitragupta draft dossier mark-revision content/drafts/survey.md --label "shorten intro"
-
-# A milestone the author named, to diff against later
 chitragupta draft dossier snapshot content/drafts/survey.md --label "sent to supervisor"
-chitragupta draft dossier versions content/drafts/survey.md
-
-# After `draft gate` passes, so `status` can tell a later hand edit apart
-# from an unchanged draft
-chitragupta draft dossier stamp content/drafts/survey.md
-
-# New acronyms this draft's glossary or prose defines; --apply writes them to
-# your [style].acronyms file (see docs/CONFIG.md)
-chitragupta draft dossier acronyms-suggest content/drafts/survey.md
-chitragupta draft dossier acronyms-suggest content/drafts/survey.md --apply
-
-# Before dispatching a section writer: do this section's rows resolve?
 chitragupta draft dossier brief content/drafts/survey.md --section "2. Failure modes" --check
-# What the writer itself runs
-chitragupta draft dossier brief content/drafts/survey.md --section "2. Failure modes"
-chitragupta draft dossier brief content/drafts/survey.md talasila_composable_2025
-
-# After writing evidence.md: does any claim: just restate its own quote:?
-chitragupta draft dossier check-evidence content/drafts/survey.md
-
-# A citation deleted by hand leaves its evidence.md block behind.
-# Dry run first -- a recorded-but-uncited block may be a candidate that
-# was never cited rather than a citation you cut, and only you can tell.
-chitragupta draft dossier prune content/drafts/survey.md
 chitragupta draft dossier prune content/drafts/survey.md --apply
-chitragupta draft dossier prune content/drafts/survey.md --citekey talasila_composable_2025 --apply
-
-# After a sync: which drafts went stale, and what specifically
-chitragupta draft dossier status --all
-chitragupta draft dossier status --all --json
-
-# Back up everything, then one topic with its PDFs
-chitragupta draft dossier export
+chitragupta draft dossier status --all --json                  # after a sync
 chitragupta draft dossier export digital-twins-for-software-engineers --with-rendered
-
-# Restore: look first, then commit to it
-chitragupta draft dossier restore drafts-all-2026-08-06.tar.gz
 chitragupta draft dossier restore drafts-all-2026-08-06.tar.gz --force
 ```
 
+**Exit codes.** `status` on a draft with no dossier prints the `init`
+command and **exits 1**; with no ledger, or an unreadable one, it
+reports the dossier without the drift check and **exits 0**. So
+`status <draft> >/dev/null` tests "does this draft have a dossier yet",
+but only without `--json`, which exits 0 either way (check `recorded`
+in the payload). `status --all` always exits 0, because drift is the
+normal state of a live corpus; it reports `missing` citekeys,
+`candidates` and `reconsider`
+([DRAFT-ITERATION.md](DRAFT-ITERATION.md#-drift-across-every-dossier)).
+`brief` exits 1 when it printed no block (no dossier, unknown section,
+a row with no citekeys, nothing transcribed), with everything but the
+blocks on stderr
+([DRAFT-ITERATION.md](DRAFT-ITERATION.md#-dispatching-from-the-dossier)).
+
 A bundle carries `drafts/`, `dossiers/`, and the `.md` and `.json`
-files under `review/` (the reports and each draft's accepted-items
-record). `--with-rendered` adds `rendered/` and the rest of `review/`.
-Paths are relative to `content/`, so a bundle restores into a checkout
-whose `[content].dir` points elsewhere. It does **not** carry
-`content/ledger.sqlite` (regenerate with `chitragupta corpus sync`) or
-`papers/bibliography.bib` (your reference manager's export, which
-AGENTS.md keeps as the source of truth rather than something this
-pipeline copies). Restore refuses the whole archive, instead of
-skipping a member, if any entry is a link or device node, escapes the
-extraction directory, or sits outside those four directories.
-[MIGRATION.md](MIGRATION.md) covers backups and moving a project as a
-whole.
+files under `review/` (`--with-rendered` adds `rendered/`), paths
+relative to `content/`. It does **not**
+carry `content/ledger.sqlite` (regenerate with `chitragupta corpus
+sync`) or `papers/bibliography.bib` (your export stays the source of
+truth). Restore refuses the whole archive if any entry is a link or
+device node, escapes the extraction directory, or sits outside those
+four directories. [MIGRATION.md](MIGRATION.md) covers backups.
 
 ### 🔎 `chitragupta draft retrieve`
 
@@ -1310,44 +704,20 @@ venv. [RETRIEVAL.md](RETRIEVAL.md) has the ranking details.
 | `search "<query>"` | Rank the corpus and return a snippet per candidate |
 | `evidence "<query>" --citekey KEY` | The passages of that one document that bear on the query (`--windows`, 2 by default) |
 
-`search` also takes `--collection NAME`, which restricts the ranking to a
-Zotero collection or one beneath it. This is the curated-subset case,
-where a chapter on modelling retrieves only from the modelling shelf.
-Scoring stays corpus-wide, so a filtered result carries the same score it
-would unfiltered; only the candidate set narrows. Needs the export
-described in [ZOTERO.md](ZOTERO.md#-keeping-your-collections-optional).
-Combined with `--log`, the collection is written to `retrieval.md` too,
-so a scoped call and a corpus-wide one write different rows.
-
-Combined with `--log`, `--origin declared|extended|reground` records
-whether the query came verbatim from `outline.md`, was added because a
-declared section came up thin, or re-ran a section's query with
-`--y-prev` after a hand edit, so `chitragupta draft dossier status`
-can report whether a draft followed the outline it declared. Omit it
-for a call `outline.md` had no say in.
-
-`search` also takes `--y-prev TEXT` (FEATURE-ROADMAP.md's E4): appends
-`TEXT` (a hand-edited section's own prose, bounded to 1500 characters
-explicitly, on a word boundary) to the query for a second retrieval
-round, merges that round's results with the first by citekey (the
-higher score wins), and caps the merged set back to `--k`. Omit it for
-an ordinary single-round search; `evidence` has no equivalent flag.
-
-`evidence` is a lookup, not a stage: use it when a `search` snippet is not
-enough to judge a source you are minded to cite. Nothing is obliged to
-call it. [REJECTION.md](REJECTION.md) explains why an earlier arrangement,
-which made a cheap first pass mandatory and used it to *reject*, was
-withdrawn.
+`evidence` is a lookup, not a stage: use it when a `search` snippet is
+not enough to judge a source. Nothing is obliged to call it
+([REJECTION.md](REJECTION.md) has why a mandatory first pass was
+withdrawn).
 
 | Flag | Applies to | Default | What it does |
 | --- | --- | --- | --- |
 | `--k N` | `search` | 5 | How many candidates to rank |
 | `--unit document\|passage` | `search` | `document` | What a result is: `passage` ranks paragraphs and returns the scoring paragraph with its page. Scores are not comparable across units |
-| `--collection NAME` | `search` | -- | Rank only inside this Zotero collection (see `ledger --collections`) |
+| `--collection NAME` | `search` | -- | Rank only inside this Zotero collection or one beneath it (see `ledger --collections`). Scoring stays corpus-wide; only the candidate set narrows |
 | `--chars N` | all | 600 / 500 | Window size (evidence / search) |
 | `--citekey KEY` | `evidence` | required | Which document to read |
 | `--windows N` | `evidence` | 2 | How many passages to return |
-| `--log DRAFT` | all | -- | Record the call and its payload size in DRAFT's dossier |
+| `--log DRAFT` | all | -- | Record the call, its collection and its payload size in DRAFT's dossier `retrieval.md` |
 | `--origin declared\|extended\|reground` | all | -- | With `--log`: whether this query came from `outline.md` verbatim, extended a section that came up thin, or re-ran a section's query with `--y-prev` after a hand edit |
 | `--y-prev TEXT` | `search` | -- | Append this text (bounded to 1500 characters) to the query for a second retrieval round, merged with the first and capped back to `--k` (FEATURE-ROADMAP.md's E4) |
 
@@ -1361,98 +731,48 @@ chitragupta draft retrieve search "digital twin architecture" \
     --k 15 --origin reground --log content/drafts/survey.md
 ```
 
-`--log` appends to `retrieval.md` in that draft's dossier, which is what
-turns "retrieval is where the tokens go" into a number for a particular
-draft (`chitragupta draft dossier status` totals it). A `--log` path that
-isn't under `content/drafts/`, or a filesystem error while writing, is
-reported on stderr and skipped; the measurement never fails the search
-it was measuring.
-
-Exits 1 with the fix if there is no ledger, one that predates the
-current schema and needs a sync to migrate it, or one that is there but
-cannot be read; an empty result set is not an error.
-
-A single-character query word never reaches ranking on either side of the
-index, so either subcommand warns on stderr, naming each such word,
-rather than letting a query built entirely from them return empty with
-nothing to explain why. Two-character words (`AI`, `ML`, `5G`, `QA`) do
-rank.
-[RETRIEVAL.md](RETRIEVAL.md#-where-the-token-length-floor-came-from)
-has the sweep behind the floor and
-[CORPUS-SEARCH.md](CORPUS-SEARCH.md) what the tokenizer does either side
-of it.
+A `--log` path outside `content/drafts/`, or a filesystem error while
+writing it, is reported on stderr and skipped; the measurement never
+fails the search. Exits 1 with the fix if there is no ledger, one that
+needs a sync to migrate, or one that cannot be read; an empty result is
+not an error. A single-character query word never ranks, so either
+subcommand warns, naming it; two-character words (`AI`, `5G`) do rank
+([RETRIEVAL.md](RETRIEVAL.md#-where-the-token-length-floor-came-from)).
 
 ### 📄 `chitragupta draft render`
 
 Render a Pandoc-Markdown or LaTeX draft. Needs `pandoc` (and, for PDF,
 LuaLaTeX with `texlive-luatex` and the fonts `os-deps` installs) on
 `PATH`, but no Python package from the enrich group. `chitragupta doctor`
-says whether each font is there.
+says whether each font is there. [RENDERING-FLOW.md](RENDERING-FLOW.md)
+explains what happens inside a render: citation resolution, the
+References section citeproc replaces, fonts, mathematics, and figure,
+table and equation numbering.
 
 Citations render IEEE-style (`[1]`, and `[3]–[6]` for a consecutive
-run) over a numbered bibliography of complete entries, via the CSL style
-vendored at `assets/csl/ieee.csl`. In the copy handed to pandoc, the
-draft's own References section (if `chitragupta draft references`
-added one) keeps its heading, but its entries are replaced by
-citeproc's placement anchor. The output therefore carries exactly one
-bibliography, citeproc's, which is the one that can be numbered
-consistently with the inline markers. It appears under the draft's own
-heading, including a numbered heading like `## 6. References`. The draft
-file itself is never modified.
+run) via `assets/csl/ieee.csl`, under the draft's own References
+heading. The draft file itself is never modified.
 
-**Where the output lands.** `<slug>` may itself contain directories
-(`content/drafts/dt-for-engineers/survey.md`, or
-`content/drafts/books/software-engineering/chapter.md`), and every
-format is written **beside the draft**, mirroring its path under
-`content/drafts/` into `content/rendered/`:
+**Where the output lands.** Every format is written mirroring the
+draft's path under `content/drafts/` into `content/rendered/`, the same
+rule `content/dossiers/` follows:
 
 ```text
 content/drafts/dt-for-engineers/survey.md
    -> content/rendered/dt-for-engineers/survey.{md,tex,pdf,docx}
 ```
 
-This is the same mirroring rule `content/dossiers/` follows (see
-[DRAFT-ITERATION.md](DRAFT-ITERATION.md#-the-dossier)), so one topic
-directory names a draft, its dossier and its renders together, which
-is what lets `dossier export <topic> --with-rendered` find them. A flat
-`content/drafts/<slug>.md` renders to `content/rendered/<slug>.*`, as it
-always has, and an input under `content/` but outside `content/drafts/`
-(`content/loose.md`, say) has no path to mirror and lands flat too.
+An input under `content/` but outside `content/drafts/` lands flat.
 
-**Both reading and writing are confined to `content/`.** The input must
-resolve under the content directory. A draft kept outside it is refused
-by name rather than rendered, so that one directory stays the whole
-record of the work.
-
-Every path this command *writes* resolves inside `content/` too. Only the
-part of a draft's path below `content/drafts/` is ever carried over, and
-both sides are resolved before they are compared. No argument (a `..`,
-a symlinked draft) mirrors anywhere else.
-
-A write could still escape three ways, all configuration or symlinks
-rather than arguments. Each is refused with `[error]` rather than
-redirected:
-
-- a `content/rendered` that resolves out of the content directory;
-- a `content/drafts` that does the same;
-- a topic directory under `content/rendered/` that is a symlink pointing
-  off-tree.
-
-The files a draft references are confined the same way. A figure or
-image reference that is absolute or contains `..` is not copied beside
-the output. One that is a symlink landing outside the draft's own
-directory fails the render with `[error]`, naming it, because pandoc and
-the TeX engine would otherwise read it wherever it points. A `pdf`
-render also runs LuaLaTeX without shell escape and behind a read fence
-(`chitragupta/tex_engine.py`), so TeX's own `\input` of an
-absolute path outside the draft fails the render and names the file.
-kpathsea's `openin_any=r` underneath it needs a `TMPDIR` with no
-dot-directory in its path, and the render says so if it has one. A
-shared `.bib` field's raw TeX (`\input{...}`, `\directlua{...}`) is
-printed in the reference list as
-literal text, never run. Lua in the draft's own TeX, or in its figure
-files, is not fenced: [SECURITY.md](SECURITY.md) has what this does and
-does not cover.
+**Both reading and writing are confined to `content/`.** A draft
+outside it is refused by name, and so is a configured or symlinked
+output directory that resolves off-tree, or a figure symlink landing
+outside the draft's directory. A `pdf` render runs LuaLaTeX without
+shell escape and behind a read fence, which needs a `TMPDIR` with no
+dot-directory in its path; a `.bib` field's raw TeX is printed, never
+run. Lua in the draft's own TeX or figures is not fenced:
+[SECURITY.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/SECURITY.md)
+has what this does and does not cover.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
@@ -1469,113 +789,6 @@ does not cover.
 | `--output-dir DIR` | mirrored | Write here instead of `content/rendered/<mirrored path>`, a `pdf`'s figure looks included; confined to `content/` |
 | `--index-terms PATH` | off | With `--fragment` only: place the book index's entries from the term table `registry build --index` wrote, and write `<unit>.index.json` beside the fragment; see [the index](book/BOOK-INDEX.md) |
 
-`--format md` on a **Markdown** draft is a special case, and the one
-output you can read without a PDF viewer. It writes a `.md` beside the
-draft's other renders, with the citekeys replaced by the same IEEE
-numbers the PDF uses (`[1]`, `[3]–[6]`) over a reference list built from
-the ledger.
-
-It needs no `pandoc`, because pandoc's Markdown writer is the wrong tool
-for it. That writer escapes every marker (`\[1\]`, since `[1]` could be
-a link reference) and emits the bibliography as `:::` fenced divs full
-of `[...]{.csl-left-margin}` spans. None of that renders anywhere except
-pandoc.
-
-Raw LaTeX in the draft is dropped from this `.md`, as pandoc's `docx`
-and `html` writers drop it: a ```` ```{=latex} ```` or `{=tex}` block,
-and an inline `` `...`{=latex} `` span. The `tex` and `pdf` renders still
-apply it, so an `\arraystretch` pair around a table keeps working there
-without showing up as a box of LaTeX in a Markdown viewer.
-
-The draft itself is never modified: it keeps its `[@citekey]` markers,
-which are what `citation_gate` verifies and what `--citeproc` resolves
-when rendering. A `.tex` input still goes through pandoc for `md`, since
-converting a thesis fragment's `\citep{...}` is a real format
-conversion.
-
-**Unicode characters reach the output as written.** The copy handed to
-pandoc loses only control characters, and a decomposed accent (`e` plus
-U+0301) is joined into one letter. Nothing else is rewritten: `m²`,
-`H₂O`, `5 µm` and a math-italic `𝑡` stay what they are. A compatibility
-fold (NFKC) would turn `m²` into `m2`, `H₂O` into `H2O`, and `µm` into a
-Greek `μ`, so none is applied.
-
-**A `pdf` render prints them from its fonts.** A `pdf` render runs
-LuaLaTeX with STIX Two and a fallback chain of Noto,
-DejaVu and Unifont fonts (`chitragupta/pdf_fonts.py`). It prints every
-character the `.sty` below prints under pdflatex, and Telugu,
-Devanagari and Chinese text too. There is no pdflatex option for a `pdf`
-render.
-
-**A `tex` or `--fragment` output gets `chitragupta-unicode.sty` when the
-draft needs it**, because whoever compiles it later may use pdflatex,
-as most thesis templates do. The file ships in `assets/latex/` and
-tells `pdflatex` how to print about 1,900 characters its default fonts
-cannot: math-style letters, Greek, sub- and superscript digits, Roman
-numerals, circled numbers and the common math operators (`≤ ∈ →`), plus
-every character an NFKC fold would turn into plain text (a thin space,
-`（`, `⑴`, `‼`, `⅓`), printed as that text. Under LuaLaTeX or XeLaTeX it
-does nothing. A draft with none of them gets no copy. A `tex` output
-gets the file copied beside it. A `--fragment` render has no preamble,
-so it gets the copy and the pdf render's own font header,
-`chitragupta-lualatex.tex`, beside it as well: LuaLaTeX is the
-recommended engine for the document that assembles a fragment, and the
-`.sty` is the opt-in for a template that forces pdflatex. It prints one
-line naming what that document loads under each:
-
-```text
-[unicode] chitragupta-lualatex.tex and chitragupta-unicode.sty copied beside the fragment -- a fragment has no preamble; in the assembling document, under lualatex: \usepackage{fontspec}\usepackage{unicode-math}\input{chitragupta-lualatex}; under pdflatex: \usepackage{chitragupta-unicode}
-```
-
-**A character no font in the chain has fails the `pdf` build**, by
-name, rather than leaving a gap in the PDF. The `[error]` is followed by
-a `[unicode]` line naming the first such character and the two fixes:
-write it as LaTeX in the draft, or add a
-`\DeclareUnicodeCharacter{<hex>}{...}` line to
-`content/unicode-extra.tex`. That file, if it exists, is added to the
-preamble of every standalone `pdf` and `tex` render, behind a shim that
-defines `\DeclareUnicodeCharacter` on top of `newunicodechar` where the
-engine lacks it, so the same line works under LuaLaTeX and pdflatex.
-A review report or `draft evidence` sidecar does not fail on a
-private-use character (U+E000 to U+F8FF, planes 15 and 16): it comes
-from a source's text layer, so it is written as `[U+E230]` and a
-`note:` line on stderr names it.
-
-**A figure that fits on a text page stays on one.** Every
-standalone `pdf` and `tex` render includes
-`assets/latex/chitragupta-floats.tex`, which raises
-`\floatpagefraction` to 0.8 (with `\topfraction` 0.85 and placement
-`htbp`), so LaTeX does not move a half-page figure onto a page of its
-own and centre it there. A `--fragment` that draws a figure gets the
-file copied beside it instead, and one line naming the `\input`:
-
-```text
-[floats] chitragupta-floats.tex copied beside the fragment -- a fragment has no preamble; \input{chitragupta-floats} in the assembling document's preamble
-```
-
-A figure that still lands alone on a float-only page in a `pdf` is
-reported after the render, one line per page, and the render still
-succeeds:
-
-```text
-[float-page] p. 3 holds Figure 1 and no text. A figure taller than 0.85 of the text height cannot share a page with text; a shorter one lands alone when figures queue up before a page break.
-```
-
-After a `pdf` render succeeds, every figure the draft references gets
-the pictures [`figure look`](#-chitragupta-figure-look) writes: its
-`.look.pdf` and `.look.png`, rebuilt only where the figure changed, and
-a 300 dpi `.page.png` of the page it printed on, rebuilt every time.
-They go where the PDF went, below the figure's place in the draft's
-directory: `content/rendered/<mirrored path>/figures/` by default, and
-`DIR/figures/` with `--output-dir DIR`, so a scratch render never
-writes over the default render's looks. The render reports them as
-notes on stderr, after it finishes, and they are never a reason it
-fails; with no `pdftoppm` or `pdfinfo` the notes say what was skipped:
-
-```text
-[figure-look] 1 wrote, 1 current; 2 page PNGs
-```
-
 ```bash
 chitragupta draft render content/drafts/survey.md --format pdf
 # chitragupta draft render content/drafts/survey.md --format tex
@@ -1585,6 +798,31 @@ chitragupta draft render content/drafts/survey.md --format pdf
 #     --documentclass report --fontsize 11pt --papersize letter --margin 1.5in
 ```
 
+**`--format md` on a Markdown draft** needs no `pandoc`: it writes a
+`.md` with the PDF's IEEE numbers and reference list, dropping raw
+LaTeX. A `.tex` input still goes through pandoc.
+
+**Unicode reaches the output as written**; no NFKC fold is applied,
+because it would turn `m²` into `m2`. A `pdf` render uses LuaLaTeX with
+STIX Two and a fallback font chain; there is no pdflatex option. A
+`tex` or `--fragment` output gets `chitragupta-unicode.sty` beside it
+when needed, for a template that compiles with pdflatex. A character no
+font has fails the `pdf` build by name; write it as LaTeX, or add a
+`\DeclareUnicodeCharacter{<hex>}{...}` line to
+`content/unicode-extra.tex`
+([RENDERING-FLOW.md](RENDERING-FLOW.md#-the-pdf-engine-and-its-fonts)).
+
+**Floats.** Standalone renders include
+`assets/latex/chitragupta-floats.tex` (`\floatpagefraction` 0.8), so a
+half-page figure stays on a text page; a `--fragment` gets the file
+copied beside it. A figure still alone on a page is reported as a
+`[float-page]` note.
+
+**Figure looks.** After a `pdf` render, every figure gets the pictures
+[`figure look`](#-chitragupta-figure-look) writes, under `figures/`
+beside the PDF, reported as `[figure-look]` notes; they never fail the
+render.
+
 #### 📕 Assembling a book: `--fragment` and `--output-dir`
 
 ```bash
@@ -1592,168 +830,65 @@ chitragupta draft render content/drafts/<book>/<unit>.md \
     --format tex --fragment
 ```
 
-`--fragment` emits an `\input`-able LaTeX fragment instead of a
-standalone document: no preamble, the draft's own top heading becomes a
-`\chapter`, and code blocks are left unhighlighted (pandoc's
-`Shaded`/`Highlighting` environments are defined only by the standalone
-template, so a highlighted fragment fails to compile inside the book).
+`--fragment` emits an `\input`-able fragment: no preamble, the top
+heading becomes a `\chapter` (minus any `Chapter 1:` prefix, since the
+`book` class numbers chapters), code unhighlighted, and citations left
+as `\citep{...}` with the corpus `.bib` beside it, so one source has
+one number across the book.
+[RENDERING-FLOW.md](RENDERING-FLOW.md#-three-rewrites-only-a-fragment-gets)
+has the rewrites.
 
-A chapter number the heading states itself is dropped. A unit headed
-`# Chapter 1: Why Anyone Pays` is emitted as `\chapter{Why Anyone Pays}`,
-because the `book` class supplies "Chapter 1" itself and a heading that
-states it too is numbered twice, at the chapter opening and in the
-table of contents. Only a heading that *already states a number* is
-touched (`Chapters and Verses` is not), only at the top level, and only
-in what pandoc sees: the draft on disk keeps its prefix, which is what
-titles the unit's own standalone pdf, and every unit stays `accepted`
-because its `output_digest` still hashes the same authored file
-([WRITING-STANDARDS.md](WRITING-STANDARDS.md)'s §15). A self-numbered
-*section* (`## 1.0 Before you start`) is a different clash and is left
-alone (see [WRITE-A-BOOK.md](WRITE-A-BOOK.md)).
-
-A fragment also defers its citations. It emits `\citep{...}` rather
-than resolved `[1]` markers, and carries no reference list of its own:
-the document that `\input`s it resolves every citation once, in a single
-`bibtex` pass, so one source has one number across the whole book. The
-draft's own `## References` section is dropped from what pandoc sees
-(never from the draft on disk), and the corpus `.bib` is written beside
-the output for `bibtex` to read. Citekey aliasing is unchanged and
-applies to both sides, so a key containing `--` survives into the
-bibliography.
-
-No `--output-dir` is needed: a draft's renders already mirror its own
-path, so `content/drafts/<book>/<unit>.md` lands in
-`content/rendered/<book>/`, which is where `book.tex` is composed.
-`--output-dir` writes the result somewhere else under `content/`
-entirely, for a caller whose output does not belong in the mirrored path.
-[WRITE-A-BOOK.md](WRITE-A-BOOK.md) is the assembly procedure these exist
-for.
+A unit already lands in `content/rendered/<book>/`, where `book.tex`
+is composed, so `--output-dir` is only for output that belongs
+elsewhere under `content/`. [WRITE-A-BOOK.md](WRITE-A-BOOK.md) is the
+assembly procedure.
 
 ### 🎨 `chitragupta draft style`
 
 Report where a draft's prose departs from
-[WRITING-STANDARDS.md](WRITING-STANDARDS.md): §2's defect markers, §8's
-recorded dialect, a glossary acronym whose recorded expansion has
-drifted from the current `[style].acronyms` vocabulary (§9;
-`chitragupta/style_acronym_drift.py`), §13's tables
-(`chitragupta/style_tables.py`), §10's captioned figures
-(`chitragupta/style_figures.py`), §12's numbered equations
-(`chitragupta/style_equations.py`), §14's page fit
-(`chitragupta/style_typeset.py`), and §15's self-numbered chapter heading
-(`chitragupta/style_headings.py`). Those last six are the findings here
-*not* sourced from Vale, and they are computed in plain Python; the
-id-validity and reference-problem logic behind the table, figure and
-equation checks is shared in `chitragupta/style_elements.py` rather than
-copied per kind. They are listed once, in reporting order, in
-`chitragupta/style_rules.py`'s `PYTHON_CHECKS`: a new check is a
-`style_*.py` module with a `findings(draft)` function plus a line there,
-and each finding carries its own `repair` mode.
-**A review aid: it exits 0 whatever it finds**, and nothing in this
-pipeline reads its output back or blocks on it.
-
-**The table findings**, all of which name a defect a reader of the
-rendered pdf would meet:
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md): Vale's prose rules, the
+recorded dialect, acronym drift, and checks computed in plain Python
+(listed in `chitragupta/style_rules.py`'s `PYTHON_CHECKS`). **A review
+aid: it exits 0 whatever it finds**, and nothing blocks on it.
 
 | Rule | What it means |
 | --- | --- |
-| `chitragupta.TableNoCaption` | The table has no caption line, so nothing numbers it in any format |
-| `chitragupta.TableNoId` | It has a caption but no `<!-- table: <id> -->`, so no sentence can refer to it |
-| `chitragupta.TableDuplicateId` | Two tables claim one id; in an assembled book that is a `\ref` resolving silently to the wrong table |
-| `chitragupta.TableMalformedId` | An id `\label{tab:<id>}` cannot carry unescaped |
-| `chitragupta.TableUnreferenced` | No sentence refers to the table at all |
-| `chitragupta.TableUnknownRef` | A `<!-- tableref: -->` naming a table that does not exist |
-| `chitragupta.TableRefOutsideSection` | The table is referred to, but only from another section |
-
-**The figure findings** extend the same contract to figures:
-
-| Rule | What it means |
-| --- | --- |
-| `chitragupta.FigureNoCaption` | A `<!-- figure: -->` marker with no caption line directly below it |
-| `chitragupta.FigureDuplicateId` | Two captioned figures claim one id; the same `\ref`-collision risk as a duplicate table id |
-| `chitragupta.FigureMalformedId` | An id `\label{fig:<id>}` cannot carry unescaped |
-| `chitragupta.FigureUnreferenced` | No sentence refers to the figure at all |
-| `chitragupta.FigureUnknownRef` | A `<!-- figureref: -->` naming a figure that does not exist, or one that is not captioned |
-| `chitragupta.FigureRefOutsideSection` | The figure is referred to, but only from another section |
-
-**The equation findings** extend the same contract to equations. Unlike a
-table or figure, not every displayed equation is
-meant to be numbered (WRITING-STANDARDS.md §12 leaves that call to the
-author), so there is no `EquationNoCaption`/`EquationNoId` row: an
-equation is only "declared" at all once the author opts it in with an
-`<!-- equation: id -->` marker, and these findings apply from there:
-
-| Rule | What it means |
-| --- | --- |
-| `chitragupta.EquationOrphanMarker` | An `<!-- equation: -->` marker with no `<!-- math -->` block directly below it, so nothing numbers it |
-| `chitragupta.EquationDuplicateId` | Two equations claim one id; the same `\ref`-collision risk as a duplicate table id |
-| `chitragupta.EquationMalformedId` | An id `\label{eq:<id>}` cannot carry unescaped |
-| `chitragupta.EquationUnreferenced` | No sentence refers to the equation at all |
-| `chitragupta.EquationUnknownRef` | An `<!-- equationref: -->` naming an equation that does not exist |
-| `chitragupta.EquationRefOutsideSection` | The equation is referred to, but only from another section |
-
-**The acronym-case finding**, `chitragupta.AcronymCase`, reports an
-acronym's expansion written in a different case from
-`content/acronyms.toml`, whose case is authoritative. A capitalised first
-letter at a sentence, line or heading start is accepted. It is always
-`review`, since the vocabulary may be the wrong side
-([WRITING-STANDARDS.md](WRITING-STANDARDS.md#-9-what-is-checked-mechanically-and-what-is-not)).
-Terms in `content/style_exceptions.toml` are never reported by a prose
-rule other than `Acronyms`.
-
-**The typesetting findings**, WRITING-STANDARDS.md §14's two decidable
-rows. Both name something a reader of the rendered pdf would meet at the
-right margin rather than anything about the prose itself:
-
-| Rule | What it means |
-| --- | --- |
+| `chitragupta.TableNoCaption`, `TableNoId`, `TableDuplicateId`, `TableMalformedId`, `TableUnreferenced`, `TableUnknownRef`, `TableRefOutsideSection` | A table with no caption, no `<!-- table: <id> -->`, a duplicate or malformed id, no reference, a `tableref` to nothing, or references only from another section (§13) |
+| `chitragupta.FigureNoCaption`, `FigureDuplicateId`, `FigureMalformedId`, `FigureUnreferenced`, `FigureUnknownRef`, `FigureRefOutsideSection` | The same contract for `<!-- figure: -->` markers and `figureref`s (§10) |
+| `chitragupta.EquationOrphanMarker`, `EquationDuplicateId`, `EquationMalformedId`, `EquationUnreferenced`, `EquationUnknownRef`, `EquationRefOutsideSection` | The same for an equation opted in with `<!-- equation: id -->`; an orphan marker has no `<!-- math -->` block below it (§12) |
+| `chitragupta.AcronymCase` | An acronym's expansion written in a different case from `content/acronyms.toml`. A capital at a sentence, line or heading start is accepted. Always `review` |
 | `chitragupta.BareCitekey` | A ledger citekey a reader would see printed raw: in prose without its `@`, or set as code. A parsed key in prose may be repaired unattended to `[@key]`; a code span or a key with no parsed PDF is `review` (WRITING-STANDARDS.md §16) |
 | `chitragupta.BareUrl` | A URL is printed raw where a `[text](https://…)` link would read better and give the pdf something to click. A code span that is *only* a URL counts; one holding a command that contains a URL does not |
-| `chitragupta.WideCodeLine` | A code line is wider than the page fits. In a Markdown draft the render loads `fvextra` and the line wraps with a `,→` continuation marker, so this is a quality note; in a `.tex` fragment, `\input` into a thesis whose preamble this pipeline may not touch, nothing can load it and the line really does run into the margin |
+| `chitragupta.WideCodeLine` | A code line is wider than the page fits. In a Markdown draft the render wraps it, so this is a quality note; in a `.tex` fragment nothing can wrap it and it runs into the margin |
+| `chitragupta.ChapterSelfNumbered` | A `.tex` unit's `\chapter{}` states its own number or appendix letter (`Chapter 1: …`), so the book prints it twice. A Markdown unit's `--fragment` render drops the prefix, so nothing is reported for one |
 
-**The heading finding**, §15's one decidable row, and the only rule here
-that reads a `.tex` draft and nothing else:
-
-| Rule | What it means |
-| --- | --- |
-| `chitragupta.ChapterSelfNumbered` | A `\chapter{}` states its own chapter number or appendix letter (`Chapter 1: …`, `Appendix A: …`), so the document it is `\input` into prints it a second time, at the chapter opening and in the table of contents. Reported only for a `.tex` unit, which `book-assembler` assembles as written; a Markdown unit's `--fragment` render drops the prefix from the `\chapter{}` it emits, so there is nothing left to repair and nothing is reported |
-
-§14's third rule (prefer a breakable form for a very long token) is
-deliberately **not** checked. TeX hyphenates long English words
-correctly, so the rule has no overflow to prevent and no repair that is
-not a worse word; §9's table records it beside the other row with no
-mechanical proxy.
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md#-9-what-is-checked-mechanically-and-what-is-not)
+maps every rule to its standard. §14's third rule (a breakable form for a very
+long token) is deliberately **not** checked: TeX hyphenates long English words
+correctly, so there is no overflow to prevent. Terms in
+`content/style_exceptions.toml` are never reported by a prose rule other than
+`Acronyms`. Repeated findings collapse to one with a count.
 
 ```bash
 chitragupta draft style content/drafts/<path>
 chitragupta draft style content/drafts/<path> --json
 ```
 
-It is not a gate and cannot be made one, not even behind a flag. The gate
-is measured against the ledger, which is ground truth. This is measured
-against a `language:` line someone typed into `scope.md`, which can be
-wrong, stale, or deliberately overridden, so blocking on it would
-refuse a correct draft on a bad target. [ARCHITECTURE.md](ARCHITECTURE.md)'s
-"Layer 4" has the axis, and DEVELOPER-AGENTS.md bars promoting any new
-check into a gate beside the citation gate.
-
-The dialect it checks is declared, never inferred. There are three
-sources, most specific first, and the report names which one was used:
+It cannot be made a gate, not even behind a flag: it measures against
+a `language:` line someone typed, which can be wrong
+([ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4"). The dialect is
+declared, never inferred; the report names which source it used:
 
 1. `--language en-GB`, for this run only. Writes nothing.
-2. The `language:` line in the dossier's `scope.md`: the draft's own
-   property, settled with the reader when it was drafted.
-3. `[style].language` in `config.toml`, a standing preference for this
-   machine.
-
-Record a draft's dialect with:
+2. The `language:` line in the dossier's `scope.md`.
+3. `[style].language` in `config.toml`.
 
 ```bash
 chitragupta draft dossier set-language content/drafts/<path> en-GB
 ```
 
-With none of the three set (the shipped "not settled" placeholder, or
-a dossier with no `language:` line), **no dialect rules run**, and the
-command measures the draft both ways and proposes one:
+With none set, **no dialect rules run**, and the command measures the
+draft both ways and proposes one:
 
 ```text
 dialect: not checked -- no `language:` in scope.md and no [style].language
@@ -1761,30 +896,20 @@ it reads as en-GB (en-GB: 0, en-US: 13). To record that:
   chitragupta draft dossier set-language content/drafts/<path> en-GB
 ```
 
-It proposes and never writes: [HOUSE-STYLE.md](HOUSE-STYLE.md)'s rule is
-that the machine offers and the human accepts.
+It proposes and never writes ([HOUSE-STYLE.md](HOUSE-STYLE.md)).
 
-Repeated findings collapse. A chapter that never expands "AI" reports
-it once with a count, not once per occurrence.
-
-**Vale's own findings need the `vale` binary on `PATH`**; without it the
-command says so in the report header and still runs the six Python
-checks listed above, none of which needs the binary. This is the same
-bargain `render` makes
-with pandoc, narrowed to the part that depends on the tool.
-`chitragupta install os-deps` installs the pinned
-version. The rules live in `assets/vale/`, vendored rather than
-fetched, and `assets/vale/README.md` documents what they deliberately
-leave out: `licence`/`license` and `practice`/`practise` are decided by
-part of speech, `program`/`programme` by domain, and no string match
-settles any of them.
+**Vale's findings need the `vale` binary on `PATH`** (`chitragupta
+install os-deps`); without it the header says so and the Python checks
+still run. `assets/vale/README.md` lists what the vendored rules
+deliberately leave out, such as `licence`/`license`, which no string
+match settles.
 
 ### 🎯 `chitragupta draft spec`
 
-The outline a book is generated from, and the human sign-off on it: the
-book-scale track's first artefact ([WRITE-A-BOOK.md](WRITE-A-BOOK.md)).
-Stdlib only, no venv needed. Writes only under `content/specs/`, mirroring
-the book's own directory under `content/drafts/`.
+The outline a book is generated from, and the human sign-off on it
+([WRITE-A-BOOK.md](WRITE-A-BOOK.md)). Stdlib only. Writes only under
+`content/specs/`, mirroring the book's directory under
+`content/drafts/`.
 
 ```bash
 chitragupta draft spec init content/drafts/<book> --title "<title>" [--author "<name>"]
@@ -1805,34 +930,22 @@ chitragupta draft spec seed   content/drafts/<book> --genre <genre> [--dry-run]
 | `align` | whether each authored chapter still matches the sections the outline declares | 1 on any finding, or on a chapter file symlinked out of its book |
 | `seed` | write each chapter's declared sections into its dossier `outline.md`, as bare headings | 1 on an unsigned or unparseable outline, or on a chapter file symlinked out of its book |
 
-Four heading levels: `#` the book, `##` a part, `###` a chapter, `####` a
-section. A **chapter** is one authored document whose sections are the
-headings inside it. Every part, chapter and section needs an explicit
-`{#id}`, because a derived id changes when someone rewords a heading and
-orphans the units written against it.
+Four heading levels: `#` the book, `##` a part, `###` a chapter, `####`
+a section, each with an explicit `{#id}`, because a derived id changes
+when a heading is reworded. The reserved part and generated-page ids
+are covered in [front matter](book/FRONT-MATTER.md),
+[appendices](book/APPENDICES.md), [back matter](book/BACK-MATTER.md)
+and [the index](book/BOOK-INDEX.md).
 
-Three part ids are reserved, `{#front}` (first part), `{#appendices}`
-(after every ordinary part) and `{#back}` (last part), and five chapter
-ids name pages the assembler generates, allowed only under `{#front}` or
-`{#back}`: `{#glossary}`, `{#symbols}`, `{#figures}`, `{#tables}`, and
-`{#index}`, which only `{#back}` may hold. An outline that puts one in
-the wrong place does not parse. The workflows are
-[front matter](book/FRONT-MATTER.md), [appendices](book/APPENDICES.md),
-[back matter](book/BACK-MATTER.md) and [the index](book/BOOK-INDEX.md).
-
-`status`'s exit code is **not a gate**. It reads back a record of a
-person's decision (did a human approve this outline?) rather than
-judging any draft's content, and nothing it says can refuse a write.
-[the book design notes](book/DESIGN-NOTES.md#-what-statuss-exit-code-is-and-is-not)
-has that
-reconciliation against [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4".
+`status`'s exit code is **not a gate**: it reads back a record of a
+person's decision and refuses no write
+([the book design notes](book/DESIGN-NOTES.md#-what-statuss-exit-code-is-and-is-not)).
 
 ### 🧱 `chitragupta draft unit`
 
-One section's generation contract, and the record of its acceptance:
-the book-scale track's second artefact
-([WRITE-A-BOOK.md](WRITE-A-BOOK.md)). Reads the
-outline `spec` owns; writes only `content/specs/<book>/units/<id>.json`.
+One section's generation contract, and the record of its acceptance
+([WRITE-A-BOOK.md](WRITE-A-BOOK.md)). Reads the outline `spec` owns;
+writes only `content/specs/<book>/units/<id>.json`.
 
 ```bash
 chitragupta draft unit contract content/drafts/<book> <unit-id> [--source CITEKEY]...
@@ -1847,25 +960,15 @@ chitragupta draft unit status   content/drafts/<book>
 | `accept` | record a generated unit, once the citation gate passes on it | 1 if the unit's own chapter is unsigned or misaligned, the draft is missing, a `--source` is not in the ledger, or the gate refuses it |
 | `status` | where every unit stands, and what its dossier says about the same prose (`--json`); then any acceptance record whose unit has left the outline, as `accepted, but no longer in the outline: <ids>` (`"orphaned"` in `--json`), deleting nothing | 1 while any unit is not accepted and current; orphaned records do not count |
 
-`--source` is repeatable and is part of the input digest, so grounding a
-unit in a different set of papers is a different unit to generate. The
-digest covers the inputs only, never the unit's own prose, which is why
-it can answer "does this need regenerating?".
-
-A unit is a chapter the outline describes at section level, the single
-section of a chapter described only at chapter level, or a chapter that
-declares no sections at all (a preface, an appendix). The five generated
-pages are not units.
-
-`accept` **invokes the citation gate, it does not replace it**: a unit
-the gate refuses cannot be accepted, and nothing here is a second gate.
+`--source` is repeatable and part of the input digest, which covers the
+inputs only, never the unit's prose. `accept` **invokes the citation
+gate, it does not replace it**: nothing here is a second gate.
 
 ### 📇 `chitragupta draft registry`
 
-Terminology, claims and cross-references over a book's **accepted** units
-([WRITE-A-BOOK.md](WRITE-A-BOOK.md)). Three registries, built by a
-deterministic pass
-and written under `content/specs/<book>/registries/`.
+Terminology, claims and cross-references over a book's **accepted**
+units ([WRITE-A-BOOK.md](WRITE-A-BOOK.md)), written under
+`content/specs/<book>/registries/`.
 
 ```bash
 chitragupta draft registry build   content/drafts/<book> [--glossary PATH] [--notation PATH] [--index PATH]
@@ -1882,36 +985,24 @@ chitragupta draft registry index   content/drafts/<book> --idx content/rendered/
 | `build --index PATH` | also write the index's term table, `index-terms.json`, from the glossaries and `content/specs/<book>/index.toml` | 1 if `index.toml` is malformed or names a term, chapter or target that does not exist, and then nothing is written |
 | `index` | after the book's third `lualatex` pass: turn `book.idx` into `book.ind` through `upmendex`, and write `index.md` and `index.json` beside the other registries, each finding with the `index.toml` line that fixes it | 1 on a stale build (a chapter rendered without, or against an older, term table), a `book.idx` older than the table or a sidecar, a missing `upmendex` or pandoc, or an `upmendex` failure; no `book.ind` and no report are written then |
 
-**`check` is a review aid and exits 0 whatever it finds**, like every
-`chitragupta.review` aid and unlike `spec status`/`unit status`. Those two report
-whether a *human decided* something; this reports a *machine's reading of
-prose*, which is judgement however mechanical the arithmetic. There is no
-flag that makes it block (`build --glossary` refusing is a build declining
-to write an incomplete page, and `check` reports the same bullets);
-[the book design notes](book/DESIGN-NOTES.md#-why-registry-check-exits-0-when-the-two-status-commands-do-not)
-has the argument, and [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" the
-rule behind it.
-
-Every report says how many units it could read and names the ones it
-skipped, because a registry over half a book is a different claim from
-one over all of it. Contradiction between claims is **not** detected;
-only duplication is, because a machine can decide that.
+**`check` is a review aid and exits 0 whatever it finds**: it reports a
+machine's reading of prose, not a human's decision, and no flag makes
+it block
+([the book design notes](book/DESIGN-NOTES.md#-why-registry-check-exits-0-when-the-two-status-commands-do-not)).
+Every report names the units it skipped. Contradiction between claims
+is **not** detected, only duplication, because a machine can decide
+that.
 
 ### 🔭 `chitragupta draft tldr`
 
-A one-paragraph summary per citekey, so skimming a large corpus does not
-mean opening every PDF. `write` never generates the summary itself: it
-reads one on stdin, from a person or a skill, and persists it under
-`content/tldr/<citekey>.json`, keyed to a fingerprint of that citekey's
-current parsed text. `show` recomputes the fingerprint every time and
-reports the summary **stale** rather than silently describing a paper
-that has since been re-parsed; it never rewrites the sidecar itself.
-
-Where nobody has written one, `show` falls back to the authors' own
-abstract, extracted from the citekey's passage sidecar. That is
-extraction, not summarisation: the words are the authors', there is no
-LLM call, and nothing is stored, so it is re-derived on every read and
-can never be stale. A hand-written TL;DR always wins over it.
+A one-paragraph summary per citekey. `write` never generates one: it
+stores what a person or skill passes on stdin under
+`content/tldr/<citekey>.json`, keyed to a fingerprint of the current
+parsed text, and `show` reports it **stale** after a re-parse. With
+none written, `show` falls back to the authors' own abstract from the
+passage sidecar, re-derived on every read. It never touches
+`content/ledger.sqlite`, since a summary may be LLM output.
+[TLDR.md](TLDR.md) has the design and measurements.
 
 ```bash
 echo "This paper proposes ..." | chitragupta draft tldr write smith2024
@@ -1924,35 +1015,18 @@ chitragupta draft tldr show smith2024 --json
 | `write <citekey>` | store stdin as `<citekey>`'s summary | 1 if the citekey isn't in the ledger, has no parsed text yet, or stdin is empty |
 | `show <citekey> [--json]` | print the best available summary, its `source`, and whether it's stale | **always 0**; nothing recorded is not an error |
 
-`show` gives one of four answers, and `--json`'s `source` field names
-which:
-
 | `source` | Meaning |
 | --- | --- |
 | `human` | somebody wrote a TL;DR; `stale` reports it against the current parse |
 | `abstract` | nobody did, so the authors' own abstract stands in; never stale |
 | `none` | nobody did, and this paper has no abstract ("abstract not available") |
-| `unknown` | nobody did, and there is no passage sidecar, so nothing can tell |
-
-The last two are separate on purpose. `none` is a statement about the
-paper; `unknown` is a statement about how it was parsed: `pdftotext`
-resolves no reading order and so writes no sidecar, and a re-parse with
-`[parser].backend = "docling"` is what fixes it. Reporting "no abstract"
-there would describe a document nothing had read. On this project's own
-corpus the fallback finds an abstract for 318 of 498 documents;
-[TLDR.md](TLDR.md) has the measurements and the three guards that decide
-when it withholds one.
-
-Never touches `content/ledger.sqlite`: a written summary may be LLM
-output, so it stays in this drafting-layer sidecar rather than the corpus
-plane, and `chitragupta corpus ledger` is unchanged.
+| `unknown` | nobody did, and there is no passage sidecar, so nothing can tell; a re-parse with `[parser].backend = "docling"` fixes it |
 
 ### 🖼 `chitragupta draft figures`
 
-One paper's figures: caption, page, the exact string to cite each by, and
-the path to the crop, so a drafting session can **look at** a figure
-while grounding a claim about what a paper shows, or while drawing a
-diagram of its own.
+One paper's figures: caption, page, the exact string to cite each by,
+and the path to the crop, so a drafting session can look at a figure
+while grounding a claim about it.
 
 ```bash
 chitragupta draft figures smith2024
@@ -1963,12 +1037,9 @@ chitragupta draft figures smith2024 --json
 | --- | --- | --- |
 | `<citekey> [--json]` | list that paper's figures | 1 if the citekey isn't in the ledger, or its figure index names an image outside `content/docling/`; **0** otherwise |
 
-**Consider, never replicate.** The crops are a reading aid for checking a
-draft against its sources. Having a paper in your library grants no right
-to reproduce its figures, and nothing here puts a source image in a
-draft; the `cite` string is what belongs in one.
-
-Three answers, kept distinct because only one of them is actionable:
+**Consider, never replicate.** Having a paper in your library grants no
+right to reproduce its figures; the `cite` string is what belongs in a
+draft.
 
 | What you see | Means |
 | --- | --- |
@@ -1976,24 +1047,18 @@ Three answers, kept distinct because only one of them is actionable:
 | `no figures recorded in its docling parse` | the paper has none |
 | `no figure index for <citekey> …` | the docling stage has not run for it; run `chitragupta enrich --stages docling`, with `[enrich].docling_images` on |
 
-An index whose `image` name lands outside `content/docling/` (a `..`
-escape, an absolute path) is none of the three. It is refused on
-stderr with exit 1, naming the value, because the index is no longer
-what the docling stage wrote; re-run that stage for the citekey.
-
-Reads the enrichment layer's `content/docling/<citekey>.figures.json` as
-a path, never by importing that layer, so an ordinary drafting run needs
-none of its optional dependencies. The index lists figures rather than
-every picture on the page;
-[CONFIG.md](CONFIG.md#-docling_images) says what that excludes and why.
+It reads `content/docling/<citekey>.figures.json` as a path, never by
+importing the enrichment layer.
+[CONFIG.md](CONFIG.md#-docling_images) says what the index excludes.
 
 ### 🔀 `chitragupta draft diff`
 
 What changed in a draft since a snapshot of it. The baseline is the
 latest snapshot (`dossier mark-revision` takes one each pass), or
-`--against` a snapshot number, a snapshot label, or any file. The
-output is a review copy: never gated, never a deliverable, never a
-source.
+`--against` a snapshot number, label, or any file. The output is a
+review copy: never gated, never a deliverable, never a source.
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md#-reviewing-a-revision) has how
+to use it.
 
 ```bash
 chitragupta draft diff content/drafts/survey.md
@@ -2008,19 +1073,14 @@ chitragupta draft diff content/drafts/survey.md --against 2 --json
 | `--format md\|pdf` | `md` | `md` writes the change report; `pdf` also writes a redline, built with latexdiff from both versions rendered with their citations deferred |
 | `--json` | off | Print the report as JSON instead of Markdown. Both files are written either way |
 
-The change report lists sections added, removed, moved or changed (each
-with the `revisions.md` entries whose `Sections:` line names it),
-citekeys added and dropped, figures added, removed or redrawn, and any
-changed section no log entry explains. The References section `draft
-references` writes is generated, so a change to it is listed as
-`regenerated`, with no word count, and is never counted among the
-changed sections or asked for a log entry. It is written to
-`content/review/<topic>/` as `<stem>.diff.md` and `<stem>.diff.json`
-before any PDF work starts; `pdf` adds `<stem>.diff.tex` and
-`<stem>.diff.pdf`, with the two rendered sides kept in `<stem>.diff/`.
-A citation in the baseline whose key is no longer citable becomes
-`(citation withdrawn)` on the old side of the redline, and the report
-names the key.
+The report lists sections added, removed, moved or changed (each with
+the `revisions.md` entries naming it), citekeys added and dropped,
+figures changed, and any changed section no log entry explains. A
+changed References section is listed as `regenerated`. It is written to
+`content/review/<topic>/<stem>.diff.{md,json}` before any PDF work;
+`pdf` adds `<stem>.diff.tex` and `<stem>.diff.pdf`. A baseline citation
+that is no longer citable becomes `(citation withdrawn)` in the
+redline.
 
 | Situation | Exit |
 | --- | --- |
@@ -2035,28 +1095,19 @@ Each refusal is reported on stderr as an `[error]` line.
 
 One ranked, deduplicated worklist merged across the other eight aids'
 `.json`, `chitragupta.draft style --json`'s prose findings, and the
-dossier's drift report. Layer 4, the review layer: advisory, not a gate,
-and in its bare form it **reads, never runs, an aid**: an aid's `.json`
-that does not exist yet is named as absent in the header, not computed
-on the fly. `--baseline` below is the only mode that departs from that.
-A draft with no dossier still produces an agenda; `missing-citekey` and
-`recorded-but-uncited` are absent from it,
-and the header says why.
-
-Every item carries a `class` from the item-class table
-([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)), a section anchor where one
-applies, and whether it is `unattended`, meaning safe for a future
-automated pass to act on without asking first (`missing-citekey`, the
-short runs a verbatim scan finds unless they are mostly copied names,
-and `prose` bar its `review` findings), or only surfaced for a
-person to decide (`recorded-but-uncited`, `unsupported-claim`, `claim-support`,
-`uncited-claim` and `misquoted`).
+dossier's drift report. Advisory, not a gate. In its bare form it
+**reads, never runs, an aid**: an aid's `.json` that does not exist yet
+is named as absent in the header. Each item carries a `class`, a
+section anchor, and whether it is `unattended` (safe for an automated
+pass) or surfaced for a person. [AGENDA.md](AGENDA.md) walks through an
+agenda file section by section, including the JSON sibling, and
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) has the item classes.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The Markdown draft to check |
-| `--formats FORMATS` | `md,tex,pdf` | Additional formats to render beside the Markdown report. The `.md` is always written, since it *is* the report; `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
+| `--formats FORMATS` | `md,tex,pdf` | Extra formats beside the Markdown report, which is always written; `tex` needs `pandoc`, `pdf` also LuaLaTeX |
 | `--json` | off | Print the worklist as JSON instead of just the written-files summary. The `.json` sibling is filed either way |
 | `--accept ID` | unset | Record this item id as considered and accepted, keeping it off the worklist while the finding's identity is unchanged. Repeatable. Only `claim-support`, `uncited-claim` and `unsupported-claim` may be accepted; every other class is refused with exit code 2 |
 | `--baseline PATH` | unset | Re-run the eight aids at `--formats md`, rebuild, and report `resolved`/`persisting`/`new`/`accepted` against the agenda `.json` at `PATH`, with the objective count before and after. **The one mode that runs another aid** (the bare command above never does), so it costs seconds rather than milliseconds |
@@ -2070,162 +1121,45 @@ chitragupta review agenda content/drafts/survey.md
 #     --baseline content/review/survey.agenda.json --json
 ```
 
-**`--accept`** records a judgement you have already made, so the next
-cycle shows you what is new rather than what you already decided about.
-The record is `content/review/<topic>/<stem>.accepted.json`, written
-beside the report whose ids it names, and it stores identities only.
-The agenda still recomputes every item from the aids on every run, and an
-accepted item is filtered out of a freshly computed list rather than
-remembered as "done". Because an item's id is a hash of the span it is
-about, an edit to that span raises a new id and the item comes back by
-itself; there is no reopen command because none is needed. Every
-accepted item is listed in the report's own `## Accepted` section,
-including one whose record now matches nothing, which is what the
-reopening looks like from the record's side. Defect classes cannot be
-accepted, `misquoted` included; [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)
-has why that one is excluded although it is surfaced rather than
-unattended.
-
-Combined with `--baseline`, the id is resolved **before** the refresh, so
-an id copied off the report in front of you always resolves. If the
-refresh then moves that span, the acceptance is left naming a finding
-that no longer exists: the record shows as `not raised by this run` and
-the new finding is on the worklist. That is the reopening property
-working as designed: the judgement was made about text the aid no longer
-reports.
-
-**`--baseline`** refreshes before it compares, because reading the aids'
-pre-edit `.json` would silently report a finding resolved that is not.
-Passing the report's own `.json` sibling is the normal case and is safe:
-the baseline is
-read before anything is re-run, so this run overwriting that file cannot
-affect what it is compared against. `coverage` is re-run with the
-queries the draft's own `retrieval.md` records (revision-boundary rows
-skipped), and skipped entirely when there are none rather than run
-against an invented query. Under `--baseline` the aids are refreshed at
-`--formats md` only, so each aid's `.tex`/`.pdf` goes stale against its
-`.md` until a full-format run of the layer follows.
-
-Under `--baseline --json`, stdout carries the comparison payload, not
-the worklist: `resolved`/`persisting`/`new`/`accepted`/
-`objective_before`/`objective_after`/`objective_delta`/`objective_new`/
-`not_refreshed`/`refresh_errors`, and no `items` key at all.
-`objective_new` counts the unattended items in `new`: a repair that
-resolves one objective finding and introduces another leaves the delta
-at 0, and this is what shows the swap. `not_refreshed` names each
-aid whose refresh failed: a non-zero exit, an exit 0 that wrote no
-fresh `.json` (as `support` does without the enrich stack), or an
-exception. That aid's items are an earlier run's, so they sit out every
-group and both counts, and the filed report marks it `refreshed: false`
-and leaves its items out of `objective_class_count`. An aid that raised
-does not stop the run. Anything it wrote before raising is put back to
-the earlier `.json`, so a failed run's output is never read as a
-finding. `refresh_errors` maps the aid to the exception's one-line
-reason, the filed report carries the same line as
-`sources.aids.<aid>.refresh_error`, and a `[warn]` line on stderr says
-so as it happens. A skipped `coverage` (no recorded query) is
-`refreshed: null`, not a failure.
-
-`--baseline` needs a ledger, and checks for one after loading the
-baseline and before re-running anything. With none, or one that needs
-a sync to migrate, it prints the sync instruction once and exits 1,
-having refreshed, accepted and filed nothing. A bad baseline is still
-reported first, with exit 2. The bare command does not need a ledger.
-
-`accepted` is why an accepted item is not reported as `resolved`:
-suppression removes it from this run's worklist, and without
-that group a set difference would call a finding nobody repaired fixed.
-An accepted item that has really gone (the span was edited and the
-finding did not recur) is still `resolved`. The worklist itself is
-unaffected: it still lands in the filed `.json` report, written
-unconditionally either way.
-
-**`--json`** carries the same envelope every review aid's JSON does, plus
-`sources` (`available`/`stale`/`refreshed`/`refresh_error` per aid, `available`/`partial`
-for the prose check, `available`/`corpus_available` for the dossier drift,
-`available`/`count` for the acceptance record) and
-one `items` object per worklist entry (`id`, `class`, `section`,
-`citekey`, `line`, `unattended`, `summary` and a `detail` object whose
-shape is specific to the class). It is an additional serialisation of
-what `render_markdown` already prints, never a second computation. Two
-further top-level keys serve a re-run loop: `pass_bound`, the backstop
-on how many passes one may take, and `objective_class_count`, the number
-of `unattended` items in this agenda. Both are carried as data because a
-skill cannot import a Python constant, and hardcoding either into a
-skill's prose is what naming them as constants was meant to prevent.
-
-Two further keys say what this run left *off* `items`, and they are not
-the same thing. `stale_spans` lists what this run **refused**
-(R12, [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)): an item whose exact
-draft text has changed since the aid found it is dropped from `items`
-rather than repaired against text that no longer exists, and appears here
-instead with its `id`, `class`, `section` anchor, `summary` and the
-`refused` reason. Refused items are not counted in
-`objective_class_count`, and the Markdown report carries the same list
-under `## Refused as stale`. Nothing is relocated by similarity and
-nothing is merged; the finding is re-derived on the next run against the
-current text. `stale_spans` is a different thing from
-`sources.aids.<aid>.stale`, which is the mtime comparison saying a whole
-aid report predates the draft, hence the different key.
-
-`accepted` is the other one: each stored acceptance record, plus a
-`suppressed` flag saying whether this run's worklist was shorter for it.
-The two never name the same item: a refusal asks whether the finding is
-still about anything, an acceptance asks what a person decided about one
-that is, and the refusal is applied first for that reason. They are also
-disjoint by construction today, since only `verbatim-run` and `prose`
-carry the span a refusal needs and neither may be accepted. An
-acceptance whose item was refused as stale would therefore read
-`suppressed: false` and appear in `stale_spans`, which is an accurate
-account of what happened, not a claim that the judgement was honoured.
-Like [`provenance`](#-chitragupta-review-provenance), the `.json` (and
-the `.md`) is filed unconditionally (there is no `--write` flag), and
-`--json` only decides whether the worklist is *also* printed to stdout,
-with the written-files summary moving to stderr in that case.
+`--accept` stores identities only, in
+`content/review/<topic>/<stem>.accepted.json`; an edit to the span
+raises a new id and the item returns by itself. Defect classes cannot
+be accepted, `misquoted` included;
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) has why. Under `--baseline
+--json`, stdout carries the comparison payload, not the worklist.
+`--baseline` needs a ledger: with none it exits 1 having changed
+nothing; a bad baseline exits 2. The `.md` and `.json` are filed on
+every run (there is no `--write`).
 
 ### 📐 `chitragupta review figure`
 
 What a draft's TikZ figures' own geometry says about them.
-**Informational, not a gate**: it exits 0 whatever it finds, and like
-the other ten aids nothing it reports can block a draft. It reads the
-same geometry as [`figure check`](#-chitragupta-figure-check), over
+**Informational, not a gate**: it exits 0 whatever it finds. It reads
+the same geometry as [`figure check`](#-chitragupta-figure-check) over
 every figure the draft references, and keeps its own report.
-[figure-checks/README.md](figure-checks/README.md) has the rules, how to
-read a report, and how this aid differs from `figure check`.
-
-The static checks need no TeX, so on a host without `tikz.sty` it still
-reports them and says the geometry was skipped. A figure that does not
-compile is a finding on that figure, not a crash: the draft's other
-figures are still checked, and the command still exits 0.
+[figure-checks/README.md](figure-checks/README.md) has the rules and
+how to read a report. Without `tikz.sty` it still runs the static
+checks and says the geometry was skipped; a figure that does not
+compile is a finding on that figure.
 
 #### 📏 It measures; it never places
 
 **Nothing here computes where a node should go.** TikZ does the layout,
-and this reads back the boxes TikZ decided, from one compile. That is
-why a compile is unavoidable: a node's box depends on the font and the
-label's rendered width, neither of which exists until TeX has run.
-
-Fix a finding by changing what you asked TikZ for (a `sibling
-distance`, a `row sep`, which library you reached for), not by nudging
-a coordinate until the number moves. The thresholds are this checker's
-own and not facts about TikZ; [TIKZ-STYLE.md](TIKZ-STYLE.md) is the
-standard. When a finding and your own eyes disagree, the eyes win.
-
-A clean report is not the same as a checked figure. The geometry checks
-measure only nodes the source names, so a picture that names none
-reports `nothing-measurable` rather than a clean result, and any
-declared name that did not come back measured is listed beside it. Read
-that list before trusting a protrusion finding. Name the nodes you
-draw, in whichever idiom: `\node (a)` and `child { node (a) ... }` both
-count.
+and this reads back the boxes TikZ decided. Fix a finding by changing
+what you asked TikZ for (a `sibling distance`, a `row sep`), not by
+nudging a coordinate until the number moves; when a finding and your
+own eyes disagree, the eyes win ([TIKZ-STYLE.md](TIKZ-STYLE.md)). A
+picture that names no nodes reports `nothing-measurable` rather than a
+clean result, so name the nodes you draw. The edge list is recovered
+from the source; confirming it against the prose is the author's job.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The draft whose figures to check |
-| `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
-| `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default |
-| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. The `.md` is always written, since it *is* the report |
+| `--json` | off | Print the findings as JSON; `--write` files the `.json` either way |
+| `--write` | off | Also file the report under `content/review/`, mirroring the draft's path |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, extra formats beside the Markdown report, which is always written |
 
 ```bash
 chitragupta review figure content/drafts/<topic>/survey.md
@@ -2233,16 +1167,12 @@ chitragupta review figure content/drafts/<topic>/survey.md
 # ... --json > figure.json
 ```
 
-**Read the edge list closely.** It is recovered from the source, and
-nothing here knows which edges *should* exist, so confirming them
-against the prose is the author's job.
-
 ### 📊 `chitragupta review coverage`
 
 How much of what retrieval surfaced made it into a draft's citations.
-**Informational, not a gate**: unlike the gate, nothing it reports can
-block a draft. Stdlib-only, like `citation_gate` and `references`; it
-reuses `chitragupta.retrieval`, which is itself stdlib.
+**Informational, not a gate.** Stdlib-only. A written report records
+the whole invocation, queries included, since a coverage figure means
+nothing without knowing 62% *of what*.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
@@ -2250,9 +1180,9 @@ reuses `chitragupta.retrieval`, which is itself stdlib.
 | `<draft>` | required | The draft to check |
 | `--query QUERY` | required, repeatable | A retrieval query to check coverage against. Give it more than once |
 | `--k K` | `5` | Top-k results per query |
-| `--json` | off | Print the findings as JSON instead of as text (see below). `--write` files it beside the report either way |
-| `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default, since the usual use is a question asked and answered in one sitting |
-| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. The `.md` is always written (it *is* the report), so `--formats pdf` still produces it. `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
+| `--json` | off | Print the findings as JSON; `--write` files the `.json` either way |
+| `--write` | off | Also file the report under `content/review/`, mirroring the draft's path |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, extra formats beside the Markdown report, which is always written; `tex` needs `pandoc`, `pdf` also LuaLaTeX |
 
 ```bash
 chitragupta review coverage content/drafts/survey.md \
@@ -2263,35 +1193,25 @@ chitragupta review coverage content/drafts/survey.md \
 # ... --json > coverage.json
 ```
 
-A written report records the whole invocation in its header, queries
-included: a coverage figure means nothing without knowing 62% *of what*.
-
-**`--json`** follows the same contract `verbatim scan --json` does (see
-below): the envelope every review aid's JSON carries, plus `queries`,
-`k`, `coverage_pct`, `candidates_total`, `cited_candidates_total`, and
-one `findings` object per citekey the printed report itemises:
-`id`, `citekey`, `title` (`null` for a citation outside the candidate
-set), and `status` (`uncited_candidates` or `cited_outside_candidates`).
-It is an additional serialisation of what `format_report` already
-prints, never a second computation.
+**`--json`**: the shared envelope plus `queries`, `k`, `coverage_pct`,
+`candidates_total`, `cited_candidates_total`, and one `findings` object
+per itemised citekey (`id`, `citekey`, `title`, `status`:
+`uncited_candidates` or `cited_outside_candidates`).
 
 ### 📖 `chitragupta review provenance`
 
 Reports what in each cited source supports the claim citing it,
-quoting a real passage. Layer 4, the review layer: advisory, not a gate.
-
-Like `agenda`, and unlike the rest, it writes by default, because a
-provenance report is not meant to be read in a terminal. The report lands in
-`content/review/<topic>/<stem>.provenance.md`, mirroring the draft's path,
-with its `.tex`/`.pdf` renders and its `.json` sibling beside it, all
-filed whether or not `--json` is given.
+quoting a real passage. Advisory, not a gate. Like `agenda`, it writes
+by default, to `content/review/<topic>/<stem>.provenance.md` with its
+`.tex`/`.pdf` renders and `.json` sibling, whether or not `--json` is
+given.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The Markdown draft to check |
-| `--formats FORMATS` | `md,tex,pdf` | Additional formats to render beside the Markdown report. The `.md` is always written: it *is* the report, and `tex`/`pdf` are renders of it, so `--formats pdf` still produces the `.md`. `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
-| `--json` | off | Print the findings as JSON instead of just the written-files summary (see below). The `.json` sibling is filed either way |
+| `--formats FORMATS` | `md,tex,pdf` | Extra formats beside the Markdown report, which is always written; `tex` needs `pandoc`, `pdf` also LuaLaTeX |
+| `--json` | off | Print the findings as JSON instead of just the written-files summary. The `.json` sibling is filed either way |
 
 ```bash
 chitragupta review provenance content/drafts/survey.md
@@ -2300,38 +1220,26 @@ chitragupta review provenance content/drafts/survey.md
 # chitragupta review provenance content/drafts/survey.md --json > provenance.json
 ```
 
-**`--json`** carries the same envelope every review aid's JSON does, plus
-one `findings` object per citing sentence, worst-match-first like the
-Markdown report: `id`, `line`, `citekey`, `claim`, `score`, `band`,
-`passage` (`page`/`quotable`/`text`, `null` when nothing matched) and `note`
-(why a source was unreadable, when one was). It is an additional
-serialisation of what `render_markdown` already prints, never a second
-computation. Unlike the other eight gated behind `--write`, the `.json` is
-filed unconditionally, matching the `.md`'s own always-write policy (the
-same one `agenda` follows), and `--json` only decides whether it is *also*
-printed to stdout, with the written-files summary moving to stderr in that
-case.
+**`--json`**: the shared envelope plus one `findings` object per citing
+sentence, worst match first: `id`, `line`, `citekey`, `claim`, `score`,
+`band`, `passage` (`page`/`quotable`/`text`, or `null`) and `note`.
+With `--json`, the written-files summary moves to stderr.
 
 ### 🔬 `chitragupta review support`
 
-Does the cited source entail the claim citing it? This aid scores that
-with an NLI entailment model, not the lexical overlap
-[`provenance`](#-chitragupta-review-provenance) uses. It asks the same
-underlying question (does the source support this claim) with a
-different mechanism and a different output shape: ranked, never banded,
-unlike
-`provenance`'s "no support found / weak / supported" bands. **Advisory,
-exits 0 whatever it finds**, and it blocks no draft. Needs the `enrich`
-extra; without it, the command prints a notice on stderr and still
-exits 0 rather than failing.
+Does the cited source entail the claim citing it? Scored with an NLI
+entailment model rather than [`provenance`](#-chitragupta-review-provenance)'s
+lexical overlap, and ranked rather than banded. **Advisory, exits 0
+whatever it finds.** Needs the `enrich` extra; without it, it prints a
+notice on stderr and still exits 0.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The draft to check |
-| `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
-| `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default |
-| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
+| `--json` | off | Print the findings as JSON; `--write` files the `.json` either way |
+| `--write` | off | Also file the report under `content/review/`, mirroring the draft's path |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, extra formats beside the Markdown report; `tex` needs `pandoc`, `pdf` also LuaLaTeX |
 
 ```bash
 chitragupta review support content/drafts/survey.md
@@ -2339,56 +1247,30 @@ chitragupta review support content/drafts/survey.md
 # ... --json > support.json
 ```
 
-**`--json`** carries the envelope every review aid's JSON carries, plus
-`scored`, `unscoreable`, and one `findings` object per citation (`id`,
-`line`, `citekey`, `claim`, `score`, `note`). The two counts are
-deliberately in different units: `scored`
-counts *findings*, one per
-citation the entailer scored (`note` is `null`), while `unscoreable`
-counts *citekeys*, one per source that offered no passage to score
-against. A citekey cited twice
-that turns out unscoreable is one `unscoreable` entry but zero of its
-two findings count as scored.
-
-A source can be unscoreable for either of two reasons, and the `note`
-says which: its passages carry no readable text at all (page-level
-only), or every readable passage it has is a **section heading**.
-Headings are deliberately excluded from the premise set: a heading
-asserts nothing, and the aid picks the highest-scoring premise, so
-leaving them in let a heading be reported as a claim's best supporting
-passage. List items, tables and formulae are *not* excluded.
+**`--json`**: the shared envelope plus `scored`, `unscoreable`, and one
+`findings` object per citation (`id`, `line`, `citekey`, `claim`,
+`score`, `note`). `scored` counts findings; `unscoreable` counts
+citekeys with no passage to score against, either because no passage
+has readable text or because every readable one is a section heading.
+Headings are excluded from the premises because a heading asserts
+nothing.
 
 ### 🧾 `chitragupta review union`
 
-Does an assembled book still carry every citekey its accepted units stand
-on? The one aid that reads a **book** rather than a draft, and the one
-whose answer is pure set arithmetic. **Advisory, exits 0 whatever it
-finds**, and it blocks no book. Stdlib-only: no corpus read, no index, no
-model.
-
-It resolves the assembly's includes instead of reading it for
-citekeys, because `book.tex` is a skeleton: it `\input`s its units,
-citeproc having resolved each unit's citations inside that unit, so the
-assembly's own text states no citekey. Subtracting against that text
-would report every source in a correct book as lost. So a *dropped*
-finding is an accepted unit the assembly never includes, located to that
-unit and carrying every citekey the book then holds nowhere else; an
-*appeared* finding is a citekey in a file the assembly includes that no
-unit owns, such as a title page, an appendix or a preamble file.
-
-Two refusals, both exit 1. A path in no book, or in one whose `spec.md`
-does not parse, has no expected set to compare against. And a path that
-*is* one of the book's own units is refused by name, because pointed at a
-unit this aid would report every other unit's citekeys as lost, a
-confident and wholly wrong report.
+Does an assembled book still carry every citekey its accepted units stand on?
+The one aid that reads a **book**. **Advisory, exits 0 whatever it finds.**
+Stdlib-only set arithmetic over the assembly's resolved includes. A *dropped*
+finding is an accepted unit the assembly never includes; an *appeared* finding
+is a citekey in an included file no unit owns. It refuses, with exit 1, a path
+in no book and a path that is one of the book's own units.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The assembled document, e.g. `content/rendered/<book>/book.tex` |
-| `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
-| `--write` | off | Also write the report to `content/review/`, mirroring the book's path. Printing stays the default |
-| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
+| `--json` | off | Print the findings as JSON; `--write` files the `.json` either way |
+| `--write` | off | Also file the report under `content/review/`, mirroring the book's path |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, extra formats beside the Markdown report; `tex` needs `pandoc`, `pdf` also LuaLaTeX |
 
 ```bash
 chitragupta review union content/rendered/twins/book.tex
@@ -2396,42 +1278,22 @@ chitragupta review union content/rendered/twins/book.tex
 # ... --json > union.json
 ```
 
-**`--json`** carries the envelope every review aid's JSON carries, plus
-`units_checked` and `units_unchecked` (each unit with whether the
-assembly `included` it, and for the unchecked ones the `unit status`
-state that disqualified it), `units_omitted`, `includes_outside_units`,
+**`--json`**: the shared envelope plus `units_checked`,
+`units_unchecked`, `units_omitted`, `includes_outside_units`,
 `includes_unresolved`, `citekeys_outside_units`,
-`appeared_determinable`, and one `findings` object per citekey: `id`,
-`citekey`, `status` (`dropped`/`appeared`), and `units`.
-
-**Read `appeared_determinable` before acting on the absence of an
-`appeared` finding.** A unit that is unwritten, never accepted, or edited
-since acceptance is not compared against, because its record would
-answer for text that no longer exists. While any such unit remains, a citekey the
-assembly states outside its units may be recorded by that unit after all,
-so this withholds the direction entirely rather than guessing, and
-`appeared_determinable` is `false`. When it is `true`, an empty result is
-a real answer rather than an unasked question: the assembly's own text
-and every non-unit file it includes were opened and read, and
-`includes_outside_units` says which. `dropped` is unaffected either way.
-
-**`includes_unresolved` is not noise.** An include naming a file that
-is not on disk, or one that is not text (which a `book.md` link to a
-cover image or a PDF will be), is material this run could not open, so a
-report with entries there covers less than it appears to. Nothing is
-silently skipped, and neither case takes the run out.
+`appeared_determinable`, and one `findings` object per citekey (`id`,
+`citekey`, `status`, `units`). **Read `appeared_determinable` before
+trusting an empty `appeared`**: while any unit is unwritten, unaccepted
+or edited since acceptance, that direction is withheld and the field is
+`false`. `includes_unresolved` lists includes that could not be opened,
+so a report with entries there covers less than it appears to.
 
 ### 🧩 `chitragupta review synthesis`
 
-How many sources each unit of a draft rests on, **at the unit that
-draft's genre binds at**. Prose required to fuse two or more sources
-cannot be a transcription of any one of them; this aid makes that rule
-observable instead of only written down. See
-[WRITING-STANDARDS.md](WRITING-STANDARDS.md) §11 for the rule itself.
-**Advisory, exits 0 whatever it finds**, and it blocks no draft.
-
-The unit comes from the genre recorded in the draft's dossier
-`scope.md`, so the usual invocation takes no flags:
+How many sources each unit of a draft rests on, at the unit its genre
+binds at ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §11). **Advisory,
+exits 0 whatever it finds.** The unit comes from the genre in the
+dossier's `scope.md`:
 
 | Genre | Unit |
 | --- | --- |
@@ -2444,9 +1306,9 @@ The unit comes from the genre recorded in the draft's dossier
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The draft to check |
 | `--unit {paragraph,section,document}` | from `scope.md` | Measure at this unit instead. For a draft with no dossier, or to look at one deliberately at another scale |
-| `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
-| `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default |
-| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
+| `--json` | off | Print the findings as JSON; `--write` files the `.json` either way |
+| `--write` | off | Also file the report under `content/review/`, mirroring the draft's path |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, extra formats beside the Markdown report; `tex` needs `pandoc`, `pdf` also LuaLaTeX |
 
 ```bash
 chitragupta review synthesis content/drafts/survey.md
@@ -2455,24 +1317,11 @@ chitragupta review synthesis content/drafts/survey.md
 # ... --json > synthesis.json
 ```
 
-The report gives two numbers, because one is not enough. **Spread** is
-how many distinct
-citekeys a unit cites. For a section, the report also gives the
-**longest run of consecutive paragraphs resting on the same single
-citekey**. A section citing two papers by running one out before
-starting the next spans two sources and fuses neither, and spread alone
-cannot tell that apart from a section that interleaves them.
-
-A thin corpus legitimately produces single-source units. The report
-counts them and does not judge them: there is no threshold here, no
-target proportion, and no per-genre bar. A human reads it and nothing
-acts on it unattended, which is
-[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3. A unit citing *nothing*
-is counted but never itemised, since in four of the six genres
-original prose is the genre working correctly.
-
-A single-source unit can be declared deliberate, in the draft, adjacent
-to the unit with no blank line between them:
+The report gives **spread** (distinct citekeys per unit) and, for a
+section, the **longest run of paragraphs on one citekey**. It counts
+and does not judge: no threshold, nothing acts on it unattended. A
+marker directly above a unit (no blank line) declares it deliberately
+single-source:
 
 ```markdown
 <!-- single-source: Foo2019 is the only paper in the corpus covering X -->
@@ -2482,41 +1331,18 @@ to the unit with no blank line between them:
 % single-source: Foo2019 is the only paper in the corpus covering X
 ```
 
-The report then counts declared and undeclared separately and lists the
-undeclared first. A marker separated from its unit by a blank line
-declares nothing (it becomes a block of its own), and one inside a
-fenced code block is ignored.
-
-**`--json`** carries the envelope every review aid's JSON carries, plus
-`genre`, `unit`, `unit_source` (`scope.md`, `--unit` or `nothing`),
+**`--json`**: the shared envelope plus `genre`, `unit`, `unit_source`,
 `units_total`, `uncited`, `single_source`, `multi_source`, `declared`,
-`undeclared`, `single_source_pct`, and one `findings` object per unit
-itemised: `id`, `kind` (`single_source` or `single_key_run`), `line`,
-`unit`, `citekeys`, `declared` and `longest_run`.
+`undeclared`, `single_source_pct`, and one `findings` object per
+itemised unit (`id`, `kind`, `line`, `unit`, `citekeys`, `declared`,
+`longest_run`).
 
 ### 🔍 `chitragupta review uncited`
 
-Which sentences of a draft carry **no citation at all**. This is the
-prose-side question, which nothing answered before.
-[`coverage`](#-chitragupta-review-coverage) looks like it answers this
-and does not: it reports which *surfaced candidates* got cited, which is
-about the corpus. **Advisory, exits 0 whatever it
-finds**, and it blocks no draft. Alone among the aids it reads no
-corpus directly: no ledger, no sync, no `enrich` extra, only the draft.
-
-Most of a draft carries no citation, and most of that is fine, so most
-of the report's work is in what it declines to raise. Two things narrow
-it, and both are measured rather than assumed (see
-`plans/c1-uncited-prose-report.md`).
-
-**Structural exclusions.** The reference list, headings, captions, a
-table's header row, comment-only blocks (including §11's
-`<!-- single-source: ... -->` marker), fenced code, and anything left
-empty once its list marker is stripped. Table *rows* are not excluded: a
-citekey in backticks is not a citation the gate can see, so a comparison
-table that attributes rows that way rests on nothing.
-
-**The genre decides whether uncited prose is a finding at all.**
+Which sentences of a draft carry **no citation at all**.
+**Advisory, exits 0 whatever it finds.** It reads only the draft.
+Headings, captions, references, comments and code are excluded; table
+*rows* are not, since a citekey in backticks is not a citation.
 
 | Genre | Uncited prose is | Findings |
 | --- | --- | --- |
@@ -2529,9 +1355,9 @@ table that attributes rows that way rests on nothing.
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The draft to check |
 | `--genre {deep-research,digest,research-paper,survey,textbook-chapter,thesis-chapter,tutorial}` | from `scope.md` | Read the draft under this genre instead. For a draft with no dossier, or to read one strictly on purpose |
-| `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
-| `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default |
-| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
+| `--json` | off | Print the findings as JSON; `--write` files the `.json` either way |
+| `--write` | off | Also file the report under `content/review/`, mirroring the draft's path |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, extra formats beside the Markdown report; `tex` needs `pandoc`, `pdf` also LuaLaTeX |
 
 ```bash
 chitragupta review uncited content/drafts/survey.md
@@ -2540,47 +1366,24 @@ chitragupta review uncited content/drafts/survey.md
 # ... --json > uncited.json
 ```
 
-A finding is a sentence, and its block is an attribute of it, not a
-filter. Each finding carries `block_cites`, which says whether anything
-in the paragraph it sits in cites a source. A sentence whose paragraph cites
-nothing rests on nothing at all and is listed first; one whose paragraph
-cites something sits beside evidence that may or may not cover it.
-Suppressing the second kind would be simpler and would miss the failure
-this aid is for: a paragraph with one citation at the end and four
-unrelated assertions before it.
+Nothing repairs these findings for you: the fix for an uncited claim is
+evidence, and rewording one would make it look supported without making
+it supported.
 
-The fix for an uncited claim is evidence, not wording, so nothing
-repairs these findings for you. Rewording one would make it look
-supported without making it supported, which is the failure class this
-project exists to prevent. Unlike a verbatim finding, this one is
-therefore surfaced and never repaired unattended.
-
-**`--json`** carries the envelope every review aid's JSON carries, plus
-`genre`, `genre_source` (`scope.md`, `--genre` or `nothing`),
-`standing` (`exceptional` or `ordinary`), `sentences_total`, `uncited`,
-`bare`, and one `findings` object per uncited sentence: `id`, `line`,
-`sentence` and `block_cites`.
+**`--json`**: the shared envelope plus `genre`, `genre_source`,
+`standing`, `sentences_total`, `uncited`, `bare`, and one `findings`
+object per uncited sentence (`id`, `line`, `sentence`, `block_cites`).
 
 ### 📖 `chitragupta review quotation`
 
-Does each **quoted span** in a draft's dossier appear in the
-source it is attributed to? A `quote:` is verbatim by contract and
-reaches a rendered evidence sidecar in quotation marks under an
-attribution; nothing before this checked the span was there. A
-quotation attributed to a paper that does not contain it is the same
-failure class as a fabricated citekey, and the one part of that class
-[`chitragupta draft gate`](#-chitragupta-draft-gate) cannot see, because
-the citekey *is* real. **Advisory, exits 0 whatever it finds.**
-
-It checks exactly what the evidence sidecar publishes: the same
-`quote:` fields [`draft evidence`](#-chitragupta-draft-evidence) would
-print, for citekeys the draft cites. A legacy `support:` block
-is not checked: it holds a raw retrieval window nobody ever chose as a
-quotation, and [DOSSIER.md](DOSSIER.md) already says a module that
-*prints* one must read it as nothing at all.
-
-There are three outcomes, one of them for a source that cannot be
-checked:
+Does each **quoted span** in a draft's dossier appear in the source it
+is attributed to? A misattributed quotation is the one part of the
+fabricated-citekey failure class
+[`chitragupta draft gate`](#-chitragupta-draft-gate) cannot see,
+because the citekey *is* real. **Advisory, exits 0 whatever it finds.**
+It checks exactly the `quote:` fields
+[`draft evidence`](#-chitragupta-draft-evidence) would print, never a
+legacy `support:` block.
 
 | Outcome | Means | A finding? |
 | --- | --- | --- |
@@ -2588,34 +1391,18 @@ checked:
 | absent | It is not, and the source *was* readable in reading order. Carries the page its distinctive words concentrate on, so you can tell a fabrication from an edited quotation | **yes** |
 | not checkable | The source has no reading-ordered passages, only `pdftotext -layout` text, whose column splicing makes a correct quotation non-contiguous. Reporting it absent would accuse a draft of something it did not do | no |
 
-The matcher has to define "verbatim" with some care. Both sides are
-reduced to one `[a-z0-9]` character stream after NFKD, so a
-line-break hyphen, a soft hyphen, a ligature, collapsed whitespace and a
-curly quotation mark all stop mattering. Two more normalisations were
-added on measurement rather than on principle: an inline reference
-marker is stripped from the source (a passage reads "...and hypotheses
-[30]." where the quotation correctly drops it), and an elision or
-`[editorial]` insertion splits the quote into fragments that must appear
-**in order**. Order is enforced so the check stays exact; there is no
-similarity score in it anywhere. `plans/c3-quotation-integrity.md` has
-the measurement.
-
-Often the aid has nothing to check. `quote:` is optional: A2's contract
-makes capturing one a deliberate act rather than the residue of
-retrieval, so a dossier written before it, or by a genre that quotes
-nothing, carries none. The first line of the report's body,
-`- Universe:`, says which answer a run gave: `no-dossier` (no dossier
-to read), `no-quotes` (a dossier that publishes no quote the draft
-cites) or `checked`. Only `checked` means a quote was looked at; the
-other two are not a clean bill of health.
+Matching is exact over a normalised `[a-z0-9]` stream, with elided
+fragments required **in order**; there is no similarity score. The
+report's `- Universe:` line is `no-dossier`, `no-quotes` or `checked`;
+only `checked` means a quote was looked at.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The draft to check |
-| `--json` | off | Print the verdicts as JSON instead of as text. `--write` files it beside the report either way |
-| `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default |
-| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
+| `--json` | off | Print the verdicts as JSON; `--write` files the `.json` either way |
+| `--write` | off | Also file the report under `content/review/`, mirroring the draft's path |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, extra formats beside the Markdown report; `tex` needs `pandoc`, `pdf` also LuaLaTeX |
 
 ```bash
 chitragupta review quotation content/drafts/survey.md
@@ -2623,73 +1410,33 @@ chitragupta review quotation content/drafts/survey.md
 # ... --json > quotation.json
 ```
 
-**`--json`** carries the envelope every review aid's JSON carries, plus
-`universe` (`no-dossier`, `no-quotes` or `checked`: which of the three
-zero-findings situations a run is), `quotes_total`, `found`, `absent`,
-`unverifiable`, a `quotes` object per checked span (`id`, `citekey`,
-`verdict`, `tier`, `pages`, `reason`) and a `findings` object per
-absent one (`id`, `citekey`, `quote`, `near_miss_page`,
-`near_miss_score`). The `tier` is `exact`,
-`exact-pair`, `elided` or `elided-pair`: a reader deciding whether to
-trust a rendered quotation should be able to see that the check was
-contiguous rather than an alignment around an ellipsis.
+**`--json`**: the shared envelope plus `universe`, `quotes_total`,
+`found`, `absent`, `unverifiable`, a `quotes` object per checked span
+(`id`, `citekey`, `verdict`, `tier`, `pages`, `reason`) and a
+`findings` object per absent one (`id`, `citekey`, `quote`,
+`near_miss_page`, `near_miss_score`). `tier` is `exact`, `exact-pair`,
+`elided` or `elided-pair`.
 
 ### 📋 `chitragupta review digest`
 
 How much of a **verbatim digest** is not the sources' own words, and
-what every such sentence is. A digest
-([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) is private study text copied
-from the corpus, each copied run closed by a citation; this aid finds
-each run in the source it cites, using the same matcher
-[`review quotation`](#-chitragupta-review-quotation) uses, and reports
-what it could not find. Like `quotation`, it matches only reading-ordered
-passages, so it needs the Docling sidecars `chitragupta enrich --stages
-docling` writes; a source without one is reported as not checkable,
-with the stage named. **Advisory, exits 0 whatever it finds.** The
-digest's genre is recorded in its dossier, not its name: any draft under
-`content/drafts/` can be given to this aid, and one that is not a digest
-will simply report most of its prose as not copied.
-
-The report leads with four shares that account for the whole digest:
-
-| Line | Counts | Direction |
-| --- | --- | --- |
-| Unsupported fraction | the words of every sentence carrying an `unsupported-text`, `copy-mismatch` or `unquoted-text` finding, a sentence counted once, over all words | down: the headline |
-| Copied fraction | the words of every verified copied span, over all words | up |
-| Own words, supported or declared | the words of the drafter's own sentences that raised nothing: closed by `[see @key]` and supported by it, or in an `<!-- own: why -->` paragraph or a table | as few as the argument needs |
-| Not checkable | the words of every run any of whose cited sources has no Docling sidecar; the reason names the source and the stage to run | a fact about the corpus |
-
-A run found whole in its source is one copied span and no finding; a
-run whose sentences are all found but not contiguously is one span
-noted *assembled from N places*. A run closed by `[see @key]`, under
-an `<!-- own: why -->` line, or in a table row is the drafter's own and
-is checked for support only. A run that breaks is split into sentences,
-each of which lands in one or two classes:
-
-| Class | Means | Repair |
-| --- | --- | --- |
-| `unsupported-text` | the drafter's own sentence, and either no citation covers it or the cited source does not lexically support it | cite it, replace it with the source's words, or delete it |
-| `copy-mismatch` | not found verbatim, but mostly on one page of the source; the item names the page and the missing words | restore the exact wording |
-| `dangling-reference` | names a figure, equation, section, table or chapter the digest does not show, keeps a `[2]` reference marker, or is a copied run opening on "where", "thus" or "these" with nothing before it from the same source. Counted in no fraction | show the item, substitute it in brackets, delete the marker, or move the run's start or end |
-| `repeated-text` | a sentence copied again from a source an earlier run already copied it from; names the first copy's line. Counted in no fraction | keep the first copy and point back to it |
-| `unquoted-text` | the drafter's own sentence, not declared with `see` or `own` | close it with a `see` citation, replace it with a copied passage, or delete it |
-
-Every item is `[surfaced]`, with a stable twelve-character id and the
-section it sits in, the way [`review agenda`](#-chitragupta-review-agenda)
-prints its items. A page in a citation is a hint: the aid reports the
-page it found the text on, and notes a disagreement on the copied span
-without raising a finding ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md#-pages-and-what-a-page-note-means)
-says what a page is here).
-
-The report and its `.json` are filed on every run, like
-[`review agenda`](#-chitragupta-review-agenda)'s, because the `.json` is
-the next pass's baseline.
+what every such sentence is. [VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)
+explains digests, the report's fractions and classes, page notes, and
+the repair loop. It uses [`review quotation`](#-chitragupta-review-quotation)'s
+matcher, so it needs the Docling sidecars `chitragupta enrich --stages
+docling` writes; a source without one is reported as not checkable.
+**Advisory, exits 0 whatever it finds.** Any draft can be given to it;
+one that is not a digest simply reports most of its prose as not
+copied. Its finding classes are `unsupported-text`, `copy-mismatch`,
+`dangling-reference`, `repeated-text` and `unquoted-text`, each item
+`[surfaced]`. The report and its `.json` are filed on every run,
+because the `.json` is the next pass's baseline.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The digest to check |
-| `--formats FORMATS` | `md,tex,pdf` | The additional formats to render beside the Markdown report. The `.md` and `.json` are always written; `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
+| `--formats FORMATS` | `md,tex,pdf` | Extra formats beside the Markdown report; the `.md` and `.json` are always written. `tex` needs `pandoc`, `pdf` also LuaLaTeX |
 | `--json` | off | Print the payload (or, with `--baseline`, the comparison) as JSON instead of the summary |
 | `--baseline PATH` | -- | Compare this run against a previously filed `<stem>.digest.json`: resolved, persisting and new items, counts and fractions before and after, and whether unsupported text fell |
 
@@ -2700,55 +1447,39 @@ chitragupta review digest content/drafts/<topic>/notes.md \
     --baseline content/review/<topic>/notes.digest.json
 ```
 
-**`--json`** carries the envelope every review aid's JSON carries, plus
-`unsupported_fraction`, `copied_fraction`, `unverifiable_fraction`,
-`words_total`, `words_flagged`, `words_copied`, `words_unverifiable`, a
-`counts` object per class, an `items` list (`id`, `class`,
-`disposition`, `section`, `citekeys`, `line`, `summary`, `detail` with
-the whole sentence), a `spans` list per copied span (`line`,
-`citekeys`, `text`, `tier`, `pages`, `cited`, `note`) and an
-`unverifiable` list per run that could not be checked. Under
-`--baseline` the printed payload carries instead `baseline`,
-`resolved`, `persisting`, `new`, `counts_before`, `counts_after`,
-`unsupported_before`, `unsupported_after`, `copied_before`,
-`copied_after` and `fell`; the filed `.json` is always the bare report.
+**`--json`**: the shared envelope plus the three fractions
+(`unsupported_fraction`, `copied_fraction`, `unverifiable_fraction`),
+word counts, a `counts` object per class, an `items` list, a `spans`
+list per copied span and an `unverifiable` list. Under `--baseline` the
+printed payload carries `resolved`, `persisting`, `new`, the before and
+after counts and fractions, and `fell`; the filed `.json` is always the
+bare report.
 
 ### 📋 `chitragupta review verbatim`
 
-Layer 4, the review layer, with four subcommands: verbatim overlap
-between a draft and one cited source, a whole-draft x whole-corpus scan,
-a re-scan compared against a recorded one, and page location for a
-phrase. Stdlib-only, though `locate` shells out to the `pdftotext`
-binary when the source has a PDF, so poppler-utils on `PATH` gets it
-page numbers from the PDF itself. Without it, `locate` falls back to
-`content/parsed/` instead of failing. That fallback is page-level
-rather than layout-accurate, and is the same one a source with no PDF
-already took. `overlap`, `scan` and `recheck` read already-parsed text
-via `chitragupta/overlap_index.py`'s cache instead. Run with no
+Verbatim overlap with one cited source, a whole-draft x whole-corpus
+scan, a re-scan against a recorded one, and page location for a
+phrase. Stdlib-only; `locate` uses `pdftotext` when present and falls
+back to `content/parsed/` (page-level) without it. Run with no
 arguments to print its usage.
 
-[PLAGIARISM.md](PLAGIARISM.md) is the conceptual companion to this
-section. It covers what `overlap` and `scan` catch and what they do not,
-the severity buckets and the allowlist, and a measured
-`docling`-vs-`pdftotext` backend comparison.
-[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) has the fingerprinting
-technique and its literature sources.
+[PLAGIARISM.md](PLAGIARISM.md) covers what each tier catches and
+misses, severity buckets, cost, the `--json` fields, repair, and
+[how the tiers were chosen](PLAGIARISM.md#-how-the-tiers-were-chosen).
 
 | Subcommand | Arguments | What it does |
 | --- | --- | --- |
 | `overlap` | `<draft> <citekey> [--n N]` | Longest verbatim word-n-gram runs shared between the draft's sentences citing `<citekey>` and that source's parsed text. `--n` defaults to `8` |
-| `scan` | `<draft> [--min-run N] [--gap N] [--limit N] [--json] [--write] [--formats F]` | Slides the whole draft across the whole corpus index, catching verbatim reuse `overlap` structurally cannot: an uncited source, or connective prose that cites nothing. `--min-run` (default `8`, floor is the corpus index's own n-gram size) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run, recovering a lightly-edited near-verbatim lift; `--limit` caps how many findings print (default: all of them). `--json` prints the findings as data instead of as text (see below). `--write` also files the report under `content/review/`, mirroring the draft's path, beside the same draft's provenance and coverage reports; printing stays the default. `--formats` (default `md,tex,pdf`) names the *additional* formats rendered beside the Markdown report; the `.md` is always written |
+| `scan` | `<draft> [--min-run N] [--gap N] [--limit N] [--json] [--write] [--formats F]` | Slides the whole draft across the whole corpus index, catching reuse `overlap` cannot: an uncited source, or prose that cites nothing. `--min-run` (default `8`) is the reporting length floor; `--gap` (default `1`) tolerates that many non-matching words inside a run; `--limit` caps how many findings print (default all). `--json`, `--write` and `--formats` (default `md,tex,pdf`) as for the other aids |
 | `recheck` | `<draft> --baseline PATH [--json]` | Re-scans the draft and compares it against a payload `scan --write` filed earlier, reporting each finding as resolved, persisting or new plus the change in the objective count. `--baseline` is required and its `--min-run`/`--gap` are reused, so the two scans are comparable. Prints only; there is no `--write` |
 | `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
 
 **Exit codes**, shared with the other ten review aids. `0` on every
-successful invocation, findings or not: these are advisory, never a gate.
-That includes `recheck`: a draft that got worse still exits 0.
-
+successful invocation, findings or not: these are advisory, never a
+gate. That includes `recheck`: a draft that got worse still exits 0.
 `1` is a draft this layer will not read, because it is missing or
-resolves outside `content/`. `2` is a malformed invocation, the usual
-CLI-usage error rather than a verdict. `recheck` also uses `2` for a
-baseline it cannot compare against.
+resolves outside `content/`. `2` is a malformed invocation; `recheck`
+also uses `2` for a baseline it cannot compare against.
 
 ```bash
 chitragupta review verbatim overlap content/drafts/survey.md talasila_composable_2025
@@ -2761,343 +1492,60 @@ chitragupta review verbatim scan content/drafts/survey.md
 # chitragupta review verbatim locate talasila_composable_2025 "a digital twin is"
 ```
 
-**`--json`, and who it is for.** `--json` prints the same findings as a
-payload, for a programmatic consumer (a remediation loop, an eventual
-overlap gate) that would otherwise have to parse the printed lines.
+**A clean scan is not a clean bill of health.** The exact tier cannot
+see a substituted word, the skip-gram tier cannot see restatement, and
+the embedding tier runs only where the enrichment layer, the Docling
+sidecars and the draft's dossier are all present. Read a clean run as
+"nothing found by the tiers that ran"; every form of the output names
+any tier that did not run, and why (`tiers_not_run` in `--json`). Both
+paraphrase tiers are advisory only; treat skip-gram findings with
+*more* scrutiny than exact ones.
 
-The payload carries four things:
+**`--json`** serialises what `scan` computed, never recomputing; a
+clean draft emits `"findings": []` and exits 0. `start` is a word
+offset into the normalised word stream, not a character offset or line
+number; `line`, `char_start`, `char_end` and `draft_text` index the
+draft as written, from the first matched word to the last, interior
+punctuation included and a trailing period excluded, so `draft_text`
+can be used as an `Edit` `old_string`. `id` is a digest of
+`(citekey, page, fragment)`, not of position, so it survives the repair
+of another finding. `--write` files the same bytes as
+`content/review/<topic>/<stem>.verbatim.json`, with no timestamp; with
+both flags, the written-files summary goes to stderr.
+[PLAGIARISM.md](PLAGIARISM.md#-repairing-what-the-scan-found) has every
+field.
 
-- The envelope every review aid's JSON carries: a notice that this is not
-  a verdict, the aid, the draft, the exact command, the version.
-- The three flags that set the reporting floor: `min_run`, `gap`,
-  `limit`.
-- How many findings the allowlist suppressed (`suppressed`), what
-  coverage gap each `tiers_not_run` entry names, and the Chroma collection
-  name the embedding tier reads or writes right now (`corpus_key`).
-  All three are described below.
-- One object per finding, with `id`, `citekey`, `page`, `end_page`,
-  `tier`, `span_words`, `matched_words`, `start`, `line`, `char_start`,
-  `char_end`, `draft_text`, `fragment`, `context`, `cites_source`,
-  `quoted`, `score` and `severity`.
+**`recheck`** reports `resolved`, `persisting`, `new`, and the change
+in the objective count (the `long` and `short` buckets, excluding a
+quoted-and-cited run and every `embedding` finding). Read `new` as well
+as the delta: one finding resolved and another introduced leaves the
+delta at 0. The floor comes from the baseline, never a flag. It refuses
+(exit 2, naming the remedy) a baseline it cannot compare against:
+another aid's payload, one written under `--limit`, one missing a
+field, one from a different `major.minor` release, or one that is not
+JSON. There is no `--write`: a comparison is stale the next time the
+draft is touched. The `agenda-reviser` skill
+([GENRE.md](GENRE.md#-working-the-agenda-agenda-reviser)) is the
+intended caller.
 
-`severity` is the same `long`/`short`/`quoted` bucket the written report
-groups by, so the payload and a human reviewer read the same severity.
+**The disk cache.** The first `scan` builds a corpus-wide index under
+`content/overlap/` (about 27s over a 497-document corpus); later scans
+over an unchanged corpus are sub-second, and a changed document is
+re-fingerprinted alone. Delete the directory and the next run rebuilds
+it. `scan` also honours a per-host, gitignored
+`content/verbatim_allowlist.toml`
+([PLAGIARISM.md](PLAGIARISM.md#-the-boilerplate-allowlist)).
 
-The payload serialises what `scan` already computed. It never recomputes,
-so it cannot disagree with the two printed forms about what was found. A
-clean draft emits `"findings": []` and still exits 0; "nothing found"
-is data too.
-
-`cites_source: false` is the printed form's `UNCITED SOURCE`, and
-`quoted: true` its `quoted`: booleans rather than those labels, because a
-caller that has to match display text is back where it started.
-
-`tier` names which detection tier produced the finding: `exact`,
-`skip-gram` or `embedding` (see
-[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md#-where-this-sits-in-a-bigger-plan)).
-`score` is the embedding tier's alignment strength, and `null` on the two
-deterministic tiers, which have no similarity to report. It ranks within
-a section. It is not a probability, and not comparable to anything the
-other tiers publish.
-
-`tiers_not_run` is one `{"tier", "reason", "partial"}` object per
-coverage gap, and `[]` when every tier ran with nothing left uncovered.
-Only the embedding tier can appear there today, and it can contribute
-more than one entry, since a heading-renamed gap and a stale-corpus gap
-are independent and each get their own message.
-
-`"partial": false` means the tier did not run at all. It needs five
-things: the optional enrichment layer, a built `content/chroma/`, the
-Docling passage sidecars, the draft's own dossier, and a synced ledger to
-read source passages from. A healthy checkout can be missing any of
-them.
-
-`"partial": true` means the tier ran and the findings in the payload
-are real, but it did not run against everything the draft cites: some
-of the dossier's recorded section headings could not be matched to this
-draft's own headings (probably renamed since `sections --citekeys
---write` last ran), or some cited source has no chunks in the embedded
-corpus (the corpus grew since `enrich` last ran).
-
-That is what the field is for either way. `findings: []` alone cannot
-distinguish a draft that was checked and is clean from one a tier never
-looked at, or looked at only in part. The printed and written reports
-say the same thing in prose.
-
-`corpus_key` is `embed_index.collection_name()`, namespaced by
-`[enrich].embedding_model`. It is recorded even when `tiers_not_run`
-lists `embedding`, since `config.EMBEDDING_MODEL` alone decides it and
-costs nothing to compute. `recheck` reads it, and `tiers_not_run`, off a
-baseline to warn when either has changed since (see below).
-
-`page` and `end_page` are the lowest and highest page an n-gram in the
-run *starts* on. They are equal for an ordinary
-single-page run. `end_page > page` means the run spans a source page
-break, and the printed forms render that as `p.N-M` rather than picking
-one side.
-
-It does not work the other way. A remainder shorter than the index's own
-n-gram size has no gram starting on its page, so `scan` recovers it into
-the merged run's word content without moving `end_page`. `page` ==
-`end_page` therefore does not by itself mean every word in the run sits
-on one page.
-
-`start`, `fragment` and `context` describe the **normalised word
-stream**, not the draft file as written: the draft masked (code and the
-References section blanked), citation markers blanked, lowercased,
-punctuation dropped. `start` is a word offset into that stream, not a character
-offset and not a line number, and `fragment` is those words
-space-joined. Those three locate a passage for a *reader*.
-
-`line`, `char_start`, `char_end` and `draft_text` locate it for an
-*editor*. They index the draft as written, so
-`draft[char_start:char_end] == draft_text` exactly, which is what makes
-`draft_text` usable as an `Edit` `old_string` without searching the file
-for the passage and risking the wrong match. `line` is 1-based.
-
-The span covers **every original character between the run's first and
-last matched word**, those two words included. That means original
-casing, interior punctuation, line breaks, and any citation marker
-sitting inside the run.
-
-It ends at the last word rather than at the end of the sentence, so a
-trailing period or closing quote falls just outside `char_end`. That is
-what you want: a rewrite substituted for `draft_text` should leave the
-sentence's own punctuation alone. Leading punctuation is outside the span
-for the same reason.
-
-`id` names the finding: a 12-hex-character digest of `(citekey, page,
-fragment)`, and deliberately not of its position. An identity built on
-`start` would rename every remaining finding the moment the first one was
-repaired, so nothing could decide whether a finding had survived a
-revision, and that is what `recheck` below has to decide.
-
-Two identical runs from the same source page therefore share an `id`, and
-`recheck` understates progress in that case rather than overstating it.
-
-For a run spanning a page break (`end_page > page`), `id` is keyed
-on `page`, the lower of the two, where the run starts. If a later scan
-merges a run differently (a wider gap-tolerant run absorbing a
-previously-separate one, say), the merged run's `page` can change, and
-with it the `id`. That is the correct read, since a run whose extent
-changed really is a different finding to `recheck`. But it means `id`
-stability holds across re-runs at the same `--gap`/`--min-run`, not
-across every possible one.
-
-`--write` files the payload as `content/review/<topic>/<stem>.verbatim.json`,
-beside the Markdown report, whether or not `--json` was also given,
-because it is written for whatever reads it later rather than for
-whoever ran the command.
-What `--json` prints is byte-for-byte what `--write` files, so redirecting
-stdout and reading the sibling give the same bytes, and neither carries a
-timestamp: two runs over an unchanged draft and corpus produce identical
-payloads. With both flags, the written-files summary goes to stderr so
-stdout stays a valid JSON file. `dossier export` carries the payload with
-the report.
-
-All eleven review aids emit one; `provenance` and `coverage` follow
-the same envelope, above.
-[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s `agenda` aid treats each other
-aid's JSON as optional rather than required, though: not every draft has
-had every aid run against it, and `coverage`'s sibling is only ever filed
-under `--write`.
-
-**`recheck`, and what it is for.** `scan` says what a draft borrows.
-`recheck` says what changed since a particular scan. That is the question
-anyone repairing those findings has: *did that rewrite fix the
-finding, and did it break anything else?* Reading two reports side by
-side makes that a judgement. It should not be one, so `recheck` makes it
-arithmetic.
-
-Given a baseline payload, `recheck` re-scans and reports each finding as
-`resolved` (in the baseline, gone now), `persisting` or `new`. It also
-reports `objective_before`, `objective_after` and `objective_delta`.
-
-"Objective" means the `long` and `short` buckets. A run that is both
-quoted and cited is excluded, because converting a lift into a properly
-attributed quotation is one of the two repairs available, and it must not
-score as no improvement. A rewrite that resolves its own finding by
-lifting from a *different* source shows up in `new`, and that list is
-what catches it: one finding resolved and one appearing leaves
-`objective_delta` at exactly 0, so a caller reading the delta alone
-cannot tell that repair from one that changed nothing.
-
-Every `tier: "embedding"` finding is excluded too. That tier is
-advisory only (its findings move with tier availability and the
-embedding model, not only with an edit), so counting them would stall
-`agenda-reviser`'s strictly-falling loop for reasons no edit caused: a
-baseline taken before the enrich group was installed, say, would then
-report a run of embedding findings as `new` on the very next rescan.
-
-The floor comes from the baseline, not from a flag. Two scans are only
-comparable at the same `--min-run`/`--gap`, and the baseline's already
-happened; a `--min-run` here would let a strict run be compared against a
-lax one and the difference read as progress.
-
-It refuses, with exit 2, a baseline it cannot compare against, always
-naming the remedy:
-
-- another aid's payload. The review layer's aids share an envelope, so a
-  coverage report is also JSON with a `findings` key, and comparing
-  against one would report every verbatim finding as new.
-- one written under `--limit`. Truncation happens after sorting, so
-  "absent" cannot be distinguished from "cut".
-- one missing a field the comparison prints, or otherwise not shaped like
-  a findings list. This is the likeliest of the five, because a payload
-  filed by another release sits at exactly the path a caller is told to
-  look at.
-
-  The check names the fields it needs rather than probing for `id` alone.
-  `resolved` findings are printed straight out of the baseline and never
-  rescanned, so a payload can carry an `id` and still be missing
-  something the output line reads.
-- one from a **different release series** (`major.minor`). What counts as
-  one finding can change between releases, giving wording nobody
-  touched a different `id`, so the comparison would report repairs
-  that never happened. A *patch* difference is accepted silently, because
-  `DEVELOPER-AGENTS.md`'s versioning rules define
-  a patch release as changing nothing about what the pipeline does, so a
-  finding-shape change cannot land in one.
-- one that is unreadable or not JSON.
-
-The last two overlap and neither covers the other: a payload can be the
-right shape and mean something different, or claim this series and still
-be missing a field.
-
-Refusing rather than warning costs nothing here: `recheck` re-scans
-anyway, so if it can run at all then `scan --write` can too, and against
-a warm index that is a sub-second re-take. The payload still carries
-`baseline_version` as provenance for the comparison it did make.
-
-One case warns instead of refusing: a baseline whose
-`tiers_not_run` or `corpus_key` disagree with this rescan's own. Neither
-makes the baseline invalid to compare against (tiers 1 and 2 are
-unaffected either way, and `objective_before`/`objective_after` already
-exclude tier 3), so `recheck` still reports `resolved`/`persisting`/`new`
-and adds a `warnings` line (both forms) saying the enrich group's
-installed state or the corpus's embedding model changed since the
-baseline, so an `embedding` entry in `resolved`/`new` may reflect that
-rather than an edit. A baseline predating `corpus_key` is not treated as
-a mismatch, the same posture the release-series check takes on a missing
-`version`.
-
-There is no `--write`. A scan report is kept beside the draft because it
-is read again months later; a comparison against one particular baseline
-is consumed by whoever asked for it and stale the next time the draft is
-touched.
-
-The `agenda-reviser` skill
-([GENRE.md](GENRE.md#-working-the-agenda-agenda-reviser)) is the intended
-caller: it takes a baseline, repairs findings one at a time, and keeps a
-repair only when `recheck` and `chitragupta draft gate` both come back
-clean. Nothing obliges you to use it; `recheck` is as free and as
-advisory as every other command here.
-
-**What `scan` does not see, and why that matters.**
-`scan` runs all three detection tiers, and each finding names the one
-that produced it in `--json` output.
-
-The **exact** tier matches word n-grams, so a single substituted word
-breaks it by construction. The **skip-gram** tier tolerates that,
-catching a synonym swap or inflection change. Neither sees
-restatement: the same claim in a different sentence structure. The
-**embedding** tier does, but it runs only where the optional
-enrichment layer, the Docling sidecars and the draft's own dossier are
-all present, and it compares a section only against the sources that
-section already cites.
-
-So the gap has narrowed rather than closed. Read a clean run as "nothing
-found by the tiers that ran", never "no borrowed wording found". `scan`
-names any tier that did not run, and why, in every form of its output.
-
-Both paraphrase tiers ship advisory-only. Skip-gram's real-corpus
-precision has been measured (`bench/RESULTS.md`, 2026-08-14): over a
-real 15-chapter book, 2 of 27 findings were reuse a reviewer would act
-on, and the exact tier already reported both passages. Treat its findings
-with *more* scrutiny than the exact tier's, not less.
-
-See [PLAGIARISM.md](PLAGIARISM.md) for how to read them, and
-[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) for the three-tier design.
-
-**The disk cache, and what the first run costs.** `scan` builds a
-corpus-wide index the first time it runs (`content/overlap/index.bin`
-plus an `index.json` header), merged from the per-document fingerprints
-in `content/overlap/docs/<citekey>.fpr`. That first build is the only
-slow part: ~27s over this project's 497-document corpus. Every later
-scan over an unchanged corpus reloads the merged index and is sub-second.
-
-The header key covers the n-gram size, the tokenizer version and, per
-document, its `pdf_hash` *together with the parsed file's own size and
-mtime*. A `sync` that changes one PDF therefore re-fingerprints that one
-document and re-merges, rather than rebuilding from scratch.
-
-Both halves of that per-document key are needed. Re-parsing the
-corpus under a different `[parser].backend` rewrites the text without
-touching the PDF, and the parsed-file stat is the only part that notices.
-
-The whole directory is a cache, not an output: delete it and the next run
-rebuilds whatever it needs.
-
-The skip-gram tier keeps its own pair of files in the same directory
-(`skipgram_index.bin`/`.json`, and `docs/<citekey>.skipgram.fpr`), under
-its own tokenizer version, so the two tiers never cross-invalidate.
-
-A change to either tokenizer version makes the next `scan` re-fingerprint
-the corpus for that tier, at roughly the cost of the tier-1 build above,
-paid once. See
-[ARCHITECTURE.md](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
-
-`scan` groups a match by its `(citekey, diagonal)`. The diagonal is the
-source position minus the draft position, which holds constant across a
-run; the source position is global across the whole document rather than
-reset per page. `scan` then merges runs on the same diagonal that
-sit within `--gap` words of each other.
-
-Two things survive that merge as one finding. A single edited word inside
-an otherwise-verbatim passage still reports as one run. So does a lift
-spanning a source page break, so a short remainder on the far side of
-the break is not lost under `--min-run`.
-
-A finding's `page`/`end_page` name every page an n-gram in the run
-*starts* on. That is usually the full range, but not always: a
-remainder shorter than the index's own n-gram size has no gram starting
-on its page, because nothing that short can start one. `scan` recovers it
-into the merged run's word content without moving `end_page` to cover it.
-
-Each finding also reports two bits: whether the containing draft
-paragraph cites that source (`UNCITED SOURCE` if not), and whether the
-run sits inside quote delimiters. Both are informational on stdout.
-`--write`'s report goes further and *groups* findings most-damning-first
-(long runs, then short, then quoted), so a reviewer reads the worst one
-first. The underlying findings are the same ones `scan` produces, for
-a later gate to be tuned against.
-
-**The allowlist.** `scan` also consults `content/verbatim_allowlist.toml`
-if present: a per-host, gitignored list of acronyms, phrases,
-definitions and whole paragraphs its owner has decided are boilerplate,
-never a project-tracked file. A finding is dropped only when discounting
-its allowlisted words leaves less than `--min-run`; a short allowlisted
-phrase sitting inside a much longer, otherwise-unexplained lift is kept.
-See [PLAGIARISM.md](PLAGIARISM.md#-the-boilerplate-allowlist) for the file
-format and the reasoning.
-
-`locate` reports page numbers by splitting on the form-feed characters
-between pages. Both backends emit them, so a page number here is a page
-you can turn to whichever one parsed the citekey (see
-[CONFIG.md](CONFIG.md#-backend-pdftotext-or-docling)). One limit: `docling`
-writes a break between consecutive pages that carry text, so a page with
-no extracted items at all shifts the numbering after it. The passage
-sidecar records each item's own page and is not affected; where the two
-disagree, believe `chitragupta review provenance`.
+`locate` numbers pages by form feeds. Under `docling`, a page with no
+extracted text shifts the numbering after it; where the two disagree,
+believe `chitragupta review provenance`.
 
 ### 🎨 `chitragupta figure sync`
 
 Keeps the house figure-style block
 ([TIKZ-STYLE.md](TIKZ-STYLE.md#-the-house-figure-style)) current inside
-every figure file. A figure file carries its own copy of the block,
-between two marker comments, so that it compiles under
-`\usepackage{tikz}` alone wherever it is `\input`; this is what updates
-those copies when the block changes.
+every figure file. Each figure file carries its own copy between two
+marker comments, so it compiles under `\usepackage{tikz}` alone.
 
 ```bash
 chitragupta figure sync                       # every content/drafts/**/figures/*.tex
@@ -3106,9 +1554,8 @@ chitragupta figure sync --check assets/tikz/*.tex   # files as named; report onl
 ```
 
 A directory contributes only the `*.tex` files directly inside a
-`figures/` directory beneath it, the same rule the default walk uses, so
-a draft's own `.tex` is never stamped. A file named on the command line
-is taken as given.
+`figures/` directory beneath it, so a draft's own `.tex` is never
+stamped. A file named on the command line is taken as given.
 
 | What it finds | What it does |
 | --- | --- |
@@ -3119,8 +1566,8 @@ is taken as given.
 | markers unpaired or repeated | leaves it alone (`malformed`) |
 | no picture to stamp above, a symlink, not UTF-8, read-only or unwritable | reports it and carries on (`no-picture`, `skipped`) |
 
-Everything outside the markers is left byte for byte, CRLF line endings
-included, and running it twice changes nothing the second time.
+Everything outside the markers is left byte for byte, and a second run
+changes nothing.
 
 | Flag | Exit |
 | --- | --- |
@@ -3129,18 +1576,16 @@ included, and running it twice changes nothing the second time.
 | either | **2** on a usage error, or when the installed block or its version register cannot be read (`chitragupta doctor`) |
 
 `chitragupta draft render` reports a stale or missing block as a
-`[figure]` warning that names this command, and renders anyway. In a
+`[figure]` warning naming this command, and renders anyway. In a
 developer checkout, `git-hooks/pre-commit` runs `--check` on staged
-figure files and reports without blocking the commit
-([HOOKS.md](HOOKS.md)).
+figure files without blocking the commit ([HOOKS.md](HOOKS.md)).
 
 ### 🔎 `chitragupta figure check`
 
 Reports every rule one figure file breaks, by rule id, and every
 deliberate exception the file records. One compile, in the render's
-own fonts at 12pt with the figure's TikZ libraries loaded in the
-preamble, as the renderer loads them. The `figure-drawer` skill runs
-this as its geometry step.
+fonts at 12pt with the figure's TikZ libraries loaded. The
+`figure-drawer` skill runs this as its geometry step.
 [figure-checks/README.md](figure-checks/README.md) has every rule, the
 `% cg-allow:` form, and how to read the report.
 
@@ -3150,12 +1595,6 @@ chitragupta figure check figures/flow.tex --width 345    # a narrower target, in
 chitragupta figure check figures/flow.tex --layout map   # read sizes against another layout
 chitragupta figure check figures/flow.tex --json
 ```
-
-The report is one line per finding, `<rule-id> <target> <measurement>`,
-then a section for each kind of thing that is not a finding (advisory
-reports, honoured, stale, unchecked and malformed allows, rules that
-could not be measured, and diagnostics), left out when empty, then a
-one-line summary.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
@@ -3169,19 +1608,14 @@ one-line summary.
 | **0** | after any run, whatever it found; it is an aid |
 | **2** | a usage error, a path that is not a readable file, or no `lualatex` or `tikz.sty` on the host. It then checks nothing rather than report the source-only rules, whose silence would read as a clean figure (`chitragupta doctor`) |
 
-`review figure` reads the same geometry over every figure a draft
-references and keeps its own report; this command is the per-file
-form the skill acts on.
-
 ### 🌱 `chitragupta figure new`
 
-Starts a figure from a layout's scaffold in `assets/tikz/`: copies it to
-`<figures-dir>/<name>.tex`, keeping its `% cg-layout:` line, copies the
-layout's ASCII twin to `<name>.txt` (every shipped layout has one), and runs
-[`figure sync`](#-chitragupta-figure-sync) on the copy. It never
-overwrites: a `<name>.tex` or `<name>.txt` that exists, or a symlink at
-either, is refused and nothing is written. The `figure-drawer` skill
-starts every figure with it.
+Starts a figure from a layout's scaffold in `assets/tikz/`: copies it
+to `<figures-dir>/<name>.tex`, copies the layout's ASCII twin to
+`<name>.txt`, and runs [`figure sync`](#-chitragupta-figure-sync) on the
+copy. It never overwrites: an existing `<name>.tex` or `<name>.txt`, or
+a symlink at either, is refused and nothing is written. The
+`figure-drawer` skill starts every figure with it.
 
 ```bash
 chitragupta figure new content/drafts/rag/figures flow --layout zoned-spine
@@ -3206,33 +1640,21 @@ figure sync: 1 current
 
 ### 👁 `chitragupta figure look`
 
-Shows one figure as it will print, for the defects no rule measures: a
-label that wrapped badly, an arrow through a zone title, a figure that
-reads as cramped. It sets the figure alone on the page it prints on,
-in the render's fonts: `draft render`'s `article` at 12pt with a 453pt
-text width, or for a figure under a book's drafts directory the book's
-11pt page with a 437.5pt one (the page `figure check` picks), with
-the figure's TikZ libraries loaded in the preamble as the renderer
-loads them, and writes:
+Shows one figure as it will print, alone on its page in the render's
+fonts (the page `figure check` picks), for the defects no rule
+measures: a badly wrapped label, an arrow through a zone title. It
+writes:
 
 | File | What it is |
 | --- | --- |
-| `<name>.look.pdf` | The page, cropped to the figure plus 10pt on every side, so the house soft shadow, drawn outside the figure's bounding box, is not cut off. A figure wider than the text width gets a red line at the text width, measured from its left edge |
-| `<name>.look.png` | That page at 300 dpi, never scaled, so pixel size is proportional to the figure's real size |
+| `<name>.look.pdf` | The page, cropped to the figure plus 10pt (so the soft shadow survives). A figure wider than the text width gets a red line at the text width |
+| `<name>.look.png` | That page at 300 dpi, never scaled |
 | `<name>.look.json` | A digest of what the look was built from, and what was measured |
 | `<name>.page.png` | With `--draft`: the draft's page that holds the figure, at 300 dpi |
 
-All of them go where the render puts output, under `content/rendered/`
-with the figure's place under `content/drafts/` mirrored:
-`content/drafts/rag/figures/flow.tex` looks to
-`content/rendered/rag/figures/`. `--output-dir DIR` puts them in `DIR`
-instead (with `--draft`, the render goes there too, and the figure's
-files below it as the render places them). A figure outside
-`content/drafts/` has no mirrored place, so it needs `--output-dir`:
-without one, `figure look` writes nothing and exits 2, rather than mix
-the look in with the drafts' and overwrite any other figure of the same
-name. A figure whose source, fonts and document have not changed since
-its last look is not compiled again.
+They go under `content/rendered/`, mirroring the figure's place under
+`content/drafts/`, or into `--output-dir DIR`, which a figure outside
+`content/drafts/` requires. An unchanged figure is not recompiled.
 
 ```bash
 chitragupta figure look content/drafts/rag/figures/flow.tex
@@ -3247,14 +1669,12 @@ current  content/rendered/rag/figures/flow.look.png   (1488 x 567 px at 300 dpi)
 wrote    content/rendered/rag/figures/flow.page.png   (page 1 of survey.pdf; 2481 x 3508 px)
 ```
 
-With `--draft` it renders the draft to pdf exactly as
-[`draft render`](#-chitragupta-draft-render) does, refusals included,
-and finds the figure's page from a mark the pdf render leaves at every
-figure in a Markdown draft: a PDF named destination, `cgfig:<marker
-base>`, which adds nothing to the page or to a viewer's bookmarks. A
-`.tex` draft's figures carry no mark, so they get a look and no page
-picture. A figure that does not compile prints TeX's first error line,
-and its old look files are deleted so none passes for current.
+With `--draft` it renders the draft as
+[`draft render`](#-chitragupta-draft-render) does and finds the
+figure's page from an invisible PDF destination (`cgfig:<marker
+base>`); a `.tex` draft's figures get no page picture. A figure that
+does not compile prints TeX's first error, and its old look files are
+deleted.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
@@ -3270,12 +1690,9 @@ and its old look files are deleted so none passes for current.
 
 Orchestrates the enrichment layer: docling -> embeddings/Chroma ->
 BERTopic -> declared keywords -> seed topics -> converge -> topic
-graph. **Needs the venv.** Each stage probes
-its own prerequisites and reports a per-stage status:
-`ok`, `partial`, `skipped` or `error`. A `skipped` result on a machine
-without the enrich extra is therefore a correct answer rather than a
-bug. No stage here shells out to a binary, so none of them can report
-`missing-binary`; that status belongs to the render and style paths.
+graph. **Needs the venv.** Each stage probes its own prerequisites and
+reports `ok`, `partial`, `skipped` or `error`, so `skipped` on a machine
+without the enrich extra is a correct answer.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
@@ -3284,13 +1701,12 @@ bug. No stage here shells out to a binary, so none of them can report
 | `--stages STAGES` | all seven, or `docling` alone with `--for-draft` | Comma-separated subset of `docling,embed,bertopic,extract-keywords,seed-topics,converge,topic-graph` |
 | `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed`, `bertopic`, `extract-keywords`, `seed-topics`, `converge` or `topic-graph` |
 
-**Exit code**, which is all a schedule can read: `1` when any stage reports
-`error` or there is no ledger, `2` when another run holds the lock (as for
-`sync`), `3` when `--for-draft` is refused, `0` otherwise, including
-`partial`, which is what an ordinary unparseable PDF produces, and `skipped`,
-which is what a stage whose prerequisite is absent produces. A `docling` run
-that gave up on documents it could not get through a repeatedly-dying worker
-pool reports `error` rather than `partial`, so it exits `1`.
+**Exit code**, which is all a schedule can read: `1` when any stage
+reports `error` or there is no ledger, `2` when another run holds the
+lock (as for `sync`), `3` when `--for-draft` is refused, `0` otherwise,
+including `partial` and `skipped`. A `docling` run that gave up on
+documents through a repeatedly-dying worker pool reports `error`, so
+it exits `1`.
 
 ```bash
 chitragupta enrich
@@ -3299,21 +1715,19 @@ chitragupta enrich
 # chitragupta enrich --stages extract-keywords   # writes content/keywords.toml
 # chitragupta enrich --stages seed-topics   # skipped with no content/seed_topics.toml
 # chitragupta enrich --for-draft content/drafts/digital-twins.md
-
-# A review report and a draft render are tier-1 commands, not stages --
-# no venv, no lock:
-# chitragupta review provenance content/drafts/survey.md
-# chitragupta draft render content/drafts/survey.md --format pdf
 ```
+
+The `embed` stage prints one line per document (`embedded`,
+`unchanged` or `no text to embed`) and a closing total. Ctrl+C is
+safe: every chunk upserted so far is kept, and a re-run picks up from
+there.
 
 #### 📚 Enriching one draft's papers
 
-By default the unit of work is the corpus: every ledger item, whether a
-draft cites it or not. `--for-draft` narrows that to the papers one draft
-cites. It reads them out of the draft with the same reader the citation
-gate uses, `chitragupta.citation_gate.extract_citekeys`. A draft resting on
-twenty-three papers therefore costs twenty-three parses rather than the
-whole library:
+`--for-draft` narrows `docling` from the whole corpus to the papers one
+draft cites, read with the citation gate's own
+`chitragupta.citation_gate.extract_citekeys`, so a draft resting on
+twenty-three papers costs twenty-three parses:
 
 ```console
 $ chitragupta enrich --for-draft content/drafts/digital-twins.md
@@ -3330,60 +1744,14 @@ Corpus: 23 of 642 doc(s) from papers/bibliography.bib -- scoped to content/draft
   docling    ok
 ```
 
-With no `--stages` of its own it runs `docling` alone: the stage the
-scope reaches, and the one that produces the quotable passages
-this is usually for. To carry on into the draft's own review report, run
-`chitragupta review provenance <draft>` afterwards: it is a tier-1
-command, so it needs no venv and waits on no lock.
-
-Six stages refuse the scope rather than honouring it: every stage but
-`docling`, because each builds one whole-corpus artefact. `embed` is the
-example:
-
-```console
-$ chitragupta enrich --for-draft content/drafts/digital-twins.md --stages embed
-  --for-draft cannot scope embed: it builds one whole-corpus artefact, and a partial one is indistinguishable from a complete one. Run them as separate commands:
-      chitragupta enrich --for-draft content/drafts/digital-twins.md --stages docling
-      chitragupta enrich --stages embed
-```
-
-That is a tier, not a ladder ([LADDERS.md](LADDERS.md)). `embed` writes a
-Chroma collection carrying no record of how much of the corpus it covers.
-Every skill that reads it decides by asking only whether
-`content/chroma/` exists, so a collection holding eleven papers would
-answer as though it held 642. `bertopic` overwrites `content/topics.json`
-whole, so a scoped run would replace a corpus-wide topic model with an
-eleven-document one. `extract-keywords`, `seed-topics`, `converge` and
-`topic-graph` likewise each write one corpus-wide artefact. None is worth
-a silently smaller answer, so the run stops and names the command to use
-instead (exit status 3).
-
-A citekey the draft cites and the ledger has never heard of is named, not
-silently dropped. A scope matching nothing at all stops rather than
-reporting `ok` over zero documents.
-
-The Docling cache is per-document and never rewritten to match the scope,
-so a scoped run and a full run do no duplicate work in either order.
-Narrow first and widen later, or the reverse: nothing is parsed twice.
-
-The `embed` stage names each document as it reaches it, so a run over a
-real corpus is legible rather than silent for its whole duration:
-
-```text
-=== embed ===
-  [1/646] abbiati_modelling_2024 -- embedded, 92 chunk(s)
-  [2/646] abduvakhobov_scalable_2024 -- unchanged, 65 chunk(s)
-  [3/646] adhikari_digital_2023 -- no text to embed
-  ...
-  646 document(s): 102 embedded, 399 unchanged, 145 with no text -- 32033 chunk(s) in the index
-```
-
-`unchanged` is the incremental skip (same text as last run, not
-re-encoded); `no text to embed` is a bib entry with no parsed text behind
-it. It is not citable, so neither `chitragupta/retrieval.py` nor this index
-offers it. Ctrl+C is safe: every chunk upserted before the interrupt is
-already in `content/chroma/`, the stage says how far it got, and re-running
-picks up from there.
+Follow it with `chitragupta review provenance <draft>`, a tier-1
+command needing no venv and no lock. The other six stages refuse the
+scope (exit 3) and name the two commands to run instead, because each
+builds one whole-corpus artefact and a partial one is indistinguishable
+from a complete one ([LADDERS.md](LADDERS.md)). A cited citekey the
+ledger has never heard of is named, and a scope matching nothing stops.
+The Docling cache is per-document, so scoped and full runs never parse
+a document twice.
 
 ### 🔧 `scripts/install_full_pipeline.sh`
 
@@ -3392,13 +1760,13 @@ One install path for both a bare machine and the Docker image. Takes
 
 | Stage | What it does |
 | --- | --- |
-| `python-deps` | **Default when no stage is given.** Creates the venv and runs `poetry install --with enrich`. `chitragupta install` refuses this by name, pointing at `chitragupta install enrich` (pip: `pip install 'chitragupta-cli[enrich]'`) |
-| `os-deps` | `apt-get` the system packages (TeX Live with LuaLaTeX, the fonts a `pdf` render uses, Pandoc, poppler-utils, Poetry, git/curl/unzip, OpenCV's runtime libraries, and `python-is-python3`, which is what puts the name `python` on `PATH`, the name every Claude Code hook is launched by ([HOOKS.md](HOOKS.md#-the-launcher-contract)); see [PDF-PARSER.md](PDF-PARSER.md#-docling-fails-every-document-with-an-opencv-recursion-error)), plus the STIX Two font fetched by hand. Needs root; auto-sudo's. Opt-in, since not everyone wants a script touching apt. Also reachable as `chitragupta install os-deps`, unmodified |
-| `dev-deps` | `poetry install --with dev` (pytest, pytest-cov) into the same venv, plus the pinned `actionlint` binary and `core.hooksPath` pointed at `git-hooks/`. Needed only to run the test suite and commit. Run `python-deps` first. `chitragupta install` refuses this by name; the pip equivalent is `pip install 'chitragupta-cli[dev]'` |
-| `cpu-torch` | Swaps torch to the CPU-only wheel index and removes the CUDA runtime the default wheel pulled in. Opt-in and never part of `all`: it asserts a GPU is absent *for good* (a hosted CI runner, a CPU-only container), which the script cannot infer about a host that might grow one later |
-| `gpu-torch` | Reaches `ensure_gpu_torch` (below) directly, pointed at `CHITRAGUPTA_PYTHON` rather than this script's own venv, and runs pip as `$CHITRAGUPTA_PYTHON -m pip`. This is what `chitragupta install gpu-torch` reaches for someone who pip-installed rather than cloned. Not part of `all` or `python-deps`, which already call `ensure_gpu_torch` against their own venv |
+| `python-deps` | **Default when no stage is given.** Creates the venv and runs `poetry install --with enrich`. `chitragupta install` refuses it, naming `chitragupta install enrich` |
+| `os-deps` | `apt-get` the system packages (TeX Live with LuaLaTeX, the render's fonts, Pandoc, poppler-utils, Poetry, git/curl/unzip, OpenCV's runtime libraries ([PDF-PARSER.md](PDF-PARSER.md#-docling-fails-every-document-with-an-opencv-recursion-error)), and `python-is-python3`, which puts the hooks' `python` on `PATH`), plus STIX Two. Needs root; auto-sudo's. Opt-in. Also `chitragupta install os-deps` |
+| `dev-deps` | `poetry install --with dev` into the same venv, plus the pinned `actionlint` and `core.hooksPath` pointed at `git-hooks/`. For running the tests and committing; run `python-deps` first. Pip equivalent: `pip install 'chitragupta-cli[dev]'` |
+| `cpu-torch` | Swaps torch to the CPU-only wheel and removes the CUDA runtime. Never part of `all`: it asserts a GPU is absent *for good*, which the script cannot infer |
+| `gpu-torch` | Runs `ensure_gpu_torch` (below) against `CHITRAGUPTA_PYTHON` rather than the script's venv; what `chitragupta install gpu-torch` reaches |
 | `actionlint` | Installs the pinned workflow linter alone, without the venv `dev-deps` also builds |
-| `vale` | Installs Vale alone, without the TeX Live and poppler `os-deps` also brings. This is what CI's `lint` job and a bare `python-deps` run (which needs no `poetry`) both want |
+| `vale` | Installs Vale alone, without the rest of `os-deps` |
 | `stix-two` | Installs the pinned STIX Two font alone, for a host whose TeX Live and Noto fonts came from somewhere else |
 | `all` | `os-deps` + `python-deps`. **Does not include `dev-deps`** |
 
@@ -3414,72 +1782,54 @@ bash scripts/install_full_pipeline.sh              # = python-deps
 # SKIP_VENV=1 bash scripts/install_full_pipeline.sh python-deps
 ```
 
-`python-deps` and `dev-deps` also run `ensure_gpu_torch`, which detects
-the NVIDIA driver's supported CUDA ceiling and reinstalls torch from a
-matching wheel index if the default one would silently run CPU-only. It
-is idempotent and safe to re-run, and prints what it decided, such as `torch
-already sees the GPU (driver supports its bundled CUDA build)` when no
-reinstall was needed.
+`python-deps` and `dev-deps` also run `ensure_gpu_torch`, which
+reinstalls torch from a wheel index matching the NVIDIA driver if the
+default one would silently run CPU-only. It is idempotent and prints
+what it decided.
 
-**Poetry is a prerequisite, not something `python-deps` installs.** It is
-in the `os-deps` package list, so `all` covers it; if you run
-`python-deps` on its own, install Poetry first (`pipx install poetry`).
-Each stage ends by printing the exact interpreter path to use afterwards,
-which is `.venv-full/bin/python` on a normal host.
+**Poetry is a prerequisite, not something `python-deps` installs.** It
+is in the `os-deps` package list, so `all` covers it; run on its own,
+`python-deps` needs `pipx install poetry` first. Each stage ends by
+printing the interpreter path to use afterwards.
 
 ### 📦 `scripts/release.py`
 
 Builds the release archive under `release/`. A maintainer tool.
-
 **Takes no arguments and parses none**, including `-h`/`--help`, which
-it ignores while building the archive anyway. Run it bare:
+it ignores while building the archive anyway:
 
 ```bash
 python3 scripts/release.py
 ```
 
-`tests/`, `bench/`, `plans/`, `.github/`, `.gitignore` and a few root-level
-CI and tooling files are excluded from the archive
-(`scripts/release.py`'s `EXCLUDE_TOP_LEVEL`). Every prose document ships:
-`docs/`, `README.md`, `SOUL.md`, `AGENTS.md`, `DEVELOPER-AGENTS.md` and
-`DEVELOPER.md`, plus `.claude/`, `.agents/`, `.codex/` and `.opencode/`.
+`tests/`, `bench/`, `plans/`, `.github/`, `.gitignore` and a few
+root-level tooling files are excluded (`EXCLUDE_TOP_LEVEL`). Every
+prose document ships: `docs/`, `README.md`, `SOUL.md`, `AGENTS.md`,
+`DEVELOPER-AGENTS.md` and `DEVELOPER.md`, plus `.claude/`, `.agents/`,
+`.codex/` and `.opencode/`.
 
 ## ⏰ Running sync on a schedule
 
-`python -m chitragupta.corpus sync` is deterministic, idempotent, and takes its
-own write lock (`chitragupta.runlock`), so it is safe to run unattended.
-Two other things make it worth putting on a schedule: exit
-codes an unattended caller can branch on without parsing any text, and
-`logs/pipeline.log` as a persistent transcript to check afterwards. That
-log is rotated; see `[logging]` in `config.toml.example`.
+`python -m chitragupta.corpus sync` is deterministic, idempotent, and
+takes its own write lock (`chitragupta.runlock`), so it is safe to run
+unattended. An unattended caller branches on exit codes and checks
+`logs/pipeline.log` afterwards (rotated; see `[logging]` in
+`config.toml.example`).
 
-`chitragupta/enrich/__main__.py` writes to the same file, so a host that schedules
-both has one transcript rather than two. Each line names its source in
-`%(name)s` (the module, so `sync` logs as `chitragupta.sync` whatever the
-command that started it is spelled), and either layer can be narrowed
-back out:
+`chitragupta enrich` writes to the same file. Each line names its source
+module (`sync` logs as `chitragupta.sync` whatever the command that
+started it is spelled), so either layer can be narrowed back out:
 
 ```bash
 grep 'chitragupta\.sync' logs/pipeline.log      # just the corpus layer
 grep 'chitragupta\.enrich' logs/pipeline.log    # just the enrichment layer
 ```
 
-The interleaved view is often the useful one, though, since the
-enrichment layer's docling stage reuses whatever the corpus layer
-already parsed.
-
-**Don't hand-roll a log redirect for most of this.** `logs/pipeline.log`
-carries almost every warning, per-document progress line, and the run
-summary, at the level `[logging].level` sets. A cron or systemd wrapper
-around these commands does not need its own `>> some.log 2>&1` to get a
-durable record of those. Three messages stay terminal-only by
-design. A docling worker's GPU-OOM fallback runs in a child process with
-no route back to the file. The Ctrl+C interrupt notice runs in a signal
-handler, deliberately kept to a bare `print`. The "another run already
-holds the lock" refusal comes from the losing side of a race, which must
-not touch a file the winner is writing. All three are rare
-and none is the kind of thing a schedule needs to recover from
-unattended.
+**Don't hand-roll a log redirect**: the log carries the warnings,
+progress and summary. Only three rare messages stay terminal-only by
+design: a docling worker's GPU-OOM fallback, the Ctrl+C notice, and the
+lock refusal (the losing side of a race must not touch the winner's
+file).
 
 **Exit codes are the API**, not the printed text:
 
@@ -3503,16 +1853,11 @@ do nothing" cannot mistake it for a skipped cycle.
 0 * * * * cd /path/to/chitragupta && .venv-full/bin/python -m chitragupta.corpus sync
 ```
 
-cron's own default, with no `MAILTO` set, is to mail stdout/stderr to
-the crontab's owner, which needs a working local MTA to go anywhere,
-and most hosts don't have one configured. `logs/pipeline.log` doesn't depend
-on any of that: it's a plain file, written every run regardless of mail
-setup.
+Without `MAILTO`, cron mails output to the crontab's owner, which needs
+a local MTA most hosts lack; `logs/pipeline.log` is written every run
+regardless.
 
 ### 🐧 systemd (service + timer)
-
-Two unit files, following systemd's usual split between "what" and
-"when":
 
 ```ini
 # /etc/systemd/system/chitragupta-sync.service
@@ -3549,17 +1894,15 @@ journalctl -u chitragupta-sync.service   # systemd's own transcript,
                                           # alongside logs/pipeline.log
 ```
 
-Both assume a host where `.venv-full/` is already built (see
-[`scripts/install_full_pipeline.sh`](#-scriptsinstall_full_pipelinesh)
-above). Scheduling only runs what's already installed; it doesn't
-install anything itself.
+Both assume `.venv-full/` is already built
+([`scripts/install_full_pipeline.sh`](#-scriptsinstall_full_pipelinesh));
+scheduling installs nothing.
 
 ## ⚙ Environment variables
 
 Every `config.toml` setting has a matching environment variable that
-overrides it for one run. The full list, with accepted values, is in
-[CONFIG.md](CONFIG.md#-every-setting). The ones that most often appear on
-a command line:
+overrides it for one run; [CONFIG.md](CONFIG.md#-every-setting) has the
+full list. The ones that most often appear on a command line:
 
 ```bash
 # Point at a different bibliography or output directory for one run

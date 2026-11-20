@@ -2,42 +2,27 @@
 
 Status: **reference.**
 
-The rules about whether the figure can be measured at all: a figure
-that does not compile, one that names no node, and one that loads a
-TikZ library by hand. [README.md](README.md) explains how to read a
-report and how to record a deliberate exception.
-
-Each rule below shows a faulty figure, the line `figure check` prints
-for it, and the fixed figure. Both are real files in
-[examples/](examples/), and `tests/test_figure_check_examples.py`
-compiles them, so the report lines on this page are what the check
-prints today. The listings show the picture only, unless the defect is
-outside it; every file also carries the house style block above it.
-
-The figures on this page look the same faulty and fixed, or do not
-render at all, so there are no pictures. The code is the difference.
+The rules about whether a figure can be measured at all.
+[README.md](README.md) explains how to read a report and record an
+exception. Each rule shows a faulty figure, its report line and the
+fixed figure, all real files in [examples/](examples/) that
+`tests/test_figure_check_examples.py` compiles. Listings show the
+picture only, unless the defect is outside it. The figures look the
+same faulty and fixed, or do not render, so there are no pictures.
 
 ## 🧭 Rules on this page
 
-- [`does-not-compile`](#does-not-compile)
-- [`nothing-measurable`](#nothing-measurable)
-- [`loads-library-by-hand`](#loads-library-by-hand)
+Each rule below says what it catches and how to fix it.
 
 ### `does-not-compile`
 
-**Catches.** The figure's own TikZ fails to compile. The target is
-`figure`, and the measurement is TeX's first error line. Every rule
-that needs the compiled geometry is then listed under "not measured",
-with the reason. The rules read from the source, such as
-`focal-count` and the twin rules, still run.
-[README.md](README.md#-what-needs-a-compiled-figure) lists which rules
-need a compiled figure. This rule cannot be allowed: there is no
-deliberate reason for a figure that does not build.
-
-**Why it matters.** A figure that does not compile takes the whole PDF
-render down with it. Nothing else in the report can be trusted either,
-because the geometry rules did not run, and a rule that did not run is
-not a pass.
+**Catches.** The figure's own TikZ fails to compile. Target: `figure`;
+the measurement is TeX's first error line. Every rule that needs the
+compiled geometry is then listed under "not measured"
+([README.md](README.md#-what-needs-a-compiled-figure) lists them);
+source rules such as `focal-count` and the twin rules still run. It
+cannot be allowed: there is no deliberate reason for a figure that
+does not build, and it takes the whole PDF render down with it.
 
 Faulty: the arrow names `indx`, a node the figure never declares.
 
@@ -63,18 +48,12 @@ Cannot be allowed.
 ### `nothing-measurable`
 
 **Catches.** The figure compiles but names no node, so the geometry
-rules had nothing to measure. The target is `figure`. Without it, a
-figure where nothing ran would print the same "No findings" line as a
-figure where everything ran and passed.
+rules had nothing to measure. Target: `figure`. Without it, a figure
+where nothing ran would print the same "No findings" line as one that
+passed everything. An arrow between bare coordinates is not a
+connector, and it stays put when a box moves.
 
-**Why it matters.** The checks read a figure through its named nodes.
-In a figure placed entirely by coordinates, an arrow between two
-coordinates is not a connector, so the connector rules skip it, and the
-node and edge counts read zero. The arrow also stays where it is when a
-box moves, so the next edit leaves it pointing at nothing.
-
-Faulty: both boxes are placed `at` a coordinate, and the arrow runs
-between two more.
+Faulty: boxes and arrow placed by coordinates.
 
 ```latex
 \node[cgbox, text width=26mm] at (0,0) {\cglab{Parse}{read the PDF}};
@@ -98,21 +77,18 @@ Fixed: the boxes are named, and the arrow joins them by name.
 
 ### `loads-library-by-hand`
 
-**Catches.** A TikZ library loaded through one of its internal macros
-instead of through `\usetikzlibrary`: a test, a clear or a save of
-`\tikz@library@<name>@loaded` or `\tikz@node@reset@hook`. The target is
-`figure`, and the measurement names the internals the file touches. It
-is read from the source, so it holds whether or not the figure
-compiles, and a commented-out line is not counted.
+**Catches.** A TikZ library loaded through its internal macros instead
+of `\usetikzlibrary`: a test, a clear or a save of
+`\tikz@library@<name>@loaded` or `\tikz@node@reset@hook`. Target:
+`figure`; the measurement names the internals touched. It is read from
+the source, and a commented-out line is not counted.
 
-**Why it matters.** A figure file is `\input` inside a `figure` float,
-and a float is a group. A library loaded there defines its macros
-locally but sets its loaded flag globally, so the next figure skips the
-load and finds no macros. Clearing the flag to force a reload is worse:
-`positioning` adds its placement shift to a global hook on every load,
-so the Nth figure in a document shifts every node N times. A
-single-chapter render shows nothing wrong; the assembled book does.
-The renderer already loads the libraries in the preamble, so the plain
+A float is a group, so a library loaded inside one defines its macros
+locally but sets its loaded flag globally, and the next figure finds no
+macros. Clearing the flag to force a reload is worse: `positioning`
+adds its shift to a global hook on every load, so the Nth figure in a
+book shifts every node N times, though a single-chapter render looks
+fine. The renderer loads the libraries in the preamble, so the plain
 `\usetikzlibrary` line is all a figure needs.
 
 Faulty: a guard tests the internal flag before the house library line.

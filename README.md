@@ -34,14 +34,14 @@ against it. This does the same to citations.
 <img src="docs/images/demo.svg" alt="Animated terminal recording: syncing
 the corpus, discovering its topics, reading a gate-passed draft and its
 dossier, and running the review agenda, against the committed sample
-project." width="760">
+project." width="840">
 </p>
 
 <p align="center">
 <a href="https://github.com/prasadtalasila/chitragupta/blob/main/docs/DEMO.md"
 ><img src="docs/images/demo-webapp.png"
 alt="The offline topic-graph viewer, showing a selected topic's papers
-and neighbours" width="380"></a>
+and neighbours" width="1040"></a>
 <br>
 <sub>The recording above is the terminal half only; <a
 href="https://github.com/prasadtalasila/chitragupta/blob/main/docs/DEMO.md"
@@ -122,7 +122,7 @@ nothing reaches phase 5 without passing phase 4.
             publishing and the advisory review aids are grouped as the
             part the author runs on a finished draft. A failing gate sends
             the draft back to be rewritten."
-       width="100%">
+       width="542">
 </p>
 
 Two properties of the spine alone make the guarantee hold, and both are
@@ -172,7 +172,8 @@ topics, their papers, and the links between them
 [docs/EXPLORE-CLI.md](docs/EXPLORE-CLI.md) and
 [docs/EXPLORE-WEB.md](docs/EXPLORE-WEB.md)).
 
-[docs/DIAGRAMS.md](docs/DIAGRAMS.md) draws this workflow thirteen ways
+[docs/DIAGRAMS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/DIAGRAMS.md)
+draws this workflow fourteen ways
 (by depth, by genre, and in time order) and is where the figure
 above comes from. [docs/GLOSSARY.md](docs/GLOSSARY.md) defines the
 working vocabulary in one page.
@@ -387,9 +388,9 @@ one-screen router for that.
 | Document | Answers |
 | --- | --- |
 | [CLAUDE.md](CLAUDE.md) | One screen: which of the two agent guides applies to the task you are about to start, and the one rule that binds both |
-| [AGENTS.md](AGENTS.md) | The rules an agent *drafting with* this pipeline must follow; above all, never fabricate a citekey |
+| [AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md) | The rules an agent *drafting with* this pipeline must follow; above all, never fabricate a citekey |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | What runs, what does each part write, which parts are optional, and why do some commands need the venv? |
-| [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | The workflow drawn thirteen ways: six by depth, three by genre, two in an appendix, two for topic discovery. Pick the one that matches what you already know |
+| [docs/DIAGRAMS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/DIAGRAMS.md) | The workflow drawn fourteen ways: six by depth, three by genre, three in an appendix, two for topic discovery. Pick the one that matches what you already know |
 | [docs/LADDERS.md](docs/LADDERS.md) | Where does the pipeline choose between two ways of doing one job? Every ladder it walks for you and every tier you pick yourself, and what the bottom rung costs |
 | [docs/RETRIEVAL.md](docs/RETRIEVAL.md) | BM25, embeddings, topic models: which one answers my question, and which is worth building? |
 | [docs/DRAFT-ITERATION.md](docs/DRAFT-ITERATION.md) | What does a draft's dossier hold, and how do I change a draft weeks later without re-running the pipeline that produced it? |
@@ -417,21 +418,21 @@ one-screen router for that.
 | --- | --- |
 | [docs/RENDERING-FLOW.md](docs/RENDERING-FLOW.md) | How does a draft's citation resolve into a rendered bibliography, which of four possible stores does a `.tex` fragment's citation defer to, and what happens to a figure on the way through? |
 | [docs/REJECTION.md](docs/REJECTION.md) | Why is turning a source *down* the judgment this pipeline is most careful about? The reasoning behind a retrieval change that was built and then withdrawn, and what was kept from it |
-| [docs/TOKENS.md](docs/TOKENS.md) | Where do a run's tokens go, which of them get billed once and which get billed every turn, and how do I measure that without paying for a full run? |
+| [docs/TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md) | Where do a run's tokens go, which of them get billed once and which get billed every turn, and how do I measure that without paying for a full run? |
 | [docs/DESIGN.md](docs/DESIGN.md) | Why does this refuse what it refuses? The hard constraints, the conflict policy when two runs collide, and the failure analysis behind both |
-| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | What must a grounded long-form writing system do, how do closed- and open-source tools compare against that bar, and where does this pipeline stand against its own requirement set: what's built, what was measured and declined, and what's left? |
+| [docs/REQUIREMENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/REQUIREMENTS.md) | What must a grounded long-form writing system do, how do closed- and open-source tools compare against that bar, and where does this pipeline stand against its own requirement set: what's built, what was measured and declined, and what's left? |
 | [docs/PARALLELISM.md](docs/PARALLELISM.md) | How does the parallel parse work, what is each component for, and what is planned next? |
-| [docs/GROBID-CITATION-GRAPH.md](docs/GROBID-CITATION-GRAPH.md) | **A proposal, not a plan.** What would it take to build a corpus-internal citation graph, and is it worth a JDK and a long-running service? |
+| [docs/GROBID-CITATION-GRAPH.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/GROBID-CITATION-GRAPH.md) | **A proposal, not a plan.** What would it take to build a corpus-internal citation graph, and is it worth a JDK and a long-running service? |
 | [docs/TLDR.md](docs/TLDR.md) | What does `chitragupta draft tldr` cache today, and (**parked, not built**) what would it take to generate it unattended: the two-path design, what was measured on the real corpus, and why it's waiting on an acceptance workflow that doesn't exist yet? |
 | [docs/AUTO-IMPROVEMENT.md](docs/AUTO-IMPROVEMENT.md) | **Built, one step declined.** The pipeline assembles its own worklist (`review agenda`) and `agenda-reviser` attempts the mechanical repairs: what was built, and what it has to satisfy. Normative, and carries no argument |
-| [docs/AUTO-IMPROVEMENT-RATIONALE.md](docs/AUTO-IMPROVEMENT-RATIONALE.md) | Why that loop, and where its line falls: why every quality signal here currently ends in prose a human must act on, what a machine may never repair, and the one documented rule this cannot satisfy without the user's approval |
-| [docs/FIGURE-ROADMAP.md](docs/FIGURE-ROADMAP.md) | **Proposal.** What has shipped for figures, the figure work still open, and the order to build it in |
+| [docs/AUTO-IMPROVEMENT-RATIONALE.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/AUTO-IMPROVEMENT-RATIONALE.md) | Why that loop, and where its line falls: why every quality signal here currently ends in prose a human must act on, what a machine may never repair, and the one documented rule this cannot satisfy without the user's approval |
+| [docs/FIGURE-ROADMAP.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/FIGURE-ROADMAP.md) | **Proposal.** What has shipped for figures, the figure work still open, and the order to build it in |
 | [docs/HOUSE-STYLE.md](docs/HOUSE-STYLE.md) | Why prose is the axis a machine improves *best*, why a readability score is the wrong target, and which of your preferences should outlive the draft that prompted them |
 | `DEVELOPER.md` (git checkout only; `chitragupta init` deliberately does not scaffold it) | How do I run the tests, where does everything live, and what is unbuilt? |
 | `DOCKER-DEVELOPER.md` (git checkout only) | How are the Docker images themselves built and verified before a release? |
 | `DEVELOPER-AGENTS.md` (git checkout only) | The rules an agent *changing this repo* must follow: test policy, the local check suite, code standards, commit/PR/release conventions |
-| [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) | What must the code itself look like? The clean-code checklist mapped rule by rule, the two size rules that are machine-checked as a ratchet, why they count statements rather than lines, and why the rest is left to review |
-| [docs/INSPIRATION.md](docs/INSPIRATION.md) | What did this project borrow, and from whom? Every external idea, what was taken, and (where the licence requires it) what was deliberately not |
+| [docs/CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md) | What must the code itself look like? The clean-code checklist mapped rule by rule, the two size rules that are machine-checked as a ratchet, why they count statements rather than lines, and why the rest is left to review |
+| [docs/INSPIRATION.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md) | What did this project borrow, and from whom? Every external idea, what was taken, and (where the licence requires it) what was deliberately not |
 | [docs/EXPORT-ZOTERO-GROUPS.md](docs/EXPORT-ZOTERO-GROUPS.md) | **Discouraged, and says so.** How the one script that reads `zotero.sqlite` directly recovers collection labels when Better BibTeX cannot, which two project rules it bends to do it, and why you should use Better BibTeX instead |
 
 Every prose document ships in the release archive (everything under
@@ -448,4 +449,5 @@ This project borrows from several others: the deep-research skill's
 7-phase method, the clean-code checklist its own code standard is written
 against, and the harness-engineering reading list behind much of
 `.claude/`. Each is credited, with what was taken and what deliberately
-was not, in [docs/INSPIRATION.md](docs/INSPIRATION.md).
+was not, in
+[docs/INSPIRATION.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md).

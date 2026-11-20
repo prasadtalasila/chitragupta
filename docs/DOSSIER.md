@@ -2,58 +2,36 @@
 
 Status: **reference.**
 
-**Written for** the model or the person reading a dossier back: most
-often `draft-reviser` picking up a draft weeks later, and only sometimes
-a human. **Assumed:** [FEATURES.md](FEATURES.md) for where the dossier
-sits among the pipeline's features. **Not covered here:** what to *do*
-with one. Revising a draft, re-grounding it after the corpus moves,
-dispatching a subagent from it, and backing one up are all
+**Written for** whoever reads a dossier back: most often `draft-reviser`
+picking up a draft weeks later. **Assumed:** [FEATURES.md](FEATURES.md)
+for where the dossier sits among the pipeline's features. **Not covered
+here:** what to *do* with one. Revising a draft, re-grounding it after the
+corpus moves, dispatching a subagent from it, and backing one up are all
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md); this page is the format those
 depend on.
 
-**This is machine-facing documentation.** The dossier lets a *drafting
-run* be resumed by something that was not present when it started. Its
-reader is usually an LLM: it is written in Markdown because a model reads
-Markdown natively, its fields are named for what a drafting step may and
-may not do with them, and its most useful file (`rejected.md`) exists to
-stop a model paying twice for a judgement already made. A human can read
-it, and occasionally should, but nothing here is shaped for that.
+**This is machine-facing documentation.** The dossier lets a drafting
+run be resumed by something that was not present when it started,
+usually an LLM, and its fields are named for what a drafting step may
+and may not do with them. [REVIEW.md](REVIEW.md) is its counterpart for
+you: a review report is evidence you weigh, a dossier is working state a
+machine reloads.
 
-[REVIEW.md](REVIEW.md) is its counterpart: it is for you, and this page
-is for the thing writing your draft. A review report is
-evidence you weigh before deciding a draft is done; a dossier is working
-state a machine reloads to keep going. They mirror the same draft path
-and are otherwise unalike: different readers, different lifetimes, and
-opposite answers to "is it a problem if nobody ever reads this?"
-
-One dossier per draft, mirroring the draft's own path:
+One dossier per draft, mirroring the draft's own path, with no registry:
 
 ```text
 content/drafts/dt-for-engineers/survey.md
    -> content/dossiers/dt-for-engineers/survey/
 ```
 
-That rule is mechanical, needs no registry, and handles both layouts the
-repository contains: the flat `content/drafts/<slug>.md` and the
-`content/drafts/<topic>/<genre>.md` the shipped example content uses.
-Which one you get is the user's call: a genre skill settles the draft's
-path with them before it starts (step 0), so "a book chapter in
-`books/software-engineering`" becomes
-`content/drafts/books/software-engineering/book-chapter.md`, at whatever
-depth was asked for.
-
-`content/rendered/` mirrors the same path, so a topic directory names a
-draft, its dossier and its rendered `.md`/`.tex`/`.pdf` together
-([CLI.md](CLI.md#-chitragupta-draft-render) has the detail). That is
-what lets `dossier export <topic> --with-rendered` find the renders at
-all: it matches them by their path relative to `content/rendered/`.
+The draft may be flat or nested at any depth. `content/rendered/` mirrors
+the same path, which is how `dossier export <topic> --with-rendered` finds
+the renders ([CLI.md](CLI.md#-chitragupta-draft-render)).
 
 `dossier init` writes eight files: `README.md` and the seven core files
 below. Three more are optional, `math.md`, `outline.md` and `paper.md`,
-and the only three whose absence is not a defect. Each answers a question the draft
-itself cannot. Without the dossier, none of this
-survives the session that wrote the draft: it lives in the transcript
-only.
+and the only three whose absence is not a defect. Each answers a
+question the draft itself cannot.
 
 | File | What it holds |
 | --- | --- |
@@ -67,65 +45,39 @@ only.
 | `retrieval.md` | every retrieval call and the size of what it returned |
 | `math.md` | ASCII in the draft -> the LaTeX it renders as ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12), an optional "Not mathematics" table of spans that are code, and `## Symbols`, what each mapped symbol means |
 | `outline.md` | the human's own per-section brief/claim/declared queries |
-| `paper.md` | a research paper's paper-level inputs: the software, venue, message, contributions and the evidence for each. Written by `init` for that genre only (#1175) |
-| `versions/` | numbered snapshots of the draft, each with both forms of every figure it names: one taken by every `mark-revision` whose draft changed since the last, and one by `dossier snapshot --label` for a milestone the author names. What `draft diff` compares against; `dossier versions` lists them. Not written by `init` |
+| `paper.md` | a research paper's paper-level inputs: the software, venue, message, contributions and the evidence for each. Written by `init` for that genre only |
+| `versions/` | numbered snapshots of the draft and both forms of its figures, taken by `mark-revision` when the draft changed and by `dossier snapshot --label`; what `draft diff` compares against. Not written by `init` |
 
-Four filled dossiers are committed to read alongside this page:
-`docs/examples/sample-project/content/dossiers/dt-overview/` holds one per
-sample draft, written by real drafting runs. The survey's
+Four filled dossiers, written by real drafting runs, are committed under
+`docs/examples/sample-project/content/dossiers/dt-overview/`; the
+survey's
 [`evidence.md`](examples/sample-project/content/dossiers/dt-overview/survey/evidence.md)
-shows the block shape at its smallest: one kept citekey, why it was
-kept, the claim the draft rests on it, and (because a quotation was
-intended) the exact span:
-
-```markdown
-## `sample_dt_sync_2023`
-
-relevance: the synchronisation theme's only quantitative comparison
-claim: event-driven synchronisation cut transmitted volume by 71 percent against one-second polling with sub-two-second worst-case staleness, and explicit staleness marking roughly halved operator mistrust incidents
-quote: a twin that knows it is stale must say so on every read
-```
-
-and its
+and
 [`rejected.md`](examples/sample-project/content/dossiers/dt-overview/survey/rejected.md)
-records the other half of the same judgement: a paper retrieval surfaced
-that the draft declined, with the reason (`surfaced for this query but
-says nothing about staleness; kept for the
-integration theme instead`). A reviser months later reads that before
-re-offering the same paper.
+show both halves of one judgement.
 
 ## 📁 Every file, one by one
 
 Each section says who writes the file and who reads it, its format, what
 a drafting step may and may not do with it, and what goes wrong when it
-is missing or stale. `evidence.md` and `sections.md` have longer
-sections of their own further down
-([the claim contract](#-evidencemds-claimquote-contract-a2),
-[derived, not maintained](#-sectionsmd-is-derived-not-maintained)).
+is missing or stale.
 
 ### `README.md`: the label on the folder
 
-**Written** by `dossier init`, once, naming the draft and its genre;
-**read** by a person who opens the directory. Nothing parses it. It is a
-short table of the core files plus the export and restore commands, and
-`init` never rewrites it, so a dossier made before a file existed keeps
-the older table. A drafting step leaves it alone. Missing, nothing
-breaks: `init` writes it back on its next run, and every command finds
-the dossier by path, not by this file.
+**Written** by `dossier init`, once, and never rewritten; **read** by a
+person, parsed by nothing. Missing, nothing breaks: `init` writes it
+back.
 
 ### `scope.md`: the boundary
 
 **Written** by `dossier init` (genre, draft, date, the corpus
 fingerprint), then by the genre skill as it settles the draft with you:
 the reader, the dialect (`language:`, so an en-GB draft stays en-GB
-through a revision six weeks later), what the draft covers, what it
-deliberately excludes, any House style it commits to, and a glossary.
-`dossier stamp` writes the draft digest line. **Read** by every reviser
-before any edit; by `dossier status`, which recomputes both
-fingerprints; by the acronym checks and `draft style`, which read the
-glossary; by a book's `registry` (terms, the Glossary page); and by
-`render`, which counts the glossary's maths spans as uses of `math.md`
-rows.
+through a later revision), what the draft covers, what it deliberately
+excludes, any House style it commits to, and a glossary. `dossier stamp`
+writes the draft digest line. **Read** by every reviser before any edit,
+by `dossier status` (both fingerprints), by the acronym checks,
+`draft style`, a book's `registry`, and `render`.
 
 ```markdown
 # Scope
@@ -147,50 +99,32 @@ An engineer joining a digital-twin project who has read none of the corpus.
   return flow that exists but is carried by a person.
 ```
 
-**The glossary** is one bullet per term, `- **Term** -- definition`,
-with a wrapped definition indented. A trailing abbreviation in brackets
-belongs to the term (`**Digital twin (DT)**`). `registry check` reports
-and `registry build --glossary` refuses a bullet in any other shape: a
-colon instead of ` -- `, two terms in one bullet, a definition that
-cites, or **a symbol**. The symbol slot (`**Baseline** (`M_0`)`), its
-spelling inside the bold and the symbol-only bullet (`**`x_k`**`) were
-read in v6.157.0 and are retired since #1143: a symbol and its meaning
-live in `math.md`'s `## Symbols` (below), linked to its term as
-``| `M_0` | **Baseline** |``. Each finding names the row to write. A
-book's Glossary prints every unit's bullets as written
-([the Glossary and List of Symbols](book/REGISTRIES.md#-the-glossary-and-the-list-of-symbols)),
-so a definition holds the definition only: no "as before", no drafting
-note. A note moved out of one belongs in `steering.md`.
+**The glossary** is one bullet per term, `- **Term** -- definition`, with
+a wrapped definition indented and a trailing abbreviation in brackets
+belonging to the term. `registry check` reports and `registry build
+--glossary` refuses any other shape: a colon instead of ` -- `, two terms
+in one bullet, a definition that cites, or a symbol. A symbol and its
+meaning live in `math.md`'s `## Symbols`, linked to its term as ``| `M_0`
+| **Baseline** |``. A book prints the bullets as written ([the Glossary
+and List of
+Symbols](book/REGISTRIES.md#-the-glossary-and-the-list-of-symbols)), so a
+drafting note belongs in `steering.md`, not a definition.
 
-**May:** a reviser changes the scope statement only when you agreed to
-the change, and keeps the glossary in step with the prose. **May not:**
-edit the two digest lines by hand; only `stamp` and a re-grounding pass
-rewrite them. **Missing or stale:** without it a reviser cannot tell an
-omission from an exclusion, and helpfully adds back the section you
-asked to leave out. A stale corpus line is what drift detection reads,
-so it is never "refreshed" to silence `status`
-([the corpus fingerprint](#-the-corpus-fingerprint)).
+**May:** change the scope statement only when you agreed to it, and
+keep the glossary in step with the prose. **May not:** edit the two
+digest lines by hand; only `stamp` and a re-grounding pass rewrite them.
+**Missing or stale:** a reviser cannot tell an omission from an
+exclusion. A stale corpus line is what drift detection reads, so it is
+never "refreshed" to silence `status` ([the corpus fingerprint](#-the-corpus-fingerprint)).
 
 ### `evidence.md`: what was kept, and why
 
-One block per kept citekey. Where a later pass or a hand edit has
-written two under the same citekey, the **first** is the block every
-reader gets, with the rest reported by `check-evidence`, so a second
-block never silently displaces the evidence a drafting run was already
-handed. Each block carries `relevance:` (why this source bears on the
-sub-theme), `claim:` (what it establishes, in the drafter's own words)
-and an optional `quote:` (its exact wording). **Only `claim:` may be
-drafted prose from** (the verbatim digest,
-[VERBATIM-DIGEST.md](VERBATIM-DIGEST.md), is the one genre that copies
-its `quote:`s into the draft, each with its citation and no quotation
-marks). The rule works through ordering: `claim:` is written at the
-moment the evidence is judged, before any sentence of the draft exists,
-so it cannot be a lightly edited copy of the passage. `quote:` is absent
-by default and is captured only when a quotation is intended, since
-retrieval should not leave one behind as a side effect. It is also what
-the evidence sidecar renders. An older block may carry a single
-`support:` field instead; it is never rewritten, and the two shapes
-coexist (see below).
+One block per kept citekey, carrying `relevance:`, `claim:` and an
+optional `quote:`; [the contract](#-evidencemds-claimquote-contract-a2)
+below says what each may be used for. Where two blocks share a citekey,
+the **first** is the one every reader gets, and `check-evidence` reports
+the rest, so a second block never silently displaces evidence a run was
+already handed.
 
 ### `rejected.md`: the candidates turned down, with the reason
 
@@ -204,29 +138,17 @@ a re-grounding pass, which needs the sentence and not only the citekey.
 | `sample_std_interop_2021` | digital twin synchronisation staleness | surfaced for this query but says nothing about staleness; kept for the integration theme instead |
 ```
 
-"Turned down because the corpus had nothing better" and "turned down
-because it is about a different field" age differently, and only the
-first is worth revisiting when the corpus grows. **May:** add rows;
-move a citekey to `evidence.md` when a change genuinely reopens it, and
-say why in `revisions.md`. **May not:** retrieve and re-judge a listed
-candidate as though it were new: a reviser is required to honour it.
-**Missing:** the next revision retrieves the same papers, re-reads them
-and re-reaches the same judgement, paying the full cost of a decision
-already made. It is also the largest file, which is why the dossier is
-several files and not one: a revision loads it only when a change
-reopens a sub-theme for searching.
+"Nothing better in the corpus" and "a different field" age differently,
+and only the first is worth revisiting when the corpus grows. **May:**
+add rows; move a citekey to `evidence.md` when a change genuinely reopens
+it, and say why in `revisions.md`. **May not:** re-judge a listed
+candidate as though it were new. **Missing:** the next revision
+re-retrieves and re-reads the same papers to reach the same judgement.
 
 ### `sections.md`: which citekeys are cited under which heading
 
-Derived, not maintained: a heading owns a line range, a citekey is cited
-on a line, and the relation falls out of the intersection.
-`draft dossier sections --citekeys --write` rebuilds it from the draft,
-skipping fenced code and LaTeX verbatim so a `# Step 1` comment in an
-example listing is neither a heading nor a citation. A hand-maintained
-version that disagreed with the draft would hand a reviser the wrong
-section for a citation. `deep-research` is the one exception, and only
-for timing: it writes *planned* rows before the sections exist, and
-replaces them with what the finished report cites.
+Rebuilt from the draft rather than maintained by hand; see
+[derived, not maintained](#-sectionsmd-is-derived-not-maintained).
 
 ### `steering.md`: what you asked for that the prose cannot show
 
@@ -239,17 +161,13 @@ instruction you gave in chat. **Read** by every reviser before it edits.
 - Close with gaps, not a summary of summaries.
 ```
 
-"Don't lead with tooling." "Shorter." "Drop the adoption angle." This
-guidance shaped the draft and is invisible in it. It is also where a
-drafting note goes when it is moved out of somewhere that prints it,
-under a dated heading such as `## Moved from the glossary (2026-11-04)`:
-a glossary definition is printed in a book, and a note to the next
-drafter must not be. **May:** append. **May not:** rewrite or drop an earlier entry
-because a later revision went another way; add the new instruction
-instead. **Missing:** the guidance survives only in a chat log nobody
-will reread, and a revision months later silently undoes a decision you
-made deliberately, the commonest way a revised draft comes back subtly
-wrong.
+Such guidance shaped the draft and is invisible in it. It is also where a
+drafting note goes when moved out of something that prints it, under a
+dated heading such as `## Moved from the glossary (2026-11-04)`. **May:**
+append. **May not:** rewrite or drop an earlier entry because a later
+revision went another way; add the new instruction instead. **Missing:** a
+revision months later silently undoes a decision you made deliberately,
+the commonest way a revised draft comes back subtly wrong.
 
 ### `revisions.md`: an append-only log of what changed and why
 
@@ -266,23 +184,20 @@ Drafted from the five kept evidence blocks; all three declared queries
 answered. Gate passed on first run.
 ```
 
-**May:** append. **May not:** edit history; the value is the sequence,
-not the current state. `dossier prune` and `dossier sections --write`
-are primitives and log nothing, so the step that runs one logs it here.
-**Missing:** a repair tried and reverted is tried again by the next
-session, which re-discovers the same problem and reverts again.
+**May:** append. **May not:** edit history. `dossier prune` and
+`dossier sections --write` log nothing, so the step that runs one logs
+it here. **Missing:** a repair tried and reverted is tried again by the
+next session.
 
 ### `retrieval.md`: every retrieval call, and the size of what came back
 
-**Written** only by commands: `python -m chitragupta.draft retrieve ...
---log <draft>` appends a row per call, and `dossier mark-revision`
-appends a `revision` marker row at the start of each reviser pass.
-Never by hand. **Read** by `dossier status` (cost per revision, whether
-the draft ran its outline's declared queries), by a re-grounding pass,
-and by `bench/bench_retrieval_live_logs.py`'s replay.
-
-One table, one row per call. A row of the sample survey's, written
-before the `expanded`, `k1` and `b` columns existed, holds:
+**Written** only by commands, never by hand: `python -m chitragupta.draft
+retrieve ... --log <draft>` appends a row per call, and `dossier
+mark-revision` appends a `revision` marker row at the start of each
+reviser pass. **Read** by `dossier status` (cost per revision, whether the
+outline's declared queries ran), by a re-grounding pass, and by
+`bench/bench_retrieval_live_logs.py`'s replay. The template's own comment
+documents every column; one row of the sample survey's:
 
 ```text
 date        2026-09-02
@@ -295,30 +210,23 @@ collection  (empty: corpus-wide)
 origin      declared
 ```
 
-The template's own comment documents every column. It lets you compare
-one run's retrieval cost against another's on a real corpus, and, more
-importantly, it **bounds re-grounding**: when a draft has to be brought
-back into line after the corpus moved, the candidates come from the
-queries already recorded here, so that pass cannot invent a new search
-and silently become a full re-draft. It records the *character payload*
-of each call, not tokens, and nothing records what the drafting turns
-themselves cost: enough to compare two runs, not enough to price a
-whole draft. A row written before a column existed reads that column as
-empty. **Missing or edited:** re-grounding has no recorded queries to
-bound it, and `status` cannot say whether the outline was followed.
+It **bounds re-grounding**: after the corpus moves, candidates come from
+the queries already recorded here, so that pass cannot invent a new search
+and become a full re-draft. It records each call's character payload, not
+tokens: enough to compare two runs, not to price a draft. **Missing or
+edited:** re-grounding has nothing to bound it, and `status` cannot say
+whether the outline was followed.
 
 ### `outline.md`: the human's own structure, declared instead of guessed
 
 **Optional.** **Written** by you, after `dossier init --outline` (or
 added later), before drafting; **read** by `dossier outline`, by the
 genre skill, which drafts from it, and by `dossier status`. Per section:
-a `##`-or-deeper heading (a level-1 line is the file's own title, and is
-passed over instead of becoming a section with nothing under it), a
-`brief:` (steering, consumed once, never appears in the draft) and/or
-one or more `claim:` blocks (your own prose, rewritten; every sentence
-that can't be grounded is reported instead of shipped), and optional
-declared `queries:` a genre skill runs verbatim instead of inventing
-sub-themes.
+a `##`-or-deeper heading (a level-1 line is the file's title), a
+`brief:` (steering, never in the draft) and/or `claim:` blocks (your own
+prose, rewritten; any sentence that can't be grounded is reported
+instead of shipped), and optional declared `queries:` a genre skill runs
+verbatim instead of inventing sub-themes.
 
 ```markdown
 ## Failure modes of co-simulation
@@ -331,23 +239,17 @@ queries:
 - timestep mismatch solver divergence
 ```
 
-`dossier outline <draft> --check` validates it without printing the
-sections; `dossier outline <draft>` prints them. Reading and validating
-is all this file does on its own; deciding what is kept and writing
-`sections.md`/`evidence.md` stays the genre skill's job. **May:** a
-skill adds an `--origin extended` query when a declared section came up
-thin; it is logged as such. **May not:** a skill rewrites your outline.
+`dossier outline <draft>` prints the sections and `--check` only
+validates them. **May:** a skill adds an `--origin extended` query when a declared
+section came up thin. **May not:** a skill rewrites your outline.
 `retrieval.md`'s `origin` column (`declared`, `extended` or `reground`)
-is what `dossier status` reads to answer "did this draft follow its
-outline?" from the record instead of from trust. **Missing:** most
-dossiers have none, and that is not a defect; the skill chooses the
-sub-themes itself.
+is what lets `dossier status` answer "did this draft follow its
+outline?" from the record. **Missing:** most dossiers have none, which
+is not a defect.
 
 **A declared query that came back empty counts as run but not
-answered.** `status` reads the `results` column too, and reports a
-query it issued that returned nothing separately from the ones that
-returned candidates. Such a query is counted in the same "run" figure,
-since the call did happen, and named underneath:
+answered.** `status` reads the `results` column and names such a query
+separately:
 
 ```text
 Outline: 2 declared queries run (1 with no evidence), 1 not, 0 extended, 0 regrounded.
@@ -355,69 +257,29 @@ Outline: 2 declared queries run (1 with no evidence), 1 not, 0 extended, 0 regro
   not run   Fault tolerance: 'co-simulation standards validation'
 ```
 
-This is advisory, like everything else in this block, and **binary**
-instead of a coverage score: evidence came back for that query or it
-did not. Where the same query was searched twice, once for nothing and
-once for four after a reformulation, it counts as answered: the rows are
-folded together before the query is deduplicated, so a gap the draft's
-own history closed is not reported as still open.
+This is advisory and **binary**; a query that returned results on any
+attempt counts as answered.
 
 ### `math.md`: how the draft's mathematics is set, and what each symbol means
 
-**Optional.** A draft with no mathematics has none, and §12's inline
-`$…$` form needs none either. **Written** by the four Markdown genre
-writers when a draft first has mathematics, and kept in step by every
-reviser (`draft-reviser`, `corpus-reviser`, `agenda-reviser`). **Read**
-by `render` for every format that reaches pandoc (it is ignored for
-`--format md`, which is what keeps the draft's own text ASCII); by
-`dossier status`, which reports a row the draft no longer uses; and by
-a book's `registry`, for the List of Symbols, the Glossary's symbols and
-`registry check`'s cross-unit findings. Up to three tables, rules
-in [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12:
+**Optional.** A draft with no mathematics, or only §12's inline `$…$`
+form, has none. **Written** by the four Markdown genre writers when a
+draft first has mathematics, and kept in step by every reviser.
+**Read** by `render` for every format that reaches pandoc (not
+`--format md`); by `dossier status`, which reports a row the draft no
+longer uses; and by a book's `registry`. It holds up to three tables (a
+mapping from the exact ASCII span to its LaTeX, a one-column "Not
+mathematics" table of spans that are code, and `## Symbols`), whose
+format and rules are in
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12.
 
-```markdown
-| ASCII in the draft | LaTeX |
-| --- | --- |
-| `m_t` | `m_\mathrm{t}` |
-| `T_r = 10` | `T_\mathrm{r} = 10` |
-
-## Not mathematics
-
-| Code in the draft |
-| --- |
-| `404` |
-
-## Symbols
-
-| Symbol | Meaning |
-| --- | --- |
-| `m_t` | **Target moisture** |
-| `T_r` | see 02-plant-demonstrator |
-```
-
-- **The mapping table**, keyed on the exact span text in the draft or
-  in `scope.md`'s glossary: the only place a symbol's LaTeX lives.
-- **"Not mathematics"**, one column: spans the shape rules call a
-  quantity and which are code. It is the only one-cell table the file
-  may hold, since a mapping row whose LaTeX cell was forgotten would
-  read as one.
-- **`## Symbols`** (#1143): what each mapped symbol means, as a bold
-  link to the glossary term that defines it (optionally with a note
-  after a comma), `see <unit>` to reuse another unit's row, or words.
-  It is cut out before the other two tables are read.
-
-**May:** add a row for a new quantity, change a key when the span is
-reworded, drop a row and its meaning when the quantity is cut. **May
-not:** borrow another unit's row; each unit's maths resolves through its
-own mapping. **Missing or stale:** a draft and its dossier are tied by
-**path alone**, and there is no `dossier rename`, so moving a draft
-orphans its mapping and every equation in it silently reverts to
-typewriter text on the next render; `render` refuses outright when a
-`<!-- math -->` marker has no mapping to resolve, so that case at least
-stops the render. Keyed on the exact span text, a revision that
-*rewords* an equation desyncs it, and `render` lists the gaps, the
-orphans, the symbols with no meaning and the meanings with no mapping
-row among its `[math]` warnings.
+**May:** add, re-key or drop a row as the quantity is added, reworded or
+cut. **May not:** borrow another unit's row; each unit's maths resolves
+through its own mapping. **Missing or stale:** a draft and its dossier are
+tied by **path alone**, and there is no `dossier rename`, so moving a
+draft orphans its mapping; `render` refuses when a `<!-- math -->` marker
+has no mapping, and lists rewording gaps and orphans among its `[math]`
+warnings.
 
 ## 🔑 Which tokens count as a citekey, and why the rule has two halves
 
@@ -427,47 +289,30 @@ at least one `_`/`:`/`-` followed by more alphanumerics), so
 `@noauthor_digital_nodate` is a citekey and `@someone` and `@2` are not.
 The separator is required because this set is differenced against the
 ledger in *both* directions, and on the "what has left the corpus?" side
-an invented token would be reported as a broken citation that is not one.
+an invented token would be reported as a broken citation.
 
-On its own, it would make a whole family of real citekeys invisible.
-`Doe2024` and `Lamport94`, the default style of several reference
-managers, carry no separator at all, so a dossier written that way would
-contribute nothing to any parse, and a paper it cited leaving the corpus
-would **never** be reported. A false negative there is the worse
-failure of the two, since the draft goes on citing a source the ledger
-no longer holds.
-
-Both halves are kept by admitting a separator-free token only when it is
-one this dossier can already be shown to know: a member of the ledger, or
-a citekey the dossier itself *declares* by opening an `evidence.md`
-heading with it. The second is what closes the departed-key case, which
-ledger membership alone cannot, since a key that has left the ledger is
-by definition not in it. A heading is structural; prose is not, so prose
-cannot promote a word into a broken-citation report. For the same reason
-only a declared key can be reported missing at all: one in an
-`evidence.md` heading or a `sections.md` cell. A backticked word in prose,
-such as the skill's name in the evidence preamble, never is (#1117). The strict
-scan is never replaced by the loose one, only added to.
+On its own, that rule would make `Doe2024` and `Lamport94`, the default
+style of several reference managers, invisible, so a paper such a
+dossier cited could leave the corpus and **never** be reported: the
+worse failure of the two. So a separator-free token is admitted only
+when it is a member of the ledger or a citekey the dossier *declares* by
+opening an `evidence.md` heading with it, which catches a key that has
+left the ledger. Only a declared key (in an `evidence.md` heading or a
+`sections.md` cell) can be reported missing; a backticked word in prose
+never is. The strict scan is never replaced by the loose one, only
+added to.
 
 ## 💡 Why Markdown
 
-Everything a dossier holds is read by a model or by a human, both of
-which read Markdown natively. Nothing in it is a data structure another
-module consumes: `chitragupta/dossier/` parses only two things out of it
-(the corpus fingerprint line and backticked citekeys), and both degrade
-to "unavailable" instead of to an error if a human has been editing
-freely.
-A restored tarball is also legible on its own a year later, without this
-code.
-
-The cost of that choice is that there is no schema, so nothing validates
-that `evidence.md` is well-formed. This is accepted on the same
-principle as `chitragupta/review/citation_provenance.py`: a check
-that blocked on something it cannot verify exactly would train people to
-work around it.
-A malformed dossier makes the next revision less efficient. It cannot
-make a draft wrong, because the citation gate still stands between any
-draft and the user.
+A model and a human both read Markdown natively, and a restored tarball
+stays legible without this code. `chitragupta/dossier/` parses only the
+corpus fingerprint line and backticked citekeys, and both degrade to
+"unavailable" rather than an error after free hand edits. There is no
+schema, so nothing validates `evidence.md`; a check that blocked on what
+it cannot verify exactly would train people to work around it. A
+malformed dossier makes the next revision less efficient, never a draft
+wrong, because the citation gate still stands between any draft and the
+user.
 
 ## 📖 `evidence.md`'s `claim:`/`quote:` contract (A2)
 
@@ -489,28 +334,26 @@ quote: an optional verbatim span, quotable-only
   is off screen, cannot be a lightly edited copy of it.
 - **`quote:`** is optional, verbatim, and usable in a draft **only**
   inside quotation marks with an attribution, except in a verbatim
-  digest, whose body is copied runs rendered in place with their
-  citations: there each source's `quote:` records the passage the digest
-  leans on most, every other run is checked where it stands by `review
-  digest`, and `claim:` is drafted from only for the drafter's own
-  sentences. It is absent by default: a
-  captured quote is a quote in the drafter's context, which is the thing
-  this contract removes, so one is captured only when a quotation is
-  intended.
+  digest ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)), whose body is
+  copied runs rendered in place with their citations: there each
+  source's `quote:` records the passage the digest leans on most, every
+  other run is checked where it stands by `review digest`, and `claim:`
+  is drafted from only for the drafter's own sentences. It is absent by
+  default: a captured quote is a quote in the drafter's context, which
+  is the thing this contract removes, so one is captured only when a
+  quotation is intended.
 
-**A `support:` field.** A block may carry `support:` instead of
-`claim:`/`quote:`. It holds, in practice, a raw retrieval window
-(`EVIDENCE_CHARS = 600` in `chitragupta/retrieval_cli.py`). `support:` is
-**read but never written**: a dossier keeps it as-is, and nothing
-rewrites one to the newer shape. `evidence_blocks()` returns a block
-verbatim without owning its shape, so old and new coexist by
-construction. A skill meeting a `support:`-only block reads it as
-`quote:`, the conservative reading, since that
-is usually what it is.
+**A `support:` field.** An older block may carry `support:` instead of
+`claim:`/`quote:`, holding in practice a raw retrieval window
+(`EVIDENCE_CHARS = 600` in `chitragupta/retrieval_cli.py`). `support:`
+is **read but never written**, and nothing rewrites one to the newer
+shape; `evidence_blocks()` returns a block verbatim, so old and new
+coexist by construction. A skill meeting a `support:`-only block reads
+it as `quote:`, the conservative reading.
 
 **That rule covers what a drafter *may quote from*, and does not extend
 to anything that *prints* the field.** The two questions have opposite
-safe answers, and conflating them would publish source wording:
+safe answers:
 
 | | Reads a `support:`-only block as... | Why |
 | --- | --- | --- |
@@ -518,15 +361,10 @@ safe answers, and conflating them would publish source wording:
 | `chitragupta/evidence_appendix.py` | nothing at all | It is deciding what to put in a rendered document. A legacy `support:` holds a raw 600-character retrieval window (`EVIDENCE_CHARS`), and printing one as an attributed quotation would publish it |
 
 So the evidence sidecar ([CLI.md](CLI.md#-chitragupta-draft-evidence))
-reads `quote:` and only `quote:`. A `support:`-only dossier therefore
-renders no sidecar, because nobody ever decided those windows were worth
-quoting. `claim:` is excluded from it for the mirror-image reason: it is
-the drafter's own words, so quoting it back would attribute this
-project's prose to the source.
-
-The difference from the rule above is intended:
-`plans/a4-evidence-appendix.md` records the decision and
-`tests/test_evidence_appendix.py` pins it.
+reads `quote:` and only `quote:`, and a `support:`-only dossier renders
+no sidecar. `claim:` is excluded for the mirror-image reason: it is the
+drafter's own words, so quoting it back would attribute this project's
+prose to the source. `tests/test_evidence_appendix.py` pins this.
 
 ### 📖 The evidence sidecar, decided per genre
 
@@ -534,86 +372,70 @@ Four of the six drafting skills also render an **evidence sidecar**,
 `content/rendered/<topic>/<name>.evidence.{md,pdf}`, listing each cited
 source and the verbatim spans its dossier marked quotable
 ([CLI.md](CLI.md#-chitragupta-draft-evidence)). It changes what a
-finished document set *looks like*, so each genre answers for itself
-instead of inheriting one switch. The two genres that produce none
-decided so on the record:
+finished document set looks like, so each genre decides for itself:
 
 | Skill | Emits one? | Why |
 | --- | --- | --- |
-| `deep-research` | **yes**, the strongest case | Showing its work is the product. A reader checking where the corpus disagrees with itself wants what each source said |
+| `deep-research` | **yes**, the strongest case | Showing its work is the product |
 | `survey-writer` | **yes** | Citation-dense, and its reader is mapping a field |
-| `thesis-chapter-writer` | **yes** | An examiner reading adversarially is the ideal reader for one. A sidecar is standalone and is never `\input` into the thesis, so none of the objections that keep a References section out of the fragment apply |
-| `textbook-chapter-writer` | **yes, and usually empty** | Deliberately citation-thin, sources cited for motivation, `evidence.md` kept thin by design, so most chapters capture no `quote:` and nothing is written |
-| `review-digest` | **no** | Every copied run is already the source's own words with its citation closing it, and a sidecar would print the digest back |
-| `tutorial-writer` | **no** | It cites only in "Where to go next", and a quotation has no use in a lesson: a learner at a keyboard needs the next command, and pausing to attribute a sentence is the digression this genre refuses |
+| `thesis-chapter-writer` | **yes** | An examiner is the ideal reader, and a standalone sidecar is never `\input` into the thesis |
+| `textbook-chapter-writer` | **yes, and usually empty** | Citation-thin by design, so most chapters capture no `quote:` and nothing is written |
+| `review-digest` | **no** | Every copied run is already cited source wording, so a sidecar would print the digest back |
+| `tutorial-writer` | **no** | It cites only in "Where to go next", and a learner at a keyboard needs the next command, not an attributed quotation |
 
 A sidecar is never committed: `.gitignore` excludes it even under the
 example topic whose renders are tracked, because it carries verbatim
-wording from copyrighted sources. See
-[GENRE.md](GENRE.md#-the-six-drafting-genres) for what each of the six
-drafting genres otherwise produces.
+wording from copyrighted sources. [GENRE.md](GENRE.md#-the-six-drafting-genres)
+says what each genre otherwise produces.
 
 **The self-check.**
-`python -m chitragupta.draft dossier check-evidence <draft>` runs two
-checks. It first names any citekey carrying more than one block, since
-the findings below it are then about text that may not be the block in
-play. It then compares each block's `claim:` against its own `quote:`
-(`chitragupta/dossier/_evidence_check.py`, reusing
-`chitragupta/overlap_skipgram.py`'s stemmed word stream) and warns when
-the claim reads like the quote with its words moved. It is advisory and
-never blocks, and by default it prints no score:
+`python -m chitragupta.draft dossier check-evidence <draft>` first names
+any citekey carrying more than one block, then compares each block's
+`claim:` against its own `quote:` (`chitragupta/dossier/_evidence_check.py`,
+reusing `chitragupta/overlap_skipgram.py`'s stemmed word stream) and
+warns when the claim reads like the quote with its words moved. It is
+advisory and prints no score by default:
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3 rules out a similarity
-number a drafting step could optimise against, so a bare
-warning is what prints; `--score` opts into the number for a human
-reading the output by hand.
+number a drafting step could optimise against. `--score` opts into the
+number for a human reading by hand.
 
 ## 💡 Why several files rather than one
 
 Several files let a revision load only what it needs. `scope.md` and
-`sections.md` are small and almost always relevant; `rejected.md` is the largest
-and is only needed when a change opens a sub-theme up for re-searching. One
-combined file would have to be read whole every time, which is the cost this
-module exists to avoid.
+`sections.md` are small and almost always relevant; `rejected.md` is the
+largest and is needed only when a change reopens a sub-theme. One file
+would have to be read whole every time.
 
 ## 🔄 `sections.md` is derived, not maintained
 
-Its own template says the file is "rebuildable from the draft", and it is:
-a heading owns a line range, a citekey is cited on a line, and the
-relation falls out of the intersection. Attributing each key by hand
-from the outline is a mechanical step with a wrong answer available, and
-a `sections.md` that disagrees with the draft hands `draft-reviser` the
-wrong section for a citation.
+A heading owns a line range, a citekey is cited on a line, and the
+relation falls out of the intersection. Attributing keys by hand is a
+mechanical step with a wrong answer available, and a `sections.md` that
+disagrees with the draft hands `draft-reviser` the wrong section for a
+citation.
 
 ```bash
 python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write
 ```
 
-builds it instead, from both citation syntaxes, skipping fenced code and
-LaTeX verbatim so a `# Step 1` comment in an example listing is neither a
-heading nor a citation. A key cited above the first heading belongs to no
-section; it is reported on stderr instead of filed under one that does
-not contain it.
+builds it from both citation syntaxes, skipping fenced code and LaTeX
+verbatim so a `# Step 1` comment in an example listing is neither a
+heading nor a citation. A key cited above the first heading belongs to
+no section and is reported on stderr.
 
-`deep-research` is the exception, and only for timing: Phase 4 writes
-*planned* rows before the sections exist, and Phase 5 dispatches its
-writers from them. There is no draft to derive from at that point, so
-that write stays by hand and the derived form belongs at Phase 7(e),
-where the plan is replaced by what the finished report cites.
+`deep-research` is the exception, and only for timing: it writes *planned*
+rows before the sections exist, and Phase 7(e) replaces them with what the
+finished report cites.
 
 ## 💡 Why not merge the provenance JSON into the rest of the dossier
 
 `thesis-chapter-writer` and `deep-research` also write a
-`provenance.json`. It lives **inside** the dossier directory, at
-`content/dossiers/<draft path minus suffix>/provenance.json`, for two
-reasons.
-
-It is drafting state, produced by the run that wrote the draft, so it
-belongs with the rest of that run's state. And `dossier_dir()`
-mirrors the draft's path, so two drafts named `survey.md` in different
-topics do not share one file.
-
-They stay separate *files*, and neither replaces the other, because they
-answer different questions for different readers:
+`provenance.json`, **inside** the dossier directory at
+`content/dossiers/<draft path minus suffix>/provenance.json`: it is that
+run's drafting state, and the mirrored path keeps two drafts named
+`survey.md` in different topics from sharing one file. It stays a
+separate file because it answers a different question for a different
+reader:
 
 | | `provenance.json` | the dossier's Markdown |
 | --- | --- | --- |
@@ -622,122 +444,92 @@ answer different questions for different readers:
 | Read by | tooling, and a reviewer auditing one claim | `draft-reviser`, and a human months later |
 | Lost if absent | an audit trail for a finished draft | the ability to revise without re-running the whole topic |
 
-The overlap is one column of `sections.md`. Collapsing them would mean
-either putting prose a human needs into JSON, or putting a machine record
-into Markdown that nothing parses. The
-two skills that produce both write both.
+Merging them would put prose a human needs into JSON, or a machine
+record into Markdown nothing parses.
 
 ## 📚 The corpus fingerprint
 
 `scope.md` records how many parsed citekeys the ledger held when the
 draft was written, plus a 12-character digest of that set. Only `parsed`
-rows count: an entry whose PDF never parsed is not citable, so it is no
-part of the corpus a draft is measured against. A fingerprint recorded
-before 6.160.0 counted every row, so it mismatches once:
+rows count, since an unparsed entry is not citable (a fingerprint
+recorded before 6.160.0 counted every row, so it mismatches once):
 
 ```text
 - corpus: 501 citekeys, digest `a1b2c3d4e5f6`
 ```
 
-`python -m chitragupta.draft dossier status` recomputes it. If it
-differs, the corpus has moved, and the command names the citekeys that
-appear nowhere in the dossier (neither kept nor rejected), so a reviser
-can see what was never considered and not just that a number changed.
+`python -m chitragupta.draft dossier status` recomputes it. If it differs,
+the corpus has moved, and the command names the citekeys that appear
+nowhere in the dossier (neither kept nor rejected). It opens the ledger
+read-only, with no write lock and no migration, but waits out a writer's
+commit rather than report drift against an empty corpus.
 
-The ledger is opened read-only, exactly as `python -m
-chitragupta.corpus ledger` opens it. This is an inspection: it must not
-take a write lock or run a migration.
+**Drift is not itself a reason to redraft.** A corpus that *grew* is a
+reason to re-search only if the change being made touches a sub-theme
+the new papers could bear on. A corpus that *lost* a paper the draft
+cites has produced a broken citation, which is fixed whether or not
+anyone asked. [DRAFT-ITERATION.md](DRAFT-ITERATION.md#-two-findings-and-they-are-not-the-same-kind-of-thing)
+draws that line and acts on it in
+["Re-grounding after the corpus moves"](DRAFT-ITERATION.md#-re-grounding-after-the-corpus-moves).
 
-It does wait for a writer's commit. The ledger uses SQLite's default
-rollback journal, under which a reader is locked out for the length of a
-commit. Giving up at once would report a drift scan against no corpus at
-all, indistinguishable from a machine that has none. Waiting the window
-out takes no lock while it waits, so the "must not interfere" property
-is untouched.
-
-**Drift is not itself a reason to redraft.** It is a reason to re-search
-if, and only if, the change being made touches a sub-theme the new papers
-could bear on. That is a claim about a corpus that *grew*. A corpus that
-*lost* a paper the draft cites has produced a broken citation, which is
-fixed whether or not anyone asked.
-
-The line between the two is drawn in [DRAFT-ITERATION.md's "Two findings,
-and they are not the same kind of thing"](DRAFT-ITERATION.md#-two-findings-and-they-are-not-the-same-kind-of-thing),
-and acted on in its ["Re-grounding after the corpus
-moves"](DRAFT-ITERATION.md#-re-grounding-after-the-corpus-moves).
-
-The fingerprint is written once, by `init`, and is not maintained by any
-command. The only thing that rewrites it is a re-grounding pass, which
-re-stamps it as the record that the draft was brought back into line with
-that corpus.
+The fingerprint is written once, by `init`. Only a re-grounding pass
+rewrites it, as the record that the draft was brought back into line
+with that corpus.
 
 ## 🧭 The draft fingerprint (FEATURE-ROADMAP.md's E3)
 
-The corpus fingerprint above answers "has the corpus moved since this
-draft was written?" The draft fingerprint answers the same question
-about the draft itself, so a hand edit cannot silently leave
-`sections.md`, `evidence.md` and `math.md` describing a document that
-no longer exists. This is also the
-mechanism behind "how do I hand a revised draft back?";
+The draft fingerprint stops a hand edit silently leaving `sections.md`,
+`evidence.md` and `math.md` describing a document that no longer exists.
 [WRITING-PROCESS.md](WRITING-PROCESS.md#-handing-a-hand-edited-draft-back-for-the-next-iteration)
-walks through that from the user's side, and what follows is the format it
-rests on. `scope.md` carries a text digest of the draft:
+covers handing a revised draft back from the user's side. `scope.md`
+carries a text digest of the draft:
 
 ```text
 - draft digest: `a1b2c3d4e5f6`
 ```
 
-or, before the first stamp:
+Before the first stamp it reads `not recorded`.
 
-```text
-- draft digest: not recorded (run `dossier stamp` once the draft is ready)
-```
-
-Unlike the corpus fingerprint, nothing writes this at `init` time:
-`init` often runs before the draft is finished, and stamping a
-half-written draft would make every dossier read as changed on its first
-real `status`. Each of the six genre skills stamps at its own finishing
-step, and `draft-reviser`/`corpus-reviser` re-stamp after their own
-edits, in every case after `python -m chitragupta.draft gate` passes,
-never before:
+`init` does not write it, since a half-written draft would then read as
+changed on its first real `status`. Each of
+the six genre skills stamps at its finishing step, and
+`draft-reviser`/`corpus-reviser` re-stamp after their own edits, always
+after `python -m chitragupta.draft gate` passes:
 
 ```bash
 python -m chitragupta.draft dossier stamp content/drafts/<path>
 ```
 
-`agenda-reviser` is the deliberate exception: it may not touch `scope.md`
-at all, so a repair it makes leaves the fingerprint stale on purpose.
-`dossier status` then reads `CHANGED since last stamp`, the signal
-that an automated pass, not a person's own revision session, touched the
-draft since anyone last confirmed it.
+`agenda-reviser` may not touch `scope.md`, so a repair it makes leaves
+the fingerprint stale on purpose: `CHANGED since last stamp` then
+signals that an automated pass touched the draft since a person last
+confirmed it.
 
-`python -m chitragupta.draft dossier status` recomputes the digest and
-reports `unchanged since last stamp` or `CHANGED since last stamp`. A
-changed digest by itself only says *that* the draft moved; most edits
-it catches are prose a reviser has no reason to act on. Only once it has
-changed does `status` also check five more specific classes, each
-already derivable from the dossier and the draft:
+`dossier status` reports `unchanged since last stamp` or
+`CHANGED since last stamp`. A changed digest only says *that* the draft
+moved, so only then does `status` check five specific classes:
 
 | Class | What it means |
 | --- | --- |
-| a citekey cited in the draft with no `evidence.md` block | drift reporting reads the dossier, not the draft body, so a hand-added citation is otherwise invisible to it forever |
+| a citekey cited in the draft with no `evidence.md` block | a hand-added citation, otherwise invisible to drift reporting, which reads the dossier |
 | an `evidence.md` block whose citekey is no longer cited | the reverse: the citation was removed by hand |
 | a heading with no row in `sections.md` | the draft's own outline moved |
 | a `sections.md` row with no matching heading | the same drift, read the other way |
-| a `math.md` row appearing nowhere in the draft | the orphan case `render`'s own `[math]` warnings already report, the sign that a revision reworded or deleted the equation the row belonged to |
+| a `math.md` row appearing nowhere in the draft | a revision reworded or deleted its equation (`render` warns of the same orphan) |
 
 `draft-reviser` offers each finding to the user one at a time and acts
 only on what they agree to. It **never applies a repair unasked, and
-never blocks the revision on one going unanswered.** A digest that has
-never been stamped reports `not recorded` instead of `CHANGED`; that is
-not drift to chase, just a draft nobody has stamped yet.
+never blocks the revision on one going unanswered.** A digest never
+stamped reports `not recorded`, which is not drift to chase.
+
+The draft digest is `chitragupta.spec.digest`, a plain sha256[:12] of the
+text, not the corpus fingerprint's order-independent digest over a set of
+citekeys, which would not move for a reworded sentence.
 
 ### 🧹 The second row has a command, and a second reader
 
-The table above cannot carry two things about "an `evidence.md` block
-whose citekey is no longer cited".
-
-**It is removable by a primitive instead of a hand edit:**
+**An uncited `evidence.md` block is removable by a primitive instead of
+a hand edit:**
 
 ```bash
 python -m chitragupta.draft dossier prune content/drafts/<slug>.md              # dry run
@@ -745,51 +537,36 @@ python -m chitragupta.draft dossier prune content/drafts/<slug>.md --apply
 python -m chitragupta.draft dossier prune content/drafts/<slug>.md --citekey sample_dt_factory_2022 --apply
 ```
 
-It is a dry run by default because `recorded - cited` cannot distinguish a
-citation the user cut from a candidate transcribed into `evidence.md` and never
-cited, and the two want opposite repairs. It deletes by line span, touches
-`evidence.md` only, and refuses (instead of half-doing) a citekey with two
-blocks, a citekey still cited, and a citekey recorded only in `sections.md`
-(which `dossier sections --citekeys --write` already regenerates). `rejected.md`
-is never read or written.
+It is a dry run by default because `recorded - cited` cannot tell a
+citation the user cut from a candidate transcribed and never cited, and
+the two want opposite repairs. It touches `evidence.md` only, never
+`rejected.md`, and refuses a citekey with two blocks, one still cited, or
+one recorded only in `sections.md`.
 
-**And `status` is not the only surface that reports it.** Every
-class in the table above is gated on the digest having changed, which
-needs a prior `dossier stamp`, so a dossier that was never stamped
-answers nothing.
-`python -m chitragupta.review agenda` therefore computes the same state
-**ungated**, as a surfaced `recorded-but-uncited` item, and over
-`sections.md` as well as `evidence.md`. `status` keeps its gate, for
-the reason stated above: unconditional, these classes fire on almost
-any real dossier and become a wall nobody reads.
-
-The draft digest reuses the same text digest `chitragupta/spec/_cli.py`'s
-`spec sign` computes over a book's outline (`chitragupta.spec.digest`, a
-plain sha256[:12] of the text). It does not use `dossier.digest`, the
-corpus fingerprint's function, which is order-independent over a *set of
-citekeys* and would not move at all for a reworded sentence.
+**And `status` is not the only surface that reports it.** Its classes
+are gated on a changed digest, so a never-stamped dossier answers
+nothing. `python -m chitragupta.review agenda` computes the same state
+**ungated**, as a surfaced `recorded-but-uncited` item, over
+`sections.md` as well as `evidence.md`. `status` keeps its gate because,
+unconditional, these classes fire on almost any real dossier and become
+a wall nobody reads.
 
 ### 🔁 The fingerprint as a retrieval trigger (FEATURE-ROADMAP.md's E4)
 
 A `CHANGED` fingerprint is also ITER-RETGEN's `y_{t-1}` (Shao et al.,
 *Findings of EMNLP 2023*, docs/RAG.md) with a person in the generation
-slot instead of a model: a hand-edited section's own prose can stand
-in for the paper's "previous generation" and drive one extra
-retrieval round for that section, instead of a plain single-round
-search. `draft-reviser` offers this once the five staleness findings
-above are settled, and only for a section `outline.md` declares a
-query for. It never applies it unasked, the same as every other repair
-this fingerprint gates.
+slot: a hand-edited section's prose can drive one extra retrieval round
+for that section. `draft-reviser` offers this, never unasked, once the
+staleness findings are settled and only for a section `outline.md`
+declares a query for.
 
 ```bash
 python -m chitragupta.draft retrieve search "<query>" \
     --y-prev "<section's current prose>" --origin reground --log <draft>
 ```
 
-Exactly two rounds, never more (`chitragupta/retrieval_iterative.py`):
-round 1 is the plain query, round 2 appends the prose (bounded to
-1500 characters, on a word boundary), and the two rounds' results are
-merged by citekey and capped back to `--k`: accumulate, then cap,
-not FlashRAG's uncapped `IRCoT` merge. The prose itself never becomes
-draft content, an `evidence.md` block, or anything else persisted
-beyond the query string.
+Exactly two rounds (`chitragupta/retrieval_iterative.py`): round 1 is
+the plain query, round 2 appends the prose (bounded to 1500 characters,
+on a word boundary), and the results are merged by citekey and capped
+back to `--k`. The prose never becomes draft content, an `evidence.md`
+block, or anything persisted beyond the query string.

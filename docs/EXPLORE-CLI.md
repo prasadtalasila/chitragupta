@@ -1,19 +1,16 @@
-# ⌨ Explore the Graph — CLI
+# ⌨ Explore the graph from the CLI
 
 Status: **how-to.**
-
-[TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) is the reference for how every
-number here is computed; [CLI.md](CLI.md#-chitragupta-corpus-discover)
-documents every flag; [EXPLORE-WEB.md](EXPLORE-WEB.md) is this page's
-interactive twin, and records
-[which computations live in the pipeline and which in the app](EXPLORE-WEB.md#-what-the-pipeline-computes-and-what-the-app-computes).
-Every answer below comes from the same stored artefacts the app reads,
-so the two surfaces can never disagree. Every command honours `--json`
-for scripts and the drafting skills.
 
 **Written for** you at a terminal with a synced corpus, asking "what is
 my corpus about, and where should the next draft start?" without
 opening a browser.
+
+[TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) says how every number here is
+computed and [CLI.md](CLI.md#-chitragupta-corpus-discover) documents
+every flag. [EXPLORE-WEB.md](EXPLORE-WEB.md) is the interactive twin; it
+reads the same stored artefacts, so the two cannot disagree. Every
+command honours `--json`.
 
 ## 🗺 The topic map
 
@@ -27,14 +24,11 @@ $ chitragupta corpus discover
   ...
 ```
 
-*Real corpus, trimmed.* This lists every topic with its provenance,
-size and top terms, plus the papers no topic covers (an
-`uncovered by any topic:` line of citekeys). Provenance is
-`seed` or `emergent`, which is all the artefact records; `--origins` is
-what tells a hand-written seed from an extracted keyword and from a
-corroborated phrase both files name. An uncovered paper is one the
-topic model and every seed phrase passed over, which is worth noticing
-before you plan a draft around the topics.
+*Real corpus, trimmed.* Every topic with its provenance (`seed` or
+`emergent`), size and top terms, plus an `uncovered by any topic:` line
+naming the papers the topic model and every seed phrase passed over.
+`--origins` tells a hand-written seed from an extracted keyword and a
+corroborated phrase.
 
 ## 🔍 One topic
 
@@ -43,18 +37,15 @@ chitragupta corpus discover "digital twin"
 ```
 
 The topic's papers with full ledger entries and each paper's *other*
-topics, both linked-topic families with their evidence (shared citekeys
-on one side, the bridging pair on the other), and the topic's stored
-brokerage numbers: neighbours, ego density, Burt's effective size and
-constraint, per family, with the theme-or-bridge reading. Any free
-phrase resolves through the ladder (exact, fuzzy, hybrid BM25+cosine,
-then paper search), and the output names which rung answered.
+topics, both linked-topic families with their evidence, and the stored
+brokerage numbers per family. Any free phrase resolves through the
+ladder (exact, fuzzy, hybrid BM25+cosine, then paper search), and the
+output names which rung answered.
 
-Add `--out overview.md` for an extractive Markdown overview grounded in
-verbatim member-paper snippets, or `--hops N` to see the neighbourhood
-as rings by hop distance instead of the flat lists. Ring one is typed by
-which family reached each neighbour, and the output counts what the topic
-cannot reach:
+`--out overview.md` writes an extractive Markdown overview from verbatim
+member-paper snippets. `--hops N` shows the neighbourhood as rings by hop
+distance, each neighbour typed by the family that reached it, and counts
+what the topic cannot reach:
 
 ```console
 $ chitragupta corpus discover "digital twin" --hops 1
@@ -68,13 +59,10 @@ hop 1:
 unreached from here: 65 topics
 ```
 
-Add `--family overlap` or `--family semantic` to measure over one
-relation instead of both. Without it the walk is over the union, so a
-topic one shared paper plus one cosine hop away sits on the same ring as
-a topic two shared papers out, and "two hops" means "two hops over
-whichever family got there first". With it the walk answers the question
-you asked, the header says which family answered, and a neighbour both
-families reach is typed by the one you walked instead of as `both`:
+Without `--family overlap` or `--family semantic` the walk is over the
+union, so "two hops" means "two hops over whichever family got there
+first". With it the header names the family, and a neighbour both reach
+is typed by the one you walked:
 
 ```console
 $ chitragupta corpus discover "digital twin" --hops 1 --family overlap
@@ -86,11 +74,8 @@ hop 1:
   ...
 ```
 
-This is the terminal's half of the app's **Edges** picker
-([the web tour](EXPLORE-WEB.md) shows the other half); the single-family
-rows in `tests/webapp/hop_cases.json` hold the two to the same answers.
-
-The topic view itself closes with the stored brokerage numbers:
+This is the terminal's half of the app's **Edges** picker. The topic
+view closes with the stored brokerage numbers:
 
 ```console
 brokerage (from the artefact):
@@ -112,10 +97,9 @@ topic-23 +23
   ...
 ```
 
-*Real corpus, trimmed.* The stored merge tree is cut into as close to
-eight groups as it allows. This is the app's resolution slider as a view,
-with the same labels (biggest member leads, the rest counted), and it
-reports an unreachable target the same way the app does.
+*Real corpus, trimmed.* The stored merge tree cut into as close to
+eight groups as it allows: the app's resolution slider, with the same
+labels (biggest member leads, the rest counted).
 
 ## 🤝 Where the families disagree
 
@@ -133,10 +117,8 @@ talk alike, do not share papers (one semantic cluster, different paper-sharing c
 ```
 
 *Real corpus, trimmed.* Both families' stored MCL partitions and the
-two disagreement lists:
-topics that talk alike but share no papers, and topics that share
-papers but talk differently. Sharpest disagreements first, capped with
-the drop reported.
+two disagreement lists (talk alike but share no papers; share papers but
+talk differently), sharpest first, capped with the drop reported.
 
 ## 🛤 The path between two topics
 
@@ -149,8 +131,7 @@ path over shared papers: model-driven engineering -> topic-60 -> physical twin
 ```
 
 *Real corpus, evidence lists trimmed.* The strongest chain over one
-family, hop by hop, each hop with its evidence, walked from the
-artefact's stored next-hop matrices. `--family` is required, because the
+family, each hop with its evidence. `--family` is required, because the
 walk never uses one fused weight. "No path over this family" is a real
 answer, and often the interesting one.
 
@@ -165,10 +146,9 @@ is what chance predicts (p = 0.02, against a threshold of 0.01), so no
 edge was drawn.
 ```
 
-*Real corpus, citekey list trimmed.* The shared citekeys, both topic
-sizes, the corpus size, the hypergeometric tail the gate weighed, and the
-verdict, including the gate's stored threshold, which the app cannot
-show.
+*Real corpus, citekey list trimmed.* The hypergeometric tail the gate
+weighed and its verdict, including the stored threshold, which the app
+cannot show.
 
 ## ⚖ Several topics side by side
 
@@ -184,11 +164,9 @@ pairwise shared papers:
 ...
 ```
 
-*Real corpus, trimmed.* Pairwise shared papers, the papers held by all
-of the named topics, the bridge papers held by two or more (with full
-ledger entries), and the edges among them with their evidence. It takes
-two to six topics; past six it refuses and names the count instead of
-truncating silently.
+*Real corpus, trimmed.* Also lists the bridge papers held by two or more
+topics and the edges among them. It takes two to six topics; past six it
+refuses and names the count instead of truncating silently.
 
 ## 💠 One paper, and the exports
 
@@ -198,10 +176,9 @@ chitragupta corpus discover --html topics.html
 chitragupta corpus discover --app topicapp/
 ```
 
-`--paper` inverts the question: every topic one paper belongs to,
-with scores. `--html` writes the one-file static page and `--app` the
-interactive app directory; [EXPLORE-WEB.md](EXPLORE-WEB.md) is the tour
-of what the app then shows.
+`--paper` lists every topic one paper belongs to, with scores. `--html`
+writes the one-file static page and `--app` the interactive app
+([EXPLORE-WEB.md](EXPLORE-WEB.md)).
 
 ## 🗒 The command map
 
@@ -222,8 +199,6 @@ of what the app then shows.
 | the interactive app | `chitragupta corpus discover --app topicapp/` |
 | any of the above, machine-readable | add `--json` |
 
-Every one of the app's analytical views has a terminal twin here, each
-pinned to the app's own arithmetic by a shared case file under
+Every one of the app's analytical views has a terminal twin here,
+pinned to the app's arithmetic by a shared case file under
 `tests/webapp/`.
-[TOPIC-DISCOVERY-GRAPH.md](TOPIC-DISCOVERY-GRAPH.md#2-what-is-stored-and-what-the-browser-computes)
-records which numbers the stage stores and which the browser computes.

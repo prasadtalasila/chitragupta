@@ -220,7 +220,7 @@ title/DOI, and resolves it against the ledger's existing citekeys.
     "tertiaryBorderColor": "#D55E00"
   }
 }}%%
-flowchart LR
+flowchart TB
   TEI[/"&lt;citekey&gt;.tei.xml<br/><small>&lt;listBibl&gt;</small>"/] --> REF["one reference<br/><small>title · DOI · year</small>"]
   REF --> Q{"resolves to a<br/><b>citekey already<br/>in the ledger?</b>"}
   Q -- yes --> IN["<b>internal edge</b><br/><code>A → B</code><br/><small>both citable</small>"]

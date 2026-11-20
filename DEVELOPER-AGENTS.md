@@ -2,10 +2,13 @@
 
 The contract for coding agents (and anyone else) **working on this
 repository itself**, as opposed to using it to draft content. The
-drafting half is [AGENTS.md](AGENTS.md); the why behind both is
+drafting half is
+[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md);
+the why behind both is
 [SOUL.md](SOUL.md).
 
-[AGENTS.md](AGENTS.md)'s citekey invariant binds code here too: no module
+[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)
+'s citekey invariant binds code here too: no module
 may generate, guess or rewrite a citekey, and no new check may be promoted
 into a gate beside `chitragupta/citation_gate.py`. That includes test
 fixtures, doc examples and the committed sample project, because a
@@ -48,7 +51,9 @@ reasonable reading and no clear tie-breaker in this file or the code).
 ## 🤔 Behavioural rules: think before coding
 
 Four rules about *how to work*, as opposed to what the code should look
-like ([docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md)). They prioritise
+like
+([docs/CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md)).
+They prioritise
 caution over speed; for a genuinely trivial change, use judgement.
 
 1. **Think before coding.** State assumptions rather than making silent
@@ -62,7 +67,7 @@ caution over speed; for a genuinely trivial change, use judgement.
    cannot occur. Ask whether a reviewer would call it over-engineered; if
    yes, cut it. Note the one deliberate exception: the *comments* are not
    subject to this; see
-   [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid).
+   [docs/CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid).
 3. **Surgical changes.** Each changed line should trace to the requested
    task. Do not refactor unrelated code, and match the local style of
    whatever you are editing. Remove imports and helpers *your* change
@@ -71,7 +76,7 @@ caution over speed; for a genuinely trivial change, use judgement.
    in the PR, not a licence to rewrite it while passing through. This is
    where the Boy Scout Rule lands here: cleanup happens, in its own PR
    and against the register, rather than inside an unrelated diff
-   ([why](docs/CODE-STANDARDS.md#-the-boy-scout-rule-and-surgical-changes)).
+   ([why](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md#-the-boy-scout-rule-and-surgical-changes)).
 4. **Goal-driven execution.** Turn the task into a verifiable goal before
    starting: "fix the bug" becomes "write a test that reproduces it, then
    make it pass", which is the test-driven rule below, arrived at from
@@ -80,7 +85,8 @@ caution over speed; for a genuinely trivial change, use judgement.
 
 ## 📏 Code standards
 
-[docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) is the standard the code
+[docs/CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md)
+is the standard the code
 itself is held to: the code counterpart of `docs/WRITING-STANDARDS.md`.
 Read it before a non-trivial change. In brief:
 
@@ -101,7 +107,8 @@ Read it before a non-trivial change. In brief:
   `pytest` (JS has no `ast`). Offenders live in the same
   `code-standards-register.toml`, in its `c1js`/`c2js` tables, and it is
   the same ratchet: a new offender fails, a fixed one must be delisted.
-  See [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md#-the-binary-rules)
+  See
+  [docs/CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md#-the-binary-rules)
   for the two ways the JS scan's counting deliberately differs from the
   Python one.
 - **Statements, not physical lines**, because this repository *requires*
@@ -110,7 +117,7 @@ Read it before a non-trivial change. In brief:
   aligned with the 25-statement rule for the same anti-over-splitting
   reason. Do not split a function merely to satisfy an S3776 finding of
   25 or below; mark it *Accepted* in SonarCloud instead
-  ([why](docs/CODE-STANDARDS.md#-cognitive-complexity-the-bar-is-25-not-sonarqubes-default-15)).
+  ([why](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md#-cognitive-complexity-the-bar-is-25-not-sonarqubes-default-15)).
 - Everything else in that document (naming, one-thing-per-function, the
   code-smell vocabulary) is a review standard and deliberately has no
   detector. A quality score is not a thing to drive to zero;
@@ -118,7 +125,9 @@ Read it before a non-trivial change. In brief:
   and it applies to code as written.
 - It is written against the clean-code checklist rather than invented
   here, and maps every rule in it to enforced / already-here /
-  review / not-applicable. [docs/INSPIRATION.md](docs/INSPIRATION.md) has
+  review / not-applicable.
+  [docs/INSPIRATION.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md)
+  has
   the provenance.
 
 **Measure the headroom before you choose the fix's shape, not after.**
@@ -148,7 +157,8 @@ volume, pages) from the ledger's `bib_fields` column, which `sync`
 populates via `bib_reader`. It does not, and must not, parse
 `bibliography.bib` itself. The one thing that legitimately reads the bib
 file directly is pandoc's `--citeproc`, which is not this codebase. See
-[AGENTS.md](AGENTS.md) for why `bib_reader` is the sole reader.
+[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)
+for why `bib_reader` is the sole reader.
 
 What a part *does* and what it *costs to install* are separate axes:
 `chitragupta/render_output/` is drafting-layer code that needs no package from
@@ -207,7 +217,8 @@ layer too**: `python -m chitragupta.corpus sync` needs `bibtexparser`
 (parsing `bibliography.bib` correctly, with nested braces and LaTeX
 escapes, isn't worth hand-rolling), so it must be run via the installed venv,
 not the bare system interpreter. `python -m chitragupta.draft gate` is the
-exception (see [AGENTS.md](AGENTS.md)).
+exception (see
+[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)).
 
 **Probe for a toolchain; never assume one, in either direction.**
 Whether a host has root, TeX Live or Pandoc is one machine's fact, not a
@@ -249,7 +260,8 @@ the decision to also make this a published, pip-installable package, and
 what had to land first). If you find a dependency-order issue, fix it
 once in `pyproject.toml` (+ `poetry lock` to update `poetry.lock`, or
 `python3 scripts/relock.py` to regenerate it from nothing; see
-[docs/UV-MIGRATION.md](docs/UV-MIGRATION.md)) and every target picks it
+[docs/UV-MIGRATION.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/UV-MIGRATION.md))
+and every target picks it
 up. Don't add a second install path.
 
 Read that last sentence as the invariant it protects, not as the
@@ -478,14 +490,17 @@ which makes its red *and* its green worthless as evidence.
 
 ### 🗺 Recording a plan before you build
 
-[docs/FEATURE-ROADMAP.md](docs/FEATURE-ROADMAP.md) holds what would be
+[docs/FEATURE-ROADMAP.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/FEATURE-ROADMAP.md)
+holds what would be
 built and in what order. For an item whose design is underdetermined,
 write the plan down in `plans/` **before** the first
 test, and link it from the PR.
 
 Most items do not need one: a roadmap entry already carries the files
 touched, the size and the dependencies, and for a mechanical change that
-is the whole plan. [plans/README.md](plans/README.md) has the three
+is the whole plan.
+[plans/README.md](https://github.com/prasadtalasila/chitragupta/blob/main/plans/README.md)
+has the three
 tests for when a plan earns its place, the shape to follow, and the rule
 that a merged plan records which PR closed it.
 
@@ -662,7 +677,8 @@ than post a wrong number.
 
 `.pylintrc` and `.markdownlint.yaml` are in the tree, adopted from
 [DTaaS](https://github.com/INTO-CPS-Association/DTaaS), the same source
-[docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) takes its standards
+[docs/CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md)
+takes its standards
 from. `pyproject.toml`'s `[tool.ruff]` is not: DTaaS carries no ruff
 config to inherit, so its `select` and `per-file-ignores` were decided
 fresh, the way the paragraph below states. Run all four before you push
@@ -713,7 +729,8 @@ reports `tail`'s status, so a real finding passes for a clean run.
 number, and a score can improve while the thing you cared about gets
 worse. The tree is at zero for all four, which is this file's own rule
 that **a check that has not been made to pass must not ship.**
-[docs/TECHNICAL-DEBT.md](docs/TECHNICAL-DEBT.md)'s 5.1, 5.2 and 5.4
+[docs/TECHNICAL-DEBT.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TECHNICAL-DEBT.md)
+'s 5.1, 5.2 and 5.4
 record how each adoption got there.
 
 The configuration decisions that still bind, so a later reader does not
@@ -732,7 +749,7 @@ have to re-derive them:
   (much broader) default.** `BLE` (blind `except`) is the rule ruff is
   here for; `E`/`F` are pyflakes/pycodestyle's core correctness checks
   plus the "keep lines short" rule
-  [CODE-STANDARDS.md's build order](docs/CODE-STANDARDS.md#-build-order)
+  [CODE-STANDARDS.md's build order](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md#-build-order)
   names; `RUF100` turns a `# noqa: BLE001` into a checked claim instead
   of a comment nothing reads.
 - **`per-file-ignores` covers `__init__.py`'s `F401`/`E402`** wholesale
@@ -789,7 +806,8 @@ does the thinking.
 first-class mode ("LLM-free on the OCR side", in the plugin's own words),
 and it is the better fit for this repository: the agent doing the
 reviewing is already carrying
-[docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md), the layer boundaries and
+[docs/CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md),
+the layer boundaries and
 the citekey invariant, which is the context a detached CLI call does not
 have. `review` additionally needs `OCR_LLM_URL`/`OCR_LLM_TOKEN`/
 `OCR_LLM_MODEL`, `~/.opencodereview/config.json`, or
@@ -872,7 +890,8 @@ Two traps:
 Same standing as the review layer ([SOUL.md](SOUL.md)): nothing here
 blocks on it, `python -m chitragupta.draft gate` remains the only gate, and a
 finding is a claim to agree or disagree with. Judge each against
-[docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) rather than adopting it
+[docs/CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md)
+rather than adopting it
 because a tool said so. A change made only to silence a reviewer is the
 failure mode that document's R3 is about. The plugin's `review` skill
 offers to apply fixes autonomously; the surgical-changes rule above still
@@ -984,13 +1003,13 @@ merge or tag that causes a collision lands *inside* the window being
 checked. No new rules are written here; reusing that script is what keeps
 the merge-time check from drifting away from the pull-request-time one.
 
-**This is not a duplicate of the CI check, and step 8 above cannot
+**This is not a duplicate of the CI check, and step 7 below cannot
 replace it.** `ci.yml` runs that check against the merge commit GitHub
 built at `pull_request` time; another PR can merge, or push a tag,
 between that run and your merge. Two branches picking the same version
 produce a *byte-identical* `version =` line, so git merges it with no
 conflict and `mergeable_state` stays `clean`; nothing else looks. And
-step 8's "has `main` moved?" is a check a person performs *before*
+step 7's "has `main` moved?" is a check a person performs *before*
 merging, so the gap is between that check and the merge call itself.
 Another PR can merge and tag the same version seconds after your check
 passes, leaving `main` on a version already released against different
@@ -1044,7 +1063,7 @@ instead of something a person has to remember at the end of a long
 session, in a browser, after CI has gone green. The ratchet, the
 citation gate and this check are the same response to guidance that
 does not stick
-([docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md#-why-a-ratchet-suits-this-project-specifically)).
+([docs/CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md#-why-a-ratchet-suits-this-project-specifically)).
 
 ### ⚙ What the repository settings fixed, and what they could not
 
@@ -1248,14 +1267,7 @@ not merely started:
 6. Wait for `.github/workflows/ci.yml` to complete on the PR and confirm
    it's green. If it fails, fix the actual cause (see "Before claiming a
    task complete") and push again; don't merge past a red check.
-7. Request review from Copilot, resolve every issue it identifies, and
-   mark each as resolved; consider all previous Copilot comments made in
-   this PR while resolving the issues. Make a push after all issues are
-   resolved, and then request re-review from Copilot. Iterate until all
-   issues are resolved. Use judgement on a genuinely trivial finding
-   rather than treating every comment as mandatory, but "trivial" means
-   inconsequential (a wording nit), not "inconvenient to fix."
-8. **Check that `main` has not moved since CI last ran.** If it has,
+7. **Check that `main` has not moved since CI last ran.** If it has,
    merge or rebase onto it and **do the whole cycle again from step 2**:
    re-decide the version bump, re-run every local check, and wait for CI
    on the new head. A branch that went green against an older `main` is
@@ -1268,18 +1280,18 @@ not merely started:
    picking the *same* number produce a byte-identical line that git
    merges without a conflict. `scripts/check_version_bump.py` fails CI on
    that, but it can only fail on a run that actually happened.
-9. Squash-merge the PR: `python scripts/merge_pr.py <N>` (see "Merging"
+8. Squash-merge the PR: `python scripts/merge_pr.py <N>` (see "Merging"
    above). It re-checks the version against `main` and the tags at the
    last possible moment and refuses rather than merging a collision,
-   which catches the case step 8 structurally cannot: a PR that merges in
+   which catches the case step 7 structurally cannot: a PR that merges in
    the seconds after your check.
-10. **A MAJOR or MINOR version only:** tag `v<version>`, and **read
+9. **A MAJOR or MINOR version only:** tag `v<version>`, and **read
    `main`'s `pyproject.toml` again first** rather than trusting the
    number you bumped to. The merge closes the window before it; nothing
    closes the one after it, and a tag pushed on a collided version names
-   somebody else's content. **A PATCH version is done at step 9:** push
+   somebody else's content. **A PATCH version is done at step 8:** push
    no tag and make no release.
-11. **A MAJOR or MINOR version only:** confirm
+10. **A MAJOR or MINOR version only:** confirm
    `.github/workflows/release.yml` completed, the resulting GitHub
    Release has its assets attached (`chitragupta-<version>.zip`,
    `chitragupta-docker-<version>.zip`, and the wheel and sdist), and

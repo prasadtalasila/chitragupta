@@ -9,91 +9,47 @@ share one `safe_path.py`. All four launch as `python` in exec form from
 `.claude/settings.json`. Codex's `.codex/hooks.json` launches the gate,
 style and session-start hooks through a `python -P -c` one-liner, and
 OpenCode's plugin runs the gate and style hooks
-([HARNESS.md](HARNESS.md)). The placeholder is braced, the interpreter
-name is settled below, and a launcher that cannot start is reported from
-two sides.
-
-`code_standards_hook.py` is the one hook that is not about a draft: it
-watches a change to this repository's own code.
+([HARNESS.md](HARNESS.md)). `code_standards_hook.py` is the one hook that
+is not about a draft: it watches a change to this repository's own code.
 
 Hooks are how a check stops depending on somebody remembering to run it.
 [ARCHITECTURE.md](ARCHITECTURE.md) states the reason under "Grounding is
-enforced, not requested": the citation gate runs twice on the same draft,
-once because the skill's own prose says to and once because the harness
-does it regardless, and *neither run is the skill's own good intentions*.
-This document is about that second run: what may be hooked, what a hook may
-do once it fires, and which of the answers here are measured and which
-assumed.
+enforced, not requested": the citation gate runs once because the skill's
+prose says to and once because the harness does it regardless. This page
+is about that second run: what may be hooked, what a hook may do once it
+fires, and which answers are measured.
 
 **Written for** anyone adding a hook to this repository or changing
-`.claude/settings.json`. It assumes
-`DEVELOPER-AGENTS.md`, which governs any change to
-this repository's code, and [CODE-STANDARDS.md](CODE-STANDARDS.md) for what
-that code must look like.
-
-**Not covered here:** what the checks themselves *do*. The citation gate is
-[AGENTS.md](../AGENTS.md) and [ARCHITECTURE.md](ARCHITECTURE.md); the prose
-checker is [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9 and
-[HOUSE-STYLE.md](HOUSE-STYLE.md). This file is about *invocation*, which is
-a separate question and has separate rules.
-
-## 🧭 Table of contents
-
-- [The rule that decides everything](#-the-rule-that-decides-everything)
-- [The two classes](#-the-two-classes)
-- [The registry](#-the-registry)
-- [The shared design, in files](#-the-shared-design-in-files)
-- [The launcher contract](#-the-launcher-contract)
-- [The output contract](#-the-output-contract)
-- [What is measured, and what is merely documented](#-what-is-measured-and-what-is-merely-documented)
-- [Testing a hook](#-testing-a-hook)
-- [Deliberately not done](#-deliberately-not-done)
-- [Prior art](#-prior-art)
-- [Open questions](#-open-questions)
+`.claude/settings.json`. It assumes `DEVELOPER-AGENTS.md` and
+[CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md).
+What the checks themselves *do* is elsewhere: the citation gate in
+[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)
+and [ARCHITECTURE.md](ARCHITECTURE.md), the prose checker in
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9 and
+[HOUSE-STYLE.md](HOUSE-STYLE.md).
 
 ## 🔑 The rule that decides everything
 
 > **A hook fails loud or fails silent, and which one it is follows from
 > what it protects, never from what is convenient.**
 
-Everything else in this document follows from that rule. It exists because
-the two failure modes are not symmetric and the wrong one is invisible.
-
+The two failure modes are not symmetric, and the wrong one is invisible.
 `citation_gate_hook.py` is the only automatic enforcement of the rule
-[CLAUDE.md](../CLAUDE.md) opens with: a citekey may be used only if it
-came from a real parse of a real PDF. A gate that stops running does not
-announce itself. The tree still contains a hook file, the settings file
-still lists it, the tests still pass, and drafts land ungated. That is
-strictly worse than having no gate, because the absence is now *believed
-to be a presence*.
+[CLAUDE.md](../CLAUDE.md) opens with. A gate that stops running does not
+announce itself: the hook file is still there, the settings file still
+lists it, the tests still pass, and drafts land ungated. That is worse
+than having no gate, because the absence is *believed to be a presence*.
 
 A session-context injection has the opposite shape. If it fails, the
-session is slightly less informed and everything else still works.
-Crashing the session to report it would be the larger harm.
-
-Both upstream collections this document borrows from encode the
-fail-silent half explicitly, and correctly:
-
-```bat
-REM No bash found - exit silently rather than error
-REM (plugin still works, just without SessionStart context injection)
-exit /b 0
-```
-
-(From `obra/superpowers`, `hooks/run-hook.cmd`.)
-
-```bash
-[ -f "$SCRIPT" ] && bash "$SCRIPT" || true
-```
-
-(From `addyosmani/agent-skills`, `hooks/hooks.json`.)
-
-Neither may be applied to the citation gate.
+session is slightly less informed and everything else still works, so
+crashing the session to report it would be the larger harm. The common
+upstream pattern of exiting 0 silently when a hook cannot start is right
+for that kind of hook, and may never be applied to the citation gate.
 
 ## 🧩 The two classes
 
-Classify a hook once, at the point of proposing it, and every subsequent
-question is already answered:
+Classify a hook once, when proposing it, and every later question is
+already answered:
 
 | | **Gate class** | **Advisory class** |
 | --- | --- | --- |
@@ -107,31 +63,25 @@ question is already answered:
 
 Only one hook is ever in the gate class. [SOUL.md](../SOUL.md) (*"A gate
 `FAIL` is a failing test, not a lint warning"*) and
-`DEVELOPER-AGENTS.md` both bar promoting any new
-check into a gate beside `chitragupta/citation_gate.py`. The argument is on
-record in full.
+`DEVELOPER-AGENTS.md` both bar promoting any new check into a gate beside
+`chitragupta/citation_gate.py`. The gate compares a citekey against the
+ledger, which is ground truth. Every other check compares prose against
+something a human typed, which can be wrong, stale or deliberately
+overridden, so blocking on it refuses a *correct* draft on a *bad
+target*.
 
-The gate compares a citekey against the ledger, which is ground truth.
-Every other check compares prose against something a human typed, which
-can be wrong, stale, or deliberately overridden. Blocking on the second
-kind refuses a *correct* draft on a *bad target*, a failure the gate
-cannot have by construction.
-
-The operating formula from that decision: **invocation is enforced,
-conformance is not.** A hook guarantees the findings reach the agent.
-Only the gate guarantees anything about what the agent then does.
+The operating formula: **invocation is enforced, conformance is not.** A
+hook guarantees the findings reach the agent. Only the gate guarantees
+anything about what the agent then does.
 
 ## 🪢 A second mechanism: git's own hooks
 
-This document's registry is not everything that runs automatically,
-and it says so here so the next reader does not assume it is.
+The registry below is not everything that runs automatically.
 `git-hooks/pre-commit` runs `actionlint` over `.github/workflows/` when a
-commit stages one, and runs
-`python -m chitragupta figure sync --check` over any staged figure file
-(`assets/tikz/*.tex`, `content/drafts/**/figures/*.tex`).
-
-It is deliberately *not* a row in the registry below, because it is a
-different mechanism answering a different question:
+commit stages one, and runs `python -m chitragupta figure sync --check`
+over any staged figure file (`assets/tikz/*.tex`,
+`content/drafts/**/figures/*.tex`). It is not a registry row, because it
+is a different mechanism:
 
 | | `.claude/hooks/` | `git-hooks/` |
 | --- | --- | --- |
@@ -140,33 +90,28 @@ different mechanism answering a different question:
 | Installed by | `.claude/settings.json`, which ships and is scaffolded | `core.hooksPath`, set by `install_full_pipeline.sh dev-deps` |
 | May block | only the citation gate | the workflow check, yes (see below); the figure check, never |
 
-**Why the git hook may block when the rule above says only one hook
-may.** That rule governs the review layer, where a finding is a
-judgement about a draft and the aid cannot know whether it is right. A
-workflow file either parses and type-checks or it does not; `ci.yml`'s
-lint job already fails the build on the same check, and blocking at the
-commit only moves an identical binary verdict earlier, to where the fix
-is part of the change in hand. The rule that *does* carry over intact is
-the one about not blocking when it cannot tell: an absent `actionlint`
-is silence, because the install stage is opt-in.
+**Why the workflow check may block.** The one-gate rule governs the
+review layer, where a finding is a judgement about a draft. A workflow
+file either parses and type-checks or it does not, and `ci.yml`'s lint
+job already fails on the same check, so blocking at the commit only
+moves an identical verdict earlier. The rule about not blocking when it
+cannot tell still holds: an absent `actionlint` is silence, because the
+install stage is opt-in.
 
 **Why the figure check does not block.** A stale house figure-style
-block is not a broken file: the figure still compiles and renders, and
-`figure sync` fixes it in one command. For a draft's figure nothing in
-CI fails on it either, so blocking at the commit would make the hook
-stricter than the build. (A stale scaffold under `assets/tikz/` does
-fail CI, in `tests/test_figure_sync.py` and the byte-identity check in
-`tests/test_tikz_scaffolds.py`; the advisory there is an early warning
-of that.) It prints what `--check` found and the command to run, and the
-commit goes ahead. When the interpreter it finds (`CHITRAGUPTA_PYTHON`, else
-the checkout's `.venv/bin/python`, else `python3`) cannot run the check,
-or crashes without printing sync's own summary line, it says once that
-figures were not checked.
+block still compiles and renders, and `figure sync` fixes it in one
+command. Nothing in CI fails on a draft's figure, so blocking would make
+the hook stricter than the build. (A stale scaffold under `assets/tikz/`
+does fail CI, in `tests/test_figure_sync.py` and
+`tests/test_tikz_scaffolds.py`.) The hook prints what `--check` found and
+the command to run, and the commit goes ahead. When the interpreter it
+finds (`CHITRAGUPTA_PYTHON`, else the checkout's `.venv/bin/python`, else
+`python3`) cannot run the check, or crashes without printing sync's
+summary line, it says once that figures were not checked.
 
-The inert-hook failure applies here too, in a new shape. A tracked
-hook directory git has not been pointed at runs nothing, and
-`core.hooksPath` is per-clone config that cannot be committed. That is
-why `dev-deps` sets it, instead of a README asking you to.
+`core.hooksPath` is per-clone config that cannot be committed, and a
+hook directory git has not been pointed at runs nothing. That is why
+`dev-deps` sets it, instead of a README asking you to.
 
 ## 🗄 The registry
 
@@ -177,43 +122,25 @@ why `dev-deps` sets it, instead of a README asking you to.
 | `PostToolUse` | `Write\|Edit` | `code_standards_hook.py` | advisory | built |
 | `SessionStart` | `startup\|clear` | `session_start_hook.py` | advisory | built |
 
-**Separate entries on one matcher, not one dispatcher.** The `PostToolUse`
-hooks are separate processes with separate settings entries. The reason is
-fault isolation: a defect in a prose checker must not be able to weaken the
-citekey gate, and one process means one crash takes both. The usual argument
-for consolidating (controlling how several checks' findings merge into a
-single stdout) does not apply, because the harness already merges them
-correctly; see [the trial
-table](#-what-is-measured-and-what-is-merely-documented).
-
-The two share exactly one decision, *is this write a draft?*, and it
-is factored into one helper beside them instead of copied, because a
-copy is what drifts.
-
-The subtleties it holds are recorded in `citation_gate_hook.py`'s
-docstring, and were learned from a real near-miss. `file_path` may be
-relative. The repo root must be derived from the hook's own location,
-not from the target path. And containment must be tested with
-`is_relative_to`, not a substring match on `/content/drafts/`.
+**Separate entries on one matcher, not one dispatcher.** The
+`PostToolUse` hooks are separate processes with separate settings
+entries, for fault isolation: a defect in a prose checker must not be
+able to weaken the citekey gate. The harness already merges several
+hooks' findings correctly (see [the
+trials](#-what-is-measured-and-what-is-merely-documented)), so the usual
+argument for one dispatcher does not apply. The one decision the draft
+hooks share, *is this write a draft?*, lives in one helper beside them
+instead of being copied, because a copy is what drifts.
 
 ### 🛫 The session preflight
 
 `session_start_hook.py` exists because a hook that fails to start cannot
-report that it failed to start. The settings file still lists it, its tests
-still pass, and the citation gate silently stops enforcing anything. No
-test in this repository can start a hook the way the harness does (a
-launcher is a line in a config file the harness consumes, not code the
-suite imports), so the detector has to be something that looks from
-outside.
-
-One such detector is not enough. The preflight is launched by the same
-interpreter name it vets. If
-`python` is missing, the preflight is missing too, and the report that was
-supposed to arrive never does, on precisely the host where the gate is
-dead. The check therefore lives in `chitragupta/hook_launchers.py`, and
-`python -m chitragupta.draft gate` makes it as well: that command runs on an
-interpreter which has demonstrably started, and every genre skill runs it.
-The two reporters share one implementation.
+report that it failed to start, and no test here can start a hook the
+way the harness does. The preflight is launched by the same interpreter
+name it vets, so if `python` is missing the preflight is missing too.
+The check therefore lives in `chitragupta/hook_launchers.py`, and
+`python -m chitragupta.draft gate`, which runs on an interpreter that has
+demonstrably started and which every genre skill runs, makes it as well.
 
 It makes three checks, of which **only the first two are faults**:
 
@@ -224,81 +151,43 @@ It makes three checks, of which **only the first two are faults**:
 | Has the corpus been synced? | `python -m chitragupta.corpus ledger` | **stage**; a ledger that is there but cannot be read (its exit 3) is a fault |
 | all three fine | -- | says nothing at all |
 
-Note the inversion in the second: the alarm is the bad probe *passing*.
-It has three answers, not two. Refused is healthy. Accepted
-(exit 0) is the alarm that the invariant is unenforced. Anything else,
-a crash or the gate's own exit 3, is reported as a gate that could not
-run its self-test, with the exit code and what it printed, because it
-said nothing about the key either way.
+In the second check the alarm is the bad probe *passing*. Refused is
+healthy; accepted (exit 0) means the invariant is unenforced; anything
+else, a crash or the gate's exit 3, is reported as a gate that could not
+run its self-test, with the exit code and output. A non-zero exit alone
+is not enough: the probe insists on seeing the fabricated key in the
+output, since a gate rejecting the probe for its *location* would also
+exit non-zero.
 
 #### 💡 Why a pre-sync corpus is a stage and not a fault
 
-The hook turns on this design decision, and the naive version gets it
-wrong. The normal sequence is clone -> `config.toml` ->
-`python -m chitragupta.corpus sync` -> drafting. A user who starts a session before
-that third step has done nothing wrong; they are not there yet. A
-preflight that called an empty ledger a failure would fire on every first
-session in every clone, and would teach people to ignore the one channel
-reserved for real faults. So it is reported as a position in that sequence,
-with the command that advances it, and never as `BROKEN`.
+The normal sequence is clone -> `config.toml` ->
+`python -m chitragupta.corpus sync` -> drafting. A user who starts a
+session before the sync has done nothing wrong. A preflight that called
+an empty ledger a failure would fire on every first session and teach
+people to ignore the one channel reserved for real faults. So it is
+reported as a position in that sequence, with the command that advances
+it. There are two pre-sync states (no ledger file, and an empty one),
+each with its own sentence, so the hook matches the instruction they
+share.
 
-That is why the hook can run before a first sync. Both fault checks are
-corpus-independent by construction:
+Both fault checks are corpus-independent:
 
-- The launcher check reads a config file, looks each launcher up, and, for
-  each distinct launcher that resolves *and is a bare, Python-shaped
-  name*, spawns it once to ask whether it can import `chitragupta`. No
-  corpus either way.
-
-  The interpreter condition has a reason: the probe is
-  `<program> -c "import chitragupta"`, which is a Python invocation and
-  nothing else. Run against a launcher that is not Python (`bash`, `uv`,
-  `node`), the program either rejects `-c` or runs something unrelated,
-  exits non-zero, and gets reported as "cannot import chitragupta" every
-  single session: a fault about the probe, not about the hook.
-  Every launcher this repository ships is Python, so this is latent
-  and has not been observed. A settings file naming `bash` is legal,
-  though, and would have produced that false fault with nothing pointing
-  at the cause. An unrecognised launcher is simply not spawned, and
-  reports nothing instead of something wrong.
-
-  The bare-name condition is a security boundary. The settings file
-  being read was found by walking the working directory's ancestors for
-  a `config.toml`, so inside an untrusted tree a planted settings file
-  could name `/that/tree/python3` (a Python-shaped basename on an
-  attacker's binary, which `shutil.which` accepts as-is), and the probe
-  would execute it with the user's
-  privileges. A bare name resolves against `PATH`, the user's own
-  environment, which the walked-to directory cannot rewrite, but only
-  if the lookup reads nothing else. A plain one does: on Windows
-  `shutil.which` and `CreateProcess` both search the current directory
-  before `PATH`, and on any host a relative or empty `PATH` entry is the
-  current directory by another name, so a cloned project holding
-  `python.exe` would be what the probe ran. The probe therefore
-  resolves the name with `chitragupta/programs.py`, which searches only
-  `PATH`'s absolute entries, and launches the absolute path it returns.
-  The existence check looks a bare name up the same way, so with
-  `PATH=.venv/bin:$PATH` a launcher found only through the relative entry
-  is reported as not on an absolute `PATH` entry, rather than passing the
-  existence check and then being skipped by the probe.
-  A path-qualified launcher keeps the existence check and silently forgoes
-  the import probe: reporting less is the accepted price of never
-  executing a file merely because a directory this process walked into
-  named it.
+- The launcher check reads a config file and spawns each distinct
+  launcher once only if it is a bare, Python-shaped name. The probe is a
+  Python invocation, so a `bash` or `node` launcher would report a false
+  "cannot import chitragupta" every session; it is not spawned. The
+  bare-name rule is a security boundary: the settings file was found by
+  walking up the working directory, so a planted one could name an
+  attacker's `/that/tree/python3`. A bare name is resolved by
+  `chitragupta/programs.py` against `PATH`'s absolute entries only,
+  because on Windows the current directory is searched first and a
+  relative `PATH` entry is the current directory by another name. The
+  existence check uses the same lookup. A path-qualified launcher keeps
+  the existence check and forgoes the import probe.
 - **A fabricated citekey is absent from an empty ledger and a full one
-  alike.** Measured before it was relied on: with no `ledger.sqlite`
-  present at all, `chitragupta.draft gate` exits 0 on a citation-free draft and
-  non-zero on a fabricated key, exactly as against a populated one.
-
-Two smaller things were learned building it, both from a failing test
-and not from reasoning. There are **two** pre-sync states, not one (no
-ledger file, and a ledger file with no rows), and the corpus layer prints
-a different sentence for each, so matching either one alone leaves the
-other silent; the hook matches the instruction they share instead. And a
-non-zero exit is not enough to call the gate live: a gate rejecting the
-probe for its *location* would also exit non-zero, so the probe insists on
-seeing the fabricated key in the output, or a broken gate would report as a
-working one.
+  alike.** With no `ledger.sqlite` at all, `chitragupta.draft gate` exits
+  0 on a citation-free draft and non-zero on a fabricated key (measured).
 
 Cost: **126 ms** for both subprocesses, against 16 ms for a bare
 interpreter. It writes nothing under the user's `content/` and reads no
@@ -306,11 +195,10 @@ draft of theirs.
 
 ## 🏗 The shared design, in files
 
-The two draft hooks (`citation_gate_hook.py` and `style_check_hook.py`) answer
-the same three questions in the same order (*was this write a draft? what does
-the check say? how do I hand that back?*) and differ only in the middle one.
-The design that serves both is three layers with a rule about what may live in
-each.
+The two draft hooks answer the same three questions in the same order
+(*was this write a draft? what does the check say? how do I hand that
+back?*) and differ only in the middle one. The design is three layers
+with a rule about what may live in each.
 
 ```text
 .claude/
@@ -351,34 +239,23 @@ nothing about hooks, harnesses or JSON envelopes. Each is reachable by
 hand: `python -m chitragupta.draft <verb>` for the three drafting
 checks, and `python3 scripts/code_standards.py` for the fourth.
 
-**`scripts/code_standards.py` is the second named exception**, and it is
-about *where* rather than *what*. Layer 1 is `chitragupta/` for every
-check about a draft, and deliberately is not for this one: it is
-developer tooling, which `DEVELOPER-AGENTS.md` places in `scripts/`;
-`docs/ARCHITECTURE.md`'s artefact graph has no node for a code-standards
-scan; and putting it in the package would ship a developer tool inside
-what a drafting user installs. What makes it layer 1 regardless is the
-property the layer exists for: it is hand-runnable, and the adapter
-above it holds nothing.
-
-`hook_launchers.py` is the other exception, and the rule names it
-explicitly: **layer 1 may read the launcher config, never a payload or
-an envelope.** That line is where the boundary falls. An adapter is
-defined by handling the harness's stdin/stdout contract, and this module
-handles neither; it reads `settings.json` and returns English
-sentences. It has to be here, because the preflight cannot report its own
-interpreter missing and [the gate can](#-the-session-preflight). Its
-import probe, `import_probe.py`, is split out of it and falls under the
-same exception.
+Two named exceptions. **`scripts/code_standards.py`** is about *where*:
+it is developer tooling, which `DEVELOPER-AGENTS.md` places in
+`scripts/`, and in the package it would ship inside what a drafting user
+installs. It is still layer 1 because it is hand-runnable and the adapter
+above it holds nothing. **`hook_launchers.py`** (and its split-out
+`import_probe.py`) is the other: **layer 1 may read the launcher config,
+never a payload or an envelope.** It reads `settings.json` and returns
+English sentences, and it has to be here because the preflight cannot
+report its own interpreter missing and [the
+gate can](#-the-session-preflight).
 
 **Layer 2, `.claude/hooks/`, holds adapters.** An adapter reads a
 `PostToolUse` payload on stdin, decides whether it is interested, shells
-out to layer 1, and writes one JSON document.
-
-One rule governs this layer: **an adapter contains no logic anyone
-could want to run by hand.** That is what makes the check usable from a
-skill, a terminal or CI without going near the hook. It is also why a
-skill that invoked the hook would be [inverting the
+out to layer 1, and writes one JSON document. **An adapter contains no
+logic anyone could want to run by hand**, which is what makes each check
+usable from a skill, a terminal or CI without the hook, and why a skill
+that invoked the hook would be [inverting the
 dependency](#-a-skill-that-runs-the-hook).
 
 **Layer 3, `settings.json`, holds the launcher**, and nothing else. See
@@ -387,7 +264,6 @@ dependency](#-a-skill-that-runs-the-hook).
 ### 🔒 What the shared helper holds, and why sharing it is safe
 
 `draft_target.py` answers *was this write a draft?* and nothing else.
-Both hooks need the identical answer, and the question is subtler than it looks;
 `citation_gate_hook.py`'s docstring records each part as learned from a
 real near-miss:
 
@@ -399,120 +275,62 @@ real near-miss:
   substring match on `/content/drafts/`;
 - the suffix must be one this pipeline writes (`.md`, `.tex`).
 
-The obvious objection is that this document argues for two separate
-processes on fault-isolation grounds and then has them import the same
-module. The distinction is between **runtime** and **agreement**. What must
-not be shared is the failure of a *check*: a prose checker that crashes,
-hangs or emits nonsense must not be able to take the gate down with it, and
-separate processes guarantee that. What must be shared is the *definition
-of a draft*, because two hooks disagreeing about which writes they cover is
-a worse bug than either could have alone, and it is the bug a copied
-forty lines produces the first time one copy is fixed. The helper is held
-to the same 100% line-and-branch bar as everything else.
+Separate processes and a shared module do not conflict. What must not be
+shared is the failure of a *check*: a prose checker that crashes or hangs
+must not take the gate down, and separate processes guarantee that. What
+must be shared is the *definition of a draft*, because two hooks
+disagreeing about which writes they cover is a worse bug than either
+could have alone. The helper is held to the same 100% line-and-branch
+bar as everything else.
 
-A hook is run by absolute path, so Python puts the hook's own directory on
-`sys.path` first and `import draft_target` resolves with no path
-manipulation. This has two consequences that can surprise someone:
-it breaks under `python -P` or `PYTHONSAFEPATH`, neither of which the
-launcher sets (`safe_path.py` sets it on a hook's *children*, never on
-the hook); and `tests/test_citation_gate_hook.py`'s `hook_repo`
-fixture, which copies the hook script into a temporary root so that
-`Path(__file__).resolve()` lands there, must copy all three helpers
-beside it.
+A hook is run by absolute path, so its own directory is first on
+`sys.path` and `import draft_target` needs no path manipulation. So it
+breaks under `python -P` or `PYTHONSAFEPATH`, neither of which the
+launcher sets (`safe_path.py` sets it on a hook's *children*), and
+`tests/test_citation_gate_hook.py`'s `hook_repo` fixture must copy all
+three helpers beside the hook script.
 
 ### 🛡 Which `chitragupta` a hook's child imports
 
-Every hook that shells out runs `python -m chitragupta.draft ...` (or
-`python -c "import chitragupta"`) with its working directory at the
-project root, and `-m` and `-c` put that directory first on `sys.path`.
-In a git checkout that is the point: it is how the checkout finds its own
-`chitragupta/` with no install. In a project `chitragupta init`
-scaffolded, it is a hole: a `chitragupta/` or `chitragupta.py` someone
-committed to a shared project would shadow the
-installed package and run with the user's privileges, on
-`SessionStart` before anything is typed, and again on every draft write.
+A hook's child (`python -m chitragupta.draft ...` or `python -c "import
+chitragupta"`) runs from the project root, and `-m` and `-c` put that
+directory first on `sys.path`. A checkout relies on that. In a project
+`chitragupta init` scaffolded, a committed `chitragupta/` or
+`chitragupta.py` would shadow the installed package and run with the
+user's privileges. So `safe_path.py` asks where `chitragupta` resolves
+*without* the cwd entry: outside the root means installed, and every
+child gets `PYTHONSAFEPATH=1`; inside the root or nowhere leaves the
+launch as it was. `code_standards_hook.py` starts no scanner at all in
+an installed project, since `init` scaffolds no `scripts/`. The import
+probe and `session_start_hook.py`'s own import make the same call from
+their side.
 
-So the two shapes are told apart once, before any child starts, by
-`safe_path.py`. The test is **not** whether `<root>/chitragupta/` exists,
-since in the case that matters that directory is the planted file. It is
-where the package resolves *without* the cwd entry, which is what the
-hook process itself sees: it runs as `python <path>`, so its
-`sys.path[0]` is `.claude/hooks`, not the root. If `find_spec` places
-`chitragupta` outside the root, it is installed, and every child gets
-`PYTHONSAFEPATH=1`. Inside the root (an editable install) or nowhere (a
-checkout run from its own tree) leaves the launch as it was.
-`code_standards_hook.py` needs the same answer for a different launch: it
-runs `scripts/code_standards.py` by path, and `init`
-scaffolds no `scripts/`, so one found in an installed project was planted
-and would run with the user's privileges on the next `.py` write under
-`chitragupta/` or `scripts/`. There it starts no process at all; only the
-checkout runs its scanner. The rule is about that one root-level folder:
-a skill's `references/` or `assets/` under `.claude/skills/<name>/`, or
-the shared references in `.claude/skills-common/`, are scaffolded
-on purpose and are nothing the hook looks at.
-`hook_launchers.py`'s import probe (`import_probe.py`) makes the same
-call from its own side, by whether it is itself running from inside the
-project whose settings it reads. `session_start_hook.py`'s own
-in-process import appends the root to `sys.path` instead of prepending
-it, so an installed package wins there too.
+The pipeline's own commands go through no hook, so `chitragupta init`
+writes its copies of skills, agents, `AGENTS.md` and `docs/` with
+`python -P` before each `-m chitragupta...` and `-c` snippet
+(`MODULE_FORM` in `chitragupta/init.py`). This page, docs/PACKAGING.md
+and docs/CLI.md are copied unchanged. An improvised or hand-typed
+command gets no `-P`. To refresh a project's copies, scaffold afresh
+elsewhere and copy them over; `chitragupta init --force` in the project
+itself also resets `config.toml` and `content/acronyms.toml`.
 
-**The pipeline's own commands** go through no hook, so `safe_path` never
-sees them: a skill that runs `python -m chitragupta.draft gate` from the
-project root would search that root first. In a scaffolded project the
-prose therefore does not say that. `chitragupta init` writes its copies
-of every skill, subagent definition, `AGENTS.md` and `docs/` page with
-`python -P` in front of each `-m chitragupta...` and each `-c` snippet
-(`MODULE_FORM` in `chitragupta/init.py`). `-P` leaves the
-working directory off `sys.path` altogether, so a `chitragupta/`
-committed to the project after `init` is not what those commands
-import, however old the plant or whatever it contains. The protection
-lives in text the installed package wrote rather than in the package a
-plant would replace, which is why it holds for a plant that predates it.
-This page and docs/PACKAGING.md are copied unchanged, because they
-describe `-m`'s search order, and so is docs/CLI.md, kept word for word
-as the package's command reference. A checkout keeps plain `-m`, because its
-own `chitragupta/` is the real one and need not be installed.
-
-It covers the commands the prose spells out, not every way to start
-Python: a command an agent improvises, or one typed by hand, gets no
-`-P`, and a `PYTHONPATH` naming the project directory puts it back on
-`sys.path` regardless. To refresh a project's copies, scaffold afresh
-somewhere else (`chitragupta init /tmp/fresh --agent <yours>`) and copy
-its `.claude/skills/`, `.claude/skills-common/`, `.claude/agents/`,
-`AGENTS.md` and `docs/` over the project's own (plus `.agents/` or
-`.opencode/skills/` for those harnesses). Avoid `chitragupta init
---force` in the project itself, which also resets `config.toml` and
-`content/acronyms.toml`.
-
-**What this cannot close**, recorded so nobody assumes it does: an
-interpreter that finds no installed `chitragupta` at all (an unactivated
-venv, say) looks exactly like a checkout, and no marker a
-checkout carries could not also be committed to a shared directory. The
-hooks still launch normally there, and the gate still fails closed, but
-the SessionStart preflight says so by name: "no installed chitragupta
-visible to `<python>`", through the same advisory channel as its other
-faults. A
-scaffolded skill's `python -P -m` fails with `No module named
-chitragupta` in that state rather than running a plant.
-And a checkout whose venv also holds a non-editable `chitragupta-cli`
-reads as an installed project, so its hooks run that copy instead of
-the working tree, and `code_standards_hook.py` reports nothing. Install
-the checkout editable, or not at all; DEVELOPER-AGENTS.md says the same
-where someone running the test suite reads it.
-`chitragupta init` covers the other end: it refuses to scaffold into a
-directory already holding `chitragupta/` or `chitragupta.py`, with or
-without `--force`.
+**What this cannot close:** an interpreter that finds no installed
+`chitragupta` at all looks exactly like a checkout. The gate still fails
+closed, and the preflight reports "no installed chitragupta visible to
+`<python>`". A checkout whose venv also holds a non-editable
+`chitragupta-cli` reads as an installed project, so its hooks run that
+copy instead of the working tree; install the checkout editable, or not
+at all. `chitragupta init` refuses to scaffold into a directory already
+holding `chitragupta/` or `chitragupta.py`, with or without `--force`.
 
 ## 📜 The launcher contract
 
 The launcher is the line in `.claude/settings.json` that starts the hook
-process. It is not code, no test imports it, and CI never executes it,
-which is why it is the part most likely to be wrong without anyone
-noticing.
+process. No test imports it and CI never executes it, which is why it is
+the part most likely to be wrong without anyone noticing.
 
-**Use exec form.** A command hook runs as exec form when `args` is set and
-shell form when it is omitted. Exec form passes each element as one
-argument with no quoting, and ignores the shell entirely:
+**Use exec form.** A command hook runs as exec form when `args` is set,
+passing each element as one argument and ignoring the shell entirely:
 
 ```json
 {
@@ -524,194 +342,130 @@ argument with no quoting, and ignores the shell entirely:
 }
 ```
 
-This is not an example: it is what `.claude/settings.json` contains for
-all four hooks,
-and `tests/test_settings_launchers.py` asserts it of every entry in that
-file instead of any named one. Exec form and the braced placeholder were
-confirmed working before being adopted: the harness substituted the
-placeholder to an absolute path and the gate still returned its blocking
-decision on a fabricated citekey.
+This is what `.claude/settings.json` contains for all four hooks, and
+`tests/test_settings_launchers.py` asserts it of every entry in that
+file.
 
-**Brace every placeholder.** `${CLAUDE_PROJECT_DIR}` is substituted by
-Claude Code itself, into `command` and into each `args` element, before any
-shell sees it. The unbraced `$CLAUDE_PROJECT_DIR` in shell form instead
-relies on *the shell* to expand it, and the shell defaults to
-`powershell` on Windows when Git Bash is not installed, where that syntax
-names an undefined variable and expands to nothing. This repository runs a
-blocking `windows-latest` leg in CI, so that host is a real one.
+**Brace every placeholder.** Claude Code substitutes
+`${CLAUDE_PROJECT_DIR}` itself, into `command` and each `args` element.
+The unbraced `$CLAUDE_PROJECT_DIR` relies on *the shell*, which on
+Windows without Git Bash is `powershell`, where it expands to nothing.
+CI runs a blocking `windows-latest` leg, so that host is a real one.
 
-**The interpreter name is `python`.** It has no *portable* answer:
-`python3` is standard on Linux and generally absent on Windows, and
-`python` is present on Windows and often absent on Debian-family Linux.
-So it is a launcher hazard, and it is decided, not inherited, on three
-findings:
+**The interpreter name is `python`.** `python3` is generally absent on
+Windows and `python` is often absent on Debian-family Linux, so the
+choice is decided on three findings:
 
 - **A venv guarantees `python` everywhere and `python3` only on POSIX.**
-  Read out of CPython 3.13's `venv/__init__.py`: the POSIX branch creates
-  `python`, `python3` and `python3.13`; the Windows branch writes
-  `python.exe` and `pythonw.exe`, with debug and free-threaded variants,
-  and no `python3.exe` at all.
+  CPython 3.13's `venv/__init__.py` writes no `python3.exe` on Windows.
 - **The rest of this repository already requires `python`.** Every
-  documented invocation across `.claude/skills/`, `AGENTS.md`,
-  `README.md` and `docs/` is `python -m chitragupta.*`, some 470 of them,
-  against a handful of `python3` in `bench/RESULTS.md`. The hook launcher
-  was the outlier.
-- **That makes the losing host a different kind of host.** `python`'s
-  failure case is a Debian or Homebrew clone with no venv active, where
-  *nothing else here works either*, so the user finds out from the first
-  command they run. `python3`'s failure case is Windows, where the rest of
-  the pipeline runs fine and only the gate goes quiet, which is the
-  silent degradation this document exists to prevent.
+  documented invocation is `python -m chitragupta.*`.
+- **That makes the losing host a different kind of host.** Without
+  `python`, nothing else here works either, so the user finds out from
+  the first command. Without `python3`, on Windows, only the gate would
+  go quiet.
 
-The launcher does not have to be the venv's interpreter, which is what
-makes the choice this narrow: the gate is [tier 1](CLI.md#-which-interpreter)
-and runs under a bare interpreter with no venv, measured.
-
-The documented install fixes the losing host too.
-`install_full_pipeline.sh`'s `os-deps` stage installs `python-is-python3`,
-which puts the name `python` on `PATH` on a Debian-family machine. `os-deps`
-needs apt and root and is opt-in, so
-`python-deps` also *reports* what `chitragupta/hook_launchers.py` finds
-when it finishes, instead of leaving a host that skipped `os-deps` with a
-silent fault and no way to hear about it. [WINDOWS.md](WINDOWS.md) has
-the other platform's version of the same question.
+The launcher need not be the venv's interpreter: the gate is [tier
+1](CLI.md#-which-interpreter) and runs under a bare interpreter.
+`install_full_pipeline.sh`'s opt-in `os-deps` stage installs
+`python-is-python3` on Debian-family hosts, and `python-deps` reports
+what `chitragupta/hook_launchers.py` finds, so a host that skipped
+`os-deps` still hears about it. [WINDOWS.md](WINDOWS.md) has the other
+platform's version of the question.
 
 **A dead launcher is silent, so something else has to say so.** A hook
-whose `command` does not resolve produces nothing at all: no error to the
-model, nothing in a log (see [the trials](#-what-is-measured-and-what-is-merely-documented)).
-`session_start_hook.py` cannot cover that alone, being launched by the same
-name; `python -m chitragupta.draft gate` prints the same warning from an
-interpreter that has demonstrably started. Both call
+whose `command` does not resolve produces no error to the model and
+nothing in a log (trial 4 below). `session_start_hook.py` and
+`python -m chitragupta.draft gate` both report it through
 `chitragupta/hook_launchers.py`.
 
-**What does not transfer.** `obra/superpowers` solves the adjacent
-problem (bash being absent, as opposed to a variable being unexpanded)
-with a polyglot `run-hook.cmd`. That file is simultaneously a valid batch
-file and a valid shell script, so `cmd.exe` runs the batch half and finds
-Git Bash, while `bash` reads the batch half as a no-op heredoc.
-
-It is **incompatible with exec form**, which this repository needs: a
-shebang-less polyglot invoked through
-`execve` fails outright. The two fixes are alternatives; they cannot be
-layered.
-
-One narrower thing does transfer, as a caution and not a change: that
-file's scripts are deliberately *extensionless* because Claude Code's
-Windows auto-detection prepends `bash` to any command containing `.sh`.
-The hooks here are `.py` and unaffected. This is recorded so that nobody
-renames them defensively on the strength of that comment.
+**No polyglot launcher.** A file that is both a batch file and a shell
+script solves the adjacent problem of bash being absent, but fails
+outright under exec form, so the two cannot be layered. The hooks are
+`.py`, so the Windows auto-detection that prepends `bash` to a command
+containing `.sh` does not touch them; do not rename them defensively.
 
 ## 📜 The output contract
 
-**Stdout is one JSON document, or nothing at all.** This is the rule most
-often broken by accident and the one whose breach is hardest to see. A
-single stray `print()` ahead of the JSON makes stdout unparseable, after
-which the entire payload is discarded in silence. The hook still exits 0,
-still looks installed, and reports nothing for the rest of its life. This
-was measured here; `addyosmani/agent-skills` carries the same
-warning in its own hook header, that hosts which validate hook output
-reject any other shape.
+**Stdout is one JSON document, or nothing at all.** A single stray
+`print()` ahead of the JSON makes stdout unparseable, and the whole
+payload is discarded in silence while the hook still exits 0 (trial 1).
 
 **The advisory channel is `hookSpecificOutput.additionalContext`, and only
-that.** Plain stdout on exit 0 goes to the debug log and does not reach the
-model. Both facts are measured; see the next section.
+that.** Plain stdout on exit 0 goes to the debug log and never reaches
+the model (trial 1b).
 
-**An advisory hook never emits a blocking decision.** For the gate that
-shape is `{"decision": "block", "reason": ...}` on stdout, printed by
-`citation_gate_hook.py`. For everything else it is forbidden twice over:
-once because the settled rule says conformance may not block, and once
-because a hook that prints anything other than its own single JSON object
-has already destroyed its own delivery.
+**An advisory hook never emits a blocking decision.** The gate's shape is
+`{"decision": "block", "reason": ...}` on stdout. Any other hook is
+barred from it by the rule above, and printing anything beside its own
+JSON object would destroy its delivery anyway.
 
-**Fail open on malformed stdin.** Three shapes, all of which have been hit:
-invalid JSON, valid JSON that is not an object, and a `tool_input` that is
-not a dict. Each means *no file path was given*, and each must return 0
-and not raise.
+**Fail open on malformed stdin.** Invalid JSON, valid JSON that is not an
+object, and a `tool_input` that is not a dict all mean *no file path was
+given*; each returns 0 and does not raise.
 
 **Use `sys.executable` for any subprocess**, never a bare `python` or
-`python3`. The reasoning is in `citation_gate_hook.py`'s comment: an
-interpreter name that fails to resolve raises `FileNotFoundError`, which
-exits non-zero *without* the block, so the draft lands ungated. A hard gate
-that degrades to advisory depending on which interpreter aliases a host
-happens to have is the worst of the available failure modes.
-
-This does not contradict [the launcher](#-the-launcher-contract), which is
-a bare `python` by decision. The difference is what each process has to
-inherit from: a hook already running *is* an interpreter, so naming it
-again is a needless second chance to fail, while the launcher has nothing
-to inherit and a name is the only thing `settings.json` can give the
-harness. Resolve by name once, at the outermost edge, and never again.
-The decision is about *which* name, not how it is looked up: where the
-lookup is this repository's own code, as in OpenCode's
-`.opencode/chitragupta/gate.js`, it resolves `python` on `PATH`'s
-absolute entries and spawns the absolute path, the rule
-[SECURITY.md](SECURITY.md) gives for every launch.
+`python3`. A name that fails to resolve raises `FileNotFoundError`, which
+exits non-zero *without* the block, so the draft lands ungated. This
+does not contradict the launcher's bare `python`: a running hook already
+*is* an interpreter, while `settings.json` can only give the harness a
+name. Resolve by name once, at the outermost edge. Where the lookup is
+this repository's own code, as in `.opencode/chitragupta/gate.js`, it
+resolves `python` on `PATH`'s absolute entries and spawns the absolute
+path, the rule
+[SECURITY.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/SECURITY.md)
+gives for every launch.
 
 **Finish inside the harness's timeout, or block.** Every hook gets
-`"timeout": 30`, and a hook the harness kills prints nothing: for the
-gate that is a silent pass, the draft landing ungated. So
-`citation_gate_hook.py` stops itself first, two ways, and names which in
-its block reason since neither checked a citekey. A draft over
-`MAX_GATED_LINES` (100,000) is blocked as too large to gate before any
-gate starts, and a gate still running at `GATE_TIMEOUT` (20 s, leaving
-the import probe's 5 s) is stopped and blocked. The line limit was
-measured: the gate is linear in draft length, well under a
-second at 100k lines, and the largest real draft here is under 3k.
+`"timeout": 30`, and a killed hook prints nothing, which for the gate is
+a silent pass. So `citation_gate_hook.py` stops itself first and names
+which way in its block reason: a draft over `MAX_GATED_LINES` (100,000)
+is blocked as too large before any gate starts, and a gate still running
+at `GATE_TIMEOUT` (20 s, leaving the import probe's 5 s) is stopped and
+blocked. The gate is linear in draft length and well under a second at
+100k lines.
 
 **Tell "could not check" from "checked and failed".** The gate exits 3
-when the ledger is there but cannot be read, and checks nothing.
-`citation_gate_hook.py` still blocks on it, because nothing passed, but
-says the gate could not read the ledger and passes on the gate's
-diagnosis, never "fix the offending citekey(s)". The hook does not import
-`chitragupta`, so it spells the code as `GATE_COULD_NOT_RUN`, and a test
-pins that to `chitragupta.ledger_refusals.EXIT_UNREADABLE`.
+when the ledger is there but cannot be read. `citation_gate_hook.py`
+still blocks, because nothing passed, but passes on the gate's
+diagnosis, never "fix the offending citekey(s)". The hook does not
+import `chitragupta`, so it spells the code as `GATE_COULD_NOT_RUN`, and
+a test pins that to `chitragupta.ledger_refusals.EXIT_UNREADABLE`.
 
-**Emit only the field this host consumes.** A hook written for several
-harnesses has to branch: Claude Code reads
-`hookSpecificOutput.additionalContext`, Cursor reads a top-level
+**Emit only the field this host consumes.** Claude Code reads
+`hookSpecificOutput.additionalContext`, Cursor a top-level
 `additional_context`, and the SDK standard is a top-level
-`additionalContext`. Claude Code reads more than one of them without
-deduplicating, so emitting several delivers the payload twice. This
-repository's hooks still do not branch. Codex documents the same
-`{"decision": "block"}` shape and the same `hookSpecificOutput` field,
-and OpenCode's plugin reads the Claude Code shape and hands it on itself,
-so one envelope serves all three. Measured on Codex
-0.159.0: the block's `reason` replaces the tool output the model reads,
-and the session-start `additionalContext` arrives as a developer
-message ([HARNESS.md](HARNESS.md), "Measured, and what is still not").
-If a later Codex reads another field, the branch goes here, keyed on
-the harness, and emits only that one. The branch point is recorded
-because it is not guessable from the field names.
+`additionalContext`. Claude Code reads more than one without
+deduplicating, so emitting several delivers the payload twice. The hooks
+do not branch: Codex documents the same block shape and
+`hookSpecificOutput` field, and OpenCode's plugin reads the Claude Code
+shape and hands it on, so one envelope serves all three ([HARNESS.md](HARNESS.md),
+"Measured, and what is still not"). If a later harness reads another
+field, the branch goes here, keyed on the harness, emitting only that one.
 
-**Codex and OpenCode launch the same scripts.**
-`.codex/hooks.json` registers the gate, style and session-start hooks on
-`apply_patch|Edit|Write`, and `.opencode/plugins/chitragupta-gate.js` pipes
-each file tool's arguments to `citation_gate_hook.py`, then
-`style_check_hook.py`, as a payload of the shape the hooks already read.
-Neither holds any gate logic. The one payload shape they added is
-`apply_patch`'s: the patch text in `tool_input.command`, whose file headers
-`patch_paths.py` reads, so one write can name several drafts and every one is
-gated. A patch that mentions a draft but whose headers cannot be read is the
-one exception to malformed stdin failing open: it blocks, because failing open
-there is a silently inert gate. [HARNESS.md](HARNESS.md) has the design and
-what each harness enforces.
+**Codex and OpenCode launch the same scripts.** `.codex/hooks.json`
+registers the gate, style and session-start hooks on
+`apply_patch|Edit|Write`, and `.opencode/plugins/chitragupta-gate.js`
+pipes each file tool's arguments to `citation_gate_hook.py`, then
+`style_check_hook.py`. Neither holds gate logic. The one payload shape
+they added is `apply_patch`'s: the patch text in `tool_input.command`,
+whose file headers `patch_paths.py` reads, so every draft one write
+names is gated. A patch that mentions a draft but whose headers cannot
+be read blocks: it is the one exception to failing open, because failing
+open there is a silently inert gate.
 
 **Codex's launcher cannot be a relative path.** Codex runs a hook in the
-session's working directory (wherever the user started it) and sets
-no project-directory placeholder, so `python .claude/hooks/<x>.py` fails
-to start from any subfolder and the draft lands ungated (measured).
-Each `.codex/hooks.json` line is instead a `python -P -c` one-liner that
-walks up to the folder holding `.codex/hooks.json` and runs the hook from
-there; `-P` keeps the working directory off `sys.path`, for the reason
-`safe_path.py` exists. `tests/test_settings_launchers.py` runs the
-real line from two levels down.
+session's working directory and sets no project-directory placeholder,
+so `python .claude/hooks/<x>.py` fails to start from any subfolder
+(measured). Each `.codex/hooks.json` line is a `python -P -c` one-liner
+that walks up to the folder holding `.codex/hooks.json` and runs the
+hook from there. `tests/test_settings_launchers.py` runs the real line
+from two levels down.
 
 ## 📊 What is measured, and what is merely documented
 
-Six trials, run against this repository's own gate hook with a throwaway
-second entry beside it, on 2026-08-15. Recorded because two of the answers
-are not in the documentation and one contradicts a reasonable reading of
-it:
+Six trials against this repository's gate hook with a throwaway second
+entry beside it, on Claude Code:
 
 | Trial | Tool | Hook stdout | Outcome |
 | --- | --- | --- | --- |
@@ -722,92 +476,34 @@ it:
 | 3 | `Write` | JSON only | `additionalContext` arrived |
 | 4 | `Write` | *never ran*: `command` not on PATH | nothing arrived |
 
-Trial 4 is the dead-launcher premise, and it was measured the same way,
-not assumed: a bogus launcher and a working control hook in one entry,
-one `Write`, and the control's payload arrived while the bogus one
-produced nothing whatever, with no error to the model and nothing
-findable under `~/.claude/`. Whether the user's terminal shows something
-transiently is *not* measured. That silence is why a dead launcher needs
-a reporter that does not share its interpreter.
-
-Each arrival reached the model as a system reminder reading
-`PostToolUse:<Tool> hook additional context: <payload>`. A disk log in the
-probe confirmed the hook fired in the first five, so the two nulls there
-are delivery failures, not invocation failures. In trial 4 nothing was
-invoked at all, and from the outside the outcome is identical. That the
-two cannot be told apart is the whole problem.
-
-What that settles:
-
-- The advisory channel works, on `Write` as well as `Edit`. Both matter:
-  the genre skills save a draft with `Write`, and only the reviser skills
-  reach it by `Edit`.
-- Advisory output survives a co-firing blocking hook, in the same turn,
-  with no special handling and no deferral.
-- Two entries on one matcher both deliver, which is what makes a single
-  dispatcher process unnecessary here.
-- Mixing plain text with JSON on stdout destroys the payload.
-
-Also observed incidentally: a `settings.json` hook change took effect
-**mid-session**, with no restart.
-
-Three further facts were measured the same way while building the
-preflight, each before it was relied on:
-
-- **Exec form works, and the harness substitutes the braced placeholder.**
-  A probe hook launched as `{"command": "python3", "args":
-  ["${CLAUDE_PROJECT_DIR}/…"]}` received the absolute path in `argv[1]`,
-  and the citation gate converted to that form still returned its blocking
-  decision on a fabricated citekey.
-- **The gate is corpus-independent in both directions.** With no
-  `ledger.sqlite` present at all, it exits 0 on a citation-free draft and
-  non-zero on a fabricated citekey. That is what makes the preflight's
-  liveness probe runnable before a first sync.
-- **`python -m chitragupta.corpus ledger` exits 0 whether the corpus is
-  synced or not**, and prints a different sentence for each of the two
-  pre-sync states. Only a ledger that is there but cannot be read makes
-  it exit non-zero, with 3. It is read-only and takes no lock, so the preflight
-  can call it at every session start without contending with anything.
-
-### 💬 How much an advisory hook would actually say
-
-The standing worry about a per-write check is noise. Measured on the
-fifteen-chapter book in `content/backup/`, it came to **123 findings
-across sixteen files**, of which seventeen are §2 defect-marker
-occurrences (`easy` fifteen times over six chapters, `clearly` twice) and
-almost all the rest are acronym-expansion suggestions. A whole chapter's
-report is a dozen lines. Two findings from that run are the kind a
-per-write hook exists to catch early. The book records no `language:`
-anywhere, so its dialect went unchecked for its whole life. And while
-all fifteen chapters read as en-GB, the table of contents reads as en-US
-and writes `modeling` against the chapters' `modelling`, a disagreement
-no reader of a single file could see.
+A disk log showed the hook fired in the first five, so their nulls are
+delivery failures; in trial 4 nothing was invoked, and from outside the
+two look identical. That silence is why a dead launcher needs a reporter
+that does not share its interpreter.
+So the advisory channel works on `Write` and `Edit`, advisory output
+survives a co-firing block in the same turn, two entries on one matcher
+both deliver, and mixing plain text with JSON destroys the payload.
+Exec form with the braced placeholder was measured the same way: the
+hook received the absolute path, and the gate still blocked a
+fabricated citekey. `python -m chitragupta.corpus ledger` exits 0 in
+both pre-sync states and 3 only on an unreadable ledger, and takes no
+lock, so the preflight can call it every session.
 
 **Two things rest on measurement alone.** `additionalContext` is not
-documented for `PostToolUse` specifically; the documentation describes it
-as a universal output field without confirming this event honours it. And
-the gate's own top-level `{"decision": "block"}` on `PostToolUse` is
-attested nowhere. The fullest decision-control tables available, in a
-third-party survey and not the official documentation, list top-level
-`decision` for `Stop`, `SubagentStop` and `ConfigChange`, do not mention
-`PostToolUse`, and record the equivalent `PreToolUse` pair as deprecated in
-favour of `hookSpecificOutput.permissionDecision`. Trial 2 proves it works
-today. `tests/test_citation_gate_hook.py` asserts only that the shape is
-*emitted*; no test in this repository can assert that the harness *honours*
-it, and the session preflight does not check it either: its gate probe
-runs `draft gate` directly, not through the harness.
+documented for `PostToolUse` specifically, and the gate's top-level
+`{"decision": "block"}` on `PostToolUse` is attested nowhere. Trial 2
+proves it works today. `tests/test_citation_gate_hook.py` asserts only
+that the shape is *emitted*, and nothing here re-checks that the
+harness *honours* it. The Windows half of the `python` decision is
+likewise read off CPython's `venv` module, not run on a Windows host
+without Git Bash.
 
 ## 🧪 Testing a hook
 
-Hook tests live in `tests/`, run under pytest with the rest of the suite,
-and **`.claude/hooks` is inside `[tool.coverage.run].source`**, so the same
-100% line-and-branch bar applies to a hook as to anything under `chitragupta/`.
-Given what these two files enforce, a lower bar for them than for the code
-they call would be the wrong way round.
-
-Getting there needs both halves of a deliberate split, because a hook is
-run by the harness as `python <path>` and **a spawned process contributes
-no coverage**:
+`.claude/hooks` is inside `[tool.coverage.run].source`, so the same
+100% line-and-branch bar applies to a hook as to `chitragupta/`. A hook
+runs as `python <path>`, and **a spawned process contributes no
+coverage**, so it needs both halves:
 
 | | subprocess tests | module tests |
 | --- | --- | --- |
@@ -816,180 +512,72 @@ no coverage**:
 | Prove | the stdin/stdout contract | every branch |
 | Contribute coverage | no | yes |
 
-Neither half is redundant: a refactor that broke the stdin envelope would
-pass the module tests and fail the subprocess ones. Subprocess tests
-alone measure nothing reliable: 22 passing subprocess tests left
-`session_start_hook.py` at **0.00%**, while `citation_gate_hook.py` sat at
-an accidental 76.74%, depending on which tests happened to inherit
-pytest-cov's subprocess bootstrap instead of stripping it.
+A refactor that broke the stdin envelope would pass the module tests and
+fail the subprocess ones. **Instrumenting the children instead is ruled
+out**: `tests/test_citation_gate_hook.py`'s `_IS_COVERAGE_BOOTSTRAP`
+documents how mixed statement and branch data kill the run at combine
+time. The scope is declared once in `[tool.coverage.run].source` and the
+suite runs a bare `--cov`, so a new path cannot be silently left out.
 
-**Instrumenting the children instead is ruled out, on the record.**
-`tests/test_citation_gate_hook.py`'s `_IS_COVERAGE_BOOTSTRAP` documents
-what happens: coverage started in a child with a different working
-directory records statement-only data while the parent records branch
-data, and the run then dies at combine time *after* every test has passed.
-Importing the module avoids the problem.
+The tests worth having are the negative ones: a write outside
+`content/drafts/` or with a non-gated suffix is ignored; each
+malformed-stdin shape and a checker crash exit 0; an advisory hook never
+emits a blocking decision; **stdout parses as JSON**; and every odd shape
+a settings file can arrive in, since a raise there would silence the
+whole preflight report.
 
-One consequence can surprise someone: the scope is declared once, in
-`[tool.coverage.run].source`, and the suite is run with a bare `--cov`,
-not `--cov=chitragupta --cov=scripts`. A command line naming
-the paths would silently keep measuring the old set after a new one is
-added.
-
-The tests worth having are the negative ones:
-
-- a write outside `content/drafts/` is ignored;
-- a write with a non-gated suffix is ignored;
-- each of the three malformed-stdin shapes exits 0;
-- a checker crash still exits 0;
-- for an advisory hook, a findings payload never emits a blocking decision;
-- **stdout parses as JSON**, because that failure is otherwise invisible;
-- every shape a settings file can arrive in. This one needs spelling
-  out, because it is the failure the preflight is least able to report: a
-  raise anywhere in reading that file reaches the catch-all that keeps a
-  broken preflight from breaking a session, so the *whole* report goes
-  silent (the corpus stage and the gate check with it) over a settings
-  file it merely found odd. Five shapes are tested for that reason: a
-  `hooks` key that is a string, an event holding a mapping instead of a
-  list, an entry or hook that is a bare string, a whitespace-only
-  `command`, and an `args` element that is not a string.
-
-Two limits remain. First, **no test can start a hook the way the harness
-does**, so a hook that never spawns still passes every test in the
-repository. `tests/test_settings_launchers.py` narrows that gap without
-closing it. It is the one test that reads the *live*
-`.claude/settings.json`, and it asserts of every entry (so the prose
-check's entry inherited the contract without a line being added here)
-that the entry is exec form, launches `python`, braces every
-placeholder, and names a script that exists. It cannot assert that the
-harness ran any of it. The other hook tests still write a settings file
-into a throwaway root, which is how they check the rule and not this
-repository's current answer to it. Second, hook tests that live outside
-the normal suite rot: one upstream collection ships a hook test
-asserting fields (`priority`, `message`) that its own hook no longer
-emits. Keeping these in pytest, where CI runs them, is the only defence.
+**No test can start a hook the way the harness does.**
+`tests/test_settings_launchers.py` narrows the gap: it reads the live
+`.claude/settings.json` and asserts of every entry that it is exec form,
+launches `python`, braces every placeholder, and names a script that
+exists. Hook tests stay in pytest, where CI runs them, because ones kept
+outside the suite rot.
 
 ## 🚫 Deliberately not done
 
-**A dispatcher process.** Consolidating every `PostToolUse` check into one
-process, with per-check controls inside it, is tidier and is what
-`affaan-m/ECC` does. Rejected here because it trades fault isolation for a
-merge problem the harness has already solved.
+**A dispatcher process.** Consolidating every `PostToolUse` check into
+one process is tidier, and rejected because it trades fault isolation
+for a merge problem the harness has already solved.
 
 **`async: true` on the style hook.** Advisory findings that arrive after
-the agent has moved on defeat their own purpose, and whether async output
-reaches the model at all is unprobed. Available if a real pass proves the
-synchronous cost unacceptable, and only then.
+the agent has moved on defeat their purpose, and whether async output
+reaches the model at all is unprobed. Available only if a real pass
+proves the synchronous cost unacceptable.
 
-**Conditional spawning (`if`) on the gate.** `if` is reported to take
-permission-rule syntax and to suppress the process spawn entirely when it
-does not match, which would answer the style hook's accepted cost of
-re-checking a whole draft on every edit of it. That description comes
-from a third-party survey of the settings schema, not from the official
-documentation, and has not been tested here. It is also version-gated,
-and the behaviour of an older harness meeting an unrecognised key is
-unknown: does it skip the hook, or ignore the key? If it skips, that is
-a silently inert gate, which is the one outcome this document exists to
-prevent. Advisory hooks may use it. The gate may not. The in-script path
-check stays either way.
+**Conditional spawning (`if`) on the gate.** `if` reportedly suppresses
+the spawn when it does not match, which would save the style hook
+re-checking a whole draft on every edit. That comes from a third-party
+survey, is untested here, and is version-gated: if an older harness
+skips a hook with an unrecognised key, the gate is silently inert.
+Advisory hooks may use it. The gate may not. The in-script path check
+stays either way.
 
-**A `jq` dependency.** One upstream hook shells out to `jq` to build its
-JSON and degrades to a warning when it is missing. Incompatible with the
-stdlib-only posture `chitragupta/style_check.py` documents, and `jq` is not
-reliably present here in any case. Python's `json` module builds the
-envelope.
+**A `jq` dependency.** Incompatible with the stdlib-only posture
+`chitragupta/style_check.py` documents, and `jq` is not reliably present.
+Python's `json` module builds the envelope.
 
-**A per-hook enable/disable config.** One upstream ships a thirty-one-key
-config with a git-ignored local override, which is real ergonomics.
-Rejected because the gate must not be individually disableable, and a
-harness-level `disableAllHooks` already exists for anyone who needs the
-escape hatch.
+**A per-hook enable/disable config.** Rejected because the gate must not
+be individually disableable, and a harness-level `disableAllHooks`
+already exists for anyone who needs the escape hatch.
 
 ### 🤖 A skill that runs the hook
 
-Asked directly, and recorded because the answer differs for the two things
-the question can mean.
+**Invoking `style_check_hook.py` from a skill is an antipattern.** The
+hook is a harness adapter. A skill has no payload, so it would have to
+fabricate one and parse the envelope back out: the dependency arrow
+backwards, coupled to an output format that is measured rather than
+documented. Anything that wants the check calls
+`python -m chitragupta.draft style` directly.
 
-**Invoking `style_check_hook.py` from a skill is an antipattern.** The hook
-is a harness adapter: it exists to read a `PostToolUse` payload on stdin
-and write a JSON envelope on stdout. A skill has no payload, so it would
-have to fabricate one to satisfy the adapter and then parse the envelope
-back out to recover what it wanted. That is the dependency arrow backwards.
-The hook depends on `python -m chitragupta.draft style`; anything else that wants
-the check calls that command directly. It would also couple every skill to
-a harness output format this document describes as measured rather than
-documented, and therefore liable to change.
+**A generic skill wrapping `python -m chitragupta.draft style` is the
+wrong shape here**, for three reasons. [GENRE.md](GENRE.md) already
+states shared invariants in each `SKILL.md` or a shared reference and
+pins them with a text scan over `.claude/skills/`. Skills are matched on
+user intent, so routing the step through one would make invocation
+discretionary again. And the step is one deterministic command, so a
+wrapper costs a tool call and a context load to save nothing.
 
-**A generic skill wrapping `python -m chitragupta.draft style` is not an
-antipattern in general, but is the wrong shape here**, for three reasons.
-[GENRE.md](GENRE.md) already sets the precedent for shared invariants
-(*"These are not per-skill choices. They are the same rules, stated in
-each of the eleven `SKILL.md` files or ... once in a reference ... A skill
-that broke one would be the bug"*)
-and pins them with a text scan over `.claude/skills/`, which is exactly
-what has been proposed for this step. Skills are also matched on *user
-intent*, and "another skill is midway through its own loop" is not user
-intent; routing the step through one would make invocation discretionary
-again, which is the thing the invocation rule exists to end. And the
-step is a single deterministic command, so wrapping it costs a tool call
-and a context load to save nothing.
-
-**The condition that would flip this:** if the step ever grows from one
-command into a multi-step judgement loop (read the findings, decide which
-to act on, edit, re-check, log the attempt), then it *is* a skill, and
-`agenda-reviser` is the proof, since that is precisely its shape for
-verbatim findings. Today the fix path for a prose finding already has a
-home in `draft-reviser`'s copy-edit mode, so the loop does not need
-a second one.
-
-## 📚 Prior art
-
-Credited properly in [INSPIRATION.md](INSPIRATION.md); summarised here for
-whoever is changing a hook and wants the sources.
-
-- **`obra/superpowers`**: the fail-silent contract for a context
-  injection, the polyglot launcher (not adopted, see above), the
-  extensionless-filename caution, and the observation that the advisory
-  field name differs per host.
-- **`addyosmani/agent-skills`**: the standard-envelope rule stated in a
-  hook header, and a hook test that checks the payload parses. Its `jq`
-  dependency is not adopted.
-- **`shanraisshan/claude-code-best-practice`**: the most complete public
-  survey of hook events, output fields, decision-control shapes and
-  version-gated options; the source of this document's `if`, `async` and
-  decision-control notes. Its enable/disable config is not adopted.
-- **`affaan-m/ECC`**: the dispatcher pattern, and the principle behind
-  it: resolve paths inside the interpreter, not in the shell. The
-  principle is adopted via exec form; the dispatcher is not.
-
-## ❓ Open questions
-
-1. **Whether `python` really starts a hook on a bare Windows clone.**
-   The name is [settled](#-the-launcher-contract), but the Windows half of the
-   reasoning is read off CPython's
-   `venv` module and the harness documentation, because no Windows host
-   without Git Bash was available to try it on. The Linux half is
-   measured. If the answer there
-   is ever *no*, the failure is audible: `python -m chitragupta.draft
-   gate` says so.
-2. **Whether `{"decision": "block"}` on `PostToolUse` stays supported.**
-   Measured working, documented nowhere, and nothing re-checks it
-   automatically.
-3. **Whether `async` output reaches the model.** One probe would settle it
-   and none has been run.
-4. **What an older harness does with an unrecognised `if` key.** Decides
-   whether conditional spawning is safe for advisory hooks on every host or
-   only on recent ones.
-5. **Whether the Codex and OpenCode results hold across versions.** The
-   six trials above were run on Claude Code; Codex 0.159.0's hooks and
-   OpenCode 1.18.33's plugin were measured end to end on 2026-09-29
-   ([HARNESS.md](HARNESS.md)), and again on real local models with Codex
-   0.159.3 and OpenCode 1.18.34 on 2026-10-02
-   ([LOCAL-MODELS.md](LOCAL-MODELS.md)). Both harnesses release often,
-   and nothing re-measures them automatically.
-6. **Whether a session-start message is the right register for a fault.**
-   The preflight reports once and cannot re-report: a user who runs
-   `python -m chitragupta.corpus sync` two minutes later keeps stale advice in
-   context for the rest of the session, which is why the message says so
-   in its own last line. Whether that is good enough will only be answered
-   by living with it.
+**The condition that would flip this:** if the step grows into a
+multi-step judgement loop (read the findings, decide, edit, re-check,
+log), it *is* a skill, as `agenda-reviser` is for verbatim findings.
+Today a prose finding's fix path is `draft-reviser`'s copy-edit mode.

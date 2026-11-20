@@ -5,207 +5,117 @@ Status: **implemented.**
 **If you are here to change a draft you wrote weeks ago, read the
 walkthrough in
 [WRITING-PROCESS.md](WRITING-PROCESS.md#-phase-3-revise-a-draft)'s
-Phase 3 instead of this page.** **Written for** someone
-changing the drafting layer or the dossier format: this is the
-reasoning behind the command surface that walkthrough uses. **Assumed:** [ARCHITECTURE.md](ARCHITECTURE.md)
-for the layers and [TOKENS.md](TOKENS.md) for the two cost pools. **Not
-covered here:** how to *use* a dossier day to day, which is
-[CLI.md](CLI.md)'s `dossier` section.
+Phase 3 instead of this page.** **Written for** someone changing the
+drafting layer or the dossier format: this is the reasoning behind the
+command surface that walkthrough uses. **Assumed:**
+[ARCHITECTURE.md](ARCHITECTURE.md) for the layers and
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md)
+for the two cost pools. **Not covered here:** how to *use* a dossier day
+to day, which is [CLI.md](CLI.md)'s `dossier` section.
 
 Why drafting costs what it costs, and how a draft is revised weeks later
 without re-running the pipeline that produced it.
 
 Related reading:
 
-- [TOKENS.md](TOKENS.md): where a run's tokens go, the two-pool
-  framing this document assumes, and how to measure any of it. It holds
-  the arithmetic behind ["Where the tokens go"](#-where-the-tokens-go)
-  below.
-- [ARCHITECTURE.md](ARCHITECTURE.md): the four layers this sits inside.
 - [RETRIEVAL.md](RETRIEVAL.md): how the corpus is ranked, and what a
   snippet contains.
 - [REJECTION.md](REJECTION.md): why turning a source down is the
-  judgment everything here depends on, and the accounting behind a
-  retrieval change that was built and then withdrawn.
+  judgment everything here depends on.
 - [CITATION-PROVENANCE.md](CITATION-PROVENANCE.md): the review aid that
-  answers "does the cited paper actually say this?", which is a different
+  answers "does the cited paper actually say this?", a different
   question from anything here.
 - [PERFORMANCE.md](PERFORMANCE.md): **measured** costs, including
-  [what a drift sweep costs](PERFORMANCE.md#-what-a-drift-sweep-costs),
-  the one figure this document quotes instead of estimating.
-  The rule here is that a stopwatch number lives there and is cited from
-  here, and anything derived from file sizes or documented defaults is
-  labelled an estimate every time it appears.
-
-## 🧭 Table of contents
-
-- [The asymmetry](#-the-asymmetry)
-- [Where the tokens go](#-where-the-tokens-go)
-- [The dossier](#-the-dossier)
-- [Dispatching from the dossier](#-dispatching-from-the-dossier)
-- [Drift across every dossier](#-drift-across-every-dossier)
-- [Revising a draft](#-revising-a-draft)
-- [Backup and restore](#-backup-and-restore)
-- [What this deliberately does not do](#-what-this-deliberately-does-not-do)
+  [what a drift sweep costs](PERFORMANCE.md#-what-a-drift-sweep-costs).
+  A stopwatch number lives there and is cited from here; anything
+  derived from file sizes or documented defaults is labelled an estimate.
 
 ## ⚖ The asymmetry
 
-Half of this pipeline already survives a session ending, and half of it
-doesn't.
-
 `chitragupta/citation_gate.py`, `chitragupta/references.py`,
 `chitragupta/render_output/` and
-`chitragupta/review/citation_provenance.py` are all stateless with respect to
-*how* a
-draft was written. Hand any of them a `.md` file from last month and they
-work: the gate re-checks its citekeys, `references` rebuilds the
-bibliography, `render_output` produces the PDF, `citation_provenance`
-scores each claim against its source. None of them needs to know what
-searches were run or which candidates were turned down.
+`chitragupta/review/citation_provenance.py` are stateless with respect to
+*how* a draft was written. Hand any of them last month's `.md` file and
+they work.
 
-The drafting layer is the exception. A genre skill produces the draft and
-also the judgment behind it: which sub-themes the topic was broken into,
-which of the fifteen retrieved candidates were worth keeping and why the
-other twelve weren't, who the reader is, which definition of a contested
-term the draft settled on, and what the user asked for in chat that the
-prose doesn't show.
-
-Without a record on disk, all of that lives in one conversation and is
-lost when it ends, so "shorten section 3" would cost a full re-run:
-retrieve, score every candidate again, re-cluster, rewrite. That is a
-structural cost, not a constant factor, and everything else in this
-document follows from removing it.
+The drafting layer is the exception. A genre skill produces the draft
+and also the judgment behind it: the sub-themes, which of fifteen
+retrieved candidates were kept and why the rest were not, who the reader
+is, which definition of a contested term was settled, and what the user
+asked for in chat. Without a record on disk all of that is lost when the
+conversation ends, so "shorten section 3" would cost a full re-run. That
+is a structural cost, and everything else here follows from removing it.
 
 ## ⚡ Where the tokens go
 
-The accounting lives in [TOKENS.md](TOKENS.md), together with the same
-argument from [REJECTION.md](REJECTION.md) and two worked examples, so
-the subject is kept in one place.
-
-This document depends on one part of it. Costs split into
-two pools. **Orchestrator-resident** costs are re-sent on every remaining
-turn of the run, and so multiplied by everything that comes after them.
-**Subagent one-shot** costs are paid once, because the context is
-discarded when the subagent returns.
-
-Four things load the first pool: retrieved candidates that are rejected
-but stay resident, fan-out packets held across phases, whole-file
-rewrites, and **no revision path at all**.
-
-This module exists to remove the fourth, which is also the only one of
-the four that is *structural* instead of a constant factor. No genre
-skill has a branch for "an existing draft plus a change request";
-without `chitragupta/dossier/` and the `draft-reviser` skill, the only
-way to alter a paragraph would be to run Phase 1 through Phase 7 again.
+The accounting lives in
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md).
+This page depends on one part of it. **Orchestrator-resident** costs are
+re-sent on every remaining turn of the run; **subagent one-shot** costs
+are paid once, because the context is discarded when the subagent
+returns. Four things load the first pool: rejected candidates that stay
+resident, fan-out packets held across phases, whole-file rewrites, and
+**no revision path at all**. The dossier and `draft-reviser` exist to
+remove the fourth, the only structural one: without them, altering a
+paragraph would mean running every phase again.
 
 ## 🗂 The dossier
 
-The format moved to [DOSSIER.md](DOSSIER.md): the ten files, the
-`claim:`/`quote:` contract, why it is Markdown, why it is several files
-instead of one, how `sections.md` is derived, and the corpus
-fingerprint. That page is machine-facing documentation, because its
-reader is usually the model resuming a draft, not a person.
-
-This page covers what to *do* with a dossier once it exists. Everything
-below assumes that format and does not restate it.
+The format is in [DOSSIER.md](DOSSIER.md): the ten files, the
+`claim:`/`quote:` contract, how `sections.md` is derived, and the corpus
+fingerprint. This page covers what to *do* with a dossier once it exists.
 
 ## 🤖 Dispatching from the dossier
 
-The dossier was built to be read by the *next* session. `brief` is the
-part that is read by the *current* one: by a subagent, in place of the
-orchestrator pasting the same text into its prompt.
-
-**The problem, in one phase.** `deep-research` Phase 5 dispatches one
-writer per section, and each needs the kept claims its section stands on.
-Written the obvious way, the orchestrator selects those claims from the
-Phase 2 packets it is holding and types them into four prompts. That is
-*output*, at 5x a cached input token, spent once per writer: an estimated
-four writers x ~800 tokens = 3.2k output, or **16k input-token
-equivalents** ([TOKENS.md](TOKENS.md#-two-worked-examples) has the
-weights). The same material is already on disk by then, because Phase 2's
-transcription put it there.
-
-**The mechanism.** Phase 4 writes the section -> citekey plan into
+`brief` lets a subagent read the dossier in place of the orchestrator
+pasting the same text into its prompt. `deep-research` Phase 5 dispatches
+one writer per section, and each needs the kept claims its section
+stands on. Typed into four prompts by the orchestrator, that is *output*
+at 5x a cached input token: an estimated **16k input-token equivalents**
+([TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md#-two-worked-examples)
+has the weights). Phase 4 instead writes the section to citekey plan into
 `sections.md`, and the dispatch prompt carries one line:
 
 ```bash
 Your evidence: python -m chitragupta.draft dossier brief <draft> --section "2. Failure modes"
 ```
 
-That is an estimated ~40 output tokens per writer, ~0.8k equivalents for
-the phase, against 16k: **an estimated 15k equivalents saved**, in the
-expensive direction. The writer runs the command in its own context,
-which is discarded when it returns, so the blocks land in the one-shot
-pool at 1.25x once and are not carried anywhere.
+That is an estimated ~0.8k equivalents for the phase, and the writer's
+context is discarded when it returns. Counted on the shipped example
+report against the real 501-paper corpus, **15,660 characters of
+evidence become 901 characters of dispatch line**
+([TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md#-the-dispatch-payload-measured-on-real-material)).
 
-Counted, not estimated, on the shipped example report against the
-real 501-paper corpus: **15,660 characters of evidence become 901
-characters of dispatch line**, 17.4x, across its seven sections. Method
-and caveats are in
-[TOKENS.md](TOKENS.md#-the-dispatch-payload-measured-on-real-material);
-it is a payload size, not a run.
+**Addressing by section, not by citekey list.** A citekey list in the
+prompt would exist in two places that can disagree; `sections.md` is
+where the decision was made. Matching ignores numbering, and **an
+ambiguous name matches nothing**: a wrong match hands a writer another
+section's evidence and comes back as fluent, correctly cited prose on the
+wrong subject, a failure no downstream check catches.
 
-**Addressing by section, not by citekey list.** A prompt carrying the
-citekeys is already most of the way back to carrying the evidence, and
-the list would then exist in two places that can disagree. `sections.md`
-is where that decision was made, so it is what the command names. Section
-matching ignores numbering (`"Failure modes"` finds the row a skill wrote
-as `"2. Failure modes"`) and **an ambiguous name matches nothing**: a
-wrong match hands a writer another section's evidence, which comes back
-as fluent, correctly-cited prose about the wrong subject. It is the one
-failure here that no downstream check catches.
+**What it does not do.** It does not reduce what the orchestrator
+already carries: packets returned in Phase 2 stay in its context. Letting
+each interviewer write its own file would avoid that, at the cost of
+**one writer, one record**; that trade is rejected in
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md#-the-one-way-to-cut-residency-and-what-it-would-cost),
+and the three subagent definitions declare no `Write` tool.
 
-**What it does not do, and cannot.** It does not reduce what the
-orchestrator is already carrying. A context is append-only between
-compactions, so six packets returned into it in Phase 2 stay there
-whether or not they are also on disk. Reading an extract back *adds*
-tokens and removes none.
-
-The only way to avoid that residency would be to let each interviewer
-write its own file, so the long-form material never enters the
-orchestrator at all. That would cost the invariant which makes a dossier
-trustworthy, **one writer, one record**, and it is written down as a
-rejected trade in
-[TOKENS.md](TOKENS.md#-the-one-way-to-cut-residency-and-what-it-would-cost)
-and not implemented here.
-
-The three subagent definitions declare
-`tools: Bash, Read, Grep, Glob` with no `Write`, and say in prose that
-they write nothing.
-
-**The second effect, which is not about tokens.** An orchestrator that
-moves past Phase 2 without transcribing would lose six packets' worth of
-judgment with nothing reporting it: the draft would look finished and
-the record would be absent. A run that *dispatches* from the file cannot
-skip the file. `brief` exits 1 when nothing resolves and names every
-citekey with no block, and `--check` lets the orchestrator find that out
-before four writers are already running, while it is still cheap to
-fix.
-
-**Who else can use it.** Nothing in `brief` is `deep-research`-specific:
-any skill that fans out over sections has the same shape.
-`survey-writer`'s step 2a subagents read retrieval results instead of
-transcribed evidence, so they have nothing to point at yet; when that
-changes, the command is already there.
+**The second effect.** A run that dispatches from the file cannot skip
+transcribing it. `brief` exits 1 when nothing resolves and names every
+citekey with no block, and `--check` finds that out before any writer
+runs. Nothing in `brief` is `deep-research`-specific.
 
 ## 📉 Drift across every dossier
 
-`status <draft>` answers "did the corpus move under this one draft?",
-which is only useful if you already suspect it did. The corpus half of
-the bottleneck is the one nobody is watching: `chitragupta.corpus sync` adds
-papers and
-`--remove-stale` drops them, and every draft written before that moment
-silently drifts. `status --all` is the sweep that makes it visible: one
-report over every dossier under `content/dossiers/`, always exiting 0,
-because "some drafts have drifted" is the normal state of a live corpus
-and not a build failure.
-
-`sync` also names the dossiers that still reference a citekey it is about
-to drop, at the moment of the drop
-([CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove)).
-That is the same evidence from the other end and it does not replace
-this sweep: it sees only the removal in front of it, and it counts
-mentions without telling a missing citekey from a candidate.
+`chitragupta.corpus sync` adds papers and `--remove-stale` drops them,
+and every draft written before that moment silently drifts. `status
+--all` is the sweep that makes it visible: one report over every dossier
+under `content/dossiers/`, always exiting 0, because "some drafts have
+drifted" is the normal state of a live corpus. `sync` also names the
+dossiers that reference a citekey it is about to drop
+([CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove)),
+but it sees only that removal and cannot tell a missing citekey from a
+candidate.
 
 ### ⚖ Two findings, and they are not the same kind of thing
 
@@ -214,217 +124,128 @@ mentions without telling a missing citekey from a candidate.
 | **Missing**: a cited citekey that has left the ledger or no longer parses | a defect | the draft cites a paper the corpus no longer has; the citation gate will fail on it |
 | **Candidate**: a newly reachable paper the dossier never weighed | a decision | nothing, until the sub-theme it bears on is revised |
 
-The design avoids collapsing the two into one "drift" number. A missing
-citekey is work that has to happen; a candidate is an offer that is
-usually correct to decline. Reported together as a count, the first
-hides inside the second.
+They are never collapsed into one "drift" number, because the defect
+would hide inside the offers.
 
 **Missing is computed from `evidence.md` and `sections.md` only, not from
-`rejected.md`.** A paper the draft *stands on* vanishing is a defect; a
-paper the draft *turned down* vanishing is a non-event, and reporting the
-second as the first would make every `--remove-stale` run look like a
-pile of broken drafts. Each missing citekey is reported with the
-`sections.md` sections that cite it, because the reviser's next question
-is always "which prose leans on this?", and reading the draft to find out
-is the cost this document exists to remove.
+`rejected.md`.** A paper the draft turned down vanishing is a non-event.
+Each missing citekey is reported with the sections that cite it, so the
+reviser need not read the draft to find them.
 
-**Candidates are matched against the queries in `retrieval.md`.** That
-file was added to measure what a run cost: how many characters each
-retrieval call returned. It is also the only record of *what this draft
-went looking for*, which lets the sweep answer "the corpus grew" with
-"and here is the part of the growth this draft would have wanted". Each
-recorded query is re-run against the current corpus, and anything
-landing in its top 15 that the dossier has never mentioned is a
-candidate. Fifteen is `survey-writer`'s own `search(sub_theme, k=15)`,
-so the report surfaces a paper if and only if the draft's original
-search would have put it in front of the writer.
-
-**Everything in `rejected.md` is subtracted first.** Re-offering a
-candidate the draft already read and declined would cost the re-judging
-that `rejected.md` exists to prevent, so the report would recreate the
-bottleneck it is meant to expose.
+**Candidates are matched against the queries in `retrieval.md`.** Each
+recorded query is re-run against the current corpus, and anything in its
+top 15 that the dossier never mentioned is a candidate. Fifteen is
+`survey-writer`'s own `search(sub_theme, k=15)`, so a paper surfaces if
+and only if the original search would have shown it. **Everything in
+`rejected.md` is subtracted first**, so declined papers are not
+re-judged.
 
 ### 💡 The third list, and why it is not drift
 
-Subtracting the rejections throws away something worth keeping, though.
-"Turned down because the corpus had nothing better on this sub-theme"
-and "turned down because it is about a different field" age completely
-differently, and only the first is worth revisiting once the corpus
-grows. Membership in `rejected.md` cannot tell those apart; the reason
-column can.
-
-So a declined paper that the dossier's queries *still* reach is reported
-as a third list, `reconsider`, carrying the recorded reason. A citekey
-that is both cited and listed as rejected is treated as cited. That is
-a stale `rejected.md` row, not an open question, and offering it back
-would send a reviser to re-decide something the draft already acts on.
+"Turned down because the corpus had nothing better" ages differently
+from "turned down as off-topic", and only the reason column tells them
+apart. So a declined paper the queries still reach is reported as
+`reconsider`, with its recorded reason. A citekey both cited and
+rejected is treated as cited.
 
 **It deliberately does not count as drift.** A rejection that still
-matches its query was true before the corpus moved and will be true on
-every sweep after it. Letting it mark a dossier stale would mean every
-dossier that ever declined a paper is permanently stale, which destroys
-the one signal this command exists to give. So `reconsider` never makes
-a dossier "drifted", and the terminal output prints it only alongside a
-real finding, as context for a re-grounding pass that is already
-warranted, not as a standing reminder. `--json` always carries it,
-because there the consumer reads it at the moment it acts.
+matches its query would otherwise mark every dossier that ever declined
+a paper as permanently stale. The terminal prints `reconsider` only
+beside a real finding; `--json` always carries it.
 
 ### 🔎 Why the new papers are not found with `search()`
 
-The obvious implementation, calling
-`chitragupta.retrieval.search(query, k=15)` for each recorded query, is
-ruled out, because a report must not change what it reports on:
+Calling `chitragupta.retrieval.search(query, k=15)` is ruled out, because
+a report must not change what it reports on:
 
-- The ledger is opened read-only through `ledger.read_connection`, as
-  every reader opens it, and never through `ledger.connect()`, the
-  writer, which mkdirs `content/`, executes the schema and runs
-  migrations. An inspection must not take a write lock or run a
-  migration. (It *does* wait out a writer's commit window: waiting
-  takes no lock, and the alternative is reporting an empty corpus. See
+- The ledger is opened read-only through `ledger.read_connection`, never
+  through `ledger.connect()`, which creates directories, runs the schema
+  and migrations. (It does wait out a writer's commit window; see
   [DOSSIER.md](DOSSIER.md#-the-corpus-fingerprint).)
 - `search()` builds its index through `retrieval._load_index`, which
-  calls `_save_cache()` whenever any document's fingerprint has moved.
-  After the sync that caused the drift being reported, that is
-  guaranteed to happen, so the scan would rewrite
-  `content/retrieval_index.json` every time it ran.
+  calls `_save_cache()` whenever a fingerprint has moved, so after a sync
+  the scan would rewrite `content/retrieval_index.json` every time.
 
-The BM25 index was never in the ledger to begin with, which makes the
-alternative easy. The ledger holds bibliographic rows and a
-`parsed_path`; the index is a separate `content/retrieval_index.json`
-mapping each citekey to `{fingerprint, length, term_freqs}`, derived from
-the parsed text. The two halves of `chitragupta.retrieval` that matter,
-`_tokenize_item` and `_bm25_scores`, are pure; the only thing that
-persists is the cache write sitting between them.
-
-So the drift scan composes those two halves and skips the middle. It
-reads the existing cache with `_load_cache()` (which only reads), reuses
-every entry whose fingerprint still matches, tokenizes the rest into
-memory, ranks against that, and drops the whole thing when the scan
-returns. The ledger is read once and the index built once and lazily, so
-a sweep over dossiers that logged no queries never builds one at all.
-Nothing is written back, and the smoke test pins exactly that:
-`content/ledger.sqlite` and `content/retrieval_index.json` are both
-byte-identical after a scan.
-
-The cost of throwing the index away is that a cold-cache sweep re-does
-work the next `search()` will do again. That is accepted, because the
-alternative is a read-only command that writes to the corpus layer as a
-side effect, which is much worse.
-
-That cost is measured. Unlike the token estimates in
-[TOKENS.md](TOKENS.md), it is a stopwatch figure, so it lives in
-[PERFORMANCE.md](PERFORMANCE.md#-what-a-drift-sweep-costs) with the rest
-of the measurements. The main result, on this project's own
-corpus: sweeping 50 dossiers costs **0.19s more than sweeping one**
-(2.227s vs 2.032s cold), because the tokenization is shared. Had it been
-per dossier, 50 would have taken well over a minute. A warm cache is
-5.1-9.3x faster again: about 0.2-0.4s warm and ~2.1s cold, which is
-cheap enough to run after every sync but not free.
+The pure halves, `_tokenize_item` and `_bm25_scores`, are composed
+directly instead: the existing cache is read with `_load_cache()`, stale
+entries are tokenized in memory, and nothing is written back. A smoke
+test pins `content/ledger.sqlite` and `content/retrieval_index.json` as
+byte-identical after a scan. A cold sweep therefore repeats work the
+next `search()` will do, which is accepted over a read-only command that
+writes. Measured, sweeping 50 dossiers costs 0.19s more than one (about
+2.1s cold, 0.2–0.4s warm); see
+[PERFORMANCE.md](PERFORMANCE.md#-what-a-drift-sweep-costs).
 
 ### 🏷 Unknown is not the same as absent
 
 A dossier on a machine with no readable ledger produces no findings.
 Reporting that as "current" would assert the result of a check that
-never ran, which is the one way this command could actively mislead. The
-sweep says explicitly that the result is unknown, and still exits 0.
+never ran, so the sweep says the result is unknown, and still exits 0.
 
 ### ⌨ `--json`, and who it is for
 
 `--all --json` emits the same report as data: per dossier, the recorded
-and current fingerprints, `missing` as citekey -> citing sections,
-`candidates` as citekey, title and the queries that surfaced it, and
-`reconsider` as the same plus the recorded rejection reason. Its
-consumer is often a re-grounding pass rather than a person. That pass
-has to swap the missing citations, triage the candidates, and edit only
-the affected sections, and making it re-parse a report written for a
-terminal would be a fragile way to hand over structured facts the sweep
-already has. Exiting 0 regardless is part of the same contract: the
-caller branches on the contents, not on the status code.
+and current fingerprints, `missing` as citekey to citing sections,
+`candidates` with title and the queries that surfaced them, and
+`reconsider` with the recorded reason. Its consumer is usually a
+re-grounding pass, which branches on the contents, not the exit status.
 
 ## ✍ Revising a draft
 
 [WRITING-PROCESS.md](WRITING-PROCESS.md#-phase-3-revise-a-draft) has the
-same loop as a command table, and, next to it, how a draft you hand-edit
-yourself is picked back up on the next revision. Read that first if
-you want the user-facing walkthrough; this section gives the reasoning
-behind each of its steps.
-
-The `draft-reviser` skill reads the dossier instead of the corpus. Its
-loop:
+same loop as a command table, including how a hand-edited draft is
+picked back up. This section gives the reasoning. The `draft-reviser`
+skill reads the dossier instead of the corpus:
 
 1. `python -m chitragupta.draft dossier status <draft>`: what is on disk,
    has the corpus moved, and has the *draft* moved since the last
-   `dossier stamp` (FEATURE-ROADMAP.md's E3; "The draft
-   fingerprint" in [docs/DOSSIER.md](DOSSIER.md))? A changed draft
-   fingerprint surfaces up to five findings, offered to the user one at a
-   time instead of applied. Then `python -m chitragupta.draft dossier
-   mark-revision <draft>`, before any retrieval call, so `retrieval.md`
-   can tell this revision's cost apart from the last one. Its rows
-   otherwise carry only a date, and two revisions on the same day would
-   merge into one figure.
-2. Read `scope.md` and `steering.md`. These bound what the revision may
-   change: a request that contradicts the recorded scope is a scope
-   change, and is raised with the user instead of silently applied.
+   `dossier stamp` ("The draft fingerprint" in
+   [DOSSIER.md](DOSSIER.md))? A changed draft surfaces up to five
+   findings, offered one at a time. Then `python -m chitragupta.draft
+   dossier mark-revision <draft>`, before any retrieval, so
+   `retrieval.md` can tell two same-day revisions' costs apart.
+2. Read `scope.md` and `steering.md`. A request that contradicts the
+   recorded scope is a scope change, raised with the user.
 3. `python -m chitragupta.draft dossier sections <draft> --citekeys --write`:
-   heading to line range, with the citekeys under each, rebuilt from the
-   draft itself.
-4. Re-search only if the change genuinely opens new ground, consulting
-   `rejected.md` first so the same candidates aren't re-judged.
-5. Read *only* the affected sections, at those line ranges, and edit
-   inside them.
-6. Update `evidence.md` / `rejected.md` / `sections.md` for whatever
-   changed, append to `revisions.md` and `steering.md`.
+   heading to line range, with the citekeys under each.
+4. Re-search only if the change opens new ground, consulting
+   `rejected.md` first.
+5. Read and edit *only* the affected sections.
+6. Update `evidence.md` / `rejected.md` / `sections.md`, append to
+   `revisions.md` and `steering.md`.
 7. Re-gate (`python -m chitragupta.draft gate`), rebuild references,
-   re-render, then `python -m chitragupta.draft dossier stamp <draft>`,
-   after the gate passes, so a draft that fails it is never stamped as
-   accepted.
+   re-render, then `python -m chitragupta.draft dossier stamp <draft>`
+   after the gate passes, so a failing draft is never stamped.
 
-Steps 3 and 5 are where the output-token saving lives: a scoped edit
-inside one section replaces an estimated ~4.6k-token whole-file rewrite.
-Steps 1, 2 and 4 are where the input-token saving lives: no retrieval
-pass at all in the common case.
+Steps 3 and 5 save output tokens (a scoped edit replaces an estimated
+~4.6k-token whole-file rewrite); steps 1, 2 and 4 save input tokens (no
+retrieval pass in the common case).
 
 ### 📝 The copy-edit pass, and the entry it leaves
 
-One class of revision inverts every economy above: a grammar pass, a
-spelling fix, a dialect conversion, a rephrasing to meet a style
-guideline. It reads the whole draft and edits every section, and it is
-still the cheap path, because what makes the ordinary loop cheap is
-skipping *retrieval*, and this pass skips it entirely. Step 4
-short-circuits to "no, and never": a copy-edit that needs a search has
-stopped being one.
+A grammar pass, spelling fix, dialect conversion or style rephrasing
+edits every section and is still cheap, because it skips retrieval
+entirely: a copy-edit that needs a search has stopped being one.
 
-What it leaves behind is one `revisions.md` entry for the whole document,
-naming the convention applied instead of the sections touched, for
+It leaves one `revisions.md` entry naming the convention applied, for
 example "converted to en-GB per `scope.md`'s `language:` (-ise, -our,
--re); no claim, citation or section order changed". It is one entry and
-not forty because the later reader wants to know *which convention
-governs this draft now*, and a per-section log answers a question nobody
-asks. Like every entry, it ends with a `Sections:` line, here naming
-every section the pass changed; [Reviewing a
-revision](#-reviewing-a-revision) below has the shape.
+-re); no claim, citation or section order changed", ending like every
+entry with a `Sections:` line (see [Reviewing a
+revision](#-reviewing-a-revision)).
 
 **It deliberately carries no evidence delta.** `evidence.md`,
-`rejected.md` and `sections.md` all describe the relationship between
-the draft and the corpus, and a wording change moves neither end of it:
-no citekey is added or dropped, no candidate is judged, no heading moves.
-A copy-edit entry that recorded an evidence change would record
-something that did not happen, and the next revision, which is told to
-trust `rejected.md` instead of re-judging it, would inherit the error.
-
-The one dossier file a copy-edit may legitimately write besides the log is
-`scope.md`'s `language:` line, when the pass is what settles the dialect
-in the first place. A conversion applied against an unrecorded target
-cannot be repeated or checked by the next session.
+`rejected.md` and `sections.md` describe the draft's relationship to the
+corpus, which a wording change does not move; recording a change would
+mislead the next revision, which trusts them. The one other file it may
+write is `scope.md`'s `language:` line, when the pass settles the
+dialect.
 
 ### 🔀 Reviewing a revision
 
-A revision is only reviewable if you can see what it changed. Every
-`mark-revision` keeps a numbered snapshot of the draft and its figures
-under the dossier's `versions/` (unless the draft is unchanged since the
-last one, which is then still the baseline), so each pass starts from one,
-and every reviser ends by running `draft diff` against it and showing
-you the result. You can run the same commands yourself:
+Every `mark-revision` keeps a numbered snapshot of the draft and its
+figures under the dossier's `versions/` (unless the draft is unchanged
+since the last), and every reviser ends by running `draft diff` against
+it and showing you the result. You can run the same commands yourself:
 
 ```bash
 python -m chitragupta doctor    # latexdiff is listed; the PDF needs it
@@ -436,32 +257,23 @@ python -m chitragupta.draft diff content/drafts/dt-overview/survey.md --against 
 python -m chitragupta.draft diff content/drafts/dt-overview/survey.md --against old/survey.md --format pdf
 ```
 
-`snapshot` names a milestone, such as the version you sent someone;
-`versions` lists every snapshot, numbered and labelled. With no
-`--against`, `diff` compares with the latest snapshot, which after a
-reviser's pass is the one its `mark-revision` took. `--against` takes a
-label, a number, or the path of any file. The outputs land in
-`content/review/<topic>/`: `<stem>.diff.md` and `<stem>.diff.json`, the
-change report, written first; `--format pdf` adds `<stem>.diff.tex` and
-the redline, `<stem>.diff.pdf`; for the draft above, that is
-`content/review/dt-overview/survey.diff.pdf`. When nothing changed the
-report says `No changes.` and no PDF is written. Without latexdiff the
-report is still written, but the command exits 1, naming the missing
-tool. [CLI.md](CLI.md#-chitragupta-draft-diff) has every flag and exit
-code.
-
-The diff is a review copy, never a deliverable: it is never gated,
-never submitted and never a source for another draft.
+`snapshot` names a milestone; `versions` lists every snapshot. With no
+`--against`, `diff` compares with the latest snapshot; `--against` takes
+a label, a number or a file path. Outputs land in
+`content/review/<topic>/`: `<stem>.diff.md` and `<stem>.diff.json`, and
+with `--format pdf` the redline `<stem>.diff.pdf` (for the draft above,
+`content/review/dt-overview/survey.diff.pdf`). With nothing changed the
+report says `No changes.`; without latexdiff the report is written and
+the command exits 1. [CLI.md](CLI.md#-chitragupta-draft-diff) has every
+flag. The diff is a review copy: never gated, submitted or used as a
+source.
 
 The report ties each changed section to the `revisions.md` entries that
-explain it, and lists under `## Needs a log entry` any changed section
-none does. An entry starts with its date and ends with a `Sections:`
-line naming the sections it changed, comma-separated, by heading text
-as the report lists it (`2. Background`) or by number; a `.tex` draft's
-sections go by title. A heading with a comma in it cannot be named by
-its text, because the comma splits it into two names; name it by its
-number instead, or, in a `.tex` draft, expect it under `## Needs a log
-entry` and say so:
+explain it, and lists under `## Needs a log entry` any section none
+does. An entry starts with its date and ends with a `Sections:` line
+naming sections by heading text or number; a `.tex` draft's go by title.
+A heading containing a comma must be named by number (in a `.tex` draft,
+expect it under `## Needs a log entry`):
 
 ```text
 2026-11-13 -- shortened the background at the supervisor's request;
@@ -471,186 +283,107 @@ Sections: 2. Background, 4.1 Synchronisation
 
 ### 📚 Re-grounding after the corpus moves
 
-The sweep above makes drift visible. Re-grounding is the same reviser
-loop entered from that report instead of from a request. It adds no new
-machinery: every command it runs already existed.
+Re-grounding is the reviser loop entered from the drift report instead
+of a request, with no new machinery. It reads `status <draft> --json`
+and refuses to proceed when `corpus_available` is false. A **missing**
+citekey is repaired by citing a paper that supports the claim or
+dropping the claim, only in the sections named. A **candidate** is
+pursued only where it bears on the sub-theme in play, reached with
+`evidence` instead of `search`, since the report already holds the
+citekey. A **reconsider** entry is shown with its reason and reopened
+only if that reason has stopped holding.
 
-It reads `status <draft> --json`, refuses to proceed when
-`corpus_available` is false (an empty finding list from a check that
-never ran is not a clean bill of health), and then treats the three
-findings as the three different things they are. A **missing** citekey is
-repaired: cite a paper that supports the same claim, or drop the claim,
-editing only the sections the report names. A **candidate** is pursued
-only where it bears on the sub-theme in play, and reached with `evidence`
-instead of `search`. The report already carries the citekey and the
-query that surfaced it, so re-running the search would pay for fifteen
-snippets to be handed back the same fifteen keys. A **reconsider** entry
-is not re-judged at all; it is shown with its recorded reason, and
-re-opened only when that reason has stopped holding.
-
-Then the fingerprint is re-stamped and the gate runs, and the gate is
-what decides the draft is presentable. This matters because `missing` is
-computed from `evidence.md` and `sections.md`, not from the draft
-body: a citation the dossier never recorded cannot appear in the report,
-and only `citation_gate` reads the draft itself.
-
-Re-grounding promises an empty `missing` list, and deliberately not an
-empty `candidates` list. A recorded query returns fifteen hits and a
-revision accepts one or two, so a healthy draft keeps showing candidates
-on every sweep, as intended. The way to silence them would be to write
-the unpursued ones into `rejected.md`, which would turn a title into a
-permanent judgment that every later revision trusts. The same objection
-is why there is no `triage` stage ([REJECTION.md](REJECTION.md)).
+Then the fingerprint is re-stamped and the gate runs. The gate decides,
+because `missing` comes from the dossier and only `citation_gate` reads
+the draft body. Re-grounding promises an empty `missing` list, and
+deliberately not an empty `candidates` list: silencing candidates by
+writing them into `rejected.md` would turn a title into a permanent
+judgment, the same objection that rules out a `triage` stage
+([REJECTION.md](REJECTION.md)).
 
 ### ⚙ The scoped default, and the way out of it
 
-Steps 3-5 above are an economy, and economies have a failure mode: they
-can start reading as rules about what the user is allowed to ask for. A
-revision that touches one sub-theme should re-search one sub-theme,
-but whether that is what this revision is remains a judgment about
-someone else's draft, and [SOUL.md](../SOUL.md) puts "let a machine
-outrank a human on a judgment call" under what this assistant will not
-do.
+Steps 3–5 are an economy, and an economy can start reading as a rule
+about what the user may ask for. Whether a revision touches one
+sub-theme is a judgment about someone else's draft, and
+[SOUL.md](../SOUL.md) puts "let a machine outrank a human on a judgment
+call" under what this assistant will not do.
 
-So the way out is a second skill, `corpus-reviser`: a wide pass that
-re-searches every sub-theme the dossier records (the queries in
-`retrieval.md`, or the headings in `sections.md` where it records none)
-and reads the whole draft.
-It is invoked when the user asks for it, when an agreed scope change
-invalidated the old queries, or when the draft is being re-targeted at a
-different reader. Its cost is stated before it runs, and written into
-`revisions.md` before the first search, instead of being discovered
-afterwards in `retrieval.md`.
+So the way out is a second skill, `corpus-reviser`, which re-searches
+every sub-theme the dossier records (the queries in `retrieval.md`, or
+the headings in `sections.md`) and reads the whole draft. It is invoked
+when the user asks for it, when an agreed scope change invalidated the
+old queries, or when the draft is re-targeted at a different reader. Its
+cost is stated and written into `revisions.md` before the first search
+([GENRE.md](GENRE.md#-revising-widely-corpus-reviser)).
 
-**Why a separate skill and not a mode.** A split only enforces
-anything if it removes a capability. `draft-reviser` contains no
-instructions for a wide search, so following it cannot produce one by
-drift, which is the strongest enforcement available for a rule that
-must not become a gate. It also makes the expensive path something the
-user opts into by name, once, instead of something a model decides on
-their behalf mid-revision.
+**Why a separate skill and not a mode.** A split only enforces anything
+if it removes a capability. `draft-reviser` contains no instructions for
+a wide search, so following it cannot produce one by drift, which is the
+strongest enforcement available for a rule that must not become a gate.
+It also makes the expensive path something the user opts into by name.
+The same test is why re-grounding is *not* a third skill: its cost is
+bounded by the queries already in `retrieval.md`, so splitting it out
+would remove no dangerous capability while duplicating the repair loop.
 
-The same test is why re-grounding is *not* a third skill. Its cost is
-bounded by construction (candidates come from the queries already in
-`retrieval.md`, so it cannot invent one), and splitting it out would
-remove no dangerous capability while duplicating the repair-and-edit
-loop.
-
-The guardrail that remains is narrower than "never re-search widely". It
-is **never re-run the genre skill**, which is a different act: it
-discards the dossier and pays to rediscover a worse version of it. A wide
-re-search keeps `rejected.md` and honours it, keeps the recorded reader
-and glossary, still edits section by section instead of rewriting the
-file, and still logs every call. Wide *search* does not imply wide
-*rewrite*: most sections survive a re-check untouched, and rewriting
-those is pure cost.
-
-Nothing enforces any of this. The only mechanical gate in the pipeline is
-`citation_gate`, and the reason is the same principle: a token-economy
-heuristic is not the kind of claim that earns a gate.
+The guardrail that remains is **never re-run the genre skill**, which
+discards the dossier and pays to rediscover a worse version of it. A
+wide re-search keeps and honours `rejected.md`, the reader and the
+glossary, and still edits section by section, because wide *search* does
+not imply wide *rewrite*. Nothing enforces any of this: the only
+mechanical gate is `citation_gate`, and a token-economy heuristic does
+not earn one.
 
 ### 🔗 Section anchors
 
-`sections` extracts the outline from the draft itself instead of from
-stored state, so it cannot go stale, and it survives a draft that was
-hand-edited outside this pipeline.
-
-It skips code first, and has to. The shipped example
-`tutorial.md` is mostly shell and Python, and a `# Step 1: ...` comment
-inside a fenced block is indistinguishable from a Markdown heading to
-anything that doesn't track fences. An outline built without that
-reports sections that don't exist and hands a reviser line ranges that
-cut a code block in half. Markdown fences (``` and `~~~`) and LaTeX
-`verbatim`/`lstlisting`/`minted` environments are both tracked, since
-`thesis-chapter-writer` emits `.tex`.
+`sections` extracts the outline from the draft itself, so it cannot go
+stale and survives hand edits. It skips code first: a `# Step 1` comment
+in a fenced block would otherwise read as a heading and cut a code block
+in half. Markdown fences (``` and `~~~`) and LaTeX
+`verbatim`/`lstlisting`/`minted` environments are both tracked.
 
 ## 💾 Backup and restore
 
 `content/dossiers/` is gitignored, like `content/drafts/` and
-`content/rendered/`. That is deliberate:
-`evidence.md` quotes passages from copyrighted sources, and this project
-already treats per-host content as the user's own to keep. Nothing under your
-project's `content/dossiers/` is tracked. The only committed dossiers are real
-runs' records: the four samples under
-`docs/examples/sample-project/content/dossiers/dt-overview/`, and one per
-harness example under `docs/examples/codex/` and `docs/examples/opencode/`.
-None was assembled for show: a dossier is a record of a real run, and one
-assembled to be looked at would be a reconstruction posing as a record.
+`content/rendered/`, because `evidence.md` quotes copyrighted sources.
+The only committed dossiers are real runs' records: the four samples
+under `docs/examples/sample-project/content/dossiers/dt-overview/`, and
+one per harness example under `docs/examples/codex/` and
+`docs/examples/opencode/`. A dossier assembled for show would be a
+reconstruction posing as a record.
 
-What replaces version control is an explicit bundle:
-
-```bash
-# everything
-python -m chitragupta.draft dossier export
-
-# one topic, including rendered PDFs
-python -m chitragupta.draft dossier export digital-twins-for-software-engineers --with-rendered
-
-# restore -- a dry run that reports what it would write
-python -m chitragupta.draft dossier restore drafts-all-2026-08-06.tar.gz
-python -m chitragupta.draft dossier restore drafts-all-2026-08-06.tar.gz --force
-```
-
-Three properties of the bundle:
-
-- **Archive paths are relative to `content/`, not to the repo root**, so
-  a bundle restores correctly into a checkout whose `[content].dir`
-  points somewhere else.
-- **Restore is a dry run unless `--force`.** It is the only destructive
-  operation in the module, and the case it exists for ("I need last
-  month's draft back") is the case where the working copy might be
-  something you would rather not lose to a mistyped archive name.
-- **An unsafe member refuses the whole archive** instead of being
-  skipped. A member is unsafe if it is not a regular file or directory
-  (a symlink, a device node), if it escapes the extraction directory, or
-  if its top-level directory is not one of `drafts/`, `dossiers/`,
-  `rendered/`, `review/`. A partially extracted backup is worse than none, because
-  it looks like it worked.
-
-### 🚫 What a bundle does not carry
-
-`content/ledger.sqlite` and `papers/bibliography.bib`. The ledger is
-regenerable with `python -m chitragupta.corpus sync`, and the bib file is your reference
-manager's export. AGENTS.md's invariant is that the bib file is the
-source of truth *and not this pipeline's to own*, so a bundle does not
-start keeping copies of it. Back it up where you back up that tool.
-
-The practical consequence: restore a bundle onto a machine with no
-corpus and the drafts and dossiers are all there and readable, but the
-citation gate cannot verify anything until `sync` has run. That is the
-correct failure: a gate that refuses to confirm a citekey it cannot see
-is better than one that passes because there is nothing to check against.
-
-[MIGRATION.md](MIGRATION.md) covers what a bundle leaves out, how to
-take a full backup, and how to move a project to another computer.
+What replaces version control is `python -m chitragupta.draft dossier
+export` and `restore`. Archive paths are relative to `content/`, so a
+bundle restores into a project whose `[content].dir` points elsewhere.
+Restore is a dry run unless `--force`, and an unsafe member refuses the
+whole archive, because a partial restore looks like it worked. A bundle
+carries neither `content/ledger.sqlite` (regenerable by `sync`) nor
+`papers/bibliography.bib`, which is your reference manager's and not
+this pipeline's to own; on a machine with no corpus the gate cannot
+verify anything until `sync` has run.
+[MIGRATION.md](MIGRATION.md) has the commands, what a bundle holds, how
+restore protects you, and how to move a project.
 
 ## 🚫 What this deliberately does not do
 
-**It is not a gate and it takes no lock.** Nothing in `chitragupta/dossier/`
-blocks a draft, and nothing in it writes to the corpus layer. A dossier
-that is missing, stale or hand-edited degrades the next revision's
+**It is not a gate and it takes no lock.** Nothing in
+`chitragupta/dossier/` blocks a draft or writes to the corpus layer. A
+missing, stale or hand-edited dossier degrades the next revision's
 efficiency and can never make a draft wrong.
 
-**It does not verify that a dossier matches its draft.** `sections.md`
-can disagree with the draft's actual headings if someone edits by hand.
-The reviser rebuilds the section map from the draft instead of trusting
-the file, and `chitragupta/review/citation_provenance.py` already reconciles a draft
+**It does not verify that a dossier matches its draft.** The reviser
+rebuilds the section map from the draft instead of trusting the file,
+and `chitragupta/review/citation_provenance.py` reconciles a draft
 against its sources independently.
 
-**It does not itself cut what enters the orchestrator's context.** That is
-the other half of the problem, and trimming what retrieval returns turned
-out not to be the answer; see [REJECTION.md](REJECTION.md) for why a
-cheaper first read was built and then withdrawn. What works is the
-subagent boundary: a genre skill on a broad topic dispatches one
-subagent per sub-theme and keeps only the kept-evidence packet, so the
-candidates it discarded are paid for once instead of sitting resident for
-the whole run. The dossier handles the *structural* cost, by avoiding a
-re-run of the pipeline at all, and the two complement each other: the
-cheapest retrieval pass still costs more than one you didn't have to make.
+**It does not itself cut what enters the orchestrator's context.**
+Trimming what retrieval returns was built and withdrawn
+([REJECTION.md](REJECTION.md)). What works is the subagent boundary: one
+subagent per sub-theme on a broad topic, keeping only the kept-evidence
+packet. The dossier handles the structural cost by avoiding a re-run.
 
-**It does not measure token counts directly.** `retrieval.md` records the
-character payload of each retrieval call, not tokens, and nothing records
-what the drafting turns themselves cost. That is enough to compare one
-run against another on a real corpus; it is not enough to put a number on
-a whole draft. The estimates in [TOKENS.md](TOKENS.md) remain estimates,
-and are labelled as such there.
+**It does not measure token counts directly.** `retrieval.md` records
+each retrieval call's character payload, enough to compare runs but not
+to price a whole draft. The estimates in
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md)
+remain estimates.
