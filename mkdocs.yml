@@ -206,7 +206,9 @@ nav:
               - Changing the outline after sign-off: docs/book/CHANGING-THE-OUTLINE.md
               - Retrofitting an existing book: docs/book/RETROFIT.md
           - Design notes: docs/book/DESIGN-NOTES.md
-      - "Drawing a figure: figure-drawer": docs/FIGURE-DRAWER.md
+      - Drawing a Figure:
+          - Figure skill: docs/FIGURE-DRAWER.md
+          - Hand drawn figures: docs/MANUAL-FIGURE.md
       - "Study notes in the sources' words: review-digest": docs/VERBATIM-DIGEST.md
       - Iterating on a draft: docs/DRAFT-ITERATION.md
       - Hand-editing a draft: docs/USER-EDITS.md

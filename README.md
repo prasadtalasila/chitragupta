@@ -374,6 +374,7 @@ one-screen router for that.
 | [docs/ZOTERO.md](docs/ZOTERO.md) | How do I get my library and its PDFs into the shape this expects? Includes the attachment-path trap that silently leaves every entry without a PDF |
 | [docs/GENRE.md](docs/GENRE.md) | Which of the eleven skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
 | [docs/FIGURE-DRAWER.md](docs/FIGURE-DRAWER.md) | How do I get a figure into a draft? What to ask for, what the `figure-drawer` skill writes, a worked example, and what to do when a figure breaks the PDF |
+| [docs/MANUAL-FIGURE.md](docs/MANUAL-FIGURE.md) | How do I correct a figure with a pen, or add one from a hand sketch? What to photograph, the read-back of your marks, and how unclear marks are handled |
 | [docs/figure-checks/README.md](docs/figure-checks/README.md) | What does a `figure check` finding mean, and how do I fix it? Every rule in one sentence, then a page per family with a faulty and a fixed figure for each |
 | [docs/VERBATIM-DIGEST.md](docs/VERBATIM-DIGEST.md) | How do I get the papers' own words on a topic into one private study file, and how do I know which sentences in it are not the papers'? The `review-digest` skill and the `review digest` aid |
 | [docs/WRITING-PROCESS.md](docs/WRITING-PROCESS.md) | How do I go from a bare corpus to a finished draft, or a whole book, in order? The step-by-step walkthrough tying the rest of this table together |
