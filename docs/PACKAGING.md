@@ -15,8 +15,9 @@ and the naming.
 The import package is `chitragupta`, `pyproject.toml` declares a
 `[build-system]`, and `poetry build` produces
 `chitragupta_cli-<version>-py3-none-any.whl`, which installs the
-`chitragupta` and `cg` commands. A major or minor release is published
-to PyPI; a PATCH release gets a GitHub Release only (see below).
+`chitragupta` and `cg` commands. Only a major or minor version is
+released, on GitHub and on PyPI together; a PATCH version is not
+released at all (see below).
 
 ## 🧭 Table of contents
 
@@ -53,12 +54,15 @@ pip install chitragupta-cli
 Published from a tagged major or minor release by Trusted Publishing
 (GitHub's OIDC token exchanged for a short-lived PyPI one), so there is
 no long-lived API token in repository settings to leak or rotate.
-**A PATCH release is not published here.** PyPI never
+**A PATCH version is not released, here or on GitHub.** PyPI never
 accepts a re-upload of a version number, not even a deleted or yanked
-one, so `.github/workflows/release.yml`'s `publish-pypi` job only runs
-for a tag ending `.0` (X.0.0 or X.Y.0); a PATCH tag still gets a GitHub
-Release with the wheel attached, just not a PyPI upload. The publish job
-runs *after* the GitHub Release is created, so a PyPI failure would
+one, and a PATCH changes nothing about what the pipeline does, so it is
+merged to `main` and ships with the next major or minor release.
+`.github/workflows/release.yml` runs only for a tag shaped `vX.Y.0`
+(X.0.0 or X.Y.0), so a PATCH tag starts no run and creates neither a
+GitHub Release nor a PyPI upload. That keeps the two in step: every
+version on the releases page is on PyPI, and the reverse. The publish
+job runs *after* the GitHub Release is created, so a PyPI failure would
 leave a complete, downloadable release behind rather than a tag with
 nothing attached.
 

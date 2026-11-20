@@ -16,6 +16,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 CI_WORKFLOW = WORKFLOWS / "ci.yml"
 DOCS_WORKFLOW = WORKFLOWS / "docs.yml"
+RELEASE_WORKFLOW = WORKFLOWS / "release.yml"
 
 
 def _workflow(path: Path) -> dict:
@@ -139,3 +140,25 @@ class TestTheReadersThemselves:
             encoding="utf-8",
         )
         assert _restore_keys_steps(path) == [("t", "actions/cache@v4")]
+
+
+class TestOnlyMajorAndMinorVersionsAreReleased:
+    """A patch version (X.Y.Z, Z > 0) gets no GitHub Release and no PyPI
+    upload. `release.yml` holds that twice: the tag filter keeps a patch
+    tag from starting a run, and the job guard stops one that starts
+    anyway, such as a re-run."""
+
+    def test_only_a_tag_ending_in_dot_zero_starts_a_run(self):
+        push = _workflow(RELEASE_WORKFLOW)["on"]["push"]
+        assert push == {"tags": ["v[0-9]+.[0-9]+.0"]}
+
+    def test_the_release_job_refuses_any_other_tag(self):
+        release = _workflow(RELEASE_WORKFLOW)["jobs"]["release"]
+        assert release["if"] == "endsWith(github.ref_name, '.0')"
+
+    def test_pypi_is_reached_only_through_the_release_job(self):
+        """A skipped `release` job skips this one too, so it needs no
+        guard of its own and cannot publish what was never released."""
+        publish = _workflow(RELEASE_WORKFLOW)["jobs"]["publish-pypi"]
+        assert publish["needs"] == "release"
+        assert "if" not in publish

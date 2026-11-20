@@ -180,7 +180,7 @@ assets/                   data files the pipeline reads at runtime, tracked and 
                           Windows, the hook launchers, the lint job, a Docker build and
                           SonarQube), commit-message.yml (checks a PR's squash-commit fence),
                           docs.yml (builds the documentation site) and release.yml
-                          (on a v* tag: verifies tag matches pyproject.toml's version, builds
+                          (on a vX.Y.0 tag: verifies tag matches pyproject.toml's version, builds
                           scripts/release.py's zip, publishes it to a GitHub Release)
 config.toml.example       tracked template for the central config -- paths, parser backend, worker
                           count, embedding model. Copy to config.toml (gitignored, per-host) before

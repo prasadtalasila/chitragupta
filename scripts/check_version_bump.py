@@ -128,15 +128,20 @@ def _fetch_json(url: str):
 
 
 def unreleased(base: str, tags: "list[str] | tuple[str, ...]") -> "str | None":
-    """A warning when the base branch's version was never tagged.
+    """A warning when the base branch's minor version was never tagged.
+
+    Only a major or minor version (X.Y.0) is tagged and released; a
+    patch version is merged and never tagged. So the tag this looks for
+    is the base's X.Y.0, whatever its patch number: main at 6.2.3 owes
+    nothing once v6.2.0 exists.
 
     Deliberately a warning and not a problem, because the condition is
     *legitimate and transient*: the version bump lands in the PR and the
-    tag is pushed afterwards, so for a while after every merge main
-    carries a version with no tag. Failing on it would fail every merge.
+    tag is pushed afterwards, so for a while after a minor merge main
+    carries a version with no tag. Failing on it would fail that merge.
 
     What it catches is the same state *persisting*. `release.yml` fires
-    on a pushed `v*` tag and nothing else, so a version that reaches main
+    on a pushed `vX.Y.0` tag and nothing else, so a version that reaches main
     and never gets tagged simply never becomes a release -- silently, and
     for as long as nobody looks at the releases page. That is not
     hypothetical: v5.40.1, v5.41.0, v6.0.0, v6.1.0 and v6.2.0 all reached
@@ -148,19 +153,16 @@ def unreleased(base: str, tags: "list[str] | tuple[str, ...]") -> "str | None":
     unreleased version is business as usual; seeing the same one quoted
     back at you across several PRs is the signal.
     """
-    if f"v{base}" in tags:
+    minor = ".".join([*base.strip().split(".")[:2], "0"])
+    if f"v{minor}" in tags:
         return None
     return (
-        f"main is at {base}, and there is no v{base} tag -- so that "
+        f"main is at {base}, and there is no v{minor} tag -- so that "
         "version has never been released and its archive does not exist. "
-        "release.yml runs on a pushed tag and on nothing else. If the "
-        "release for it is still owed, cut it: `git tag -a v"
-        + base
-        + " <commit> -m v"
-        + base
-        + " && git push origin v"
-        + base
-        + "` "
+        "release.yml runs on a pushed vX.Y.0 tag and on nothing else. If "
+        "the release for it is still owed, cut it on the commit that set "
+        f"{minor}: `git tag -a v{minor} <commit> -m v{minor} && "
+        f"git push origin v{minor}` "
         "(DEVELOPER-AGENTS.md, 'Versioning and releases')."
     )
 
