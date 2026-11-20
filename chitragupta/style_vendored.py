@@ -89,7 +89,7 @@ def _overlaps(a: dict, b: dict) -> bool:
 
 def _shadowed(finding: dict, findings: list[dict]) -> bool:
     winners = SHADOWED_BY.get(finding.get("Check", ""), ())
-    return any(other["Check"] in winners and _overlaps(finding, other) for other in findings)
+    return any(other.get("Check") in winners and _overlaps(finding, other) for other in findings)
 
 
 def reconcile(findings: list[dict]) -> list[dict]:
@@ -104,5 +104,5 @@ def reconcile(findings: list[dict]) -> list[dict]:
     for finding in kept:
         section = SECTIONS.get(finding.get("Check", ""))
         if section:
-            finding["Message"] = f"{finding['Message']} (WRITING-STANDARDS.md §{section})"
+            finding["Message"] = f"{finding.get('Message', '')} (WRITING-STANDARDS.md §{section})"
     return kept

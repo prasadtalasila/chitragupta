@@ -55,7 +55,8 @@ def vendored_files() -> set[str]:
 class TestTheTablesAgree:
     def test_every_vendored_file_is_switched_on_and_nothing_else_is(self):
         """A file with no line runs nowhere; a line with no file stops
-        Vale from starting."""
+        Vale from starting. Non-empty first, or two empty sets agree."""
+        assert vendored_files(), "the glob found no vendored rule files"
         assert enabled_in_ini() == vendored_files()
 
     def test_every_vendored_rule_names_a_section(self):
