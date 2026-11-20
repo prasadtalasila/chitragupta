@@ -23,8 +23,8 @@ including the browser segment, is below.
   <a href="images/demo.mp4">demo.mp4</a>.
 </video>
 
-A palette-optimised GIF of the same recording is also available:
-[`docs/images/demo.gif`](images/demo.gif). It is useful anywhere a
+A palette-optimised GIF of the earlier 112-column recording is also
+available: [`docs/images/demo.gif`](images/demo.gif). It is useful anywhere a
 `<video>` tag or the two source formats above are inconvenient, at the
 usual cost: the GIF is larger than either video encode of the same
 content.
@@ -68,8 +68,7 @@ command is covered. Three groups of commands are absent on purpose:
 
 ## 🛠 How they were made
 
-Terminal segments: `asciinema` recorded a real shell session (112x32
-for the video, 80x32 for `demo.svg`)
+Terminal segments: `asciinema` recorded a real shell session (80x32)
 against `docs/examples/sample-project`. Installed package resolution was
 shown via `pip install --dry-run`, and everything after that was a real
 `python -m chitragupta.*` invocation. The non-narrative span (the
@@ -77,7 +76,8 @@ dependency-resolution scroll) was then sped up and the rest slowed
 slightly by dividing the recorded event timestamps. A player's speed
 control could not do this, since the inline SVG has none. The result was
 rendered to SVG (`svg-term-cli --window`, a CSS `@keyframes` animation, no
-`<script>`) and to video (`agg`, then `ffmpeg` at 1280x720/15fps).
+`<script>`) and to video (`agg`, then `ffmpeg` at 704x648, the
+recording's own size, so a page shows its text at full size).
 
 The browser segment drove the committed
 `docs/examples/sample-project/content/topic_map.html` over CDP with
@@ -89,10 +89,13 @@ a selector that has moved would yield a video of the same establishing
 shot repeated. It also checks, after every
 click, that the panel names the topic just clicked.
 
-The two segments are encoded separately and joined: `demo.mp4` with
-`libx264 -crf 20`, then `demo.webm` (`libvpx-vp9 -crf 32 -b:v 0`) and
-`demo.gif` (`fps=10`, `scale=640`, a single `palettegen`/`paletteuse`
-pass) re-encoded from `demo.mp4`. A segment can be re-recorded alone:
+The browser frames are captured at 1040x957, so the map keeps every
+label inside its canvas, and scaled into the same 704x648. The two
+segments are encoded separately and joined: `demo.mp4` with `libx264
+-crf 28`, then `demo.webm` (`libvpx-vp9 -crf 40 -b:v 0`). `demo.gif`
+(`fps=10`, `scale=640`, a single `palettegen`/`paletteuse` pass) was
+re-encoded from the earlier 1280x720 `demo.mp4`; re-encoding it from
+this one made it 12 MB. A segment can be re-recorded alone:
 cut `demo.mp4` on the keyframe where the browser segment starts and
 stream-copy the other half. `demo-webapp.png` is a separate still of
 the topic map with topic-1 selected, captured at 1040x600 and twice the

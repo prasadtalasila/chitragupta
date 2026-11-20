@@ -22,13 +22,21 @@ if (!html || !outdir || !process.env.CHROME_PATH) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// The frames' size: CAPTURE_VIEWPORT=WxH, default 1280x720. The video is
+// joined at the terminal recording's size, and these frames are scaled
+// into it, so a larger viewport keeps the map's labels inside its canvas.
+function viewport() {
+  const [width, height] = (process.env.CAPTURE_VIEWPORT || "1280x720").split("x").map(Number);
+  return { width, height };
+}
+
 async function main() {
   fs.mkdirSync(outdir, { recursive: true });
   const browser = await puppeteer.launch({
     executablePath: process.env.CHROME_PATH,
     headless: true,
     args: ["--no-sandbox", "--disable-dev-shm-usage", "--force-color-profile=srgb"],
-    defaultViewport: { width: 1280, height: 720 },
+    defaultViewport: viewport(),
   });
   const page = await browser.newPage();
   await page.goto("file://" + path.resolve(html), { waitUntil: "load" });
