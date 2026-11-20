@@ -3,17 +3,13 @@
 Status: **reference.**
 
 **Written for** anyone who wants to see the pipeline run before reading
-the rest of the documentation. It makes one pass through the spine
-(corpus sync, topic discovery, an already-drafted unit and its dossier,
-the citation gate, the review agenda, one more review aid), then looks at
-the offline topic-graph viewer in a browser. It was recorded against the
-committed sample project ([docs/examples/](examples/README.md)), so every
-command in it is real and every citekey it cites is real; nothing here was
-invented for the recording.
-
-The animated terminal segment alone is embedded inline in
-[README.md](../README.md) as `docs/images/demo.svg`. The full recording,
-including the browser segment, is below.
+the rest of the documentation. The recording makes one pass through the
+spine (corpus sync, topic discovery, an already-drafted unit and its
+dossier, the citation gate, the review agenda, one more review aid), then
+opens the offline topic-graph viewer in a browser. It was recorded
+against the committed sample project ([docs/examples/](examples/README.md)),
+so every command and every citekey in it is real. The terminal segment
+alone is embedded in [README.md](../README.md) as `docs/images/demo.svg`.
 
 <video controls width="100%" poster="images/demo-webapp.png">
   <source src="images/demo.webm" type="video/webm">
@@ -23,88 +19,67 @@ including the browser segment, is below.
   <a href="images/demo.mp4">demo.mp4</a>.
 </video>
 
-A palette-optimised GIF of the earlier 112-column recording is also
-available: [`docs/images/demo.gif`](images/demo.gif). It is useful anywhere a
-`<video>` tag or the two source formats above are inconvenient, at the
-usual cost: the GIF is larger than either video encode of the same
-content.
+A GIF of the earlier 112-column recording,
+[`docs/images/demo.gif`](images/demo.gif), serves wherever a `<video>`
+tag is inconvenient, though it is larger than either video encode.
 
 ## 🧭 The longer all-features tour
 
-A second, longer recording exists: thirty-seven steps across all four
-layers (`corpus`, `enrich`, `draft` and `review`), ending on the same
-browser segment. It is the one to watch to learn what the tool actually
-has; the recording above shows what a first run looks like.
+A second recording, about two and a half minutes, runs thirty-seven
+steps across all four layers and ends on the same browser segment. It is
+the one to watch to learn what the tool has. It is deliberately not
+shipped: it is several times the size of the recording above, it dates
+faster because it names individual commands, and `scripts/release.py`
+bundles all of `docs/` into the release archive. It lives beside the
+corpus it was recorded against, in `content/chitragupta-demo-recordings/`,
+with the script that produced it.
 
-It is deliberately not shipped in this repository. At roughly two and
-a half minutes it is several times the size of the recording above, it
-dates faster than the reel does because it names individual commands, and
-`scripts/release.py` bundles all of `docs/` into the release archive. It
-lives instead beside the corpus it was recorded against, in
-`content/chitragupta-demo-recordings/`, alongside the shell script that
-produced it, so it can be re-recorded against a later `main` without a
-commit.
+Three groups of commands are absent from the tour on purpose:
 
-### 🚫 What the tour leaves out, and why
-
-The tour shows the command surface; it does not prove that every
-command is covered. Three groups of commands are absent on purpose:
-
-- **The verbs that write to the sample project.** `dossier init`, `spec
-  sign`, `unit accept`, `tldr write` and `registry build` are the
-  acceptance half of the book track, and arguably the most interesting
-  thing the pipeline does, but each one changes committed sample state, and
-  nobody can re-run a recording that leaves the repository dirty.
+- **The verbs that write to the sample project** (`dossier init`, `spec
+  sign`, `unit accept`, `tldr write`, `registry build`), because a
+  recording that leaves the repository dirty cannot be re-run.
   [WRITE-A-BOOK.md](WRITE-A-BOOK.md) walks that half in prose.
-- **`review union`.** It reads an assembled `book.tex`, and the sample
-  project's `twin-basics` deliberately ships as un-assembled units. There
-  is nothing in the checkout for it to read.
-- **The live-LLM skills, and the `docling` stage.** The genre skills
-  (survey, thesis chapter, tutorial, …) need a model, and `docling` is
-  the slowest stage in the pipeline with nothing committed depending on
-  it; the sample project's own `regenerate.sh` skips it for the same
-  reason. `draft figures` is still shown, reporting honestly that the
+- **`review union`**, which reads an assembled `book.tex`; the sample
+  project's `twin-basics` deliberately ships un-assembled.
+- **The live-LLM skills and the `docling` stage.** The genre skills need
+  a model, and `docling` is the slowest stage with nothing committed
+  depending on it. `draft figures` is still shown, reporting that the
   stage has not run.
 
 ## 🛠 How they were made
 
 Terminal segments: `asciinema` recorded a real shell session (80x32)
-against `docs/examples/sample-project`. Installed package resolution was
-shown via `pip install --dry-run`, and everything after that was a real
-`python -m chitragupta.*` invocation. The non-narrative span (the
-dependency-resolution scroll) was then sped up and the rest slowed
-slightly by dividing the recorded event timestamps. A player's speed
-control could not do this, since the inline SVG has none. The result was
-rendered to SVG (`svg-term-cli --window`, a CSS `@keyframes` animation, no
-`<script>`) and to video (`agg`, then `ffmpeg` at 704x648, the
-recording's own size, so a page shows its text at full size).
+against `docs/examples/sample-project`; package resolution was shown via
+`pip install --dry-run`, and everything after was a real
+`python -m chitragupta.*` invocation. The dependency-resolution scroll
+was sped up and the rest slowed slightly by dividing the recorded
+timestamps, since the inline SVG has no speed control. The result was
+rendered to SVG (`svg-term-cli --window`, a CSS `@keyframes` animation,
+no `<script>`) and to video (`agg`, then `ffmpeg` at 704x648, the
+recording's own size).
 
 The browser segment drove the committed
 `docs/examples/sample-project/content/topic_map.html` over CDP with
-Puppeteer against a headless Chrome, screenshotting each interaction and
-assembling the frames into video with `ffmpeg`. The capture script
-asserts the number of rendered topic circles against the topic count the
-page itself embeds, and fails the run on a mismatch. Without that check,
-a selector that has moved would yield a video of the same establishing
-shot repeated. It also checks, after every
-click, that the panel names the topic just clicked.
+Puppeteer and headless Chrome, screenshotting each interaction. The
+capture script fails the run if the number of rendered topic circles
+differs from the topic count the page embeds, so a moved selector cannot
+yield a video of one repeated shot, and checks after every click that
+the panel names the topic just clicked. Frames are captured at 1040x957,
+so every label stays inside the canvas, and scaled into the same
+704x648.
 
-The browser frames are captured at 1040x957, so the map keeps every
-label inside its canvas, and scaled into the same 704x648. The two
-segments are encoded separately and joined: `demo.mp4` with `libx264
--crf 28`, then `demo.webm` (`libvpx-vp9 -crf 40 -b:v 0`). `demo.gif`
-(`fps=10`, `scale=640`, a single `palettegen`/`paletteuse` pass) was
-re-encoded from the earlier 1280x720 `demo.mp4`; re-encoding it from
-this one made it 12 MB. A segment can be re-recorded alone:
-cut `demo.mp4` on the keyframe where the browser segment starts and
-stream-copy the other half. `demo-webapp.png` is a separate still of
-the topic map with topic-1 selected, captured at 1040x600 and twice the
-pixel density so the README can show it near its own size, and
-`demo.svg` is the terminal segment only.
+The two segments are encoded separately and joined: `demo.mp4` with
+`libx264 -crf 28`, then `demo.webm` (`libvpx-vp9 -crf 40 -b:v 0`).
+`demo.gif` (`fps=10`, `scale=640`, one `palettegen`/`paletteuse` pass)
+was re-encoded from the earlier 1280x720 `demo.mp4`; from this one it
+came out at 12 MB. To re-record one segment, cut `demo.mp4` on the
+keyframe where the browser segment starts and stream-copy the other half.
+`demo-webapp.png` is a separate still of the topic map with topic-1
+selected, captured at 1040x600 and twice the pixel density so the README
+can show it near its own size.
 
-Nothing in either segment touched a real project. The sample project's
-committed drafts, dossiers and reviews were only read; the commands that
-do write tracked files (`draft evidence`, `draft render`, `review
-agenda`) were run against it and the tree restored afterwards, and a
-recording is only kept if `git status` on
-`docs/examples/sample-project/` comes back empty.
+Nothing touched a real project. The commands that write tracked files
+(`draft evidence`, `draft render`, `review agenda`) were run against the
+sample project and the tree restored, and a recording is kept only if
+`git status` on `docs/examples/sample-project/` comes back empty.

@@ -23,25 +23,19 @@ pipeline does with collections once it has them, which is
 
 Two of this project's rules bend for it:
 
-- **`chitragupta/bib_reader.py` is the only sanctioned reader of bibliographic
-  data** (`DEVELOPER-AGENTS.md`'s module boundaries). It reads an
-  *export*, a file the user deliberately produced and can inspect. This
-  script reaches behind the export into `itemData`, `itemDataValues`,
-  `fieldsCombined`, `collectionItems` and `collections`: Zotero
-  application internals with no compatibility promise. A Zotero release
-  may restructure any of them without notice, and this script would then
-  be **wrong rather than broken**. That is the dangerous direction,
-  because wrong output looks like output.
+- **`chitragupta/bib_reader.py` is the only sanctioned reader of
+  bibliographic data**, and it reads an *export* the user deliberately
+  produced and can inspect. This script reaches into Zotero application
+  tables (`itemData`, `collectionItems`, `collections` and others) with
+  no compatibility promise. A Zotero release may restructure them and
+  leave this script **wrong rather than broken**, which is the dangerous
+  direction, because wrong output looks like output.
 - **The pipeline's inputs are meant to be auditable by their owner.** A
-  `.bib` file can be read and diffed by the person who exported it; a
-  multi-megabyte application database cannot. Deriving
-  citation-adjacent metadata from something the user cannot check is
-  the opacity this project exists to argue against
-  ([SOUL.md](../SOUL.md)).
+  `.bib` file can be read and diffed; a multi-megabyte application
+  database cannot ([SOUL.md](../SOUL.md)).
 
-It does not touch citekeys, which is the one line that cannot be crossed
-at all. It only ever *adds* a `groups` field to an entry that already
-exists.
+It never touches citekeys. It only ever *adds* a `groups` field to an
+entry that already exists.
 
 **Use [Better BibTeX](ZOTERO.md#-keeping-your-collections-optional)
 instead** wherever you can. Reach for this only when Better BibTeX cannot
@@ -49,33 +43,21 @@ be installed or is misbehaving, and treat the result as provisional.
 
 ## 💡 Background
 
-Zotero's built-in BibTeX export does not write a `groups` field. That is
-a Better BibTeX extension, which writes JabRef's `groups` field when
-*Export -> Fields -> Export JabRef-specific fields* is on. Better BibTeX
-turned out to be flaky for this library, so this script fills the same
-field by reading collection membership out of `zotero.sqlite`.
+Zotero's built-in BibTeX export does not write the `groups` field that
+Better BibTeX writes with JabRef-specific fields on. This script fills
+the same field from collection membership in `zotero.sqlite`, for
+`chitragupta/bib_collections.py` to parse after a sync.
 
-`groups` here means "which Zotero collection(s) is this reference filed
-under", and it is what `chitragupta/bib_collections.py` parses after a
-sync. The script writes the **leaf collection name only**,
-comma-separated when an item is filed under several. This deliberately
-matches what Better BibTeX emits, so the two producers of this field
-stay comparable. Zotero does nest collections and the database does
-record the parent, so a full `Parent > Child` path could be produced
-here; it is not, because it would disagree with the field's other
-producer.
+It writes the **leaf collection name only**, comma-separated when an item
+is filed under several, deliberately matching what Better BibTeX emits so
+the two producers stay comparable. The database records the parent, so a
+`Parent > Child` path could be produced; it is not, because it would
+disagree with the field's other producer.
 
 ## ⌨ Usage
 
 ```sh
 python3 scripts/populate_bib_groups.py <path-to-zotero.sqlite> <input.bib> <output.bib>
-```
-
-Example, as run for this repository:
-
-```sh
-python3 scripts/populate_bib_groups.py papers/zotero.sqlite \
-  papers/bibliography.bib papers/bibliography-groups.bib
 ```
 
 - `zotero.sqlite`: Zotero's local database. The script opens it with
@@ -84,73 +66,52 @@ python3 scripts/populate_bib_groups.py papers/zotero.sqlite \
   translator (File -> Export Library / Collection).
 - `output.bib`: written fresh; **the input is never modified.**
 
-The output differs from the input only by inserted `groups` lines, by
-design. The file is produced by splicing text into the original instead
-of re-serialising a parsed model, so `diff input output` shows exactly
-what the script decided and nothing else. It needs `bibtexparser`, the
-same dependency `chitragupta/bib_reader.py` uses.
-
-Re-running is safe: an entry that already has a `groups` field is left
-untouched, so a second pass over the same output adds nothing.
+The output differs from the input only by inserted `groups` lines: the
+script splices text into the original instead of re-serialising a parsed
+model, so `diff input output` shows exactly what it decided. Re-running
+is safe, as an entry that already has a `groups` field is left
+untouched.
 
 ## 🔎 How matching works
 
 Bib entries carry no Zotero item ID, so each entry is matched back to a
 row in `zotero.sqlite` using, in order, first hit wins:
 
-1. **DOI**, scanned out of *any* field value on the Zotero item and not
-   just the dedicated `DOI` field, because some item types (older
-   `conferencePaper` records) store `DOI: 10.xxx/yyy` inside `extra`
-   instead.
+1. **DOI**, scanned out of *any* field value on the Zotero item, because
+   some older `conferencePaper` records store `DOI: 10.xxx/yyy` inside
+   `extra`.
 2. **URL**, an exact match against the item's `url` field.
 3. **Title**, an exact match after normalisation.
 
-The order is strongest identifier first: a DOI names a work, a URL names a
-copy of one, and a title merely describes one.
-
-The `.bib` file is read with `bibtexparser`, not with regular
-expressions, for the reason `chitragupta/bib_reader.py` gives: nested
-braces, multi-line values and LaTeX escapes make a hand-rolled BibTeX
-parser a worse bet than a maintained one. Titles therefore arrive
-already decoded, so `Caf\'{e}` compares equal to the `Café` Zotero
-stores, and `{OMG}` to `OMG`.
-
-Once an item is found, its collections come from a straight join:
-`collectionItems` -> `collections`, taking `collectionName`.
+A DOI names a work, a URL names a copy of one, and a title merely
+describes one. The `.bib` file is read with `bibtexparser`, not regular
+expressions, so titles arrive already decoded: `Caf\'{e}` compares equal
+to the `Café` Zotero stores, and `{OMG}` to `OMG`. An item's collections
+come from a join of `collectionItems` and `collections`.
 
 ## 🚫 Fragility / known limitations
 
-- **Duplicate library items.** This Zotero library has items added more
-  than once (identical DOI/title, different `dateAdded`), each possibly
-  filed into a different collection. If a match key hits several items,
-  their collections are **unioned** onto the one bib entry (241 of 644
-  entries in the last run). That is usually what you want, but it means
-  an entry can list a collection only one of its duplicate records was
-  filed under: over-inclusive, though not wrong.
-- **Title matching is the weakest link** (43 of 644 in the last run). It
-  is an exact normalised-string match, so a retitled or typo'd duplicate
-  will not match, and two different works sharing a title would collide.
-- **Items filed in no collection** correctly get no `groups` field. That
-  is not a bug; there is just nothing to report (5 of 644).
-- **Blocks carrying no fields** are counted as `no_fields` and left alone
-  (2 of 644). These are Zotero's contentless `@misc{key,}` stubs for an
-  attachment with no metadata, which `bibtexparser` is right to drop.
-  The bucket is named for what they are and not for a failure, because
-  reporting them as "dropped" would raise a false alarm on a healthy
-  library. They are still counted, so the buckets sum to the total.
+- **Duplicate library items.** If a match key hits several items (the
+  same work added more than once), their collections are **unioned**
+  onto the one bib entry: over-inclusive, though not wrong.
+- **Title matching is the weakest link.** It is an exact
+  normalised-string match, so a retitled or typo'd duplicate will not
+  match, and two different works sharing a title would collide.
+- **Items filed in no collection** correctly get no `groups` field.
+- **Blocks carrying no fields** (Zotero's contentless `@misc{key,}`
+  stubs for an attachment with no metadata) are counted as `no_fields`
+  and left alone, named for what they are rather than as "dropped", so a
+  healthy library raises no false alarm.
 - **Asking for a parent collection does not select its
   subcollections.** `chitragupta/bib_collections.py` matches a parent
   against `Parent > Child` paths, but this script writes leaf names only,
   so `--collection "Digital twins"` finds only the papers filed directly
   under `Digital twins`, not those in `Modelling` beneath it. Ask for
   each subcollection by name.
-- **A collection name containing a literal comma** would corrupt the
-  `{a,b}` list; the script substitutes `;` inside an individual name
-  before joining. Untested against real data, because Zotero's UI does not
-  allow a comma in a collection name.
-- **The inserted line is tab-indented**, matching Zotero's translator. The
-  parser reads any layout, but a file indented differently gains one line
-  that does not match its neighbours.
+- **A comma inside a collection name** is replaced by `;` before
+  joining, so it cannot corrupt the list. Untested against real data,
+  because Zotero's UI does not allow one.
+- **The inserted line is tab-indented**, matching Zotero's translator.
 
 ## 📊 Last run stats (this repository)
 
@@ -166,7 +127,6 @@ no_fields                    2
 groups field added to:    637 / 644 entries
 ```
 
-Every block lands in exactly one bucket, so those sum to 644:
-`403 + 191 + 43` written, `1 + 4` matched but filed nowhere, `2`
-carrying no fields. `matched_multiple_items` is a note on the 637, not a
-bucket of its own.
+The buckets sum to 644 (`403 + 191 + 43` written, `1 + 4` filed
+nowhere, `2` with no fields); `matched_multiple_items` is a note on the
+637, not a bucket.
