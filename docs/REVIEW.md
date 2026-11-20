@@ -11,10 +11,10 @@ which is an architecture question and lives in
 verbatim detector works internally, which is
 [PLAGIARISM.md](PLAGIARISM.md#-how-the-tiers-were-chosen).
 
-This is the human-facing half of the pipeline's record-keeping.
-[DOSSIER.md](DOSSIER.md) documents working state a *model* reloads to keep
-drafting; this documents evidence *you* weigh before deciding a draft is
-done. The two mirror the same draft path and are otherwise unalike:
+[DOSSIER.md](DOSSIER.md) documents working state a *model* reloads to
+keep drafting; this page documents evidence *you* weigh before deciding
+a draft is done. The two mirror the same draft path and are otherwise
+unalike:
 
 | | The dossier | A review report |
 | --- | --- | --- |
@@ -30,219 +30,165 @@ evidence for a human judgement, never a verdict, and each exits 0 whether
 it finds something or not. The agenda and `agenda-reviser` read
 reports to build a worklist, but no draft is blocked by what one says.
 
-This is a design commitment. [SOUL.md](../SOUL.md) commits to it, and
-[ARCHITECTURE.md](ARCHITECTURE.md#-layer-4-the-review-layer) has the
-argument for why decidability is not what earns a check the right to
-block. The consequence here is that **an aid that finds nothing is not
-a clean bill of health, and an aid that finds something is not an
-accusation.** Both are input to your judgement.
-
-They also take no lock, so any of them runs while
-`chitragupta corpus sync` is rebuilding the corpus.
+[SOUL.md](../SOUL.md) commits to this, and
+[ARCHITECTURE.md](ARCHITECTURE.md#-layer-4-the-review-layer) argues why
+decidability is not what earns a check the right to block. So **an aid
+that finds nothing is not a clean bill of health, and an aid that finds
+something is not an accusation.** They take no lock, so any of them runs
+while `chitragupta corpus sync` is rebuilding the corpus.
 
 ## 🧩 The eleven aids
 
-**`review provenance`: does the cited paper say this?** The gate
-answers "is this citekey real?" exactly, and that is all it can answer.
-A claim that drifted away from its source during drafting passes the
-gate, because the citekey is real; only reading the source catches it.
-This report quotes, for each citation, the passage in the cited source
-that supports it and where it sits, so the question becomes a two-minute
-read instead of a re-derivation.
+**`review provenance`: does the cited paper say this?** The gate answers
+only "is this citekey real?", so a claim that drifted from its source
+passes it. This report quotes, for each citation, the supporting passage
+in the cited source and where it sits, making the check a two-minute
+read.
 [CITATION-PROVENANCE.md](CITATION-PROVENANCE.md) has the scoring.
 
-**`review verbatim`: how much wording came along with the ideas.** One
-aid asks two shapes of question. `overlap` and `locate` compare the
-draft against *one* cited source and tell you which page a phrase is on;
-`scan` compares it against **any** parsed source, cited or not, so it is
-the one that finds reuse from a paper the paragraph never cites, and
-reuse in connective prose that cites nothing at all. A fourth mode,
-`recheck`, compares a fresh scan against a recorded one, so a repair
-can be judged by what it resolved. Detection runs in
-three tiers (exact n-gram, skip-gram, embedding), and the aid names any
-tier it could not run instead of silently reporting less.
+**`review verbatim`: how much wording came along with the ideas.**
+`overlap` and `locate` compare the draft against *one* cited source and
+give the page a phrase is on; `scan` compares it against **any** parsed
+source, so it finds reuse from a paper the paragraph never cites, and in
+connective prose that cites nothing. `recheck` compares a fresh scan
+with a recorded one, so a repair is judged by what it resolved.
+Detection runs in three tiers (exact n-gram, skip-gram, embedding), and
+the aid names any tier it could not run.
 
-**`review coverage`: did the draft use what retrieval found?** Give it
-the queries, and it reports which surfaced candidates were cited and
-which were not. An uncited high-scorer is either a source the draft
-skipped or a query that was too broad, and the report deliberately does
-not decide which. It also shows citekeys cited but surfaced by none of
-your queries. That is normally *not* a gap (the skill ran other
-queries), and it is shown so the report cannot be misread as a
-gap-finder.
+**`review coverage`: did the draft use what retrieval found?** Given the
+queries, it reports which surfaced candidates were cited. An uncited
+high-scorer is a source the draft skipped or a query that was too broad,
+and the report deliberately does not decide which. It also shows
+citekeys cited but surfaced by none of your queries, normally *not* a
+gap (the skill ran other queries).
 
 **`review synthesis`: how many sources is each unit standing on?**
-Prose required to fuse two or more sources cannot be a transcription of
-any one of them: you cannot transcribe two sources simultaneously. That
-is the guarantee the writing standards ask for, and this makes it
-observable. The *unit* differs by genre: the paragraph for a survey, a
-thesis chapter and a deep-research report; the section for a textbook
-chapter; the whole document for a tutorial, whose body carries no
-citations by design. The report's header names which unit it used and
-where that came from, so a tutorial's report is not read against a
-survey's expectations.
+Prose fusing two or more sources cannot be a transcription of any one,
+which is the guarantee the writing standards ask for; this makes it
+observable. The *unit* is the paragraph for a survey, thesis chapter and
+deep-research report, the section for a textbook chapter, and the whole
+document for a tutorial (whose body carries no citations by design). The
+header names the unit used and where it came from.
 
 **`review figure`: what a TikZ figure's own geometry says.** It reports
-overlapping nodes, content protruding past the frame, node text too long
-to fit, an arrowhead stranded mid-line where a
-figure builds one arrow out of two `\draw`s, the edge list to confirm
-the figure connects what you meant it to, and a figure file that manages
-a TikZ library load by hand. Such a file renders correctly on its own
-and multiplies node spacing the moment a second figure joins it in one
-document. This is the mechanical half of the figure style guide:
-it checks what can be measured from the compiled geometry and leaves
-taste to you ([TIKZ-STYLE.md](TIKZ-STYLE.md)). It also says **how much of
-a figure it could measure at all**. A picture that names no node has no
-geometry to check, and the report says so instead of reading as a
-picture that passed.
+overlapping nodes, content past the frame, node text too long to fit, an
+arrowhead stranded mid-line where one arrow is built from two `\draw`s,
+the edge list, and a figure file that loads a TikZ library by hand
+(which renders alone but multiplies node spacing once a second figure
+joins it). It checks what the compiled geometry can measure and leaves
+taste to you ([TIKZ-STYLE.md](TIKZ-STYLE.md)), and says **how much of a
+figure it could measure at all**: a picture naming no node is reported
+as unmeasured, not as passed.
 
-`review figure` runs over a whole draft and reports 7 of the figure
-rule ids. `chitragupta figure check` checks one figure file against all
-36 rules, and measures every drawn node, where `review figure` measures
-only the named ones. Run `figure check` on each figure as you draw it;
-[figure-checks/README.md](figure-checks/README.md) has the rule table
-and how the two commands differ.
+It runs over a whole draft and reports 7 of the figure rule ids;
+`chitragupta figure check` checks one figure file against all 36 rules
+and measures every drawn node, not only named ones. Run `figure check`
+on each figure as you draw it
+([figure-checks/README.md](figure-checks/README.md)).
 
-It **measures and never places.** TikZ computes the layout; this reads
-the result back out of a real compile and reports on it, so its
-thresholds are not something to draw towards. Fix a finding by changing
-what you asked TikZ for, not by nudging a coordinate until the number
-moves. `assets/tikz/` ships a known-good starting file per layout
-metaphor so that is a file rather than a blank picture.
-[CLI.md](CLI.md#-chitragupta-review-figure) has the boundary in full,
-including the one way a clean report can mislead.
+It **measures and never places.** Its thresholds are not something to
+draw towards: fix a finding by changing what you asked TikZ for, not by
+nudging a coordinate. `assets/tikz/` ships a known-good starting file
+per layout metaphor. [CLI.md](CLI.md#-chitragupta-review-figure) has the
+boundary in full, including the one way a clean report can mislead.
 
-**`review uncited`: which sentences rest on nothing at all.** This
-looks like `coverage` and is its mirror image. `coverage` asks a question
-about the *corpus* side of the boundary: were the surfaced candidates
-used? `uncited` asks about the *prose* side: which claims here are
-supported by no citation? They share the word "uncited" and nothing else,
-which is why one always says *candidates* and the other always says
-*sentences*. Like `synthesis` and `figure`, it reads no corpus, so it
-runs before you have parsed anything.
+**`review uncited`: which sentences rest on nothing at all.** The mirror
+of `coverage`: that asks whether surfaced *candidates* were used; this
+asks which *sentences* are supported by no citation. Like `synthesis`
+and `figure`, it reads no corpus, so it runs before you have parsed
+anything.
 
 **`review quotation`: is each quoted span in the source it cites?**
-The only aid whose answer is binary. A `quote:` recorded in a dossier is
-verbatim by contract and reaches a rendered evidence sidecar in
-quotation marks, under an attribution; nothing before this checked
-that the span is in the paper it names. A quotation attributed to a
-source that does not contain it is the same failure class as a
-fabricated citekey, and the one part of that class the citation gate
-cannot see, because the citekey *is* real.
+The only aid whose answer is binary. A dossier's `quote:` is verbatim by
+contract and reaches a rendered evidence sidecar in quotation marks. A
+quotation attributed to a source that does not contain it is the same
+failure class as a fabricated citekey, and one the gate cannot see,
+because the citekey *is* real.
 
-It reports three outcomes, not two. **Found** gives you the page and
-how it matched. **Absent** is the finding, and carries the page its
-distinctive words concentrate on, so you can tell a fabrication from a
-quotation someone edited. **Not checkable** is the third, and the
-honest one. Where the only text available is `pdftotext -layout`
-output, a two-column page splices its columns together and a correct
-quotation is not contiguous. Calling that absent would accuse a draft
-of something it did not do, so the aid says it measured nothing instead.
-That third outcome is also why this check, binary as it is, stays
-advisory; [ARCHITECTURE.md](ARCHITECTURE.md) works it through.
+It reports three outcomes. **Found** gives the page and how it matched.
+**Absent** is the finding, with the page its distinctive words
+concentrate on, so you can tell a fabrication from an edited quotation.
+**Not checkable** is the honest third: where the only text is
+`pdftotext -layout` output, a two-column page splices its columns and a
+correct quotation is not contiguous, so the aid says it measured
+nothing. That outcome is why this check stays advisory
+([ARCHITECTURE.md](ARCHITECTURE.md)).
 
-It often has nothing to check: `quote:` is optional, because A2's
-contract makes one a deliberate act rather than the residue of
-retrieval. The report says which answer it gave. Its `universe` is
+It often has nothing to check, because `quote:` is optional by design.
+Its `universe` is
 `no-dossier` for a draft with no dossier, `no-quotes` for a dossier
 that publishes no quote the draft cites, and `checked` otherwise. Only
 `checked` means a quote was looked at.
 
 **`review agenda`: one ranked, deduplicated worklist across the eight
-it reads.** It reads eight of the other ten aids. `union` is left out
-because it reads a book, not a draft, and `digest` because its classes
-mean nothing outside a verbatim digest. Each of the aids above answers
-its own question in isolation. This one reads what they already wrote
-(each optional; an aid that never ran is named as absent, not treated as
-clean), plus the drafting layer's prose check, the dossier's drift
-report and its recorded-but-uncited citekeys, and merges them into one
-ordered list a person or the `agenda-reviser` skill can work down. In
-its bare form it **reads, never runs, an aid**: a stale or missing input
-is named in the report's header instead of triggering a live re-run.
-`--baseline` is the one exception: it re-runs the eight aids first so the
-comparison it reports means something, then rebuilds and diffs against a
-previous agenda. Every item is either `unattended` (safe for an
-automated pass) or surfaced for a person to decide, and some surfaced
-items can be accepted with `--accept <id>`.
-[AGENDA.md](AGENDA.md) walks one report section by section and owns the
-class table: which class each aid raises, which are unattended, and
-which may be accepted.
+it reads.** It reads eight of the other ten aids (not `union`, which
+reads a book, nor `digest`, whose classes mean nothing outside a
+digest), plus the prose check, the dossier's drift report and its
+recorded-but-uncited citekeys, and merges them into one ordered list a
+person or the `agenda-reviser` skill can work down. An aid that never
+ran is named as absent, not treated as clean. In its bare form it
+**reads, never runs, an aid**: a stale or missing input is named in the
+header. `--baseline` is the exception: it re-runs the eight aids, then
+rebuilds and diffs against a previous agenda. Every item is either
+`unattended` (safe for an automated pass) or surfaced for a person, and
+some surfaced items can be accepted with `--accept <id>`.
+[AGENDA.md](AGENDA.md) walks one report and owns the class table.
 
-**`review support`: does the source entail this claim?** It asks the
-same underlying question as `provenance` in a different way.
-`provenance` scores lexical overlap, which is cheap and enough to catch
-a citekey pointing at the wrong paper. `support` scores with a real NLI
-entailment model, which is what it takes to catch a paraphrase that
-subtly misstates a paper it is citing: the citekey is real, the wording
-no longer matches the source closely enough for a verbatim scan to flag,
-and the source is topically related enough to pass a lexical check. Only
-reading whether the source's own words entail the claim catches that.
-The output shape differs too: `provenance` bands its findings
-("no support found" / "weak" / "supported"); `support` publishes a bare
-ranked score and no bands, because retrieval already selected these
-passages by similarity, which weakens the discriminator in the same way
+**`review support`: does the source entail this claim?** `provenance`
+scores lexical overlap, enough to catch a citekey pointing at the wrong
+paper. `support` uses an NLI entailment model, which catches a
+paraphrase that subtly misstates a related paper: too reworded for a
+verbatim scan, too on-topic for a lexical check. `provenance` bands its
+findings ("no support found" / "weak" / "supported"); `support`
+publishes a bare ranked score with no bands, because retrieval already
+selected these passages by similarity, weakening the discriminator as
 [PLAGIARISM.md](PLAGIARISM.md#-how-the-tiers-were-chosen) records for
-its own tier 3, and a band here would claim a precision this corpus does not support.
+its tier 3, so a band would claim a precision this corpus does not
+support.
 
-**`review union`: did assembling the book lose a source?** This is the
-only aid that reads a *book* rather than a draft, and the only one whose
-answer is pure set arithmetic. Every unit of a book records, when
-`python -m chitragupta.draft unit accept` accepts it, the citekeys its
-prose stands on. `book-assembler` then composes those units into one
-document, and a combining step is where a source goes missing
-with no error and no log
+**`review union`: did assembling the book lose a source?** The only aid
+that reads a *book*, and the only one whose answer is pure set
+arithmetic. `python -m chitragupta.draft unit accept` records the
+citekeys each unit's prose stands on; `book-assembler` composes the
+units, and a combining step is where a source goes missing with no error
 ([RAG.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/RAG.md)
-catalogues why).
-
-A book is composed by reference, which is what makes this checkable.
-`book.tex` is a skeleton: it `\input`s its units, whose citations stay
-`\citep{key}` for the book's one `bibtexu` pass, so the assembly's own
-text states no citekey at all. Reading it for citekeys and
-subtracting would report every source in a correct book as lost. What
-goes missing here is a *unit*. Including one includes all of its prose,
-so omitting one drops every source only it stood on. The
-finding is located: "`02-twin-shadow` was left out, and 33 sources went
-with it."
+catalogues why). `book.tex` `\input`s its units, whose citations stay
+`\citep{key}` for one `bibtexu` pass, so what goes missing is a *unit*,
+with every source only it stood on. The finding is located:
+"`02-twin-shadow` was left out, and 33 sources went with it."
 
 The other direction is the assembly's **own** material: a citekey in a
-title page, an appendix, or a preamble file it includes. Such a citekey
-entered outside every acceptance record, and the gate cannot see that
-because the citekey is real.
+title page, an appendix or an included preamble file entered outside
+every acceptance record, which the gate cannot see because the citekey
+is real.
 
-Two things it deliberately will not do. A unit whose acceptance record no
-longer describes its prose (unwritten, never accepted, or edited since)
-is **named as unchecked rather than compared against**, because a
-stale record's citekeys answer for text that no longer exists and would
-report a drop that is not one; if it was also left out of the assembly,
-the report says both, because the two want different fixes. And the
-appeared direction is **withheld entirely while any unit is unchecked**:
-that unit may record the citekey after all, and this aid does not guess.
-Run it once the outstanding units are accepted for an answer. It also
-names every non-unit file it read and every include it could not find on
-disk, so a report cannot be misread as covering prose it never opened.
+Two things it deliberately will not do. A unit whose acceptance record
+no longer describes its prose (unwritten, never accepted, or edited
+since) is **named as unchecked rather than compared against**, because a
+stale record would report a drop that is not one; if it was also left
+out, the report says both, since the fixes differ. And the appeared
+direction is **withheld entirely while any unit is unchecked**, because
+that unit may record the citekey after all. It also names every
+non-unit file it read and every include it could not find, so a report
+cannot be misread as covering prose it never opened.
 
 **`review digest`: how much of a verbatim digest is not the sources'
-own words?** The one aid over a genre of its own. A digest
-([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) is private study text, a
-survey whose body is copied from the corpus, each copied run closed by
-a citation. The aid finds
-each run in the source it cites with the quotation matcher, leads with
-the unsupported fraction (the words of every sentence that is neither
-verified source text nor the drafter's own words a cited source
-supports, over all words), and lists each such sentence as a
-`[surfaced]` item in the agenda's own line format, in five classes:
+own words?** A digest ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) is
+private study text, a survey whose body is copied from the corpus, each
+copied run closed by a citation. The aid finds each run in its cited
+source with the quotation matcher, leads with the unsupported fraction
+(words of sentences that are neither verified source text nor the
+drafter's own words a cited source supports, over all words), and lists
+each such sentence as a `[surfaced]` item in five classes:
 `unsupported-text`, `copy-mismatch`, `dangling-reference`,
-`repeated-text` and `unquoted-text`. `--baseline`
-compares a run with an earlier one, so a repair pass is a number that
-fell or did not. It is the digest's own worklist: the agenda never reads
-it, because its classes mean nothing for any other genre.
+`repeated-text` and `unquoted-text`. `--baseline` compares with an
+earlier run. It is the digest's own worklist; the agenda never reads
+it.
 
 ## 📋 What every report looks like
 
-There is one output contract, and it mirrors the draft's own path
-exactly as `content/rendered/` and `content/dossiers/` do, so a draft,
-its dossier, its renders and its review artefacts are all findable from
-the draft's path:
+One output contract mirrors the draft's path, as `content/rendered/` and
+`content/dossiers/` do:
 
 ```text
 content/drafts/<topic>/survey.md
@@ -258,108 +204,58 @@ content/drafts/<topic>/survey.md
      content/review/<topic>/survey.digest.md       (+ .tex/.pdf, .json)
 ```
 
-`union` is the one aid this example cannot show, because it reads a book
-rather than a single-topic draft. The contract is the same rule applied
-to the book's own path:
+`union` reads a book, so its report mirrors the book's path:
 
 ```text
 content/rendered/<book>/book.tex
   -> content/review/<book>/book.union.md           (+ .tex/.pdf, .json)
 ```
 
-`review provenance`, `review agenda` and `review digest` write by default. The rest
-print, and write only under `--write`, because printing is the usual
-use.
+`review provenance`, `review agenda` and `review digest` write by
+default; the rest print, and write only under `--write`.
 
-The full written set exists to read:
 `docs/examples/sample-project/content/review/dt-overview/` holds every
-draft-reading aid's `.md` and `.json` for four real drafts, except
-`figure`'s and `digest`'s: the sample drafts carry no TikZ figure, and
-none of them is a digest. Open
-[`trust-chapter.agenda.md`](examples/sample-project/content/review/dt-overview/trust-chapter.agenda.md)
-there to see what a merged worklist looks like on a draft that mostly
-passes, which is the common case and the one examples rarely show, and
-[`survey.agenda.md`](examples/sample-project/content/review/dt-overview/survey.agenda.md)
-beside it for the contrasting case: the same merge on a draft whose
-verbatim runs give a reviser items it may act on unasked.
+draft-reading aid's `.md` and `.json` for four real drafts (no `figure`
+or `digest`: the samples have no TikZ figure and no digest). Compare
+[`trust-chapter.agenda.md`](examples/sample-project/content/review/dt-overview/trust-chapter.agenda.md),
+a draft that mostly passes, with
+[`survey.agenda.md`](examples/sample-project/content/review/dt-overview/survey.agenda.md),
+whose verbatim runs give a reviser items it may act on unasked.
 
-Two properties of every report, both deliberate:
-
-- **It opens with a banner saying it is not a verdict.** A report found
-  on disk months later is the case documentation cannot reach, so
-  the file carries its own caveat.
-- **It carries no timestamp**, so it diffs cleanly against the next
-  revision's. You can see *what* changed rather than merely that
-  something did.
-
-The `.json` beside a report is the same findings as data, for a caller
-that would otherwise parse the printed form. It is a sibling of the
-report, not a render of it; `.tex`/`.pdf` are another document.
+Every report **opens with a banner saying it is not a verdict**, because
+a report found on disk months later is beyond documentation's reach, and
+**carries no timestamp**, so it diffs cleanly against the next
+revision's. The `.json` beside it is the same findings as data, a
+sibling of the report rather than a render; `.tex`/`.pdf` are another
+document.
 
 ## ⏱ What the layer costs
 
 The layer costs zero tokens, always. Ten of the eleven aids are
-deterministic Python with no model call at all. `support`'s real NLI
-entailment model has no token cost either, because it scores and does
-not generate, but it is a real model load, and the only aid besides
-`verbatim`'s tier 3 with a real wall-clock and memory floor. That is what makes
-[LADDERS.md](LADDERS.md)'s first rung free to run to exhaustion before
-anything expensive begins.
+deterministic Python with no model call. `support`'s NLI model scores
+rather than generates, so it has no token cost either, but it is the
+only aid besides `verbatim`'s tier 3 with a real wall-clock and memory
+floor. That is what makes [LADDERS.md](LADDERS.md)'s first rung free to
+run to exhaustion before anything expensive begins.
 
-Measured on one machine across five real drafts, at `--formats md`, in
-milliseconds. Read it for ratios, not absolutes;
-[PERFORMANCE.md](PERFORMANCE.md#-what-a-review-pass-costs) has the full
-method, the peak-memory figures and the caveats:
+Across five real drafts of 1,258 to 18,061 words, a full pass took 35 to
+106 s, and two aids made up nearly all of it:
 
-| words | dossier | prov | verbatim | cover | synth | figure | uncited | quote | agenda | support | all nine |
-| ---: | :---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1,258 | no | 180 | 447 | 303 | 90 | 87 | 88 | 89 | 575 | 33,464 | **35,323** |
-| 2,448 | no | 366 | 474 | 303 | 90 | 89 | 92 | 92 | 577 | 40,832 | **42,915** |
-| 5,723 | yes | 144 | 19,737 | 310 | 95 | 486 | 99 | 88 | 508 | 21,160 | **42,627** |
-| 10,003 | yes | 332 | 41,019 | 314 | 96 | 818 | 109 | 88 | 1,017 | 62,292 | **106,085** |
-| 18,061 | yes | 277 | 35,698 | 315 | 98 | 641 | 121 | 90 | 1,282 | 45,902 | **84,424** |
+- **`verbatim`** is 447 ms where its embedding tier cannot run and
+  19.7-41.0 s where it can, depending on whether the dossier, Docling
+  sidecars, ledger and enrichment layer are present, not on the draft.
+  It and `provenance` fetch each source once, so they cost roughly
+  **1.0-1.5 s per distinct citekey**.
+- **`support`** always loads the entailment model and scores every
+  *citation* (two citations of one paper are two calls), costing
+  21.2-62.3 s on every draft measured. That cost tracks the number of
+  quotable passages per cited source, so it moves with how finely the
+  corpus was parsed. `[enrich].support_premise_topk` caps the premises
+  per citation and is uncapped by default ([CONFIG.md](CONFIG.md)).
 
-Two aids make up the cost of the layer. `verbatim` is
-90--94% of any run where its embedding tier can execute, and 447 ms
-where it cannot. That 44--86x difference depends on whether the dossier, the
-Docling sidecars, the ledger and the enrichment layer are all present,
-not on the draft. `support` has no such off switch: it always loads the
-entailment model and scores every citation. What it *does* have is a
-dial, `[enrich].support_premise_topk`, which caps how many premises each
-citation is scored against and is uncapped by default, so every figure
-here is the uncapped cost ([CONFIG.md](CONFIG.md)). It costs
-21.2--62.3 s on every draft measured, dossier or not. Where `verbatim`'s
-tier 3 cannot run, `support` alone is ~95% of the total; where both run,
-they split it, 39%/59% on the 10,003-word draft. The cheapest and
-dearest runs differ by a factor of 3 (35,323 ms to 106,085 ms), because
-`support` puts a 21-second-plus floor under every run. Every other aid
-is between 88 ms and 1.3 s.
-
-Cost scales on cited sources, counted differently per aid.
-`verbatim` and `provenance` fetch each source once, so their cost
-tracks *distinct citekeys*: the 18,061-word chapter cites 28 and scans
-in 35.7 s, the 10,003-word chapter cites 40 and takes 41.0 s, roughly
-**1.0--1.5 s per distinct citekey**
-([PLAGIARISM.md](PLAGIARISM.md#-how-the-tiers-were-chosen)). `support` scores every
-*citation*, not every source, so two citations of the same paper are
-two entailment calls. On the corpus of 2026-08-27 that came
-to 835--962 ms per citation on the four larger drafts, rising to 1.5 s
-on the smallest (11 citekeys, 23 citations), where a largely fixed
-model-load cost is spread over the fewest calls.
-
-That per-citation figure does not travel between corpora, as a
-2026-09-04 re-timing showed: `support` scores one entailment pair per
-quotable passage of the cited source, so a finer re-parse of the same
-PDFs raised its cost by 65--95% with no draft, citation or line of this
-layer changed. Estimate it from the pair count;
-[PERFORMANCE.md](PERFORMANCE.md)'s "What `support`'s cost actually
-tracks" has the measurement.
-
-Two rows are not what they look like. `quotation` returns in ~90 ms
-because no dossier on this machine carries a `quote:` line, so its input
-universe is empty; that is the cost of finding no work, not of doing
-it. And ~86 ms of every row is interpreter startup, which is most of
-what `synthesis`, `uncited` and `quotation` report.
+Every other aid took between 88 ms and 1.3 s, most of the smallest being
+interpreter startup. [PERFORMANCE.md](PERFORMANCE.md#-what-a-review-pass-costs)
+has the per-aid table, the method and the caveats.
 
 ## 🚫 Three limits worth knowing
 
@@ -371,27 +267,20 @@ what `synthesis`, `uncited` and `quotation` report.
   source the draft should have used, or a query that was too broad. The
   report deliberately declines to decide which.
 - **`support`'s score is downstream of retrieval, and retrieval is the
-  weaker link.** Measured over the four real drafts of
-  `digital-twins-for-software-engineers` (71 scored citations,
-  `bench/RESULTS.md`'s 2026-08-27 entry): a human read of the 20
-  lowest-scored candidates found the dominant failure was not the source
-  failing to support the claim, but the passage-matching step handing the
-  scorer the wrong passage from an otherwise-relevant paper. Examples
-  were single index terms ("light sensor", "DevOps"), bibliography
-  entries, and once, a page about supply chains and COVID-era shopping
-  habits scored against a claim about the Digital Twin Consortium's
-  definition. Where the matched passage was the right one, the score
-  separated cleanly (0.96-0.99 for genuine support). No structured
-  per-claim labelling pass was run, so there is no crosscheck statistic
-  to cite; this is a qualitative read, not a precision number. Read a
-  low score as "the matched passage doesn't say this" first, and "the
-  source doesn't say this" only after checking the passage yourself.
+  weaker link.** A human read of the 20 lowest-scored of 71 citations
+  across four real drafts found the dominant failure was the
+  passage-matching step handing the scorer the wrong passage from a
+  relevant paper (a single index term, a bibliography entry), not the
+  source failing to support the claim. Where the passage was right, the
+  score separated cleanly (0.96-0.99 for genuine support). This is a
+  qualitative read, not a precision number. Read a low score as "the
+  matched passage doesn't say this" first, and "the source doesn't say
+  this" only after checking the passage yourself.
 
 ## 🕳 The distinction all three limits are instances of
 
-Those three read as separate caveats, but they are one caveat, stated
-here once as a rule the next aid should be built to instead of
-re-deriving it:
+The three are one caveat, stated once as a rule the next aid should be
+built to:
 
 > **A finding can be absent for three reasons (there was nothing to
 > find, the check could not run, or the case was out of scope), and an
@@ -404,22 +293,18 @@ declines to say which kind of gap it found, and why `support` reports a
 score beside the passage it scored rather than alone.
 
 **Where an aid publishes an aggregate, the same rule binds harder:
-something not measured is never counted as a zero.** A zero is a
-finding: it says the check ran and found nothing. Averaging an
-unmeasured item in as zero produces a number that looks like evidence of
-quality and is partly evidence of a missing dependency. An aggregate
-that cannot say what share of its inputs were assessable should
-say so beside itself.
+something not measured is never counted as a zero.** A zero says the
+check ran and found nothing; averaging in an unmeasured item as zero
+yields a number that is partly evidence of a missing dependency. An
+aggregate that cannot say what share of its inputs were assessable
+should say so beside itself.
 
-The idea of separating *rated* from *missing* from *not applicable*, and
-of refusing to encode missing as zero, is credited to
+Separating *rated* from *missing* from *not applicable* is credited to
 [K-Dense-AI/scientific-agent-skills](https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md).
-It fits this
-project's existing posture rather than changing it:
-[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s **R3** already forbids a
-continuous score from being the thing optimised, and this is the
-reporting-side companion: if a number is published at all, publish
-what it could not see next to it.
+It is the reporting-side companion to
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s **R3**, which forbids a
+continuous score from being the thing optimised: if a number is
+published, publish what it could not see next to it.
 
 ## ➡ Where to go next
 
