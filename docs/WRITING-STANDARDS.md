@@ -8,71 +8,52 @@ skill does what. **Not covered here:** the prose standard this
 repository's *own* documentation is held to, which is
 [HOUSE-STYLE.md](HOUSE-STYLE.md).
 
-Shared prose standards for every skill in `.claude/skills/`. Each drafting and
-revising SKILL.md points here rather than restating them. The rules
-specific to one genre are in that genre's file under
-`writing-standards/genres/`, which its SKILL.md cites.
+Shared prose standards for every skill in `.claude/skills/`. Each
+drafting and revising SKILL.md points here rather than restating them;
+the rules specific to one genre are in that genre's file under
+`writing-standards/genres/`.
 
-These are drawn from the technical-communication literature, primarily the
-[Diátaxis](https://diataxis.fr/) framework, Google's
-[Technical Writing courses](https://developers.google.com/tech-writing), and
-Suzan Last's *Technical Writing Essentials* (BCcampus). What follows is the
-part that transfers across all six genres. **Diátaxis's genre-specific rules
-do not all transfer**: "one path, no options, minimal explanation" is
-correct for `tutorial-writer` and actively wrong for `survey-writer`, where
-weighing alternatives *is* the deliverable. Take the audience discipline and
-the sentence-level craft from these sources; take the structural rules only
-from your own genre's file and SKILL.md.
+They are drawn from [Diátaxis](https://diataxis.fr/), Google's
+[Technical Writing courses](https://developers.google.com/tech-writing),
+and Suzan Last's *Technical Writing Essentials* (BCcampus). What follows
+is the part that transfers across all six genres. **Diátaxis's
+genre-specific rules do not all transfer**: "one path, no options" is
+right for `tutorial-writer` and wrong for `survey-writer`, where weighing
+alternatives *is* the deliverable. Take the structural rules only from
+your own genre's file and SKILL.md.
 
 ## 🗂 The index: which file holds which rule
 
 The standards are this file, the core, and the files under
-`docs/writing-standards/` that it indexes. An element file holds the
-rules for one thing a draft can contain, a genre file the rules for one
-genre, and a style file one house style.
+`docs/writing-standards/`: an element file per thing a draft can
+contain, a genre file per genre, and a style file per house style.
 
 | Layer | File | Sections | Holds |
 | --- | --- | --- | --- |
-| Core | this file | §1–9, §11, §15, §16 | the rules every draft follows, this index, precedence, and sources and attribution |
+| Core | this file | §1–9, §11, §15, §16 | the rules every draft follows, and sources and attribution |
 | Element | [`writing-standards/figures.md`](writing-standards/figures.md) | §10 | figures, checked by `chitragupta/style_figures.py` |
 | Element | [`writing-standards/mathematics.md`](writing-standards/mathematics.md) | §12 | mathematics, checked by `chitragupta/style_equations.py` and `render` |
 | Element | [`writing-standards/tables.md`](writing-standards/tables.md) | §13 | tables, checked by `chitragupta/style_tables.py` |
 | Element | [`writing-standards/page.md`](writing-standards/page.md) | §14 | what has to fit the page, checked by `chitragupta/style_typeset.py` |
-| Genre | [`writing-standards/genres/README.md`](writing-standards/genres/README.md) | none | what each genre owes its reader; one file per genre, listed below |
-| Genre | [`writing-standards/genres/survey.md`](writing-standards/genres/survey.md) | none | what a survey owes its reader, its reread, and how rare its figures and numbered equations are |
-| Genre | [`writing-standards/genres/deep-research.md`](writing-standards/genres/deep-research.md) | none | what a deep-research report owes its reader, why it has no figures, how its tables and mathematics are reconciled across parallel writers, and its reread |
-| Genre | [`writing-standards/genres/digest.md`](writing-standards/genres/digest.md) | none | what a verbatim digest owes its reader, its paragraph and the drafter's own sentences, its figures and equations, and its reread |
-| Genre | [`writing-standards/genres/tutorial.md`](writing-standards/genres/tutorial.md) | none | what a tutorial owes its learner, where it may cite, its beginner reread and self-check, and how free its figures and how rare its mathematics are |
-| Genre | [`writing-standards/genres/textbook-chapter.md`](writing-standards/genres/textbook-chapter.md) | none | what a textbook chapter owes its student, its house style, its reread, and how often its figures and numbered equations appear |
-| Genre | [`writing-standards/genres/thesis-chapter.md`](writing-standards/genres/thesis-chapter.md) | none | what a thesis chapter owes its examiner, its reread, and how rare its figures and numbered equations are |
+| Genre | [`writing-standards/genres/README.md`](writing-standards/genres/README.md) | none | the genre files, one per genre |
+| Genre | [`writing-standards/genres/survey.md`](writing-standards/genres/survey.md) | none | the survey's obligations and reread |
+| Genre | [`writing-standards/genres/deep-research.md`](writing-standards/genres/deep-research.md) | none | the deep-research report's obligations and reread |
+| Genre | [`writing-standards/genres/digest.md`](writing-standards/genres/digest.md) | none | the verbatim digest's obligations and reread |
+| Genre | [`writing-standards/genres/tutorial.md`](writing-standards/genres/tutorial.md) | none | the tutorial's obligations, where it may cite, and its reread |
+| Genre | [`writing-standards/genres/textbook-chapter.md`](writing-standards/genres/textbook-chapter.md) | none | the textbook chapter's obligations, house style and reread |
+| Genre | [`writing-standards/genres/thesis-chapter.md`](writing-standards/genres/thesis-chapter.md) | none | the thesis chapter's obligations and reread |
 | Style | [`writing-standards/styles/README.md`](writing-standards/styles/README.md) | none | house styles to come; no style yet |
 
-Five rules keep the layers from going piecemeal:
-
-- **Section numbers are global and never reused.** A section that moves
-  out of the core keeps its number, and its sub-headings keep their
-  titles, so a citation reads `docs/writing-standards/figures.md` §10.
-  A new section takes a number no file has used.
-- **The core keeps a stub heading for each moved section**, with its
-  emoji, number and title unchanged, so every existing anchor
-  (`#-10-figures`) and every `WRITING-STANDARDS.md` §10 citation still
-  lands on a line that links to the new file. Citations move to the
-  direct path one change at a time.
-- **Each layer file opens with "Assumes the core, §1–9"**, repeats no
-  other file's text, and is at least about 3 KB; a smaller one merges
-  into its neighbour. The two folder READMEs are exempt.
-- **Every file under `docs/writing-standards/` is a row of the table
-  above.** `tests/test_writing_standards_layers.py` fails on one that is
-  not, on a cited section no heading carries, on an anchor no heading
-  produces, and on a number that heads two sections.
-- **Precedence is #1181's, not a new one.** Where two sources of
-  guidance disagree, the order is: the citekey invariant; the venue (a
-  research paper's `paper.md`); the writing standards, core, element
-  and genre files alike, unless a recorded conflict is resolved to
-  `profile`; the learnt style. A conflict recorded in a dossier's
-  `style.md` names a section by its global number, which the split keeps
-  stable. #1181's learnt style is not built yet; until it is, the first
-  three are the whole order.
+Section numbers are global and never reused: a section that moves out
+of the core keeps its number, and the core keeps a stub heading with
+the same emoji, number and title, so every anchor and §N citation still
+lands. Each layer file assumes the core's §1–9 and repeats no other
+file's text. `tests/test_writing_standards_layers.py` fails on a file
+missing from the table, a cited section no heading carries, an anchor no
+heading produces, or a number heading two sections. Where sources of
+guidance disagree, the order is: the citekey invariant; the venue (a
+research paper's `paper.md`); these standards, unless a recorded
+conflict in a dossier's `style.md` is resolved to `profile`.
 
 ## 👥 1. Decide the audience before drafting
 
@@ -120,9 +101,8 @@ Concrete guards:
 "what will and will not be covered", and the reader's assumed background.*
 
 Say what the document covers, what it deliberately does not, and what the
-reader is assumed to know already. A reader who can't tell whether they're
-equipped for a document will either bounce off it or waste an hour finding
-out they were missing background.
+reader is assumed to know already, so a reader can tell whether they are
+equipped for it.
 
 ## 🖋 4. Sentence-level craft
 
@@ -155,10 +135,9 @@ source's style.
 *Source: Procida, Diátaxis: the four-quadrant model and its claim that
 each kind of documentation "needs to be written in a different way".*
 
-This is the part of Diátaxis that carries over to every genre. A document that
-tries to be both a survey and a tutorial is worse at each than either would be
-alone, because the two have opposite obligations: a survey must present
-alternatives and weigh them, a tutorial must eliminate every choice.
+A document that tries to be both a survey and a tutorial is worse at
+each, because the two have opposite obligations: a survey must weigh
+alternatives, a tutorial must eliminate every choice.
 
 If, while drafting, you find yourself writing material that belongs to a
 different genre, **stop and say so to the user** rather than absorbing it.
@@ -176,11 +155,9 @@ not as yourself. Flag every point where a term arrives undefined, a step
 skips reasoning, notation changes meaning mid-document, or a claim assumes
 something never established.
 
-This pass catches more real problems than any other single step. The
-technical-communication literature's stronger form of it is a usability
-test with a real member of the audience. That is not available inside a
-drafting run, so this reread is the substitute. Read the whole draft a
-second time; do not skim it.
+This pass catches more real problems than any other single step. It
+stands in for a usability test with a real reader, which a drafting run
+cannot hold, so read the whole draft a second time; do not skim it.
 
 ## ❓ 7. Say what you don't know
 
@@ -198,11 +175,9 @@ European funder's deliverable is usually en-GB. Settle it in §1, with the
 reader, and record it as the `language:` line in the dossier's `scope.md`
 (a BCP-47 tag, so `en-GB`, not "British").
 
-Recording it matters because a preference stated in chat is gone by the
-next session, and the model's own default takes over the first revision
-made weeks later, silently. `draft-reviser` reads `scope.md` before any
-edit, so a tag on disk reaches every future revision with no further
-instruction and no restating.
+A preference stated in chat is gone by the next session; `draft-reviser`
+reads `scope.md` before any edit, so a tag on disk reaches every later
+revision.
 
 One dialect per draft, and it governs the draft's *own* prose. Quoted
 material keeps its source's spelling, and so do a cited title, a proper
@@ -210,29 +185,23 @@ noun, and a dataset or code identifier: changing those is a misquotation,
 not a correction.
 
 A dialect match that starts with a capital letter is reported for a
-person to decide rather than repaired. "Modeling" in "Unified Modeling
-Language" is a name, and a capital cannot tell a name from a sentence's
-first word, so the cost of a wrong guess is one question. Declare the
-name in `content/style_exceptions.toml` ([§9](#-9-what-is-checked-mechanically-and-what-is-not))
+person to decide, since "Modeling" in "Unified Modeling Language" is a
+name. Declare the name in `content/style_exceptions.toml` ([§9](#-9-what-is-checked-mechanically-and-what-is-not))
 and it stops being reported.
 
-House style belongs in the same field. A target venue may
-impose conventions these standards do not settle: serial comma or not,
-"Section 3" or "§3", how a figure is captioned. Record the decision
-beside the dialect, rather than re-deciding it section by section.
+Record a venue's house style (serial comma, "Section 3" or "§3",
+caption form) beside the dialect, rather than re-deciding it section by
+section.
 
-§2's defect-marker list is English literals, and §4's voice rules are an
-Anglophone technical-writing convention. A draft in another language needs
-them adapted rather than transliterated; they do not carry over
-unchanged.
+§2's defect markers and §4's voice rules are English conventions; a
+draft in another language needs them adapted, not transliterated.
 
 ## ✅ 9. What is checked mechanically, and what is not
 
 Some rules above have a decidable answer and some do not, and putting a
-rule on the wrong side fails either way. Mechanising §4's "short
-sentences" builds a machine that splits sentences past the point the
-argument survives; leaving §2's literals to memory means they are checked
-only when someone remembers to.
+rule on the wrong side fails either way: mechanising §4's "short
+sentences" over-splits sentences, and leaving §2's literals to memory
+means they are rarely checked.
 
 | Rule | Section | Decidable? | Checked by, and may a machine repair it unattended? |
 | --- | --- | --- | --- |
@@ -265,56 +234,41 @@ only when someone remembers to.
 | The reread as the reader | §6 | no | never |
 
 **How to read the last column.** A named rule is a `python -m
-chitragupta.draft style` finding, reported as `chitragupta.<name>`. Each
-finding carries a `repair` value. `edit`, the default,
-lets the review agenda mark it `unattended`, so `agenda-reviser` may
-repair it without asking; `review` puts it in front of a person. Only
-these cases are `review`: `WideCodeLine`, `AcronymCase`, and a dialect
-finding whose dialect came from `config.toml` or whose match starts with
-a capital letter. `review synthesis` and `review uncited`
+chitragupta.draft style` finding, reported as `chitragupta.<name>`, with
+a `repair` value. `edit`, the default, lets the review agenda mark it
+`unattended`, so `agenda-reviser` may repair it without asking; `review`
+puts it in front of a person. `review synthesis` and `review uncited`
 are review aids: they report, and no unattended repair acts on them.
 
 **Nothing in the last column is a continuous score, deliberately.** A
-readability index is the obvious candidate to add. A loop minimising
-grade level splits sentences past the point the argument
-survives, and replaces precise technical vocabulary with shorter, vaguer
-words, because a polysyllabic term is indistinguishable to the metric
-from bad writing.
+loop minimising a readability index splits sentences past the point the
+argument survives and swaps precise terms for vaguer ones. An index may
+be reported but never optimised ([HOUSE-STYLE.md](HOUSE-STYLE.md)).
 
-An index may be reported but never optimised;
-[HOUSE-STYLE.md](HOUSE-STYLE.md) has that argument in full.
-
-**Quoted spans are exempt from every row.** Drafts produced by this
-pipeline contain source text by construction, so "simply" inside a
-quoted abstract and an `-ize` inside a cited title are correct rather
-than findings. No rule here has a zero-exception form, which is also why
-none of them may become a gate; see [ARCHITECTURE.md](ARCHITECTURE.md)'s
-"Layer 4" for the axis that decides which checks may block, and
-[SOUL.md](../SOUL.md) for why there is exactly one that does.
+**Quoted spans are exempt from every row**: "simply" inside a quoted
+abstract and an `-ize` inside a cited title are correct. No rule here
+has a zero-exception form, which is also why none may become a gate
+([ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4";
+[SOUL.md](../SOUL.md)).
 
 **The case of an acronym's expansion is authoritative.** The value in
 `content/acronyms.toml` is the case a draft uses mid-sentence. A
 capitalised value (`UML = "Unified Modeling Language"`) is a proper name.
 A lower-case value (`SCADA = "supervisory control and data
-acquisition"`) is a common noun, which is capitalised only where a
-sentence, a line or a heading begins. `AcronymCase` reports the other
-cases as `review`, and `dossier acronyms-suggest` reminds you of the rule
-when it proposes entries. Write the vocabulary's case once and the
-drafts follow it.
+acquisition"`) is a common noun, capitalised only where a sentence, a
+line or a heading begins. `AcronymCase` reports the other cases as
+`review`.
 
 **Exceptions are declared, never guessed.** A term no prose rule should
 report goes in `content/style_exceptions.toml`, a `terms` list that
 applies to every draft in the project under every dialect. A term there
 suppresses a prose finding that lies inside it, whole-word and ignoring
 case, and the verbatim scan treats it like an allowlist phrase
-([PLAGIARISM.md](PLAGIARISM.md#-the-boilerplate-allowlist)). Every
-acronym expansion in the vocabulary counts as a term already, so list
-only the rest. The one finding it never hides is `Acronyms`: a term
-covering "Unified Modeling Language (UML)" must not excuse an unexpanded
-`UML` elsewhere. The file is project data meant to be versioned with the
-project; a missing file means no terms, and a malformed one is an
-error, so a broken file cannot quietly turn suppressed findings back
-into unattended edits.
+([PLAGIARISM.md](PLAGIARISM.md#-the-boilerplate-allowlist)). Acronym
+expansions in the vocabulary count as terms already. It never hides an
+`Acronyms` finding. A missing file means no terms, and a malformed one
+is an error, so a broken file cannot turn suppressed findings back into
+unattended edits.
 
 **Every verdict in the table is scoped to English**, for the reason §8
 gives.
@@ -328,10 +282,9 @@ number it never carries.
 
 ## 🧩 11. Multi-source synthesis, at your genre's unit
 
-Prose that has to fuse two or more sources cannot be a transcription of
-any one of them. You cannot transcribe two sources simultaneously. That
-is a stronger mechanism than any instruction to paraphrase harder,
-because it removes the opportunity instead of asking for restraint.
+Prose that fuses two or more sources cannot be a transcription of any
+one of them. That removes the opportunity to copy instead of asking for
+restraint.
 
 **The rule.** A unit cites **two or more citekeys wherever the evidence
 set allows**, and a single-source unit is a deliberate choice you state
@@ -342,23 +295,19 @@ rather than a default.
 | Genre | Unit | What that means |
 | --- | --- | --- |
 | `survey`, `thesis-chapter`, `deep-research`, `research-paper` | paragraph | A body paragraph closes on more than one citekey. In a research paper that binds the related work; a paragraph about the author's own software cites nothing and is not a finding |
-| `textbook-chapter` | section | A section's citations span two or more citekeys, *and do not arrive in blocks* (see below). Individual paragraphs are free to be single-source; multi-source paragraphs are a distraction in a genre whose job is explanation |
+| `textbook-chapter` | section | A section's citations span two or more citekeys, *and do not arrive in blocks* (see below). Single-source paragraphs are fine in a genre whose job is explanation |
 | `tutorial` | document | The body carries no citations at all, by design. The floor is on the lesson's derivation: it must not be a walkthrough of one source's procedure, and two or more distinct citekeys in "Where to go next" are the evidence that it is not |
-| `digest` | paragraph | As in a survey: a body paragraph braids copied runs from two or more papers. Each *run* is one source's own words, closed by its citation ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)), so the paragraph is where a digest stops being a transcription of one paper |
+| `digest` | paragraph | As in a survey: a body paragraph braids copied runs from two or more papers, each *run* closed by its citation ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) |
 
-**For the section unit, spread is not enough.** A section that cites
-three papers by running one out before starting the next spans three
-sources and fuses none of them; every paragraph in it is still a
-candidate transcription. Interleave instead: don't let consecutive
-paragraphs rest on the same single citekey. This is the same instruction
-`textbook-chapter-writer` step 4 already gives, stated as a property of
-the finished section rather than as advice about searching.
+**For the section unit, spread is not enough.** A section that runs
+out one paper before starting the next fuses none of them. Interleave
+instead: don't let consecutive
+paragraphs rest on the same single citekey.
 
-**Declaring a single-source unit.** Sometimes one paper is the
-only source in the corpus for a point. That is fine, and forcing a
-second citation where none fits is worse than the problem. Say so, in
-the draft, immediately above or below the unit with **no blank line**
-between them:
+**Declaring a single-source unit.** When one paper is the only source
+in the corpus for a point, forcing a second citation is worse. Say so,
+immediately above or below the unit with **no blank line** between
+them:
 
 ```markdown
 <!-- single-source: Foo2019 is the only paper in the corpus covering X -->
@@ -369,24 +318,21 @@ between them:
 ```
 
 Both are invisible when rendered. A marker separated from its unit by a
-blank line declares nothing; it becomes a block of its own.
+blank line declares nothing.
 
 `python -m chitragupta.review synthesis <draft>` counts citekeys per
 unit, at the unit your genre binds at, and separates declared
 single-source units from undeclared ones. It is **advisory**: it exits 0
-whatever it finds, it blocks no draft, and a thin corpus legitimately
-produces single-source units. There is no target proportion to drive
-down, because a number a loop optimises stops measuring what it named
-([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3). A human reads the
+and blocks no draft. There is no target proportion to drive down
+([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3); a human reads the
 report and decides.
 
-The idea is adapted from [OpenScholar](https://github.com/AkariAsai/OpenScholar)'s
-own drafting instruction, credited in
-[INSPIRATION.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md)
-and written here in our own words. Its *citation mechanics* are
-deliberately not adapted: upstream cites by positional index into a
-truncated list, so reordering that list silently changes what every
-citation means. This project has real citekeys and keeps using them.
+The idea is adapted from
+[OpenScholar](https://github.com/AkariAsai/OpenScholar)'s drafting
+instruction. Its *citation mechanics* are deliberately not adapted:
+upstream cites by positional index into a truncated list, so reordering
+the list silently changes every citation. This project keeps real
+citekeys.
 
 ## 🔢 12. Mathematics
 
@@ -418,13 +364,9 @@ breakable forms for very long tokens.
 
 The same rule §10, §12 and §13 already state for a figure, an equation
 and a table, applied to the heading above them: **write the title, not
-the number**. A unit is a chapter of something, and the something
-numbers it: `\chapter` in an assembled book, the reader's own thesis
-for a fragment. A heading that states its own number is printed twice,
-once by each.
-
-A unit headed `# Chapter 1: Why Anyone Pays` in a book set with the
-`book` class opens
+the number**. The enclosing document numbers a unit, so a heading
+that states its own number prints it twice. A unit headed
+`# Chapter 1: Why Anyone Pays` in a `book`-class book opens
 
 ```text
 Chapter 1
@@ -434,29 +376,20 @@ Chapter 1: Why Anyone Pays
 
 and its table of contents reads `1 Chapter 1: Why Anyone Pays` to match.
 
-**For a Markdown unit this is handled for you, and the heading stays
-yours.** `python -m chitragupta.draft render --fragment` drops a
-`Chapter N:` prefix from the `\chapter{}` it emits, so the book prints
-the number once, from the class. The authored heading is untouched: a
-unit rendered on its own has nothing supplying a chapter number, so the
-prefix is what titles that standalone pdf, and the two artefacts want
-opposite things from one line. There is nothing to repair and nothing is
-reported.
+**For a Markdown unit this is handled for you.** `python -m
+chitragupta.draft render --fragment` drops a `Chapter N:` prefix from
+the `\chapter{}` it emits; the authored heading is untouched, because a
+unit rendered alone needs the prefix as its title. Nothing is reported.
 
 **For a `.tex` unit it is yours to fix**, and it is the one heading
 `python -m chitragupta.draft style` reports
-(`chitragupta.ChapterSelfNumbered`, `chitragupta/style_headings.py`). A
-unit already drafted as `.tex` needs no conversion to be assembled, so
-it is `\input` exactly as written and no render runs over it. This is
-the same carve-out §13's `.tex` fragment has for its tables, read the other way
-round. Delete the prefix; the enclosing document supplies it.
+(`chitragupta.ChapterSelfNumbered`, `chitragupta/style_headings.py`),
+because a `.tex` unit is `\input` exactly as written. Delete the prefix.
 
-**A self-numbered *section* is a different clash with a different
-remedy.** `## 1.0 Before you start` under LaTeX's own numbering renders
-"1.1 1.0 Before you start", and nothing above touches it. The fix is
-`\setcounter{secnumdepth}{-2}` in the book's authored preamble, which is
-a decision about the whole document. [WRITE-A-BOOK.md](WRITE-A-BOOK.md)
-has what that costs and when it is the wrong lever.
+**A self-numbered *section* is a different clash.** `## 1.0 Before you
+start` renders "1.1 1.0 Before you start"; the fix is
+`\setcounter{secnumdepth}{-2}` in the book's preamble, a whole-document
+decision [WRITE-A-BOOK.md](WRITE-A-BOOK.md) discusses.
 
 ## 🔖 16. A citation is always a marker
 
@@ -467,15 +400,13 @@ authors measure ..." renders as "In [3], the authors measure ...". A key
 written without its `@` ("the frameworks gil_survey_2024 evaluates") or
 set as code prints raw, and no reader can resolve it.
 
-A sentence that is about the corpus rather than the subject, such as "the
-corpus holds a duplicate entry for this paper", is not for the reader at
-all. It belongs in the dossier's `revisions.md`.
+A sentence about the corpus rather than the subject ("the corpus holds
+a duplicate entry for this paper") belongs in the dossier's
+`revisions.md`, not the draft.
 
 `draft style` reports both as `BareCitekey`, reading only what a reader
-sees: not the References section's key labels, comments, code blocks or
-the citations themselves. A parsed key in prose is repaired unattended to
-`[@key]`. A key set as code, or one whose PDF never parsed (which may not
-be cited at all), is left to a person.
+sees. A parsed key in prose is repaired unattended to `[@key]`; a key
+set as code, or one whose PDF never parsed, is left to a person.
 
 ## 📖 Sources and attribution
 
@@ -521,7 +452,7 @@ and is credited after them.
    <https://github.com/gvwilson/teachtogether.tech>. Licensed
    CC-BY-NC 4.0, not CC-BY: the NonCommercial clause binds copies and
    adaptations of the text, so this pipeline takes the ideas only and none
-   of the text (see "What is original here" below).
+   of the text.
    Supplies, for `textbook-chapter-writer`: backward design (objectives
    and assessments before content); learner personas; chunking to 7±2,
    or 4±1, items; concept maps; worked examples, then faded ones, with
@@ -568,50 +499,10 @@ proofs"). `textbook-chapter-writer` reads that reference for a
 maths-heavy chapter, so its symbol-definition and notation discipline is
 Wilkes's too.
 
-### 💡 What is original here
-
-The prose in this file, in every `.claude/skills/*/SKILL.md` and in
-`.claude/skills-common/references/` is written from scratch. A verbatim
-n-gram check against the first three licensed sources above
-(107,272 words of source; the algorithm is `chitragupta/review/verbatim_check/_overlap.py`'s
-`cmd_overlap`) reports **0% overlap at an 8-word threshold**, and nothing
-above five consecutive shared words anywhere. What is borrowed is the
-*ideas*, credited above; what is added is their translation into
-operational rules for this pipeline's six genres, the decision about which
-principles transfer across genres and which do not (§5's warning), and the
-handling of failure modes specific to multi-agent drafting.
-
-Wilkes's guide (about 5,700 words) was checked the same way against this
-file and `mathematical-prose.md` on 2026-11-05: no run of seven or more
-words is shared with either, and the only six-word run is the guide's
-own title, cited above.
-
-Sources 4 to 6, and Wilkes's guide again, were checked on 2026-11-05
-(#1129) against this file, `textbook-chapter-writer`'s and
-`book-assembler`'s `SKILL.md`, `book-assembler`'s `references/` and
-`assets/`, and every file in `.claude/skills-common/references/`. The
-method is `cmd_overlap`'s: lowercase, keep `[a-z0-9]+` runs as words,
-and compare 8-word shingles, here as the share of this side's 28,527
-shingles found in the source. *Teaching Tech Together* was read from the
-English LaTeX source in its repository (commit `0abb340`, commands
-stripped; 72,644 words), *Lesson Development Training* from its
-repository's episodes and index (commit `2bc8daf`; 26,408 words), and
-"Textbook Outline" from the published page (1,755 words with its page
-navigation). Every source reports **0% at the 8-word threshold**. The
-longest shared run is six words for *Teaching Tech Together* and for
-Wilkes, and both are citations in this section: the repository URL and
-the guide's title. The other two sources share no run longer than five
-words, and those are stock phrases ("at the end of the") or licence
-names.
-
-The element files under `docs/writing-standards/` were cut from this
-file unchanged after these checks ran, so where a check above names
-this file, it covers their text as it stood on the date given.
-
-The genre files under `docs/writing-standards/genres/` and each skill's
-own `references/` were filled in November 2026 by moving prose out of
-the `SKILL.md` files these checks covered. The moved prose is as
-checked. What was written during the move is new and has had no check:
-each step's `Done when` line, the condition on each pointer, and the
-connecting sentences of `genre-steps.md` and `book-steps.md`. No check
-has been rerun since.
+The prose in this file, its layer files, every `SKILL.md` and
+`.claude/skills-common/references/` is written from scratch: what is
+borrowed is the *ideas*, credited above. An 8-word shingle check
+(`chitragupta/review/verbatim_check/_overlap.py`'s `cmd_overlap`) against
+every source above reported **0% overlap** in November 2026; prose
+written since, including the genre files' connecting sentences, has not
+been rechecked.
