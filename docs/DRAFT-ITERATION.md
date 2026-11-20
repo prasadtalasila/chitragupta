@@ -356,8 +356,8 @@ What replaces version control is `python -m chitragupta.draft dossier
 export` and `restore`. Archive paths are relative to `content/`, so a
 bundle restores into a project whose `[content].dir` points elsewhere.
 Restore is a dry run unless `--force`, and an unsafe member refuses the
-whole archive, because a partial restore looks like it worked. A bundle carries neither
-`content/ledger.sqlite` (regenerable by `sync`) nor
+whole archive, because a partial restore looks like it worked. A bundle
+carries neither `content/ledger.sqlite` (regenerable by `sync`) nor
 `papers/bibliography.bib`, which is your reference manager's and not
 this pipeline's to own; on a machine with no corpus the gate cannot
 verify anything until `sync` has run.
