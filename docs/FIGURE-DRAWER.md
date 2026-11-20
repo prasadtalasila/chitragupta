@@ -18,6 +18,7 @@ the skill does and when it runs.
 
 - [What it is, and what it is not](#-what-it-is-and-what-it-is-not)
 - [Three ways it runs](#-three-ways-it-runs)
+- [Correcting a figure on paper](#-correcting-a-figure-on-paper)
 - [What you get](#-what-you-get)
 - [What it does, step by step](#-what-it-does-step-by-step)
 - [The eleven layouts](#-the-eleven-layouts)
@@ -74,6 +75,13 @@ the three study phases.
 On a direct request the genre's threshold does not apply, because you
 asked for the figure. With no draft to put it in, the skill says so and
 stops.
+
+## ✍ Correcting a figure on paper
+
+You can also hand over a photo or a scan in place of words: a printed
+figure corrected with a pen, a figure redrawn by hand, or a sketch of a
+new one. The skill reads your marks back before it changes anything.
+[MANUAL-FIGURE.md](MANUAL-FIGURE.md) has the procedure.
 
 ## 🎯 What you get
 
@@ -178,6 +186,7 @@ sends it there, one copy whichever harness runs it:
 | `figures.md` | choosing a metaphor, panels, fitting without scaling, an annotated exemplar, looking at a source's figures, libraries and compiling, looking at the render |
 | `placement.md` | where the pair goes, a host with no TikZ, a flat draft, a thesis fragment |
 | `check.md` | the fix for each `figure check` finding, and the `cg-allow` form |
+| `markup.md` | a photo or scan of a figure marked up by hand: finding its pair, reading the marks back, editing in place, and working from a sketch |
 
 ## 🔎 Checking a figure
 

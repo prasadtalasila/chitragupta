@@ -37,6 +37,14 @@ sits in `content/drafts/<topic>/figures/`. The caption, the
 fragment: `.claude/skills/figure-drawer/references/placement.md` §1,
 §2, §3 and §4.
 
+## A photo of a marked-up figure
+
+When the person hands you a photo or a scan (a printed figure corrected
+by hand, a figure redrawn by hand, or a sketch of a new one), read
+`.claude/skills/figure-drawer/references/markup.md` §1, §2, §3 and §4
+before step 1. Its read-back (§2) is not done until its rows are in
+chat.
+
 ## The procedure
 
 1. **Look, never copy (optional).** `python -m chitragupta.draft figures

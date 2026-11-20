@@ -76,7 +76,7 @@ BUDGET = {
         "its loop by step number, so every step stays complete inline, and the "
         "rest is commands and tested text (plans/1091-ledger-draft-reviser.md)",
     ),
-    "figure-drawer": (7_000, None),
+    "figure-drawer": (7_500, None),
     "review-digest": (
         17_000,
         "#1091: deduplicated, then the six passages #1173 cut restored; the rest is "
