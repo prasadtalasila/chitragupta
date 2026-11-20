@@ -2,37 +2,28 @@
 
 Status: **reference.**
 
-`python -m chitragupta figure check` measures the parts of this standard
-that geometry, colour and text can decide, and reports each by a rule id
-([figure-checks/README.md](figure-checks/README.md)). It is an aid, not a
-gate: nothing here blocks a draft.
-
 This is the TikZ-specific half of
-[WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10's figure contract:
-that section owns the two-form (TikZ + ASCII) pair, the marker syntax,
-and originality. This document is what makes the TikZ half of the pair
-good, before it is kept.
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10's figure contract. That
+section owns the two-form (TikZ + ASCII) pair, the marker syntax,
+originality, and the ASCII form's 7-bit alphabet and column limit; this
+document is what makes the TikZ half good.
 
 **Written for** the `figure-drawer` skill, which `survey-writer`,
 `tutorial-writer`, `thesis-chapter-writer` and `textbook-chapter-writer`
 hand a figure to, and for anyone drawing one by hand.
 [FIGURE-DRAWER.md](FIGURE-DRAWER.md) says how the skill applies this
-document. `deep-research` does not draw §10 figures at all, so it has no
-reason to link here.
-
-**Not covered here:** the two-form pair contract, the marker syntax and
-originality, all of which stay in
-[WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10; the ASCII form's own
-7-bit alphabet and column limit, also §10.
+document. `deep-research` does not draw §10 figures. The parts of this
+standard that geometry, colour and text can decide are measured by
+`python -m chitragupta figure check`
+([figure-checks/README.md](figure-checks/README.md)), an aid that blocks
+nothing.
 
 ## 🏗 Commit to a layout metaphor before you draw
 
-TikZ figures out of this pipeline sprawl when nothing asks for a plan
-before the first `\node`: boxes placed near other boxes, arrows added
-as needed. Committing to one metaphor before placing a node turns
-"place these nine things" into a constrained problem, which deals
-with sprawl at its source. Each metaphor
-maps onto a TikZ idiom to use:
+TikZ figures sprawl when nothing asks for a plan before the first
+`\node`. Committing to one metaphor first turns "place these nine
+things" into a constrained problem. Each metaphor maps onto a TikZ
+idiom:
 
 | Metaphor | TikZ idiom |
 | --- | --- |
@@ -53,61 +44,37 @@ copied;
 [INSPIRATION.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md)
 carries the credit.)
 
-**The zoned spine** is one left-to-right path that carries the argument,
-with each zone card a tinted region behind a group of members and its
-title outside the card's top-left corner. Reach for it when the figure
-has one storyline and several parallel commentaries on points along it.
-The card is a `fit` node drawn `on background layer`, so it never paints
-over a member and re-wording a member widens the card instead of
-escaping it. If nothing comments on the path, it is a pipeline.
+The last four rows need a word each; each layout's reference file
+(below) has the detail.
 
-**The comparison** is two lettered panels side by side, made of the
-same parts, with each part on the same row as its match. Reach for it
-for a before and an after, or two approaches to one job, where the point
-is the part that differs: that part is the `cgkey`, and a part one side
-lacks keeps its row as `cgnone`. Panel (b)'s first part sets its
-column, and every other part is placed `at (<column> |- <match>)`
-rather than beside or below a neighbour, so re-wording a part cannot
-move it off its match's row. Nothing is drawn
-between the panels; if the two sides share a pair of named axes instead,
-it is a map.
-
-**The sequence** is parties side by side with time running down the
-page, and messages passing between them. Reach for it for a protocol, a
-handshake or a request and its replies, where the order of the
-exchanges is the claim. Each party hangs a lifeline: a thin, undrawn
-node with a dotted line down its middle, so every message is a
-connector between two lifelines that `figure check` measures. Each
-message is level, drawn at a named moment (`(a-l.east |- t1) --
-(b-l.west |- t1)`), and a reply is dashed. `c4-attach` and `c5-transit`
-are not evaluated for it (see below). If each party only hands work on
-to the next and nothing comes back, it is a pipeline.
-
-**The timeline** is one time axis with each event a thin tick at its
-own fraction of it, `($(t0)!<f>!(tend.west)$)`, so a gap on the page is
-a gap in time. Reach for it when when things happen, and how far apart,
-is the claim: an incident, a simulation clock, a release history. The
-axis is drawn tick to tick, so each piece is a connector and no rule is
-waived; a single line under the ticks would cross every one. Labels
-hang below their ticks turned to read bottom to top (`rotate=90,
-anchor=east`), and an era is a card fitted between two times in a band
-below, its title level and inside it. The one event the figure is
-about takes `cgfocus`, an accented tick, since a tick cannot take the
-`cgkey` card. If only the order matters, it is a pipeline.
+- **Zoned spine:** one storyline, with zone cards (a `fit` node drawn
+  `on background layer`, titled outside its top-left corner) for the
+  commentaries along it. If nothing comments on the path, it is a
+  pipeline.
+- **Comparison:** a before and an after, or two approaches to one job,
+  in two lettered panels of the same parts. The part that differs is the
+  `cgkey`; a part one side lacks keeps its row as `cgnone`; panel (b)'s
+  parts are placed `at (<column> |- <match>)` so each stays on its
+  match's row.
+- **Sequence:** parties side by side, time running down, each hanging a
+  thin undrawn lifeline so every message is a measurable connector. A
+  message is level at a named moment
+  (`(a-l.east |- t1) -- (b-l.west |- t1)`) and a reply is dashed;
+  `c4-attach` and `c5-transit` are not evaluated for it.
+- **Timeline:** each event a tick at its own fraction of one axis,
+  `($(t0)!<f>!(tend.west)$)`, so a gap on the page is a gap in time.
+  The event the figure is about takes `cgfocus`. If only the order
+  matters, it is a pipeline.
 
 **There is a starting file for every row of that table, in
-`assets/tikz/`.** One per metaphor, named for it, each compiling on its
-own and each reporting no finding from
-`python -m chitragupta figure check`. Copy the one whose metaphor fits
-and re-label it; the choice above exists to hand you a file rather than
-a blank `tikzpicture`. `assets/` is copied into a
-project by `chitragupta init`, so they are already beside a scaffolded
-draft and there is nothing to download. `assets/tikz/README.md` says
-what each one is for.
+`assets/tikz/`**, each compiling on its own with no `figure check`
+finding. Copy the one whose metaphor fits and re-label it.
+`chitragupta init` copies `assets/` into a project, and
+`assets/tikz/README.md` says what each file is for.
 
 **Choose the pattern before the layout.** What a figure argues (a
-bottleneck, a lifecycle, a trust boundary, a comparison) is not the same
-choice as how it is laid out, and several patterns share one layout.
+bottleneck, a lifecycle, a trust boundary, a comparison) is a different
+choice from how it is laid out, and several patterns share one layout.
 The `figure-drawer` skill's
 `.claude/skills/figure-drawer/references/patterns.md` routes a pattern
 to the nearest layout, and each layout has one reference file,
@@ -116,37 +83,22 @@ layout's name as its scaffold spells it), with its anti-patterns and the
 reference ranges measured from its scaffold and exemplars.
 A new pattern never adds a layout; only a new way of placing nodes does.
 
-**Every scaffold places its nodes relative to one another, and none of
-them places a node at a coordinate in millimetres.** That is the property
-to keep when you edit one. A figure laid out in hand-computed absolute
-millimetres cannot express "do not collide": re-wording one label, or
-setting the figure at a different type size, re-opens every adjacency in
-the picture at once and each of them has to be re-checked by eye.
-Relative placement and `fit` layers make most of those collisions
-impossible, not merely detectable.
+**Every scaffold places its nodes relative to one another, never at a
+coordinate in millimetres.** Keep that when you edit one. In
+hand-computed millimetres, re-wording one label or changing the type
+size re-opens every adjacency at once; relative placement and `fit`
+layers make most collisions impossible. Inside a `pic` definition,
+explicit millimetre coordinates are correct: a `pic` is a fixed object
+whose geometry does not reflow, whether drawn by hand or generated.
 
-**The millimetre rule governs composition, not objects.** Every node in
-a figure is placed relative to another node, and that does not change.
-Inside a `pic` definition, explicit millimetre coordinates are correct
-and expected: a `pic` is a fixed object drawn once, whose internal
-geometry does not reflow when a sibling's label changes. The boundary
-is the `pic`, not the authoring method: a shape generated by a
-derivation gets the same carve-out as a hand-drawn one. Hand-placing a
-whole figure is still the defect the rule exists to prevent.
-
-**Name every node you draw**, in whichever idiom. A finding names a
-node by its `(name)`; an unnamed node is shown only by its centre in
-millimetres, which is hard to find in the source. A picture that names
-no node at all is reported as `nothing-measurable`. Both spellings
-count: `\node (a)` and `child { node (a) ... }`. That includes the well
-a `pic` is drawn into: draw a `pic` only `at` a named `cgwell` (see
-[House shapes](#-house-shapes-and-the-well-they-sit-in)).
-
-The `tree` idiom has one cost that is not visible in the output:
-`child` draws its edges internally rather than as `\draw` statements, so
-the edge list and the `budget-edges` count are empty for such a figure,
-even though the connector rules still measure the lines it drew.
-Confirm a tree's wiring from the source's own nesting.
+**Name every node you draw.** A finding names a node by its `(name)`;
+an unnamed one is shown only by its centre in millimetres. A picture
+that names no node is reported as `nothing-measurable`. `\node (a)` and
+`child { node (a) ... }` both count, and so does the `cgwell` a `pic` is
+drawn into ([House shapes](#-house-shapes-and-the-well-they-sit-in)).
+The `tree` idiom draws its edges internally, so the edge list and the
+`budget-edges` count are empty for it; confirm a tree's wiring from the
+source's nesting.
 
 **Every idiom in that table needs a `\usetikzlibrary` line, and the
 figure file carries it at the top, above the `tikzpicture`:**
@@ -156,17 +108,13 @@ figure file carries it at the top, above the `tikzpicture`:**
 \begin{tikzpicture}[thick,x=1mm,y=1mm]
 ```
 
-**The renderer collects those lines and loads the union in the preamble**
-(`chitragupta/render_output/_tikz_libraries.py`, #781), so by the time
-your figure is `\input` the library is already there and your own line is
-a no-op. Keep the line anyway: it is what lets the same file compile in
-the two documents this pipeline does not write, which are
-`thesis-chapter-writer`'s fragment inside a user's own thesis and the
-minimal probe document [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10
-tells you to build around one figure. Without any load at all, a picture
-that reaches for `below=4mm of store` does not fall back; it fails the
-whole render with a message that names neither the library nor the
-figure:
+The renderer collects those lines and loads their union in the preamble
+(`chitragupta/render_output/_tikz_libraries.py`), so your own line is a
+no-op there. Keep it anyway: it lets the same file compile inside a
+user's own thesis (`thesis-chapter-writer`'s fragment) and in the
+minimal probe document §10 tells you to build. Without any load, a
+picture using `below=4mm of store` fails the whole render with a message
+that names neither the library nor the figure:
 
 ```text
 ! Package PGF Math Error: Unknown operator `o' or `of' (in '4mm of a').
@@ -174,134 +122,87 @@ figure:
 
 **Write nothing else about loading.** No clearing of
 `\tikz@library@<name>@loaded`, no saving or restoring of
-`\tikz@node@reset@hook`, no `\ifdefined` guard around the load. Those
-workarounds are themselves the bug. `\usetikzlibrary` is legal in the
-document body, but a figure file is `\input` *inside a `figure` float*,
-and a float is a group: the load defines the library's macros
-**locally** while setting the loaded flag **globally**, so the next
-float skips the load and finds no macros. Clearing the flag to force a
-reload is worse: `positioning` appends its placement transform to a
-**global** hook on every load, so the Nth figure shifts every node N
-times. Measured on a three-float document: 71.26pt, then 128.17pt, then
-185.07pt, with `pdflatex` exiting 0 and nothing but `Overfull \hbox` in
-the log. That is how figures that fit in their single-chapter PDF
-spilled off the page of this project's own assembled book. `figure
-check` reports one as [`loads-library-by-hand`](figure-checks/BUILD.md).
+`\tikz@node@reset@hook`, no `\ifdefined` guard. A figure file is
+`\input` inside a `figure` float, which is a group: the load defines the
+library's macros locally but sets the loaded flag globally, and clearing
+the flag to force a reload appends `positioning`'s transform to a global
+hook again, so the Nth figure shifts every node N times while `pdflatex`
+exits 0. `figure check` reports one as
+[`loads-library-by-hand`](figure-checks/BUILD.md).
 
-**A load while TeX is setting a line prints as blank width.**
-A library file's own line ends are spaces. Load it where the figure is
-set in a box (`\sbox`, `\hbox`, `\resizebox`), inline in running text,
-or as the body of a `standalone` preview, which boxes its content, and
-those spaces become glue ahead of the picture: 135pt for the house
-line on the render's page (12pt, LuaLaTeX), about 30% of its 453pt text
-width, and 147pt with `matrix` or `trees` added. Loaded in the
-preamble, the same spaces fall in vertical mode and are dropped. So is
-a load at the top of a `figure` float, which is why the renderer's
-figures never show it. Ending the figure's line
-with `%` or `\ignorespaces` does not help, since the spaces come from
-inside the library files. The fix is the same hoist: a document that
-sets a figure in a box loads the figure's libraries in its preamble,
-as the documents `figure check` and `figure look` compile do.
-`tests/test_figure_stray_width.py` pins the in-box half on every
-scaffold, and `figure check`'s [`size-stray`](figure-checks/SIZE.md)
-the preloaded one.
+**A load while TeX is setting a line prints as blank width.** Inside a
+box (`\sbox`, `\hbox`, `\resizebox`), inline in text, or in a
+`standalone` preview, the library files' line ends become 135pt to 147pt
+of glue ahead of the picture, so a document that sets a figure in a box
+loads its libraries in the preamble
+([`size-stray`](figure-checks/SIZE.md)).
 
 Before you reach for a library:
 
 - **A missing name takes the whole call down.** `\usetikzlibrary{}` fails
-  fatally on the comma list rather than skipping the name it cannot
-  resolve, so one typo reads exactly like several missing packages. Probe
-  a library by compiling a two-line document that loads it, **not**
-  with `kpsewhich tikzlibrary<name>.code.tex`, which only sees
-  tikz-layer files and so misses every pgf-layer library (`arrows.meta`
-  is `pgflibraryarrows.meta.code.tex`, and resolves fine).
+  fatally on the comma list, so one typo reads like several missing
+  packages. Probe a library by compiling a two-line document that loads
+  it, **not** with `kpsewhich`, which misses every pgf-layer library
+  such as `arrows.meta`.
 - **`shapes.geometric`, not `shapes.geometry`.** The second is not a PGF
   library at all.
 
-`texlive-pictures`, which `scripts/install_full_pipeline.sh` already
-installs, ships all of these; there is no extra package to add for any
-of them.
+`texlive-pictures`, which `scripts/install_full_pipeline.sh` installs,
+ships all of these.
 
 ## 🔠 Panels in one figure, and the letters they need
 
-A figure that shows the same thing under two or three conditions is one
-figure with panels, not two or three figures. **However many panels it
-has, it stays one figure, one `figure:` marker and one `.tex`/`.txt`
-pair**. One marker per panel would give you separate floats with
-separate numbers, which is a row of figures rather than a panelled one.
-Nothing here is specific to two: letter as far as the figure goes.
+A figure that shows the same thing under two or more conditions is one
+figure with panels. **However many panels it has, it stays one figure,
+one `figure:` marker and one `.tex`/`.txt` pair**; one marker per panel
+would give separate floats with separate numbers.
 
 **Every panel carries a label node reading `(<letter>) <short title>`,
-and the letter is the panel's position in reading order**: `(a)` for
-the first panel, `(b)` for the second, `(c)` for the third, and on
-through the alphabet. Reading order is left to right, then top to
-bottom, so it is the panel's *place in the picture* that decides its
-letter, not the order you happened to draw the nodes in: move a panel
-and its letter moves with the position, not with the panel. Draw the
-label as an ordinary node under the panel it names; a panel with a bold
-title and no letter cannot be pointed at from the prose, which is what
-the letter is for. Prose then refers to `Figure~\ref{fig:x}(b)` for the
-second panel, with the letter typed, since these letters are drawn
-rather than counted by LaTeX.
+and the letter is the panel's position in reading order**: left to
+right, then top to bottom, so moving a panel moves its letter with the
+position. Draw the label as an ordinary node under the panel it names.
+Prose refers to `Figure~\ref{fig:x}(b)`, with the letter typed, since
+these letters are drawn rather than counted by LaTeX.
 
-**Put the same letters in the ASCII twin.** Every format except
-`tex`/`pdf` (`md`, `html` and `docx` alike) renders the `.txt` and
-never sees the picture, so for three of the five formats the ASCII form
-is the only place the sub-captions exist. Letter it by taking the four
-columns from the gap to the *left* of each title rather than by
-inserting them, or every title after the first slides off the panel it
-labels; the letters then overhang their panels by four columns, which
-is the intended look and keeps §10's ~70-column cap intact.
+**Put the same letters in the ASCII twin.** `md`, `html` and `docx`
+render only the `.txt`, so for three of the five formats it is the only
+place the sub-captions exist. Take the four columns for each letter from
+the gap to the *left* of its title rather than inserting them, or every
+later title slides off its panel; the letters then overhang by four
+columns and §10's ~70-column cap holds.
 
 **When a row stops fitting, wrap into another row; never scale the
 picture.** Three panels of about 48mm each overflow an ordinary text
-block by 71.8pt, and pdflatex only *warns*: `Overfull \hbox`, in a log
-nobody reads, with the figure in the margin. Four of the same
-panels as a 2x2 grid fit with no warning at all. Reaching for
-`\resizebox` or `scale=` instead would shrink the node text below the
-document's own size, which "Type and line weight" below forbids for
-exactly this reason.
+block, and pdflatex only warns. Four of the same panels as a 2x2 grid
+fit. `\resizebox` or `scale=` would shrink the text below the body size
+("Type and line weight" below).
 
 **Where the figure is captioned, write the caption in the draft, not in
-the figure file.** A Markdown draft writes its caption directly below
-the `figure:` marker (WRITING-STANDARDS.md §10), and the renderer, not
-the figure file, wraps the marker in a `figure` float with
-`\caption`/`\label`, so LaTeX's own counter numbers it. The figure file
-itself stays a bare `tikzpicture` fragment, same shape as
-`assets/tikz/`'s own scaffolds, and copying one does not include
-wrapping it in a float by hand.
+the figure file.** A Markdown draft writes its caption below the
+`figure:` marker (WRITING-STANDARDS.md §10), and the renderer wraps the
+marker in a `figure` float with `\caption`/`\label`. The figure file
+stays a bare `tikzpicture` fragment, like the scaffolds.
+`thesis-chapter-writer`'s `.tex` fragment has no marker, so it writes
+its own `\begin{figure}...\caption{}...\label{fig:<id>}...\end{figure}`
+around the `\input`, and never `\renewcommand{\thefigure}{N.M}`: the
+counter is what keeps `\ref` in step with the thesis's own numbering.
 
-`thesis-chapter-writer`'s `.tex` fragment is the exception, because
-it carries no marker for the renderer to wrap: it hand-authors its own
-`\begin{figure}...\caption{}...\label{fig:<id>}...\end{figure}` around
-the inline `\input`. The one change there too: never write
-`\renewcommand{\thefigure}{N.M}`. The `figure` counter it would override
-is exactly what makes `\ref` agree with the consuming thesis's own
-numbering; a hand-typed number is wrong the moment that thesis renumbers
-a chapter.
-
-**Do not reach for `subcaption`, `subfig` or `subfigure`.** The package
-is installed on a typical TeX stack, so this is a choice rather than a
-limit. `\usetikzlibrary` is legal in the document body and
-`\usepackage` is not (`! LaTeX Error: Can be used only in preamble.`),
-so a figure file can load its own TikZ library but never its own
-package, and the preamble that would have to load it is not always
-ours. `thesis-chapter-writer`'s fragment is `\input` into the user's own
-thesis, whose preamble we never see, so a figure needing `subcaption`
-compiles here and fails there. Drawn letters work in every genre and
-change no preamble. The whole cost is `\subref` and automatic "Figure 1a"
-numbering, which is one typed letter per reference.
+**Do not reach for `subcaption`, `subfig` or `subfigure`.** A figure
+file can load a TikZ library in the document body but never a package
+(`! LaTeX Error: Can be used only in preamble.`), and
+`thesis-chapter-writer`'s fragment goes into a preamble we never see, so
+a figure needing `subcaption` compiles here and fails there. Drawn
+letters work in every genre; the cost is `\subref` and automatic
+"Figure 1a" numbering.
 
 **Record the convention, don't re-decide it.** Which letters a venue
-wants (`(a)`, `(i)`, `A`, or titles alone) is a house-style decision
-in [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §8's sense, and belongs
-in the dossier's `scope.md` beside the dialect. `draft-reviser` reads
-that file before every edit; a convention agreed in chat is gone by the
-next session.
+wants (`(a)`, `(i)`, `A`, or titles alone) is a house-style decision in
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md) §8's sense, and belongs in
+the dossier's `scope.md`, which `draft-reviser` reads before every edit.
 
-A three-panel figure, relative placement throughout, verified on this
-host: it compiles, every node it names comes back measured, and
-`figure check` reports no overlap and no connector finding:
+A three-panel figure, relative placement throughout. It compiles, every
+node it names comes back measured, and `figure check` reports no
+overlap and no connector finding:
 
 ```latex
 \usetikzlibrary{positioning,fit}
@@ -333,136 +234,77 @@ host: it compiles, every node it names comes back measured, and
 \end{figure}
 ```
 
-`tests/test_tikz_subcaptions.py` reads that example out of this file and
-compiles it, so it cannot drift into something that no longer works.
-The empty `fit` nodes are what give each panel an extent to hang its
-label under; they are grouping boxes, which `figure check` excludes
-from its overlap check by design, and any other way of finding the same
-point is equally fine. What the rule asks for is the label and its
-letter.
+`tests/test_tikz_subcaptions.py` compiles that example out of this file.
+The empty `fit` nodes give each panel an extent to hang its label under;
+`figure check` excludes such grouping boxes from its overlap check, and
+any other way of finding the same point is fine.
 
 ## ✅ Check the drawn figure against this list
 
-Concrete defects, not taste. Where `figure check` reports an item, the
-item links to the page that explains its rule.
+Concrete defects, not taste. Each rule `figure check` measures is
+explained, with a faulty and a fixed figure, on the page linked.
 
-- **Occlusion and overlap:** no two nodes' boxes intersect
-  ([`node-overlap`](figure-checks/NODES.md)).
-- **A `fill` erases everything under it, not just the line you aimed
-  it at.** Filling a label white and drawing it last is the standard
-  way to make a line break at the text instead of striking through it,
-  and it works, but the fill is a rectangle the height of the whole
-  node and the width of the whole label, and it paints out every
-  arrowhead, border and rule that rectangle happens to cover. A one-line
-  label 139mm wide, filled to interrupt one vertical arrow at *x*=24,
-  also deleted an arrowhead and the top edge of a box at *x*=70: the
-  edge rendered as a stub going nowhere and the box as three sides. Ask
-  what else is in the band before reaching for `fill=white`, and note
-  that shrinking the band rarely rescues it: `inner ysep=0pt` bought
-  0.06mm in that case, and breaking the label over two lines makes the
-  band *taller*, not narrower.
+- **Occlusion and overlap** ([`node-overlap`](figure-checks/NODES.md)).
+- **A `fill` erases everything under it.** A label filled white to break
+  a line paints out every arrowhead, border and rule its whole rectangle
+  covers, not just the line you aimed at. Ask what else is in the band
+  before reaching for `fill=white`.
 - **One arrow is one `\draw`.** Two colinear segments that meet, each
-  carrying `->`, render as an arrowhead where they join as well as at
-  the end, a second head pointing at nothing in the middle of the
-  line. If a line needs to be built in pieces, put the `->` on the last
-  piece only. This one *is* mechanically checked, where the pieces meet
-  at a bare coordinate: chaining head-to-tail through a **named** node
-  is how a pipeline is normally drawn and is not a defect, because TikZ
-  clips each path at the node's boundary so the head points at the node
-  rather than at empty space
+  carrying `->`, leave a second head pointing at nothing where they join;
+  put the `->` on the last piece only. Chaining through a **named** node
+  is fine, because TikZ clips each path at the node
   ([`stranded-arrowhead`](figure-checks/NODES.md)).
-- **Chaotic routing:** arrows should not cross unnecessarily or form
-  spaghetti loops. The parts of this that geometry decides are the
-  connector rules `c1` to `c7`
-  ([connectors](figure-checks/CONNECTORS.md)): slanted lines, a tag on
-  its line, lines that share a stretch, an off-centre attach point, a
-  line through a box, a covered tag and an arrow that lands on nothing.
-  Whether the routing as a whole reads clearly stays a human judgement.
-- **Illegible or inconsistent type, and low contrast:** one font size
-  per role, held consistent across every node in the figure. See "Type
-  and line weight" below for what size that should be. Text below the
-  body size, and lines or words too pale for their ground, are reported
+- **Chaotic routing.** The geometric parts are the connector rules `c1`
+  to `c7` ([connectors](figure-checks/CONNECTORS.md)); whether the
+  routing as a whole reads clearly stays a human judgement.
+- **Illegible or inconsistent type, and low contrast**: one size per
+  role, held across the figure
   ([colour and type](figure-checks/COLOUR-AND-TYPE.md)).
-- **Inefficient non-rectangular composition:** LaTeX treats a figure
-  as a rectangular box, so anything protruding above the main block
-  forces the surrounding text to wrap around the highest point, wasting
-  vertical space. Keep the picture's bounding box close to the union of
-  its node boxes ([`content-protrusion`](figure-checks/SIZE.md)).
-- **Conciseness:** a node whose text runs past 15 words is too long
-  for a box; cut it or split the node. Shrinking the font to fit more
-  words in is not a fix (see "Type and line weight" below)
+- **Inefficient non-rectangular composition.** LaTeX treats a figure as
+  a rectangle, so anything protruding above the main block wastes
+  vertical space ([`content-protrusion`](figure-checks/SIZE.md)).
+- **Conciseness:** a node whose text runs past 15 words is too long for
+  a box; cut it or split the node, never shrink the font
   ([`node-text-overload`](figure-checks/NODES.md)).
-- **The figure's main point resting on colour alone.** Colour is
-  house-standard here and carries meaning freely (see "The house
-  palette" below). What it may not do is carry the *whole* point on its
-  own, because two readers get none of it: the ASCII twin is 7-bit, and
-  `md`, `docx` and `html` render only that form; and a black-and-white
-  print greyscales the TikZ form, where `cgFlow` and `cgAlt` land at
-  similar lightness. Position, arrow direction and node labels should
-  still deliver the argument; colour should make it fast. The test is
-  quick: read the `.txt` twin and ask whether the point still arrives.
-  A *secondary* distinction living only in colour is fine and expected.
-- **Literal copying:** a box-ified copy-paste of prose, with no
-  visual abstraction, is not a figure. This is
-  [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10's originality rule
-  applied to figures, and it matters more than it looks: a figure
-  can launder borrowed wording past every detector in
-  [PLAGIARISM.md](PLAGIARISM.md), because a citekey is already kept out
-  of figure files and the gate does not follow `\input`.
+- **The main point resting on colour alone.** Colour may carry meaning,
+  but the ASCII twin (all that `md`, `docx` and `html` render) and a
+  black-and-white print get none of it, and `cgFlow` and `cgAlt` grey to
+  similar lightness. Position, arrow direction and labels should deliver
+  the argument; colour should make it fast. Read the `.txt` twin and ask
+  whether the point still arrives. A secondary distinction in colour
+  alone is fine.
+- **Literal copying:** a box-ified copy of prose is not a figure. This
+  is §10's originality rule, and it matters because a figure can launder
+  borrowed wording past every detector in [PLAGIARISM.md](PLAGIARISM.md):
+  the gate does not follow `\input`.
 
 ## 🔤 Type and line weight
 
-Two conventions, both about a figure looking like a native part of the
-document rather than something pasted in:
-
-- **Every word in a figure is set at the document's body size.** Nothing
-  in a picture is smaller than the paragraph beside it, and nothing is
-  larger either: node names and zone titles are told apart from glosses,
-  tags and notes by weight and colour (bold names, muted glosses), not
-  by size. Set the size explicitly as a picture option
-  (`\begin{tikzpicture}[cg]` does it), rather than inheriting it, so a
-  picture that lands inside a float, a table cell or a `\small` group
-  does not quietly drop below it. Names and titles are not set a step
-  up: at `\large\bfseries` a figure reads louder than the text around
-  it, and a zone title grows past its zone into the next one.
-  `figure check` reports text below the body size as
+- **Every word in a figure is set at the document's body size**, never
+  smaller and never larger. Names and zone titles are told apart from
+  glosses and tags by weight and colour (bold names, muted glosses), not
+  by size. Set the size as a picture option (`\begin{tikzpicture}[cg]`
+  does it) so a float, table cell or `\small` group cannot lower it.
+  Shrinking type is never the fix for a box with too many words. The two
+  exceptions are TeX's own script-style sub- and superscripts and the
+  document's `\caption`. `tests/test_tikz_scaffolds.py` holds every file
+  in `assets/tikz/` to this by reading each glyph's printed size out of
+  the compiled PDF. `figure check` reports text below the body size as
   [`type-below-floor`](figure-checks/COLOUR-AND-TYPE.md).
-
-  Shrinking type is never the fix for a box with too many words in it:
-  that is the conciseness defect, and the fixes are fewer words or a
-  wider box.
-  Two exceptions, both automatic and both correct: a mathematical
-  subscript or superscript set by TeX's own script style, and the
-  `\caption`, which is the document's, not the figure's.
-  `tests/test_tikz_scaffolds.py` holds every file in `assets/tikz/` to
-  this by reading each glyph's printed size back out of the compiled
-  PDF, not by reading the source, because the size that breaks it
-  usually arrives from somewhere the figure file cannot see.
-- **Lines are distinctly thicker than TikZ's own default.**
-  `\pgflinewidth` defaults to 0.4pt, TikZ's `thin` key (verified with
-  `\typeout{\the\pgflinewidth}` on this host). Draw node borders and
-  arrows at `thick` (0.8pt, double the default, same probe) instead;
-  a figure left at the bare default reads as faint next to a document's
-  normal text weight. Set it as a picture option, not a restated style:
-  `\begin{tikzpicture}[thick]`, which the house block's `[cg]` already
-  includes. **Do not** reach for
-  `\tikzset{every node/.style={thick}}` to do this: `/.style=`
-  *replaces* whatever `every node` already held, so a figure with its
-  own node style (`draw`, `circle`, a fill colour) silently loses all of
-  it the moment this line runs after that one. Verified on this host: a
-  circular node's bounding box, forced through exactly that sequence,
-  came out identical to a plain undecorated node's; the circle and the
-  border were both gone. `\begin{tikzpicture}[thick]` cannot clobber
-  anything, because it never touches `every node` at all.
+- **Lines are drawn `thick`** (0.8pt, double TikZ's 0.4pt default), set
+  as a picture option, which the house block's `[cg]` includes. **Do
+  not** write `\tikzset{every node/.style={thick}}`: `/.style=`
+  *replaces* whatever `every node` held, so a figure's own node style
+  (`draw`, `circle`, a fill) silently vanishes.
 
 ## 🎨 The house palette
 
 **Figures here are in colour, and they use one palette.** Five named
-colours with a role each, and four more that a zoned figure needs. A
-figure that invents its own hues reads as imported from somewhere else,
-which a house palette exists to prevent. `figure check` reports one as
-`colour-off-palette`, and a card filled outside the band below as
-`tint-outside-band` ([colour and type](figure-checks/COLOUR-AND-TYPE.md)).
+colours with a role each, and four more that a zoned figure needs.
+`figure check` reports an invented hue as `colour-off-palette`, and a
+card filled outside the band below as `tint-outside-band`
+([colour and type](figure-checks/COLOUR-AND-TYPE.md), which also lists
+the fill, line and text name for each hue).
 
 ```latex
 \definecolor{cgInk}{HTML}{1A1A1A}     % borders, labels, default strokes
@@ -477,41 +319,28 @@ which a house palette exists to prevent. `figure check` reports one as
 ```
 
 (Inside `assets/tikz/cg-figstyle.tex` each of these lines ends its
-`}` with a `%`, so the block sets no stray space; see "The house figure
-style" below.)
-
-**`cgWarm` and `cgRose` are one hue per zone.** They are Okabe-Ito's
-remaining qualitative members, so the extension is the same palette
-rather than a second one: a zoned figure needs one hue per zone, and five
-roles do not stretch to six zones without reusing one, which reads as a
-claim the figure is not making. **`cgMute` is a *named* grey** because
-the house styles take a colour as an argument and paste it into a tint
-(`fill=#1!11`): `cgInk!55` passed in becomes `cgInk!55!11`, which xcolor
-rejects with "Undefined color". Every role that needs muted ink
-therefore needs a name. `cgPaper` is the card ground, one step off white
-for the same reason `cgInk` is not black.
+`}` with a `%`, so the block sets no stray space.)
 
 The values are Okabe-Ito's colourblind-safe qualitative set (Okabe &
-Ito, 2008), the usual choice for this purpose, and it costs nothing to
-adopt. `cgInk` is a near-black rather than `black`, because a pure
-black border next to body text set in the same ink reads heavier than
-the text does.
+Ito, 2008). `cgWarm` and `cgRose` are its remaining members, one hue per
+zone, so a zoned figure need not reuse a role colour. `cgInk` is a
+near-black because pure black reads heavier than body text, and
+`cgPaper` is one step off white for the same reason. **`cgMute` is a
+*named* grey** because the house styles paste a colour argument into a
+tint (`fill=#1!11`), and `cgInk!55!11` is rejected by xcolor.
 
 **Each colour has a role.** Use `cgAccent` for one thing per figure: if
 two things are accented, neither is. `cgFlow` carries the spine; `cgAux`
-is for what happens off to the side, usually dashed as well as coloured.
-`cgAlt` exists so a figure with two node classes does not have to reach
-outside the palette.
+is for what happens off to the side, usually dashed as well; `cgAlt` is
+a second node class.
 
 **A palette name fills; a `Line` or `Text` name draws.** `fill=cgFlow!8`
-is a zone wash that text still reads through; `fill=cgFlow` is a block of
-solid blue with your label lost inside it. Between 6 and 12 is the band
-the house block's cards and zones use. Strokes and coloured text do not
-take the palette colour at all, because several hues are too light to be
-seen as a line on their own tint (`cgWarm` on `cgWarm!12` is 1.9:1,
-where WCAG 2 asks 3:1 of a line) and none but `cgFlow` reaches the
-4.5:1 that text needs. So each hue, and `cgMute`, has two darker shades
-mixed towards `cgInk`:
+is a wash text reads through; `fill=cgFlow` is solid blue. Between 6 and
+12 is the band the house block's cards and zones use. Strokes and
+coloured text take a darker shade, because several hues are too light as
+a line on their own tint (`cgWarm` on `cgWarm!12` is 1.9:1, where WCAG 2
+asks 3:1) and only `cgFlow` reaches the 4.5:1 text needs. Each hue, and
+`cgMute`, has two shades mixed towards `cgInk`:
 
 | Hue | Border, edge, rule | Coloured text |
 | --- | --- | --- |
@@ -523,39 +352,30 @@ mixed towards `cgInk`:
 | `cgRose` | `cgRoseLine` (90%) | `cgRoseText` (65%) |
 | `cgMute` | `cgMuteLine` (95%) | `cgMuteText` (70%) |
 
-Each percentage is the share of the hue in the mix, and is the largest
-multiple of 5 that clears the threshold over white, `cgPaper` and every
-tint the block fills with, of any hue, since an edge can cross another
-zone. `tests/test_figure_contrast.py` recomputes every one from the hex
-values above, and fails a stroke or label in the block or a scaffold that
-draws in a bare palette name. Every house style already draws this way,
-so the rule only binds what you write yourself: `draw=cgAltLine`, not
-`draw=cgAlt`; `text=cgAccentText`, not `text=cgAccent`. A style that
+Each percentage is the hue's share of the mix: the largest multiple of 5
+that clears the threshold over white, `cgPaper` and every tint the block
+fills with, since an edge can cross another zone.
+`tests/test_figure_contrast.py` recomputes them from the hex values
+above. Every house style already draws this way, so the rule binds only
+what you write yourself: `draw=cgAltLine`, not `draw=cgAlt`. A style that
 takes a colour argument (`cgzone=cgAlt`) takes the palette name and
 finds the shade itself.
 
 ### 📎 The palette travels inside the figure
 
-**The palette travels as part of the house block** (next section), which
-every figure carries whole. Not in a
-shared file the figure `\input`s, and not in a preamble: the
-renderer injects `\usepackage{tikz}` and nothing else, and
-`thesis-chapter-writer`'s fragment is `\input` directly into the user's
-own thesis, which has never heard of this project. A figure that depends
-on a colour defined elsewhere compiles here and fails there, which is
-the worst of the two orders to fail in.
-
-This is the same discipline the `\usetikzlibrary` line already follows,
-for the same reason, and it means the definitions are duplicated across
-figures on purpose. The eleven scaffolds in `assets/tikz/` all carry the
-block, so copying one gets it for free.
+**The palette travels as part of the house block** (next section),
+which every figure carries whole, never in a shared file or a preamble.
+The renderer injects `\usepackage{tikz}` and nothing else, and
+`thesis-chapter-writer`'s fragment is `\input` into a thesis that has
+never heard of this project, so a colour defined elsewhere compiles here
+and fails there. The duplication across figures is deliberate; the
+eleven scaffolds in `assets/tikz/` all carry the block.
 
 ### 🧱 The house figure style
 
-`assets/tikz/cg-figstyle.tex` is the palette grown into the rest of the
-vocabulary a figure needs to look drawn rather than assembled, so a
-figure stops re-deciding corner radius, rule weight, tint depth,
-arrowhead and label structure from nothing each time:
+`assets/tikz/cg-figstyle.tex` grows the palette into the rest of the
+vocabulary a figure needs, so a figure stops re-deciding corner radius,
+rule weight, tint depth, arrowhead and label structure each time:
 
 | Group | Keys |
 | --- | --- |
@@ -576,22 +396,17 @@ It also defines five house `pic`s, each drawn into a `cgwell`; see
 [House shapes](#-house-shapes-and-the-well-they-sit-in).
 
 **Its spacing is compact by default.** Two members of one zone sit 6mm
-apart, which `cg`'s `node distance` gives you for `right=of`. Two zones
-sit 8mm apart card to card, which is 14mm member to member once each
-card's 3mm inner sep is counted; say that distance where a placement
-crosses zones. Stacked zones need the lower card's title in the gap as
-well, about 5mm more (`assets/tikz/layered-stack.tex` works the sum).
-The type is not part of this: the floor in "Type and line weight" above
-is what stops a compact figure becoming a squashed one.
+apart (`cg`'s `node distance`). Two zones sit 8mm apart card to card,
+14mm member to member once each card's 3mm inner sep is counted; say
+that distance where a placement crosses zones. Stacked zones need about
+5mm more for the lower card's title (`assets/tikz/layered-stack.tex`
+works the sum).
 
 **An edge tag sits beside its line.** `cgtag` is unfilled and placed
-with `auto`, on the left of the direction of travel, 1.5mm off the
-segment's centre (about 1.35mm clear of the house stroke); add `swap`
-to put it on the right. A tag filled over its line breaks the line
-exactly where the eye is following it. At 1mm a tag's glyphs read as
-touching the stroke at print size (#1113). Set it beside the shaft, not
-beside the arrowhead, which is 2.1mm wide: `figure check`'s
-`c2-tag-clearance` measures from the head's outline too.
+with `auto`, left of the direction of travel, 1.5mm off the segment's
+centre; add `swap` for the right. A tag filled over its line breaks the
+line where the eye is following it. Set it beside the shaft, not the
+2.1mm arrowhead: `c2-tag-clearance` measures from the head too.
 
 The block needs one library line, at the top of the figure with the
 picture's own:
@@ -600,47 +415,40 @@ picture's own:
 \usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows.blur}
 ```
 
-All six ship with `texlive-pictures`. `shadows.blur` comes from the
-`pgf-blur` package but is reached by `\usetikzlibrary`, not
-`\usepackage`, which is what lets the soft shadow travel into a thesis
-preamble this project never sees: a figure file cannot load a package.
+All six ship with `texlive-pictures`. `shadows.blur` is reached by
+`\usetikzlibrary`, not `\usepackage`, so the soft shadow travels into a
+thesis preamble this project never sees.
 
 **The block travels between its two marker comments, and
-`python -m chitragupta figure sync` keeps it current.** The command
-stamps the block into a figure file that lacks one, above its first
+`python -m chitragupta figure sync` keeps it current.** It stamps the
+block into a figure file that lacks one, above its first
 `\usetikzlibrary` or `tikzpicture` line, and replaces a block from an
-older release with the installed one. Everything outside the markers
-stays byte for byte as it was. With no paths it walks every
-`content/drafts/**/figures/*.tex`; `--check` writes nothing and exits 1
-if any file is not current. `chitragupta draft render` reports a stale
-or missing block as a `[figure]` warning naming the command, and renders
-anyway: it never rewrites a figure itself.
+older release, leaving everything outside the markers byte for byte.
+With no paths it walks every `content/drafts/**/figures/*.tex`;
+`--check` writes nothing and exits 1 if any file is not current.
+`chitragupta draft render` reports a stale or missing block as a
+`[figure]` warning naming the command, and never rewrites a figure.
 
 **Never edit inside the markers.** A style one figure needs goes in that
 picture's own options, or in a `\tikzset` below the end marker. `figure
-sync` recognises every block this project has released by its digest, so
-a region that matches none of them was edited by hand. It leaves that
-region alone and prints the diff against the house block, for a person
-to move the edit out. A style that three or more figures need is a pull
-request against `cg-figstyle.tex`, not a local override.
+sync` knows every released block by its digest, so it leaves a
+hand-edited region alone and prints the diff against the house block,
+for a person to move the edit out. A style that three or more figures
+need is a pull request against `cg-figstyle.tex`.
 
 **Changing the block means a new version.** Bump the `v<N>` in its first
 line and add that version's digest to
-`assets/tikz/cg-figstyle.versions.toml`, never editing an existing line
-there. `tests/test_figure_block.py` fails when the block and the register
-disagree, so an edit without a version bump cannot reach `main`. Then
-run `python -m chitragupta figure sync assets/tikz/*.tex
+`assets/tikz/cg-figstyle.versions.toml`, never editing an existing line;
+`tests/test_figure_block.py` fails when the two disagree. Then run
+`python -m chitragupta figure sync assets/tikz/*.tex
 assets/tikz/exemplars/*.tex` to refresh every scaffold and exemplar,
-which `tests/test_tikz_scaffolds.py` still checks byte for byte.
+which `tests/test_tikz_scaffolds.py` checks byte for byte.
 
-**Repeating it once per figure is safe**, by the same argument #781
-makes for `\usetikzlibrary`. `\tikzset` re-defines the same keys to the
-same values, and every macro is `\providecommand`, so N figures in one
-document carrying N copies cost N definitions and change nothing. No
-global hook is appended to and no loaded flag is set. The one construct
-without this property is `\tikzset{every node/.style=...}` (see "Type and
-line weight" above), and the block touches `every node` only through
-`.append style` inside the `cg` picture option, scoped to one picture.
+**Repeating it once per figure is safe.** `\tikzset` re-defines the same
+keys to the same values and every macro is `\providecommand`, so N
+copies in one document change nothing; no global hook is appended to.
+The block touches `every node` only through `.append style` inside the
+`cg` picture option, scoped to one picture.
 
 ### 🧰 House shapes, and the well they sit in
 
@@ -655,167 +463,98 @@ house line weight.
 | `cgchip` | anything that computes: a model, an encoder, a reranker | `[bi-encoder]` |
 | `cgshield` | the one blocking check, at most once per figure, if at all | `[gate]` |
 
-Each passes the ASCII twin's test by construction. It sits directly
-above a node whose label already says the same thing, so the shape is a
-rendering choice and never a proposition, and the twin loses nothing by
-dropping it.
+Each sits directly above a node whose label already says the same thing,
+so the shape is a rendering choice, never a proposition, and the ASCII
+twin loses nothing by dropping it.
 
-**Draw every `pic` into a well.** A `pic` is a path, not a node, so it
-has no name, and two things break quietly without one. No rule measures
-a `pic`'s paths, so an icon colliding with a label reports clean. And a
-zone card can `fit` only named nodes, so an icon placed above a node
-pokes through the top of its own zone. `figure check` reports a `pic`
-outside a well as [`unnamed-pic`](figure-checks/NODES.md). `cgwell` is an
-invisible, fixed-size (10mm), named node that the `pic` is drawn into:
+**Draw every `pic` into a well.** A `pic` is a path with no name, so no
+rule measures it and a zone card cannot `fit` it: an icon can collide
+with a label and report clean, or poke out of its own zone. `figure
+check` reports a `pic` outside a well as
+[`unnamed-pic`](figure-checks/NODES.md). `cgwell` is an invisible,
+fixed-size (10mm), named node that the `pic` is drawn into:
 
 ```latex
 \node[cgwell, above=2.5mm of sync] (isync) {};
 \pic[cg pic colour=cgFlow] at (isync) {cgstore};
 ```
 
-Every house `pic` fits inside its well, and
-`tests/test_tikz_scaffolds.py` measures that, so an edit that makes one
-overflow fails there. `pipeline.tex` shows the idiom.
-
-**Colour.** `cg pic colour` takes a palette name and applies to that
-one `\pic`. Give it the hue of the zone the shape sits in: the same
-drum is green in the lexical zone and blue in the dense route.
+`tests/test_tikz_scaffolds.py` measures that every house `pic` fits its
+well. `pipeline.tex` shows the idiom. `cg pic colour` takes a palette
+name for that one `\pic`; give it the hue of the zone the shape sits in.
 
 **This is not an icon set, and it should not become one by accretion.**
 A shape is added only when a metaphor in the
 [layout table](#-commit-to-a-layout-metaphor-before-you-draw) wants it,
 and only when the node's own label already carries the proposition.
-Five is the ceiling for now. A sixth needs the same argument made again,
-in writing, in its pull request, and a row in the table above;
+Five is the ceiling for now. A sixth needs the argument made again, in
+writing, in its pull request, and a row in the table above;
 `tests/test_tikz_scaffolds.py` fails if the block and the table name
 different shapes.
 
-### 🖨 What the other two forms do with it
-
-Two readers receive no colour at all, and this is accepted rather than
-designed around:
-
-- The **ASCII twin** is 7-bit, so `md`, `docx` and `html` get none of
-  it. The twin still has to work as a figure (that is
-  [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10's two-form contract,
-  and it is unchanged), but it is not required to reproduce the colour
-  form's every distinction.
-- A **black-and-white print** greyscales the TikZ form, where
-  `cgFlow` and `cgAlt` land at similar lightness.
-
-So the practical rule is weaker than "never encode meaning in colour"
-and stronger than nothing: **colour may carry meaning, and should not be
-the only thing carrying the figure's main point.** Keep the spine
-legible through position and arrow direction, which every layout
-metaphor above already gives you, and let colour do the work of making
-the figure quick to read rather than possible to read.
-
 ## 📏 Draw for the width it will be printed at
 
-The eleven layout metaphors have no width dimension, and a figure drawn
-without one in mind is a figure whose type size is decided by accident.
 A single-column figure in a two-column paper sets at roughly half a page
-width; the same picture dropped into a thesis sets at nearly double
-that. **Nothing in the picture changes, but the type does**, because
-`scale=` and the consuming document's own width between them decide the
-final physical size of every label.
-
-So settle the target width *before* choosing a metaphor: a
-hub-and-spoke needs horizontal room a single column does not have, and
-is the wrong metaphor there however well it fits the content. A layered
-stack degrades gracefully to a narrow column; a wide map does not.
+width; the same picture in a thesis sets at nearly double that. Nothing
+in the picture changes, but the type does. So settle the target width
+*before* choosing a metaphor: a hub-and-spoke needs room a single column
+does not have, while a layered stack degrades gracefully to a narrow
+column.
 
 **Never wrap a figure in `\resizebox` or `\scalebox`, and never set
-`scale=` on the picture.** A picture drawn at its natural size and then
-scaled to fit prints its type at whatever the scale factor happens to
-be, so the floor in "Type and line weight" becomes a number nobody
-chose. Settle the target width first, lay the figure out to it, and
-`\input` it bare. If it does not fit, change the layout (wrap a row, cut
-a gloss, drop a stage), never the scale. The row count following from
-the type size is the right direction for that decision to run.
+`scale=` on the picture.** A scaled picture prints its type at whatever
+the scale factor happens to be, a size nobody chose. Lay the figure out
+to the target width and `\input` it bare; if it does not fit, change the
+layout (wrap a row, cut a gloss, drop a stage), never the scale. The
+scale is invisible in the figure file, because it lives in the draft
+that `\input`s it: six figures wrapped in `\resizebox` in one paper
+printed at six type sizes, the smallest 5.5pt, and laid out again
+unscaled every label printed at the body size, at the cost of changed
+layouts. Three of those redrawn figures ship in
+`assets/tikz/exemplars/`. `figure check` reports a picture wider than
+the page as [`size-width`](figure-checks/SIZE.md).
 
-This is the rule that actually gets broken, because the scale is
-**invisible in the figure file**: it lives in the draft that `\input`s
-it. Measured on six hand-written figures in one acmart sigconf paper
-(9pt body), each wrapped in `\resizebox{\textwidth}{!}{...}`:
-
-| Figure | Natural width | Scale applied | Smallest type printed at |
-| --- | --- | --- | --- |
-| `architecture` | 462.8pt | 1.094 | 6.6pt |
-| `rag-stages` | 548.9pt | 0.922 | **5.5pt** |
-| `retrieval` | 519.5pt | 0.975 | 5.9pt |
-| `coauthoring` | 520.8pt | 0.972 | 5.8pt |
-| `prompt` | 425.6pt | 1.118 | 6.7pt |
-| `revision` | 420.6pt | 1.180 | 7.1pt |
-
-The six figures printed at six type sizes, none of them chosen. Laid out
-again to fit 506.3pt unscaled, every label printed at 8.97pt or above.
-Expect the floor to *change layouts*, not just sizes: `rag-stages` went
-from two rows to three, and `retrieval`'s dense route wrapped. Three of
-those redrawn figures ship in `assets/tikz/exemplars/`, laid out to the
-render's 453pt.
-
-The renderer is already clean here: `render_output/_figure_captions.py`
-emits a bare `\begin{figure}` around the marker with no scale knob, so a
-pipeline-rendered figure is drawn at natural size. The defect is what a
-*hand-written* document does, which is exactly `thesis-chapter-writer`'s
-case: its fragment is `\input` into a thesis this project never sees.
-The eleven scaffolds are each laid out to the `article` class's 345pt
-text width, and a test compiles each one there and fails on an
-`Overfull \hbox`.
+The renderer emits a bare `\begin{figure}` with no scale knob, so the
+defect is what a *hand-written* document does, which is exactly
+`thesis-chapter-writer`'s case. The eleven scaffolds are each laid out
+to the `article` class's 345pt text width, and a test fails any that
+overflows it.
 
 **No venue table is bundled here, deliberately.** Column widths are
 per-publisher, differ between initial and revised submission, and go
 stale; a table checked into this repository would be read as current
-long after it stopped being. If you keep one, keep it the way a
-maintained one is kept: a date it was accessed, a source URL per entry,
-and the standing caveat that **a passing check is not compliance**.
-Re-read the publisher's live page before you submit.
+long after it stopped being. If you keep one, give each entry an access
+date and a source URL, and remember that **a passing check is not
+compliance**. Re-read the publisher's live page before you submit.
 
 ## 🧿 Rules that are not universal
 
-Figure guidance is mostly written for raster images, and several rules
-that sound authoritative do not transfer to a TikZ picture at all.
-Named here so nobody spends an afternoon satisfying one:
+Several rules written for raster images do not transfer to a TikZ
+picture:
 
 - **"Line art must be 600 or 1000 dpi."** A TikZ figure is vector and
-  has **no DPI**. There is nothing to set and nothing to check. The
-  requirement that *does* transfer is physical width, above.
-- **"Convert everything to CMYK / everything to RGB."** A colour-space
-  question about exported raster assets. It reaches a `\input`-ed TikZ
-  picture only through whatever the consuming document does at export,
-  which this pipeline does not control and should not pretend to.
-- **"Make the figure bigger so the text is readable."** Backwards.
-  Enlarging the picture enlarges the type *and everything else*, so it
+  has **no DPI**. What transfers is physical width, above.
+- **"Convert everything to CMYK / everything to RGB."** A question about
+  exported raster assets, which this pipeline does not control.
+- **"Make the figure bigger so the text is readable."** Backwards: it
   overflows the column and gets scaled back down. Type size at final
-  scale is the quantity that matters, and `\footnotesize` inside a
-  picture that is then scaled to 0.8 is the real defect.
+  scale is what matters.
 - **"Pick a colourblind-safe palette and accessibility is handled."**
-  Necessary, and not the end of it. The house palette is already
-  Okabe-Ito, so the hue question is settled and you should not be
-  re-deciding it per figure. What a safe palette does *not* address is
-  the two readers who receive no colour at all (the ASCII twin's
-  audience and anyone printing in black and white), which is a
-  redundancy question rather than a palette one.
+  The house palette is already Okabe-Ito, so do not re-decide hue per
+  figure. It does not help the two readers who get no colour at all,
+  which is a redundancy question (see the checklist).
 - **"A vector figure is resolution-independent, so size does not
-  matter."** True of fidelity, false of legibility, and the second is
-  what a reader notices.
+  matter."** True of fidelity, false of legibility.
 
 ## 🔎 Checking a figure against this standard
 
-`chitragupta figure check <figure.tex>` measures the parts of this
-standard that geometry, colour and the source can decide: width, overlaps,
+`chitragupta figure check <figure.tex>` measures width, overlaps,
 connector routing, contrast, type size, the palette, the ASCII twin and
-more, 36 rules in all. It is an aid, not a gate. It exits 0 whatever it
-finds, and the only gate in this project is the citation gate.
-
-It measures what TikZ drew and never places anything. The fix for a
-finding is to change what the figure asks TikZ for (a `node distance`, a
-`row sep`, an anchor, a layout), never to nudge a coordinate until the
-number moves. When a finding and your own eyes disagree about a figure
-that is right, keep the figure and record why with a `% cg-allow:` line.
-
+more, 36 rules in all. It exits 0 whatever it finds; the only gate in
+this project is the citation gate. It never places anything: fix a
+finding by changing what the figure asks TikZ for (a `node distance`, a
+`row sep`, an anchor, a layout), never by nudging a coordinate. When a
+finding and your own eyes disagree about a figure that is right, keep
+the figure and record why with a `% cg-allow:` line.
 [figure-checks/README.md](figure-checks/README.md) explains how to read
-a report, lists every rule in one sentence, and links each rule to a
-page with a faulty and a fixed figure. It also has the `cg-allow` form
-and how `figure check` relates to `review figure`.
+a report and links each rule to its page.
