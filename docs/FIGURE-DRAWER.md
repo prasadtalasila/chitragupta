@@ -18,6 +18,7 @@ the skill does and when it runs.
 
 - [What it is, and what it is not](#-what-it-is-and-what-it-is-not)
 - [Three ways it runs](#-three-ways-it-runs)
+- [Correcting a figure on paper](#-correcting-a-figure-on-paper)
 - [What you get](#-what-you-get)
 - [What it does, step by step](#-what-it-does-step-by-step)
 - [The eleven layouts](#-the-eleven-layouts)
@@ -74,6 +75,44 @@ the three study phases.
 On a direct request the genre's threshold does not apply, because you
 asked for the figure. With no draft to put it in, the skill says so and
 stops.
+
+## ✍ Correcting a figure on paper
+
+You can correct a figure with a pen. Print the page, mark the figure,
+photograph or scan it, and hand the image over with the draft's path:
+
+```text
+content/drafts/dt/architecture.md: the photo in
+proofs/fig-4-5.jpg has my corrections to the three-layer figure.
+```
+
+The same works for a figure you redrew by hand, and for a hand sketch
+of a figure the draft does not have yet. A sketch gives the skill the
+boxes, the arrows and the grouping. The layout still comes from the
+house scaffolds, so the result will not sit where your pen put it.
+
+Before it changes a file, the skill reads your marks back to you, one
+row per mark: what the figure says now, what you wrote, and the edit it
+will make. A mark it cannot tie to an instruction goes on a separate
+list with a question, and nothing is applied until you answer. Marks
+with no arrow or strike are the usual case: a word in the margin may be
+a correction or a note to yourself, and the skill does not guess.
+
+Three habits make the read-back shorter:
+
+- Write "Fig N", or leave the printed caption in the photo, so the
+  skill knows which figure it is.
+- Strike what goes and write what replaces it beside the strike. Draw
+  an arrow from a new word to the box or edge it belongs to.
+- Circle a note to yourself, or keep it off the page.
+
+A reworded label often appears in the caption, the prose and the
+glossary too. The skill reports each old and new wording, and
+`draft-reviser` brings the rest of the draft into line. The photo is
+never copied into the draft.
+
+An agent whose model cannot view images says so and asks you to type
+the corrections instead.
 
 ## 🎯 What you get
 
@@ -178,6 +217,7 @@ sends it there, one copy whichever harness runs it:
 | `figures.md` | choosing a metaphor, panels, fitting without scaling, an annotated exemplar, looking at a source's figures, libraries and compiling, looking at the render |
 | `placement.md` | where the pair goes, a host with no TikZ, a flat draft, a thesis fragment |
 | `check.md` | the fix for each `figure check` finding, and the `cg-allow` form |
+| `markup.md` | a photo or scan of a figure marked up by hand: finding its pair, reading the marks back, editing in place, and working from a sketch |
 
 ## 🔎 Checking a figure
 

@@ -63,6 +63,11 @@ editing it:
   **To redraw or fix the picture, hand it to `figure-drawer-opencode`** and come
   back to step 6 to log it. If the two forms have drifted too far to
   reconcile, say so and drop the figure.
+  A photo or a scan of a figure corrected by hand goes to
+  `figure-drawer-opencode` too. The rows it reads back are the instruction
+  `steering.md` records in step 6, and each wording it reports changed
+  is yours to carry into the caption, the prose, the glossary and
+  `math.md`.
 - **A table, a captioned figure or a numbered equation.** Each renumbers
   itself; its id does not. The prose points at one with
   `<!-- tableref: <id> -->`, `<!-- figureref: <id> -->` or
