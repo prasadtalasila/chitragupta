@@ -349,7 +349,8 @@ docker/                   Dockerfile (TeX Live/Pandoc/Poetry), Dockerfile.claude
 ## 📐 Figures and copyright
 
 A source paper's figures are a reading aid, never draft content.
-[AGENTS.md](AGENTS.md) states the rule and the one exception (the
+[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)
+states the rule and the one exception (the
 verbatim digest); `python -m chitragupta.draft figures <citekey>` is the
 supported way to look at them. Code here must not insert a source
 image into `content/drafts/`.

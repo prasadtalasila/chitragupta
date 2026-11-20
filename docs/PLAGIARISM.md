@@ -202,7 +202,7 @@ handling, not a verdict on the draft.
 Whether long verbatim runs should gate was measured and declined: no
 span-length threshold separated real reuse from correctly quoted,
 correctly attributed passages
-([REQUIREMENTS.md §5.1](REQUIREMENTS.md#-51-current-position)).
+([REQUIREMENTS.md §5.1](https://github.com/prasadtalasila/chitragupta/blob/main/docs/REQUIREMENTS.md#-51-current-position)).
 
 ## ⚙ How it works
 

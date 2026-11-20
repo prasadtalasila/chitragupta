@@ -8,7 +8,9 @@ walkthrough in
 Phase 3 instead of this page.** **Written for** someone
 changing the drafting layer or the dossier format: this is the
 reasoning behind the command surface that walkthrough uses. **Assumed:** [ARCHITECTURE.md](ARCHITECTURE.md)
-for the layers and [TOKENS.md](TOKENS.md) for the two cost pools. **Not
+for the layers and
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md)
+for the two cost pools. **Not
 covered here:** how to *use* a dossier day to day, which is
 [CLI.md](CLI.md)'s `dossier` section.
 
@@ -17,7 +19,9 @@ without re-running the pipeline that produced it.
 
 Related reading:
 
-- [TOKENS.md](TOKENS.md): where a run's tokens go, the two-pool
+-
+  [TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md):
+  where a run's tokens go, the two-pool
   framing this document assumes, and how to measure any of it. It holds
   the arithmetic behind ["Where the tokens go"](#-where-the-tokens-go)
   below.
@@ -78,7 +82,9 @@ document follows from removing it.
 
 ## ⚡ Where the tokens go
 
-The accounting lives in [TOKENS.md](TOKENS.md), together with the same
+The accounting lives in
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md),
+together with the same
 argument from [REJECTION.md](REJECTION.md) and two worked examples, so
 the subject is kept in one place.
 
@@ -121,7 +127,9 @@ Written the obvious way, the orchestrator selects those claims from the
 Phase 2 packets it is holding and types them into four prompts. That is
 *output*, at 5x a cached input token, spent once per writer: an estimated
 four writers x ~800 tokens = 3.2k output, or **16k input-token
-equivalents** ([TOKENS.md](TOKENS.md#-two-worked-examples) has the
+equivalents**
+([TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md#-two-worked-examples)
+has the
 weights). The same material is already on disk by then, because Phase 2's
 transcription put it there.
 
@@ -142,7 +150,7 @@ Counted, not estimated, on the shipped example report against the
 real 501-paper corpus: **15,660 characters of evidence become 901
 characters of dispatch line**, 17.4x, across its seven sections. Method
 and caveats are in
-[TOKENS.md](TOKENS.md#-the-dispatch-payload-measured-on-real-material);
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md#-the-dispatch-payload-measured-on-real-material);
 it is a payload size, not a run.
 
 **Addressing by section, not by citekey list.** A prompt carrying the
@@ -166,7 +174,7 @@ write its own file, so the long-form material never enters the
 orchestrator at all. That would cost the invariant which makes a dossier
 trustworthy, **one writer, one record**, and it is written down as a
 rejected trade in
-[TOKENS.md](TOKENS.md#-the-one-way-to-cut-residency-and-what-it-would-cost)
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md#-the-one-way-to-cut-residency-and-what-it-would-cost)
 and not implemented here.
 
 The three subagent definitions declare
@@ -312,7 +320,8 @@ alternative is a read-only command that writes to the corpus layer as a
 side effect, which is much worse.
 
 That cost is measured. Unlike the token estimates in
-[TOKENS.md](TOKENS.md), it is a stopwatch figure, so it lives in
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md),
+it is a stopwatch figure, so it lives in
 [PERFORMANCE.md](PERFORMANCE.md#-what-a-drift-sweep-costs) with the rest
 of the measurements. The main result, on this project's own
 corpus: sweeping 50 dossiers costs **0.19s more than sweeping one**
@@ -652,5 +661,7 @@ cheapest retrieval pass still costs more than one you didn't have to make.
 character payload of each retrieval call, not tokens, and nothing records
 what the drafting turns themselves cost. That is enough to compare one
 run against another on a real corpus; it is not enough to put a number on
-a whole draft. The estimates in [TOKENS.md](TOKENS.md) remain estimates,
+a whole draft. The estimates in
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md)
+remain estimates,
 and are labelled as such there.

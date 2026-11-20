@@ -14,7 +14,9 @@ recorded because it is reusable and the mistake is easy to make twice.
 
 Related reading:
 
-- [TOKENS.md](TOKENS.md) covers where the tokens go. This document assumes
+-
+  [TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md)
+  covers where the tokens go. This document assumes
   its two-pool framing, and the accounting below is worked through there
   with the caching multipliers applied.
 - [DRAFT-ITERATION.md](DRAFT-ITERATION.md) covers the dossier: what it
@@ -334,7 +336,9 @@ packets held resident across Phases 3-7, not the retrieval inside Phase 2. The
 residency itself cannot be undone from inside a run, so what `dossier brief`
 collects is the *re-emission* of those packets into four dispatch prompts, in
 the output pool.
-See [TOKENS.md](TOKENS.md#-what-the-dossier-actually-recovers). It does not
+See
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md#-what-the-dossier-actually-recovers).
+It does not
 reopen the case for triage: the reads this section is about still happen inside
 subagents, where they are billed once.
 

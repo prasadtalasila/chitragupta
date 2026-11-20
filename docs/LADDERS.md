@@ -20,7 +20,9 @@ differently: the first kind degrades without warning and you may not
 notice for weeks; the second kind stops and names what is missing.
 
 Read [docs/ARCHITECTURE.md](ARCHITECTURE.md) first if you want to know
-*what the parts are*, and [docs/DIAGRAMS.md](DIAGRAMS.md) if you want to
+*what the parts are*, and
+[docs/DIAGRAMS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/DIAGRAMS.md)
+if you want to
 see the workflow drawn. This page assumes both and asks a narrower
 question: where does this pipeline choose, and what does it choose
 between?
@@ -246,7 +248,7 @@ flowchart TB
 
 Every command above and the flags it takes are in
 [docs/CLI.md](CLI.md); the same workflow drawn eleven other ways is in
-[docs/DIAGRAMS.md](DIAGRAMS.md).
+[docs/DIAGRAMS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/DIAGRAMS.md).
 
 ### 🧠 What the enrichment layer works on
 
@@ -698,7 +700,8 @@ this table true.
 
 - [docs/ARCHITECTURE.md](ARCHITECTURE.md): what the parts are, and which
   interpreter each needs
-- [docs/DIAGRAMS.md](DIAGRAMS.md): the same workflow drawn eleven ways
+- [docs/DIAGRAMS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/DIAGRAMS.md):
+  the same workflow drawn eleven ways
 - [docs/CONFIG.md](CONFIG.md): every setting these tiers read
 - [docs/CITATION-PROVENANCE.md](CITATION-PROVENANCE.md): what ladder 1
   is ultimately for

@@ -294,7 +294,9 @@ deterministic layer cannot detect it, and neither can
 `python -m chitragupta.review verbatim scan`, which measures something
 else.
 
-The remedy is therefore procedural, and [AGENTS.md](../AGENTS.md) states
+The remedy is therefore procedural, and
+[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)
+states
 it as practice: **start each draft in a fresh session.** That is
 affordable only because the dossier already holds the scope, the
 evidence, the rejections and the steering on disk (see

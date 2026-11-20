@@ -49,7 +49,9 @@ maps onto a TikZ idiom to use:
 | Timeline | ticks placed by fraction along one chained axis, eras as banded cards |
 
 (The first six are PaperBanana's planner supplement, read and not
-copied; [INSPIRATION.md](INSPIRATION.md) carries the credit.)
+copied;
+[INSPIRATION.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md)
+carries the credit.)
 
 **The zoned spine** is one left-to-right path that carries the argument,
 with each zone card a tinted region behind a group of members and its

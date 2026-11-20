@@ -103,10 +103,9 @@ markdown_extensions:
   # show" that it does not read as a bug until you compare the page
   # against GitHub's rendering of the same file.
   #
-  # docs/DIAGRAMS.md calls the fenced blocks "the source of truth" and
-  # eleven of them carry the pipeline's only visual explanation, so this
-  # is the difference between that page working and that page being a
-  # wall of Mermaid syntax. Material bundles Mermaid.js and loads it on
+  # ARCHITECTURE.md, FEATURES.md, LADDERS.md and others carry Mermaid
+  # blocks, so this is the difference between those diagrams working and
+  # a wall of Mermaid syntax. Material bundles Mermaid.js and loads it on
   # seeing this class; nothing needs adding to `extra_javascript`.
   - pymdownx.superfences:
       custom_fences:
@@ -149,6 +148,26 @@ exclude_docs: |
   /poetry.lock
   /poetry.toml
   /pyproject.toml
+  # Kept in git for readers on GitHub, left out of the site to keep it
+  # shorter; pages that link to them use GitHub URLs.
+  /docs/DIAGRAMS.md
+  /docs/SECURITY.md
+  /docs/TOPIC-MODELLING.md
+  /docs/FIGURE-ROADMAP.md
+  /docs/REQUIREMENTS.md
+  /docs/AUTO-IMPROVEMENT-RATIONALE.md
+  /docs/GROBID-CITATION-GRAPH.md
+  /docs/FEATURE-ROADMAP.md
+  /docs/UV-MIGRATION.md
+  /docs/TOPIC-DISCOVERY-GRAPH.md
+  /docs/CODE-STANDARDS.md
+  /docs/TECHNICAL-DEBT.md
+  /docs/DEV-ENV.md
+  /docs/RAG.md
+  /docs/INSPIRATION.md
+  # Plans are development records, not documentation: nothing in the nav
+  # links to one, and a page that cites a plan uses a GitHub URL.
+  /plans/
   # The patterns above are anchored to the repository root (gitignore
   # syntax) so they stop matching the sample project's own content/ and
   # papers/ under docs/examples/, which the documentation links to. What
@@ -191,6 +210,7 @@ nav:
       - "Tutorial: write a textbook chapter": docs/WRITE-A-TEXTBOOK-CHAPTER.md
       - "Tutorial: write a tutorial": docs/WRITE-A-TUTORIAL.md
       - "Tutorial: write a deep-research report": docs/WRITE-A-DEEP-RESEARCH-REPORT.md
+      - "Tutorial: verbatim digest": docs/VERBATIM-DIGEST.md
       - "Tutorial: write a book":
           - Overview: docs/WRITE-A-BOOK.md
           - "1. Plan the outline": docs/book/OUTLINE.md
@@ -209,10 +229,8 @@ nav:
       - Drawing a Figure:
           - Figure skill: docs/FIGURE-DRAWER.md
           - Hand drawn figures: docs/MANUAL-FIGURE.md
-      - "Study notes in the sources' words: review-digest": docs/VERBATIM-DIGEST.md
       - Iterating on a draft: docs/DRAFT-ITERATION.md
       - Hand-editing a draft: docs/USER-EDITS.md
-      - Drafting with it: AGENTS.md
       - The dossier (machine-facing): docs/DOSSIER.md
   - Review drafts:
       - The review layer: docs/REVIEW.md
@@ -247,46 +265,30 @@ nav:
       - Topic discovery: docs/TOPIC-DISCOVERY.md
       - Explore the graph, CLI: docs/EXPLORE-CLI.md
       - Explore the graph, Web: docs/EXPLORE-WEB.md
-      - Topic graph, design notes: docs/TOPIC-DISCOVERY-GRAPH.md
   - Understanding the system:
       - Why this exists: SOUL.md
       - Which guide applies: CLAUDE.md
       - Architecture: docs/ARCHITECTURE.md
       - Skill structure: docs/SKILL-STRUCTURE.md
-      - Security: docs/SECURITY.md
       - Local models: docs/LOCAL-MODELS.md
-      - Diagrams: docs/DIAGRAMS.md
       - Ladders and fallbacks: docs/LADDERS.md
       - Retrieval: docs/RETRIEVAL.md
       - Corpus search, stage by stage: docs/CORPUS-SEARCH.md
-      - RAG stage by stage, and six other systems: docs/RAG.md
-      - Topic modelling, the evidence: docs/TOPIC-MODELLING.md
   - Choosing settings:
       - Performance: docs/PERFORMANCE.md
       - PDF parser: docs/PDF-PARSER.md
   - Working on it:
-      - Requirements: docs/REQUIREMENTS.md
-      - Feature roadmap: docs/FEATURE-ROADMAP.md
-      - Figure roadmap: docs/FIGURE-ROADMAP.md
       - Design constraints: docs/DESIGN.md
       - Rendering flow: docs/RENDERING-FLOW.md
-      - Tokens: docs/TOKENS.md
       - Rejection: docs/REJECTION.md
       - Plagiarism detection, how it works: docs/PLAGIARISM-DESIGN.md
       - Parallelism: docs/PARALLELISM.md
-      - GROBID citation graph: docs/GROBID-CITATION-GRAPH.md
       - Per-citekey TL;DR and the abstract behind it: docs/TLDR.md
-      - Packaging: docs/UV-MIGRATION.md
       - Auto-improvement: docs/AUTO-IMPROVEMENT.md
-      - Auto-improvement, why: docs/AUTO-IMPROVEMENT-RATIONALE.md
       - House style: docs/HOUSE-STYLE.md
       - Zotero groups without Better BibTeX: docs/EXPORT-ZOTERO-GROUPS.md
       - Developing: DEVELOPER.md
       - Docker build verification: DOCKER-DEVELOPER.md
-      - "Claude Remote Control": docs/DEV-ENV.md
       - Changing this repo: DEVELOPER-AGENTS.md
-      - Code standards: docs/CODE-STANDARDS.md
       - Hooks: docs/HOOKS.md
       - Harnesses: docs/HARNESS.md
-      - Technical debt: docs/TECHNICAL-DEBT.md
-      - Inspiration and credits: docs/INSPIRATION.md

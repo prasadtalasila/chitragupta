@@ -79,7 +79,9 @@ deny list is incomplete.
 Start `claude` in the project and ask for a skill by name, for example
 "use survey-writer to draft a survey on ...". The hooks in
 `.claude/settings.json` fire on every `Write` and `Edit` with nothing
-further to set up. [AGENTS.md](../AGENTS.md) is the drafting contract;
+further to set up.
+[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)
+is the drafting contract;
 Claude Code reaches it through `CLAUDE.md`.
 
 ### Codex
@@ -226,4 +228,6 @@ it.
 - [HOOKS.md](HOOKS.md): the hook scripts every agent runs.
 - [PACKAGING.md](PACKAGING.md): the ways to install, and the command
   surface.
-- [AGENTS.md](../AGENTS.md): the drafting contract every agent reads.
+-
+  [AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md):
+  the drafting contract every agent reads.

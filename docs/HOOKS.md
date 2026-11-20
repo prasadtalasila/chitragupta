@@ -28,11 +28,14 @@ assumed.
 **Written for** anyone adding a hook to this repository or changing
 `.claude/settings.json`. It assumes
 `DEVELOPER-AGENTS.md`, which governs any change to
-this repository's code, and [CODE-STANDARDS.md](CODE-STANDARDS.md) for what
+this repository's code, and
+[CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md)
+for what
 that code must look like.
 
 **Not covered here:** what the checks themselves *do*. The citation gate is
-[AGENTS.md](../AGENTS.md) and [ARCHITECTURE.md](ARCHITECTURE.md); the prose
+[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)
+and [ARCHITECTURE.md](ARCHITECTURE.md); the prose
 checker is [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9 and
 [HOUSE-STYLE.md](HOUSE-STYLE.md). This file is about *invocation*, which is
 a separate question and has separate rules.
@@ -645,7 +648,8 @@ The decision is about *which* name, not how it is looked up: where the
 lookup is this repository's own code, as in OpenCode's
 `.opencode/chitragupta/gate.js`, it resolves `python` on `PATH`'s
 absolute entries and spawns the absolute path, the rule
-[SECURITY.md](SECURITY.md) gives for every launch.
+[SECURITY.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/SECURITY.md)
+gives for every launch.
 
 **Finish inside the harness's timeout, or block.** Every hook gets
 `"timeout": 30`, and a hook the harness kills prints nothing: for the
@@ -944,7 +948,9 @@ a second one.
 
 ## 📚 Prior art
 
-Credited properly in [INSPIRATION.md](INSPIRATION.md); summarised here for
+Credited properly in
+[INSPIRATION.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md);
+summarised here for
 whoever is changing a hook and wants the sources.
 
 - **`obra/superpowers`**: the fail-silent contract for a context

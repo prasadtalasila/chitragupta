@@ -111,7 +111,9 @@ its order.
 1. **Looks, never copies (optional).** `python -m chitragupta.draft
    figures <citekey>` lists a cited paper's figures, with a crop of
    each. Seeing how a concept is usually drawn is fine. Reproducing one
-   is not ([AGENTS.md](../AGENTS.md), [WRITING-STANDARDS.md](WRITING-STANDARDS.md)
+   is not
+   ([AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md),
+   [WRITING-STANDARDS.md](WRITING-STANDARDS.md)
    §10).
 2. **Picks the pattern, then the layout.** It names what the figure
    argues, routes that to one of the

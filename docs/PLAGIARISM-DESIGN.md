@@ -18,7 +18,8 @@ layer sits.
 one a person reaches for before presenting a draft. Nothing is restated
 across the two. Where this document needs a term the other defines, it
 links to it rather than repeating it, for the reason
-[CODE-STANDARDS.md](CODE-STANDARDS.md#-where-these-rules-come-from) gives:
+[CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md#-where-these-rules-come-from)
+gives:
 a rule stated twice will eventually be stated two different ways.
 
 The file is separate because the two halves have opposite readers.

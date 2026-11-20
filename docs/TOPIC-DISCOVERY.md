@@ -8,8 +8,10 @@ its graph-exploration views, the precision tier, the gold-set benchmark,
 the HTML graph page and the interactive app. The design they implement
 is
 `plans/g5-topic-discovery.md` (G5-G9 in
-[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s numbering).
-[TOPIC-MODELLING.md](TOPIC-MODELLING.md) covers how topics come to
+[FEATURE-ROADMAP.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/FEATURE-ROADMAP.md)
+'s numbering).
+[TOPIC-MODELLING.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOPIC-MODELLING.md)
+covers how topics come to
 exist at all; this document covers what happens next: relating them,
 finding them, and reading them.
 
@@ -23,9 +25,13 @@ are safe to skim.
 > feature borrows from is in `content/ledger.sqlite`, so none has a
 > citekey; each is named inline with a link and listed in full at the
 > end, the same rule TOPIC-MODELLING.md follows and for the same reason
-> ([AGENTS.md](../AGENTS.md)). What was taken from each, and, as
+>
+  ([AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)).
+  What was taken from each, and, as
 > importantly, what was deliberately not, is recorded in
-> [INSPIRATION.md](INSPIRATION.md#-topic-discovery); this document
+>
+[INSPIRATION.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md#-topic-discovery);
+this document
 > quotes a source only where a specific mechanism came from it.
 
 ## 🧭 Table of contents
@@ -612,7 +618,8 @@ versions are in `plans/g5-topic-discovery.md`.
 ## 📚 Sources
 
 Quoted above by author-year; what was borrowed and what was refused is
-itemised in [INSPIRATION.md](INSPIRATION.md#-topic-discovery).
+itemised in
+[INSPIRATION.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md#-topic-discovery).
 
 - Asai, A., He, J., Shao, R., Shi, W., Singh, A., Chang, J. C., Lo, K.,
   Soldaini, L., et al. (2024). *OpenScholar: Synthesizing Scientific

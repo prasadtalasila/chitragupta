@@ -190,7 +190,9 @@ answer is pure set arithmetic. Every unit of a book records, when
 `python -m chitragupta.draft unit accept` accepts it, the citekeys its
 prose stands on. `book-assembler` then composes those units into one
 document, and a combining step is where a source goes missing
-with no error and no log ([RAG.md](RAG.md) catalogues why).
+with no error and no log
+([RAG.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/RAG.md)
+catalogues why).
 
 A book is composed by reference, which is what makes this checkable.
 `book.tex` is a skeleton: it `\input`s its units, whose citations stay
@@ -411,7 +413,8 @@ say so beside itself.
 
 The idea of separating *rated* from *missing* from *not applicable*, and
 of refusing to encode missing as zero, is credited to
-[K-Dense-AI/scientific-agent-skills](INSPIRATION.md). It fits this
+[K-Dense-AI/scientific-agent-skills](https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md).
+It fits this
 project's existing posture rather than changing it:
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s **R3** already forbids a
 continuous score from being the thing optimised, and this is the

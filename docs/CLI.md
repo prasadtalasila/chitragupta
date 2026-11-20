@@ -1140,7 +1140,8 @@ that context is discarded when it exits. It selects by citekey, or by a
 section named in `sections.md`, and refuses to dump the whole of
 `evidence.md`, since a caller reaching for it is trying not to read that.
 See [DRAFT-ITERATION.md](DRAFT-ITERATION.md#-dispatching-from-the-dossier)
-and [TOKENS.md](TOKENS.md).
+and
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md).
 
 Its exit code is the contract, because a dispatch prompt cannot read a
 paragraph. **0 when it printed at least one block, 1 when it could not
@@ -1451,7 +1452,9 @@ dot-directory in its path, and the render says so if it has one. A
 shared `.bib` field's raw TeX (`\input{...}`, `\directlua{...}`) is
 printed in the reference list as
 literal text, never run. Lua in the draft's own TeX, or in its figure
-files, is not fenced: [SECURITY.md](SECURITY.md) has what this does and
+files, is not fenced:
+[SECURITY.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/SECURITY.md)
+has what this does and
 does not cover.
 
 | Flag | Default | What it does |

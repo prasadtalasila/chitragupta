@@ -9,7 +9,8 @@ must satisfy*, in build order. The one step not built, a gating
 decision, is declined; see [Build order](#-build-order).
 
 It carries as little argument as it can. Every "why" is in
-[AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md): why the
+[AUTO-IMPROVEMENT-RATIONALE.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/AUTO-IMPROVEMENT-RATIONALE.md):
+why the
 aid sits in the review layer and not the drafting one, why five of eight
 item classes may not be acted on, why the loop stops instead of running
 overnight, and the one documented rule it cannot satisfy without the
@@ -313,7 +314,7 @@ unrecorded. Three things, any one of which would be enough:
    is about.
 
 So `misquoted` may not be accepted.
-[AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#-why-misquoted-may-not-be-accepted)
+[AUTO-IMPROVEMENT-RATIONALE.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/AUTO-IMPROVEMENT-RATIONALE.md#-why-misquoted-may-not-be-accepted)
 has the measurement behind that answer and what would reopen it.
 
 **The record is auditable.** `<stem>.accepted.json` holds one row per
@@ -361,7 +362,8 @@ instead of inheriting an answer.
 ## 🎯 The requirements
 
 Twelve obligations, each phrased so a reviewer can tell whether it has been
-met. [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#-mapping-the-method-onto-this-pipeline)
+met.
+[AUTO-IMPROVEMENT-RATIONALE.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/AUTO-IMPROVEMENT-RATIONALE.md#-mapping-the-method-onto-this-pipeline)
 says where each comes from.
 
 | | Requirement |
@@ -406,7 +408,7 @@ fix here". Three occasions to name in that description:
 **Nothing else may call it** (R11): not a PostToolUse hook, not a
 scheduled job, not a genre skill at the end of its own run, and not
 `draft-reviser` on its own initiative.
-[Why each](AUTO-IMPROVEMENT-RATIONALE.md#-why-only-a-person-may-start-it).
+[Why each](https://github.com/prasadtalasila/chitragupta/blob/main/docs/AUTO-IMPROVEMENT-RATIONALE.md#-why-only-a-person-may-start-it).
 
 **A stale input is reported, not merged.** Reports deliberately carry no
 timestamp, so they diff cleanly, and the check is therefore file mtime. An aid
@@ -433,7 +435,8 @@ Three alternatives are refused, not deferred, for reasons this document
 already gives elsewhere:
 
 - **Merging the two edits**, as `llm_wiki` does for a regenerated page
-  ([INSPIRATION.md](INSPIRATION.md) records that reading, and that no
+  ([INSPIRATION.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md)
+  records that reading, and that no
   code was copied). A merge must decide which of two edits wins, and this
   project's posture is that the human's wins by default. Refusal gets
   that for free.
@@ -470,13 +473,13 @@ registered is dead code.
 | --- | --- | --- |
 | The `agenda` aid | a key in `review.AIDS` (`chitragupta/review/__init__.py`) **and** in `review._registry.AIDS`, whose help line `chitragupta/command_help.py` holds | `chitragupta/review/_registry.py` raises `RuntimeError` if the two dicts disagree, so a half-registered aid fails loudly at import instead of writing a report nothing can find |
 | The `agenda-reviser` skill | its `SKILL.md` frontmatter `name` and `description` | This is the *only* trigger mechanism. A skill whose description does not match how a user phrases the request is never invoked, however correct its body |
-| Both, for an agent working on a draft | [AGENTS.md](../AGENTS.md)'s layer bullets, which enumerate the aids (Layer 4) and the skills (Layer 2) | An agent following AGENTS.md would not know either exists |
+| Both, for an agent working on a draft | [AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)'s layer bullets, which enumerate the aids (Layer 4) and the skills (Layer 2) | An agent following AGENTS.md would not know either exists |
 | Both, for a human | [CLI.md](CLI.md) for the command and its flags; [GENRE.md](GENRE.md) for which reviser handles what; README's review-aid block | Undiscoverable outside the source |
 | The docs themselves | `mkdocs.yml` nav and the README documentation tables | Invisible in the site nav. Not a build failure: `nav.omitted_files` is INFO-level, and `mkdocs build --strict` still passes |
 
 The first two rows are functional requirements, not administrative ones.
 [SOUL.md](../SOUL.md) is deliberately absent from the list
-([why](AUTO-IMPROVEMENT-RATIONALE.md#-why-only-a-person-may-start-it)).
+([why](https://github.com/prasadtalasila/chitragupta/blob/main/docs/AUTO-IMPROVEMENT-RATIONALE.md#-why-only-a-person-may-start-it)).
 
 ## ⚡ The cost ladder
 
@@ -519,7 +522,8 @@ of it is built, and none of it is read today.
   against real reports instead of guessed; this is those reports.
 - **Where the tokens went.** `dossier status` already totals retrieval
   cost per revision. Across drafts, that is the measurement
-  [TOKENS.md](TOKENS.md) currently estimates.
+  [TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md)
+  currently estimates.
 
 The house-style counterpart (standing preferences, the glossary, the
 allowlist) is in [HOUSE-STYLE.md](HOUSE-STYLE.md).
@@ -527,10 +531,11 @@ allowlist) is in [HOUSE-STYLE.md](HOUSE-STYLE.md).
 ## 🗺 Build order
 
 Steps 1 to 6 are built. Step 7 is a closed, declined decision, not an
-open issue; see [REQUIREMENTS.md §5.1](REQUIREMENTS.md#-51-current-position).
+open issue; see
+[REQUIREMENTS.md §5.1](https://github.com/prasadtalasila/chitragupta/blob/main/docs/REQUIREMENTS.md#-51-current-position).
 
 1. **Settle the amendment.** Not a coding task; see
-   [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#-the-amendment-this-needs).
+   [AUTO-IMPROVEMENT-RATIONALE.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/AUTO-IMPROVEMENT-RATIONALE.md#-the-amendment-this-needs).
    The user approved it, and the verbatim scan is a required step in the
    genre skills. The surviving invariant is advisory-versus-blocking: a
    review finding may be read, may be invoked by a driver, and may never

@@ -214,7 +214,8 @@ listing.
 
 **Still not gated, deliberately.** `python -m chitragupta.draft gate`
 means exactly one thing (a fabricated citekey fails), and
-[docs/CODE-STANDARDS.md](../CODE-STANDARDS.md) keeps it that way. `render`
+[docs/CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md)
+keeps it that way. `render`
 refusing is a different thing from the gate, and refuses only what is
 certain.
 

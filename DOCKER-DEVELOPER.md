@@ -39,7 +39,8 @@ too, so a re-lock that drifts below the cp314 wheel line fails in CI
 instead of on a user's machine. `pyproject.toml`'s comment on the
 `python` range explains why
 that drift is possible in the first place, and
-[docs/UV-MIGRATION.md](docs/UV-MIGRATION.md) has the measurements behind
+[docs/UV-MIGRATION.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/UV-MIGRATION.md)
+has the measurements behind
 it.
 
 ## 🧪 Running the test suite inside the toolchain container

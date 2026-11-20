@@ -34,7 +34,7 @@ skills, the review aids (`provenance`, `quotation`, `uncited`,
 `support`, `union` and the rest), the TikZ scaffolds and figure checks,
 outline-driven drafting and the draft fingerprint, the `agenda` loop,
 and topic modelling and discovery
-([TOPIC-MODELLING.md](TOPIC-MODELLING.md),
+([TOPIC-MODELLING.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOPIC-MODELLING.md),
 [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md)).
 
 The synthesis half drew on OpenScholar and the figure half on
