@@ -2,50 +2,36 @@
 
 Status: **reference.**
 
-The rules about a figure's ASCII twin. Every figure exists twice: once
-as a TikZ picture, `<name>.tex`, for the PDF and LaTeX renders, and
-once as a plain 7-bit ASCII diagram, `<name>.txt`, beside it. The twin
-is the only figure a reader of the `md`, `docx` or `html` render sees,
-so it must name what the TikZ names. The contract is
-[WRITING-STANDARDS.md §10](../WRITING-STANDARDS.md#-10-figures).
-[README.md](README.md) explains how to read a report and how to record a
-deliberate exception.
+The rules about a figure's ASCII twin. Every figure exists as a TikZ
+picture, `<name>.tex`, for the PDF and LaTeX renders, and as a 7-bit
+ASCII diagram, `<name>.txt`, beside it. The twin is the only figure the
+`md`, `docx` and `html` renders show, so it must name what the TikZ
+names ([WRITING-STANDARDS.md §10](../WRITING-STANDARDS.md#-10-figures)).
+[README.md](README.md) explains how to read a report and record an
+exception.
 
-The twin is written by hand, so the two drift: a box renamed in one, a
-tag added to the TikZ and never to the ASCII. These rules read both
+The twin is written by hand, so the two drift. These rules read both
 files from source, so they hold whether or not the figure compiles.
-"Appears in the twin" means every word of it, as a whole word, in any
-order, case aside. Markup is stripped and maths dropped first, because
-ASCII cannot spell `\hat{x}`. A gloss is never compared: the twin may
-reword it to fit a narrow box. Whether the arrows join the same boxes
-is still yours to check by eye.
+"Appears in the twin" means every word, as a whole word, in any order,
+case aside, after markup is stripped and maths dropped (ASCII cannot
+spell `\hat{x}`). A gloss is never compared: the twin may reword it to
+fit. Whether the arrows join the same boxes is yours to check by eye.
 
-Each rule below shows a faulty figure, the line `figure check` prints
-for it, and the fixed one. Both are real files in
-[examples/](examples/), and `tests/test_figure_check_examples.py`
-compiles them, so the report lines on this page are what the check
-prints today. The TikZ listings show the picture only; every file also
-carries the house style block above it. The two renders of a pair look
-the same, since only the twin differs, so this page shows the twins
-instead of images.
+Each rule shows a faulty figure, its report line and the fixed one, all
+real files in [examples/](examples/) that
+`tests/test_figure_check_examples.py` compiles. TikZ listings show the
+picture only. A pair's renders look the same, so this page shows the
+twins instead of images.
 
 ## 🧭 Rules on this page
 
-- [`twin-missing`](#twin-missing)
-- [`t1-labels`](#t1-labels)
-- [`t2-tags`](#t2-tags)
-- [`t3-panels`](#t3-panels)
+Each rule below says what it catches and how to fix it.
 
 ### `twin-missing`
 
-**Catches.** No `<name>.txt` beside the figure. The target is
-`figure`. The three comparisons below then have nothing to compare, so
-they are listed under "not measured" rather than reported three times
-over. This rule cannot be allowed: a figure without a twin is fixed,
-never excused.
-
-**Why it matters.** The `md`, `docx` and `html` renders have nothing to
-show where the figure should be.
+**Catches.** No `<name>.txt` beside the figure. Target: `figure`. The
+three comparisons below are then listed under "not measured". This rule
+cannot be allowed: a figure without a twin is fixed, never excused.
 
 Faulty: `faulty.tex` has no `faulty.txt` beside it.
 
@@ -77,13 +63,9 @@ skill). Cannot be allowed.
 
 ### `t1-labels`
 
-**Catches.** A name in the TikZ that is not in the twin. A name is a
-node label's first line (`\cglab`'s name), a zone title or a legend
-entry. Every word of it must appear in the twin. The target is the
-node, or the name's text for an unnamed node.
-
-**Why it matters.** A reader of the twin meets a box the prose calls
-by another name, and cannot tell whether the two are the same step.
+**Catches.** A name in the TikZ that is not in the twin: a node
+label's first line (`\cglab`'s name), a zone title or a legend entry.
+Target: the node, or the name's text for an unnamed node.
 
 Faulty: the TikZ names the gate `Citation gate`.
 
@@ -106,7 +88,7 @@ The twin shortens it to `Gate`.
   t1-labels             gate       missing "citation"
 ```
 
-Fixed: the twin uses the TikZ's words. The TikZ is unchanged.
+Fixed: the twin uses the TikZ's words.
 
 ```text
 +----------------------+   +================+
@@ -122,12 +104,9 @@ reword those freely.
 ### `t2-tags`
 
 **Catches.** A line of a node placed on a `\draw` or `\path` (a tag,
-whatever its style) that is not in the twin, word for word as
-`t1-labels`. The target is the edge, `a->b`, or the tag's text where
-it joins no two names.
-
-**Why it matters.** The tag says what moves along the line. Without it
-the twin's arrow says only that something does.
+whatever its style) that is not in the twin, compared as `t1-labels`.
+Target: the edge, `a->b`, or the tag's text where it joins no two
+names.
 
 Faulty: the TikZ tags the arrow `writes passages`.
 
@@ -150,8 +129,7 @@ The twin's arrow has no tag.
   t2-tags               index->ledger missing "writes"
 ```
 
-Only `writes` is reported missing: `passages` is in the twin already,
-in Index's gloss.
+Only `writes` is missing: `passages` is in Index's gloss.
 
 Fixed: the tag goes on the twin's arrow.
 
@@ -169,11 +147,8 @@ Fixed: the tag goes on the twin's arrow.
 
 **Catches.** The panel letters opening a label line in the TikZ,
 `(a)`, `(b)`, that are not the set of `(<letter>)` tokens in the twin.
-The target is `figure`. A letter counts in the twin only in its
-parentheses, so `a)` or `(A)` is not a panel letter.
-
-**Why it matters.** The prose says "panel (b)". A reader of the twin
-must be able to find it.
+Target: `figure`. Only a letter in parentheses counts, so `a)` or `(A)`
+is not a panel letter.
 
 Faulty: the TikZ letters its two panels `(a) before` and `(b) after`.
 
@@ -212,7 +187,7 @@ The twin writes `a)` and `b)`.
   t3-panels             figure     tex (a), (b); twin none
 ```
 
-Fixed: the twin's last line letters the panels as the TikZ does.
+Fixed: the twin's last line.
 
 ```text
      (a) before               (b) after
