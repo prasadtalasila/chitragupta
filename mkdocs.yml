@@ -233,6 +233,7 @@ nav:
       - Iterating on a draft: docs/DRAFT-ITERATION.md
       - Hand-editing a draft: docs/USER-EDITS.md
       - The dossier (machine-facing): docs/DOSSIER.md
+      - TLDR on papers: docs/TLDR.md
   - Review drafts:
       - The review layer: docs/REVIEW.md
       - Agenda: docs/AGENDA.md
@@ -283,7 +284,6 @@ nav:
       - Rendering flow: docs/RENDERING-FLOW.md
       - Rejection: docs/REJECTION.md
       - Parallelism: docs/PARALLELISM.md
-      - Per-citekey TL;DR and the abstract behind it: docs/TLDR.md
       - Auto-improvement: docs/AUTO-IMPROVEMENT.md
       - House style: docs/HOUSE-STYLE.md
       - Zotero groups without Better BibTeX: docs/EXPORT-ZOTERO-GROUPS.md
