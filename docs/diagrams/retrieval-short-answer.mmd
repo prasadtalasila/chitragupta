@@ -16,28 +16,29 @@ flowchart TB
 
   Q(["your query<br/><i>“digital twin composability”</i>"])
 
-  subgraph SEARCH["<b>SEARCHING</b> — same question, two implementations. Pick one; nothing merges them."]
-    direction LR
-    BM25["<b>chitragupta/retrieval.py</b> · BM25<br/><small>stdlib · whole documents · always available</small>"]
-    EMB["<b>chitragupta/enrich/embed_index.py</b> · semantic<br/><small>enrich group · 200-word chunks<br/>same <code>search(q, k)</code> shape, so it is a drop-in</small>"]
+  subgraph SEARCH["<b>SEARCHING</b>: pick one; nothing merges them"]
+    direction TB
+    BM25["<b>BM25</b> · <code>retrieval.py</code><br/>stdlib, always available"]
+    EMB["<b>semantic</b> · <code>embed_index.py</code><br/>enrich group, a drop-in"]
   end
 
-  subgraph SURVEY["<b>SURVEYING</b> — no query at all"]
+  subgraph SURVEY["<b>SURVEYING</b>: no query"]
     direction TB
-    BERT["<b>chitragupta/enrich/topic_model.py</b> · BERTopic<br/><small>clusters the whole corpus at once</small>"]
-    TOP[/"<b>content/topics.json</b><br/><small>read by you, the converge stage and corpus discover; no genre skill</small>"/]
+    BERT["<b>BERTopic</b> · <code>topic_model.py</code><br/>clusters the whole corpus"]
+    TOP[/"<b>content/topics.json</b><br/>read by you, not by skills"/]
     BERT --> TOP
   end
 
-  HITS(["ranked hits + snippets<br/><small>evidence a genre skill may cite from —<br/>every hit carries a real citekey</small>"])
-  CORPUS[("your corpus<br/><small>the bibliography, via the ledger<br/>content/parsed/ · content/docling/</small>")]
+  HITS(["ranked hits<br/>each with a real citekey"])
+  CORPUS[("your corpus")]
 
   Q --> BM25 --> HITS
-  Q -. "only if content/chroma/ exists" .-> EMB
+  Q -. "if chroma/ exists" .-> EMB
   EMB -.-> HITS
   CORPUS --> BM25
   CORPUS --> EMB
   CORPUS --> BERT
+  HITS ~~~ BERT
 
 
   class Q,HITS flow

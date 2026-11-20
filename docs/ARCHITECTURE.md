@@ -75,44 +75,46 @@ stages ([layer 3](#-layer-3-the-enrichment-layer) has the reason).
 }}%%
 flowchart TB
 
-  subgraph J1["<b>LAYER 1 · CORPUS</b> — deterministic, no LLM, safe unattended"]
+  subgraph J1["<b>LAYER 1 · CORPUS</b>: deterministic, no LLM"]
     direction TB
-    SYNC["<code>chitragupta corpus sync</code><br/><small><b>needs the venv</b> — bibtexparser<br/>holds the write lock · exit 0 / 1 / 2 / 3</small>"]
-    OUT1[/"<b>content/ledger.sqlite</b> · <b>content/parsed/&lt;citekey&gt;.txt</b>"/]
+    SYNC["<code>chitragupta corpus sync</code><br/>needs the venv · takes the write lock"]
+    OUT1[/"<b>ledger.sqlite</b> · <b>parsed/</b>"/]
     SYNC --> OUT1
   end
 
-  subgraph PKG["<b>PACKAGE COMMANDS</b> — beside the layers, not one of them"]
+  subgraph PKG["<b>PACKAGE COMMANDS</b>: beside the layers"]
     direction TB
-    P["<code>chitragupta init</code> · <code>doctor</code> · <code>install &lt;stage&gt;</code><br/><code>chitragupta figure sync | check | new | look</code><br/><small>bare python · take no lock · never write the ledger</small>"]
+    P["<code>init</code> · <code>doctor</code> · <code>install</code> · <code>figure</code><br/>bare python · no lock"]
   end
 
-  subgraph J2["<b>LAYER 2 · DRAFTING</b> — generative, on demand, you review it"]
+  subgraph J2["<b>LAYER 2 · DRAFTING</b>: generative, on demand"]
     direction TB
-    SKILL["<b>.claude/skills/</b> — six genre skills<br/><small>read the corpus layer · never write the ledger</small>"]
-    CHAIN["<b>the chain, on every draft</b><br/><code>chitragupta draft gate</code> — <b>hard gate</b><br/><code>chitragupta draft references</code><br/><code>chitragupta draft render</code><br/><small><b>bare python, no venv</b> — by design</small>"]
+    SKILL["<b>genre skills</b><br/>read the corpus, never write the ledger"]
+    CHAIN["<code>draft gate</code>: the hard gate<br/><code>draft references</code> · <code>draft render</code><br/>bare python, no venv"]
     SKILL --> CHAIN
   end
 
-  subgraph JH["<b>LAYER 3 · ENRICHMENT</b> — optional · you run it, no skill does"]
+  subgraph JH["<b>LAYER 3 · ENRICHMENT</b>: optional, you run it"]
     direction TB
-    FULL["<code>chitragupta enrich --stages …</code><br/><small><b>needs the venv + the enrich group</b><br/>takes the <b>same write lock</b> as sync</small>"]
-    OUT3[/"content/docling/ · content/chroma/ · content/topics.json · content/topic_seeds.json · content/topic_set.json"/]
+    FULL["<code>chitragupta enrich</code><br/>venv + enrich group · same write lock"]
+    OUT3[/"docling/ · chroma/ · topic files"/]
     FULL --> OUT3
   end
 
-  subgraph AID["<b>LAYER 4 · REVIEW</b> — advisory, never a gate · <b>takes no lock</b>"]
+  subgraph AID["<b>LAYER 4 · REVIEW</b>: advisory, no lock"]
     direction TB
-    A["<code>chitragupta review provenance</code><br/><code>chitragupta review coverage</code><br/><code>chitragupta review verbatim</code><br/><small>bare python · runs happily during a sync</small>"]
-    OUT4[/"<b>content/review/&lt;topic&gt;/&lt;stem&gt;.{provenance,verbatim,coverage}.md</b>"/]
+    A["<code>chitragupta review &lt;aid&gt;</code><br/>bare python · runs during a sync"]
+    OUT4[/"<b>content/review/</b>"/]
     A --> OUT4
   end
 
-  OUT1 == "the only evidence a writer is given" ==> SKILL
-  OUT1 == "the only authority the gate consults" ==> CHAIN
-  OUT3 -. "read if present, never built by a skill" .-> SKILL
+  OUT1 == "the only evidence" ==> SKILL
+  OUT1 == "the only authority" ==> CHAIN
+  OUT3 -. "read if present" .-> SKILL
   OUT3 -. "quotable passages" .-> A
   CHAIN --> A
+  OUT1 ~~~ FULL
+  OUT4 ~~~ P
 
 
   class SYNC flow

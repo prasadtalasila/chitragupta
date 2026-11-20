@@ -17,87 +17,31 @@ title: "Level 3 — everything on disk, and which module writes it"
 }}%%
 flowchart TB
 
-  subgraph IN["<b>YOURS</b> — hand-curated, gitignored, per host"]
-    direction LR
-    BIB[/"papers/bibliography.bib"/]
-    PDF[/"<b>papers/bibliography/files/&lt;id&gt;/*.pdf</b><br/><small>Zotero's companion folder, written beside the .bib<br/>by <b>Export Files</b> — renaming it breaks every<br/><code>file</code> field silently</small>"/]
-    CFG[/"config.toml"/]
-  end
+  IN["<b>YOURS</b>, per host<br/><code>papers/bibliography.bib</code><br/><code>papers/bibliography/files/</code><br/><code>config.toml</code>"]
 
-  subgraph GEN["<b>GENERATED</b> — <code>content/</code>, all of it disposable: delete it and re-run"]
-    direction TB
+  L1["<b>corpus sync</b> writes<br/><code>ledger.sqlite</code><br/><code>parsed/*.txt</code>, <code>*.passages.json</code><br/><code>pipeline.lock.db</code> while running"]
 
-    subgraph L1["written by <code>chitragupta corpus sync</code> — the corpus layer"]
-      direction LR
-      LED[("content/ledger.sqlite")]
-      TXT[/"content/parsed/&lt;citekey&gt;.txt<br/><small>form feeds between pages, either backend</small>"/]
-      CPS[/"content/parsed/&lt;citekey&gt;.passages.json<br/><small>only with <code>[parser].backend = docling</code>;<br/>cleared before every re-parse</small>"/]
-    end
+  L2["<b>enrichment</b> writes, opt-in<br/><code>docling/</code> · <code>chroma/</code><br/><code>topics.json</code> · <code>topic_set.json</code><br/><code>topic_seeds.json</code> · <code>topic_graph.json</code>"]
 
-    subgraph L2["written by the enrichment layer — opt-in"]
-      direction LR
-      DOC[/"<b>content/docling/&lt;doc&gt;.md</b><br/>+ &lt;doc&gt;.passages.json<br/><b>+ &lt;doc&gt;_artifacts/*.png</b> — figure bitmaps<br/><b>+ &lt;doc&gt;.figures.json</b> — page, caption, cite string<br/><small>the last two only when <code>[enrich].docling_images</code><br/>is on; Docling reads the <b>PDF</b>, never content/parsed/</small>"/]
-      CHR[("content/chroma/")]
-      TOP[/"content/topics.json"/]
-      SED[/"content/topic_seeds.json"/]
-      CVG[/"content/topic_set.json"/]
-      TGR[/"content/topic_graph.json"/]
-    end
+  L3["<b>caches</b>, safe to delete<br/><code>retrieval_index.json</code><br/><code>retrieval_passage_index.json</code><br/><code>docling_cache.json</code><br/><code>topic_embed_cache.json</code>"]
 
-    subgraph L3["caches — rebuilt on demand, safe to delete, cost only time"]
-      direction LR
-      RIX[/"content/retrieval_index.json"/]
-      RPX[/"content/retrieval_passage_index.json"/]
-      DCA[/"content/docling_cache.json"/]
-      TCA[/"content/topic_embed_cache.json"/]
-    end
+  L4["<b>through a skill</b><br/><code>drafts/</code> · <code>rendered/</code> · <code>review/</code>"]
 
-    subgraph L4["written by you, through a skill"]
-      direction LR
-      DRF[/"content/drafts/&lt;slug&gt;.md | .tex"/]
-      REN[/"content/rendered/&lt;slug&gt;.pdf | .tex | .docx | .md"/]
-      RVW[/"content/review/&lt;slug&gt;.{provenance,verbatim,coverage,synthesis,figure,uncited,quotation,agenda,support,union,digest}.md<br/><small>the draft's path under drafts/, mirrored · renders land beside them</small>"/]
-    end
 
-    LCK[/"content/pipeline.lock.db<br/><small>held by whichever writer is running</small>"/]
-  end
+  IN -- "bib_reader, pdf_text" --> L1
+  IN -- "docling_parse" --> L2
+  L1 -- "embed_index, topic_*" --> L2
+  L1 -- "retrieval caches" --> L3
+  L3 -- "BM25" --> L4
+  L2 -. "semantic, passages" .-> L4
+  L1 -- "references, passages" --> L4
+  L4 == "<b>draft gate</b>, until exit 0" ==> L4
+  L2 ~~~ L3
 
-  CFG -. "read once at import,<br/>env vars override" .-> GEN
 
-  BIB -- "chitragupta/bib_reader.py" --> LED
-  PDF -- "chitragupta/pdf_text/" --> TXT
-  PDF -- "chitragupta/pdf_text/<br/><small>docling backend only</small>" --> CPS
-  LED -- "which PDFs need a parse" --> TXT
-  LED -- "chitragupta/enrich/corpus.py<br/><small>every row, keyed by <code>citekey</code></small>" --> DOC
-  TXT -- "chitragupta/enrich/embed_index.py" --> CHR
-  PDF -- "chitragupta/enrich/docling_parse.py" --> DOC
-  CPS -. "<b>chitragupta/enrich/_docling_reuse.py</b><br/><small>adopts the corpus layer's parse<br/>instead of repeating it</small>" .-> DOC
-  DOC --> CHR
-  TXT -- "chitragupta/enrich/topic_model.py<br/><small>whole-doc embeddings — its own cache,<br/>not the Chroma collection</small>" --> TOP
-  TXT -- "chitragupta/enrich/topic_seeding.py<br/><small>the seed phrases, hand-written and extracted,<br/>matched against the same embeddings</small>" --> SED
-  TOP -- "chitragupta/enrich/topic_converge.py<br/><small>emergent clusters and named phrases, joined</small>" --> CVG
-  SED --> CVG
-  CVG -- "chitragupta/enrich/topic_graph.py<br/><small>how the topics relate — shared-member<br/>and semantic edges, both explainable by papers</small>" --> TGR
-
-  TXT -- "chitragupta/retrieval_cache.py" --> RIX
-  CPS -- "chitragupta/retrieval_passages_cache.py" --> RPX
-
-  RIX -- "<b>chitragupta/retrieval.py</b> · BM25 hits<br/><small>the default path</small>" --> DRF
-  RPX -- "<b>chitragupta/retrieval_passages.py</b> · BM25 passage hits<br/><small>same ranker, one unit down — <code>--unit passage</code></small>" --> DRF
-  CHR -. "<b>chitragupta/enrich/embed_index.py</b> · semantic hits<br/><small><b>either this or BM25 — never both.</b> Used once<br/>built; the shared genre steps name it, no skill builds it.</small>" .-> DRF
-  DOC -- "chitragupta/passages.py<br/>quotable passages — rung 1" --> DRF
-  CPS -- "chitragupta/passages.py<br/>quotable passages — rung 2" --> DRF
-  LED -- "chitragupta/references.py<br/>bib_fields → IEEE entries" --> DRF
-  DRF == "<b>chitragupta draft gate</b> — on FAIL the skill fixes the draft<br/>and re-runs it until it exits 0" ==> DRF
-  DRF -- "chitragupta draft render<br/><small>only after the gate passes</small>" --> REN
-  DRF -- "the review layer<br/><small>chitragupta review provenance · verbatim scan --write<br/>coverage · synthesis · figure · uncited · quotation --write<br/>agenda · support --write · union (a book, not a draft) · digest</small>" --> RVW
-
-  class BIB,PDF,CFG key
-  class LED,TXT,CPS flow
-  class DOC,CHR,TOP,SED,CVG,TGR absent
-  class RIX,DCA,TCA absent
-  class DRF,REN,RVW alt
-  class LCK flow
+  class IN key
+  class L1,L4 alt
+  class L2,L3 absent
 
   %% house roles: generated by scripts/render_diagrams.py --sync
   classDef flow fill:#E6F1F7,stroke:#0072B2,stroke-width:1.4px,color:#1A1A1A

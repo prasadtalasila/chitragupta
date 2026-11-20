@@ -199,14 +199,18 @@ class TestEachExportMatchesItsFencedBlock:
 class TestTheReviewLayerIsDrawnCompletely:
     """The specific staleness that keeps recurring.
 
-    Three diagrams enumerate the review aids and present the enumeration
+    One diagram enumerates the review aids and presents the enumeration
     as complete -- "REVIEW AIDS: you run these", "Layer 4, the review
     layer". Each listed three of six until this PR. A diagram that merely
     *mentions* one aid is not making a claim about the set and is not
     checked here; these three are.
     """
 
-    ENUMERATING = ("00-main-workflow", "v3-artifacts", "g1-corpus-led", "extra-sequence")
+    # g1-corpus-led, v3-artifacts and extra-sequence no longer list the
+    # aids: each was redrawn narrow enough to read on the docs site (#1229),
+    # which left no room for eleven names in one label. 00-main-workflow
+    # still names them all in its REVIEW AIDS node.
+    ENUMERATING = ("00-main-workflow",)
 
     @pytest.mark.parametrize("name", ENUMERATING)
     def test_it_names_every_aid(self, name):

@@ -64,7 +64,7 @@ rests on its shape:
     "tertiaryBorderColor": "#D55E00"
   }
 }}%%
-flowchart LR
+flowchart TB
   BIB["your .bib export<br/><small>the only entrance</small>"]
   LEDGER[("content/ledger.sqlite<br/><small>citekey + real parsed text</small>")]
   DRAFT["a draft<br/><small>written by a genre skill</small>"]
@@ -295,7 +295,7 @@ human or a model with no tooling at all.
     "tertiaryBorderColor": "#D55E00"
   }
 }}%%
-flowchart LR
+flowchart TB
   DR["content/drafts/dt/survey.md"]
   DO["content/dossiers/dt/survey/"]
   RE["content/rendered/dt/survey.{md,tex,pdf}"]
