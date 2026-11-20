@@ -12,7 +12,7 @@ who wants to know what the controls do without reading a design
 document first. It is also for you, with a synced corpus in hand,
 deciding where the next draft starts.
 
-The screenshots come from two corpora: a real 131-topic, 497-paper
+The screenshots come from two corpora: a real 129-topic, 497-paper
 library, and the five-paper
 [sample project](examples/README.md) this repository commits so
 every walkthrough has a reproducible subject. Each caption says which.
@@ -88,7 +88,7 @@ live view and not of the corpus:**
 ![The app opens grouped: eight grey boxes, one per merge-tree
 cut group, with bundled edges between them](images/discovery/grouped.png)
 
-*Real corpus.* A 131-topic graph drawn loose is a hairball, so the app
+*Real corpus.* A 129-topic graph drawn loose is a hairball, so the app
 opens at a cut of the stored merge tree yielding roughly eight groups,
 each collapsed to one grey box carrying its member count. Edges between
 boxes are bundles, one per group pair per family: solid for shared
@@ -173,14 +173,14 @@ overlap|semantic`.
 
 ## 🚫 Why is there *no* edge here?
 
-![Two pinned topics with no edge: the panel names their twelve shared
+![Two pinned topics with no edge: the panel names their nine shared
 papers and reports that the overlap is what chance predicts, so no
 edge was drawn](images/discovery/absence.png)
 
-*Real corpus, "model-driven engineering" and "physical twin" pinned.*
-These two topics share twelve papers and still have no overlap edge, because sharing
-twelve papers between topics of size 58 and 56 in a 497-paper corpus is
-what chance predicts (p = 0.02), and the hypergeometric gate refuses
+*Real corpus, "physical twin" and "topic-20" pinned.* These two topics
+share nine papers and still have no overlap edge, because sharing nine
+papers between topics of size 66 and 51 in a 497-paper corpus is what
+chance predicts (p = 0.22), and the hypergeometric gate refuses
 edges chance explains. The app reads the refusal the pipeline stored
 (`edges_withheld`, beside the edges it drew) and says it in words.
 
@@ -193,7 +193,7 @@ prints the one number the app cannot show, the gate's stored threshold.
 paper belonging to both is highlighted as a
 bridge](images/discovery/papers.png)
 
-*Sample corpus, both seed topics opened.* Double-click a topic and its
+*Sample corpus, two seed topics opened.* Double-click a topic and its
 member papers join the canvas as diamonds, labelled by citekey, with
 the ledger title on hover. A paper held by more than one opened topic
 is drawn once, linked to each, and highlighted, so the bridge becomes a
@@ -296,6 +296,8 @@ separately.
 Each view was exported by `corpus discover --app`, opened from
 `file://` in headless Chrome, driven into the state shown by
 dispatching the same DOM events a reader's clicks would, and captured
-at 1440x900. No screenshot was edited; the sample-corpus shots are
+at 900x650 and twice the pixel density on 2026-11-20, narrow enough that
+the page shows the app's text near its own size. No screenshot was
+edited beyond `pngquant` compression; the sample-corpus shots are
 reproducible from the committed
 [sample project](examples/README.md) after a `corpus sync` there.
