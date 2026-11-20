@@ -1,0 +1,17 @@
+extends: existence
+message: "'%s' leans on an unnamed authority: name the source and cite it, or cut the claim (WRITING-STANDARDS.md §4)."
+link: https://github.com/prasadtalasila/chitragupta/blob/main/docs/WRITING-STANDARDS.md
+level: suggestion
+ignorecase: true
+tokens:
+  - experts argue
+  - experts believe
+  - experts say
+  - experts agree
+  - many experts
+  - observers have cited
+  - observers note
+  - industry reports
+  - some critics
+  - critics argue
+  - several publications

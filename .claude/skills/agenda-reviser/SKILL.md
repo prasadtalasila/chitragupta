@@ -181,7 +181,9 @@ python -m chitragupta.draft style content/drafts/<path>
 It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable:
 §2's defect markers, an acronym never expanded at first use, a drifted
 glossary acronym, §8's dialect against `scope.md`'s `language:` line,
-and an uncaptioned table or figure. It cannot tell a quotation from the
+an uncaptioned table or figure, and the fixed phrases §4 and §7 name:
+clichés, hype, wordy stock phrases, the habits of machine-written prose,
+and how a statistic is reported. It cannot tell a quotation from the
 draft's own voice, and a clean report says nothing about what it does
 not check. A review aid, not a gate: it exits 0 whatever it finds.
 
@@ -337,8 +339,8 @@ argued in
   scheduled job, the end of a genre skill's run, or `draft-reviser`. A
   person asking is the only trigger.
 - **Never edit anything but the draft and `revisions.md`**: not
-  `content/verbatim_allowlist.toml`, not
-  `assets/vale/styles/chitragupta/*.yml`, not `rejected.md`, `scope.md`
+  `content/verbatim_allowlist.toml`, not anything under `assets/vale/`
+  (a rule file or `vale.ini`), not `rejected.md`, `scope.md`
   or `evidence.md`, and nothing under the corpus layer. A loop that could
   silence its own detector is not one anyone should trust; suppressing a
   finding is the user's call.

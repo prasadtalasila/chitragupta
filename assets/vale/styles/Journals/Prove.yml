@@ -1,0 +1,21 @@
+extends: existence
+message: "Results show or support; '%s' claims more than data can."
+level: suggestion
+ignorecase: true
+tokens:
+  - proves?
+  - proved
+  - proven
+  - proving
+  - proof
+
+tests:
+  - name: fires
+    input: |
+      This proves the model is right.
+    want: |
+      1:6:Journals.Prove:Results show or support; 'proves' claims more than data can.
+  - name: clean
+    input: |
+      This supports the model.
+    want: ""

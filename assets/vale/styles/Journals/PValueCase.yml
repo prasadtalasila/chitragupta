@@ -1,0 +1,18 @@
+# Guides split on 'p' and 'P'. Whichever a manuscript picks, it picks once.
+extends: consistency
+message: "Inconsistent case for the p-value: '%s'."
+level: warning
+nonword: true
+either:
+  '(?<!\w)p\s*[<>=≤≥]\s*0?\.\d': '(?<!\w)P\s*[<>=≤≥]\s*0?\.\d'
+
+tests:
+  - name: fires
+    input: |
+      Groups differed (p = 0.03) and again (P = 0.04).
+    want: |
+      1:39:Journals.PValueCase:Inconsistent case for the p-value: 'P = 0.0'.
+  - name: clean
+    input: |
+      Groups differed (p = 0.03) and again (p = 0.04).
+    want: ""

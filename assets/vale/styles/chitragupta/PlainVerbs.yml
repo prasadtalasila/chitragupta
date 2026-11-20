@@ -1,0 +1,9 @@
+extends: substitution
+message: "Use '%s' rather than '%s': the longer verb adds nothing (WRITING-STANDARDS.md §4)."
+link: https://github.com/prasadtalasila/chitragupta/blob/main/docs/WRITING-STANDARDS.md
+level: suggestion
+ignorecase: true
+swap:
+  serves as: is
+  stands as: is
+  boasts: has

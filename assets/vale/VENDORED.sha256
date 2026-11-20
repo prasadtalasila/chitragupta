@@ -1,0 +1,49 @@
+# sha256 of every vendored file under styles/, as copied from upstream.
+# tests/test_style_vendored.py fails when a file differs from its line here.
+# Regenerate only when moving a pin, from a fresh copy of the release:
+#   cd assets/vale && sha256sum styles/{proselint,ai-tells,Journals,PLOS,Microsoft}/*
+#
+# proselint  vale-cli/proselint   v0.3.4   f27b5e776bdeeb96adfc53eacfde425bb05e8c7e
+# ai-tells   tbhb/vale-ai-tells   v1.37.0  dd60c5dc0d5432f71b0113fe2003fb06d069a71f
+# Journals   jdkato/journals      v0.1.0   70230e08a41584852afe6e172e419e662c26f013  (Journals/styles/Journals/)
+# PLOS       jdkato/journals      v0.1.0   70230e08a41584852afe6e172e419e662c26f013  (Journals/styles/PLOS/)
+# Microsoft  errata-ai/Microsoft  v0.15.2  6ea641c159c406a91505170276c8e165b20e3858
+cbb35a04d97b65565c2da70d237a35a131da208ff97209ceccd4feae89ef9fb0  styles/proselint/Cliches.yml
+5d1f1d96bd82050b799181e3d725ded38db74990a834b91b66e38dc54d149e00  styles/proselint/Hedging.yml
+7aafff98b8d2359000c111de3e1d98eeb1a1940c7c538411b18a492ba3abfe02  styles/proselint/Hyperbole.yml
+b1f23c552b813bb86d87ed697d895a5e03bf80a3882f9ffd87fcdeb176f103c0  styles/proselint/LICENSE
+6a679fc43902eda41a8c2cfa375b05425026a8699ba294bd67077397c39b6e16  styles/proselint/Malapropisms.yml
+f21fd323cf35857cf23bae2df4aa328d91b3c56205912b71b41b5fe0758374c1  styles/proselint/Needless.yml
+85111a2bd1534f6164aef7c93c6b79b2a9eb74eab1cefd5581e5023841e838ab  styles/proselint/Nonwords.yml
+7f42dd2a672502a3ece6899dcb9faaadaa078bfab76c2c1b9263852950236e25  styles/proselint/Oxymorons.yml
+4c2a0ed3f764282889aed15092c5589dac922e829015575d003dc157312e3487  styles/proselint/RASSyndrome.yml
+d79d00342abfcbef4838474883824fb3e9f4331f0eeab84ea8a7d9b49a61a67b  styles/proselint/Skunked.yml
+17e28afd19860eff1ce7dbfb5a0227eeee19aa759f2728962e3aba9282c8d0bf  styles/proselint/Uncomparables.yml
+431b67451ce3a74a0fecba1b22d8898bc972613ee6f94381e2b676bf01b0bf64  styles/proselint/Very.yml
+68baeb4c5ce2ac5314ebea78e9e4808e72baa8e4a9180918082b738db6843e20  styles/ai-tells/ClosingPleasantries.yml
+a007ead9de6da952cd224b0bacfa8ae45dd8657bfb04e776b6f627341a4b1c9e  styles/ai-tells/ConclusionMarkers.yml
+99d23e10cd483496bb398dd7abfe0d58138dc0121c65726f00f42f6fb67e403e  styles/ai-tells/ContrastiveFormulas.yml
+adf519814a60378fc45fedaa358c6598cde3621154945180569784c79365d4ed  styles/ai-tells/LICENSE
+e96d9cffb3da1cdaf68417c5a1ca52ab35099f3153a2178c67799dcaf9315a75  styles/ai-tells/NegatedPair.yml
+2e1803583154106e95dd4dd15a17190092c75ef843012667e2a6d374a961c5d2  styles/ai-tells/PromotionalPuffery.yml
+96eb2e47092b8237277ddc2c1c3c74cda37b87a03ff5dd7b9c9a169f4486bc8b  styles/ai-tells/PseudoCleft.yml
+e991f6c87e4299d0349129f0a0e04b70b983b30a669f0ffd20b25a5478217681  styles/ai-tells/StackedHedges.yml
+0cc457996919c18c4b1f2d74b9b6fd5f0f4f68ddb11e3ceaf5915f6f4a3233cf  styles/ai-tells/SycophancyMarkers.yml
+ab26cec723b8eff4a2d637cf8b14c0fd443f507f8e2b54b94679d76999baa1e6  styles/Journals/EtAl.yml
+d1053daf59976787e3c4dacb9cd27603e108c1a0b3983ce0e801111dcd310fa5  styles/Journals/Hype.yml
+aa431e1653f927cf92be0fcc77fe388b97780b5f0f541085e30c4abe626b1074  styles/Journals/LICENSE
+274dae445e5789fa36a3e6a0437b6bcece683fde201fce0170dd6439f03f9b74  styles/Journals/NOTICE
+3e012aeedec8fd24cd382c5619256f9dd161e896dac1114fb728713897e61c14  styles/Journals/PValueCase.yml
+e718c7ffc15947f9d960d1315dc3b006d5d91c7e49509ef01ff17ea389b3bcca  styles/Journals/PValueZero.yml
+62f8265efd86890918db155d6f00b2a076acdb7c842a8c2adbcd8a12202d370c  styles/Journals/Placeholder.yml
+ec85adbd5a812d8dc309d70b018bd8bd200c1f17cb38dfa3622328d174a19de1  styles/Journals/Prove.yml
+4f8e80038ca516fe8af9d8d842533b8d75fbe79271ad3340b9ca823707ecfc06  styles/Journals/Significant.yml
+8ad20b202923ef34307b1c1c261a0fb4e1cfafd41a782e3a3bf90dc5a9e49a77  styles/Journals/UnitSpacing.yml
+2d61c7f95294332ae435d9efd7d42f1e1ceef0b93a3ea7b4c928cb36a1054100  styles/Journals/UnitSymbols.yml
+aa431e1653f927cf92be0fcc77fe388b97780b5f0f541085e30c4abe626b1074  styles/PLOS/LICENSE
+274dae445e5789fa36a3e6a0437b6bcece683fde201fce0170dd6439f03f9b74  styles/PLOS/NOTICE
+2c723985594f2b33c2e1ae01af93499a3d7e7285034b630a54144e3381ddf336  styles/PLOS/PValues.yml
+f661986be23c000812a439e03dfed8d16ff23117e8d1219fc2beb7cd01393640  styles/Microsoft/LICENSE
+d2f41bfa0238e3095221251a0a4407cb64481fe8725162ffdc48c23f6d750e6c  styles/Microsoft/Plurals.yml
+588dfe9a4b9d952eadf93b652d1d35f8d35ee8c9594233bdd3fe7f713d4913ec  styles/Microsoft/Uppercase.yml
+7e6c608b56a6946b921a3986a9254cdf389551361ee5dfc16bfac4b528430c38  styles/Microsoft/Wordiness.yml

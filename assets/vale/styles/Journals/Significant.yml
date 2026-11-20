@@ -1,0 +1,20 @@
+# 'Significant' in a results sentence means statistically significant, and a
+# reader expects the test beside it.
+extends: existence
+message: "'%s' without a statistic in the sentence: give the test, or say 'large'."
+level: suggestion
+scope: sentence
+nonword: true
+raw:
+  - '(?i)(?<!\bp\s*[<>=≤].*)\bsignificant(?:ly)?\b(?!.*\bp\s*[<>=≤])'
+
+tests:
+  - name: fires
+    input: |
+      The effect was significant. The effect was significant (p < 0.01).
+    want: |
+      1:16:Journals.Significant:'significant' without a statistic in the sentence: give the test, or say 'large'.
+  - name: clean
+    input: |
+      The effect was significantly larger (p = 0.01).
+    want: ""

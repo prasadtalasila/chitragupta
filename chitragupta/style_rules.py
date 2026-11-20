@@ -16,6 +16,7 @@ from chitragupta.style_figures import findings as figure_findings
 from chitragupta.style_headings import findings as heading_findings
 from chitragupta.style_tables import findings as table_findings
 from chitragupta.style_typeset import findings as typeset_findings
+from chitragupta.style_vendored import SECTIONS, UNATTENDED
 
 # Every Python-side rule, in the order its findings are reported. A rule
 # is a module with a `findings(draft) -> list[dict]` function; each
@@ -64,8 +65,20 @@ _AUTHOR_SOURCES = ("scope.md", "--language")
 # Vale rules whose every finding needs a reader. `Just` matches the word
 # whatever its part of speech, and only the filler adverb ("just run
 # it") is a defect; the adjective ("a just outcome") is correct prose, so
-# an unattended rewrite would change what the sentence means.
-_ALWAYS_REVIEW = ("chitragupta.Just",)
+# an unattended rewrite would change what the sentence means. The other
+# seven flag phrases a machine overuses (WRITING-STANDARDS.md §4), and
+# each repair is a rewrite of the sentence around its claim, which no
+# pass should make unseen.
+_ALWAYS_REVIEW = (
+    "chitragupta.Just",
+    "chitragupta.BorrowedAuthority",
+    "chitragupta.DeepSaying",
+    "chitragupta.Inflated",
+    "chitragupta.KnowledgeLimit",
+    "chitragupta.PlainVerbs",
+    "chitragupta.RunUp",
+    "chitragupta.Strawman",
+)
 
 
 def with_repair(findings: "list[dict]", language_source: str) -> "list[dict]":
@@ -81,12 +94,21 @@ def with_repair(findings: "list[dict]", language_source: str) -> "list[dict]":
     ("Unified Modeling Language") that an unattended re-spelling would
     corrupt. The guess only downgrades the repair mode and never
     suppresses the finding, so a real mis-spelling is still listed
-    (#1187). Every other Vale rule is an `"edit"`.
+    (#1187). A vendored rule is `"review"` unless it is one of
+    `style_vendored.UNATTENDED` (#1186): its packages were written for
+    other prose, and a cliché's repair is a rewrite. Every other Vale
+    rule is an `"edit"`.
     """
     for finding in findings:
         dialect = finding["rule"] in _ALL_DIALECT_RULES
-        review = finding["rule"] in _ALWAYS_REVIEW or (
-            dialect and (language_source not in _AUTHOR_SOURCES or finding["match"][:1].isupper())
+        vendored = finding["rule"] in SECTIONS
+        review = (
+            finding["rule"] in _ALWAYS_REVIEW
+            or (vendored and finding["rule"] not in UNATTENDED)
+            or (
+                dialect
+                and (language_source not in _AUTHOR_SOURCES or finding["match"][:1].isupper())
+            )
         )
         finding["repair"] = "review" if review else "edit"
     return findings

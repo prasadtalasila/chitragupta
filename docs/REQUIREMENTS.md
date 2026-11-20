@@ -692,8 +692,9 @@ principles above imply. §5 has the status table.
 
 1. Deterministic-first: `python -m chitragupta.draft style` wraps a
     vendored Vale configuration (`assets/vale/`) checking §2's defect markers, an
-    unexpanded acronym, and dialect conformance against the draft's own
-    recorded `language:` line (`content/dossiers/<slug>/scope.md`). A
+    unexpanded acronym, §4's and §7's fixed phrases, and dialect
+    conformance against the draft's own recorded `language:` line
+    (`content/dossiers/<slug>/scope.md`). A
     review aid, never a gate, and deliberately so: unlike a citekey, a
     recorded dialect can be wrong, stale, or a quoted title, so blocking
     on it would refuse a *correct* draft on a *bad target*. A

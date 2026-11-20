@@ -1,0 +1,24 @@
+# A single space between the number and the unit, as SI writes it. The list
+# is the units a manuscript reaches for; `%` and `°C` sit with the journal
+# styles, where the guides disagree.
+extends: existence
+message: "Put a space between the number and the unit: '%s'."
+link: https://www.nature.com/nature/for-authors/formatting-guide
+level: warning
+nonword: true
+raw:
+  - '(?<![\w.])\d+(?:\.\d+)?(?:mm|cm|km|nm|µm|μm|kg|mg|µg|μg|ng|mL|ml|µL|μL|nmol|µmol|mmol|mol|mM|µM|μM|nM|Hz|kHz|MHz|GHz|kPa|MPa|mV|kV|mA|kW|mW|kJ|min|kb|bp|kDa|Da|ppm|mmHg)\b'
+
+tests:
+  - name: fires
+    input: |
+      Slices were cut at 10mm and dosed at 3.5mg for 20min.
+    want: |
+      1:20:Journals.UnitSpacing:Put a space between the number and the unit: '10mm'.
+      1:38:Journals.UnitSpacing:Put a space between the number and the unit: '3.5mg'.
+      1:48:Journals.UnitSpacing:Put a space between the number and the unit: '20min'.
+  - name: clean
+    about: "spaced units, a decade, and a dimension are left alone"
+    input: |
+      Slices were cut at 10 mm and dosed at 3.5 mg for 20 min; the 1990s and 3D data are words.
+    want: ""

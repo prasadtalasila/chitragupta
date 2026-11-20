@@ -1,0 +1,11 @@
+extends: existence
+message: "'%s' dresses an ordinary point as a deep one: state the specific claim (WRITING-STANDARDS.md §4)."
+link: https://github.com/prasadtalasila/chitragupta/blob/main/docs/WRITING-STANDARDS.md
+level: suggestion
+ignorecase: true
+tokens:
+  - the real question is
+  - at its core
+  - what really matters
+  - the heart of the matter
+  - the deeper issue

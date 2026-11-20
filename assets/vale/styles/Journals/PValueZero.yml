@@ -1,0 +1,19 @@
+# Software prints 0.000 when the value is smaller than it shows. The value is
+# not zero, and the convention is to report the bound.
+extends: existence
+message: "Report '%s' as 'p < 0.001'; a p-value is never zero."
+level: warning
+nonword: true
+raw:
+  - '(?<!\w)[pP]\s*=\s*0(?:\.0+)?(?![.\d])'
+
+tests:
+  - name: fires
+    input: |
+      The difference was clear (p = 0.000).
+    want: |
+      1:27:Journals.PValueZero:Report 'p = 0.000' as 'p < 0.001'; a p-value is never zero.
+  - name: clean
+    input: |
+      The difference was clear (p < 0.001), and p = 0.05 elsewhere.
+    want: ""

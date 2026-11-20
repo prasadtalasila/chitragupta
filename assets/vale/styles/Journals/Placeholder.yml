@@ -1,0 +1,22 @@
+# What a draft leaves for later, and LaTeX's '??' for a reference that did
+# not resolve.
+extends: existence
+message: "Placeholder left in the manuscript: '%s'."
+level: error
+ignorecase: true
+nonword: true
+raw:
+  - '\[(?:ref|cite|citation needed|todo|xx+)\]|\?\?|\b(?:TODO|TBD|XXX|FIXME)\b'
+
+tests:
+  - name: fires
+    input: |
+      As reported [ref], see Section ?? and TODO fix this.
+    want: |
+      1:13:Journals.Placeholder:Placeholder left in the manuscript: '[ref]'.
+      1:32:Journals.Placeholder:Placeholder left in the manuscript: '??'.
+      1:39:Journals.Placeholder:Placeholder left in the manuscript: 'TODO'.
+  - name: clean
+    input: |
+      As reported [1], see Section 2.
+    want: ""

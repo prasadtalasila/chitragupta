@@ -111,7 +111,9 @@ consistent terms, defining terms once); Last, TWE §2.2 "Communicating with
 Precision" and §7.7 "Writing Style" on the passive-voice failure. The
 concrete-instance rule, which `textbook-chapter-writer` leans on hardest,
 is Wilson's, TTT "Expertise and Memory", and the Carpentries' (a worked
-example before the exercise that practises it).*
+example before the exercise that practises it). The habits of
+machine-written prose are humanizer's, after Wikipedia's "Signs of AI
+writing"; see [Sources](#-sources-and-attribution).*
 
 In a verbatim digest ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) these
 rules bind the drafter's own sentences only; copied text keeps its
@@ -129,6 +131,42 @@ source's style.
 - Cut hedging that carries no information. "It may be argued that X is
   possibly a factor" says less than "X is a factor" and is no more
   cautious. State real uncertainty once, precisely.
+- Cut words that add only emphasis or length: "very", a cliché, hype
+  ("novel", "groundbreaking"), a stock phrase with a shorter form ("in
+  order to" is "to"), and "serves as" where "is" will do.
+- Report a number as it was measured. Give an exact p-value from 0.001
+  up, write "p < 0.001" rather than "p = 0.000", keep one case for *p*,
+  put a space between a number and its unit, and use the unit's symbol.
+
+**Habits of machine-written prose.** A language model reaches for a few
+moves that a careful writer makes only on purpose. Each one signals
+weight or completeness without adding a fact, so when you find one,
+rewrite the sentence around its claim rather than patching the phrase:
+
+- A contrast whose negative half denies something no reader believed:
+  "not just a cache but a coordination layer", including the version
+  split over two sentences ("X is not the goal. Y is."). Keep a contrast
+  when the reader really does hold the view it rejects.
+- A line that closes a paragraph by repeating its point ("That
+  distinction matters."), and a closing "In conclusion" or "Overall"
+  that restates a verdict already given.
+- A run-up before the point ("Here's the thing", "Let's break this
+  down"), and a saying that only sounds deep ("At its core", "The real
+  question is").
+- A reply to an objection nobody raised ("This is not to say that ...",
+  "One might be tempted to ...").
+- Three items because three sounds complete, and a run of sentences that
+  open the same way. Keep three when the meaning has three.
+- Importance asserted instead of shown ("plays a pivotal role", "a
+  testament to"), and an authority with no name ("experts argue"). The
+  second is an uncited claim: name the source and cite it, or cut it.
+- A statement of what is not known followed by a guess ("based on
+  available information, it was likely ..."). Say what the sources do
+  not show, as §7 asks, and stop there.
+- A heading repeated as the first sentence under it.
+
+Leave these be in a quotation, a title or a proper name, and where the
+text talks about the phrase instead of using it.
 
 ## ✂ 5. Don't let a document do two jobs
 
@@ -165,6 +203,11 @@ Every genre here shares one rule from AGENTS.md's citekey invariant: a gap
 stated plainly is always better than a gap papered over. Thin corpus
 coverage, an unresolved contradiction, a step you couldn't verify: report
 each of these to the user in prose instead of smoothing it over.
+
+The same holds inside the draft. A result "shows" or "supports" a claim;
+only a proof proves one. Call a difference significant only beside the
+test that makes it so. And never leave a `TODO`, a `[cite]` or a `??`
+standing in for a gap: say in prose what is missing.
 
 ## 🗣 8. Dialect and house style
 
@@ -214,7 +257,11 @@ means they are rarely checked.
 | A glossary's acronym expansion still matches the current acronym vocabulary | §2 | yes, given the dossier's glossary and `[style].acronyms`; only the glossary is compared, not the draft's prose | `AcronymDrift`: yes |
 | Active voice with a named actor | §4 | detectable | not checked: the fix is a judgement |
 | Each paragraph leads with its point | §4 | heuristic only | not checked |
-| Hedging that carries no information | §4 | detectable | not checked: the fix is a judgement |
+| Hedging that carries no information | §4 | detectable for fixed phrases only | `proselint.Hedging` (three fixed phrases, "so to speak") and `ai-tells.StackedHedges` (a doubled hedge, "could potentially"): no (`review`). A single modal is never flagged, since a research claim uses one deliberately |
+| No emphasis or length that adds nothing: "very", clichés, hype, stock phrases with a shorter form, needless variants, malapropisms, non-words | §4 | yes, for a fixed list | proselint, `Journals.Hype`, `Microsoft.Wordiness`, `Plurals`, `Uppercase`, `chitragupta.PlainVerbs` (listed in `assets/vale/README.md`): no (`review`), except `proselint.Nonwords`: yes |
+| A number reported as measured: exact p-values, one case for *p*, units spaced and in symbols, "et al." | §4 | yes | `Journals.PValueZero`, `PValueCase`, `UnitSpacing`, `UnitSymbols`, `EtAl`, `PLOS.PValues`: no (`review`) |
+| Habits of machine-written prose | §4 | detectable for fixed phrases; the split contrast, the repeated closer and the forced triad are not | ai-tells' formula rules and `chitragupta.RunUp`, `Strawman`, `DeepSaying`, `Inflated`, `BorrowedAuthority`: no (`review`), except `ai-tells.ClosingPleasantries` and `SycophancyMarkers`, a chatbot's sign-off and praise: yes |
+| A claim no stronger than its evidence, and no placeholder for a gap | §7 | detectable for fixed words | `Journals.Prove`, `Significant`, `Placeholder`, `chitragupta.KnowledgeLimit`: no (`review`) |
 | Short sentences, one idea each | §4 | **no: this is a score** | not checked |
 | Citekeys per unit, and how many units rest on one source | §11 | yes | `review synthesis` counts it; never acted on, because a thin corpus legitimately produces single-source units |
 | Whether a sentence carries a citation at all | §11 | yes, per sentence; *whether it needs one* is not | `review uncited` surfaces it; never acted on, because the fix is evidence, not wording |
@@ -234,11 +281,16 @@ means they are rarely checked.
 | The reread as the reader | §6 | no | never |
 
 **How to read the last column.** A named rule is a `python -m
-chitragupta.draft style` finding, reported as `chitragupta.<name>`, with
-a `repair` value. `edit`, the default, lets the review agenda mark it
-`unattended`, so `agenda-reviser` may repair it without asking; `review`
-puts it in front of a person. `review synthesis` and `review uncited`
-are review aids: they report, and no unattended repair acts on them.
+chitragupta.draft style` finding, reported as `chitragupta.<name>`, or
+as `<package>.<name>` for a rule vendored from a third-party Vale package
+(its message ends with the section it implements), with a `repair`
+value. `edit`, the default for the house rules, lets the review agenda
+mark it `unattended`, so `agenda-reviser` may repair it without asking;
+`review` puts it in front of a person. A vendored rule is `review`
+unless its row above says otherwise, and words two rules both report
+are reported once (`assets/vale/README.md` has which rule wins).
+`review synthesis` and `review uncited` are review aids: they report,
+and no unattended repair acts on them.
 
 **Nothing in the last column is a continuous score, deliberately.** A
 loop minimising a readability index splits sentences past the point the
@@ -414,7 +466,8 @@ Three openly licensed works supply the principles above, and three more
 supply the pedagogy of `textbook-chapter-writer` and the book structure of
 `book-assembler`. All six require attribution under their licences; this
 section is that attribution. A seventh work, Wilkes's, supplies ideas only
-and is credited after them.
+and is credited after them, and so do the two behind §4's habits of
+machine-written prose.
 
 1. **Daniele Procida, *Diátaxis: A systematic approach to technical
    documentation authoring***. <https://diataxis.fr/>; source repository
@@ -498,6 +551,19 @@ after, one step per paragraph (§3 "Formatting and structuring
 proofs"). `textbook-chapter-writer` reads that reference for a
 maths-heavy chapter, so its symbol-definition and notation discipline is
 Wilkes's too.
+
+**Ideas, and short phrase lists, from two more.** Siqi Chen,
+*humanizer* v4.0.0, <https://github.com/blader/humanizer>, MIT, which
+draws on Wikipedia's "Signs of AI writing"
+(<https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing>,
+maintained by WikiProject AI Cleanup, CC BY-SA 4.0). Supplies §4's
+habits of machine-written prose, written here in this file's own words,
+and the phrase lists of the seven machine-prose rules in
+`assets/vale/styles/chitragupta/`, which carry humanizer's licence beside
+them. Left out, as wrong for a draft: dashes and curly quotes (the
+typesetter's), stock "AI words" (field-blind until #1181 can calibrate
+them), "the table below compares" (§13 asks for that sentence), and
+re-explaining what the reader knows (about replies, not drafts).
 
 The prose in this file, its layer files, every `SKILL.md` and
 `.claude/skills-common/references/` is written from scratch: what is
