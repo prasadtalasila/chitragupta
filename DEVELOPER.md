@@ -164,9 +164,9 @@ docs/                     reference docs that ship in the release zip -- everyth
                           exclude_docs keeps proposals, reasoning documents, developer-only pages
                           and the research surveys in git and out of the site, and pages that link
                           to them use GitHub URLs
-  DIAGRAMS.md               the workflow drawn thirteen ways (off the site; read on GitHub)
+  DIAGRAMS.md               the workflow drawn fourteen ways (off the site; read on GitHub)
   diagrams/                 every fenced mermaid block under docs/ as standalone files: DIAGRAMS.md's
-                            thirteen, and the ones marked `<!-- diagram: <name> -->` in other pages
+                            fourteen, and the ones marked `<!-- diagram: <name> -->` in other pages
     *.mmd                     mermaid sources with a title line
     svg/*.svg                 the browser export; pdf/*.pdf the vector export for papers and slides.
                               Exports only -- edit the fenced block, run scripts/render_diagrams.py

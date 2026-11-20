@@ -8,7 +8,7 @@ this tool does what you need, or wants its whole capability surface in
 one place. **Assumed:** nothing. **Not covered here:** how to invoke
 any of it ([CLI.md](CLI.md)), how the workflow *flows*
 ([DIAGRAMS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/DIAGRAMS.md)
-draws it thirteen ways), or why the architecture is shaped this way
+draws it fourteen ways), or why the architecture is shaped this way
 ([ARCHITECTURE.md](ARCHITECTURE.md), [SOUL.md](../SOUL.md)).
 
 This document routes and does not restate: every feature names the
@@ -418,7 +418,7 @@ because an optional package is absent; it drops to the next rung and
 - Looking for a command: [CLI.md](CLI.md).
 - Want the picture:
   [DIAGRAMS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/DIAGRAMS.md),
-  thirteen views.
+  fourteen views.
 - Wondering what is coming:
   [FEATURE-ROADMAP.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/FEATURE-ROADMAP.md).
 

@@ -173,7 +173,7 @@ topics, their papers, and the links between them
 [docs/EXPLORE-WEB.md](docs/EXPLORE-WEB.md)).
 
 [docs/DIAGRAMS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/DIAGRAMS.md)
-draws this workflow thirteen ways
+draws this workflow fourteen ways
 (by depth, by genre, and in time order) and is where the figure
 above comes from. [docs/GLOSSARY.md](docs/GLOSSARY.md) defines the
 working vocabulary in one page.
@@ -390,7 +390,7 @@ one-screen router for that.
 | [CLAUDE.md](CLAUDE.md) | One screen: which of the two agent guides applies to the task you are about to start, and the one rule that binds both |
 | [AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md) | The rules an agent *drafting with* this pipeline must follow; above all, never fabricate a citekey |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | What runs, what does each part write, which parts are optional, and why do some commands need the venv? |
-| [docs/DIAGRAMS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/DIAGRAMS.md) | The workflow drawn thirteen ways: six by depth, three by genre, two in an appendix, two for topic discovery. Pick the one that matches what you already know |
+| [docs/DIAGRAMS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/DIAGRAMS.md) | The workflow drawn fourteen ways: six by depth, three by genre, three in an appendix, two for topic discovery. Pick the one that matches what you already know |
 | [docs/LADDERS.md](docs/LADDERS.md) | Where does the pipeline choose between two ways of doing one job? Every ladder it walks for you and every tier you pick yourself, and what the bottom rung costs |
 | [docs/RETRIEVAL.md](docs/RETRIEVAL.md) | BM25, embeddings, topic models: which one answers my question, and which is worth building? |
 | [docs/DRAFT-ITERATION.md](docs/DRAFT-ITERATION.md) | What does a draft's dossier hold, and how do I change a draft weeks later without re-running the pipeline that produced it? |

@@ -453,9 +453,10 @@ Two near-misses, listed so they aren't mistaken for rungs:
 
 ## 🗺 The mapping
 
-Everything above at once, in the table below. The three ladders are all
-decided at run time; the three tiers are all settled before a PDF is
-opened. Two more things stand out.
+Everything above at once, in the table below, and drawn as a figure in
+[DIAGRAMS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/DIAGRAMS.md#-ladders-and-tiers-mapped).
+The three ladders are all decided at run time; the three tiers are all
+settled before a PDF is opened. Two more things stand out.
 
 The parser backend is the only decision that reaches into two others. It
 decides whether the evidence ladder has a rung 2 to land on, and it
@@ -500,7 +501,7 @@ list.
 - [docs/ARCHITECTURE.md](ARCHITECTURE.md): what the parts are, and which
   interpreter each needs
 - [docs/DIAGRAMS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/DIAGRAMS.md):
-  the same workflow drawn eleven ways
+  the same workflow drawn fourteen ways
 - [docs/CONFIG.md](CONFIG.md): every setting these tiers read
 - [docs/CITATION-PROVENANCE.md](CITATION-PROVENANCE.md): what ladder 1
   is ultimately for
