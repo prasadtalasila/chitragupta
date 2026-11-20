@@ -353,7 +353,7 @@ The detection tiers of `verbatim scan` are the exception: all that can
 run do, and each finding is labelled `exact`, `skip-gram` or
 `embedding`. A tier that could not run says so, so a clean run means
 "nothing found by the tiers that ran"
-([PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md)).
+([PLAGIARISM.md](PLAGIARISM.md#-how-the-tiers-were-chosen)).
 
 ## 🔒 One writer at a time
 

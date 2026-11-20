@@ -567,9 +567,9 @@ those conditions a skill can satisfy for itself. Where a tier still could
 not run, the skill quotes the `tiers_not_run` reason the scan gave
 instead of presenting two tiers of three as a clean result. So a clean scan is
 not a clean bill of health.
-[PLAGIARISM.md](PLAGIARISM.md) is what a drafter reads on that;
-[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) has why each tier sees what
-it sees.
+[PLAGIARISM.md](PLAGIARISM.md) is what a drafter reads on that, and
+[its last section](PLAGIARISM.md#-how-the-tiers-were-chosen) has why
+each tier sees what it sees.
 
 **The prose check is run, reported, and never acted on.** Before presenting,
 each skill runs `python -m chitragupta.draft style content/drafts/<path>` and

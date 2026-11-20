@@ -589,7 +589,7 @@ less.
 citekeys*: the 18,061-word chapter cites 28 and scans in 35.7 s, the
 10,003-word chapter cites 40 and takes 41.0 s, roughly **1.0--1.5 s per
 distinct citekey**
-([PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md)); each source is
+([PLAGIARISM.md](PLAGIARISM.md#-how-the-tiers-were-chosen)); each source is
 embedded once per scanned draft, and this is that mechanism seen from
 outside. `support` scores every *citation*, not every source (two
 citations of the same paper are two entailment calls), and on
@@ -707,7 +707,7 @@ only to a caller running the whole layer repeatedly.
   warranted, so this figure needs re-measuring on a draft that has
   them.
 - **Tier 3 is not cached, and that is deliberate.**
-  [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) explains why: the
+  [PLAGIARISM.md](PLAGIARISM.md#-how-the-tiers-were-chosen) explains why: the
   enrichment layer's chunk cache does not cover this tier's ~20-word
   window vectors. Three consecutive scans of an unchanged draft
   measured 20,172 / 20,141 / 20,340 ms: no cache, as documented.

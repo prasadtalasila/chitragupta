@@ -15,12 +15,10 @@ a synced corpus (`python -m chitragupta.corpus sync`) and a citekey-verified dra
 
 - **How to invoke the tools day to day.** [CLI.md](CLI.md) covers that:
   the flags, the JSON payload's fields, the exit codes.
-- **How the detection works, and what was measured.** That is in
-  [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md): the fingerprinting
-  scheme, the three tiers' mechanisms, the gate and document-frequency
-  measurements, why a similarity threshold cannot work in a single-field
-  corpus, and which further tiers were considered and rejected. You do
-  not need any of it to read a report; you need all of it to change one.
+- **How the detection works, and what was measured.** That is
+  [How the tiers were chosen](#-how-the-tiers-were-chosen), at the end
+  of this page. You do not need it to read a report; you need it to
+  change one.
 
 Findings come from three detectors, and every finding names the one that
 produced it:
@@ -174,7 +172,7 @@ else.
 
 Re-scanning is not free. Tiers 1 and 2 are cached and sub-second
 after the first run, but tier 3 is deliberately not cached at all
-([PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md#-where-this-sits-in-a-bigger-plan)).
+([why](#-where-this-sits-in-a-bigger-plan)).
 Three consecutive scans of an unchanged draft measured 20,172 /
 20,141 / 20,340 ms. **Anything that re-scans in a loop pays this every
 time**, and that is the figure to plan a repair loop against.
@@ -209,9 +207,8 @@ correctly attributed passages
 Both modes compare the draft against a **fingerprint** of each source:
 its text reduced to hashed, overlapping word n-grams, cached under
 `content/overlap/` and rebuilt only when the source changes. That is
-enough to read the rest of this page; the scheme itself, and why the
-hash is what it is, are in
-[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md#-fingerprinting-word-n-grams-hashed-deterministically).
+enough to read the rest of this page; the scheme itself is in
+[Fingerprinting](#-fingerprinting-word-n-grams-hashed-deterministically).
 
 ### ⌨ `overlap`: one citekey, exact-match runs
 
@@ -495,7 +492,7 @@ for someone under *what you will not do*.
 every other review command. `python -m chitragupta.draft gate` remains the only
 thing in this pipeline that blocks. Whether a long allowlist-filtered run
 should join it was measured and declined;
-[the gate measurement](PLAGIARISM-DESIGN.md#-measured-what-a-blocking-overlap-gate-would-block)
+[the gate measurement](#-measured-what-a-blocking-overlap-gate-would-block)
 records what the measurement found.
 
 One caveat governs the whole section: repairing every finding the exact
@@ -604,11 +601,141 @@ so a lift split by a source page break is found as one run
 (see the gap-tolerant merge above), whatever `--gap` and `--min-run` are
 set to.
 
+## 🧪 How the tiers were chosen
+
+The rest of this page is for someone changing
+`chitragupta/overlap_index.py`, `chitragupta/overlap_skipgram.py`,
+`chitragupta/overlap_embed.py` or `chitragupta/review/verbatim_check/`,
+or deciding whether a fourth tier is worth building. Every figure comes
+from
+[bench/RESULTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/RESULTS.md).
+
+### 🧬 Fingerprinting: word n-grams, hashed deterministically
+
+`chitragupta/overlap_index.py` tokenizes every parsed document into
+lowercase `[a-z0-9]+` words and hashes every 8-word window (`n=8`, the
+smallest run either tool can detect) to a 64-bit integer: a rolling
+polynomial hash over each word's `blake2b` digest. Unlike Python's
+salted `hash()`, it is stable across processes, so it can be cached. At
+about 7,000,000 grams the collision probability is on the order of 1e-6.
+
+Two caches sit under `content/overlap/`, gitignored and regenerable: a
+per-document fingerprint, `docs/<citekey>.fpr`, keyed by the ledger's
+`pdf_hash` plus the parsed file's stat (so a re-parse or a backend
+switch invalidates it); and a merged, binary-searchable index,
+`index.bin`/`index.json`, of sorted gram hashes with citekey, page and
+position postings. `overlap` needs only the first; `scan` builds and
+reuses the second.
+
+### 📊 Measured: what a blocking overlap gate would block
+
+Should a long verbatim run block a draft the way an unknown citekey
+does? No: the gate is declined
+([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#-build-order)).
+`bench/bench_overlap_gate.py` ran `scan` over this project's own
+15-chapter book (178,077 words, no planted reuse) against the
+497-document corpus it was written from.
+
+- **Mask the reference list first.** `_mask_for_scan` blanks the draft's
+  References section, including per-chapter numbered headings such as
+  `## 1.14 References`. Unmasked, the bibliography was 97.7% of one
+  chapter's findings. Findings clustered at the end of a draft, each
+  naming a different source, are its reference list.
+- **No threshold separates the cases.** With References masked, the book
+  gave 16 runs of 15 words or more, 14 of them gateable, all false
+  positives, at 15 to 29 words. The only true positive in the repository,
+  the planted lift in `bench/fixtures/`, is 18 words. A threshold that
+  catches it admits nine longer false positives.
+- **The false positives are structural.** They reduce to seven passages,
+  mostly two canonical definitions (ISO 23247's, and VanDerHorn &
+  Mahadevan's) that several corpus papers quote and attribute. A draft
+  can cite one source for a definition that N papers reproduce, so the
+  other N-1 report as `UNCITED SOURCE`, and a correctly quoted,
+  correctly credited passage would block. Five allowlist entries take the
+  14 to 1, but the allowlist is per-host and absent on a fresh clone.
+
+None of this shows the book borrows no wording: paraphrase is invisible
+to the exact tier, and it is an LLM's normal failure mode. It is also one
+book, one topic and one generator, with no organic true positive, so it
+measures how often a gate would fire wrongly far better than how often
+it would fire rightly.
+
+### 📊 Measured: document frequency, and what a single-field corpus changes
+
+The corpus this pipeline is pointed at is deep and single-field, and the
+drafts are written from it. That makes cosine similarity a weak
+discriminator (a draft segment's nearest neighbours are the passages it
+was legitimately grounded in) and document frequency a strong one: an
+8-gram in one paper is distinctive, an 8-gram in thirty is how the field
+writes.
+
+DF is free: `overlap_index.postings_for_gram` returns every posting for
+a gram, so its distinct citekeys are its DF. Scored by the median DF
+over each finding's 8-grams, on the same book and labels:
+
+| `median_df >= D` | Suppressed, of 14 gateable | True positives lost, of 1 |
+| --- | --- | --- |
+| 2 | 12 | 0 |
+| 3 | 11 | 0 |
+| 4 | 8 | 0 |
+| 5 | 0 | 0 |
+
+DF finds the canonical definitions (median 3-4) and third-party echoes
+(1-4), and is blind to attributed quotations (1), which are verbatim from
+one source by nature and already exempt through `quoted and
+cites_source`. The result does not license a threshold (one corpus, one
+book), a recall claim (the recall arm is one planted finding), escape
+from the paraphrase caveat, or a gate: DF moves whenever the corpus does,
+so a clean run can turn dirty with no draft edit.
+
+### 🗺 Where this sits in a bigger plan
+
+[Contributor discussion #115](https://github.com/prasadtalasila/chitragupta/discussions/115)
+surveyed the benchmark literature before the exact tier was built:
+
+| Source | What it established | Where it lands here |
+| --- | --- | --- |
+| Torrejón & Ramos, [CoReMo 2.1](https://www.semanticscholar.org/paper/Text-Alignment-Module-in-CoReMo-2.1-Plagiarism-for-Torrej%C3%B3n-Ramos/84e09d5dc31e01f070c7dfb31170142e6e038414) (PAN 2013) | Contextual n-grams with odd/even skip-grams; fast at comparable quality; tolerant of single-word edits | Tier 1 is this family; skip-grams are tier 2 |
+| Sánchez-Pérez et al., [PAN 2014/2015](https://ceur-ws.org/Vol-1180/CLEF2014wn-Pan-SanchezPerezEt2014.pdf) | TF-IDF sentence similarity; wins only on obfuscated reuse | Not used |
+| [PAN 2025 generated plagiarism](https://arxiv.org/abs/2510.06805) | Exact matching misses LLM paraphrase; embedding alignment is the answer for that tier | Why a clean `scan` is not "no borrowed wording" |
+| Schleimer, Wilkerson & Aiken, [winnowing / MOSS](https://theory.stanford.edu/~aiken/publications/papers/sigmod03.pdf) | Keep the minimum hash per window; the index shrinks with detection still guaranteed | Deferred: the full index fits in RAM at ~500 papers |
+
+**Only deterministic checks may ever block a draft.** Exact and
+skip-gram matching are deterministic; embedding similarity changes with
+`[enrich].embedding_model`, so it can only advise. That gives three
+cumulative tiers:
+
+1. **Exact.** The word-8-gram index, whole-corpus `scan`, gap-tolerant
+   merge.
+2. **Skip-gram.** Stemmed, stopword-filtered odd/even skip-grams in the
+   same index, `chitragupta/overlap_skipgram.py`. Advisory: over a real
+   15-chapter book, 2 of 27 findings were reuse a reviewer would act on,
+   and tier 1 had already reported both.
+3. **Embedding.** `chitragupta/overlap_embed.py` and its helpers. Not
+   the whole-corpus k-NN-and-threshold design first proposed, which the
+   DF result argues against. Instead it compares each section only with
+   the citekeys its dossier records; uses ~20-word overlapping windows,
+   because at sentence level the one hand-verified paraphrase scored 0.55
+   against its source while unrelated sentences of the same paper scored
+   0.59-0.61 (windowed: 0.71 against 0.40); runs a Smith-Waterman local
+   alignment so a finding has a span; ranks the strongest alignment per
+   section instead of thresholding; and drops any alignment a real exact
+   or skip-gram finding overlaps. It is advisory by construction
+   (`bench/bench_overlap_gate.py::eligible()` admits `exact` only), needs
+   the `enrich` group, `content/chroma/`, the Docling sidecars, a synced
+   ledger and the dossier, and says which is missing when it cannot run.
+   Its windows are embedded per scan and not cached: about 1.0-1.5 s per
+   distinct cited source, peaking near 1.5 GB
+   ([PERFORMANCE.md](PERFORMANCE.md#-what-a-review-pass-costs)).
+
+Deliberately not tiers: a cross-encoder reranker (it can only reorder
+findings, and DF already suppresses the population it would rerank);
+BERTopic (far too coarse for overlap); and suffix arrays or Greedy
+String Tiling (pairwise, where a 1-vs-500 comparison needs the inverted
+index anyway).
+
 ## 🔗 See also
 
-- [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md), the developer-facing
-  half: the fingerprinting scheme, each tier's mechanism, the gate and
-  document-frequency measurements, and the tiers deliberately not built.
 - [CLI.md](CLI.md): `overlap`/`scan` flags and usage, and the
   review-aid step of [The full first run, step by
   step](CLI.md#-the-full-first-run-step-by-step). Most skills

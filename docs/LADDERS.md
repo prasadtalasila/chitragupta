@@ -497,7 +497,7 @@ third column asks about, namely what happens when an option is
 unavailable.
 
 [PLAGIARISM.md](PLAGIARISM.md) treats it for a reader of a report, and
-[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) for someone changing one.
+[PLAGIARISM.md](PLAGIARISM.md#-how-the-tiers-were-chosen) for someone changing one.
 
 ### 📄 Tier 1: Parser backend
 
@@ -705,7 +705,7 @@ this table true.
 - [docs/CONFIG.md](CONFIG.md): every setting these tiers read
 - [docs/CITATION-PROVENANCE.md](CITATION-PROVENANCE.md): what ladder 1
   is ultimately for
-- [docs/PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md): the detection
+- [docs/PLAGIARISM.md](PLAGIARISM.md#-how-the-tiers-were-chosen): the detection
   tiers in full: what the exact tier catches, what it cannot, and why the
   other two are not mutually exclusive with it
 - [docs/PDF-PARSER.md](PDF-PARSER.md): how the parser tier was chosen

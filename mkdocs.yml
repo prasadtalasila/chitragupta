@@ -153,6 +153,7 @@ exclude_docs: |
   /docs/DIAGRAMS.md
   /docs/SECURITY.md
   /docs/TOPIC-MODELLING.md
+  /docs/PLAGIARISM-DESIGN.md
   /docs/FIGURE-ROADMAP.md
   /docs/REQUIREMENTS.md
   /docs/AUTO-IMPROVEMENT-RATIONALE.md
@@ -281,7 +282,6 @@ nav:
       - Design constraints: docs/DESIGN.md
       - Rendering flow: docs/RENDERING-FLOW.md
       - Rejection: docs/REJECTION.md
-      - Plagiarism detection, how it works: docs/PLAGIARISM-DESIGN.md
       - Parallelism: docs/PARALLELISM.md
       - Per-citekey TL;DR and the abstract behind it: docs/TLDR.md
       - Auto-improvement: docs/AUTO-IMPROVEMENT.md
