@@ -82,7 +82,7 @@ class TestTheTablesAgree:
                 digest, path = line.split(maxsplit=1)
                 pinned[path] = digest
         on_disk = {
-            str(path.relative_to(VALE)): hashlib.sha256(path.read_bytes()).hexdigest()
+            path.relative_to(VALE).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
             for path in STYLES.glob("*/*")
             if path.parent.name != HOUSE
         }
