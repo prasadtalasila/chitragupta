@@ -1,0 +1,21 @@
+# "Report exact p-values for all values greater than or equal to 0.001.
+# P-values less than 0.001 may be expressed as p < 0.001."
+extends: existence
+message: "Report the exact p-value at or above 0.001, not '%s'."
+link: https://journals.plos.org/plosone/s/submission-guidelines#loc-statistical-reporting
+level: warning
+nonword: true
+raw:
+  - '(?<!\w)[pP]\s*<\s*0?\.(?!001\b)\d+\b'
+
+tests:
+  - name: fires
+    input: |
+      Groups differed (p < 0.05) and (P<.01) but p < 0.001 is fine.
+    want: |
+      1:18:PLOS.PValues:Report the exact p-value at or above 0.001, not 'p < 0.05'.
+      1:33:PLOS.PValues:Report the exact p-value at or above 0.001, not 'P<.01'.
+  - name: clean
+    input: |
+      Groups differed (p = 0.03) and (p < 0.001).
+    want: ""

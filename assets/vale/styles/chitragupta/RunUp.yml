@@ -1,0 +1,20 @@
+extends: existence
+message: "'%s' announces the point instead of making it: delete it and state the point (WRITING-STANDARDS.md §4)."
+link: https://github.com/prasadtalasila/chitragupta/blob/main/docs/WRITING-STANDARDS.md
+level: suggestion
+ignorecase: true
+tokens:
+  - let's dive in
+  - let's dive into
+  - let's explore
+  - let's break this down
+  - let's break it down
+  - here's what you need to know
+  - now let's look at
+  - without further ado
+  - here's the thing
+  - the thing is
+  - let's be honest
+  - real talk
+  - quick note
+  - heads up

@@ -1,0 +1,33 @@
+# The SI symbol after a number: mL for the liter, µ for micro, s and h and
+# min for time, °C for temperature.
+extends: substitution
+message: "Write the unit as '%s', not '%s'."
+link: https://journals.plos.org/plosone/s/submission-guidelines#loc-nomenclature
+level: warning
+nonword: true
+swap:
+  '(?<=\d\s?)degrees? (?:Celsius|C)\b': '°C'
+  '(?<=\d\s?)ml\b': 'mL'
+  '(?<=\d\s?)[uµμ]l\b': 'µL'
+  '(?<=\d\s?)ug\b': 'µg'
+  '(?<=\d\s?)um\b': 'µm'
+  '(?<=\d\s?)uM\b': 'µM'
+  '(?<=\d\s?)cc\b': 'mL'
+  '(?<=\d\s?)secs?\b': 's'
+  '(?<=\d\s?)hrs?\b': 'h'
+  '(?<=\d\s?)mins\b': 'min'
+  '(?<=\d\s?)microns?\b': 'µm'
+
+tests:
+  - name: fires
+    input: |
+      Add 5 ml of buffer and incubate 30 mins at 37 degrees C.
+    want: |
+      1:7:Journals.UnitSymbols:Write the unit as 'mL', not 'ml'.
+      1:36:Journals.UnitSymbols:Write the unit as 'min', not 'mins'.
+      1:47:Journals.UnitSymbols:Write the unit as '°C', not 'degrees C'.
+  - name: clean
+    about: "a word that is not after a number is not a unit"
+    input: |
+      Add 5 mL of buffer and incubate 30 min at 37 °C; um, the microns were counted.
+    want: ""

@@ -1,0 +1,16 @@
+extends: existence
+message: "'%s' answers an objection nobody raised: keep it only if the text says who holds that view (WRITING-STANDARDS.md §4)."
+link: https://github.com/prasadtalasila/chitragupta/blob/main/docs/WRITING-STANDARDS.md
+level: suggestion
+ignorecase: true
+tokens:
+  - this isn't about
+  - this is not about
+  - I'm not saying
+  - I am not saying
+  - don't get me wrong
+  - this is not to say
+  - some might say
+  - one might be tempted to
+  - a tempting approach would be
+  - an obvious approach would be

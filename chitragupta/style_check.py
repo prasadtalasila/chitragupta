@@ -2,8 +2,10 @@
 
 `python -m chitragupta.draft style <draft>` reports where a draft departs from the
 rules that document marks decidable in its §9 -- the defect markers of §2,
-the recorded dialect of §8, and an acronym never expanded at first use --
-and says nothing about the rules it marks a judgement. Vale does that
+the recorded dialect of §8, an acronym never expanded at first use, and
+the fixed phrases of §4 and §7 that 32 vendored third-party rules and
+seven house rules list (`chitragupta/style_vendored.py`) -- and says
+nothing about the rules it marks a judgement. Vale does that
 matching, against the style vendored at assets/vale/; this module decides
 *which* rules apply to *this* draft and turns the result into a report.
 One finding is not Vale's: `chitragupta.style_acronym_drift` checks the draft's
@@ -58,7 +60,7 @@ from subprocess import run as _run
 from pathlib import Path
 from typing import Any
 
-from chitragupta import config, install, programs, style_exceptions
+from chitragupta import config, install, programs, style_exceptions, style_vendored
 from chitragupta.style_language import resolve_language, rule_filter
 from chitragupta.style_report import report
 from chitragupta.style_rules import PYTHON_CHECKS, with_repair
@@ -132,7 +134,8 @@ def run_vale(draft: Path, language: str | None) -> list[dict]:
             f"Check {config.VALE_CONFIG_PATH}.\n{result.stderr}"
         ) from exc
     flattened = [finding for findings in payload.values() for finding in findings]
-    return style_exceptions.drop_exempt(flattened, Path(draft).read_text(encoding="utf-8"))
+    kept = style_exceptions.drop_exempt(flattened, Path(draft).read_text(encoding="utf-8"))
+    return style_vendored.reconcile(kept)
 
 
 def collapse(findings: list[dict]) -> list[dict]:

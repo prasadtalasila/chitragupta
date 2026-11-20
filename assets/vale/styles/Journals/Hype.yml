@@ -1,0 +1,28 @@
+extends: existence
+message: "Let the result carry the weight; cut '%s'."
+level: suggestion
+ignorecase: true
+tokens:
+  - novel
+  - unprecedented
+  - ground-?breaking
+  - cutting-edge
+  - revolutionary
+  - paradigm[- ]shift(?:ing)?
+  - first-ever
+  - game-changing
+  - breakthrough
+  - for the first time
+
+tests:
+  - name: fires
+    input: |
+      We present a novel, groundbreaking method for the first time.
+    want: |
+      1:14:Journals.Hype:Let the result carry the weight; cut 'novel'.
+      1:21:Journals.Hype:Let the result carry the weight; cut 'groundbreaking'.
+      1:43:Journals.Hype:Let the result carry the weight; cut 'for the first time'.
+  - name: clean
+    input: |
+      We present a method.
+    want: ""

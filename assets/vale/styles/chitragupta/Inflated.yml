@@ -1,0 +1,21 @@
+extends: existence
+message: "'%s' claims importance instead of showing it: keep the fact and drop the claim (WRITING-STANDARDS.md §4)."
+link: https://github.com/prasadtalasila/chitragupta/blob/main/docs/WRITING-STANDARDS.md
+level: suggestion
+ignorecase: true
+tokens:
+  - a pivotal moment
+  - a crucial moment
+  - plays a pivotal role
+  - plays a crucial role
+  - plays a vital role
+  - marking a pivotal
+  - setting the stage for
+  - sets the stage for
+  - evolving landscape
+  - the future looks bright
+  - exciting times ahead
+  - a step in the right direction
+  - reflects a broader
+  - underscores the importance of
+  - underscoring the importance of
