@@ -185,7 +185,8 @@ Accepting runs the section's query a second time, `--y-prev` set to your
 new prose (the retrieval CLI bounds this at 1500 characters on a word
 boundary and reports if anything was cut), merges the two rounds by
 citekey, and caps back to `--k`. This is
-[ITER-RETGEN](RAG.md) (Shao et al., *Findings of EMNLP 2023*) with a
+[ITER-RETGEN](https://github.com/prasadtalasila/chitragupta/blob/main/docs/RAG.md)
+(Shao et al., *Findings of EMNLP 2023*) with a
 person standing in the generation slot instead of a model. It is the
 same mechanism a skill would use to refine its own draft against feedback,
 running here because *your* rewrite is the feedback.

@@ -91,7 +91,8 @@ worse than giving no answer.
   is where LLM output already lives, and because a skill session, which
   is what composes the words, is drafting-layer by definition.
 
-[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-five-constraints-every-item-respects)'s
+[FEATURE-ROADMAP.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/FEATURE-ROADMAP.md#-five-constraints-every-item-respects)
+'s
 constraint 1 ("no LLM output may reach the corpus plane") names this
 placement as the whole design decision behind the module, and nothing below
 changes that. The abstract fallback does not touch that constraint from
@@ -232,7 +233,7 @@ own instead of being the cheap end of summarisation.
 The other half of the proposal was: no detectable abstract, so send the
 whole parsed text to an LLM and take 100-120 words back. That is
 **declined**, not deferred, and
-[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-what-is-deliberately-not-proposed)
+[FEATURE-ROADMAP.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/FEATURE-ROADMAP.md#-what-is-deliberately-not-proposed)
 carries the row. A paper with no abstract reports that it has none.
 
 The measurements below are the reasons, and the part of the original
@@ -269,7 +270,8 @@ first:
 
 1. **It breaches the dependency boundary.** Centroid selection needs
    `sentence_transformers`, which
-   [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-five-constraints-every-item-respects)'s
+   [FEATURE-ROADMAP.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/FEATURE-ROADMAP.md#-five-constraints-every-item-respects)
+   's
    constraint 3 quarantines behind the `enrich` extra and
    `pyproject.toml` deliberately keeps out of core, and `tldr` is a
    tier-1 command that must run under bare `python3`
@@ -324,5 +326,5 @@ Explicitly **not** proposed, by this or any related work: showing a
 TL;DR in `corpus ledger` output. That would put LLM output in the corpus-layer
 command's own view, inverting the layer order the same way caching a
 summary in the ledger itself would.
-[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-what-is-deliberately-not-proposed)
+[FEATURE-ROADMAP.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/FEATURE-ROADMAP.md#-what-is-deliberately-not-proposed)
 records the decision.

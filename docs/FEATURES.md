@@ -8,7 +8,8 @@ this tool does what you need, or wants its whole capability surface in
 one place. **Assumed:** nothing, including this repository's layout, its
 code, and any earlier document. **Not covered here:** how to invoke
 any of it ([CLI.md](CLI.md)), how the workflow *flows*
-([DIAGRAMS.md](DIAGRAMS.md) draws it thirteen ways), or why the
+([DIAGRAMS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/DIAGRAMS.md)
+draws it thirteen ways), or why the
 architecture is shaped this way ([ARCHITECTURE.md](ARCHITECTURE.md),
 [SOUL.md](../SOUL.md)).
 
@@ -171,7 +172,7 @@ same bibliography in, same citekeys out.
 | --- | --- | --- |
 | `corpus sync` | bib read, ledger update, PDF text extraction, duplicate-citekey check, stale-citekey report | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | `corpus ledger` | inspect what the corpus holds, by citekey, collection or status | [CLI.md](CLI.md) |
-| `corpus topics` | the topic clustering, once the enrichment layer has built it | [TOPIC-MODELLING.md](TOPIC-MODELLING.md) |
+| `corpus topics` | the topic clustering, once the enrichment layer has built it | [TOPIC-MODELLING.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOPIC-MODELLING.md) |
 | `corpus discover` | start from any phrase and find the topics, papers and neighbours your corpus holds | [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) |
 | Two parser backends | `pdftotext` (fast, bit-reproducible) or Docling (layout-aware) | [PDF-PARSER.md](PDF-PARSER.md) |
 | Zotero group support | export a shared group library without Better BibTeX | [EXPORT-ZOTERO-GROUPS.md](EXPORT-ZOTERO-GROUPS.md) |
@@ -270,7 +271,9 @@ one ([GENRE.md](GENRE.md)).
 
 The rule that saves the most money is never to re-run a genre skill to
 change a draft that exists. `draft-reviser` reads the dossier and edits
-the affected sections instead. [TOKENS.md](TOKENS.md) measures what the
+the affected sections instead.
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md)
+measures what the
 mistake costs.
 
 ### 🗂 The dossier: why a draft is revisable months later
@@ -526,7 +529,8 @@ unasked.
 | `converge` | seed and emergent topics, joined into one topic set |
 | `topic-graph` | the topic graph: how topics relate, by shared papers and by meaning |
 
-[TOPIC-MODELLING.md](TOPIC-MODELLING.md) carries the evidence for the
+[TOPIC-MODELLING.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOPIC-MODELLING.md)
+carries the evidence for the
 topic stages; [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) covers the graph
 the last stage derives and the `corpus discover` reader built on it;
 [PERFORMANCE.md](PERFORMANCE.md) covers what they cost.
@@ -577,8 +581,11 @@ People ask about each of these, and each answer is a decision:
 - Deciding what to write about: [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md).
 - Choosing a genre: [GENRE.md](GENRE.md).
 - Looking for a command: [CLI.md](CLI.md).
-- Want the picture: [DIAGRAMS.md](DIAGRAMS.md), thirteen views.
-- Wondering what is coming: [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md).
+- Want the picture:
+  [DIAGRAMS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/DIAGRAMS.md),
+  thirteen views.
+- Wondering what is coming:
+  [FEATURE-ROADMAP.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/FEATURE-ROADMAP.md).
 
 ## 🧷 How this document stays true
 

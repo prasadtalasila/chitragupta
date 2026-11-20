@@ -4,7 +4,8 @@ Status: **reference.**
 
 **Written for** anyone choosing which skill to ask for, and anyone
 wondering why a skill refused something. **Assumed:**
-[AGENTS.md](../AGENTS.md), the drafting contract these skills work under.
+[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md),
+the drafting contract these skills work under.
 **Not covered here:** how a skill is written or changed. That is
 `DEVELOPER-AGENTS.md` (git checkout only).
 
@@ -43,7 +44,9 @@ Related reading:
   technical-communication literature they come from.
 - [DRAFT-ITERATION.md](DRAFT-ITERATION.md) covers the dossier every skill
   writes, and why `draft-reviser` exists.
-- [TOKENS.md](TOKENS.md) covers what a run costs, and why re-running a genre
+-
+  [TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md)
+  covers what a run costs, and why re-running a genre
   skill to make a change is the most expensive mistake available here.
 - [ARCHITECTURE.md](ARCHITECTURE.md) covers the drafting layer these sit in,
   and the corpus layer they all read and none of them writes.
@@ -149,7 +152,7 @@ which here hides the disagreement the reader came for. Alternatives are the
 deliverable, so they are never collapsed for a cleaner narrative.
 
 Its retrieval pass dominates its token cost, and
-[TOKENS.md](TOKENS.md#-example-1-one-rejected-paper-followed-to-the-end-of-the-run)
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md#-example-1-one-rejected-paper-followed-to-the-end-of-the-run)
 works through the numbers.
 
 ### 🎓 `thesis-chapter-writer`
@@ -241,7 +244,7 @@ It is the heaviest skill here and says so before it starts. If what you
 want is a single-pass literature survey, `survey-writer` is faster and
 the skill will point you there. Its own cost structure, and the one
 remaining thing that could reduce it, is
-[TOKENS.md](TOKENS.md#-example-2-six-interview-packets-from-phase-3-to-phase-7f).
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md#-example-2-six-interview-packets-from-phase-3-to-phase-7f).
 
 ### 📋 `review-digest`
 
@@ -313,7 +316,8 @@ exists is `draft-reviser`'s, never another run of this skill*. Once as a
 clause in its frontmatter `description`, which is the surface that
 decides which skill is picked in the first place. The body alone is not
 enough: it is read only after a skill has already been chosen.
-[TOKENS.md](TOKENS.md) explains why the rule exists.
+[TOKENS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOKENS.md)
+explains why the rule exists.
 
 The rule is a default: nothing enforces it, no hook checks it, and the
 only mechanical gate in the pipeline is `citation_gate`. That is
@@ -563,9 +567,9 @@ those conditions a skill can satisfy for itself. Where a tier still could
 not run, the skill quotes the `tiers_not_run` reason the scan gave
 instead of presenting two tiers of three as a clean result. So a clean scan is
 not a clean bill of health.
-[PLAGIARISM.md](PLAGIARISM.md) is what a drafter reads on that;
-[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) has why each tier sees what
-it sees.
+[PLAGIARISM.md](PLAGIARISM.md) is what a drafter reads on that, and
+[its last section](PLAGIARISM.md#-how-the-tiers-were-chosen) has why
+each tier sees what it sees.
 
 **The prose check is run, reported, and never acted on.** Before presenting,
 each skill runs `python -m chitragupta.draft style content/drafts/<path>` and

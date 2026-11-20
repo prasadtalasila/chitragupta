@@ -284,7 +284,9 @@ Where the corpus was enriched with the Docling stage and
 `[enrich].docling_images` on, `python -m chitragupta.draft figures
 <citekey>` lists a paper's figures with a caption, a page, a crop and
 the exact string to cite each by. Every other genre may only look at a
-crop; [AGENTS.md](../AGENTS.md) records the one exception for the
+crop;
+[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)
+records the one exception for the
 digest. Private study text in the sources' own words may show the
 sources' own figures: the skill copies the crop into the topic's
 `figures/` directory and places it directly after the run it belongs
@@ -346,7 +348,9 @@ one line, and the digest is built from the prose alone.
 drafter's. A digest keeps that rule by construction: every copied run
 ends with the citation that names its source, the dossier records each
 source's main passage as a `quote:`, and the digest is never a source for any
-other draft. [AGENTS.md](../AGENTS.md)'s statement that verbatim wording
+other draft.
+[AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/AGENTS.md)
+'s statement that verbatim wording
 has one legitimate home outside the draft names the digest as the one
 genre that is that home, and [PLAGIARISM.md](PLAGIARISM.md)'s verbatim
 scan is what catches the digest's wording if it ever reaches a draft

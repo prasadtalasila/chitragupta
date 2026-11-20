@@ -18,7 +18,7 @@ standard being checked against, and
 skill, the requirements), which is
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md), and why the line falls where
 it does, which is
-[AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md).
+[AUTO-IMPROVEMENT-RATIONALE.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/AUTO-IMPROVEMENT-RATIONALE.md).
 
 What is built: the sanctioned edit path (`draft-reviser`'s copy-edit
 mode), the recorded target (`scope.md`'s `language:` line, and
@@ -148,7 +148,7 @@ rows below restate its verdicts only so the inventory reads as one list.
 | Sentence length, hedging density, passive-voice ratio | **no: these are scores** | surfaced only |
 | Readability index | **no** | reported, never optimised |
 | Whether a paragraph leads with its point | heuristic | surfaced |
-| Whether a source supports a claim | no | never ([why](AUTO-IMPROVEMENT-RATIONALE.md#-why-provenance-is-excluded)) |
+| Whether a source supports a claim | no | never ([why](https://github.com/prasadtalasila/chitragupta/blob/main/docs/AUTO-IMPROVEMENT-RATIONALE.md#-why-provenance-is-excluded)) |
 
 ## 🗄 What persists across drafts
 

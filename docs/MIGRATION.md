@@ -133,7 +133,7 @@ refuses a citekey it cannot see.
   `drafts/`, `dossiers/`, `rendered/` and `review/`. You never end up
   with a partial restore that looks complete.
 - It sets no limit on an archive's size or number of files, so restore
-  only archives you made or trust. [SECURITY.md](SECURITY.md#archive-restore-denial-of-service-limits)
+  only archives you made or trust. [SECURITY.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/SECURITY.md#archive-restore-denial-of-service-limits)
   has the details.
 
 ## 🗄 A full backup

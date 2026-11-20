@@ -79,7 +79,7 @@ documentation gets easier.
   side by side: **seed topics** are phrases *you* wrote
   (`content/seed_topics.toml`), matched against your papers; **emergent
   topics** are groupings the corpus itself turned out to have,
-  discovered by clustering ([TOPIC-MODELLING.md](TOPIC-MODELLING.md)).
+  discovered by clustering ([TOPIC-MODELLING.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOPIC-MODELLING.md)).
 - **Topic graph**: how the topics relate to each other, by sharing
   papers and by being about similar things. `chitragupta corpus
   discover` is how you walk it

@@ -9,7 +9,7 @@ features. **Not covered here:** why a review aid may never become a gate,
 which is an architecture question and lives in
 [ARCHITECTURE.md](ARCHITECTURE.md#-layer-4-the-review-layer); and how the
 verbatim detector works internally, which is
-[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md).
+[PLAGIARISM.md](PLAGIARISM.md#-how-the-tiers-were-chosen).
 
 This is the human-facing half of the pipeline's record-keeping.
 [DOSSIER.md](DOSSIER.md) documents working state a *model* reloads to keep
@@ -181,8 +181,8 @@ The output shape differs too: `provenance` bands its findings
 ("no support found" / "weak" / "supported"); `support` publishes a bare
 ranked score and no bands, because retrieval already selected these
 passages by similarity, which weakens the discriminator in the same way
-[PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) records for its own tier 3,
-and a band here would claim a precision this corpus does not support.
+[PLAGIARISM.md](PLAGIARISM.md#-how-the-tiers-were-chosen) records for
+its own tier 3, and a band here would claim a precision this corpus does not support.
 
 **`review union`: did assembling the book lose a source?** This is the
 only aid that reads a *book* rather than a draft, and the only one whose
@@ -190,7 +190,9 @@ answer is pure set arithmetic. Every unit of a book records, when
 `python -m chitragupta.draft unit accept` accepts it, the citekeys its
 prose stands on. `book-assembler` then composes those units into one
 document, and a combining step is where a source goes missing
-with no error and no log ([RAG.md](RAG.md) catalogues why).
+with no error and no log
+([RAG.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/RAG.md)
+catalogues why).
 
 A book is composed by reference, which is what makes this checkable.
 `book.tex` is a skeleton: it `\input`s its units, whose citations stay
@@ -338,7 +340,7 @@ Cost scales on cited sources, counted differently per aid.
 tracks *distinct citekeys*: the 18,061-word chapter cites 28 and scans
 in 35.7 s, the 10,003-word chapter cites 40 and takes 41.0 s, roughly
 **1.0--1.5 s per distinct citekey**
-([PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md)). `support` scores every
+([PLAGIARISM.md](PLAGIARISM.md#-how-the-tiers-were-chosen)). `support` scores every
 *citation*, not every source, so two citations of the same paper are
 two entailment calls. On the corpus of 2026-08-27 that came
 to 835--962 ms per citation on the four larger drafts, rising to 1.5 s
@@ -411,7 +413,8 @@ say so beside itself.
 
 The idea of separating *rated* from *missing* from *not applicable*, and
 of refusing to encode missing as zero, is credited to
-[K-Dense-AI/scientific-agent-skills](INSPIRATION.md). It fits this
+[K-Dense-AI/scientific-agent-skills](https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md).
+It fits this
 project's existing posture rather than changing it:
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s **R3** already forbids a
 continuous score from being the thing optimised, and this is the
@@ -421,7 +424,7 @@ what it could not see next to it.
 ## ➡ Where to go next
 
 - Reading a verbatim report: [PLAGIARISM.md](PLAGIARISM.md); how the
-  detector works: [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md).
+  detector works: [PLAGIARISM.md](PLAGIARISM.md#-how-the-tiers-were-chosen).
 - Reading a provenance report:
   [CITATION-PROVENANCE.md](CITATION-PROVENANCE.md).
 - Fixing what a verbatim scan found: the `agenda-reviser` skill

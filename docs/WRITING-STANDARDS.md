@@ -381,7 +381,8 @@ down, because a number a loop optimises stops measuring what it named
 report and decides.
 
 The idea is adapted from [OpenScholar](https://github.com/AkariAsai/OpenScholar)'s
-own drafting instruction, credited in [INSPIRATION.md](INSPIRATION.md)
+own drafting instruction, credited in
+[INSPIRATION.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md)
 and written here in our own words. Its *citation mechanics* are
 deliberately not adapted: upstream cites by positional index into a
 truncated list, so reordering that list silently changes what every

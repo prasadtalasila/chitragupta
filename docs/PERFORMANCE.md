@@ -9,33 +9,19 @@ the parallelism design behind these numbers, which is
 [PARALLELISM.md](PARALLELISM.md), written for someone changing it.
 
 What each setting in [CONFIG.md](CONFIG.md) costs, measured rather than
-estimated. [CONFIG.md](CONFIG.md) says what a setting *does* and what
-values it takes; this says what it *costs*, so neither document has to
-carry both jobs.
-
-Related reading:
-
-- [PDF-PARSER.md](PDF-PARSER.md): how the two backends compare on
-  fidelity, and why two other candidates were evaluated and dropped.
-- [PARALLELISM.md](PARALLELISM.md): how the parallel parse is built:
-  architecture diagrams, what each component does, and the roadmap.
-- [REVIEW.md](REVIEW.md): what the eleven review aids do; this document
-  prices the nine that were measured.
-- `bench/RESULTS.md`: the raw measurement record with per-PDF timings.
-  Developer-only: `bench/` is excluded from the release archive, so it is
-  in the repository but not in a downloaded release.
+estimated. [PDF-PARSER.md](PDF-PARSER.md) compares the backends on
+fidelity, and [REVIEW.md](REVIEW.md) says what the review aids priced
+below do. The raw record, with per-PDF timings, is
+[bench/RESULTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/RESULTS.md),
+which is in the repository but not in a downloaded release.
 
 ## 📊 Read the numbers with the machine in mind
 
-**Every figure below is one machine's, and yours will differ.** They are
-here to give you ratios and orders of magnitude ("OCR roughly halves
-throughput", "the parse is CPU-bound, not GPU-bound"), not absolute
-times to plan against. Where a figure only makes sense against the
-hardware, the hardware is named.
-
-Two reference machines are used throughout. This is their full
-specification; [README.md](../README.md#-hardware-requirements) has the
-sizing guidance that follows from it.
+**Every figure below is one machine's, and yours will differ.** Use them
+for ratios and orders of magnitude ("OCR roughly halves throughput"),
+not as absolute times to plan against. Two reference machines are used;
+[README.md](../README.md#-hardware-requirements) has the sizing guidance
+that follows from them.
 
 | Name used below | What it is |
 | --- | --- |
@@ -45,21 +31,17 @@ sizing guidance that follows from it.
 The corpus is this project's own bibliography: **501 PDFs, 13,400 pages,
 1.54 GB**, median 16 pages, with one 675-page book that is 5% of all
 pages by itself. Software: docling 2.117.0, torch 2.7.1+cu126,
-Python 3.12.3.
-
-Reproduce any of it with the harness in `bench/`; see `bench/README.md`.
+Python 3.12.3. Reproduce any of it with the harness in `bench/`; see
+`bench/README.md`.
 
 ## 🔧 Install-time costs and traps
 
-Two costs land before any setting below matters, and both are paid at
-install time. Neither is a knob you tune; they are the two ways the
-install comes out wrong.
+Two costs land at install time, before any setting matters.
 
-**No GPU, disk tight: several GB of CUDA you will never use.**
-`pip`/Poetry's default torch wheel pulls a full set of `nvidia-*` CUDA
-packages whether or not a GPU is present. That is most of what makes the
-venv 6.0 GB. On a CPU-only host, install torch from the CPU-only wheel
-index *before* running the installer:
+**No GPU, disk tight: several GB of CUDA you will never use.** The
+default torch wheel pulls a full set of `nvidia-*` CUDA packages whether
+or not a GPU is present, most of the venv's 6.0 GB. On a CPU-only host,
+install torch from the CPU-only index *before* running the installer:
 
 ```bash
 .venv-full/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
@@ -67,53 +49,40 @@ bash scripts/install_full_pipeline.sh python-deps
 ```
 
 **GPU present, but `torch.cuda.is_available()` is `False`: silently
-CPU-only.** This is the failure mode that costs the entire 4.70x below
-while looking like a working install. `scripts/install_full_pipeline.sh`'s
-`ensure_gpu_torch` exists to catch it: it reads the driver's supported
-CUDA ceiling from `nvidia-smi` and reinstalls torch from a matching
-CUDA-tagged wheel index. It runs on every `python-deps`/`dev-deps` install,
-is idempotent, and is safe to re-run by hand. Check with:
+CPU-only.** This costs the entire 4.70x below while looking like a
+working install. `scripts/install_full_pipeline.sh`'s `ensure_gpu_torch`
+catches it on every `python-deps`/`dev-deps` install: it reads the
+driver's CUDA ceiling from `nvidia-smi` and reinstalls torch from a
+matching wheel index. It is idempotent and safe to re-run. Check with:
 
 ```bash
 .venv-full/bin/python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 ```
 
-It was verified end to end on the multi-GPU machine, whose driver caps at
-CUDA 12.5 while the Poetry-resolved wheel wanted CUDA 13, which is the
-mismatch that runs CPU-only without complaining. If it still reports
-`False` after a `python-deps` install, the driver may predate every wheel
-tag the script knows; that function's own comments have the manual
-fallback.
+If it still reports `False`, the driver may predate every wheel tag the
+script knows; that function's comments have the manual fallback.
 
 ## ⚙ `[parser].backend` -- pdftotext or docling
 
-Measured on 5 real bibliography PDFs, cold (no caching: `pdf_text/`
-does not cache, so these are extraction times, not `sync`'s steady state,
-which skips PDFs whose bytes have not changed).
+Measured cold on 5 real bibliography PDFs:
 
 | Backend | Total, 5 PDFs | Words extracted | Ratio |
 | --- | --- | --- | --- |
 | `pdftotext` | 1.43s | 68,888 | 1x |
 | `docling` (OCR on) | 60.77s | 69,565 | ~42x |
 
-Per document the ratio ranged **~18x-102x**, tracking document length
-loosely at best, so budget against the total, not the best case.
-
-Fidelity is close: docling's word counts stay within ~3.5% of
-`pdftotext`'s on every one of the five. The reason to pick docling is
-structure (reading order, sections, tables), not word recovery, and the
-reason to pick `pdftotext` is speed plus page boundaries, which docling's
-output does not have. [PDF-PARSER.md](PDF-PARSER.md) has the full
-comparison, including the two backends that were evaluated and removed.
-
-That ~42x figure is enough to choose a backend and useless for planning a
-run, which is what the rest of this document is for.
+Per document the ratio ranged **~18x-102x**, so budget against the
+total. Word counts stay within ~3.5% of each other: the reason to pick
+docling is structure (reading order, sections, tables), and the reason
+to pick `pdftotext` is speed. [PDF-PARSER.md](PDF-PARSER.md) has the full
+comparison. The ~42x is enough to choose a backend and useless for
+planning a run, which is what the rest of this page is for.
 
 ## 👁 `[parser].ocr` -- the largest single lever, and a trade
 
-**OCR's cost is not a single number.** It grows with worker count,
-because OCR is CPU-bound and therefore competes with the parallelism you
-added. Measured 2026-08-04, end to end over the whole 501-PDF corpus:
+**OCR's cost grows with worker count**, because OCR is CPU-bound and
+competes with the parallelism you added. Over the whole 501-PDF corpus
+(2026-08-04):
 
 | Workers | OCR off | OCR on | Cost of OCR |
 | --- | --- | --- | --- |
@@ -121,89 +90,38 @@ added. Measured 2026-08-04, end to end over the whole 501-PDF corpus:
 | 12 | 310.2s | 1213.9s | **3.91x** |
 | 24 | 237.6s | 1139.0s | **4.79x** |
 
-> **Re-measured 2026-08-30/31, and the parallel rows mislead.** 12
-> workers **745.9s** OCR on / **244.6s** off (3.05x) and 24 workers
-> **628.1s** / **184.5s** (3.40x) look like a *smaller* cost of OCR than
-> the 3.91x/4.79x above. Serially it is the reverse: **7371.3s** on /
-> **2568.9s** off is **2.87x**, against 2.08x above, and OCR-on is 6.2%
-> *slower* than the row above while OCR-off is 22.9% faster. The OCR
-> stage's own cost over the corpus is **+33%**. The parallel arms hide
-> that behind extra CPUs (up to 80.6% of 96 cores, against a run capped
-> at 48); the serial arm uses about 4 and cannot.
+Equivalently, **turning OCR on roughly halves how well the pipeline
+parallelises**: 1 to 24 workers is a 14.02x speedup with OCR off and
+**6.09x** with it on, when 93% of the available CPU is busy. A
+2026-08-30 re-measure on a host with 96 allowed CPUs moved every ratio
+(serial 2.87x); see
+[bench/RESULTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/RESULTS.md).
 
-Equivalently, from the other side: **turning OCR on roughly halves how
-well the pipeline parallelises**:
+**It cannot be moved to the GPU by configuration.** docling's OCR runs
+on the CPU (RapidOCR on onnxruntime): the installed `onnxruntime` wheel
+offers no `CUDAExecutionProvider`, and docling's `RapidOcrModel` sets
+`use_cuda` on the paddle and torch engines but not the onnxruntime one.
+On one PDF with one worker on `cuda:0`, OCR was **79% of the wall
+clock** (5.31s on against 1.13s off), all on the CPU. Moving it would
+mean `RapidOcrOptions(backend="torch")` plus a config key; the 1.79x
+below is not a ceiling on that gain, and it needs measuring.
 
-| | Speedup, 1 -> 24 workers |
-| --- | --- |
-| OCR off | 14.02x |
-| OCR on | **6.09x** |
+**Turning OCR off loses some content.** OCR only reads text stored as an
+image. Off changed the extracted text of **8 of 16 sampled documents**,
+mostly publisher furniture and figure sub-captions, but one document
+lost **10.1% of its characters**, including two tables embedded as
+images.
 
-At 24 workers with OCR on, 93% of the available CPU is busy, the one
-configuration measured where this machine is full. docling's
-OCR runs on the CPU (RapidOCR on onnxruntime), which is why.
-
-**And it cannot be moved to the GPU by configuration alone.** Two things
-are in the way, either of which is enough on its own:
-
-- The `onnxruntime` wheel this project installs is the CPU build.
-  `onnxruntime.get_available_providers()` returns
-  `['AzureExecutionProvider', 'CPUExecutionProvider']`, with no
-  `CUDAExecutionProvider` to select.
-- docling's `RapidOcrModel` sets `use_cuda` on the *paddle* and *torch*
-  engine configs but not on the onnxruntime one, so the default backend
-  never asks for CUDA even where it is available.
-
-So `[parser].ocr = true` is a CPU cost that the `device` a worker is given
-does not touch. Measured here on one PDF, one worker, `cuda:0`: **5.31s
-with OCR on against 1.13s with it off**: OCR is 79% of the wall clock,
-all of it on the CPU.
-
-That 79% is also the size of the possible gain, and it is not small.
-Getting OCR onto a card would mean `RapidOcrOptions(backend="torch")`
-(the one backend docling wires `use_cuda` into), plus a config key to
-select it.
-Do not size that work against the 1.79x below: that figure is what the
-GPU is worth *while OCR stays on the CPU*, not a ceiling on moving OCR
-itself. The stages that already run on a GPU go 4.70x faster there
-(below), and OCR is the larger share of an OCR-enabled run, so the
-plausible gain is a good deal more than 1.79x. Measure it before
-believing any particular number, including this reasoning.
-
-**Turning OCR off loses some content.** OCR only runs
-on *bitmap* regions, so what it recovers is text stored in the PDF as an
-image rather than as characters. Turning it off changed the extracted
-text of **8 of 16 sampled documents**:
-
-- Mostly publisher furniture (`IEEEAccess`, `DTU Library`) and figure
-  sub-captions. Losing that is an improvement.
-- But one document lost **10.1% of its characters**, including two
-  complete tables embedded as images, and another lost a paragraph of
-  body prose set in a graphical text box.
-
-So `false` suits born-digital papers. Set `true` for scans, since with
-OCR off docling extracts almost nothing from one, or where
-tables-as-images matter more than parse time. **The parse-quality guard
-will not catch a wrong choice here**: it looks for run-together words,
-not for content that never arrived.
+**So `false` suits born-digital papers.** Set `true` for scans, from
+which docling extracts almost nothing without OCR, or where
+tables-as-images matter more than parse time. The parse-quality guard
+will not catch a wrong choice here.
 
 ## ⚖ GPU vs CPU -- it depends entirely on OCR
 
-**With OCR on, 1.79x:**
-
-| | s/page | Extrapolated to the corpus |
-| --- | --- | --- |
-| One process, one GPU, OCR on | 0.43 | ~1.6 hours |
-| One process, CPU only, OCR on | 1.37 | ~5.1 hours |
-| Like for like, same 6 PDFs | | **1.79x** |
-
-During that run the GPU averaged **~7% SM utilisation** and 1.7 GB of
-46 GB, while the process held ~300% CPU (three of the 48 available
-cores).
-
-**With OCR off (the default), 4.70x**, measured 2026-08-05 over 100
-documents / 2,529 pages, serial, one process, converters warmed so model
-loading is excluded, the same PDFs through both devices:
+**With OCR off (the default), a GPU is worth 4.70x**, measured serially
+on the same PDFs through both devices with model loading excluded
+(2026-08-05):
 
 | Documents | Pages | GPU | CPU | Aggregate |
 | --- | --- | --- | --- | --- |
@@ -212,33 +130,29 @@ loading is excluded, the same PDFs through both devices:
 | 50 | 798 | 0.211 s/page | 0.985 s/page | 4.67x |
 | **100** | **2,529** | **0.205 s/page** | **0.965 s/page** | **4.70x** |
 
-Per document: median 4.31x, quartiles 3.46x and 6.56x, range 1.74x to
-17.35x. Only one document of the hundred came in under 2x. The benefit
-grows with document size (3.49x aggregate under 10 pages against 5.78x
-at 30 pages or more), because layout and table inference are the stages
-that scale with page count while the fixed per-document costs do not.
+Per document the median was 4.31x (quartiles 3.46x and 6.56x), and only
+one document of the hundred came in under 2x. The gain grows with
+document size, from 3.49x under 10 pages to 5.78x at 30 or more, because
+layout and table inference scale with page count while the fixed
+per-document costs do not.
 
-**The two figures are not in conflict.** OCR runs on the CPU either
-way, so it adds the same seconds to *both* sides of the comparison and
-drags the ratio toward 1. The GPU does not do less when OCR is on; the
-run contains much more work the GPU cannot touch. Read 1.79x as "what a
-GPU is worth on an OCR run" and 4.70x as "what it is worth on a default
-run". The default is the one most people will measure.
+**With OCR on, it is worth 1.79x**: 0.43 against 1.37 s/page, about 1.6
+against 5.1 hours for the corpus. OCR runs on the CPU either way, so it
+adds the same seconds to both sides and drags the ratio toward 1. During
+that run the GPU averaged ~7% SM utilisation and 1.7 GB of 46 GB. Read
+1.79x as what a GPU is worth on an OCR run and 4.70x as what it is worth
+on a default run.
 
-docling is still CPU-bound overall (PDF backend, layout post-processing,
-and OCR when enabled), one worker still leaves ~93% of a card idle, and
-the numbers below are still why the parallelism work went after CPU-level
-document concurrency first. A GPU is worth having; it is not what makes
-a corpus parse fast.
+docling is still CPU-bound overall, which is why the parallelism work
+went after CPU-level document concurrency first. A GPU is worth having;
+it is not what makes a corpus parse fast.
 
 ## ⚙ `[parser].workers` -- document-level parallelism
 
-**The largest lever on a multi-core machine, and the code currently caps
-it well below where the curve flattens.**
-
-Measured 2026-08-04 with the real `python -m chitragupta.corpus sync` over the **whole
-501-PDF corpus** (13,400 pages), docling, OCR off, 4 GPUs. Each row is
-one run from an empty ledger; all reported 501 parsed, 0 failed:
+**The largest lever on a multi-core machine, and the code caps it well
+below where the curve flattens.** The real `sync` over the whole
+501-PDF corpus, docling, OCR off, 4 GPUs (2026-08-04), each run from an
+empty ledger with 501 parsed and 0 failed:
 
 | Workers | Wall clock | Speedup | Efficiency | |
 | --- | --- | --- | --- | --- |
@@ -251,64 +165,22 @@ one run from an empty ledger; all reported 501 parsed, 0 failed:
 | **32** | **223.4s** | **14.91x** | 47% | median of 3 |
 | 48 | 221.4s | 15.04x | 31% | median of 3 |
 
-> **Re-measured 2026-08-30, and the base rate moved.** On the same host
-> but with **96 allowed CPUs rather than 48**, and a corpus that has
-> drifted to 497 PDFs, every arm came out ~21% faster: serial
-> **2568.9s (42m 49s)** against the 3330.4s above, and 12 workers
-> **245.6s** against 310.2s. **The efficiency curve is unchanged**
-> (102%/95%/87% at 4/8/12 against 104%/97%/89% here), so the shape of
-> this table still holds and only its base rate is stale. The evidence
-> that the gain is model-load-side rather than GPU-side, including the
-> one arm that came out *slower*, is in
-> [bench/RESULTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/RESULTS.md).
-> Treat the two as different machine configurations, not as a correction.
+A 2026-08-30 re-measure with 96 allowed CPUs ran every arm ~21% faster
+with the same efficiency curve; treat it as a different machine
+configuration
+([bench/RESULTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/RESULTS.md)).
 
-- **Scaling holds well.** 97% at 8
-  workers, 89% at 12. The 104% at 4 is not an error: one worker does not
-  saturate the threads it is given, so serial is a slightly unfair
-  denominator.
-- **The knee is somewhere past 24, not at 12.** `worker_ceiling()` caps
-  at `allowed_cpus // 4`, which is 12 here. Running 32 is **~1.4x
-  faster**, available today only by changing that constant.
-- **The curve plateaus from 32 to 48; it does not reverse.** Medians of
-  three runs put them 0.9% apart (223.4s vs 221.4s), while the spread
-  *within* the 32-worker configuration alone was 86.8s. A single
-  run can put 32 ahead of 48 and look like a knee; with repeats the
-  ordering flips. **Anything past ~32 is flat, and single runs cannot
-  resolve it.**
-- So the useful statement is "the divisor should be much smaller than 4",
-  not "it should be 1.5". Any specific value here is arithmetic from
-  **one machine and one corpus**, on a plateau, and a CPU-only machine
-  would likely want a different one.
-- Asking for 16 on this machine resolves to 12 and takes 315.9s. The
-  clamp is doing exactly what it documents, and costing 1.43x.
+- **The knee is past 24, not at 12.** `worker_ceiling()` caps at
+  `allowed_cpus // 4`, 12 here, and 32 workers run **~1.4x faster**.
+  Asking for 16 resolves to 12, so the clamp costs 1.43x.
+- **32 to 48 is a plateau, not a reversal**: medians of three runs are
+  0.9% apart, inside the 86.8s spread of the 32-worker runs alone.
+- **The divisor of 4 is too large.** At 32 workers the host CPU is only
+  ~70% busy (host-wide `/proc/stat`, so an upper bound): with OCR off a
+  worker uses closer to one CPU than four. The useful statement is "much
+  smaller than 4", not a specific value from one machine and one corpus.
 
-**Why the cap is too low:** the constant models a worker as occupying 4
-CPUs. It does not. Measured CPU busy, against the 48 available:
-
-| Run | CPUs busy | of the 48 allowed |
-| --- | --- | --- |
-| 16 workers | 18.7 | 39% |
-| 32 workers | ~34 | ~70% |
-| 24 workers, OCR on | 44.6 | **93%** |
-
-At 32 workers, well past the point the code will go, the CPU is still
-only ~70% busy. With OCR off a worker uses closer to one CPU than four.
-(The 32-worker figure landed at 71% in one sweep and 70% in another; a
-run-to-run point is worth about a percentage point, not a decimal.)
-
-> **These CPU figures are host-wide.** `sweep_sync.py` samples
-> `/proc/stat`, which counts every process on the machine, and expresses
-> it against the 48 CPUs this process may use. On an otherwise-idle
-> machine that is the run; on a busy one it is an **upper bound** on what
-> the run used, and can exceed 100%. Treat them as "the machine was this
-> busy", not "the parse used this much". The conclusion
-> below rests on the *trend* across configurations, not the absolute
-> level.
-
-### 📊 What flattens the curve past ~24 workers
-
-Timing each run's phases separates the candidates:
+Past ~24 workers two costs flatten the curve together:
 
 | Workers | Startup (to 1st document) | Tail (after last) | CPU busy |
 | --- | --- | --- | --- |
@@ -316,66 +188,36 @@ Timing each run's phases separates the candidates:
 | 32 | 21.8s (**8.9%**) | 5.9s (2.6%) | 70% |
 | 48 | 28.5s (**12.7%**) | 7.9s (3.6%) | 78% |
 
-- **Startup is a growing tax, not a fixed one.** Every worker pays its
-  own ~8.5s model load, so standing the pool up costs more the bigger the
-  pool: 7.9% of the run at 24 workers, 12.7% at 48. (The column is time
-  to the *first completion*, so it also contains the fastest document's
-  parse, which makes it an upper bound on startup rather than a
-  measurement of it.
-  The **growth** is the startup part: one document's parse does not get
-  slower because the pool got bigger.)
-- **The CPU is heading for saturation**, 56% to 78% across the same
-  range. Read alone, "70% busy at 32" suggests headroom; read against 56%
-  at 24 and 78% at 48, it is *becoming* the limit.
-- **The long-document tail is small**: 5-8s throughout, under 4%.
+Every worker pays its own ~8.5s model load, so startup is a growing tax,
+and the CPU is heading for saturation. The long-document tail is small
+throughout.
 
-Neither cost alone explains the plateau; together they account for it,
-and both worsen with every worker added.
-
-**Corpus size still decides whether raising this is worth anything.** Over
-8 documents, 4 workers gave 1.90x and 8 gave none at all (34.6s / 18.3s
-/ 19.3s). Each worker pays its own ~8.5s model load, so the benefit is
-proportional to how much work there is to amortise it over. That is why
-the resolved count is also capped by the number of documents needing a
-parse.
+**Corpus size decides whether raising this is worth anything.** Over 8
+documents, 4 workers gave 1.90x and 8 gave nothing more, because the
+per-worker model load has too little work to amortise over. That is why
+the resolved count is also capped by the number of documents to parse.
 
 ## 🖥 Multi-GPU -- nothing to configure
 
-With docling and more than one worker, each worker process claims one
-CUDA device round-robin. This is not automatic in docling: its
-`AcceleratorDevice.AUTO` resolves to `cuda:0` in *every* process, so
-without an explicit per-worker device every worker piles onto card 0
-while the rest idle.
-
-Measured over the whole 501-PDF corpus (2026-08-04, OCR off):
+Each docling worker claims one CUDA device round-robin, since docling's
+own `AcceleratorDevice.AUTO` would put every worker on `cuda:0`. Over the
+whole corpus (2026-08-04, OCR off):
 
 | Workers | 1 GPU | 2 GPUs | 4 GPUs | 1->2 | 2->4 |
 | --- | --- | --- | --- | --- | --- |
 | 12 | 518.4s | 339.7s | 310.2s | 1.53x | 1.10x |
 | 24 | 535.8s | 298.6s | 237.6s | **1.79x** | 1.26x |
 
-- **The second card is worth far more than the third and fourth.**
-- **GPUs matter more at higher worker counts**, since more workers share
-  each card.
-- At 24 workers, one GPU is *slower* than at 12 (535.8s vs 518.4s):
-  piling more workers onto a single card is counterproductive.
-
-The 2026-08-02 run of the same 12-worker configuration measured 528.0s
-and 326.2s, within 2-5% of the figures above, on a different day and a
-rebuilt venv.
-
-Restrict which cards are used with `CUDA_VISIBLE_DEVICES`; there is no
-separate setting, and the pool only ever sees what that leaves visible.
-
-**And it is worth nothing on a small corpus.** The same change measured
-over a 60-document subset showed no difference at all (122.4s at 4
-workers, 123.0s at 12), with all four GPUs busy and the CPU ~85% idle.
-Per-worker startup dominates at that size.
+**The second card is worth far more than the third and fourth**, and
+GPUs matter more as more workers share each card; at 24 workers one GPU
+is *slower* than at 12. Restrict the cards with `CUDA_VISIBLE_DEVICES`.
+**On a small corpus it is worth nothing**: 60 documents took 122.4s at 4
+workers and 123.0s at 12, since per-worker startup dominates.
 
 ## ⚙ `[parser].start_method` -- per-worker startup
 
-A cold docling worker needs about **8.5s** before it produces its first
-page on the multi-GPU machine:
+A cold docling worker needs about **8.5s** before its first page on the
+multi-GPU machine:
 
 | Stage | Time |
 | --- | --- |
@@ -386,81 +228,41 @@ page on the multi-GPU machine:
 | **Total before the first parsed page** | **8.5s** |
 | A later `convert()`, models warm | 0.33s |
 
-Only the ~3.2s of imports can be shared between processes; the ~5s model
-load lives on the converter instance, in whichever process built it. So
-`forkserver` (which imports torch and docling once in a helper process
-that every worker is forked from) can address at most that 3.2s.
-
-**And sharing the import, on its own, is worth nothing.** Workers import
-concurrently, so on a host with spare CPUs that cost was already
-overlapped. Measured head to head over 8 documents at 4 workers:
-`spawn` 22.9s, `forkserver` 22.4s.
-
-The saving is in *when* the preload runs. `sync` starts the forkserver
-before reading the bibliography, so the import happens during the ~2.5s
-that takes rather than blocking pool construction afterwards: four live
-workers ready at **4.40s instead of 6.90s**.
-
-End to end on the real `sync`, medians of three runs, fresh output
-directory each time:
-
-| Documents | Workers | `spawn` | `forkserver` | Saving |
-| --- | --- | --- | --- | --- |
-| 8 | 1 (serial) | 46.2s | -- | -- |
-| 8 | 4 | 23.1s | **21.8s** | 1.3s (5.6%) |
-| 8 | 8 | 22.9s | **20.7s** | 2.2s (9.6%) |
-| 60 | 1 (serial) | 383.2s | -- | -- |
-| 60 | 4 | 103.6s | **101.9s** | 1.7s (1.6%) |
-| 60 | 12 | 80.8s | **78.8s** | 2.0s (2.5%) |
-
-Run-to-run spread was 0.3-1.0s, so the effect clears the noise
-everywhere, and it is the *same* effect everywhere: a roughly constant
-1.3-2.2s off pool startup. What changes is how much of the run that is:
-9.6% of an 8-document run, 2.5% of a 60-document one, well under 1% of
-the full corpus.
-
-**So this does not make a bulk parse meaningfully faster.** It helps the
-case where startup *is* the run: a handful of
-documents.
+Only the ~3.2s of imports can be shared between processes, which is what
+`forkserver` does, and since `sync` starts the forkserver while it reads
+the bibliography, the pool is ready sooner (four workers at 4.40s
+instead of 6.90s). End to end that is a roughly constant **1.3-2.2s**
+off pool startup: 9.6% of an 8-document run, 2.5% of a 60-document one,
+and well under 1% of the full corpus. **It does not make a bulk parse
+meaningfully faster**; it helps when a handful of documents is the run.
 
 ## ⏱ `[parser].document_timeout` -- what a safe value looks like
 
-This is less a performance knob than a knob whose value has to be
-*chosen from* performance. Any threshold has to clear the slowest
-document you legitimately have. In this corpus that is a 675-page book which takes
-**246s** on its own, so a value that is safe here may not be safe on a
-corpus with a longer document. Measure before setting it.
-
-`[parser].stall_timeout`'s 1800s default is 7x that figure, chosen loose
-on purpose: it is meant to catch a run that will never finish, not to
-police a slow one.
+The value has to clear the slowest document you legitimately have. In
+this corpus that is a 675-page book taking **246s** on its own, so a
+value safe here may not be safe on a corpus with a longer document.
+Measure before setting it. `[parser].stall_timeout`'s 1800s default is
+7x that figure, loose on purpose: it catches a run that will never
+finish, not a slow one.
 
 ## 💾 `[enrich].docling_images` -- disk, and a full re-parse
 
 Turning it on has two costs:
 
 - **It invalidates the whole docling cache**, so the next run re-parses
-  every PDF from scratch. That re-parse is intended, not a bug: the
-  existing `.md` files have no figure references in them.
-- **The PNGs are real disk**: a 17-page paper produced 13 of them.
-  `docling_image_scale = 2.0` is roughly 144 DPI, enough to read a figure
-  back without storing print-resolution files.
+  every PDF: the existing `.md` files have no figure references.
+- **The PNGs are real disk**: a 17-page paper produced 13.
+  `docling_image_scale = 2.0` is roughly 144 DPI.
 
 ### 🧠 Memory: bounded per document
 
-Letting docling produce the figure crops costs memory in proportion to
-*how many figures a document has*, because docling retains every crop
-(as a PIL bitmap **and** as a base64 `data:` URI, so roughly 2.3x the PNG
-bytes per picture) and writes them only when `save_as_markdown` runs at
-the end of the parse. The pipeline does not ask docling for the bitmaps:
-it takes the bounding boxes docling reports anyway, and
-`chitragupta/enrich/_docling_crops.py` renders each one from the PDF with
-pypdfium2, writes it, and releases it before the next.
-
-Measured on the worst document in this corpus (a 99-page slide deck of
-2880x1620pt pages, 280 figures) and on the longest, the 675-page OMG
-SysML specification. Peak RSS, one document per process, polled from
-`/proc/<pid>/status`:
+docling retains every crop it produces (as a PIL bitmap and a base64
+URI) until the end of the parse, so its memory grows with a document's
+figure count. The pipeline instead takes the bounding boxes docling
+reports anyway, and `chitragupta/enrich/_docling_crops.py` renders each
+one with pypdfium2, writes it, and releases it. Peak RSS, one document
+per process, on the worst document (a 99-page slide deck, 280 figures)
+and the longest (the 675-page OMG SysML specification):
 
 | Document | `docling_images` | Peak RSS | Figure term | Wall |
 | --- | --- | --- | --- | --- |
@@ -471,39 +273,29 @@ SysML specification. Peak RSS, one document per process, polled from
 | 675-page spec | `true`, docling crops | 9.13 GiB | +4.93 GiB | 114.1 s |
 | 675-page spec | `true`, **pypdfium2 crops** | 4.24 GiB | +0.04 GiB | 93.8 s |
 
-So **450x less memory for figure extraction on the deck, at 1.70x the
-speed**, for the same 280 files (160.1 MiB of PNG against docling's
-163.3 MiB). It is faster because docling renders a whole page at
-`images_scale` in order to crop from it, and rendering only the box skips
-that.
+That is **450x less memory for figure extraction on the deck, at 1.70x
+the speed**, because docling renders a whole page to crop from and this
+renders only the box.
 
 - **`docling_image_scale` is safe to raise.** At 6.0 the docling-crop
-  path reached **74.31 GiB over 17 minutes and then failed** on docling_core's
-  own `max_image_decoded_size` guard (exactly 20 MiB per *decoded*
-  image), so the document could not be produced at all. The same document
-  at the same scale costs 4.18 GiB with pypdfium2 crops and completes in
-  439 s. High
-  scales cost CPU, not RAM: 2.0 -> 6.0 moves the figure term from
-  +0.02 GiB to +0.06 GiB and the wall clock from 159 s to 439 s.
-- **The figure term does not depend on the corpus.** It is independent
-  of document length (99 vs 675 pages), page geometry (4.67 vs
-  0.48 Mpt²), scale, and accelerator (4.14 GiB on CPU, 4.08 GiB on
-  `cuda:0`). That is what lets `[parser].workers` be sized from CPUs
-  alone; see `docs/PARALLELISM.md`'s "How the worker count is decided".
-
-`bench/RESULTS.md`'s 2026-09-03 entry has the full arm-by-arm table,
-including the page-windowed alternative that was measured and rejected.
+  path reached **74.31 GiB and then failed** on docling_core's 20 MiB
+  decoded-image guard. With pypdfium2 crops the same document completes
+  in 439 s with a figure term of +0.06 GiB: high scales cost CPU, not
+  RAM.
+- **The figure term does not depend on the corpus**: not on document
+  length, page geometry, scale, or accelerator. That is what lets
+  `[parser].workers` be sized from CPUs alone; see `docs/PARALLELISM.md`'s
+  "How the worker count is decided".
 
 ## 🗑 `[source_pdfs] dir` -- retired
 
-Nothing left to measure: the enrichment corpus is the bibliography
-alone, so there is no second source to deduplicate against. A config file
-still naming the key is ignored. `chitragupta/enrich/corpus.py` has the reasoning,
-and the retired duplicate-check timings stand in `bench/RESULTS.md`.
+The enrichment corpus is the bibliography alone, so there is nothing to
+measure. A config file still naming the key is ignored;
+`chitragupta/enrich/corpus.py` has the reasoning.
 
 ## 🏁 Where it all ended up
 
-Measured end to end on 2026-08-04, rather than extrapolated:
+Measured end to end on 2026-08-04 over the full 501-PDF corpus:
 
 | Change | Kind | Full 501-PDF corpus |
 | --- | --- | --- |
@@ -513,44 +305,24 @@ Measured end to end on 2026-08-04, rather than extrapolated:
 | 32 workers, 4 GPUs (needs the clamp raised) | CPU | **3m 43s** |
 
 That is **22x with the shipped defaults and 31x with the clamp raised**.
-The GPU work is the smallest contribution; the largest is turning OCR
-off.
-[PARALLELISM.md](PARALLELISM.md) describes the machinery that produces
-these numbers; `bench/RESULTS.md` carries the measurements themselves.
+The largest single contribution is turning OCR off; the GPU's is the
+smallest.
 
 ## 🔍 What a review pass costs
 
-Everything above is the corpus layer. This is the **review layer**
-([REVIEW.md](REVIEW.md)), ten of the eleven aids (`digest` reads a digest,
-not a draft, and is not timed here). Eight are deterministic Python
-with no model call at all. The ninth, `support`, scores every citation
-with a real NLI entailment model ([CONFIG.md](CONFIG.md)). It uses no
-LLM, so **the token cost of every figure here is still zero**, but it is
-a real model load, and the only aid besides `verbatim`'s tier 3 with a real
-wall-clock and memory floor.
+This is the **review layer** ([REVIEW.md](REVIEW.md)). Eight aids are
+deterministic Python with no model call. The ninth, `support`, scores
+every citation with an NLI entailment model ([CONFIG.md](CONFIG.md)); it
+uses no LLM, so **the token cost of every figure here is zero**, but it
+has a real wall-clock and memory floor. `digest` reads a digest, not a
+draft, and is not timed. **`union` is not in any figure below**: it
+reads an assembled book rather than a draft, so it has no place in a
+per-draft pass, and it has not been measured. It parses one document and
+one small JSON per unit with no corpus read and no model, the same class
+as `uncited`.
 
-**`union`, the tenth, is not in any figure below and is not being
-silently averaged into one.** It reads a book rather than a draft, so it
-has no place in a per-draft review pass, and nothing here has measured
-it. What can be said without measuring: it parses one assembled document
-and one small JSON per unit, with no corpus read, no index and no model,
-which puts it in the same class as `uncited` rather than anywhere near
-`verbatim` or `support`. It will be priced properly when there is a real
-assembled book to price it against.
-
-Measured 2026-08-27 on this host, across five real drafts spanning
-1,258 to 18,061 words, with and without a dossier, at `--formats md`.
-Milliseconds:
-
-**Read `support`'s column as conditional on the corpus's passage
-granularity, not just on the draft.** A re-timing on 2026-09-04
-(`bench/RESULTS.md`, B11) put the same five drafts at +65% to +95%, and
-the cause is not a change in this layer's code: `support` scores one
-entailment pair per *quotable passage of each cited source*, so a
-re-parse that segments the same PDFs more finely multiplies its work
-without changing a single draft or a single citation. The two tables
-price different passage universes and are not comparable row by row.
-"What `support`'s cost actually tracks", below, has the measurement.
+Five real drafts of 1,258 to 18,061 words, with and without a dossier,
+at `--formats md` (2026-08-27), in milliseconds:
 
 | words | dossier | prov | verbatim | cover | synth | figure | uncited | quote | agenda | support | all nine |
 | ---: | :---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -561,114 +333,74 @@ price different passage universes and are not comparable row by row.
 | 18,061 | yes | 277 | 35,698 | 315 | 98 | 641 | 121 | 90 | 1,282 | 45,902 | **84,424** |
 
 Corpus at the time: 642 ledger items, 994 parsed sidecars, 6.4 million
-parsed words, a 547 MB overlap index.
+parsed words, a 547 MB overlap index. A 2026-09-04 re-timing after a
+finer re-parse put `support` at +65% to +95% on the same drafts, for the
+reason in [the section below](#-what-supports-cost-actually-tracks); the
+two are not comparable row by row.
 
 ### 📐 Two aids set the floor, for different reasons
 
-**`verbatim` alone spans a factor of 23, and draft length is not what
-moves it.** `verbatim`'s tier 3 needs the
-`enrich` group, `content/chroma/`, the Docling sidecars, the draft's own
-dossier and a synced ledger, all five
-([PLAGIARISM.md](PLAGIARISM.md)). Where any is
-missing the scan is **447 ms**; where all are present it is
-**19.7--41.0 s**. Without `support`, that is a 23x spread across the
-rows (1,859 ms to 43,793 ms).
+**`verbatim`'s tier 3 decides its cost.** It needs the `enrich` group,
+`content/chroma/`, the Docling sidecars, the draft's dossier and a
+synced ledger ([PLAGIARISM.md](PLAGIARISM.md)). With any missing the
+scan is **447 ms**; with all present it is **19.7-41.0 s**. It fetches
+each source once, so its cost tracks *distinct citekeys*, roughly
+**1.0-1.5 s per distinct citekey**
+([PLAGIARISM.md](PLAGIARISM.md#-how-the-tiers-were-chosen)), and so does
+`provenance`'s. **Estimate them from the citekey count, not the word
+count.**
 
-**`support` has no such off switch.** It
-always loads the entailment model and scores every citation, so it
-costs **21.2--62.3 s on every draft measured**, dossier or not. Where
-`verbatim`'s tier 3 cannot run, `support` alone is ~95% of the row
-total; where both run, they split it: 39%/59% on the 10,003-word
-draft. The layer's cheapest-to-dearest spread is a factor of
-**3** (35,323 ms to 106,085 ms), not 23: `support`'s floor is higher
-than `verbatim`'s off-tier cost, so the on/off swing of tier 3 matters
-less.
+**`support` has no off switch.** It always loads the model and scores
+every citation, costing **21.2-62.3 s on every draft measured**: ~95% of
+the row where tier 3 cannot run, and 59% beside `verbatim`'s 39% on the
+10,003-word draft. So the layer's cheapest-to-dearest spread is a factor
+of **3**, not 23.
 
-**Each of the two tracks a different count.** `verbatim` and
-`provenance` fetch each source once, so their cost tracks *distinct
-citekeys*: the 18,061-word chapter cites 28 and scans in 35.7 s, the
-10,003-word chapter cites 40 and takes 41.0 s, roughly **1.0--1.5 s per
-distinct citekey**
-([PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md)); each source is
-embedded once per scanned draft, and this is that mechanism seen from
-outside. `support` scores every *citation*, not every source (two
-citations of the same paper are two entailment calls), and on
-2026-08-27 that came to **835--962 ms per citation** on the four larger
-drafts, rising to 1.5 s on the smallest (11 citekeys, 23 citations),
-where a largely fixed model-load cost is spread over the fewest calls.
-**Estimate `verbatim`/`provenance` from the citekey count, not from
-the word count.** `support` needs a second factor, below: the
-per-citation figure above held only for the corpus it was measured on.
+Everything else is flat and nearly free. `coverage` holds ~305 ms, a
+corpus query rather than a draft scan. `synthesis`, `uncited` and
+`quotation` sit near the **~86 ms** interpreter-startup floor every
+`python -m` invocation pays. `figure` is ~88 ms without figures and
+486-818 ms with them.
 
 ### 🧮 What `support`'s cost actually tracks
 
-It is not the citation count on its own.
-`chitragupta/review/claim_support.py`'s
-`_score_claim` scores **one entailment pair per quotable passage of the
-cited source**, for every (citation, claim), so the model work is
+`chitragupta/review/claim_support.py`'s `_score_claim` scores **one
+entailment pair per quotable passage of the cited source**, for every
+citation, so the work is
 
 ```text
 sum over citations of |quotable passages of that citation's source|
 ```
 
 and the second factor is set by how finely the parse segmented the
-corpus, which no draft controls. Measured 2026-09-07 over the two
-2026-08-27 drafts that still exist:
+corpus, which no draft controls. Measured 2026-09-07:
 
 | draft | words | citations | entailment pairs | pairs per citation |
 | --- | ---: | ---: | ---: | ---: |
 | deep-research.md | 1,258 | 23 | 20,402 | **887** |
 | survey.md | 2,448 | 43 | 29,738 | **725** |
 
-Against `content/backup/20260901-content/`, the passage sidecars as they
-stood before the 2026-09-04 re-parse, the pair count grew **1.67x** and
-**1.49x** on those same two drafts, with the corpus unchanged at 497
-parsed documents and 145 without a PDF on both dates, and with the same
-drafts citing the same sources. That is a re-segmentation effect, not a
-larger corpus and not a change in this layer.
+Against the passage sidecars from before the 2026-09-04 re-parse, the
+pair count grew **1.67x** and **1.49x** on the same drafts citing the
+same sources over an unchanged 497-document corpus: a re-segmentation
+effect. `verbatim` barely moved over that period because it fetches each
+source once, while `support` iterates the passages. **So estimate
+`support` from the pair count**, and treat any milliseconds-per-citation
+figure (835-962 ms on 2026-08-27) as valid only for the passages it was
+measured against.
 
-It is also why `verbatim` barely moved over the same period while
-`support` nearly doubled: `verbatim` fetches each *source* once, so
-finer segmentation leaves its count alone, whereas `support` iterates
-the passages themselves. A benchmark that reads the two columns as
-evidence for or against "a corpus effect" has to say which count it
-means.
-
-**So estimate `support` from the pair count**, and treat any
-milliseconds-per-citation figure as valid only for the passage universe
-it was measured against.
-
-**The pair count is settable, and is not set by default.**
-`[enrich].support_premise_topk` ([CONFIG.md](CONFIG.md)) caps how many
-premises reach the model per citation, pre-ranking them by the same
-lexical overlap `[provenance]` bands and sending only the top *k*. Every
-figure above is the uncapped default, which is what the shipped
-`config.toml.example` still ships and what every dated entry in
-`bench/RESULTS.md` was measured under. A table quoting these numbers
-against a capped run is comparing two different amounts of work.
-
-**The cap is off because it was measured and it damaged the report.**
-`bench/bench_support_topk.py` swept k from 8 to 128 over the two drafts
-above (`bench/RESULTS.md`, 2026-09-09). It buys what the arithmetic
-promised (5.3x to 102x fewer pairs, 62 s of scoring down to 4 s), and
-at k = 128 the lexical pre-ranker agrees with the entailment model about
-which passage supports a claim for only **56.5%** of citations, falling
-to 14.6% at k = 8. Claims scoring 0.995 uncapped came back at 0.138,
-which is a well-supported citation promoted to the top of the review
-agenda as the draft's worst finding.
-
-That rules out lexical pre-ranking at every k
-measured. It does not rule out a cap in principle: the ranker is what
-failed, and a semantic pre-rank is the candidate it points at. Precision is
-still unmeasured either way, which needs the human ratings issue #757
-tracks.
-
-Everything besides those two is flat and nearly free. `coverage` holds
-~305 ms at every size, because its work is a corpus query rather than a
-draft scan. `synthesis`, `uncited` and `quotation` sit within noise of
-the **~86 ms** interpreter-startup floor that every `python -m`
-invocation pays. `figure` is ~88 ms on a draft with no figures and
-486--818 ms on one with them.
+**The pair count is settable, and not set by default.**
+`[enrich].support_premise_topk` ([CONFIG.md](CONFIG.md)) sends the model
+only the top *k* premises by lexical overlap. Every figure above, and
+every dated entry in `bench/RESULTS.md`, is the uncapped default. The
+cap buys 5.3x to 102x fewer pairs (62 s of scoring down to 4 s), but
+**it is off because it damaged the report**: at k = 128 the lexical
+pre-ranker agrees with the entailment model on the supporting passage
+for only **56.5%** of citations (14.6% at k = 8), and claims scoring
+0.995 uncapped came back at 0.138 (`bench/bench_support_topk.py`,
+2026-09-09). That rules out lexical pre-ranking at every k measured, not
+a cap in principle: a semantic pre-rank is the untested candidate, and
+precision needs the human ratings issue #757 tracks.
 
 ### 💾 Peak memory, which is what bounds parallelism
 
@@ -680,62 +412,41 @@ invocation pays. `figure` is ~88 ms on a draft with no figures and
 | `provenance` | 32 MB |
 | `synthesis`, `uncited`, `quotation` | 23 MB |
 
-Running the nine concurrently saves little and costs a lot, for two
-reasons: `verbatim` and `support` are each roughly
-**1.5 GB** peak RSS, and together they account for nearly all of both
-the wall-clock (on the worst-measured row, 97% between them) and the
-memory, against 20--73 MB for each of the other seven. Eight aids in
-parallel is not eight times 23 MB; two of nine are ~1.5 GB each, so running them
-together is closer to 3 GB from two processes alone.
+`verbatim` and `support` hold nearly all of both the wall-clock (97% on
+the worst row) and the memory, so running the nine concurrently saves
+little and costs close to 3 GB from those two processes alone.
 
 ### 📄 Only three aids render
 
-`--formats md` versus the default `md,tex,pdf`, on the 5,723-word
-chapter: `provenance` 1,502 ms to 140, `coverage` 1,390 to 304,
-`agenda` 1,822 to 525. The other six (`support`, `verbatim`,
-`synthesis`, `figure`, `uncited` and `quotation`) print by default and
-write only under `--write`, so they write no report for that draft and
-save nothing. **About 2.5 s a run**, which matters
-only to a caller running the whole layer repeatedly.
+`--formats md` against the default `md,tex,pdf` on the 5,723-word
+chapter saves **about 2.5 s a run**: `provenance` 1,502 to 140 ms,
+`coverage` 1,390 to 304, `agenda` 1,822 to 525. The other six write a
+report only under `--write`.
 
 ### ⚠ Three figures to read carefully
 
-- **`quotation`'s ~90 ms is unmeasured, not cheap.** When these rows
-  were taken, no dossier on this host carried a `quote:` line, so its
-  input universe was empty on every draft. That row is the cost of
-  finding no work. The skills write `quote:` lines when a quotation is
-  warranted, so this figure needs re-measuring on a draft that has
-  them.
-- **Tier 3 is not cached, and that is deliberate.**
-  [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) explains why: the
-  enrichment layer's chunk cache does not cover this tier's ~20-word
-  window vectors. Three consecutive scans of an unchanged draft
-  measured 20,172 / 20,141 / 20,340 ms: no cache, as documented.
-  Tiers 1 and 2 *are* cached and are sub-second after the first run.
-- **`support`'s 21--62 s is not a cold-start cost that warms up.** Each
-  invocation is a fresh process with no persistent model server, so the
-  entailment model loads fresh on every run. Unlike tier 1/2's disk
-  cache, there is no second, cheaper run to expect.
+- **`quotation`'s ~90 ms is unmeasured, not cheap.** No dossier on this
+  host carried a `quote:` line, so it found no work; it needs
+  re-measuring on a draft that has them.
+- **Tier 3 is not cached, deliberately**
+  ([PLAGIARISM.md](PLAGIARISM.md#-how-the-tiers-were-chosen)): three
+  scans of an unchanged draft measured 20,172 / 20,141 / 20,340 ms.
+  Tiers 1 and 2 are cached and sub-second after the first run.
+- **`support`'s 21-62 s does not warm up.** Each invocation is a fresh
+  process that loads the model again; there is no cheaper second run.
 
 ## ⚡ What a drift sweep costs
 
-Everything above is the corpus layer: `sync` and the enrichment stages,
-where a run is measured in minutes. `python -m chitragupta.draft dossier status
---all` sits in the drafting layer and is measured in seconds. It is
-priced here because it is meant to be run **after every sync**, so
-"cheap enough to be habitual" is a requirement.
+`python -m chitragupta.draft dossier status --all` is meant to run
+**after every sync**, so it has to be cheap enough to be habitual. It
+builds a BM25 index in memory and discards it rather than calling
+`chitragupta.retrieval.search()`, which would rewrite
+`content/retrieval_index.json` on every inspection;
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md#-why-the-new-papers-are-not-found-with-search)
+is the argument, and this is the price.
 
-The sweep builds a BM25 index in memory and discards it, rather than
-calling `chitragupta.retrieval.search()`, which would take a write connection
-to the ledger and rewrite `content/retrieval_index.json` every time an
-inspection ran. [DRAFT-ITERATION.md](DRAFT-ITERATION.md#-why-the-new-papers-are-not-found-with-search)
-is the argument; this is the price.
-
-Multi-GPU machine, bare `python` (no venv; `chitragupta.dossier` is
-stdlib-only), no GPU involved. Medians of 5 runs over this project's own
-corpus: 646 ledger rows, 47.4 MB of parsed text. The drift scan never
-opens a PDF, so what it costs depends on the parsed text and the row
-count, not on the PDFs behind them.
+Bare `python` (it is stdlib-only), medians of 5 runs over 646 ledger
+rows and 47.4 MB of parsed text. It never opens a PDF:
 
 | Dossiers swept | Cold (no index cache) | Warm (cache from a prior `search()`) |
 | --- | --- | --- |
@@ -743,72 +454,38 @@ count, not on the PDFs behind them.
 | 10 | 2.036s | 0.257s |
 | 50 | 2.227s | 0.436s |
 
-**Fifty dossiers cost 0.19s more than one.** The corpus tokenization is
-paid once for the whole sweep, not once per dossier. At ~4ms marginal
-cost each, the sweep is dominated by corpus size and effectively
-indifferent to how many drafts you have. Dossiers that logged no
-retrieval queries never build an index at all: 0.040s for 50.
-
-That marginal cost is measured **within** a run, where the two numbers
-share a process and a page cache. Cold time drifts ~5% between runs, so
-differencing two separate runs of this table would not reproduce it;
-three runs each produce a paired delta of 0.19-0.24s. `bench/RESULTS.md`
-has the spread.
-
-Cold cost is linear in corpus size (a generated 2000-document corpus:
-5.857s), and a warm cache is 5.1-9.3x faster than a cold one. So the
-summary is not "free" but **"about two seconds after a sync, and it does
-not grow with your drafts"**. `bench/RESULTS.md` has the full
-run, the synthetic scaling cross-check, and what the measurement
-excludes.
+**Fifty dossiers cost 0.19s more than one**, ~4ms each, because the
+corpus is tokenised once per sweep. Dossiers that logged no retrieval
+queries never build an index (0.040s for 50). Cold cost is linear in
+corpus size (5.857s on a generated 2000-document corpus), and a warm
+cache is 5.1-9.3x faster. **About two seconds after a sync, and it does
+not grow with your drafts.**
+[bench/RESULTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/RESULTS.md)
+has the spread and what the measurement excludes.
 
 ## 🔁 What raising the worker count costs in reproducibility
 
-This is priced alongside the speedups above because it is the one cost
-of parallelism not measured in seconds: **the more workers, the less
-reproducible the parse.** Docling groups dense reference blocks into
-elements differently under contention. That changes both the parsed text
-and the passage spans quoted from it.
-
-At the scale this matters: comparing runs over all 501 documents, ~1.4%
-of documents come back with different text and ~1.0% with a different
-quotable passage. Two runs of the *same* configuration are not exempt, at
-roughly a third of that rate. **Confining the run to one GPU lowers the
-rate but does not remove it**: 1 document of 300 still differed, though
-over 1,200 single-GPU comparisons on an idle host what moved was bytes
-and one element *label*, and no quotable passage. Serial parsing has not
-been observed to vary. **Read all of these as orders of magnitude:**
-every published figure came from a single pair of runs, and eight pairs
-at one fixed configuration have since ranged from 0 to 6 differing
-documents. Every one of those rates was measured with `[parser].ocr` and
-`[parser].formulas` both off; each adds a model pass per page, and
-neither configuration has a measured rate.
+The one cost of parallelism not measured in seconds: **the more workers,
+the less reproducible the parse.** Docling groups dense reference blocks
+differently under contention, which changes the parsed text and the
+passage spans quoted from it. Over all 501 documents ~1.4% came back
+with different text and ~1.0% with a different quotable passage; two
+runs of the *same* configuration differ at roughly a third of that rate
+(5 of 572 comparisons in bytes, 2 in passage text). **One GPU lowers the
+rate but does not remove it**, and serial parsing has not been observed
+to vary. All of this was measured with `[parser].ocr` and
+`[parser].formulas` off; neither has a measured rate. Count differing
+passages, not bytes, when comparing runs.
 
 **The full contract is
-[ARCHITECTURE.md's "What is reproducible, and what is not"](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not)**,
-artifact by artifact, and `bench/RESULTS.md`'s 2026-08-07 section has the
-measurement. Both are stated once, there.
-
-Repeating a run at the same worker count does **not** reproduce
-exactly: 5 of 572 same-configuration comparisons differ in bytes, and 2
-in passage text. Count differing passages, not bytes, when comparing
-runs.
+[ARCHITECTURE.md's "What is reproducible, and what is not"](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not)**.
 
 ### 🎲 Why there is no reproducibility *rate* here, only an order of magnitude
 
-A single pair of runs cannot tell two rates apart. `--repeat 2` yields
-exactly **one** same-configuration pair per GPU count. At `--repeat 5`,
-eight pairs at a *single fixed* configuration returned **0, 1, 3, 4, 4,
-4, 5 and 6** differing documents of 300 (2026-09-08). An apparent
-five-fold rise between two single-pair records (0.33% to 1.67%
-same-configuration) sits inside that spread, so it is consistent with
-nothing having changed at all.
-
-That is a fact about the measurement rather than about docling, and it
-generalises to every percentage on this page's reproducibility rows:
-read them as orders of magnitude ("about one document in a hundred,
-more with more GPUs"), not as figures to compare against each
-other. Establishing that a rate has moved needs several pairs
-per arm on both sides of the change. `bench/RESULTS.md`'s
-"2026-09-08b (B2d)" section has the pair counts, and its "Power, stated
-plainly" section carries the rule.
+A single pair of runs cannot tell two rates apart: eight pairs at one
+fixed configuration returned **0, 1, 3, 4, 4, 4, 5 and 6** differing
+documents of 300 (2026-09-08). Read every percentage above as an order
+of magnitude ("about one document in a hundred, more with more GPUs").
+Showing that a rate has moved needs several pairs per arm on both sides
+of the change; `bench/RESULTS.md`'s "Power, stated plainly" section
+carries the rule.

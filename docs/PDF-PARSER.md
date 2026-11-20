@@ -15,7 +15,8 @@ words (see ["Why markitdown was removed"](#-why-markitdown-was-removed)),
 and `grobid`, whose header metadata the bib file already supplies (see
 ["Why GROBID was removed"](#-why-grobid-was-removed)). A proposal to bring
 GROBID back in a *different* role, beside docling, for a citation graph,
-is in [GROBID-CITATION-GRAPH.md](GROBID-CITATION-GRAPH.md).
+is in
+[GROBID-CITATION-GRAPH.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/GROBID-CITATION-GRAPH.md).
 
 Four newer parsers (**marker**, **surya**, **xberg**, **unstructured**)
 were surveyed and none adopted; the analysis is in ["Four newer backends,

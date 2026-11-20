@@ -225,5 +225,5 @@ of what the app then shows.
 Every one of the app's analytical views has a terminal twin here, each
 pinned to the app's own arithmetic by a shared case file under
 `tests/webapp/`.
-[TOPIC-DISCOVERY-GRAPH.md](TOPIC-DISCOVERY-GRAPH.md#2-what-is-stored-and-what-the-browser-computes)
+[TOPIC-DISCOVERY-GRAPH.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOPIC-DISCOVERY-GRAPH.md#2-what-is-stored-and-what-the-browser-computes)
 records which numbers the stage stores and which the browser computes.

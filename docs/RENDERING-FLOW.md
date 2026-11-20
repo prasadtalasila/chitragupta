@@ -162,7 +162,7 @@ citation prefix and suffix (`[\emph{cf.} @key, p. 3]`) into the same
 node as the `.bib` text, and those are the author's to keep.
 TeX in the draft body, in a citation's prefix or suffix, and in figure
 files still runs, Lua included; that is an accepted residual, set out in
-[SECURITY.md](SECURITY.md).
+[SECURITY.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/SECURITY.md).
 
 **Build time.** Measured on TeX Live 2023 with a 170-page,
 63,000-word document made from this repository's sample drafts, warm
