@@ -1003,13 +1003,13 @@ merge or tag that causes a collision lands *inside* the window being
 checked. No new rules are written here; reusing that script is what keeps
 the merge-time check from drifting away from the pull-request-time one.
 
-**This is not a duplicate of the CI check, and step 8 above cannot
+**This is not a duplicate of the CI check, and step 7 below cannot
 replace it.** `ci.yml` runs that check against the merge commit GitHub
 built at `pull_request` time; another PR can merge, or push a tag,
 between that run and your merge. Two branches picking the same version
 produce a *byte-identical* `version =` line, so git merges it with no
 conflict and `mergeable_state` stays `clean`; nothing else looks. And
-step 8's "has `main` moved?" is a check a person performs *before*
+step 7's "has `main` moved?" is a check a person performs *before*
 merging, so the gap is between that check and the merge call itself.
 Another PR can merge and tag the same version seconds after your check
 passes, leaving `main` on a version already released against different
@@ -1267,14 +1267,7 @@ not merely started:
 6. Wait for `.github/workflows/ci.yml` to complete on the PR and confirm
    it's green. If it fails, fix the actual cause (see "Before claiming a
    task complete") and push again; don't merge past a red check.
-7. Request review from Copilot, resolve every issue it identifies, and
-   mark each as resolved; consider all previous Copilot comments made in
-   this PR while resolving the issues. Make a push after all issues are
-   resolved, and then request re-review from Copilot. Iterate until all
-   issues are resolved. Use judgement on a genuinely trivial finding
-   rather than treating every comment as mandatory, but "trivial" means
-   inconsequential (a wording nit), not "inconvenient to fix."
-8. **Check that `main` has not moved since CI last ran.** If it has,
+7. **Check that `main` has not moved since CI last ran.** If it has,
    merge or rebase onto it and **do the whole cycle again from step 2**:
    re-decide the version bump, re-run every local check, and wait for CI
    on the new head. A branch that went green against an older `main` is
@@ -1287,18 +1280,18 @@ not merely started:
    picking the *same* number produce a byte-identical line that git
    merges without a conflict. `scripts/check_version_bump.py` fails CI on
    that, but it can only fail on a run that actually happened.
-9. Squash-merge the PR: `python scripts/merge_pr.py <N>` (see "Merging"
+8. Squash-merge the PR: `python scripts/merge_pr.py <N>` (see "Merging"
    above). It re-checks the version against `main` and the tags at the
    last possible moment and refuses rather than merging a collision,
-   which catches the case step 8 structurally cannot: a PR that merges in
+   which catches the case step 7 structurally cannot: a PR that merges in
    the seconds after your check.
-10. **A MAJOR or MINOR version only:** tag `v<version>`, and **read
+9. **A MAJOR or MINOR version only:** tag `v<version>`, and **read
    `main`'s `pyproject.toml` again first** rather than trusting the
    number you bumped to. The merge closes the window before it; nothing
    closes the one after it, and a tag pushed on a collided version names
-   somebody else's content. **A PATCH version is done at step 9:** push
+   somebody else's content. **A PATCH version is done at step 8:** push
    no tag and make no release.
-11. **A MAJOR or MINOR version only:** confirm
+10. **A MAJOR or MINOR version only:** confirm
    `.github/workflows/release.yml` completed, the resulting GitHub
    Release has its assets attached (`chitragupta-<version>.zip`,
    `chitragupta-docker-<version>.zip`, and the wheel and sdist), and

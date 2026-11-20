@@ -363,7 +363,7 @@ registered file is caught by C1 on its functions and by review.
 ## 📋 The rest of the checklist
 
 Every remaining rule from the source, and where it lands. **Review** means
-a human or Copilot looks for it in a PR; there is no detector, and
+a human reviewer looks for it in a PR; there is no detector, and
 [the rule above](#-the-rule-that-decides-everything) says why most of these
 should not get one.
 
