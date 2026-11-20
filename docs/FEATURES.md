@@ -408,7 +408,7 @@ copyrighted sources.
 | `draft references` | an IEEE reference list built only from citekeys the draft already cites | [CLI.md](CLI.md) |
 | `draft render` | `.md`, `.tex`, `.pdf`, `.docx` via Pandoc, numbered IEEE-style | [CLI.md](CLI.md) |
 | `draft style` | prose checked against the house writing standards; a review aid, never a gate | [WRITING-STANDARDS.md](WRITING-STANDARDS.md) |
-| TikZ figures | figures drawn to a documented style, checked for layout defects, and started from a known-good scaffold per layout metaphor rather than from an empty picture (`assets/tikz/`); the shared style block each figure carries is kept current by `figure sync`, one figure is checked against numbered rules by `figure check`, started from a scaffold by `figure new`, and seen as it will print by `figure look`; a figure corrected with a pen is revised from a photo of the page ([FIGURE-DRAWER.md](FIGURE-DRAWER.md#-correcting-a-figure-on-paper)) | [TIKZ-STYLE.md](TIKZ-STYLE.md) |
+| TikZ figures | figures drawn to a documented style, checked for layout defects, and started from a known-good scaffold per layout metaphor rather than from an empty picture (`assets/tikz/`); the shared style block each figure carries is kept current by `figure sync`, one figure is checked against numbered rules by `figure check`, started from a scaffold by `figure new`, and seen as it will print by `figure look`; a figure corrected with a pen is revised from a photo of the page ([MANUAL-FIGURE.md](MANUAL-FIGURE.md)) | [TIKZ-STYLE.md](TIKZ-STYLE.md) |
 
 ### 📕 Book-scale drafting
 
