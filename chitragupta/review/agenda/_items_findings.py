@@ -14,6 +14,7 @@ inventing one from nothing.
 """
 
 from chitragupta.dossier._sections import Section
+from chitragupta.review._quotation_render import which
 from chitragupta.review.agenda._identity import item_id, section_anchor
 from chitragupta.review.agenda._items import Item
 from chitragupta.review.agenda._sources import AidSource, StyleSource
@@ -288,6 +289,8 @@ def misquoted_items(source: AidSource) -> list[Item]:
     for finding in source.data.get("findings", []):
         citekey = finding.get("citekey")
         quote = finding.get("quote", "")
+        # `.get`: a report filed before #1174 has no `index`/`of`.
+        position = which(finding.get("index", 1), finding.get("of", 1))
         items.append(
             Item(
                 id=item_id("quotation", "misquoted", None, citekey, quote),
@@ -296,7 +299,8 @@ def misquoted_items(source: AidSource) -> list[Item]:
                 citekey=citekey,
                 line=None,
                 unattended=False,
-                summary=f"`[@{citekey}]`'s quoted span was not found in its source: {quote[:80]}",
+                summary=f"`[@{citekey}]`'s quoted span{position} was not found in its source: "
+                f"{quote[:80]}",
                 detail={
                     "near_miss_page": finding.get("near_miss_page"),
                     "near_miss_score": finding.get("near_miss_score"),

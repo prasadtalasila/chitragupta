@@ -589,7 +589,8 @@ that leans on them. `content/drafts/dt/survey.md` produces
 wording from copyrighted sources.
 
 It prints only `quote:` fields, never `claim:` or a legacy `support:`
-([DOSSIER.md](DOSSIER.md)). Its universe is the draft's own citations,
+([DOSSIER.md](DOSSIER.md)); a block with several prints each, in order,
+under its source's one heading. Its universe is the draft's own citations,
 so it cannot introduce a citekey, and every citekey it prints sits in a
 code span the gate blanks, so it adds no citation. With no dossier or
 no `quote:` it prints `no quoted evidence recorded` and exits **0**.
@@ -634,7 +635,7 @@ a gate: it takes no lock and opens the ledger read-only.
 | `acronyms-suggest <draft>` | Acronyms this draft defines that aren't in `[style].acronyms` yet. Prints only |
 | `acronyms-suggest <draft> --apply` | The same, then writes them to your acronyms file. Refuses if `[style].acronyms` is unset, rather than writing into the vendored `assets/style/acronyms.toml` |
 | `brief <draft> [citekey ...]` | The kept-evidence blocks for a section or citekeys, for a subagent to read. **Exits 1 if nothing resolves** |
-| `check-evidence <draft>` | Advisory: a citekey with **more than one block** (readers get only the first), and a `claim:` that reads like its own `quote:` with the words moved. Exits 1 only when there is no dossier |
+| `check-evidence <draft>` | Advisory: a citekey with **more than one block** (readers get only the first), a block that repeats `claim:`, `relevance:` or `support:` (only the first is read), and a `claim:` that reads like one of its block's `quote:` lines with the words moved. Exits 1 only when there is no dossier |
 | `prune <draft>` | A **dry run** listing the `evidence.md` blocks for citekeys the draft no longer cites. Exits 0 |
 | `prune <draft> --apply` | The same, and removes them by line span, from `evidence.md` only, never `sections.md` or `rejected.md` |
 | `prune <draft> --citekey <key>` | Restrict to one citekey (repeatable). Exits **1** if a named citekey was refused (still cited, unrecorded, `sections.md`-only, or with more than one block) |
@@ -1383,7 +1384,8 @@ fabricated-citekey failure class
 because the citekey *is* real. **Advisory, exits 0 whatever it finds.**
 It checks exactly the `quote:` fields
 [`draft evidence`](#-chitragupta-draft-evidence) would print, never a
-legacy `support:` block.
+legacy `support:` block. A block with several quotes has each checked
+on its own, and the report names it as `quote N of M`.
 
 | Outcome | Means | A finding? |
 | --- | --- | --- |
@@ -1412,9 +1414,11 @@ chitragupta review quotation content/drafts/survey.md
 
 **`--json`**: the shared envelope plus `universe`, `quotes_total`,
 `found`, `absent`, `unverifiable`, a `quotes` object per checked span
-(`id`, `citekey`, `verdict`, `tier`, `pages`, `reason`) and a
-`findings` object per absent one (`id`, `citekey`, `quote`,
-`near_miss_page`, `near_miss_score`). `tier` is `exact`, `exact-pair`,
+(`id`, `citekey`, `verdict`, `tier`, `pages`, `reason`, `index`, `of`)
+and a `findings` object per absent one (`id`, `citekey`, `quote`,
+`near_miss_page`, `near_miss_score`, `index`, `of`). `index` is the
+quote's place among its block's `quote:` lines and `of` their count;
+`quotes_total` counts quotes, not sources. `tier` is `exact`, `exact-pair`,
 `elided` or `elided-pair`.
 
 ### 📋 `chitragupta review digest`

@@ -108,7 +108,7 @@ If asked what bears on a survey, read
    Before drafting, record what survives in `evidence.md`: a
    `relevance:` line, a `claim:` line in your own words and, where a
    passage is worth showing the reader as the source wrote it, a
-   `quote:` line. Record what doesn't in `rejected.md`, then:
+   `quote:` line for each such passage. Record what doesn't in `rejected.md`, then:
 
    ```bash
    python -m chitragupta.draft dossier check-evidence content/drafts/<slug>.md

@@ -3868,6 +3868,91 @@ class TestCheckEvidenceCommand:
         assert "init" in capsys.readouterr().out
 
 
+class TestSeveralQuotes:
+    """#1174: `quote:` may repeat, and `quotes()` reads every one,
+    normalised. The other fields stay single-valued, and a repeat of one
+    is warned about rather than dropped without a word."""
+
+    def test_every_quote_is_read_in_file_order_and_a_repeat_counted_once(self):
+        block = "claim: c\nquote: first span\nrelevance: r\nquote: second span\nquote: first span\n"
+        assert _evidence_check.quotes(block) == ["first span", "second span"]
+
+    def test_fields_still_returns_the_first_value_of_each(self):
+        assert _evidence_check.fields("quote: one\nquote: two\n")["quote"] == "one"
+
+    @pytest.mark.parametrize(
+        "written",
+        [
+            "the span (p. 24)",
+            "the span (p.24)",
+            "the span (pp. 12-13)",
+            "the span (pp. 12\u201313)",
+            "the span (page 24)",
+            "the span [p. 24]",
+            "the span (P. 24)",
+            '"the span"',
+            "\u201cthe span\u201d",
+            '"the span" (p. 24)',
+            '"the span (p. 24)"',
+            "the span (p. 24).",
+        ],
+    )
+    def test_a_page_locator_and_surrounding_marks_come_off(self, written):
+        assert _evidence_check.normalise_quote(written).rstrip(".") == "the span"
+
+    @pytest.mark.parametrize(
+        "kept",
+        [
+            "\u201cTwin\u201d is used loosely, as is \u201cshadow\u201d",
+            '"Twin" is used loosely, as is "shadow"',
+            "the span (p. 24) and then more",
+            "see section 3 (24)",
+            '"unclosed span',
+        ],
+    )
+    def test_a_mark_or_number_that_belongs_to_the_text_stays(self, kept):
+        assert _evidence_check.normalise_quote(kept) == kept
+
+    def test_a_quote_that_normalises_to_nothing_is_dropped(self):
+        assert _evidence_check.quotes('quote: "" (p. 3)\n') == []
+
+    def test_a_repeated_single_valued_field_is_reported(self):
+        block = "claim: one\nclaim: two\nrelevance: r\nquote: a\nquote: b\n"
+        assert _evidence_check.repeated_fields(block) == {"claim": 2}
+
+    def test_a_legacy_block_with_support_and_quote_is_not_a_repeat(self):
+        assert _evidence_check.repeated_fields("support: a window\nquote: a span\n") == {}
+
+    def test_each_quote_is_compared_with_the_claim(self, draft):
+        target = _fill_dossier(
+            draft,
+            evidence=(
+                "## `talasila_realising_2024`\n\n"
+                f"claim: {TestOverlapScore.REWORDED}\n"
+                "quote: an unrelated sentence about tooling choices\n"
+                f"quote: {TestOverlapScore.QUOTE}\n"
+            ),
+        )
+        [(index, of, _)] = _evidence_check.reworded_claims(target)["talasila_realising_2024"]
+        assert (index, of) == (2, 2)
+
+    def test_check_evidence_names_which_quote_was_reworded(self, draft, capsys):
+        _fill_dossier(draft, evidence=_REWORDED_BLOCK + "- quote: a second unrelated sentence\n")
+        assert dossier.main(["check-evidence", str(draft), "--score"]) == 0
+        out = capsys.readouterr().out
+        assert "reads like quote 1 of 2 with its words moved" in out
+        assert "overlap with quote 1 of 2" in out
+
+    def test_check_evidence_warns_on_a_repeated_claim_and_says_nothing_clean(
+        self, draft, capsys
+    ):
+        _fill_dossier(draft, evidence=_RESTATED_BLOCK + "- claim: a second claim\n")
+        assert dossier.main(["check-evidence", str(draft)]) == 0
+        out = capsys.readouterr().out
+        assert "[warn] ferko_architecting_2022: 2 claim: lines -- only the first is read." in out
+        assert "No claim: reads like" not in out
+
+
 class TestRecordedDraftDigest:
     """`scope.md`'s `- draft digest:` line -- #454, FEATURE-ROADMAP.md's E3."""
 

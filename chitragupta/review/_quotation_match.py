@@ -51,6 +51,12 @@ substitution as (2) with nothing after it, and was reported `absent`.
 The reasoning and its sensitivity sit at the guard in `locate`, where a
 reader meeting the behaviour will be looking.
 
+**One more lives upstream, not here** (#1174): a trailing page locator
+(`(p. 24)`) and one pair of quotation marks around a whole quote are
+stripped by `dossier/_evidence_check.normalise_quote` before any quote
+reaches this module. The marks never mattered here (they flatten away);
+the locator's `p24` did, and turned a correct quotation `absent`.
+
 **And one arm declined on measurement**, recorded because a later reader
 will reach for it: stripping a parenthesised abbreviation gloss from the
 source -- `"a Digital Twin (DT) to gain"` -- to match a quotation that
@@ -281,6 +287,9 @@ class Checked:
     near_miss_page: int | None = None
     near_miss_score: float = 0.0
     reason: str | None = None
+    # Its place among its block's `quote:` lines (#1174), set by the caller.
+    index: int = 1
+    of: int = 1
 
 
 def check_one(citekey: str, quote: str, found: list, reason: str | None) -> Checked:

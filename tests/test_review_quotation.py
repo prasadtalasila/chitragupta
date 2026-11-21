@@ -596,3 +596,121 @@ class TestTierPrecedence:
         a_source(KEY, (4, "alpha beta xx gamma delta yy alpha beta"), (5, "gamma delta zz"))
         one = checked(draft)[0]
         assert (one.verdict, one.tier, one.pages) == ("found", "exact-pair", [4, 5])
+
+
+SECOND = "a digital twin framework for manufacturing"
+
+
+def two_quotes(citekey: str, first: str, second: str) -> str:
+    return block(citekey, first) + f"quote: {second}\n"
+
+
+class TestSeveralQuotesPerBlock:
+    """#1174: a block may carry several `quote:` lines, and each one is
+    checked on its own. Before, `fields()` kept the first and dropped the
+    rest without a word."""
+
+    def test_every_quote_in_a_block_is_checked_with_its_position(self, isolated_config):
+        draft = a_draft()
+        a_dossier(draft, two_quotes(KEY, SPAN, SECOND))
+        a_source(KEY, (7, f"ISO 23247 defines {SPAN}."), (9, f"It is {SECOND}."))
+        got = [(c.quote, c.verdict, c.pages, c.index, c.of) for c in checked(draft)]
+        assert got == [(SPAN, "found", [7], 1, 2), (SECOND, "found", [9], 2, 2)]
+
+    def test_a_second_absent_quote_is_its_own_finding(self, isolated_config):
+        draft = a_draft()
+        a_dossier(draft, two_quotes(KEY, SPAN, "never written anywhere at all"))
+        a_source(KEY, (7, f"ISO 23247 defines {SPAN}."))
+        [finding] = quotation.findings(quotation.build_report(draft))
+        assert (finding["index"], finding["of"]) == (2, 2)
+
+    def test_the_first_quotes_id_is_what_it_was_with_one_quote(self, isolated_config):
+        """Adding a second quote renames nothing already checked."""
+        draft = a_draft()
+        a_dossier(draft, two_quotes(KEY, SPAN, SECOND))
+        a_source(KEY, (7, f"ISO 23247 defines {SPAN}."))
+        report = quotation.build_report(draft)
+        payload = _quotation_render.quotation_payload(report, "cmd", quotation.findings(report))
+        assert payload["quotes"][0]["id"] == _quotation_render.finding_id(KEY, SPAN)
+        assert [(q["index"], q["of"]) for q in payload["quotes"]] == [(1, 2), (2, 2)]
+
+    def test_each_printed_line_names_which_quote(self, isolated_config):
+        draft = a_draft()
+        a_dossier(draft, two_quotes(KEY, SPAN, "never written anywhere at all"))
+        a_source(KEY, (7, f"ISO 23247 defines {SPAN}."))
+        text = quotation.run_text(draft)
+        assert f"### `{KEY}` (quote 2 of 2)" in text
+        assert f"- `{KEY}` (quote 1 of 2) -- p.7 (exact)" in text
+
+    def test_a_lone_quote_prints_as_before(self, isolated_config):
+        draft = a_draft()
+        a_dossier(draft, block(KEY, SPAN))
+        a_source(KEY, (7, f"ISO 23247 defines {SPAN}."))
+        assert f"- `{KEY}` -- p.7 (exact)" in quotation.run_text(draft)
+
+    def test_unverifiable_lines_name_which_quote_too(self, isolated_config):
+        draft = a_draft()
+        a_dossier(draft, two_quotes(KEY, SPAN, SECOND))
+        a_page_level_source(KEY, f"ISO 23247 defines {SPAN}.")
+        text = quotation.run_text(draft)
+        assert f"- `{KEY}` (quote 1 of 2) -- " in text
+        assert f"- `{KEY}` (quote 2 of 2) -- " in text
+
+    def test_a_sources_passages_are_read_once_not_once_per_quote(
+        self, isolated_config, monkeypatch
+    ):
+        calls = []
+        real = quotation.passages.source_passages
+
+        def counting(con, citekey):
+            calls.append(citekey)
+            return real(con, citekey)
+
+        monkeypatch.setattr(quotation.passages, "source_passages", counting)
+        draft = a_draft()
+        a_dossier(draft, two_quotes(KEY, SPAN, SECOND))
+        a_source(KEY, (7, f"ISO 23247 defines {SPAN}."))
+        quotation.build_report(draft)
+        assert calls == [KEY]
+
+
+class TestAWrappedQuote:
+    """#1174: `"..." (p. N)` read as `absent`. The marks were harmless
+    (the matcher drops punctuation); the locator left `p24` behind. The
+    parser now strips both before anything reads the quote."""
+
+    @pytest.mark.parametrize(
+        "written",
+        [
+            f"{SPAN} (p. 7)",
+            f"{SPAN} (p.7)",
+            f'"{SPAN}" (p. 7)',
+            f"“{SPAN}”",
+            f"{SPAN}. (pp. 7-8).",
+        ],
+    )
+    def test_it_is_found(self, isolated_config, written):
+        draft = a_draft()
+        a_dossier(draft, block(KEY, written))
+        a_source(KEY, (7, f"ISO 23247 defines {SPAN}."))
+        one = checked(draft)[0]
+        assert (one.verdict, one.tier) == ("found", "exact")
+
+    def test_a_trailing_bracketed_page_is_now_exact_not_elided(self, isolated_config):
+        """It used to match as an end-elision, `[p. 7]` read as an
+        editorial substitution; stripped, the rest matches exactly."""
+        draft = a_draft()
+        a_dossier(draft, block(KEY, f"{SPAN} [p. 7]"))
+        a_source(KEY, (7, f"ISO 23247 defines {SPAN}."))
+        assert checked(draft)[0].tier == "exact"
+
+    def test_it_is_re_keyed_once_under_its_normalised_text(self, isolated_config):
+        """The one id change this brings: a quote written wrapped is now
+        named by what is checked, so the next agenda baseline reads its
+        old item as resolved and this one as new."""
+        draft = a_draft()
+        a_dossier(draft, block(KEY, f'"{SPAN}" (p. 7)'))
+        a_source(KEY, (7, "Something else entirely."))
+        [finding] = quotation.findings(quotation.build_report(draft))
+        assert finding["id"] == _quotation_render.finding_id(KEY, SPAN)
+        assert finding["id"] != _quotation_render.finding_id(KEY, f'"{SPAN}" (p. 7)')

@@ -61,7 +61,7 @@ from pathlib import Path
 from chitragupta import _private_use, citation_gate, config, ledger, reference_entries, references
 from chitragupta.dossier import citekeys_by_section, dossier_dir
 from chitragupta.dossier._citekeys import evidence_blocks
-from chitragupta.dossier._evidence_check import fields
+from chitragupta.dossier._evidence_check import quotes
 from chitragupta.help_format import ClickParser
 from chitragupta.progname import prog_for
 
@@ -86,9 +86,11 @@ _PREAMBLE = (
 )
 
 
-def quoted_spans(draft_text: str, dossier: Path, *, latex: bool = False) -> dict[str, str]:
-    """citekey -> its `quote:`, for keys the draft cites and the dossier
-    quotes, in the draft's own first-appearance order.
+def quoted_spans(draft_text: str, dossier: Path, *, latex: bool = False) -> dict[str, list[str]]:
+    """citekey -> its `quote:` lines, for keys the draft cites and the
+    dossier quotes, in the draft's own first-appearance order. A block may
+    carry several (#1174), kept in file order; a key with none is omitted
+    rather than mapped to an empty list.
 
     A block carrying only `relevance:`/`claim:`, or only a legacy
     `support:`, contributes nothing -- see this module's docstring for
@@ -96,15 +98,15 @@ def quoted_spans(draft_text: str, dossier: Path, *, latex: bool = False) -> dict
     quote.
     """
     blocks = evidence_blocks(dossier)
-    found: dict[str, str] = {}
+    found: dict[str, list[str]] = {}
     for citekey in references.used_citekeys(draft_text, latex=latex):
-        quote = fields(blocks[citekey]).get("quote") if citekey in blocks else None
-        if quote:
-            found[citekey] = quote
+        block_quotes = quotes(blocks[citekey]) if citekey in blocks else []
+        if block_quotes:
+            found[citekey] = block_quotes
     return found
 
 
-def grouped(spans: dict[str, str], dossier: Path) -> list[tuple[str, list[str]]]:
+def grouped(spans: dict[str, list[str]], dossier: Path) -> list[tuple[str, list[str]]]:
     """(section, its quoted citekeys) in `sections.md`'s own row order,
     with anything unfiled last under `UNASSIGNED`.
 
@@ -129,14 +131,12 @@ def grouped(spans: dict[str, str], dossier: Path) -> list[tuple[str, list[str]]]
 def _blockquote(quote: str) -> str:
     """One `quote:` value as a Markdown blockquote, in quotation marks.
 
-    A value that already carries its own surrounding quotation marks is
-    not double-quoted: a human writing `quote: "..."` by hand and a skill
-    writing it bare should produce the same rendered span.
+    The value arrives already normalised by `_evidence_check.quotes`, so
+    a hand-written `quote: "..."` and a bare one render the same. Nothing
+    is stripped here: a value that still opens and closes with a mark
+    keeps it because the mark belongs to a quoted word inside it.
     """
-    text = quote.strip()
-    if len(text) >= 2 and text.startswith('"') and text.endswith('"'):
-        text = text[1:-1].strip()
-    lines = f'"{text}"'.splitlines()
+    lines = f'"{quote.strip()}"'.splitlines()
     return "\n".join(f"> {line}" for line in lines)
 
 
@@ -169,8 +169,9 @@ def build(draft_text: str, dossier: Path, con, *, latex: bool = False) -> str | 
             # citation.
             out.append(f"### {attributions[citekey]} `{citekey}`")
             out.append("")
-            out.append(_blockquote(spans[citekey]))
-            out.append("")
+            for quote in spans[citekey]:
+                out.append(_blockquote(quote))
+                out.append("")
     return "\n".join(out).rstrip() + "\n"
 
 

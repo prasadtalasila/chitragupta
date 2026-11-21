@@ -150,17 +150,17 @@ keep source wording out of the draft, this one says what replaces it.
    Then read the candidates' sidecar text. Done when every theme's
    query has run, each with `--log`.
 
-2. **Score every candidate, and record its main passage as a
-   `quote:`.** Before your first `evidence.md` block, read
+2. **Score every candidate, and record its main passages as
+   `quote:` lines.** Before your first `evidence.md` block, read
    `.claude/skills-common/references/genre-steps.md` §5, with one
-   difference: a digest records, for each kept source, one `quote:`
-   holding the passage you lean on most, verbatim, with no quotation
-   marks and no page. `claim:` stays in your own words and is what your
+   difference: a digest records, for each kept source, a `quote:` line
+   per passage you lean on most (not one per copied run), verbatim,
+   with no quotation marks and no page. `claim:` stays in your own words and is what your
    `see` sentences are drafted from. §5's two rules on drafting, prose
    only from `claim:` and a `quote:` only inside quotation marks, do not
    bind a digest's body: it is copied runs, each closed by its citation,
    with no marks. `review quotation` checks the
-   `quote:`; `review digest` checks every other copied run where it
+   `quote:` lines; `review digest` checks every other copied run where it
    stands. Done when every candidate is in `evidence.md` or
    `rejected.md`.
 

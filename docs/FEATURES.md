@@ -276,7 +276,8 @@ its `revisions.md` entry, with a latexdiff redline under `--format pdf`.
 ### 📖 Evidence: `claim:` and `quote:`
 
 Kept evidence records what a source establishes in the drafter's own
-words (`claim:`) separately from its exact wording (`quote:`, optional).
+words (`claim:`) separately from its exact wording (`quote:`, optional,
+one line per passage meant to be quoted).
 Only `claim:` may be drafted from, and it is written before any sentence
 of the draft exists. `chitragupta draft evidence` renders the quoted
 spans into an **evidence sidecar** beside the render, the one legitimate

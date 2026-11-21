@@ -3,7 +3,7 @@
   "aid": "quotation",
   "draft": "content/drafts/dt-overview/trust-chapter.tex",
   "command": "python -m chitragupta.review quotation content/drafts/dt-overview/trust-chapter.tex --write",
-  "version": "6.166.1",
+  "version": "6.178.0",
   "universe": "checked",
   "quotes_total": 4,
   "found": 0,
@@ -16,7 +16,9 @@
       "verdict": "unverifiable",
       "tier": null,
       "pages": [],
-      "reason": "no reading-ordered passages -- only page-level text"
+      "reason": "no reading-ordered passages -- only page-level text",
+      "index": 1,
+      "of": 1
     },
     {
       "id": "83d94ccd0599",
@@ -24,7 +26,9 @@
       "verdict": "unverifiable",
       "tier": null,
       "pages": [],
-      "reason": "no reading-ordered passages -- only page-level text"
+      "reason": "no reading-ordered passages -- only page-level text",
+      "index": 1,
+      "of": 1
     },
     {
       "id": "7ae990e26064",
@@ -32,7 +36,9 @@
       "verdict": "unverifiable",
       "tier": null,
       "pages": [],
-      "reason": "no reading-ordered passages -- only page-level text"
+      "reason": "no reading-ordered passages -- only page-level text",
+      "index": 1,
+      "of": 1
     },
     {
       "id": "e7b2c4872733",
@@ -40,7 +46,9 @@
       "verdict": "unverifiable",
       "tier": null,
       "pages": [],
-      "reason": "no reading-ordered passages -- only page-level text"
+      "reason": "no reading-ordered passages -- only page-level text",
+      "index": 1,
+      "of": 1
     }
   ],
   "findings": []
