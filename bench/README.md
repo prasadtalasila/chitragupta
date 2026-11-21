@@ -302,8 +302,8 @@ its own `main()`, before it does any real work.** `repro_check.py`, `bench_drift
 `bench_retrieval_token_floor.py`, `bench_retrieval_acronym_expansion.py`,
 `bench_retrieval_bm25_params.py`, `bench_retrieval_abstract.py`,
 `bench_skill_harnesses.py`, `bench_connector_rules.py`,
-`bench_contrast_wording.py` and `bench_retrieval_spelling.py` each have
-one -- 47 of the 51 scripts here. The
+`bench_contrast_wording.py`, `bench_retrieval_spelling.py` and
+`simulate_false_fail.py` each have one -- 48 of the 52 scripts here. The
 exceptions are `skill_commands.py` and `skill_bench_tasks.py`, which are
 modules of `bench_skill_harnesses.py` rather than scripts, and whose
 scoring and task table its `self_check()` proves on every run; and
