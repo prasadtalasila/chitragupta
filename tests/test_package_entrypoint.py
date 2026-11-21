@@ -143,6 +143,13 @@ class TestTheHelpTree:
             "Run 'chitragupta COMMAND --help' for a command's commands and flags.\n"
         )
 
+    def test_the_diff_row_is_not_cut_in_the_tree(self, monkeypatch, capsys):
+        """#1207: the tree's deeper indent cuts sooner than draft --help."""
+        out = self._help(monkeypatch, capsys)
+        (row,) = [line for line in out.splitlines() if line.startswith("    diff ")]
+        assert "since a snapshot" in row
+        assert not row.endswith("...")
+
     def test_the_version_flag_reads_like_click(self, monkeypatch, capsys):
         assert "--version   Show the version and exit." in self._help(monkeypatch, capsys)
 
