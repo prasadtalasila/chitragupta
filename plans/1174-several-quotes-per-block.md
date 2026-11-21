@@ -173,7 +173,8 @@ share their first 80 characters do not render as identical lines:
 
 `misquoted` stays surfaced and not acceptable. `objective_class_count`,
 `pass_bound` and the R4 stop rule do not move. `agenda-reviser` lists more
-items and still never edits `evidence.md`.
+items and still never edits `evidence.md` for a `misquoted` item (one
+narrow exception came later; see "Added after review").
 
 ### 7. The digest records the passages it leans on most (chosen: option 2)
 

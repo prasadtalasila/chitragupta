@@ -45,7 +45,10 @@ _NGRAM = 2
 # drifts a little toward its source's wording still passes.
 _OVERLAP_THRESHOLD = 0.5
 
-_FIELD = re.compile(r"^-?\s*(?P<field>claim|quote|relevance|support):\s*", re.MULTILINE)
+# `[ \t]*` after the colon, not `\s*`: a newline swallowed there made the
+# next line the value's first, exempt from `_OTHER_FIELD` below, so an
+# empty `quote:` above a `used in:` note read the note as the quote.
+_FIELD = re.compile(r"^-?\s*(?P<field>claim|quote|relevance|support):[ \t]*", re.MULTILINE)
 
 # What `quotes()` takes off a `quote:` value before anything reads it
 # (#1174): a page locator at the very end -- `(p. 24)`, `(pp. 12-13)`,

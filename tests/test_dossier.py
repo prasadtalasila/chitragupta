@@ -3992,6 +3992,15 @@ class TestAValueEndsAtTheNextFieldLine:
             f"the first line\n{continuation}"
         ]
 
+    @pytest.mark.parametrize(
+        "block", ["quote:\n- used in: Section 2\n", "quote:\nnote: strongest line\n"]
+    )
+    def test_an_empty_field_does_not_take_the_note_below_it(self, block):
+        assert _evidence_check.quotes(block) == []
+
+    def test_a_value_may_still_start_on_the_next_line(self):
+        assert _evidence_check.quotes("quote:\n  the span itself\n") == ["the span itself"]
+
     def test_a_field_shaped_first_line_is_the_value_itself(self):
         assert _evidence_check.quotes("quote: note: kept as written\n") == ["note: kept as written"]
 

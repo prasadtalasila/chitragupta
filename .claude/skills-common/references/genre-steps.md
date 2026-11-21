@@ -194,12 +194,19 @@ still in front of you:
 the evidence is judged, with one exception: a reviser may add a `quote:`
 line to a kept source's block when a person asked for that quotation, in
 chat or by answering "quotation" to a long verbatim run. Copy the span
-from the source passage you just read (`retrieve evidence` for that
-citekey, or the agenda item's source text), never from memory or the
-draft. Run `python -m chitragupta.review quotation <draft>`: keep the line
-only if it is `found`, or `not checkable` and you say so; otherwise
-remove it. Log the addition in `revisions.md`. Never add one on your own
-judgement or to make the evidence sidecar appear.
+from the source passage, never from memory or the draft:
+
+```bash
+python -m chitragupta.draft retrieve evidence "<the passage's words>" --citekey <key> --log <draft>
+```
+
+Then run `python -m chitragupta.review quotation <draft>`: keep the line
+only if it is `found`, or `unverifiable` and you say so; otherwise
+remove it. Log the addition in `revisions.md`. If the source has no
+block in `evidence.md` yet, an agenda repair adds nothing and reports
+it; a revision records a whole block, `relevance:` and `claim:`
+included, as the bullets above say. Never add one on your own judgement
+or to make the evidence sidecar appear.
 
 The rejected list is the more valuable of the two and the easier to
 skip. It is what stops the next revision retrieving and re-judging the

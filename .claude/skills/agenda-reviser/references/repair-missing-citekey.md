@@ -11,7 +11,7 @@ use. Paths here are from the project root.
 is a deletion: this skill may not run `corpus sync` (the user's write
 lock) and may not fabricate a citekey. Remove the `[@citekey]` marker,
 leaving the sentence standing -- never delete the sentence itself.
-Do not touch `evidence.md` or `sections.md`: this skill's write-set is
+Do not touch `evidence.md` or `sections.md`: this repair's write-set is
 the draft and `revisions.md`, and dropping a recorded key is the
 author's call about their evidence. The now-uncited claim becomes an
 `uncited-claim` item on the next agenda, a **surfaced** class, so it is
