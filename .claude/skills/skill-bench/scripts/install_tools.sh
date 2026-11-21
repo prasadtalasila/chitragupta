@@ -8,7 +8,7 @@
 #
 # Everything lands under BENCH_TOOLS (default ~/bench-tools): Codex and
 # OpenCode in its npm/ prefix, llama.cpp in llama.cpp-b11321/, the model
-# in models/. Only apt packages (cmake, a compiler, the CUDA compiler and
+# and its vision projector in models/. Only apt packages (cmake, a compiler, the CUDA compiler and
 # the repository's own os-deps) go system-wide, through sudo unless run
 # as root. The versions are pinned to the #1068 bench, so results stay
 # comparable across the #1091 series: change one and every earlier
@@ -16,7 +16,9 @@
 #
 # The model's SHA-256 takes about a minute over 22 GB, so a verified hash
 # is cached in models/<file>.verified with the file's size and mtime, and
-# trusted only while both still match.
+# trusted only while both still match. The vision projector is pinned
+# and checked the same way: without it llama-server answers Codex's
+# first figure PNG with a 500 and the run ends there.
 #
 # The check uses bash builtins and the tools it looks for, nothing else,
 # so tests/test_skill_bench_install_tools.py can run it against fakes.
@@ -31,6 +33,10 @@ MODEL_NAME=Qwen3.6-35B-A3B-UD-Q4_K_M.gguf
 MODEL_BYTES=22134528992
 MODEL_SHA256=ac0e2c1189e055faa36eff361580e79c5bd6f8e76bffb4ce547f167d53e31a61
 MODEL_FILE=${MODEL_FILE:-$BENCH_TOOLS/models/$MODEL_NAME}
+MMPROJ_NAME=mmproj-F16.gguf
+MMPROJ_BYTES=899283680
+MMPROJ_SHA256=8971ee4f331ff0a4c609374f32984b3d4e6dc086c0aa35f1d637fad1829e887f
+MMPROJ_FILE=${MMPROJ_FILE:-$BENCH_TOOLS/models/$MMPROJ_NAME}
 LLAMA_DIR=$BENCH_TOOLS/llama.cpp-$LLAMA
 PATH=$BENCH_TOOLS/npm/bin:$PATH
 
@@ -50,23 +56,24 @@ pinned() {
   if [[ $v == *"$want"* ]]; then found "$name" "$want"; else lacking "$name" "or not $want${v:+ ($v)}"; fi
 }
 
-model_ok() {
-  local size mtime stamp sum
-  [[ -f $MODEL_FILE ]] || { lacking model "$MODEL_FILE"; return; }
-  size=$(stat -c %s "$MODEL_FILE")
-  [[ $size == "$MODEL_BYTES" ]] || { lacking model "$size bytes, not $MODEL_BYTES"; return; }
-  mtime=$(stat -c %Y "$MODEL_FILE")
-  stamp="$MODEL_FILE.verified"
-  if [[ -f $stamp && $(<"$stamp") == "$size $mtime $MODEL_SHA256" ]]; then
-    found model "$MODEL_FILE (sha256 verified)"
+# `pinned_file NAME FILE BYTES SHA256`: FILE must have that size and hash.
+pinned_file() {
+  local name=$1 file=$2 bytes=$3 want=$4 size mtime stamp sum
+  [[ -f $file ]] || { lacking "$name" "$file"; return; }
+  size=$(stat -c %s "$file")
+  [[ $size == "$bytes" ]] || { lacking "$name" "$size bytes, not $bytes"; return; }
+  mtime=$(stat -c %Y "$file")
+  stamp="$file.verified"
+  if [[ -f $stamp && $(<"$stamp") == "$size $mtime $want" ]]; then
+    found "$name" "$file (sha256 verified)"
     return
   fi
-  sum=$(sha256sum "$MODEL_FILE" | cut -d' ' -f1)
-  if [[ $sum == "$MODEL_SHA256" ]]; then
+  sum=$(sha256sum "$file" | cut -d' ' -f1)
+  if [[ $sum == "$want" ]]; then
     printf '%s %s %s\n' "$size" "$mtime" "$sum" >"$stamp"
-    found model "$MODEL_FILE (sha256 verified)"
+    found "$name" "$file (sha256 verified)"
   else
-    lacking model "sha256 $sum, not $MODEL_SHA256"
+    lacking "$name" "sha256 $sum, not $want"
   fi
 }
 
@@ -83,7 +90,8 @@ check() {
   else
     lacking llama-server "$LLAMA_DIR/build/bin/llama-server"
   fi
-  model_ok
+  pinned_file model "$MODEL_FILE" "$MODEL_BYTES" "$MODEL_SHA256"
+  pinned_file mmproj "$MMPROJ_FILE" "$MMPROJ_BYTES" "$MMPROJ_SHA256"
   if [[ $(claude auth status 2>/dev/null) == *'"loggedIn": true'* ]]; then
     found claude "logged in"
   else
@@ -152,6 +160,10 @@ install() {
   if wants model; then
     mkdir -p "$(dirname "$MODEL_FILE")"
     curl -fL -C - -o "$MODEL_FILE" "https://huggingface.co/$MODEL_REPO/resolve/main/$MODEL_NAME" || return 1
+  fi
+  if wants mmproj; then
+    mkdir -p "$(dirname "$MMPROJ_FILE")"
+    curl -fL -C - -o "$MMPROJ_FILE" "https://huggingface.co/$MODEL_REPO/resolve/main/$MMPROJ_NAME" || return 1
   fi
   if wants pdftotext || wants lualatex; then
     bash "$(dirname "$0")/../../../../scripts/install_full_pipeline.sh" os-deps || return 1
