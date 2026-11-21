@@ -15,6 +15,7 @@ import re
 
 from chitragupta._tex_comments import strip_comments
 from chitragupta.review.figure_layout._scan import (
+    NESTING,
     blank_groups,
     declaration,
     path_bodies,
@@ -239,9 +240,6 @@ def _pairs(body: str) -> list[tuple[str, str]]:
 # tip. `\draw (a) edge[->] (b)` puts its tip outside this group and is
 # therefore missed -- failing short rather than wrong, the same stance
 # `edge_list` takes.
-_NESTING = {"[": 1, "{": 1, "]": -1, "}": -1}
-
-
 def _split_options(statement: str) -> tuple[str, str]:
     """A path statement's leading option group, and everything after it
     with every brace group emptied.
@@ -260,7 +258,7 @@ def _split_options(statement: str) -> tuple[str, str]:
         return "", blank_groups(statement)
     depth = 0
     for i, char in enumerate(text):
-        depth += _NESTING.get(char, 0)
+        depth += NESTING.get(char, 0)
         if not depth:
             return text[1:i], blank_groups(text[i + 1 :])
     return text[1:], ""

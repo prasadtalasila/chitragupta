@@ -23,7 +23,7 @@ import re
 
 from chitragupta import config
 from chitragupta._tex_comments import strip_comments
-from chitragupta.review.figure_layout._scan import braced
+from chitragupta.review.figure_layout._scan import NESTING, braced
 
 # `arrows.meta` tips and the legacy names still in use. Closed, so a
 # style called `Flow-Edge` is not read as a tip at each end.
@@ -106,7 +106,7 @@ def _split(options: str) -> list[str]:
     """`options` at its top-level commas, blank tokens dropped."""
     tokens, depth, start = [], 0, 0
     for i, char in enumerate(options):
-        depth += {"{": 1, "[": 1, "}": -1, "]": -1}.get(char, 0)
+        depth += NESTING.get(char, 0)
         if char == "," and not depth:
             tokens.append(options[start:i])
             start = i + 1
@@ -119,7 +119,7 @@ def _key(token: str) -> tuple[str, str | None]:
     is `None` where there is none."""
     depth = 0
     for i, char in enumerate(token):
-        depth += {"{": 1, "[": 1, "}": -1, "]": -1}.get(char, 0)
+        depth += NESTING.get(char, 0)
         if char == "=" and not depth:
             return _name(token[:i]), token[i + 1 :]
     return _name(token), None
