@@ -15,6 +15,7 @@ import re
 
 from chitragupta._tex_comments import strip_comments
 from chitragupta.review.figure_layout._scan import declaration, path_bodies
+from chitragupta.review.figure_layout._tips import house_styles, style_definitions, tips
 
 # docs/TIKZ-STYLE.md's conciseness rule, as the number it is written as.
 # One place, because the report quotes it back to the reader.
@@ -250,17 +251,6 @@ def _split_options(body: str) -> tuple[str, str]:
     return options.group("options"), body[options.end() :]
 
 
-# The arrow specifications that put a head at each end of a path. Tested
-# as substrings rather than patterns because that is exactly the
-# distinction wanted: `<->` contains both and draws both heads, `->`
-# contains only the first, `<-` only the second. An `arrows.meta` tip
-# (`-{Stealth}`) draws an end head and matches neither -- recognising
-# every tip name means parsing TikZ's tip grammar, and a missed finding
-# is what an advisory aid does anyway.
-_END_ARROW = "->"
-_START_ARROW = "<-"
-
-
 def _point(token: str) -> str:
     """A parenthesised token with its internal whitespace normalised.
 
@@ -281,7 +271,8 @@ def stranded_arrowheads(source: str) -> list[str]:
     A line built in pieces, each piece carrying `->`, renders a head
     where the pieces join as well as at the end -- a second head pointing
     at nothing. #399 found two colinear segments meeting at `(46,36)`
-    doing exactly this.
+    doing exactly this. A head is read from `->`, an `arrows.meta` tip
+    or a style that sets one, as `_tips.py` says (#1162).
 
     **The junction has to be a bare coordinate, and that clause is what
     makes the check precise rather than noisy.** Head-to-tail chaining
@@ -318,15 +309,18 @@ def stranded_arrowheads(source: str) -> list[str]:
     positive; the one true positive there is `2-2`'s arrow into
     `(90,34)`, which a `\\draw[thick]` bezier then continues out of.
     """
+    text = strip_comments(source)
+    styles = {**house_styles(), **style_definitions(text)}
     ends_with_head, opens_at = [], set()
-    for statement in path_bodies(strip_comments(source)):
+    for statement in path_bodies(text):
         options, body = _split_options(statement)
         points = [_point(token) for token in _PAREN_TOKEN_RE.findall(body)]
         if not points:
             continue
-        if _START_ARROW not in options:
+        start_head, end_head = tips(options, styles)
+        if not start_head:
             opens_at.add(points[0])
-        if _END_ARROW in options:
+        if end_head:
             ends_with_head.append(points[-1])
     found = []
     for point in ends_with_head:

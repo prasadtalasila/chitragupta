@@ -81,6 +81,42 @@ class TestTagText:
         assert stranded_arrowheads(source) == []
 
 
+class TestHeadsFromStyles:
+    """`stranded-arrowhead` reads a head set by a style (#1162)."""
+
+    def test_the_issues_reproduction_is_reported(self):
+        source = r"\draw[cgedge] (a) -- (46,36); \draw[cgedge] (46,36) -- (b);"
+
+        assert stranded_arrowheads(source) == ["46,36"]
+
+    def test_a_style_the_figure_defines_is_read(self):
+        source = (
+            r"\tikzset{mine/.style={-{Stealth}}}"
+            r"\draw[mine] (a) -- (1,2); \draw[mine] (1,2) -- (b);"
+        )
+
+        assert stranded_arrowheads(source) == ["1,2"]
+
+    def test_bars_that_draw_their_own_start_head_are_not_stranded(self):
+        source = (
+            r"\tikzset{bar/.style={{Latex}-{Latex}}}"
+            r"\draw[bar] (0,0) -- (5,0); \draw[bar] (5,0) -- (9,0);"
+        )
+
+        assert stranded_arrowheads(source) == []
+
+    def test_shorten_alone_draws_no_head(self):
+        source = r"\draw[shorten >=2pt] (a) -- (1,2); \draw[shorten >=2pt] (1,2) -- (b);"
+
+        assert stranded_arrowheads(source) == []
+
+    def test_a_headless_first_piece_is_not_stranded(self):
+        """`cgedge, -` is the repair for a stranded head."""
+        source = r"\draw[cgedge, -] (a) -- (1,2); \draw[cgedge] (1,2) -- (b);"
+
+        assert stranded_arrowheads(source) == []
+
+
 class TestExpandLoops:
     """A macro-spelled name, against what the hook logged (no TeX)."""
 
