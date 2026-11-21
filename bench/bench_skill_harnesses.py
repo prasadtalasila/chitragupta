@@ -82,6 +82,9 @@ from skill_commands import (  # noqa: E402
 EXAMPLES = REPO_ROOT / "docs" / "examples"
 BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:18080/v1")
 LOCAL_MODEL = os.environ.get("MODEL", "qwen3.6-35b-a3b")
+# The context every llama-server is started with (serve_models.sh's -c) and
+# docs/examples/opencode/opencode-provider.json declares.
+LOCAL_CONTEXT = 131072
 HARNESSES = ("claude", "codex", "opencode")
 # Filled by main() before any scaffolding, so a missing CLI is named up
 # front rather than failing inside Popen after a corpus sync.
@@ -246,6 +249,14 @@ def command(harness: str, prompt: str, base_url: str = BASE_URL) -> list:
             # json.dumps writes a valid TOML basic string, quotes escaped.
             f'model_providers.local={{name="local",base_url={json.dumps(base_url)},'
             'wire_api="responses"}',
+            # Codex has no metadata for a local model, so it does not know
+            # the server's window and never compacts: two runs ended on a
+            # 400 at 131,625 tokens (#1210). 75% leaves room for one large
+            # tool output after the last compaction.
+            "-c",
+            f"model_context_window={LOCAL_CONTEXT}",
+            "-c",
+            f"model_auto_compact_token_limit={LOCAL_CONTEXT * 3 // 4}",
             "-m",
             LOCAL_MODEL,
             prompt,
@@ -1153,6 +1164,16 @@ def _check_harness_env(tmp: Path) -> None:
     assert config["permission"] == {"external_directory": "allow"}, config
     assert {k: v for k, v in config.items() if k != "permission"} == example, "the example"
     assert "permission" not in example, "the user-facing example stays as it was"
+    assert example["provider"]["local"]["models"][LOCAL_MODEL]["limit"]["context"] == LOCAL_CONTEXT
+    saved_binaries = dict(BINARIES)
+    BINARIES["codex"] = "codex"
+    try:
+        codex = command("codex", "x")
+    finally:
+        BINARIES.clear()
+        BINARIES.update(saved_binaries)
+    assert f"model_context_window={LOCAL_CONTEXT}" in codex, codex
+    assert f"model_auto_compact_token_limit={LOCAL_CONTEXT * 3 // 4}" in codex, codex
 
 
 def _raise(*_args) -> dict:
