@@ -7820,9 +7820,11 @@ math and command spans to equal-width spaces before Vale reads the text
 findings rose by four, all `Acronyms`, and each was checked: "DT" three
 more times and "FIWARE" and "NIST" once, all in text Vale had not seen,
 and an "FMI" finding gone whose expansion sat in hidden text. The same
-probe on Markdown drafts reported 106 of 217 on the survey, 68 of 73 and
-53 of 55 on two sample-project drafts: Markdown loses findings too, for
-a reason not yet found, and it is not fixed here.
+probe on Markdown drafts lost nothing: every word planted outside the
+References section was reported (106 of 106 on the survey, 68 of 68 and
+53 of 53 on two sample-project drafts). A first count, published with
+this entry, also planted words inside the References list, which
+`vale.ini`'s `BlockIgnores` skips on purpose, and read those as losses.
 
 **Reproducing.** Run the command above over the same files and compare
 `(draft, rule, match)` sets; `tests/test_style_vendored.py` holds the
