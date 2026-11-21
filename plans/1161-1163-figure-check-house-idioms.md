@@ -1,6 +1,12 @@
 # `figure check`: the house idioms, two rule holes and a clean exemplar
 
-Status: **design, approved 2026-11-21.** Tasks in
+Status: **built**, on branch `fix-1161-1163-figure-check` (v6.178.1,
+PATCH, not released). Changed on the way, from the sign-off review:
+c3's segment overlap is now measured both ways round (a short edge
+listed first scored 0); arrow specs are last-wins with a closed tip
+list; and c3's new cases are shown as code, not a second rendered pair.
+Measured after: no new finding on the 18 assets or the book's 55
+figures. Tasks in
 [1161-1163-figure-check-house-idioms-tasks.md](1161-1163-figure-check-house-idioms-tasks.md).
 Written 2026-11-21 for
 [issue 1161](https://github.com/prasadtalasila/chitragupta/issues/1161),
