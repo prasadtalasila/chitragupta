@@ -21,7 +21,7 @@ from chitragupta import (
     sync_pool,
     sync_residue,
 )
-from tests.conftest import make_reference, run_python, thread_executor
+from tests.conftest import make_reference, run_python
 
 
 def write_bib(path, body):
@@ -1258,7 +1258,9 @@ class TestWorkerCount:
         monkeypatch.setattr(sync_pool, "_executor_for", refuse)
         assert sync.run() == 0
 
-    def test_oversized_request_is_clamped_and_warned(self, many_corpus, monkeypatch, caplog):
+    def test_oversized_request_is_clamped_and_warned(
+        self, many_corpus, monkeypatch, thread_executor, caplog
+    ):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 64)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 8)
@@ -1272,7 +1274,7 @@ class TestWorkerCount:
 
 class TestParallelParsing:
     @pytest.fixture(autouse=True)
-    def _four_workers(self, monkeypatch):
+    def _four_workers(self, monkeypatch, thread_executor):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
@@ -1686,13 +1688,15 @@ class TestInterrupt:
     """
 
     @pytest.fixture(autouse=True)
-    def _pool(self, monkeypatch):
+    def _pool(self, monkeypatch, thread_executor):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         monkeypatch.setattr(sync_pool, "_executor_for", thread_executor)
 
-    def test_pending_work_is_cancelled_not_drained(self, many_corpus, monkeypatch, capsys):
+    def test_pending_work_is_cancelled_not_drained(
+        self, many_corpus, monkeypatch, thread_executor, capsys
+    ):
         """The bug: `with executor` shuts down with wait=True, draining
         every queued document before exiting.
 
@@ -1743,7 +1747,7 @@ class TestProgressReporting:
     """
 
     @pytest.fixture(autouse=True)
-    def _pool(self, monkeypatch):
+    def _pool(self, monkeypatch, thread_executor):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
@@ -1781,7 +1785,7 @@ class TestStallWatchdog:
     """
 
     @pytest.fixture(autouse=True)
-    def _pool(self, monkeypatch):
+    def _pool(self, monkeypatch, thread_executor):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
@@ -1940,7 +1944,9 @@ class TestStallWatchdog:
             "executor._processes, so nothing was actually signalled (issue #698)"
         )
 
-    def test_a_stall_cancels_jobs_that_never_started(self, many_corpus, monkeypatch):
+    def test_a_stall_cancels_jobs_that_never_started(
+        self, many_corpus, monkeypatch, thread_executor
+    ):
         """#491: with the shipped pdftotext backend, terminate_workers is a
         no-op (it only reaches ProcessPoolExecutor's `_processes`), so the
         stall path's only way to stop queued-but-unstarted jobs is
@@ -2046,7 +2052,9 @@ class TestFailureReporting:
         assert "0 parsed" in out  # ...but not re-parsed
         assert "needs attention" in out
 
-    def test_a_worker_death_is_transient_and_is_retried(self, many_corpus, monkeypatch, capsys):
+    def test_a_worker_death_is_transient_and_is_retried(
+        self, many_corpus, monkeypatch, thread_executor, capsys
+    ):
         """The failure that motivated retrying at all: one dead worker
         marks every in-flight document failed, and they must come back."""
         from concurrent.futures.process import BrokenProcessPool
@@ -2070,7 +2078,7 @@ class TestFailureReporting:
 
     @pytest.mark.parametrize("workers", [1, 4])
     def test_one_documents_write_failure_keeps_the_rest_of_the_batch(
-        self, many_corpus, monkeypatch, capsys, workers
+        self, many_corpus, monkeypatch, thread_executor, capsys, workers
     ):
         """#842: an OSError writing one document's output used to escape
         both parse paths and abort sync, discarding every other result.
@@ -2279,7 +2287,9 @@ class TestTimeoutReporting:
         assert "doe_broken_2023" in out
         assert "smith_example_2024" in out
 
-    def test_a_timeout_from_a_pool_worker_is_reported_too(self, many_corpus, monkeypatch, capsys):
+    def test_a_timeout_from_a_pool_worker_is_reported_too(
+        self, many_corpus, monkeypatch, thread_executor, capsys
+    ):
         """The parallel path returns the exception across a process
         boundary rather than raising it, so the mark has to arrive
         intact for the summary to say anything."""
@@ -2313,7 +2323,7 @@ class TestStallWarning:
     """
 
     @pytest.fixture(autouse=True)
-    def _pool(self, monkeypatch):
+    def _pool(self, monkeypatch, thread_executor):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)

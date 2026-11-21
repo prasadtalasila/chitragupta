@@ -413,14 +413,57 @@ def retrieval_cost(target):
     return sum(s.calls for s in segments), sum(s.chars for s in segments)
 
 
-def thread_executor(workers):
-    """A real ProcessPoolExecutor would run parse_one in a child
+class ThreadPools:
+    """Builds thread pools in place of the code's process pools, and
+    remembers every one so a test's teardown can wait for them.
+
+    A real ProcessPoolExecutor would run parse_one in a child
     interpreter, where this process's sys.modules fakes don't exist -- the
     fake docling would silently not be used. Swapping the executor keeps
-    the concurrency real while leaving the fakes visible."""
-    from concurrent.futures import ThreadPoolExecutor
+    the concurrency real while leaving the fakes visible.
 
-    return ThreadPoolExecutor(max_workers=workers)
+    The swap loses one thing: on an interrupt the pool code calls
+    `shutdown(wait=False)` and relies on `terminate_workers` to kill
+    what is still running, which has no thread equivalent. A started job
+    then outlives its test, and once `monkeypatch` has restored `config`
+    it writes into the real `content/` (#1226). `join_all` is what the
+    `thread_executor` fixture runs at teardown to stop that.
+    """
+
+    def __init__(self) -> None:
+        self._pools: list = []
+
+    def __call__(self, workers: int):
+        from concurrent.futures import ThreadPoolExecutor
+
+        pool = ThreadPoolExecutor(max_workers=workers)
+        self._pools.append(pool)
+        return pool
+
+    def join_all(self) -> None:
+        """Wait for every job already running in every pool built.
+        Queued jobs are cancelled rather than run: the test is over."""
+        for pool in self._pools:
+            pool.shutdown(wait=True, cancel_futures=True)
+
+
+@pytest.fixture
+def thread_executor(monkeypatch):
+    """A `workers -> ThreadPoolExecutor` factory to monkeypatch over an
+    `_executor_for`. Every pool it builds is joined at teardown.
+
+    It takes `monkeypatch` for the ordering, not to use it: pytest tears
+    fixtures down in reverse order of setup, so depending on
+    `monkeypatch` guarantees the join finishes before `monkeypatch`
+    undoes `isolated_config`'s paths. Joining after that would let a
+    late job write into the real `content/`, the failure this exists
+    to prevent. The autouse fixtures above already request `monkeypatch`,
+    so today it is set up first whatever this asks for; naming it here
+    keeps the guarantee from resting on them.
+    """
+    pools = ThreadPools()
+    yield pools
+    pools.join_all()
 
 
 HOOKS = Path(__file__).resolve().parent.parent / ".claude" / "hooks"

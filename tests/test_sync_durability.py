@@ -29,7 +29,6 @@ import pytest
 from chitragupta import config, ledger, overlap_chroma, pdf_text, sync, sync_pool, sync_residue
 from chitragupta.enrich import embed_text
 from chitragupta.enrich.corpus import CorpusDoc
-from tests.conftest import thread_executor
 
 BIB = "".join(
     f"""
@@ -63,7 +62,7 @@ def corpus(isolated_config):
 
 
 @pytest.fixture(params=["serial", "thread_pool"])
-def path(request, monkeypatch):
+def path(request, monkeypatch, thread_executor):
     """Both executors sync can run, by name. The pool is pdftotext's
     thread pool, so a fake parse needs no docling passages sidecar to
     count as finished on the next run."""
@@ -238,7 +237,9 @@ class TestOneBadDocumentFailsOnlyItself:
         assert isinstance(exc, pdf_text.ExtractionError)
         assert not getattr(exc, "transient", False)
 
-    def test_a_future_that_raises_is_charged_to_its_own_document(self, corpus, monkeypatch):
+    def test_a_future_that_raises_is_charged_to_its_own_document(
+        self, corpus, monkeypatch, thread_executor
+    ):
         """`future.result()` can still raise -- a result the worker
         could not pickle, or a stand-in `extract_one` -- and it used to
         escape `_drain_pool` and discard every result."""
