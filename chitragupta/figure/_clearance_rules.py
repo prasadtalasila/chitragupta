@@ -99,15 +99,19 @@ def transit(cons: list[Connector], drawn: Drawn, layout: str | None = None) -> l
 
 
 def tag_covered(cons: list[Connector], drawn: Drawn) -> list[Finding]:
-    """`c6-tag-covered`: a connector's tag overlapping a node. A zone
-    containing the tag is not counted."""
+    """`c6-tag-covered`: a connector's tag overlapping a node. A zone (a
+    card or `fit` group holding another node) containing the tag is not
+    counted; a card containing it is, since it hides the tag whole
+    (#1163). An unframed zone is never counted."""
     nodes = solid(drawn)
+    groups = zones(nodes)
     hidden = _unframed_zones(nodes)
     found = []
     for con in cons:
         for box, _ in _tags(con, drawn):
             for name, node in nodes.items():
-                if name not in hidden and not contains(node.box, box) and intersects(box, node.box):
+                held = name in groups and contains(node.box, box)
+                if name not in hidden and not held and intersects(box, node.box):
                     under = f"tag under {shown_as(name, node)}"
                     found.append(Finding("c6-tag-covered", con.name, under))
     return found
