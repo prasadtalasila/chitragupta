@@ -342,8 +342,11 @@ quote: an optional verbatim span, quotable-only
   is drafted from only for the drafter's own sentences. It is absent by
   default: a captured quote is a quote in the drafter's context, which
   is the thing this contract removes, so one is captured only when a
-  quotation is intended. A block may carry several, one line each, for
-  several passages from one source that are each meant to be quoted;
+  quotation is intended: when the evidence is judged, or later by a
+  reviser when a person asks for that quotation, copied from the source
+  and kept only if `review quotation` finds it. A block may carry
+  several, one line each, for several passages from one source that are
+  each meant to be quoted;
   each is checked and printed on its own. Write the span bare: a page
   locator at its end (`(p. 24)`) and quotation marks around the whole
   of it are stripped before anything reads it, since the page is found

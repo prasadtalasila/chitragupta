@@ -44,7 +44,7 @@ checkout it can be true for three classes:
 | --- | --- | --- |
 | `missing-citekey` | always: a citekey the draft cites that the corpus no longer has | -- |
 | `prose` | a `draft style` finding whose rule did not mark it `repair: "review"` | surfaced: leave it |
-| `verbatim-run` | severity `short` (under 15 words), `exact` or `skip-gram` tier, not `names` | `long`: **stop and ask** paraphrase or quotation. `names: true`: surfaced, a person declares it in `content/style_exceptions.toml`. `embedding` tier, any length: surfaced, advisory only. `quoted` (quote marks and the source cited): already correct, do not touch |
+| `verbatim-run` | severity `short` (under 15 words), `exact` or `skip-gram` tier, not `names` | `long`: **stop and ask** paraphrase or quotation; on "quotation", also record it as a `quote:` (see "Guardrails"). `names: true`: surfaced, a person declares it in `content/style_exceptions.toml`. `embedding` tier, any length: surfaced, advisory only. `quoted` (quote marks and the source cited): already correct, do not touch |
 
 Every other class is a judgement call, surfaced for a person: report it
 and do not touch it. `recorded-but-uncited` is the person's to clear with
@@ -342,7 +342,10 @@ argued in
 - **Never edit anything but the draft and `revisions.md`**: not
   `content/verbatim_allowlist.toml`, not anything under `assets/vale/`
   (a rule file or `vale.ini`), not `rejected.md`, `scope.md`
-  or `evidence.md`, and nothing under the corpus layer. A loop that could
+  or `evidence.md` (except the one `quote:` line a person's "quotation"
+  answer asks for, added as
+  `.claude/skills-common/references/genre-steps.md` §5 says), and nothing
+  under the corpus layer. A loop that could
   silence its own detector is not one anyone should trust; suppressing a
   finding is the user's call.
 - **Never run `review agenda --accept`.** It records a person's judgement

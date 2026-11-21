@@ -203,7 +203,7 @@ says where each comes from.
 
 | | Requirement |
 | --- | --- |
-| **R1** | The skill's write-set is exactly the draft and `revisions.md`. It may *execute* an aid, the gate and `style_check`; it may not edit them, nor the boilerplate allowlist, `rejected.md`, `scope.md`, or anything under the corpus layer. |
+| **R1** | The skill's write-set is exactly the draft and `revisions.md`, plus one narrow exception: after a person answers "quotation" to a long verbatim run, the `quote:` line recording that run in `evidence.md`. That line adds a check (`review quotation`) and silences none. It may *execute* an aid, the gate and `style_check`; it may not edit them, nor the boilerplate allowlist, `rejected.md`, `scope.md`, or anything under the corpus layer. |
 | **R2** | Every finding carries an identity stable across runs. |
 | **R3** | An unattended item's check is **binary**. No continuous score is ever the thing being optimised. |
 | **R4** | After each accepted edit, every aid re-runs and the result is compared by R2's finding identity rather than by a total: the repaired item appears in `resolved`, and no objective-class finding appears in `new`. A count that holds level because one objective finding was swapped for another is a failed edit, not a neutral one. Otherwise the edit reverts. |

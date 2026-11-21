@@ -343,3 +343,37 @@ conflicts with a section above, this section wins.
 
 Left open, for a later issue: whether a reviser may add a second `quote:`
 when a person asks for a new quotation from an already-kept source.
+
+## Added after review: two follow-ups the owner settled
+
+Raised while the PR was open, decided by the owner on 2026-11-21, and
+built into the same PR.
+
+1. **A value ends at the next field-shaped line.** A `quote:` (or any
+   field) value used to run on to the next `relevance:`/`claim:`/`quote:`/
+   `support:` line, so a `- used in: Section 2` note under a quote was
+   checked, and printed in the sidecar, as part of it. A value now also
+   ends at a later line that starts at the left margin, bare or
+   bulleted with a dash, with up to three lowercase words and a colon. An indented
+   continuation and a capitalised wrapped line still continue it. The
+   cost: an unindented wrapped line starting `as follows:` is read as a
+   field. Measured on the owner's dossiers: 249 claims change, 248 at a
+   `used in:` line and 1 at a stray `- citekey:` line; no quote changes.
+2. **A reviser may add a `quote:` when a person asks for that
+   quotation**, in chat or by answering "quotation" to a long verbatim
+   run. It is copied from the source passage just read, kept only if
+   `review quotation` finds it (or reports it not checkable, said out
+   loud), and logged in `revisions.md`. Never on the reviser's own
+   judgement, never to populate the sidecar. The rule is stated once, in
+   `genre-steps.md` §5; `draft-reviser` and `agenda-reviser` point at it.
+   For `agenda-reviser` this amends `docs/AUTO-IMPROVEMENT.md`'s R1 with a
+   narrow exception: the one `quote:` line a person's "quotation" answer
+   asks for. R1 exists so a loop cannot silence its own detector; this
+   line adds a check and silences none.
+
+**It does not close the gap between a draft's quotations and the
+dossier.** Follow-up 2 (a quotation in the draft body with no matching
+`quote:`, or worded differently from it, is checked by nothing) needs a
+check that pairs each cited quotation in the draft with a `quote:` of the
+same source. Decision 2 here makes backing a requested quotation possible;
+it does not detect one that was never backed.

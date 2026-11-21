@@ -77,5 +77,6 @@ You do not write it and you cannot add to it: it is built from
 A draft whose blocks carry no `quote:` produces no sidecar and prints
 `no quoted evidence recorded`. That is the expected answer, not a
 failure: it means no quotation was captured. Never add a `quote:` after
-the fact to populate it; a quote is captured when the evidence is judged
-or not at all.
+the fact to populate it; a quote is captured when the evidence is judged,
+or later only when a person asks for that quotation
+(`.claude/skills-common/references/genre-steps.md` §5).

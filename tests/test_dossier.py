@@ -3954,6 +3954,48 @@ class TestSeveralQuotes:
         assert "No claim: reads like" not in out
 
 
+class TestAValueEndsAtTheNextFieldLine:
+    """A line shaped like a field this parser does not read ends the value
+    above it. Before, a `used in:` note under a `quote:` was checked, and
+    printed in the sidecar, as part of the quotation."""
+
+    def test_a_bulleted_note_under_a_wrapped_quote_is_not_quoted(self):
+        block = (
+            "- claim: c\n"
+            "- quote: a crude model with two-way automatic flow\n"
+            "  is a twin\n"
+            "- used in: Section 2\n"
+        )
+        assert _evidence_check.quotes(block) == [
+            "a crude model with two-way automatic flow\n  is a twin"
+        ]
+
+    def test_a_bare_note_ends_the_quote_and_a_later_quote_still_counts(self):
+        block = "quote: one span\nnote: strongest line\npage: 24\nquote: two span\n"
+        assert _evidence_check.quotes(block) == ["one span", "two span"]
+
+    def test_it_ends_a_claim_the_same_way(self):
+        block = "- claim: the source says so\n- used in: Section 2\n"
+        assert _evidence_check.fields(block)["claim"] == "the source says so"
+
+    @pytest.mark.parametrize(
+        "continuation",
+        [
+            "and the second line",
+            "Definition: a language with formal syntax",
+            "  concepts: model, data and service",
+            "the rest of this list: a colon after five words",
+        ],
+    )
+    def test_a_wrapped_line_that_is_not_a_field_continues_it(self, continuation):
+        assert _evidence_check.quotes(f"quote: the first line\n{continuation}\n") == [
+            f"the first line\n{continuation}"
+        ]
+
+    def test_a_field_shaped_first_line_is_the_value_itself(self):
+        assert _evidence_check.quotes("quote: note: kept as written\n") == ["note: kept as written"]
+
+
 class TestRecordedDraftDigest:
     """`scope.md`'s `- draft digest:` line -- #454, FEATURE-ROADMAP.md's E3."""
 

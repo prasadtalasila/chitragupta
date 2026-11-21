@@ -64,6 +64,19 @@ _LOCATOR = re.compile(
 )
 _DOUBLE_MARKS = '"\u201c\u201d'
 
+# A later line shaped like a field this module does not read -- `used in:`,
+# `- note:`, `page:` -- ends the value above it rather than joining it.
+# Without this a note written under a `quote:` was checked, and printed in
+# the sidecar, as part of the quotation. At the left margin (a bare or
+# `- ` bulleted field, as every field line is written), lowercase, up to
+# three words: so an indented continuation (`  concepts: ...`) and a
+# wrapped line of source text ("Definition: ...") still continue it.
+# The cost: a wrapped line starting at the margin with up to three
+# lowercase words and a colon ("as follows: ...") is read as a field. A
+# quote is written on one line, which is what avoids it; on the owner's
+# 122 quotes this cut none.
+_OTHER_FIELD = re.compile(r"^(?:- )?[a-z][a-z0-9_-]*(?: [a-z0-9_-]+){0,2}:(?:\s|$)", re.MULTILINE)
+
 
 def _values(block: str) -> list[tuple[str, str]]:
     """Every non-empty `field: value` in `block`, in file order -- a
@@ -74,7 +87,9 @@ def _values(block: str) -> list[tuple[str, str]]:
     found = []
     for i, match in enumerate(matches):
         end = matches[i + 1].start() if i + 1 < len(matches) else len(block)
-        value = block[match.end() : end].strip()
+        value = block[match.end() : end]
+        other = _OTHER_FIELD.search(value, value.find("\n") + 1) if "\n" in value else None
+        value = (value[: other.start()] if other else value).strip()
         if value:
             found.append((match.group("field"), value))
     return found

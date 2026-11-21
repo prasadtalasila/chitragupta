@@ -190,6 +190,17 @@ still in front of you:
   it was turned down ("shares vocabulary only", "wrong domain",
   "superseded by X").
 
+**Adding a `quote:` after the draft exists.** A quote is captured when
+the evidence is judged, with one exception: a reviser may add a `quote:`
+line to a kept source's block when a person asked for that quotation, in
+chat or by answering "quotation" to a long verbatim run. Copy the span
+from the source passage you just read (`retrieve evidence` for that
+citekey, or the agenda item's source text), never from memory or the
+draft. Run `python -m chitragupta.review quotation <draft>`: keep the line
+only if it is `found`, or `not checkable` and you say so; otherwise
+remove it. Log the addition in `revisions.md`. Never add one on your own
+judgement or to make the evidence sidecar appear.
+
 The rejected list is the more valuable of the two and the easier to
 skip. It is what stops the next revision retrieving and re-judging the
 same twelve papers you just turned down, the single most expensive piece

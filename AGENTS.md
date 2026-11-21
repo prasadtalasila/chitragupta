@@ -248,8 +248,9 @@ enrichment layer is optional and nothing above it needs it.
   sidecar is never committed and never shipped (`.gitignore` excludes
   it, and `scripts/release.py` archives only git-tracked paths), because
   it carries wording from copyrighted sources. Never add a `quote:` after
-  the fact to make one appear, and never copy a span out of one back into
-  body prose. One genre is the exception by construction: a verbatim
+  the fact to make one appear (a reviser adds one only when a person asks
+  for that quotation), and never copy a span out of one back into body
+  prose. One genre is the exception by construction: a verbatim
   digest (`review-digest`) *is* that wording, with a citation closing
   every copied run, the passages it leans on most recorded as `quote:`
   lines, and never a source for any other draft; docs/VERBATIM-DIGEST.md carries

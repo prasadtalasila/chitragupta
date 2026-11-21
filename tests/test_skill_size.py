@@ -45,7 +45,8 @@ _LATER = "#1091: shrinks to its target in its own PR"
 # skill: (cap in bytes, why the cap is above the target, or None)
 BUDGET = {
     "agenda-reviser": (
-        19_000,
+        19_500,
+        "#1174: +500 for the person-requested quote: exception. "
         "#1091: deduplicated from 28 KB; it runs unattended repairs, so every "
         "guardrail stays inline beside its command, and the rest is commands and "
         "tested text (plans/1091-ledger-agenda-reviser.md)",
@@ -71,7 +72,8 @@ BUDGET = {
     ),
     "demo-recorder": (6_000, None),
     "draft-reviser": (
-        23_000,
+        23_500,
+        "#1174: +500 for the person-requested quote: line. "
         "#1091: deduplicated from 29 KB; agenda-reviser and corpus-reviser follow "
         "its loop by step number, so every step stays complete inline, and the "
         "rest is commands and tested text (plans/1091-ledger-draft-reviser.md)",
