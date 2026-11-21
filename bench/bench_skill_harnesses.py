@@ -1131,7 +1131,7 @@ def _check_compare(project: Path) -> None:
     moved.write_text(json.dumps(rows), encoding="utf-8")
     assert compare(arm("b", 3), moved, quiet=True) == 0, "a command the after arm stopped naming"
     # Only the gated harnesses set the exit code (Claude Code by default,
-    # #1210): a local harness's fail is reported, and advisory.
+    # docs/HARNESS.md): a local harness's fail is reported, and advisory.
     local_b, local_a = arm("lb", 3, harness="codex"), arm("la", 0, harness="codex")
     for path, claude in ((local_b, arm("cb", 3)), (local_a, arm("ca", 3))):
         rows = json.loads(path.read_text(encoding="utf-8"))
@@ -1258,7 +1258,7 @@ def parse(argv) -> argparse.Namespace:
         action="append",
         choices=HARNESSES,
         help="--compare: a harness whose verdict sets the exit code, repeatable "
-        "(default claude; the others are advisory until #1210)",
+        "(default claude; the others are advisory, docs/HARNESS.md)",
     )
     args = parser.parse_args(argv)
     if args.compare is None and args.tier is None:

@@ -487,8 +487,9 @@ def judge(before: list, after: list) -> "tuple[int, list]":
 
 # The harnesses whose verdict sets the exit code. Only Claude Code runs a
 # skill's steps steadily enough at 3 runs an arm to gate on; Codex and
-# OpenCode are judged and printed, but advisory, until #1210 steadies
-# them (docs/HARNESS.md, the 2026-11-13 baseline).
+# OpenCode are judged and printed, but advisory: with their run-ending
+# failures fixed, an unchanged skill still fails on them up to 20% of
+# the time (docs/HARNESS.md, the 2026-11-21 rebaseline).
 GATED = ("claude",)
 
 

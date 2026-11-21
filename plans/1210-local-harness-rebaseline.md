@@ -1,6 +1,7 @@
 # Steady Codex and OpenCode on the skill bench, without changing a skill
 
-Status: **in progress.** Written 2026-11-21 against `9862c8cb`
+Status: **built**, pending review; "What the measurement found" below
+has where it went beyond the design. Written 2026-11-21 against `9862c8cb`
 (6.177.1), for issue
 [1210](https://github.com/prasadtalasila/chitragupta/issues/1210).
 
@@ -83,3 +84,31 @@ no change to `GATED` (the numbers decide that later, in its own PR).
    the new rows, the false-fail rate, the fixes), `bench/README.md`
    (the new script), a PATCH bump, OpenCodeReview, the PR. The PR waits
    for the owner.
+
+## What the measurement found
+
+- **A fourth setup cause.** Codex has no metadata for a local model, so
+  it never compacted, and two survey runs ended on a 400 at 131,625
+  tokens. The bench now passes `model_context_window` and a compact
+  limit at 75% of it, and the Codex arm was run again whole, so all its
+  rows come from one setup.
+- **A broken scorer.** The click-style `--help` that every command now
+  prints carries no `{a,b}` usage group, so `skill_commands.subcommands`
+  found no subcommands on `main`. It reads the `Commands:` block now.
+- **A cause no setting reaches.** The model sometimes writes a tool call
+  whose arguments are not JSON; `llama-server` answers 500 and Codex
+  retries the same history five times and exits. 2 runs in the first
+  arm, none in the recorded one.
+- **The baseline ran in three pieces.** A 2-hour tool limit stopped the
+  first arm at 56 of 66 runs; its rows were recovered from the bench's
+  log, OpenCode's 6 missing runs were rerun into their slots, and Codex
+  was run again whole (above), its run 3 in a second process on the
+  idle GPUs. Long benches now run detached (`setsid nohup`).
+- **The false-fail rate fell less than the gate pass rate rose.** Every
+  usable local run passed the gate, but over all three harnesses an
+  unchanged skill still fails `--compare` 0% to 15% (whole runs) or 0%
+  to 20% (each command) of the time, against 0% to 7% on Claude Code
+  alone. The rest is command-level, so `GATED` stays `("claude",)`.
+- **Codex and `draft dossier init`.** Every genre writer's run ran it; no
+  review-digest run did (0 of 6 over both Codex arms). The step and the
+  transcript lines went to a follow-up issue with a proposed wording.
