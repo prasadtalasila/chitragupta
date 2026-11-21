@@ -8,9 +8,9 @@
 #
 # Everything lands under BENCH_TOOLS (default ~/bench-tools): Codex and
 # OpenCode in its npm/ prefix, llama.cpp in llama.cpp-b11321/, the model
-# and its vision projector in models/. Only apt packages (cmake, a compiler, the CUDA compiler and
-# the repository's own os-deps) go system-wide, through sudo unless run
-# as root. The versions are pinned to the #1068 bench, so results stay
+# and its vision projector in models/. Only apt packages (cmake, a
+# compiler, the CUDA compiler and the repository's own os-deps) go
+# system-wide, through sudo unless run as root. The versions are pinned to the #1068 bench, so results stay
 # comparable across the #1091 series: change one and every earlier
 # baseline is void.
 #
