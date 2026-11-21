@@ -97,7 +97,7 @@ BUDGET = {
         "adds, and the target is a guideline (plans/1091-skill-shrink.md, Decision 1)",
     ),
     "thesis-chapter-writer": (
-        16_000,
+        15_000,
         "#1091: deduplicated from 34 KB with the critique loop behind its pointer; "
         "the rest is commands, the figure stub and tested text, and the target is a "
         "guideline (plans/1091-skill-shrink.md, Decision 1)",

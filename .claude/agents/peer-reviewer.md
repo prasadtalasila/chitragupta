@@ -53,7 +53,8 @@ more than one self-critique pass.
     or claims that clearly need a citation but don't have one? Check
     against `docs/WRITING-STANDARDS.md` -- whose rules derive from
     Diátaxis, Last's *Technical Writing Essentials* and Google's Technical
-    Writing courses, credited in that file's "Sources and attribution" --
+    Writing courses, credited in `docs/INSPIRATION.md`, "The writing
+    standards' sources" --
     specifically for:
     - a term used before it's defined, or defined twice differently
     - one concept under two names, or one name covering two concepts

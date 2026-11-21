@@ -12,10 +12,11 @@ figure, and the fixed phrases §4 and §7 name: clichés, hype, wordy stock
 phrases, the habits of machine-written prose, and how a statistic is
 reported. It says nothing about whether a paragraph leads with its
 point, catches a hedge only as one of a few fixed phrases, and a clean
-report on the classes it does not check says nothing about them. It
-cannot tell a quotation from the draft's own voice, so a marker inside
-a quoted passage reports and is correct as it stands. Fenced code is skipped; a
-LaTeX fragment is scanned as Markdown, so its `verbatim` environments
+report on the classes it does not check says nothing about them. A
+quotation, in a block or inside a sentence, is skipped as the source's
+own wording; a quote mark left unclosed is not, so a marker that reports
+inside one is worth a look at the marks. Fenced code is skipped; a LaTeX
+fragment is scanned as Markdown, so its `verbatim` environments
 and `\cite` arguments are skipped and its prose is not.
 
 **Report every finding and fix none of them.** A finding is a place to

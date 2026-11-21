@@ -7793,9 +7793,21 @@ the three unattended rules fired.
 fault: `vale.ini` exempts a block quotation but not a quotation inline
 in a sentence, so a source's own wording is checked as the draft's. The
 house rules rarely meet this, because their lists are short; the
-third-party lists are long enough to. Exempting inline quotations is a
-change to every rule, house ones included, and is left for its own
-issue.
+third-party lists are long enough to.
+
+**Follow-up, same day: inline quotations exempted.** Tried first as a
+`TokenIgnores` pattern in `vale.ini`, the exemption lost three real
+dialect findings outside any quote in the thesis chapter (a pattern
+spanning lines moves Vale's positions), and, since it applies to every
+rule, made `Acronyms` report 14 acronyms whose expansion sat inside a
+quotation. Done instead after Vale runs (`chitragupta/style_quotes.py`,
+`Acronyms` exempt from it), the same seven drafts went from 89
+occurrences (63 distinct findings) to 69 (51). Each removal was checked
+by hand: 8 of the 9 wrong findings inside a quotation, and 12 findings
+of other rules that were the source's wording too (9 American spellings
+in the British-English survey, a "just", a "very", one acronym pair).
+The ninth, a contrast whose match runs past the closing mark, stays;
+part of it is the draft's.
 
 **Reproducing.** Run the command above over the same files and compare
 `(draft, rule, match)` sets; `tests/test_style_vendored.py` holds the

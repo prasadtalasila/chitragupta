@@ -82,9 +82,8 @@ its reader: read it before Phase 4. This genre uses no figures
 line, an `<!-- table: <id> -->` marker and an inline `<!-- tableref: <id>
 -->` (`docs/writing-standards/tables.md` §13); a quantity follows
 `docs/writing-standards/mathematics.md` §12, with a row in the dossier's
-`math.md`. The works these standards come from are credited in
-[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution);
-if asked what bears on this genre, read
+`math.md`.
+If asked what bears on this genre, read
 `.claude/skills/deep-research/references/report.md` §9.
 
 ## Depth presets

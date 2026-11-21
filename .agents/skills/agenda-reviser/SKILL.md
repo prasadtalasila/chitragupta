@@ -183,9 +183,10 @@ It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable:
 glossary acronym, §8's dialect against `scope.md`'s `language:` line,
 an uncaptioned table or figure, and the fixed phrases §4 and §7 name:
 clichés, hype, wordy stock phrases, the habits of machine-written prose,
-and how a statistic is reported. It cannot tell a quotation from the
-draft's own voice, and a clean report says nothing about what it does
-not check. A review aid, not a gate: it exits 0 whatever it finds.
+and how a statistic is reported. It skips a quotation, in a block or
+inside a sentence, as the source's own wording, and a clean report says
+nothing about what it does not check. A review aid, not a gate: it
+exits 0 whatever it finds.
 
 Done when the edit is made and the pre-edit text is kept. The item is
 not repaired until step 5 accepts it.

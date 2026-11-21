@@ -260,7 +260,15 @@ naive `-ise`/`-ize` rule gets every one of them wrong:
 - The doubled `l` runs **both** ways: en-GB *travelled* but *fulfil*;
   en-US *traveled* but *fulfill*.
 
-## Two things about the config that are not obvious
+## What is not obvious about the config
+
+**A quotation inside a sentence is exempted after Vale runs**, by
+`chitragupta/style_quotes.py`, not here. A block quotation is exempted
+by `BlockIgnores` below, but a `TokenIgnores` pattern for `"..."`,
+curly quotes or LaTeX's ``` ``...'' ``` has to span lines, and measured
+on the bench drafts it lost three real findings outside any quote; it
+also hid every expansion written inside a quotation from `Acronyms`,
+which `style_quotes.py` leaves alone.
 
 **`TokenIgnores` also skips LaTeX command names and the exercise label**
 (#1187). `\centering` and `\begin{center}` were read as prose, and

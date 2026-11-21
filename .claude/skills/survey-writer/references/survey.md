@@ -64,7 +64,7 @@ deciding whether a Diátaxis rule applies to a survey.
 
 The prose standards a survey inherits are not original to this project.
 Full citations, licences and a per-principle attribution table are in
-`docs/WRITING-STANDARDS.md`, "Sources and attribution". All three works
+`docs/INSPIRATION.md`, "The writing standards' sources". All three works
 are openly licensed (CC-BY or CC-BY-SA) and require credit. What bears on
 a survey specifically:
 

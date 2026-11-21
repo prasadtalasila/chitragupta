@@ -125,7 +125,7 @@ or when deciding whether a Diátaxis rule applies to one.
 
 The prose standards a thesis chapter inherits are not original to this
 project. Full citations, licences and a per-principle attribution table
-are in `docs/WRITING-STANDARDS.md`, "Sources and attribution". All
+are in `docs/INSPIRATION.md`, "The writing standards' sources". All
 three works are openly licensed (CC-BY or CC-BY-SA) and require credit.
 What bears on a thesis chapter specifically:
 

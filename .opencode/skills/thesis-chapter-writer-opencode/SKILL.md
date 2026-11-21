@@ -60,9 +60,8 @@ chapter owes its examiner: read it before step 5. A chapter states and
 derives results, and a single formula brings in the rules for the
 sentences around it, so on every run: Read
 `.claude/skills-common/references/mathematical-prose.md` now and follow
-it while drafting. The works these standards come from are credited in
-[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution);
-if asked what bears on a thesis chapter, read
+it while drafting.
+If asked what bears on a thesis chapter, read
 `.claude/skills/thesis-chapter-writer/references/thesis.md` §5.
 
 ## Process

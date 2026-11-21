@@ -11,7 +11,9 @@ not that this prose is wrong.
 simply = "obviously inside a fenced block, in order to be very novel"
 ```
 
-An inline `simply` code span, and a fenced one above.
+An inline `simply` code span, and a fenced one above. A source quoted
+inline says "it is simply very novel, in order to be
+significant", and “obviously so”.
 
 > A quoted source that says obviously, and spells it color. It's not just a
 > cache; it's a layer. At the end of the day, experts argue it plays a pivotal

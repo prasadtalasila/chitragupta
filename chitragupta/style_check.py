@@ -60,7 +60,7 @@ from subprocess import run as _run
 from pathlib import Path
 from typing import Any
 
-from chitragupta import config, install, programs, style_exceptions, style_vendored
+from chitragupta import config, install, programs, style_exceptions, style_quotes, style_vendored
 from chitragupta.style_language import resolve_language, rule_filter
 from chitragupta.style_report import report
 from chitragupta.style_rules import PYTHON_CHECKS, with_repair
@@ -134,7 +134,8 @@ def run_vale(draft: Path, language: str | None) -> list[dict]:
             f"Check {config.VALE_CONFIG_PATH}.\n{result.stderr}"
         ) from exc
     flattened = [finding for findings in payload.values() for finding in findings]
-    kept = style_exceptions.drop_exempt(flattened, Path(draft).read_text(encoding="utf-8"))
+    text = Path(draft).read_text(encoding="utf-8")
+    kept = style_quotes.drop_quoted(style_exceptions.drop_exempt(flattened, text), text)
     return style_vendored.reconcile(kept)
 
 

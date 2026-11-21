@@ -19,6 +19,7 @@ came from.
 ## 🧭 Table of contents
 
 - [The drafting layer's method](#-the-drafting-layers-method)
+- [The writing standards' sources](#-the-writing-standards-sources)
 - [Code standards](#-code-standards)
 - [Harness engineering](#-harness-engineering)
 - [The feature roadmap](#-the-feature-roadmap)
@@ -113,6 +114,125 @@ came from.
   and `.claude/skills/deep-research/references/report.md` §7 are written from
   scratch, adapting only the concept of an independent panel plus a
   Devil's Advocate role, not its implementation.
+
+## 📖 The writing standards' sources
+
+The works behind [WRITING-STANDARDS.md](WRITING-STANDARDS.md) and its
+layer files, moved here from that file so its credits sit with the
+project's others. A section number below (§4, §12) is one of that
+file's.
+
+Three openly licensed works supply the principles of
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md), and three more
+supply the pedagogy of `textbook-chapter-writer` and the book structure of
+`book-assembler`. All six require attribution under their licences; this
+section is that attribution. A seventh work, Wilkes's, supplies ideas only
+and is credited after them, and so do the two behind §4's habits of
+machine-written prose.
+
+1. **Daniele Procida, *Diátaxis: A systematic approach to technical
+   documentation authoring***. <https://diataxis.fr/>; source repository
+   <https://github.com/evildmp/diataxis-documentation-framework>.
+   Licensed CC-BY-SA 4.0.
+   Supplies: the four-quadrant genre model (tutorial / how-to / reference /
+   explanation); the definition of a tutorial as a lesson in which the
+   instructor is responsible for the learner's success; the driving-lesson
+   analogy; the diagnosis of explanation-overload in tutorials; the
+   narrative-of-expectations technique. `tutorial-writer` is built on this
+   source more than any other.
+
+2. **Suzan Last, *Technical Writing Essentials***, University of Victoria /
+   BCcampus, 2019.
+   <https://pressbooks.bccampus.ca/technicalwriting/>. §7.7 "Writing
+   Instructions" is the chapter drawn on most. Licensed CC-BY 4.0. That
+   chapter is itself adapted from David McMurrey's *Online Technical
+   Writing* (<https://mcmassociates.io/textbook/>, CC-BY 4.0), which is
+   therefore credited transitively.
+   Supplies: audience and task analysis as a preliminary step; scope and
+   assumed-background statements in the introduction; equipment and
+   supplies lists; the placement and function of note/warning/caution
+   notices; command-verb phrasing and the argument against passive voice in
+   instructions; testing instructions on a real member of the audience.
+
+3. **Google, *Technical Writing Courses for Engineers***.
+   <https://developers.google.com/tech-writing>. Licensed CC-BY 4.0.
+   Supplies: the curse of knowledge as the defining failure mode; defining
+   each term once and using it consistently; expanding an acronym at first
+   use and then not reverting; short sentences with one idea each; active
+   voice with a named actor; leading a paragraph with its point.
+
+4. **Greg Wilson, *Teaching Tech Together***, online edition.
+   <https://teachtogether.tech/>; source repository
+   <https://github.com/gvwilson/teachtogether.tech>. Licensed
+   CC-BY-NC 4.0, not CC-BY: the NonCommercial clause binds copies and
+   adaptations of the text, so this pipeline takes the ideas only and none
+   of the text.
+   Supplies, for `textbook-chapter-writer`: backward design (objectives
+   and assessments before content); learner personas; chunking to 7±2,
+   or 4±1, items; concept maps; worked examples, then faded ones, with
+   labelled subgoals; a formative check every 10 to 15 minutes; the
+   catalogue of exercise types; the expertise-reversal effect; concrete
+   instances before the general rule ("Expertise and Memory").
+
+5. **The Carpentries, *Lesson Development Training***.
+   <https://carpentries.github.io/lesson-development-training/>; source
+   repository <https://github.com/carpentries/lesson-development-training>.
+   Licensed CC-BY 4.0 ("Materials licensed under CC-BY 4.0 by the
+   authors"). It replaces the retired *Curriculum Development Handbook*.
+   Supplies, for `textbook-chapter-writer`: the lesson-design procedure;
+   objectives written with an observable verb, two to four per episode;
+   the questions-and-key-points frame around an episode; a worked example
+   before the exercise that practises it; a check after every 15 to 20
+   minutes of teaching; the accessibility checks.
+
+6. **Lauri M. Aesoph, *Self-Publishing Guide***, BCcampus, 2018, chapter
+   "Textbook Outline".
+   <https://opentextbc.ca/selfpublishguide/chapter/textbook-outline/>.
+   Licensed CC BY 4.0. The page notes that its front- and back-matter
+   tables draw partly on Wikipedia's "Book design" (CC BY-SA 3.0), which
+   is therefore credited transitively.
+   Supplies, for `book-assembler` and `textbook-chapter-writer`: the
+   front-matter, chapter-element and back-matter tables, which are where
+   a book's front matter, appendices and back matter (#1137) come from.
+
+**Ideas, not text, from one further work.** Gareth Wilkes, *A Brief
+Guide to Mathematical Writing*, Department of Pure Mathematics and
+Mathematical Statistics, University of Cambridge, revised 2023-10-08.
+The guide states no licence, so nothing from it is quoted and none of its
+examples is reused; the credit is given because the ideas are its.
+Supplies, for §12's prose rules in
+`.claude/skills-common/references/mathematical-prose.md`:
+defining a symbol in its own sentence with a role word, and repeating the
+role word on reuse; choosing letters by mnemonic and alphabet region, and
+never overloading one (§2 "Notation and definitions"); writing the
+"then", keeping the argument linear, checking a result's conditions
+before applying it, and keeping diagrams for objects (§1 "General
+tips"); stating the claim before a proof and a concluding sentence
+after, one step per paragraph (§3 "Formatting and structuring
+proofs"). `textbook-chapter-writer` reads that reference for a
+maths-heavy chapter, so its symbol-definition and notation discipline is
+Wilkes's too.
+
+**Ideas, and short phrase lists, from two more.** Siqi Chen,
+*humanizer* v4.0.0, <https://github.com/blader/humanizer>, MIT, which
+draws on Wikipedia's "Signs of AI writing"
+(<https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing>,
+maintained by WikiProject AI Cleanup, CC BY-SA 4.0). Supplies §4's
+habits of machine-written prose, written there in its own words,
+and the phrase lists of the seven machine-prose rules in
+`assets/vale/styles/chitragupta/`, which carry humanizer's licence beside
+them. Left out, as wrong for a draft: dashes and curly quotes (the
+typesetter's), stock "AI words" (field-blind until #1181 can calibrate
+them), "the table below compares" (§13 asks for that sentence), and
+re-explaining what the reader knows (about replies, not drafts).
+
+The prose in `WRITING-STANDARDS.md`, its layer files, every `SKILL.md` and
+`.claude/skills-common/references/` is written from scratch: what is
+borrowed is the *ideas*, credited here. An 8-word shingle check
+(`chitragupta/review/verbatim_check/_overlap.py`'s `cmd_overlap`) against
+every source in this section reported **0% overlap** in November 2026; prose
+written since, including the genre files' connecting sentences, has not
+been rechecked.
 
 ## 🤝 Code standards
 

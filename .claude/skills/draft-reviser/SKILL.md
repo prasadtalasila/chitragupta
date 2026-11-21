@@ -32,9 +32,7 @@ user gave in chat. If unsure what one of its files is for, read
 
 ## Prose standards
 
-`docs/WRITING-STANDARDS.md` applies unchanged; the works it draws on are
-credited in
-[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution).
+`docs/WRITING-STANDARDS.md` applies unchanged.
 Two of its rules bind harder here than in a fresh draft, because a
 revision is the moment they break:
 

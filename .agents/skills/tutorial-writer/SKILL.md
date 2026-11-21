@@ -33,9 +33,7 @@ rewrites a lesson that already works and throws away its dossier.
 Follow `docs/WRITING-STANDARDS.md` for the rules every genre shares, and
 `docs/writing-standards/genres/tutorial.md` for what a lesson owes its
 learner, including the two ways a lesson drifts: read it before step 4.
-The works these standards come from are credited in
-[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution);
-if asked what bears on a tutorial, read
+If asked what bears on a tutorial, read
 `.claude/skills/tutorial-writer/references/tutorial.md` §7.
 
 ## Before you start

@@ -116,7 +116,7 @@ Your output is an **internal packet for the orchestrator**, not
 reader-facing prose. Optimize it for the orchestrator's later use --
 specific, complete, every claim attached to its citekey -- rather than for
 polish. Don't spend effort on flow or transitions; `docs/WRITING-STANDARDS.md`
-(and its "Sources and attribution") governs the assembled report in Phase 6,
+governs the assembled report in Phase 6,
 not this packet.
 
 One standard does apply here, because it can't be repaired downstream: **be
