@@ -119,7 +119,9 @@ filled tag over its line, nor one beside an arrowhead: move it along with
 
 **Catches.** Two connectors running together for more than 2mm, so the
 reader sees one and cannot tell where either goes. Target: the pair,
-`a->b+c->d`. Two sharing an end point are a fork, not counted.
+`a->b+c->d`. Two sharing an end point are a fork, and not counted, only
+when both leave the shared stretch; where one lies on the other end to
+end, the report says which.
 
 Faulty: `parse` to `index` climbs to the row and runs along `draft` to
 `gate` before turning up.
@@ -148,8 +150,37 @@ the first once.
 | --- | --- |
 | ![The Parse to Index line merges into the Draft to Gate line for a stretch](examples/c3-coincident/faulty.png) | ![The Parse to Index line runs below the row and crosses it once](examples/c3-coincident/fixed.png) |
 
+Also caught: a return edge drawn over its forward edge, and a skip edge
+drawn over a chain. Both share an end with the edge they hide, so a
+fork's excuse used to cover them.
+
+```latex
+\draw[cgedge] (draft) -- (gate);
+\draw[cgback] (gate) -- (draft);
+```
+
+```text
+  c3-coincident         draft->gate+gate->draft  gate->draft lies wholly on draft->gate
+```
+
+```latex
+\draw[cgedge] (sync) -- (parse);
+\draw[cgedge] (parse) -- (gate);
+\draw[cgedge] (sync) -- (gate);
+```
+
+```text
+  c3-coincident         sync->parse+sync->gate  sync->parse lies wholly on sync->gate
+  c3-coincident         parse->gate+sync->gate  parse->gate lies wholly on sync->gate
+  c5-transit            sync->gate  crosses parse
+```
+
+A straight skip edge also crosses the middle node, so `c5-transit`
+reports it too.
+
 **Fix.** Give each edge its own lane: attach at a different point, or
-offset one.
+offset one. A pair running both ways goes either side of the line; a
+skip edge goes around the chain, or is deleted.
 
 ### `c4-attach`
 
@@ -226,8 +257,9 @@ node.
 
 **Catches.** A tag overlapping a node, where it is half hidden or reads
 as part of that node's label. Target: the tag's edge, `a->b`; the
-report names the node. A zone containing the tag and an unframed group
-are not counted.
+report names the node. A zone (a card or group holding another node)
+containing the tag is not counted; a card containing it is, since it
+hides the tag whole. An unframed group is not counted.
 
 Faulty: the `ledger` card sits just above the line, and the tag (left
 of the direction of travel) runs into it.

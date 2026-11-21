@@ -49,10 +49,10 @@ own heading, never count as findings and cannot be allowed.
 | `loads-library-by-hand` | figure | Delete the internal macro; keep the plain `\usetikzlibrary` line |
 | `node-overlap` | element | More room between the pair (`node distance`, a gap). A pair named `(x,y)` is a node the source does not name (a zone title, a note, a pin, a `child`), at that point in mm. A label turned a quarter is measured as set; text at any other angle is not |
 | `node-text-overload` | element | Cut the label to 15 words or split the node |
-| `stranded-arrowhead` | element | Put the `->` on the last piece of the line only |
+| `stranded-arrowhead` | element | Draw the whole line as one `\draw`, so only its last piece carries the head |
 | `c1-orthogonal` | element | Route the edge as an elbow, `-\|` or `\|-`, or line the two nodes up |
 | `c2-tag-clearance` | element | Use `cgtag` (unfilled, `auto`), which sits 1.5mm clear; never a filled tag over its line, nor one beside an arrowhead: move it along with `pos=` |
-| `c3-coincident` | element | Give each edge its own lane: attach at a different point, or offset one |
+| `c3-coincident` | element | Give each edge its own lane: attach at a different point, or offset one. A pair running both ways goes either side of the line; a skip edge goes around the chain, or is deleted |
 | `c4-attach` | element | Attach a lone edge at the side's midpoint (`a.east`); spread several evenly along the side, at least 2mm apart |
 | `c5-transit` | element | Re-route the edge around the node it crosses, or move the node |
 | `c6-tag-covered` | element | Move the tag clear of the node it sits under |
