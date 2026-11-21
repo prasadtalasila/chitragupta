@@ -602,6 +602,11 @@ class TestQuoteCharSpans:
         spans = vc._quote_char_spans(text)
         assert [text[start:end] for start, end in spans] == ['"A"', '"B"']
 
+    def test_an_empty_quotation_is_its_own_span(self):
+        text = 'Set it to "" and run it, then read "a quote".'
+        spans = vc._quote_char_spans(text)
+        assert [text[start:end] for start, end in spans] == ['""', '"a quote"']
+
     def test_a_span_does_not_cross_a_paragraph_break(self):
         """The other guard: anything else unpaired -- a typo, a quotation
         nobody closed -- costs at most the paragraph it sits in."""

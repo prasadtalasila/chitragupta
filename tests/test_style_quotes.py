@@ -85,6 +85,13 @@ def test_a_finding_on_the_second_backtick_of_a_latex_quote_is_kept():
     assert _kept(text, finding) == [finding]
 
 
+def test_an_empty_quotation_does_not_swallow_the_words_after_it():
+    text = 'Set it to "" and run it in order to test "a quote".\n'
+    start = text.index("in order to") + 1
+    finding = _finding(1, start, start + 10)
+    assert _kept(text, finding) == [finding]
+
+
 def test_an_inch_mark_does_not_open_a_quotation():
     """`quote_spans`' guard, shared with the verbatim scan: a 6" pipe is
     a measurement, and must not silence the sentence that follows it."""
