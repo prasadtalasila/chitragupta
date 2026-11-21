@@ -48,9 +48,8 @@ CONSOLE = {"chitragupta", "cg"}
 
 @functools.lru_cache(maxsize=None)
 def subcommands(path: tuple) -> frozenset:
-    """The subcommand choices `python -m chitragupta.<path...> --help`
-    prints in its usage line's first positional `{a,b}` group; empty for a
-    leaf, or when `--help` fails."""
+    """The subcommands `python -m chitragupta.<path...> --help` lists;
+    empty for a leaf, or when `--help` fails."""
     module, *rest = path
     proc = subprocess.run(
         [sys.executable, "-m", f"chitragupta.{module}", *rest, "--help"],
@@ -60,7 +59,23 @@ def subcommands(path: tuple) -> frozenset:
     )
     if proc.returncode != 0:
         return frozenset()
-    words = proc.stdout.split("\n\n")[0].split()
+    return help_choices(proc.stdout)
+
+
+def help_choices(text: str) -> frozenset:
+    """The subcommands a `--help` text lists: the first word of each line
+    of its click-style `Commands:` block, or, from an install older than
+    that layout, the usage line's first positional `{a,b}` group."""
+    lines = text.splitlines()
+    if "Commands:" in lines:
+        block = lines[lines.index("Commands:") + 1 :]
+        names = []
+        for line in block:
+            if not line.strip():
+                break
+            names.append(line.split()[0])
+        return frozenset(names)
+    words = text.split("\n\n")[0].split()
     for before, word in zip(["usage:", *words], words):
         found = re.fullmatch(r"\[?\{([\w,-]+)\}\]?", word)
         # `[--where {host,docker}]` is an option's choices, not subcommands
