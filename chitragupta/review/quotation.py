@@ -15,8 +15,8 @@ decisions come along inherited rather than restated, and that is the
 point: only citekeys the draft actually cites; `quote:` and only
 `quote:`, so a legacy `support:` window nobody chose as a quotation is
 not checked as though someone had; and every `quote:` a block carries,
-each checked on its own and numbered within its block (#1174). Reading the dossier directly here
-instead would put the support-is-not-a-quote rule in a second place, and
+each checked on its own and numbered within its block (#1174). Reading
+the dossier directly here instead would put the support-is-not-a-quote rule in a second place, and
 two modules deciding separately what counts as a published quote is how
 this aid comes to check a set the sidecar does not print.
 

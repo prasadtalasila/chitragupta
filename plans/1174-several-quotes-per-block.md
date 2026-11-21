@@ -39,8 +39,8 @@ in the owner's corpus, found exactly on its page when written bare:
 | bare | found |
 | in straight quotation marks | found |
 | in curly quotation marks | found |
-| bare, then ` (p. 24)` | absent |
-| bare, then ` (p.24)` | absent |
+| bare, then `(p. 24)` | absent |
+| bare, then `(p.24)` | absent |
 
 ## Goals, non-goals, anti-goals
 
@@ -236,7 +236,7 @@ from the sample corpus and confirm it with
 only the uncommitted substrate (ledger, parses); the committed report to
 refresh is that draft's quotation report (see "Shipping").
 
-**Tests**
+**Tests**, by file:
 
 - `tests/test_dossier.py`: `quotes()` returns several in order and
   de-duplicated; normalisation covers each locator form and both kinds of
