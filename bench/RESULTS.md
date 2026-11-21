@@ -7752,3 +7752,78 @@ agenda item appears or disappears.
 **Reproducing.** Run `draft style --json --language en-GB` (and `en-US`)
 over the same files with each binary first on `PATH`, and compare
 `(draft, rule, message)` sets and `count` values.
+
+## 2026-11-20 (#1183, #1186): 32 third-party Vale rules and seven machine-prose rules, over two drafts and the sample project
+
+**The question.** What `draft style` adds once the curated third-party
+rules (proselint, ai-tells, Journals, Microsoft) and the seven
+humanizer-derived house rules run beside the original six, and how much
+of it is right. #1183 and #1186 measured the packages whole; this is the
+selection as shipped, with overlapping findings reconciled.
+
+**The corpus.** The two drafts #1183 measured, `thesis-chapter/dt-ecosystem.tex`
+(8.7k words) and `survey/digital-twin-architectures.md` (15k words), on
+this host's `content/drafts/`, and the five drafts of
+`docs/examples/sample-project/`. One run of
+`python -m chitragupta.draft style --json --language en-GB` over all
+seven. Only counts and classes are recorded here: the two host drafts
+are not in this repository.
+
+**Choosing the rules.** A first run with #1183's whole candidate list
+found two rules not worth their noise, `ai-tells.VerbTricolon` (70
+findings, nearly all real three-item lists) and `Microsoft.Adverbs` (57:
+"roughly", "deliberately", "separately"), and two made redundant by a
+better rule, `proselint.Annotations` and `proselint.P-Value`. All four
+were left out. A probe of every token of every rule file then found the
+phrases two packages share; `assets/vale/README.md` has the table of
+which rule wins.
+
+**Result: 33 new occurrences (27 distinct findings).** 32 are in the
+two host drafts and one in the sample project (its survey's "very");
+its tutorial and chapters get none. Every one is `review`.
+
+| Read | Occurrences | What |
+| --- | --- | --- |
+| Right | 7 | "very" (4), "Almost all" for "most" (2), a pseudo-cleft opening (1) |
+| The author's call | 9 | a contrast of the form "X, not Y" (7 in the two drafts; five in one thesis chapter, which is itself the tell), "significant" in its ordinary sense where a reader may hear a statistic (2) |
+| Wrong | 17 | inside an inline quotation of a source (9: `Wordiness` 5, `Significant` 3, `ContrastiveFormulas` 1); two acronyms side by side read as shouting (4: `Microsoft.Uppercase`, kept by decision); "all of them" and "all of which", which cannot lose the "of" (2); "entitled to conclude" read as a conclusion marker (1); a scope statement §3 asks for, read as a contrast (1) |
+
+**What it says.** The largest class of wrong findings is not a rule's
+fault: `vale.ini` exempts a block quotation but not a quotation inline
+in a sentence, so a source's own wording is checked as the draft's. The
+house rules rarely meet this, because their lists are short; the
+third-party lists are long enough to.
+
+**Follow-up, same day: inline quotations exempted.** Tried first as a
+`TokenIgnores` pattern in `vale.ini`, the exemption lost three real
+dialect findings outside any quote in the thesis chapter (a pattern
+spanning lines moves Vale's positions), and, since it applies to every
+rule, made `Acronyms` report 14 acronyms whose expansion sat inside a
+quotation. Done instead after Vale runs (`chitragupta/style_quotes.py`,
+`Acronyms` exempt from it), the same seven drafts went from 89
+occurrences (63 distinct findings) to 69 (51). Each removal was checked
+by hand: 8 of the 9 wrong findings inside a quotation, and 12 findings
+of other rules that were the source's wording too (9 American spellings
+in the British-English survey, a "just", a "very", one acronym pair).
+The ninth, a contrast whose match runs past the closing mark, stays;
+part of it is the draft's.
+
+**Second follow-up: what Vale never saw in a `.tex` draft.** The review
+found the words between two ``` ``...'' ``` quotations in one paragraph read as a
+Markdown code span. Probing for more, one defect marker planted on each
+of the thesis chapter's 839 prose lines, Vale reported 636; one distinct
+cliché per line gave 644 (the losses move between runs, because a
+repeated identical match is reported once). Blanking the LaTeX citation,
+math and command spans to equal-width spaces before Vale reads the text
+(`chitragupta/style_latex.py`), instead of leaving them to `vale.ini`'s
+`TokenIgnores`, recovered all 839 and 840. On the drafts the chapter's
+findings rose by four, all `Acronyms`, and each was checked: "DT" three
+more times and "FIWARE" and "NIST" once, all in text Vale had not seen,
+and an "FMI" finding gone whose expansion sat in hidden text. The same
+probe on Markdown drafts reported 106 of 217 on the survey, 68 of 73 and
+53 of 55 on two sample-project drafts: Markdown loses findings too, for
+a reason not yet found, and it is not fixed here.
+
+**Reproducing.** Run the command above over the same files and compare
+`(draft, rule, match)` sets; `tests/test_style_vendored.py` holds the
+overlap probe.

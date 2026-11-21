@@ -1,0 +1,31 @@
+Journals is MIT licensed; see LICENSE.
+
+Some rules paraphrase, in their comments and messages, the documents they
+enforce. Each rule links to the passage it enforces. Sources and their terms:
+
+  - Nature, "Formatting guide" (https://www.nature.com/nature/for-authors/formatting-guide).
+    The Nature style encodes its limits and conventions as rules; no text is
+    reproduced beyond short quotations in rule comments.
+  - PLOS ONE, "Submission guidelines" (https://journals.plos.org/plosone/s/submission-guidelines).
+    The PLOS style encodes its requirements as rules; no text is reproduced
+    beyond short quotations in rule comments.
+  - CONSORT 2025 statement: Hopewell S, Chan A-W, Collins GS, et al. PLoS Med
+    2025;22(4):e1004587, https://doi.org/10.1371/journal.pmed.1004587,
+    published under the Creative Commons Attribution License. The CONSORT
+    style paraphrases checklist items; item numbers refer to that table.
+  - PRISMA 2020 statement: Page MJ, McKenzie JE, Bossuyt PM, et al. BMJ
+    2021;372:n71, https://doi.org/10.1136/bmj.n71, published under CC BY 4.0.
+    The PRISMA style paraphrases checklist items; item numbers refer to that
+    table.
+  - STROBE statement: von Elm E, Altman DG, Egger M, et al. PLoS Med
+    2007;4(10):e296, https://doi.org/10.1371/journal.pmed.0040296, published
+    under the Creative Commons Attribution License. The STROBE style
+    paraphrases checklist items; item numbers refer to that table.
+  - plainlanguage.gov, "Use simple words and phrases", a work of the United
+    States Government in the public domain (CC0 1.0 worldwide). Entries in
+    Journals.Wordy come from that list.
+  - Std (MIT, Copyright (c) 2026 Joseph Kato and contributors):
+    Journals.Acronyms extends Std.Abbreviations.Acronyms.
+
+CONSORT, PRISMA, STROBE, Nature, and PLOS are the marks of their owners. This package
+is not endorsed by or affiliated with any of them.

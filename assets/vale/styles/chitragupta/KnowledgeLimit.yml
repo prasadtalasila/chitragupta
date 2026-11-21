@@ -1,0 +1,17 @@
+extends: existence
+message: "'%s' states a limit of knowledge and then guesses past it: say what the sources do not show (WRITING-STANDARDS.md §7)."
+link: https://github.com/prasadtalasila/chitragupta/blob/main/docs/WRITING-STANDARDS.md
+level: suggestion
+ignorecase: true
+tokens:
+  - as of my last
+  - up to my last training
+  - my training data
+  - while specific details are limited
+  - based on available information
+  - not widely documented
+  - not extensively documented
+  - in the available sources
+  - in the provided sources
+  - it is believed that
+  - maintains a low profile

@@ -1,0 +1,19 @@
+extends: substitution
+message: "Write '%s', not '%s'."
+level: warning
+nonword: true
+swap:
+  '\bet\.\s*al\.?': 'et al.'
+  '\bet al(?=[\s,;:)])': 'et al.'
+
+tests:
+  - name: fires
+    input: |
+      Smith et. al. and Doe et al found it (Roe et al., 2020).
+    want: |
+      1:7:Journals.EtAl:Write 'et al.', not 'et. al.'.
+      1:23:Journals.EtAl:Write 'et al.', not 'et al'.
+  - name: clean
+    input: |
+      Smith et al. and Doe et al. found it (Roe et al., 2020).
+    want: ""

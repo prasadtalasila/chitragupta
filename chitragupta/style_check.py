@@ -2,8 +2,10 @@
 
 `python -m chitragupta.draft style <draft>` reports where a draft departs from the
 rules that document marks decidable in its §9 -- the defect markers of §2,
-the recorded dialect of §8, and an acronym never expanded at first use --
-and says nothing about the rules it marks a judgement. Vale does that
+the recorded dialect of §8, an acronym never expanded at first use, and
+the fixed phrases of §4 and §7 that 32 vendored third-party rules and
+seven house rules list (`chitragupta/style_vendored.py`) -- and says
+nothing about the rules it marks a judgement. Vale does that
 matching, against the style vendored at assets/vale/; this module decides
 *which* rules apply to *this* draft and turns the result into a report.
 One finding is not Vale's: `chitragupta.style_acronym_drift` checks the draft's
@@ -58,7 +60,16 @@ from subprocess import run as _run
 from pathlib import Path
 from typing import Any
 
-from chitragupta import config, install, programs, style_exceptions
+from chitragupta import (
+    citation_gate,
+    config,
+    install,
+    programs,
+    style_exceptions,
+    style_latex,
+    style_quotes,
+    style_vendored,
+)
 from chitragupta.style_language import resolve_language, rule_filter
 from chitragupta.style_report import report
 from chitragupta.style_rules import PYTHON_CHECKS, with_repair
@@ -84,13 +95,19 @@ def _vale_argv(vale: str, draft: Path, language: str | None) -> list[str]:
         # *caller's* cwd -- from anywhere else, vale fails to find the
         # file while every Python-side check (resolved against the real
         # cwd) still passes, and that mismatch is exactly the "could not
-        # run" this function exists to catch (#495).
-        str(Path(draft).resolve()),
+        # run" this function exists to catch (#495). A `.tex` draft goes on
+        # stdin instead, its LaTeX markup blanked (`style_latex.for_vale`),
+        # with its extension so `tex = md` still applies.
+        "--ext=.tex" if citation_gate.is_latex(draft) else str(Path(draft).resolve()),
     ]
 
 
 def run_vale(draft: Path, language: str | None) -> list[dict]:
-    """Vale's findings for `draft`, flattened out of its per-file JSON."""
+    """Vale's findings for `draft`, flattened out of its per-file JSON.
+
+    A `.tex` draft is handed over on stdin with its LaTeX markup blanked
+    (`style_latex.for_vale`), since Vale's own ignores for it lost
+    findings; a `.md` draft goes as the file."""
     vale = programs.resolve_program("vale")
     if vale is None:
         raise MissingBinary(
@@ -99,10 +116,15 @@ def run_vale(draft: Path, language: str | None) -> list[dict]:
             "assets/vale/README.md for the pinned version. The draft is "
             "unaffected -- this check is advisory."
         )
+    text = Path(draft).read_text(encoding="utf-8")
     result = _run(
         _vale_argv(vale, draft, language),
+        input=style_latex.for_vale(text) if citation_gate.is_latex(draft) else None,
         capture_output=True,
         text=True,
+        # Not the locale's codec, which on a non-UTF-8 host would refuse
+        # a draft's non-ASCII character going in or a finding coming out.
+        encoding="utf-8",
         check=False,
         cwd=config.PROJECT_ROOT,
     )
@@ -132,7 +154,8 @@ def run_vale(draft: Path, language: str | None) -> list[dict]:
             f"Check {config.VALE_CONFIG_PATH}.\n{result.stderr}"
         ) from exc
     flattened = [finding for findings in payload.values() for finding in findings]
-    return style_exceptions.drop_exempt(flattened, Path(draft).read_text(encoding="utf-8"))
+    kept = style_quotes.drop_quoted(style_exceptions.drop_exempt(flattened, text), text)
+    return style_vendored.reconcile(kept)
 
 
 def collapse(findings: list[dict]) -> list[dict]:

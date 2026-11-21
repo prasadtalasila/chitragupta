@@ -133,7 +133,7 @@ def test_every_drafting_skill_runs_the_prose_check():
             _CAVEAT,
             "a findings list without it reads as a verdict on the prose, when the "
             "check is silent on every rule WRITING-STANDARDS.md sec 9 marks a "
-            "judgement -- and cannot tell a quotation from the draft's own voice",
+            "judgement -- and skips only double-quoted and block quotations",
         ),
         (
             _NO_FIX,

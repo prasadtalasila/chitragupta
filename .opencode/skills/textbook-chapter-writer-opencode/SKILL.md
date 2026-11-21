@@ -62,9 +62,7 @@ Follow `docs/WRITING-STANDARDS.md` for the rules every genre shares, and
 `docs/writing-standards/genres/textbook-chapter.md` for what a textbook
 chapter owes its student: read it before step 0. Read
 `.claude/skills-common/references/mathematical-prose.md` now and follow
-it: it governs the sentences around every symbol and derivation. The
-works these standards come from are credited in
-[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution).
+it: it governs the sentences around every symbol and derivation.
 
 ## Process
 

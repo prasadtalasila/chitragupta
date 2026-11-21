@@ -55,10 +55,8 @@ is the one skill allowed to widen.
 
 Follow `docs/WRITING-STANDARDS.md` for the rules every genre shares, and
 `docs/writing-standards/genres/survey.md` for what a survey owes its
-reader: read it before step 6. The works these standards come from are
-credited in
-[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution);
-if asked what bears on a survey, read
+reader: read it before step 6.
+If asked what bears on a survey, read
 `.claude/skills/survey-writer/references/survey.md` §4.
 
 ## Process

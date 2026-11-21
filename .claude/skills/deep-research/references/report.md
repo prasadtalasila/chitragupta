@@ -274,7 +274,7 @@ Read this when asked where this genre's writing rules come from.
 
 The prose standards this skill inherits are not original to this
 project. Full citations, licences and a per-principle attribution table
-are in `docs/WRITING-STANDARDS.md`'s "Sources and attribution"; all three
+are in `docs/INSPIRATION.md`, "The writing standards' sources"; all three
 works are openly licensed (CC-BY or CC-BY-SA) and require credit. What
 bears on *this* genre specifically:
 

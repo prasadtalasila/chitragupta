@@ -162,6 +162,28 @@ class TestRunVale:
         assert any(a.startswith("--filter=") and "DialectGB" in a for a in argv)
         assert "--no-exit" in argv
 
+    def test_a_latex_draft_reaches_vale_on_stdin_with_its_quotes_rewritten(
+        self, tmp_path, monkeypatch
+    ):
+        """A `.tex` draft is handed over as text, its LaTeX markup blanked
+        first (style_latex.for_vale); the format still comes from the
+        extension, so vale.ini's `tex = md` mapping applies."""
+        draft = tmp_path / "c.tex"
+        draft.write_text("They wrote ``a quote''.\n", encoding="utf-8")
+        calls = []
+
+        def _run(argv, **kwargs):
+            calls.append((argv, kwargs.get("input"), kwargs.get("encoding")))
+            return subprocess.CompletedProcess(argv, 0, stdout="{}", stderr="")
+
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
+        monkeypatch.setattr(style_check, "_run", _run)
+        style_check.run_vale(draft, None)
+        ((argv, stdin, encoding),) = calls
+        assert "--ext=.tex" in argv and str(draft.resolve()) not in argv
+        assert stdin == "They wrote \"\"a quote''.\n"
+        assert encoding == "utf-8", "the locale's codec would refuse a non-ASCII draft"
+
     def test_the_draft_path_is_resolved_not_passed_as_typed(self, draft, monkeypatch):
         """cwd=config.PROJECT_ROOT below means a relative path is relative
         to the *caller's* cwd, not vale's -- so vale must always be handed

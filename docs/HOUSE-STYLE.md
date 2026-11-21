@@ -71,9 +71,10 @@ The apparatus around it, none of which needs a model:
 - **The copy-edit mode.** `draft-reviser`'s sanctioned path for a
   whole-document edit that touches no evidence.
 - **The detector.** `python -m chitragupta.draft style` checks dialect
-  consistency, §2's defect markers, acronyms, table, figure and equation
-  ids and references, and what has to fit the page (§9 lists every rule).
-  It always exits 0, and is a review aid, never a gate.
+  consistency, §2's defect markers, §4's and §7's fixed phrases,
+  acronyms, table, figure and equation ids and references, and what has
+  to fit the page (§9 lists every rule). It always exits 0, and is a
+  review aid, never a gate.
 - **Automatic invocation.** A `PostToolUse` hook
   (`.claude/hooks/style_check_hook.py`) runs the detector on every write,
   and every drafting and revising skill runs it before presenting.
@@ -99,6 +100,7 @@ overlap, **§9 is the one that governs**.
 | Dialect conformance against `scope.md`'s `language:` | yes | yes when the dialect comes from `scope.md` or `--language`; a person decides when it comes from `config.toml` |
 | §2's defect markers other than "just" | yes | yes |
 | "just" | no: the adjective ("a just outcome") is correct prose | no; a person decides |
+| §4's and §7's fixed phrases: clichés, hype, wordy stock phrases, machine-prose habits, statistics reporting | yes, for a fixed list | no; a person decides |
 | Acronym expanded at first use, and matching the vocabulary | yes | yes |
 | A plain term defined once and used consistently | yes, given the dossier glossary | not checked |
 | Terminology and notation used consistently | yes, given a registry | no: the book-scale `registry check` reports for a person, and no agenda class carries it |

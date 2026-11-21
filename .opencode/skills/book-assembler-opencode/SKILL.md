@@ -276,4 +276,4 @@ author, in the book's `preamble.tex` or in the unit through
 The front matter, appendices and back matter follow BCcampus's
 *Self-Publishing Guide*, "Textbook Outline" (CC BY 4.0). The citation
 and what it supplies are in
-[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution).
+[`docs/INSPIRATION.md`](../../../docs/INSPIRATION.md#-the-writing-standards-sources).

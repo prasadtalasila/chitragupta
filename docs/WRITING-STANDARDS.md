@@ -15,7 +15,8 @@ the rules specific to one genre are in that genre's file under
 
 They are drawn from [Diátaxis](https://diataxis.fr/), Google's
 [Technical Writing courses](https://developers.google.com/tech-writing),
-and Suzan Last's *Technical Writing Essentials* (BCcampus). What follows
+and Suzan Last's *Technical Writing Essentials* (BCcampus), credited in
+[INSPIRATION.md][inspiration]. What follows
 is the part that transfers across all six genres. **Diátaxis's
 genre-specific rules do not all transfer**: "one path, no options" is
 right for `tutorial-writer` and wrong for `survey-writer`, where weighing
@@ -30,7 +31,7 @@ contain, a genre file per genre, and a style file per house style.
 
 | Layer | File | Sections | Holds |
 | --- | --- | --- | --- |
-| Core | this file | §1–9, §11, §15, §16 | the rules every draft follows, and sources and attribution |
+| Core | this file | §1–9, §11, §15, §16 | the rules every draft follows |
 | Element | [`writing-standards/figures.md`](writing-standards/figures.md) | §10 | figures, checked by `chitragupta/style_figures.py` |
 | Element | [`writing-standards/mathematics.md`](writing-standards/mathematics.md) | §12 | mathematics, checked by `chitragupta/style_equations.py` and `render` |
 | Element | [`writing-standards/tables.md`](writing-standards/tables.md) | §13 | tables, checked by `chitragupta/style_tables.py` |
@@ -111,7 +112,9 @@ consistent terms, defining terms once); Last, TWE §2.2 "Communicating with
 Precision" and §7.7 "Writing Style" on the passive-voice failure. The
 concrete-instance rule, which `textbook-chapter-writer` leans on hardest,
 is Wilson's, TTT "Expertise and Memory", and the Carpentries' (a worked
-example before the exercise that practises it).*
+example before the exercise that practises it). The habits of
+machine-written prose are humanizer's, after Wikipedia's "Signs of AI
+writing"; see [INSPIRATION.md][inspiration].*
 
 In a verbatim digest ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) these
 rules bind the drafter's own sentences only; copied text keeps its
@@ -129,6 +132,42 @@ source's style.
 - Cut hedging that carries no information. "It may be argued that X is
   possibly a factor" says less than "X is a factor" and is no more
   cautious. State real uncertainty once, precisely.
+- Cut words that add only emphasis or length: "very", a cliché, hype
+  ("novel", "groundbreaking"), a stock phrase with a shorter form ("in
+  order to" is "to"), and "serves as" where "is" will do.
+- Report a number as it was measured. Give an exact p-value from 0.001
+  up, write "p < 0.001" rather than "p = 0.000", keep one case for *p*,
+  put a space between a number and its unit, and use the unit's symbol.
+
+**Habits of machine-written prose.** A language model reaches for a few
+moves that a careful writer makes only on purpose. Each one signals
+weight or completeness without adding a fact, so when you find one,
+rewrite the sentence around its claim rather than patching the phrase:
+
+- A contrast whose negative half denies something no reader believed:
+  "not just a cache but a coordination layer", including the version
+  split over two sentences ("X is not the goal. Y is."). Keep a contrast
+  when the reader really does hold the view it rejects.
+- A line that closes a paragraph by repeating its point ("That
+  distinction matters."), and a closing "In conclusion" or "Overall"
+  that restates a verdict already given.
+- A run-up before the point ("Here's the thing", "Let's break this
+  down"), and a saying that only sounds deep ("At its core", "The real
+  question is").
+- A reply to an objection nobody raised ("This is not to say that ...",
+  "One might be tempted to ...").
+- Three items because three sounds complete, and a run of sentences that
+  open the same way. Keep three when the meaning has three.
+- Importance asserted instead of shown ("plays a pivotal role", "a
+  testament to"), and an authority with no name ("experts argue"). The
+  second is an uncited claim: name the source and cite it, or cut it.
+- A statement of what is not known followed by a guess ("based on
+  available information, it was likely ..."). Say what the sources do
+  not show, as §7 asks, and stop there.
+- A heading repeated as the first sentence under it.
+
+Leave these be in a quotation, a title or a proper name, and where the
+text talks about the phrase instead of using it.
 
 ## ✂ 5. Don't let a document do two jobs
 
@@ -165,6 +204,11 @@ Every genre here shares one rule from AGENTS.md's citekey invariant: a gap
 stated plainly is always better than a gap papered over. Thin corpus
 coverage, an unresolved contradiction, a step you couldn't verify: report
 each of these to the user in prose instead of smoothing it over.
+
+The same holds inside the draft. A result "shows" or "supports" a claim;
+only a proof proves one. Call a difference significant only beside the
+test that makes it so. And never leave a `TODO`, a `[cite]` or a `??`
+standing in for a gap: say in prose what is missing.
 
 ## 🗣 8. Dialect and house style
 
@@ -214,7 +258,11 @@ means they are rarely checked.
 | A glossary's acronym expansion still matches the current acronym vocabulary | §2 | yes, given the dossier's glossary and `[style].acronyms`; only the glossary is compared, not the draft's prose | `AcronymDrift`: yes |
 | Active voice with a named actor | §4 | detectable | not checked: the fix is a judgement |
 | Each paragraph leads with its point | §4 | heuristic only | not checked |
-| Hedging that carries no information | §4 | detectable | not checked: the fix is a judgement |
+| Hedging that carries no information | §4 | detectable for fixed phrases only | `proselint.Hedging` (three fixed phrases, "so to speak") and `ai-tells.StackedHedges` (a doubled hedge, "could potentially"): no (`review`). A single modal is never flagged, since a research claim uses one deliberately |
+| No emphasis or length that adds nothing: "very", clichés, hype, stock phrases with a shorter form, needless variants, malapropisms, non-words | §4 | yes, for a fixed list | proselint, `Journals.Hype`, `Microsoft.Wordiness`, `Plurals`, `Uppercase`, `chitragupta.PlainVerbs` (listed in `assets/vale/README.md`): no (`review`) |
+| A number reported as measured: exact p-values, one case for *p*, units spaced and in symbols, "et al." | §4 | yes | `Journals.PValueZero`, `PValueCase`, `UnitSpacing`, `UnitSymbols`, `EtAl`, `PLOS.PValues`: no (`review`) |
+| Habits of machine-written prose | §4 | detectable for fixed phrases; the split contrast, the repeated closer and the forced triad are not | ai-tells' formula rules and `chitragupta.RunUp`, `Strawman`, `DeepSaying`, `Inflated`, `BorrowedAuthority`: no (`review`) |
+| A claim no stronger than its evidence, and no placeholder for a gap | §7 | detectable for fixed words | `Journals.Prove`, `Significant`, `Placeholder`, `chitragupta.KnowledgeLimit`: no (`review`) |
 | Short sentences, one idea each | §4 | **no: this is a score** | not checked |
 | Citekeys per unit, and how many units rest on one source | §11 | yes | `review synthesis` counts it; never acted on, because a thin corpus legitimately produces single-source units |
 | Whether a sentence carries a citation at all | §11 | yes, per sentence; *whether it needs one* is not | `review uncited` surfaces it; never acted on, because the fix is evidence, not wording |
@@ -234,11 +282,16 @@ means they are rarely checked.
 | The reread as the reader | §6 | no | never |
 
 **How to read the last column.** A named rule is a `python -m
-chitragupta.draft style` finding, reported as `chitragupta.<name>`, with
-a `repair` value. `edit`, the default, lets the review agenda mark it
-`unattended`, so `agenda-reviser` may repair it without asking; `review`
-puts it in front of a person. `review synthesis` and `review uncited`
-are review aids: they report, and no unattended repair acts on them.
+chitragupta.draft style` finding, reported as `chitragupta.<name>`, or
+as `<package>.<name>` for a rule vendored from a third-party Vale package
+(its message ends with the section it implements), with a `repair`
+value. `edit`, the default for the house rules, lets the review agenda
+mark it `unattended`, so `agenda-reviser` may repair it without asking;
+`review` puts it in front of a person. A vendored rule is always
+`review`, and words two rules both report are reported once
+(`assets/vale/README.md` has which rule wins).
+`review synthesis` and `review uncited` are review aids: they report,
+and no unattended repair acts on them.
 
 **Nothing in the last column is a continuous score, deliberately.** A
 loop minimising a readability index splits sentences past the point the
@@ -246,7 +299,10 @@ argument survives and swaps precise terms for vaguer ones. An index may
 be reported but never optimised ([HOUSE-STYLE.md](HOUSE-STYLE.md)).
 
 **Quoted spans are exempt from every row**: "simply" inside a quoted
-abstract and an `-ize` inside a cited title are correct. No rule here
+abstract and an `-ize` inside a cited title are correct. That holds for a
+block quotation and for a quotation inside a sentence (`"..."`, curly
+quotes, or LaTeX's ``` ``...'' ```), except for the acronym rule, since an
+expansion the reader saw inside a quotation still counts. No rule here
 has a zero-exception form, which is also why none may become a gate
 ([ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4";
 [SOUL.md](../SOUL.md)).
@@ -408,101 +464,4 @@ a duplicate entry for this paper") belongs in the dossier's
 sees. A parsed key in prose is repaired unattended to `[@key]`; a key
 set as code, or one whose PDF never parsed, is left to a person.
 
-## 📖 Sources and attribution
-
-Three openly licensed works supply the principles above, and three more
-supply the pedagogy of `textbook-chapter-writer` and the book structure of
-`book-assembler`. All six require attribution under their licences; this
-section is that attribution. A seventh work, Wilkes's, supplies ideas only
-and is credited after them.
-
-1. **Daniele Procida, *Diátaxis: A systematic approach to technical
-   documentation authoring***. <https://diataxis.fr/>; source repository
-   <https://github.com/evildmp/diataxis-documentation-framework>.
-   Licensed CC-BY-SA 4.0.
-   Supplies: the four-quadrant genre model (tutorial / how-to / reference /
-   explanation); the definition of a tutorial as a lesson in which the
-   instructor is responsible for the learner's success; the driving-lesson
-   analogy; the diagnosis of explanation-overload in tutorials; the
-   narrative-of-expectations technique. `tutorial-writer` is built on this
-   source more than any other.
-
-2. **Suzan Last, *Technical Writing Essentials***, University of Victoria /
-   BCcampus, 2019.
-   <https://pressbooks.bccampus.ca/technicalwriting/>. §7.7 "Writing
-   Instructions" is the chapter drawn on most. Licensed CC-BY 4.0. That
-   chapter is itself adapted from David McMurrey's *Online Technical
-   Writing* (<https://mcmassociates.io/textbook/>, CC-BY 4.0), which is
-   therefore credited transitively.
-   Supplies: audience and task analysis as a preliminary step; scope and
-   assumed-background statements in the introduction; equipment and
-   supplies lists; the placement and function of note/warning/caution
-   notices; command-verb phrasing and the argument against passive voice in
-   instructions; testing instructions on a real member of the audience.
-
-3. **Google, *Technical Writing Courses for Engineers***.
-   <https://developers.google.com/tech-writing>. Licensed CC-BY 4.0.
-   Supplies: the curse of knowledge as the defining failure mode; defining
-   each term once and using it consistently; expanding an acronym at first
-   use and then not reverting; short sentences with one idea each; active
-   voice with a named actor; leading a paragraph with its point.
-
-4. **Greg Wilson, *Teaching Tech Together***, online edition.
-   <https://teachtogether.tech/>; source repository
-   <https://github.com/gvwilson/teachtogether.tech>. Licensed
-   CC-BY-NC 4.0, not CC-BY: the NonCommercial clause binds copies and
-   adaptations of the text, so this pipeline takes the ideas only and none
-   of the text.
-   Supplies, for `textbook-chapter-writer`: backward design (objectives
-   and assessments before content); learner personas; chunking to 7±2,
-   or 4±1, items; concept maps; worked examples, then faded ones, with
-   labelled subgoals; a formative check every 10 to 15 minutes; the
-   catalogue of exercise types; the expertise-reversal effect; concrete
-   instances before the general rule ("Expertise and Memory").
-
-5. **The Carpentries, *Lesson Development Training***.
-   <https://carpentries.github.io/lesson-development-training/>; source
-   repository <https://github.com/carpentries/lesson-development-training>.
-   Licensed CC-BY 4.0 ("Materials licensed under CC-BY 4.0 by the
-   authors"). It replaces the retired *Curriculum Development Handbook*.
-   Supplies, for `textbook-chapter-writer`: the lesson-design procedure;
-   objectives written with an observable verb, two to four per episode;
-   the questions-and-key-points frame around an episode; a worked example
-   before the exercise that practises it; a check after every 15 to 20
-   minutes of teaching; the accessibility checks.
-
-6. **Lauri M. Aesoph, *Self-Publishing Guide***, BCcampus, 2018, chapter
-   "Textbook Outline".
-   <https://opentextbc.ca/selfpublishguide/chapter/textbook-outline/>.
-   Licensed CC BY 4.0. The page notes that its front- and back-matter
-   tables draw partly on Wikipedia's "Book design" (CC BY-SA 3.0), which
-   is therefore credited transitively.
-   Supplies, for `book-assembler` and `textbook-chapter-writer`: the
-   front-matter, chapter-element and back-matter tables, which are where
-   a book's front matter, appendices and back matter (#1137) come from.
-
-**Ideas, not text, from one further work.** Gareth Wilkes, *A Brief
-Guide to Mathematical Writing*, Department of Pure Mathematics and
-Mathematical Statistics, University of Cambridge, revised 2023-10-08.
-The guide states no licence, so nothing from it is quoted and none of its
-examples is reused; the credit is given because the ideas are its.
-Supplies, for §12's prose rules in
-`.claude/skills-common/references/mathematical-prose.md`:
-defining a symbol in its own sentence with a role word, and repeating the
-role word on reuse; choosing letters by mnemonic and alphabet region, and
-never overloading one (§2 "Notation and definitions"); writing the
-"then", keeping the argument linear, checking a result's conditions
-before applying it, and keeping diagrams for objects (§1 "General
-tips"); stating the claim before a proof and a concluding sentence
-after, one step per paragraph (§3 "Formatting and structuring
-proofs"). `textbook-chapter-writer` reads that reference for a
-maths-heavy chapter, so its symbol-definition and notation discipline is
-Wilkes's too.
-
-The prose in this file, its layer files, every `SKILL.md` and
-`.claude/skills-common/references/` is written from scratch: what is
-borrowed is the *ideas*, credited above. An 8-word shingle check
-(`chitragupta/review/verbatim_check/_overlap.py`'s `cmd_overlap`) against
-every source above reported **0% overlap** in November 2026; prose
-written since, including the genre files' connecting sentences, has not
-been rechecked.
+[inspiration]: https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md#-the-writing-standards-sources
