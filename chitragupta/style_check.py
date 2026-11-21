@@ -122,6 +122,9 @@ def run_vale(draft: Path, language: str | None) -> list[dict]:
         input=style_latex.for_vale(text) if citation_gate.is_latex(draft) else None,
         capture_output=True,
         text=True,
+        # Not the locale's codec, which on a non-UTF-8 host would refuse
+        # a draft's non-ASCII character going in or a finding coming out.
+        encoding="utf-8",
         check=False,
         cwd=config.PROJECT_ROOT,
     )

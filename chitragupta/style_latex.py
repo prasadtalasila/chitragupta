@@ -33,7 +33,11 @@ VERBATIM = re.compile(
     r"(?s)\\begin\{(verbatim|lstlisting|minted|Verbatim|lstinputlisting)\}.*?\\end\{\1\}"
 )
 CITATION = re.compile(r"\\cite[a-zA-Z]*\s*(\[[^\]]*\])*\{[^}]*\}")
-MATH = re.compile(r"\$[^$]*\$")
+# Applied to the whole draft rather than block by block as Vale applied
+# its TokenIgnores, so it must neither open on an escaped `\$` nor cross
+# a blank line: either would blank prose up to the next `$` and turn the
+# math after it into prose.
+MATH = re.compile(r"(?<!\\)\$(?:(?!\n[ \t]*\n)[^$])*\$")
 COMMAND = re.compile(r"\\(?:(?:begin|end)\{[^}]*\}|[A-Za-z]+\*?)")
 
 

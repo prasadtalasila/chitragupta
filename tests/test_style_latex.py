@@ -51,6 +51,19 @@ def test_inline_math_is_blanked():
     assert "x_i" not in style_latex.for_vale(SAMPLE)
 
 
+def test_an_escaped_dollar_opens_no_math():
+    text = "It costs \\$5 today.\n\nWe did it in order to test, with $x$.\n"
+    assert "in order to test" in style_latex.for_vale(text)
+
+
+def test_math_never_crosses_a_blank_line():
+    """An unclosed `$` costs at most its paragraph, as when Vale applied
+    the pattern block by block."""
+    text = "A stray $ sign.\n\nWe did it in order to test, with $x$ here.\n"
+    seen = style_latex.for_vale(text)
+    assert "in order to test" in seen and "x" not in seen.split("\n")[2][-8:]
+
+
 def test_a_command_opening_a_line_does_not_leave_an_indented_code_block():
     """Four leading spaces are a Markdown code block, which Vale skips."""
     seen = style_latex.for_vale("\\emph{obviously} so.\n  \\textbf{also} here.\n")
@@ -72,6 +85,15 @@ def _rules(tmp_path, text, rule):
     draft.write_text(text, encoding="utf-8")
     found = style_check.check(draft, override="en-GB", propose=False)["findings"]
     return [(f["line"], f["match"]) for f in found if f["rule"] == rule]
+
+
+@vale_only
+def test_an_escaped_dollar_hides_nothing_from_vale(tmp_path):
+    text = (
+        "The unit costs \\$5 today.\n\nWe did it in order to test.\n\n"
+        "Here $x$ is fine, and in order to win, $y$ too.\n"
+    )
+    assert _rules(tmp_path, text, "Microsoft.Wordiness") == [(3, "in order to")]
 
 
 @vale_only
