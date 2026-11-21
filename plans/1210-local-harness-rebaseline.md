@@ -8,7 +8,7 @@ Status: **in progress.** Written 2026-11-21 against `9862c8cb`
 **Assumed:** [docs/HARNESS.md](../docs/HARNESS.md), "Measuring a skill
 change", and the `skill-bench` developer skill. **Not covered here:**
 any change to a user skill's text. The owner ruled on 2026-11-21 that
-#1210 is done without one; a skill edit the evidence calls for goes to
+issue 1210 is done without one; a skill edit the evidence calls for goes to
 a follow-up issue and is benched there.
 
 ## Design (approved 2026-11-21)
