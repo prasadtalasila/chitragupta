@@ -7808,6 +7808,22 @@ in the British-English survey, a "just", a "very", one acronym pair).
 The ninth, a contrast whose match runs past the closing mark, stays;
 part of it is the draft's.
 
+**Second follow-up: what Vale never saw in a `.tex` draft.** The review
+found the words between two ``` ``...'' ``` quotations in one paragraph read as a
+Markdown code span. Probing for more, one defect marker planted on each
+of the thesis chapter's 839 prose lines, Vale reported 636; one distinct
+cliché per line gave 644 (the losses move between runs, because a
+repeated identical match is reported once). Blanking the LaTeX citation,
+math and command spans to equal-width spaces before Vale reads the text
+(`chitragupta/style_latex.py`), instead of leaving them to `vale.ini`'s
+`TokenIgnores`, recovered all 839 and 840. On the drafts the chapter's
+findings rose by four, all `Acronyms`, and each was checked: "DT" three
+more times and "FIWARE" and "NIST" once, all in text Vale had not seen,
+and an "FMI" finding gone whose expansion sat in hidden text. The same
+probe on Markdown drafts reported 106 of 217 on the survey, 68 of 73 and
+53 of 55 on two sample-project drafts: Markdown loses findings too, for
+a reason not yet found, and it is not fixed here.
+
 **Reproducing.** Run the command above over the same files and compare
 `(draft, rule, match)` sets; `tests/test_style_vendored.py` holds the
 overlap probe.

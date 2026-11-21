@@ -16,7 +16,7 @@ the rules specific to one genre are in that genre's file under
 They are drawn from [Diátaxis](https://diataxis.fr/), Google's
 [Technical Writing courses](https://developers.google.com/tech-writing),
 and Suzan Last's *Technical Writing Essentials* (BCcampus), credited in
-[INSPIRATION.md](INSPIRATION.md#-the-writing-standards-sources). What follows
+[INSPIRATION.md][inspiration]. What follows
 is the part that transfers across all six genres. **Diátaxis's
 genre-specific rules do not all transfer**: "one path, no options" is
 right for `tutorial-writer` and wrong for `survey-writer`, where weighing
@@ -114,8 +114,7 @@ concrete-instance rule, which `textbook-chapter-writer` leans on hardest,
 is Wilson's, TTT "Expertise and Memory", and the Carpentries' (a worked
 example before the exercise that practises it). The habits of
 machine-written prose are humanizer's, after Wikipedia's "Signs of AI
-writing"; see
-[INSPIRATION.md](INSPIRATION.md#-the-writing-standards-sources).*
+writing"; see [INSPIRATION.md][inspiration].*
 
 In a verbatim digest ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) these
 rules bind the drafter's own sentences only; copied text keeps its
@@ -464,3 +463,5 @@ a duplicate entry for this paper") belongs in the dossier's
 `draft style` reports both as `BareCitekey`, reading only what a reader
 sees. A parsed key in prose is repaired unattended to `[@key]`; a key
 set as code, or one whose PDF never parsed, is left to a person.
+
+[inspiration]: https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md#-the-writing-standards-sources

@@ -275,6 +275,18 @@ on the bench drafts it lost three real findings outside any quote; it
 also hid every expansion written inside a quotation from `Acronyms`,
 which `style_quotes.py` leaves alone.
 
+**A `.tex` draft reaches Vale with its LaTeX markup already blanked**, by
+`chitragupta/style_latex.py`, and on stdin rather than as a file.
+`TokenIgnores` below still lists citation commands, `$...$` and command
+names, but on a real 8.7k-word thesis chapter those entries lost
+findings in long paragraphs: with a defect marker planted on every prose
+line, Vale reported 636 of 839, and with the same spans blanked to
+spaces of equal width first, all 839. Two ``` ``...'' ``` in one paragraph
+also read as a Markdown code span, hiding the words between them; each
+``` `` ``` is handed over as `""`. A `.md` draft still goes to Vale as a file, and the
+same probe found Markdown losing findings too (106 of 217 on a 15k-word
+survey), which is not fixed yet.
+
 **`TokenIgnores` also skips LaTeX command names and the exercise label**
 (#1187). `\centering` and `\begin{center}` were read as prose, and
 `center` as an en-US spelling. One alternation covers both forms and must
