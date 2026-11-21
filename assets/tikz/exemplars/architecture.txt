@@ -5,7 +5,7 @@
          | .bib + PDFs |          | parse, ledger   |
          +-------------+          +-----------------+
                                     |             :
-                             ledger |             : vectors
+                                    |             : vectors
                                     |             v
                                     |     +-------------------+
                                     |     | Enrichment        |

@@ -375,17 +375,23 @@ class TestStrandedArrowheads:
 
         assert figure_layout.stranded_arrowheads(source) == ["46,36"]
 
+    def test_an_arrows_meta_tip_specification_is_recognised(self):
+        """`-{Stealth}` draws a head at the end just as `->` does, and is
+        read as one since #1162: the head lands mid-line here."""
+        source = "\\draw[-{Stealth}] (46,32) -- (46,36);\n\\draw (46,36) -- (46,44);\n"
+
+        assert figure_layout.stranded_arrowheads(source) == ["46,36"]
+
 
 class TestStrandedArrowheadLimits:
     """What this check deliberately does not reach, pinned rather than
     left in prose -- the same standing `TestEdgeListLimits` has. Every
     one of these fails *safe*: a finding missed, never a wrong one."""
 
-    def test_an_arrows_meta_tip_specification_is_not_recognised(self):
-        """`-{Stealth}` draws a head at the end just as `->` does, but
-        recognising every `arrows.meta` tip name means parsing TikZ's tip
-        grammar. Left short rather than approximated."""
-        source = "\\draw[-{Stealth}] (46,32) -- (46,36);\n\\draw (46,36) -- (46,44);\n"
+    def test_an_option_group_left_open_is_skipped(self):
+        """`\\draw[thick (a) -- (b);` never closes its options, so it has
+        no points to compare."""
+        source = "\\draw[-> (46,32) -- (46,36);\n\\draw (46,36) -- (46,44);\n"
 
         assert figure_layout.stranded_arrowheads(source) == []
 

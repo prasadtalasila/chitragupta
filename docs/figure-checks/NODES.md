@@ -86,7 +86,8 @@ Fixed: the box names the step; the prose explains it.
 **Catches.** A line drawn in pieces where an earlier piece ends in an
 arrowhead at a bare coordinate and the next continues from it, so a
 head sits mid-line pointing at nothing. Target: the point. The check
-reads `->` in a path's own options.
+reads a head from `->`, an `arrows.meta` tip, or a style that sets one
+(`cgedge`), defined in the figure or in the house block.
 
 Faulty: the route is two `\draw` statements, and each carries a head.
 
@@ -111,7 +112,8 @@ Fixed: one `\draw` for the whole route.
 | --- | --- |
 | ![An elbow from Parse to Index with an extra arrowhead at the corner](examples/stranded-arrowhead/faulty.png) | ![The same elbow with a single arrowhead at Index](examples/stranded-arrowhead/fixed.png) |
 
-**Fix.** Put the `->` on the last piece of the line only.
+**Fix.** Draw the whole line as one `\draw`, so only its last piece
+carries the head.
 
 ### `focal-count`
 

@@ -15,6 +15,9 @@ here so the probe's node names and `figure check`'s labels agree.
 import re
 
 _PATH_RE = re.compile(r"\\(?:draw|path)\b")
+# How far each bracket moves the depth of an option list, where `[` and
+# `{` nest inside each other (`-{Latex[length=2mm]}`, `arrows={->}`).
+NESTING = {"[": 1, "{": 1, "]": -1, "}": -1}
 # `at` as a word, which makes the next parenthesised group a position.
 _AT_RE = re.compile(r"at\b")
 

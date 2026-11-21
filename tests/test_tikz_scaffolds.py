@@ -502,6 +502,25 @@ class TestThroughTheDocumentedCommand:
         assert results[0].unmeasured == []
 
 
+@pytest.mark.slow
+@needs_tikz
+@pytest.mark.parametrize("figure", _carriers(), ids=lambda p: p.stem)
+def test_every_asset_passes_every_rule(figure):
+    """What figure-drawer copies from must not hand a defect on (#1161):
+    every scaffold and exemplar is clean under every rule, and the
+    connector rules ran on it (a round node is all c4 may set aside)."""
+    result = check(figure, ARTICLE.text_width_pt)
+
+    assert [(f.rule, f.target) for f in result.findings] == []
+    assert result.malformed == []
+    assert result.stale == []
+    assert [
+        (rule, why)
+        for rule, why in result.not_measured
+        if rule.startswith("c") and not why.startswith("round nodes")
+    ] == []
+
+
 class TestTheBlockTravelsUnforked:
     """#1012's acceptance: the block is byte-identical in every file
     carrying it, because the first edit to one copy is otherwise

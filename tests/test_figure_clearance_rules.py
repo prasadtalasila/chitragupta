@@ -189,6 +189,23 @@ class TestTagCovered:
 
         assert tag_covered(cons, figure) == []
 
+    def test_c6_fires_on_a_tag_inside_a_card(self):
+        """A card wide enough to hold the whole tag hides it (#1163)."""
+        figure, cons = _figure(node("card", (55, 8, 95, 25)), _tag("cgu-1", (60, 13, 80, 18)))
+
+        (finding,) = tag_covered(cons, figure)
+
+        assert (finding.target, finding.measurement) == ("a->b", "tag under card")
+
+    def test_c6_holds_on_a_tag_inside_a_framed_fit_group(self):
+        """A framed group holding a member is a zone, and a tag inside
+        one is where it belongs (`pctrl-blocks.tex`)."""
+        group = node("group", (55, 8, 95, 40))
+        member = node("q", (75, 25, 85, 35))
+        figure, cons = _figure(group, member, _tag("cgu-1", (60, 13, 80, 18)))
+
+        assert tag_covered(cons, figure) == []
+
     def test_c6_holds_on_a_tag_clear_of_every_node(self):
         figure, cons = _figure(_tag("cgu-1", (60, 13, 80, 18)))
 

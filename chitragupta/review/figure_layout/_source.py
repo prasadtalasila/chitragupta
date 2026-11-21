@@ -14,7 +14,14 @@ below says what that costs it.
 import re
 
 from chitragupta._tex_comments import strip_comments
-from chitragupta.review.figure_layout._scan import declaration, path_bodies
+from chitragupta.review.figure_layout._scan import (
+    NESTING,
+    blank_groups,
+    declaration,
+    path_bodies,
+    path_spans,
+)
+from chitragupta.review.figure_layout._tips import house_styles, style_definitions, tips
 
 # docs/TIKZ-STYLE.md's conciseness rule, as the number it is written as.
 # One place, because the report quotes it back to the reader.
@@ -233,32 +240,28 @@ def _pairs(body: str) -> list[tuple[str, str]]:
 # tip. `\draw (a) edge[->] (b)` puts its tip outside this group and is
 # therefore missed -- failing short rather than wrong, the same stance
 # `edge_list` takes.
-_LEADING_OPTIONS_RE = re.compile(r"^\s*\[(?P<options>[^\]]*)\]")
-
-
-def _split_options(body: str) -> tuple[str, str]:
-    """A path statement's leading option group and everything after it.
+def _split_options(statement: str) -> tuple[str, str]:
+    """A path statement's leading option group, and everything after it
+    with every brace group emptied.
 
     Split rather than merely matched so the options are kept out of the
     point scan: `\\draw[shift={(1,0)},->] (a) -- (b);` has a
     parenthesised token inside its options, and reading that as the
-    path's first point would compare the wrong coordinate.
+    path's first point would compare the wrong coordinate. The options
+    are read from the statement as written, brackets and braces nesting,
+    so `arrows={->}` and `-{Latex[length=2mm]}` reach the tip reader
+    whole (#1162). A group left open takes the whole statement, which
+    then has no points.
     """
-    options = _LEADING_OPTIONS_RE.match(body)
-    if options is None:
-        return "", body
-    return options.group("options"), body[options.end() :]
-
-
-# The arrow specifications that put a head at each end of a path. Tested
-# as substrings rather than patterns because that is exactly the
-# distinction wanted: `<->` contains both and draws both heads, `->`
-# contains only the first, `<-` only the second. An `arrows.meta` tip
-# (`-{Stealth}`) draws an end head and matches neither -- recognising
-# every tip name means parsing TikZ's tip grammar, and a missed finding
-# is what an advisory aid does anyway.
-_END_ARROW = "->"
-_START_ARROW = "<-"
+    text = statement.lstrip()
+    if not text.startswith("["):
+        return "", blank_groups(statement)
+    depth = 0
+    for i, char in enumerate(text):
+        depth += NESTING.get(char, 0)
+        if not depth:
+            return text[1:i], blank_groups(text[i + 1 :])
+    return text[1:], ""
 
 
 def _point(token: str) -> str:
@@ -281,7 +284,8 @@ def stranded_arrowheads(source: str) -> list[str]:
     A line built in pieces, each piece carrying `->`, renders a head
     where the pieces join as well as at the end -- a second head pointing
     at nothing. #399 found two colinear segments meeting at `(46,36)`
-    doing exactly this.
+    doing exactly this. A head is read from `->`, an `arrows.meta` tip
+    or a style that sets one, as `_tips.py` says (#1162).
 
     **The junction has to be a bare coordinate, and that clause is what
     makes the check precise rather than noisy.** Head-to-tail chaining
@@ -318,15 +322,18 @@ def stranded_arrowheads(source: str) -> list[str]:
     positive; the one true positive there is `2-2`'s arrow into
     `(90,34)`, which a `\\draw[thick]` bezier then continues out of.
     """
+    text = strip_comments(source)
+    styles = {**house_styles(), **style_definitions(text)}
     ends_with_head, opens_at = [], set()
-    for statement in path_bodies(strip_comments(source)):
-        options, body = _split_options(statement)
+    for start, end in path_spans(text):
+        options, body = _split_options(text[start:end])
         points = [_point(token) for token in _PAREN_TOKEN_RE.findall(body)]
         if not points:
             continue
-        if _START_ARROW not in options:
+        start_head, end_head = tips(options, styles)
+        if not start_head:
             opens_at.add(points[0])
-        if _END_ARROW in options:
+        if end_head:
             ends_with_head.append(points[-1])
     found = []
     for point in ends_with_head:

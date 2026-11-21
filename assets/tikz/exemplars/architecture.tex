@@ -415,7 +415,7 @@
 
   % ---- the spine's edges ---------------------------------------------------
   \draw[cgedge] (bib) -- (sync);
-  \draw[cgedge] (sync) -- node[cgtag, pos=0.47] {ledger} (draft);
+  \draw[cgedge] (sync) -- (draft);
   \draw[cgedge] (draft) -- (gate);
   \draw[cgedge] (gate-ok) -- node[cgtag, pos=0.42] {\textsc{ok}} (pub.north);
 
