@@ -193,6 +193,20 @@ class TestHelpIsOneCommandPerLine:
         assert " / " not in out
         assert out.endswith("Run 'chitragupta draft COMMAND --help' for a command's flags.\n")
 
+    def test_diff_row_says_what_it_compares_and_is_not_cut(self, monkeypatch, capsys):
+        # #1207: a 30-line cap on the old one-paragraph help cut diff's
+        # summary to "what changed"; one row per verb leaves room for it.
+        monkeypatch.setenv("COLUMNS", "80")
+        monkeypatch.setattr("sys.argv", ["chitragupta"])
+        with pytest.raises(SystemExit) as excinfo:
+            entrypoint.main(["--help"])
+        assert excinfo.value.code == 0
+        (row,) = [
+            line for line in capsys.readouterr().out.splitlines() if line.startswith("  diff ")
+        ]
+        assert "since a snapshot" in row
+        assert not row.endswith("...")
+
     def test_verbs_and_help_index_agree(self):
         from chitragupta import command_help
 

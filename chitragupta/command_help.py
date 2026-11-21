@@ -55,7 +55,7 @@ HELP: dict[str, tuple[str, dict[str, str]]] = {
                 "fingerprint of its parsed text"
             ),
             "figures": "one paper's figures to look at while drafting -- never to reproduce",
-            "diff": "what changed",
+            "diff": "what changed in a draft since a snapshot: report and redline",
         },
     ),
     "review": (
