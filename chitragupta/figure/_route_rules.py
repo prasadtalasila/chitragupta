@@ -121,8 +121,9 @@ def _overlap(s: tuple[Point, Point], t: tuple[Point, Point]) -> float:
     """How long two segments lie along one another: 0 unless both ends
     of `t` are within `_COLLINEAR_PT` of the line through `s`, then the
     length of `t`'s projection that falls on `s`. Measured against the
-    whole line, not the segment, so the answer does not depend on which
-    of the two is the longer (#1163)."""
+    whole line, not the segment, so a short segment lying on a long one
+    scores the same in either order (#1163). A pair at a slight slant,
+    inside the tolerance at one end only, can still score by order."""
     (p, q), (r, u) = s, t
     length = math.dist(p, q)
     if length == 0 or math.dist(r, u) == 0:

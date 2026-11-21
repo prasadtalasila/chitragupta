@@ -388,6 +388,13 @@ class TestStrandedArrowheadLimits:
     left in prose -- the same standing `TestEdgeListLimits` has. Every
     one of these fails *safe*: a finding missed, never a wrong one."""
 
+    def test_an_option_group_left_open_is_skipped(self):
+        """`\\draw[thick (a) -- (b);` never closes its options, so it has
+        no points to compare."""
+        source = "\\draw[-> (46,32) -- (46,36);\n\\draw (46,36) -- (46,44);\n"
+
+        assert figure_layout.stranded_arrowheads(source) == []
+
     def test_a_path_statement_with_no_points_at_all_is_skipped(self):
         """`\\draw[help lines] grid;` names no point, so there is no
         endpoint to strand a head at and nothing to compare. Real TikZ,

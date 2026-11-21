@@ -110,6 +110,18 @@ class TestHeadsFromStyles:
 
         assert stranded_arrowheads(source) == []
 
+    def test_a_braced_arrows_key_is_read(self):
+        """The options are read before brace groups are emptied, so
+        `arrows={->}` reaches the tip reader whole."""
+        source = r"\draw[arrows={->}] (a) -- (1,2); \draw (1,2) -- (b);"
+
+        assert stranded_arrowheads(source) == ["1,2"]
+
+    def test_a_tip_with_bracketed_options_outside_braces_is_read(self):
+        source = r"\draw[-Latex[length=2mm]] (a) -- (1,2); \draw (1,2) -- (b);"
+
+        assert stranded_arrowheads(source) == ["1,2"]
+
     def test_a_headless_first_piece_is_not_stranded(self):
         """`cgedge, -` is the repair for a stranded head."""
         source = r"\draw[cgedge, -] (a) -- (1,2); \draw[cgedge] (1,2) -- (b);"

@@ -14,7 +14,12 @@ below says what that costs it.
 import re
 
 from chitragupta._tex_comments import strip_comments
-from chitragupta.review.figure_layout._scan import declaration, path_bodies
+from chitragupta.review.figure_layout._scan import (
+    blank_groups,
+    declaration,
+    path_bodies,
+    path_spans,
+)
 from chitragupta.review.figure_layout._tips import house_styles, style_definitions, tips
 
 # docs/TIKZ-STYLE.md's conciseness rule, as the number it is written as.
@@ -234,21 +239,31 @@ def _pairs(body: str) -> list[tuple[str, str]]:
 # tip. `\draw (a) edge[->] (b)` puts its tip outside this group and is
 # therefore missed -- failing short rather than wrong, the same stance
 # `edge_list` takes.
-_LEADING_OPTIONS_RE = re.compile(r"^\s*\[(?P<options>[^\]]*)\]")
+_NESTING = {"[": 1, "{": 1, "]": -1, "}": -1}
 
 
-def _split_options(body: str) -> tuple[str, str]:
-    """A path statement's leading option group and everything after it.
+def _split_options(statement: str) -> tuple[str, str]:
+    """A path statement's leading option group, and everything after it
+    with every brace group emptied.
 
     Split rather than merely matched so the options are kept out of the
     point scan: `\\draw[shift={(1,0)},->] (a) -- (b);` has a
     parenthesised token inside its options, and reading that as the
-    path's first point would compare the wrong coordinate.
+    path's first point would compare the wrong coordinate. The options
+    are read from the statement as written, brackets and braces nesting,
+    so `arrows={->}` and `-{Latex[length=2mm]}` reach the tip reader
+    whole (#1162). A group left open takes the whole statement, which
+    then has no points.
     """
-    options = _LEADING_OPTIONS_RE.match(body)
-    if options is None:
-        return "", body
-    return options.group("options"), body[options.end() :]
+    text = statement.lstrip()
+    if not text.startswith("["):
+        return "", blank_groups(statement)
+    depth = 0
+    for i, char in enumerate(text):
+        depth += _NESTING.get(char, 0)
+        if not depth:
+            return text[1:i], blank_groups(text[i + 1 :])
+    return text[1:], ""
 
 
 def _point(token: str) -> str:
@@ -312,8 +327,8 @@ def stranded_arrowheads(source: str) -> list[str]:
     text = strip_comments(source)
     styles = {**house_styles(), **style_definitions(text)}
     ends_with_head, opens_at = [], set()
-    for statement in path_bodies(text):
-        options, body = _split_options(statement)
+    for start, end in path_spans(text):
+        options, body = _split_options(text[start:end])
         points = [_point(token) for token in _PAREN_TOKEN_RE.findall(body)]
         if not points:
             continue
