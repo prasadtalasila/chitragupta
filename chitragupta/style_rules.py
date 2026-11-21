@@ -16,7 +16,7 @@ from chitragupta.style_figures import findings as figure_findings
 from chitragupta.style_headings import findings as heading_findings
 from chitragupta.style_tables import findings as table_findings
 from chitragupta.style_typeset import findings as typeset_findings
-from chitragupta.style_vendored import SECTIONS, UNATTENDED
+from chitragupta.style_vendored import SECTIONS
 
 # Every Python-side rule, in the order its findings are reported. A rule
 # is a module with a `findings(draft) -> list[dict]` function; each
@@ -94,17 +94,17 @@ def with_repair(findings: "list[dict]", language_source: str) -> "list[dict]":
     ("Unified Modeling Language") that an unattended re-spelling would
     corrupt. The guess only downgrades the repair mode and never
     suppresses the finding, so a real mis-spelling is still listed
-    (#1187). A vendored rule is `"review"` unless it is one of
-    `style_vendored.UNATTENDED` (#1186): its packages were written for
-    other prose, and a cliché's repair is a rewrite. Every other Vale
-    rule is an `"edit"`.
+    (#1187). A vendored rule is always `"review"` (#1186): its packages
+    were written for other prose, and even their narrowest lists hold
+    words a draft uses correctly (`style_vendored`'s docstring). Every
+    other Vale rule is an `"edit"`.
     """
     for finding in findings:
         dialect = finding["rule"] in _ALL_DIALECT_RULES
         vendored = finding["rule"] in SECTIONS
         review = (
             finding["rule"] in _ALWAYS_REVIEW
-            or (vendored and finding["rule"] not in UNATTENDED)
+            or vendored
             or (
                 dialect
                 and (language_source not in _AUTHOR_SOURCES or finding["match"][:1].isupper())

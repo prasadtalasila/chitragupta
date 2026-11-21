@@ -260,9 +260,9 @@ means they are rarely checked.
 | Active voice with a named actor | §4 | detectable | not checked: the fix is a judgement |
 | Each paragraph leads with its point | §4 | heuristic only | not checked |
 | Hedging that carries no information | §4 | detectable for fixed phrases only | `proselint.Hedging` (three fixed phrases, "so to speak") and `ai-tells.StackedHedges` (a doubled hedge, "could potentially"): no (`review`). A single modal is never flagged, since a research claim uses one deliberately |
-| No emphasis or length that adds nothing: "very", clichés, hype, stock phrases with a shorter form, needless variants, malapropisms, non-words | §4 | yes, for a fixed list | proselint, `Journals.Hype`, `Microsoft.Wordiness`, `Plurals`, `Uppercase`, `chitragupta.PlainVerbs` (listed in `assets/vale/README.md`): no (`review`), except `proselint.Nonwords`: yes |
+| No emphasis or length that adds nothing: "very", clichés, hype, stock phrases with a shorter form, needless variants, malapropisms, non-words | §4 | yes, for a fixed list | proselint, `Journals.Hype`, `Microsoft.Wordiness`, `Plurals`, `Uppercase`, `chitragupta.PlainVerbs` (listed in `assets/vale/README.md`): no (`review`) |
 | A number reported as measured: exact p-values, one case for *p*, units spaced and in symbols, "et al." | §4 | yes | `Journals.PValueZero`, `PValueCase`, `UnitSpacing`, `UnitSymbols`, `EtAl`, `PLOS.PValues`: no (`review`) |
-| Habits of machine-written prose | §4 | detectable for fixed phrases; the split contrast, the repeated closer and the forced triad are not | ai-tells' formula rules and `chitragupta.RunUp`, `Strawman`, `DeepSaying`, `Inflated`, `BorrowedAuthority`: no (`review`), except `ai-tells.ClosingPleasantries` and `SycophancyMarkers`, a chatbot's sign-off and praise: yes |
+| Habits of machine-written prose | §4 | detectable for fixed phrases; the split contrast, the repeated closer and the forced triad are not | ai-tells' formula rules and `chitragupta.RunUp`, `Strawman`, `DeepSaying`, `Inflated`, `BorrowedAuthority`: no (`review`) |
 | A claim no stronger than its evidence, and no placeholder for a gap | §7 | detectable for fixed words | `Journals.Prove`, `Significant`, `Placeholder`, `chitragupta.KnowledgeLimit`: no (`review`) |
 | Short sentences, one idea each | §4 | **no: this is a score** | not checked |
 | Citekeys per unit, and how many units rest on one source | §11 | yes | `review synthesis` counts it; never acted on, because a thin corpus legitimately produces single-source units |
@@ -288,9 +288,9 @@ as `<package>.<name>` for a rule vendored from a third-party Vale package
 (its message ends with the section it implements), with a `repair`
 value. `edit`, the default for the house rules, lets the review agenda
 mark it `unattended`, so `agenda-reviser` may repair it without asking;
-`review` puts it in front of a person. A vendored rule is `review`
-unless its row above says otherwise, and words two rules both report
-are reported once (`assets/vale/README.md` has which rule wins).
+`review` puts it in front of a person. A vendored rule is always
+`review`, and words two rules both report are reported once
+(`assets/vale/README.md` has which rule wins).
 `review synthesis` and `review uncited` are review aids: they report,
 and no unattended repair acts on them.
 

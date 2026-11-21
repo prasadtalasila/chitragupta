@@ -595,6 +595,13 @@ class TestQuoteCharSpans:
         spans = vc._quote_char_spans(text)
         assert [text[start:end] for start, end in spans] == ['"a real quotation"']
 
+    def test_a_one_character_quotation_is_its_own_span(self):
+        """A two-character minimum left the "A"'s closing mark free to open
+        a span that ran to the next quotation, demoting what lay between."""
+        text = 'The "A" variant was built to scale, unlike the "B" variant.'
+        spans = vc._quote_char_spans(text)
+        assert [text[start:end] for start, end in spans] == ['"A"', '"B"']
+
     def test_a_span_does_not_cross_a_paragraph_break(self):
         """The other guard: anything else unpaired -- a typo, a quotation
         nobody closed -- costs at most the paragraph it sits in."""

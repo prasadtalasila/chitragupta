@@ -124,10 +124,14 @@ proselint is pinned to v0.3.4, the release #1186 measured; v0.4.0
 (2026-11-19) regenerates the rules from native proselint 0.16.0, whose
 false positives #1186 recorded, and is a pin bump to measure first.
 
-**Every finding is `review`** except three, which the review agenda may
-repair unattended because the text is never right in a finished draft
-and the repair changes no claim: `ai-tells.ClosingPleasantries`,
-`ai-tells.SycophancyMarkers` and `proselint.Nonwords`.
+**Every finding is `review`**, so the review agenda never repairs one
+unattended. Three rules were once meant to be the exception, and each
+matches prose that is right as written: `ai-tells.SycophancyMarkers`
+lists "absolutely" and "certainly" ("absolutely continuous", "almost
+certainly holds"), `ai-tells.ClosingPleasantries` lists "If anything is
+unclear", which a tutorial uses to point at a step, and
+`proselint.Nonwords` swaps the noun "pettifogger" for a verb and offers
+two meanings for some words.
 
 **The section each rule implements is added to its message** by
 `chitragupta/style_vendored.py` ("... (WRITING-STANDARDS.md §4)"), since
@@ -140,20 +144,20 @@ the packages' messages name none and the files are not edited.
 | `proselint.Hyperbole` | repeated `!` or `?` | §4 |
 | `proselint.Malapropisms` | a wrong word for the right one | §4 |
 | `proselint.Needless` | a needless variant ("abolishment" for "abolition") | §4 |
-| `proselint.Nonwords` | a non-word ("analyzation"); repaired unattended | §4 |
+| `proselint.Nonwords` | a non-word ("analyzation") | §4 |
 | `proselint.Oxymorons` | "increasingly less" | §4 |
 | `proselint.RASSyndrome` | a redundant acronym ("ATM machine") | §4 |
 | `proselint.Skunked` | a disputed word ("decimate", "hopefully") | §4 |
 | `proselint.Uncomparables` | a degree on an absolute ("very unique") | §4 |
 | `proselint.Very` | "very" | §4 |
-| `ai-tells.ClosingPleasantries` | a chatbot sign-off ("I hope this helps"); repaired unattended | §4 |
+| `ai-tells.ClosingPleasantries` | a chatbot sign-off ("I hope this helps") | §4 |
 | `ai-tells.ConclusionMarkers` | "In conclusion", "To sum up" | §4 |
 | `ai-tells.ContrastiveFormulas` | "it's not just X; it's Y" | §4 |
 | `ai-tells.NegatedPair` | "with no setup and no config" | §4 |
 | `ai-tells.PromotionalPuffery` | sales language ("nestled in", "a testament to") | §4 |
 | `ai-tells.PseudoCleft` | "What we found is that ..." | §4 |
 | `ai-tells.StackedHedges` | "could potentially" | §4 |
-| `ai-tells.SycophancyMarkers` | "Great question"; repaired unattended | §4 |
+| `ai-tells.SycophancyMarkers` | "Great question" | §4 |
 | `Journals.EtAl` | "et. al" for "et al." | §4 |
 | `Journals.Hype` | "novel", "groundbreaking" | §4 |
 | `Journals.PValueCase` | `p` and `P` in one draft | §4 |
@@ -175,7 +179,7 @@ them: "at the end of the day" is both a cliché and a conclusion marker.
 The files cannot be edited, so `chitragupta/style_vendored.py`'s
 `SHADOWED_BY` drops the second finding when two rules report overlapping
 words on one line. The winner is the more specific check, or the one
-that says what to write instead, and a house rule always wins.
+that says what to write instead.
 
 | Dropped | When it overlaps | Example |
 |---|---|---|
@@ -186,6 +190,7 @@ that says what to write instead, and a house rule always wins.
 | `Microsoft.Wordiness` | `ai-tells.ClosingPleasantries`, `ai-tells.ConclusionMarkers` | "let me know", "taking all of this into account" |
 | `Journals.Prove` | `ai-tells.ClosingPleasantries` | "I hope this proves helpful" |
 | `ai-tells.SycophancyMarkers` | `chitragupta.DefectMarkers`, `ai-tells.ClosingPleasantries` | "Of course", "happy to help" |
+| `chitragupta.Strawman` | `ai-tells.ContrastiveFormulas` | "This isn't about speed; it's about trust" |
 
 Overlaps that are two different checks keep both findings: an
 unexpanded acronym inside a redundant one ("ATM machine"), a defect

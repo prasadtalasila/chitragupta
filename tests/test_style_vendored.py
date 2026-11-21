@@ -88,9 +88,6 @@ class TestTheTablesAgree:
         }
         assert on_disk == pinned
 
-    def test_the_unattended_rules_are_vendored_rules(self):
-        assert set(style_vendored.UNATTENDED) <= set(style_vendored.SECTIONS)
-
     def test_every_shadowing_pair_names_rules_that_run(self):
         house = {f"{HOUSE}.{rule.stem}" for rule in (STYLES / HOUSE).glob("*.yml")}
         known = vendored_files() | house
@@ -111,9 +108,18 @@ class TestRepair:
         assert self._repair("proselint.Cliches") == "review"
         assert self._repair("Journals.Prove") == "review"
 
-    @pytest.mark.parametrize("rule", style_vendored.UNATTENDED)
-    def test_the_unattended_few_may_be_repaired(self, rule):
-        assert self._repair(rule) == "edit"
+    @pytest.mark.parametrize(
+        "rule",
+        [
+            "ai-tells.SycophancyMarkers",  # "absolutely continuous"
+            "ai-tells.ClosingPleasantries",  # "If anything is unclear, see step 2"
+            "proselint.Nonwords",  # "the pettifogger"
+        ],
+    )
+    def test_even_the_narrowest_lists_are_left_for_a_person(self, rule):
+        """Each once looked safe to repair unattended, and each matches
+        prose that is right as written (the example beside it)."""
+        assert self._repair(rule) == "review"
 
     @pytest.mark.parametrize(
         "rule",
@@ -218,9 +224,45 @@ def tokens_of(rule: Path) -> list[str]:
 # One sentence for each rule whose patterns are all regular expressions
 # and whose file carries no examples, so `tokens_of` cannot reach it.
 SAMPLES = (
+    # ai-tells.ContrastiveFormulas, one sentence per family in its file
     "It's not just a cache; it's a coordination layer.",
-    "It runs with no setup and no config.",
-    "What we found is that the cache helps.",
+    "It's not about speed; it's about trust.",
+    "It's not about speed. It's about trust.",
+    "This isn't about speed; it's about trust.",
+    "This isn't a cache. It's a coordination layer.",
+    "It's more than a cache; it's a coordination layer.",
+    "It's less about speed and more about trust.",
+    "Speed isn't the point; trust is.",
+    "The real problem isn't speed; it's trust.",
+    "What matters isn't speed; it's trust.",
+    "The question isn't speed; it's trust.",
+    "It's not whether it works; it's how it fails.",
+    "Caching isn't a feature. It's a layer.",
+    "A refinement, not a rivalry.",
+    "Not only fast but also cheap.",
+    "Not because it is fast, but because it is cheap.",
+    "These aren't features. They're layers.",
+    "These aren't features; they're layers.",
+    "Plugins aren't features. They're layers.",
+    "It doesn't mean speed. It means trust.",
+    "Caching doesn't mean speed. It means trust.",
+    "The colophon isn't a disclaimer. It's a feature.",
+    "A cache isn't a feature. It's a layer.",
+    "Our cache isn't a feature. It's a layer.",
+    "WCAG 2.1 AA isn't a checkbox. It's a constraint.",
+    # ai-tells.NegatedPair
+    "It runs with no database and no network.",
+    "It runs without a database or a round-trip.",
+    "It needs neither the database nor a round-trip.",
+    "It doesn't need credentials and doesn't call the network.",
+    "Neither the database nor the network is required.",
+    # ai-tells.PseudoCleft
+    "What you get is one row per blob.",
+    "What changed is the direction.",
+    "All you need is the offset.",
+    "The only thing that changes is the direction.",
+    "Where this pays off is the read path.",
+    # proselint.Uncomparables, proselint.Hyperbole, Microsoft.Plurals, Microsoft.Uppercase
     "This result is very unique.",
     "It works!!",
     "Check the file(s) first.",
@@ -239,6 +281,13 @@ DIFFERENT_CHECKS = {
     ("Journals.PValueCase", "PLOS.PValues"),  # case / precision
     ("Journals.PValueCase", "Journals.PValueZero"),  # case / zero
     ("ai-tells.ContrastiveFormulas", "chitragupta.Just"),  # "just" inside "not just X; it's Y"
+    # A word another rule flags, inside a whole-sentence formula match.
+    ("ai-tells.ContrastiveFormulas", "chitragupta.Acronyms"),
+    ("ai-tells.ContrastiveFormulas", "chitragupta.DefectMarkers"),
+    ("ai-tells.ContrastiveFormulas", "Journals.Hype"),
+    ("ai-tells.ContrastiveFormulas", "Journals.Significant"),
+    ("ai-tells.ContrastiveFormulas", "proselint.Very"),
+    ("ai-tells.NegatedPair", "Journals.Prove"),
 }
 
 

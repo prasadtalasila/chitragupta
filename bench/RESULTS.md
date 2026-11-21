@@ -7780,8 +7780,7 @@ which rule wins.
 
 **Result: 33 new occurrences (27 distinct findings).** 32 are in the
 two host drafts and one in the sample project (its survey's "very");
-its tutorial and chapters get none. Every one is `review`, and none of
-the three unattended rules fired.
+its tutorial and chapters get none. Every one is `review`.
 
 | Read | Occurrences | What |
 | --- | --- | --- |

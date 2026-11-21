@@ -10,8 +10,11 @@ live in those files without editing them, so they live here:
   The packages' messages name none, and a finding a reader cannot trace
   to a rule is one they cannot judge, so the section is appended to the
   message on the way out.
-- **Which few may be repaired unattended.** Every other vendored rule is
-  `review` (see `style_rules.with_repair`).
+- **That none may be repaired unattended.** Every vendored finding is
+  `review` (see `style_rules.with_repair`): the packages were written for
+  other prose, and even their narrowest lists hold words a draft uses
+  correctly ("absolutely continuous", "If anything is unclear" in a
+  tutorial, the noun "pettifogger").
 - **Which rule wins when two report the same words.** The packages were
   written independently, and a handful of phrases sit in two of them:
   "at the end of the day" is both a cliché and a conclusion marker. The
@@ -58,25 +61,16 @@ SECTIONS = {
     "Microsoft.Wordiness": 4,
 }
 
-# The vendored rules whose findings the review agenda may repair without
-# asking. Each matches text that is never right in a finished draft, and
-# its repair changes no claim: a chatbot's sign-off or praise is deleted,
-# and a non-word ("analyzation") gets its one correct form.
-UNATTENDED = (
-    "ai-tells.ClosingPleasantries",
-    "ai-tells.SycophancyMarkers",
-    "proselint.Nonwords",
-)
-
 # Rule -> the rules that win over it. A finding of the rule on the left
 # whose span overlaps, on the same line, a finding of one on the right is
 # dropped. The winner is the more specific check, or the one whose
-# message says what to write instead; a house rule always wins.
+# message says what to write instead.
 SHADOWED_BY = {
     "proselint.Cliches": ("ai-tells.ConclusionMarkers", "Microsoft.Wordiness"),
     "proselint.Needless": ("proselint.Nonwords",),
     "proselint.Skunked": ("ai-tells.ClosingPleasantries",),
     "proselint.Very": ("proselint.Uncomparables",),
+    "chitragupta.Strawman": ("ai-tells.ContrastiveFormulas",),
     "Microsoft.Wordiness": ("ai-tells.ClosingPleasantries", "ai-tells.ConclusionMarkers"),
     "Journals.Prove": ("ai-tells.ClosingPleasantries",),
     "ai-tells.SycophancyMarkers": ("chitragupta.DefectMarkers", "ai-tells.ClosingPleasantries"),

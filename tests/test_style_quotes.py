@@ -71,6 +71,20 @@ def test_an_unclosed_quote_does_not_reach_the_next_paragraph():
     assert _kept(text, finding) == [finding]
 
 
+def test_one_character_quotations_do_not_swallow_the_words_between():
+    text = 'The "A" variant was built in order to scale, unlike the "B" variant.\n'
+    start = text.index("in order to") + 1
+    finding = _finding(1, start, start + 10)
+    assert _kept(text, finding) == [finding]
+
+
+def test_a_finding_on_the_second_backtick_of_a_latex_quote_is_kept():
+    """The LaTeX marks are two characters, so the quotation opens after both."""
+    text = "So ``it holds'' here.\n"
+    finding = _finding(1, 5, 9)
+    assert _kept(text, finding) == [finding]
+
+
 def test_an_inch_mark_does_not_open_a_quotation():
     """`quote_spans`' guard, shared with the verbatim scan: a 6" pipe is
     a measurement, and must not silence the sentence that follows it."""

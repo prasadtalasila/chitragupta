@@ -45,7 +45,8 @@ def drop_quoted(findings: list[dict], text: str) -> list[dict]:
     for line in text.split("\n"):
         starts.append(starts[-1] + len(line) + 1)
     quotes = quote_spans.double_quoted(text)
-    quotes += [(m.start(), m.end()) for m in LATEX_QUOTED.finditer(text)]
+    # Narrowed by one each side, so a finding must start after both backticks.
+    quotes += [(m.start() + 1, m.end() - 1) for m in LATEX_QUOTED.finditer(text)]
     return [f for f in findings if not _quoted(f, starts, quotes)]
 
 

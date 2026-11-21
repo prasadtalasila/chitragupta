@@ -3,7 +3,11 @@
 Two checks exempt a quotation, and they must agree on what one is: the
 verbatim scan (`review/verbatim_check/_masking.py`, which adds Markdown
 blockquote lines) and the prose check (`style_quotes.py`, which adds
-LaTeX's ``...''). Moved here from the first of them unchanged.
+LaTeX's ``...''). Moved here from the first of them, with one change:
+a quotation of a single character ("A") is a span. The old two-character
+minimum left its closing mark to open a span that ran to the next
+quotation, which hid the draft's own words in between from the prose
+check, and demoted them in the verbatim scan.
 """
 
 import re
@@ -38,7 +42,7 @@ import re
 # half-applied smart-quote pass produces exactly that, and refusing it
 # would lose real quotations to punctuation hygiene.
 _BODY = r'(?:(?!\n[ \t]*\n)[^"”])'
-DOUBLE_QUOTED = re.compile(rf'(?<![0-9])["“]{_BODY}{{2,}}["”]')
+DOUBLE_QUOTED = re.compile(rf'(?<![0-9])["“]{_BODY}+["”]')
 
 
 def double_quoted(text: str) -> list[tuple[int, int]]:

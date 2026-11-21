@@ -100,7 +100,7 @@ overlap, **§9 is the one that governs**.
 | Dialect conformance against `scope.md`'s `language:` | yes | yes when the dialect comes from `scope.md` or `--language`; a person decides when it comes from `config.toml` |
 | §2's defect markers other than "just" | yes | yes |
 | "just" | no: the adjective ("a just outcome") is correct prose | no; a person decides |
-| §4's and §7's fixed phrases: clichés, hype, wordy stock phrases, machine-prose habits, statistics reporting | yes, for a fixed list | no, a person decides, except a chatbot's sign-off or praise and a non-word ("analyzation") |
+| §4's and §7's fixed phrases: clichés, hype, wordy stock phrases, machine-prose habits, statistics reporting | yes, for a fixed list | no; a person decides |
 | Acronym expanded at first use, and matching the vocabulary | yes | yes |
 | A plain term defined once and used consistently | yes, given the dossier glossary | not checked |
 | Terminology and notation used consistently | yes, given a registry | no: the book-scale `registry check` reports for a person, and no agenda class carries it |

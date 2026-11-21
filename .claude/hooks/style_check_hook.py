@@ -42,13 +42,13 @@ import draft_target
 import safe_path
 
 # What the report leads with, so the agent reads the caveat before the
-# list. The check sees §9's decidable rules and nothing else, and a
-# quoted "simply" is indistinguishable to it from the draft's own voice.
+# list. The check sees §9's decidable rules and nothing else; a
+# quotation is skipped as the source's wording, a single-quoted one is not.
 PREAMBLE = (
     "Prose findings from `python -m chitragupta.draft style` (WRITING-STANDARDS.md "
     "§9's decidable rules only -- it is silent on whether a paragraph leads "
-    "with its point, and it cannot tell a quotation from the draft's own "
-    "voice). A review aid, not a gate: nothing here blocks, and a finding is "
+    "with its point, and it skips only double-quoted and block quotations). "
+    "A review aid, not a gate: nothing here blocks, and a finding is "
     "a place to look rather than a defect."
 )
 
