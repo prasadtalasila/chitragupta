@@ -1417,7 +1417,8 @@ chitragupta review quotation content/drafts/survey.md
 (`id`, `citekey`, `verdict`, `tier`, `pages`, `reason`, `index`, `of`)
 and a `findings` object per absent one (`id`, `citekey`, `quote`,
 `near_miss_page`, `near_miss_score`, `index`, `of`). `index` is the
-quote's place among its block's `quote:` lines and `of` their count;
+quote's place among its block's `quote:` lines and `of` their count,
+an identical repeat counted once;
 `quotes_total` counts quotes, not sources. `tier` is `exact`, `exact-pair`,
 `elided` or `elided-pair`.
 

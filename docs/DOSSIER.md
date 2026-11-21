@@ -348,7 +348,8 @@ quote: an optional verbatim span, quotable-only
   locator at its end (`(p. 24)`) and quotation marks around the whole
   of it are stripped before anything reads it, since the page is found
   by locating the span. `relevance:`, `claim:` and a legacy `support:`
-  are read once, and a repeat of one is ignored.
+  are read once: only the first is read, and `check-evidence` warns
+  about the rest.
 
 **A `support:` field.** An older block may carry `support:` instead of
 `claim:`/`quote:`, holding in practice a raw retrieval window

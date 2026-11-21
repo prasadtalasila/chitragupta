@@ -287,7 +287,8 @@ class Checked:
     near_miss_page: int | None = None
     near_miss_score: float = 0.0
     reason: str | None = None
-    # Its place among its block's `quote:` lines (#1174), set by the caller.
+    # Its place among its block's distinct `quote:` lines (#1174), set by
+    # the caller.
     index: int = 1
     of: int = 1
 

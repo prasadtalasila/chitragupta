@@ -55,8 +55,11 @@ _FIELD = re.compile(r"^-?\s*(?P<field>claim|quote|relevance|support):\s*", re.MU
 # `p24` behind, which no source contains. The page is derived by
 # locating the quote; a page written by hand is not compared, only
 # dropped, which is the cost the owner accepted for not warning.
+# A dot or a space must follow `p`/`pp`, so a study label such as `(P1)`
+# or `[P12]` -- how a systematic review names its primary studies -- is
+# text, not a locator, and stays.
 _LOCATOR = re.compile(
-    r"\s*[(\[]\s*(?:pages?|pp?\.?)\s*\d+(?:\s*[-\u2013]\s*\d+)?\s*[)\]]\s*\.?\s*$",
+    r"\s*[(\[]\s*(?:pages?\s+|pp?\.\s*|pp?\s+)\d+(?:\s*[-\u2013]\s*\d+)?\s*[)\]]\s*\.?\s*$",
     re.IGNORECASE,
 )
 _DOUBLE_MARKS = '"\u201c\u201d'
@@ -80,12 +83,12 @@ def _values(block: str) -> list[tuple[str, str]]:
 def fields(block: str) -> dict[str, str]:
     """`block`'s fields, keyed by name, the first value of each.
 
-    Public because `chitragupta/evidence_appendix.py` reads the same file.
     `evidence.md` has one field parser and this module is it: a second one
     would be a second place for the field set to drift. A `quote:` may
-    repeat (#1174), so a caller after quotes reads `quotes()`, not this;
-    the other three fields are single-valued, and a repeat of one is what
-    `repeated_fields` warns about.
+    repeat (#1174), so a caller after quotes reads `quotes()`, never this:
+    the `quote` key here is the first raw, un-normalised value, and
+    nothing reads it. The other three fields are single-valued, and a
+    repeat of one is what `repeated_fields` warns about.
     """
     found: dict[str, str] = {}
     for name, value in _values(block):

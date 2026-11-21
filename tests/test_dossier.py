@@ -3898,7 +3898,7 @@ class TestSeveralQuotes:
         ],
     )
     def test_a_page_locator_and_surrounding_marks_come_off(self, written):
-        assert _evidence_check.normalise_quote(written).rstrip(".") == "the span"
+        assert _evidence_check.normalise_quote(written) == "the span"
 
     @pytest.mark.parametrize(
         "kept",
@@ -3908,6 +3908,9 @@ class TestSeveralQuotes:
             "the span (p. 24) and then more",
             "see section 3 (24)",
             '"unclosed span',
+            "a property every twin satisfies (P1)",
+            "as the primary study reports [P12]",
+            "the span (p3)",
         ],
     )
     def test_a_mark_or_number_that_belongs_to_the_text_stays(self, kept):
@@ -3943,9 +3946,7 @@ class TestSeveralQuotes:
         assert "reads like quote 1 of 2 with its words moved" in out
         assert "overlap with quote 1 of 2" in out
 
-    def test_check_evidence_warns_on_a_repeated_claim_and_says_nothing_clean(
-        self, draft, capsys
-    ):
+    def test_check_evidence_warns_on_a_repeated_claim_and_says_nothing_clean(self, draft, capsys):
         _fill_dossier(draft, evidence=_RESTATED_BLOCK + "- claim: a second claim\n")
         assert dossier.main(["check-evidence", str(draft)]) == 0
         out = capsys.readouterr().out

@@ -350,9 +350,7 @@ class TestQuoteFormatting:
             draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con
         )
 
-    def test_every_quote_in_a_block_is_printed_under_one_heading(
-        self, isolated_config, ledger_con
-    ):
+    def test_every_quote_in_a_block_is_printed_under_one_heading(self, isolated_config, ledger_con):
         """#1174: a second `quote:` used to be dropped without a word."""
         out = self._built(
             isolated_config,
