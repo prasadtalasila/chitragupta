@@ -5,7 +5,7 @@
 > superpowers:executing-plans to implement this plan task-by-task. Steps
 > use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **built** (v6.178.1). Written 2026-11-21; signed off with changes by an
+Status: **built** (v6.178.2). Written 2026-11-21; signed off with changes by an
 independent review the same day. The changes are folded into the tasks
 below and listed here.
 

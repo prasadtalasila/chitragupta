@@ -1,6 +1,6 @@
 # `figure check`: the house idioms, two rule holes and a clean exemplar
 
-Status: **built**, on branch `fix-1161-1163-figure-check` (v6.178.1,
+Status: **built**, on branch `fix-1161-1163-figure-check` (v6.178.2,
 PATCH, not released). Changed on the way, from the sign-off review:
 c3's segment overlap is now measured both ways round (a short edge
 listed first scored 0); arrow specs are last-wins with a closed tip
