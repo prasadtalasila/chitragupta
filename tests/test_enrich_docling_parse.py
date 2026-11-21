@@ -27,7 +27,6 @@ from chitragupta.enrich import (
     docling_parse,
 )
 from chitragupta.enrich.corpus import CorpusDoc
-from tests.conftest import thread_executor
 
 
 # What `_docling_crops` writes: the picture's index in
@@ -1315,7 +1314,7 @@ class TestParseCorpus:
 
 class TestParseCorpusParallel:
     @pytest.fixture(autouse=True)
-    def _four_workers(self, isolated_config, monkeypatch):
+    def _four_workers(self, isolated_config, monkeypatch, thread_executor):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
@@ -1458,7 +1457,7 @@ class TestParseCorpusParallelBrokenPool:
     lost every fingerprint from the run, completed documents included."""
 
     @pytest.fixture(autouse=True)
-    def _pool(self, isolated_config, monkeypatch):
+    def _pool(self, isolated_config, monkeypatch, thread_executor):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
@@ -1763,7 +1762,7 @@ class TestABrokenPoolIsRebuiltRatherThanAbandoned:
         assert result["detail"]["poison"] == docling_parse.POOL_DEATH_ERROR
 
     def test_an_ordinary_parse_failure_is_still_only_partial(
-        self, isolated_config, fake_docling, monkeypatch, tmp_path
+        self, isolated_config, fake_docling, monkeypatch, thread_executor, tmp_path
     ):
         """The escalation must be to abandoned work, not to any failure.
         A PDF the backend read and could not parse is a deterministic,
@@ -1959,7 +1958,7 @@ class TestParallelHelpers:
 
 class TestParseCorpusParallelEdges:
     @pytest.fixture(autouse=True)
-    def _pool(self, isolated_config, monkeypatch):
+    def _pool(self, isolated_config, monkeypatch, thread_executor):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(_docling_pool, "_executor_for", thread_executor)
 
@@ -2102,7 +2101,7 @@ class TestParseCorpusInterrupt:
     job, so Ctrl+C over a real corpus drained the whole backlog first."""
 
     @pytest.fixture(autouse=True)
-    def _pool(self, isolated_config, monkeypatch):
+    def _pool(self, isolated_config, monkeypatch, thread_executor):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
@@ -2318,7 +2317,7 @@ class TestUrlOnlyEntryIsSkippedNotAnError:
         assert status["d0"].startswith("ok:")
 
     def test_the_pool_path_reports_a_skip(
-        self, isolated_config, fake_docling, monkeypatch, tmp_path
+        self, isolated_config, fake_docling, monkeypatch, thread_executor, tmp_path
     ):
         """The two paths report failures at two different call sites --
         the serial loop in parse_corpus and _adopt_cached in the pool leg
