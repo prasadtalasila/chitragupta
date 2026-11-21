@@ -5,8 +5,21 @@ cases, because a rule that fires on a sound figure teaches an author to
 allow it rather than read it.
 """
 
+from pathlib import Path
+
+import pytest
+
+from chitragupta.figure import _check
 from chitragupta.figure._connectors import MM, connectors
-from chitragupta.figure._route_rules import attach_points, coincident, dangling, orthogonal
+from chitragupta.figure._route_rules import (
+    _overlap,
+    attach_points,
+    coincident,
+    dangling,
+    orthogonal,
+)
+from chitragupta.page import ARTICLE
+from tests.conftest import needs_tikz
 from tests.figure_drawn_fixtures import drawn, line, node
 
 A = node("a", (0, 0, 40, 20))
@@ -100,6 +113,38 @@ class TestCoincident:
         (finding,) = coincident(cons)
 
         assert finding.measurement == "share 3.0mm"
+
+    def test_c3_measures_a_short_edge_listed_before_the_long_one(self):
+        """The overlap of two segments is one length whichever comes
+        first: a short edge listed before the long edge it lies on
+        measured 0 (#1163)."""
+        assert _overlap(((0, 0), (10, 0)), ((0, 0), (100, 0))) == 10.0
+        assert _overlap(((0, 0), (100, 0)), ((0, 0), (10, 0))) == 10.0
+
+    def test_c3_fires_on_a_return_edge_on_its_forward_edge(self):
+        cons = _cons([A, B], [line((40, 10), (100, 10)), line((100, 10), (41.5, 10), index=2)])
+
+        (finding,) = coincident(cons)
+
+        assert (finding.target, finding.measurement) == ("a->b+b->a", "b->a lies wholly on a->b")
+
+    def test_c3_fires_on_a_skip_edge_over_a_chain(self):
+        S = node("s", (0, 0, 40, 20))
+        P = node("p", (100, 0, 140, 20))
+        G = node("g", (200, 0, 240, 20))
+        cons = _cons(
+            [S, P, G],
+            [
+                line((40, 10), (100, 10)),
+                line((140, 10), (200, 10), index=2),
+                line((40, 10), (200, 10), index=3),
+            ],
+        )
+
+        assert {(f.target, f.measurement) for f in coincident(cons)} == {
+            ("s->p+s->g", "s->p lies wholly on s->g"),
+            ("p->g+s->g", "p->g lies wholly on s->g"),
+        }
 
 
 class TestAttach:
@@ -267,6 +312,33 @@ class TestBenchedShapes:
 
         assert coincident(cons) == []
 
+    def test_c3_holds_on_a_fork_with_a_long_trunk(self):
+        """A bus fan-out: a 30mm trunk, then two branches."""
+        far_b = node("b", (200, -20, 240, 0))
+        far_c = node("c", (200, 40, 240, 60))
+        x = 40 + 30 * MM
+        cons = _cons(
+            [A, far_b, far_c],
+            [
+                line((40, 10), (x, 10), (x, -10), (200, -10)),
+                line((40, 10), (x, 10), (x, 50), (200, 50), index=2),
+            ],
+        )
+
+        assert coincident(cons) == []
+
+    def test_c3_holds_on_a_t_fork(self):
+        """One branch runs straight on past the trunk, the other turns
+        off it."""
+        far_b = node("b", (200, 0, 240, 20))
+        far_c = node("c", (100, 40, 140, 60))
+        cons = _cons(
+            [A, far_b, far_c],
+            [line((40, 10), (200, 10)), line((40, 10), (70, 10), (70, 50), (100, 50), index=2)],
+        )
+
+        assert coincident(cons) == []
+
     def test_c4_holds_on_the_ends_of_a_fork(self):
         C = node("c", (100, 40, 140, 60))
         cons = _cons(
@@ -366,3 +438,56 @@ def test_c4_does_not_measure_a_zone():
     findings, _ = attach_points(cons, drawn([A, zone, inner], []).nodes)
 
     assert findings == []
+
+
+# A doc example figure carries the house block; the reproductions below
+# keep its block and replace its picture.
+_BLOCK_SOURCE = (
+    Path(__file__).resolve().parent.parent
+    / "docs"
+    / "figure-checks"
+    / "examples"
+    / "c3-coincident"
+    / "faulty.tex"
+)
+
+_CHAIN = r"""
+  \node[cgbox, text width=18mm] (sync) at (0,0) {\cglab{Sync}{read}};
+  \node[cgbox, text width=18mm] (parse) at (40mm,0) {\cglab{Parse}{split}};
+  \node[cgkey, text width=18mm] (gate) at (80mm,0) {\cglab{Gate}{check}};
+"""
+
+
+def _compiled(tmp_path: Path, picture: str):
+    source = _BLOCK_SOURCE.read_text(encoding="utf-8")
+    head = source[: source.rindex("\\begin{tikzpicture}[cg]")]
+    path = tmp_path / "fig.tex"
+    body = f"\\begin{{tikzpicture}}[cg]{picture}\\end{{tikzpicture}}%\n"
+    path.write_text(head + body, encoding="utf-8")
+    return _check.check(path, ARTICLE.text_width_pt)
+
+
+@pytest.mark.slow
+@needs_tikz
+class TestCoincidentCompiled:
+    """#1163's reproductions, compiled: the probe's own ends, not
+    synthetic ones."""
+
+    def test_c3_fires_on_a_return_edge_drawn_over_its_forward_edge(self, tmp_path):
+        picture = r"""
+  \node[cgbox, text width=22mm] (draft) at (0,0) {\cglab{Draft}{cite keys}};
+  \node[cgkey, text width=22mm] (gate) at (66mm,0) {\cglab{Gate}{check keys}};
+  \draw[cgedge] (draft) -- (gate);
+  \draw[cgback] (gate) -- (draft);
+"""
+        result = _compiled(tmp_path, picture)
+
+        assert "c3-coincident" in {f.rule for f in result.findings}
+
+    @pytest.mark.parametrize("skip_first", [False, True], ids=["skip-last", "skip-first"])
+    def test_c3_fires_on_a_skip_edge_over_a_chain(self, tmp_path, skip_first):
+        chain = "  \\draw[cgedge] (sync) -- (parse);\n  \\draw[cgedge] (parse) -- (gate);\n"
+        skip = "  \\draw[cgedge] (sync) -- (gate);\n"
+        result = _compiled(tmp_path, _CHAIN + (skip + chain if skip_first else chain + skip))
+
+        assert "c3-coincident" in {f.rule for f in result.findings}

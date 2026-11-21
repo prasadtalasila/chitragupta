@@ -75,19 +75,34 @@ def _has_diagonal(line: DrawnLine) -> bool:
 
 def coincident(cons: list[Connector]) -> list[Finding]:
     """`c3-coincident`: two connectors running together for more than
-    2mm, so one hides the other. Two that share an end point are a trunk
-    that forks or merges (`retrieval.tex`), which the reader follows."""
+    2mm, so one hides the other. Two that share an end point are excused
+    only when both leave the shared stretch: a trunk that forks or
+    merges (`retrieval.tex`), which the reader follows. One lying on the
+    other end to end -- a return edge on its forward edge, a chain edge
+    under a skip edge -- is reported as such (#1163)."""
     found = []
     for one, other in combinations(cons, 2):
-        if _share_an_end(one.line, other.line):
-            continue
         shared = sum(
             _overlap(s, t) for s in segments(one.line.points) for t in segments(other.line.points)
         )
-        if shared > _SHARED_MM * MM:
+        if shared <= _SHARED_MM * MM:
+            continue
+        if not _share_an_end(one.line, other.line):
             found.append(
                 Finding("c3-coincident", f"{one.name}+{other.name}", f"share {shared / MM:.1f}mm")
             )
+            continue
+        left, right = _length(one.line) - shared, _length(other.line) - shared
+        if min(left, right) > _SHARED_MM * MM:
+            continue
+        lying, under = (one, other) if left < right else (other, one)
+        found.append(
+            Finding(
+                "c3-coincident",
+                f"{one.name}+{other.name}",
+                f"{lying.name} lies wholly on {under.name}",
+            )
+        )
     return found
 
 
@@ -98,16 +113,27 @@ def _share_an_end(one: DrawnLine, other: DrawnLine) -> bool:
     )
 
 
+def _length(line: DrawnLine) -> float:
+    return sum(math.dist(p, q) for p, q in segments(line.points))
+
+
 def _overlap(s: tuple[Point, Point], t: tuple[Point, Point]) -> float:
-    """How long two segments lie along one another (0 unless parallel and
-    within `_COLLINEAR_PT`)."""
+    """How long two segments lie along one another: 0 unless both ends
+    of `t` are within `_COLLINEAR_PT` of the line through `s`, then the
+    length of `t`'s projection that falls on `s`. Measured against the
+    whole line, not the segment, so the answer does not depend on which
+    of the two is the longer (#1163)."""
     (p, q), (r, u) = s, t
     length = math.dist(p, q)
     if length == 0 or math.dist(r, u) == 0:
         return 0.0
-    if max(point_segment(r, p, q), point_segment(u, p, q)) > _COLLINEAR_PT:
-        return 0.0
     dx, dy = (q[0] - p[0]) / length, (q[1] - p[1]) / length
+
+    def off(point: Point) -> float:
+        return abs((point[0] - p[0]) * dy - (point[1] - p[1]) * dx)
+
+    if max(off(r), off(u)) > _COLLINEAR_PT:
+        return 0.0
     a = (r[0] - p[0]) * dx + (r[1] - p[1]) * dy
     b = (u[0] - p[0]) * dx + (u[1] - p[1]) * dy
     return max(0.0, min(max(a, b), length) - max(min(a, b), 0.0))
