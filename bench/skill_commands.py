@@ -64,16 +64,19 @@ def subcommands(path: tuple) -> frozenset:
 
 def help_choices(text: str) -> frozenset:
     """The subcommands a `--help` text lists: the first word of each line
-    of its click-style `Commands:` block, or, from an install older than
+    of its click-style `Commands:` block at the block's own indent (a
+    deeper line is a wrapped description), or, from an install older than
     that layout, the usage line's first positional `{a,b}` group."""
     lines = text.splitlines()
     if "Commands:" in lines:
-        block = lines[lines.index("Commands:") + 1 :]
-        names = []
-        for line in block:
+        names, indent = [], None
+        for line in lines[lines.index("Commands:") + 1 :]:
             if not line.strip():
                 break
-            names.append(line.split()[0])
+            depth = len(line) - len(line.lstrip())
+            indent = depth if indent is None else indent
+            if depth == indent:
+                names.append(line.split()[0])
         return frozenset(names)
     words = text.split("\n\n")[0].split()
     for before, word in zip(["usage:", *words], words):

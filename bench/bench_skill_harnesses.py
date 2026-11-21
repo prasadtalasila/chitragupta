@@ -72,9 +72,9 @@ from skill_commands import (  # noqa: E402
     commands_run_in,
     compare,
     expected_commands,
-    help_choices,
     handed_off,
     handoffs,
+    help_choices,
     score_commands,
     skill_files,
 )
@@ -1021,6 +1021,8 @@ Commands:
   gate        Verify every citekey in a draft against the ledger
   dossier     The working state behind a draft: create it...
   diff        What changed
+  a-command-name-long-enough-to-wrap
+                    Its description, on a line of its own
 
   Run 'python -m chitragupta.draft COMMAND --help' for a command's flags.
 """
@@ -1031,7 +1033,8 @@ def _check_help_layouts() -> None:
     command prints now and in the argparse usage line an older install
     prints; a leaf command lists none, and an option's choices are not
     subcommands."""
-    assert help_choices(CLICK_HELP) == {"gate", "dossier", "diff"}, help_choices(CLICK_HELP)
+    want = {"gate", "dossier", "diff", "a-command-name-long-enough-to-wrap"}
+    assert help_choices(CLICK_HELP) == want, help_choices(CLICK_HELP)
     old = "usage: draft.py [-h] {gate,dossier,diff} ...\n\nThe drafting layer.\n"
     assert help_choices(old) == {"gate", "dossier", "diff"}, help_choices(old)
     leaf = "Usage: python -m chitragupta.draft gate [OPTIONS] FILE...\n\n  Fail if...\n"

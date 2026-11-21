@@ -48,16 +48,20 @@ from skill_commands import (
 )
 
 
-def latest_groups(paths: list) -> dict:
-    """{(harness, skill): rows}, each group from the last file holding it."""
+def latest_groups(paths: list) -> "tuple[dict, dict]":
+    """({(harness, skill): rows}, {(harness, skill): file}), each group
+    from the last file holding it; the file is printed beside its rates,
+    so which rows were judged is never silent."""
     groups: dict = {}
+    sources: dict = {}
     for path in paths:
         rows = json.loads(Path(path).read_text(encoding="utf-8"))
         found: dict = {}
         for row in rows:
             found.setdefault((row["harness"], row["skill"]), []).append(row)
         groups.update(found)
-    return groups
+        sources.update({key: str(path) for key in found})
+    return groups, sources
 
 
 def rates(rows: list, runs: int) -> "tuple[float, float]":
@@ -116,9 +120,14 @@ def command_rates(rows: list, runs: int, trials: int, seed: int) -> "tuple[float
 
 
 def simulate(
-    groups: dict, runs: int, model: str = "runs", trials: int = 20000, seed: int = 1210
+    groups: dict,
+    runs: int,
+    model: str = "runs",
+    trials: int = 20000,
+    seed: int = 1210,
+    sources: "dict | None" = None,
 ) -> dict:
-    """{harness: {skill: {"fail", "inconclusive", "runs"}}}."""
+    """{harness: {skill: {"fail", "inconclusive", "runs", "file"}}}."""
     out: dict = {}
     for (harness, skill), rows in sorted(groups.items()):
         if model == "runs":
@@ -129,6 +138,7 @@ def simulate(
             "fail": fail,
             "inconclusive": inconclusive,
             "runs": len(rows),
+            "file": (sources or {}).get((harness, skill), ""),
         }
     return out
 
@@ -152,7 +162,7 @@ def report(result: dict) -> None:
         for skill, row in skills.items():
             print(
                 f"  {skill:<26} false fail {row['fail']:6.1%}   "
-                f"inconclusive {row['inconclusive']:6.1%}   ({row['runs']} runs)"
+                f"inconclusive {row['inconclusive']:6.1%}   ({row['runs']} runs, {row['file']})"
             )
         fails = [row["fail"] for row in skills.values()]
         print(f"  {'range over skills':<26} {min(fails):.1%} to {max(fails):.1%}")
@@ -199,7 +209,8 @@ def main(argv=None) -> int:
     parser.add_argument("--json", type=Path, help="also write the rates here")
     args = parser.parse_args(argv)
     self_check()
-    result = simulate(latest_groups(args.files), args.runs, args.model, args.trials)
+    groups, sources = latest_groups(args.files)
+    result = simulate(groups, args.runs, args.model, args.trials, sources=sources)
     report(result)
     if args.json:
         harnesses = list(result)
