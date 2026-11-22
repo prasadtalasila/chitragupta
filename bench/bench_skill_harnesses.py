@@ -1169,7 +1169,7 @@ def _check_harness_env(tmp: Path) -> None:
             del os.environ["PYTHONPATH"]
         else:
             os.environ["PYTHONPATH"] = saved
-    path = opencode_config(tmp / "oc")
+    path = opencode_config(tmp / "oc", model="qwen3.6-35b-a3b")
     config = json.loads(path.read_text(encoding="utf-8"))
     example = json.loads(
         (EXAMPLES / "opencode" / "opencode-provider.json").read_text(encoding="utf-8")
