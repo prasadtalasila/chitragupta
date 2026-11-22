@@ -272,6 +272,7 @@ Tier 1: stdlib only, no venv and no model, which is why these are not
 | `k1` | `RETRIEVAL_K1` | number, finite and at least 0 | `1.5` |
 | `b` | `RETRIEVAL_B` | number between 0 and 1 | `0.75` |
 | `acronym_expansion` | `RETRIEVAL_ACRONYM_EXPANSION` | boolean | `true` |
+| `spelling_correction` | `RETRIEVAL_SPELLING_CORRECTION` | boolean | `false` |
 | `max_passages_per_source` | `MAX_PASSAGES_PER_SOURCE` | positive integer | `3` |
 | `min_passage_tokens` | `MIN_PASSAGE_TOKENS` | positive integer | `20` |
 
@@ -295,6 +296,13 @@ Tier 1: stdlib only, no venv and no model, which is why these are not
   vendored five alone it changes nothing measurable. Query-side only: a
   query spelling a term out still cannot reach a document that only
   abbreviates it.
+- **`spelling_correction`**: a query word of five or more letters that
+  no paper contains also searches for the corpus word one typing slip
+  away (`strucutral` also searching for "structural"). The typed word
+  stays, and every correction is announced and logged. Off by default,
+  because turning it on re-ranks every draft's recorded queries in
+  `dossier status`. See
+  [RETRIEVAL.md](RETRIEVAL.md#-a-misspelled-query-word-can-reach-its-corpus-spelling).
 - **`max_passages_per_source`**: passage unit only. Stops one
   well-matched paper filling every slot; lower it to 1 for maximal
   source diversity.

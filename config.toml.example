@@ -454,6 +454,25 @@ b = 0.75
 #                                                           Default: true
 acronym_expansion = true
 
+# Also search a misspelled query word's corpus spelling.
+#
+# A query word no paper contains scores zero everywhere, so a typo such
+# as "strucutral" silently returns nothing or the wrong papers. With this
+# on, such a word also searches for the corpus word one typing slip away
+# (one letter missing, extra, wrong or swapped), choosing the word found
+# in the most papers. The word you typed stays in the query, and every
+# correction is announced and recorded by --log.
+#
+# Only words of five or more letters that no paper contains are
+# corrected, and only towards words found in at least two papers.
+# Citekeys are never touched.
+#
+# Off by default. `dossier status` re-ranks each draft's recorded queries
+# with the current settings, so switching this on can show as drift on
+# drafts whose queries held a typo. docs/RETRIEVAL.md has the figures.
+#                                                          Default: false
+spelling_correction = false
+
 # The two settings below apply to the *passage* unit only
 # (`retrieve search --unit passage`). The document unit takes
 # neither: it is one-result-per-citekey by construction, so there is

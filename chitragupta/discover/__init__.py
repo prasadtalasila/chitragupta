@@ -26,7 +26,8 @@ views in `_render`, the overview file in `_overview`.
 import argparse
 import sys
 
-from chitragupta import retrieval
+from chitragupta import retrieval, retrieval_added
+from chitragupta.retrieval_added import SPELLING
 from chitragupta.discover import (
     _data,
     _export,
@@ -202,6 +203,11 @@ def _topic_view(args, resolution, graph, topic_set, terms) -> int:
 
 def _search_view(args, phrase: str, note, topic_set) -> int:
     results = retrieval.search(phrase, k=args.k)
+    # On stderr, as `retrieve` does: a result that surfaced on a word the
+    # caller never typed must say so (#1232). Corrections only -- this
+    # view announced no acronym expansion before, and still does not.
+    added = retrieval.query_terms(phrase)[1]
+    retrieval_added.announce([entry for entry in added if entry.source == SPELLING])
     if not results:
         labels = ", ".join(t["label"] for t in topic_set["topics"])
         # Stderr in both modes, by the same rule the --out and --html

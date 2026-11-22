@@ -40,6 +40,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta import config, retrieval, review
+from chitragupta.retrieval_added import SPELLING, describe
 from chitragupta.review import _emit
 from chitragupta.citation_gate import extract_citekeys_from_line
 from chitragupta.review import _citation_coverage_render
@@ -50,6 +51,9 @@ from chitragupta.help_format import ClickParser
 class CoverageResult:
     candidates: dict[str, str] = field(default_factory=dict)  # citekey -> title
     cited: set[str] = field(default_factory=set)  # every citekey actually cited in the draft
+    # query -> the spelling corrections it was ranked with (#1232), only
+    # for queries that received one
+    corrections: dict[str, str] = field(default_factory=dict)
 
     @property
     def cited_candidates(self) -> set[str]:
@@ -81,10 +85,16 @@ def cited_citekeys(draft_path: Path) -> set[str]:
 
 def compute_coverage(draft_path: Path, queries: list[str], k: int = 5) -> CoverageResult:
     candidates: dict[str, str] = {}
+    corrections: dict[str, str] = {}
     for query in queries:
         for result in retrieval.search(query, k=k):
             candidates[result.citekey] = result.title
-    return CoverageResult(candidates=candidates, cited=cited_citekeys(draft_path))
+        corrected = [a for a in retrieval.query_terms(query)[1] if a.source == SPELLING]
+        if corrected:
+            corrections[query] = describe(corrected)
+    return CoverageResult(
+        candidates=candidates, cited=cited_citekeys(draft_path), corrections=corrections
+    )
 
 
 def _command(draft_path: Path, queries: list[str], k: int, as_json: bool, write: bool) -> str:
@@ -154,6 +164,8 @@ def coverage_payload(
             "findings": _findings(result),
         }
     )
+    if result.corrections:
+        payload["corrections"] = result.corrections
     return payload
 
 

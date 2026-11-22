@@ -486,7 +486,7 @@ resolution ladder; [EXPLORE-CLI.md](EXPLORE-CLI.md) walks the views.
 | `--origins LIST` | every class | Only topics of these origins: `seed`, `keyword`, `corroborated`, `emergent`. **`seed` and `keyword` each include the corroborated topics**, so `corroborated` alone asks for that intersection. Composes with every view; `--path` refuses a narrowing `--origins` (exit `2`). Exits `1` on an unknown class |
 | `--json` | off | Machine-readable output |
 | `--out FILE` | -- | Also write the topic view as a Markdown overview: papers, linked topics, and verbatim member-paper snippets |
-| `--k N` | `5` | Results to show when falling back to paper search |
+| `--k N` | `5` | Results to show when falling back to paper search. With `[retrieval].spelling_correction` on, that search notes any correction on stderr |
 | `--html FILE` | -- | Write the whole topic graph as one self-contained HTML page and exit. With `--json`, reports the write as `{"written": FILE}` |
 | `--app DIR` | -- | Write the topic graph as an interactive app directory, openable from `file://` ([EXPLORE-WEB.md](EXPLORE-WEB.md)). Composes with `--json` as `--html` does |
 
@@ -720,7 +720,7 @@ withdrawn).
 | `--windows N` | `evidence` | 2 | How many passages to return |
 | `--log DRAFT` | all | -- | Record the call, its collection and its payload size in DRAFT's dossier `retrieval.md` |
 | `--origin declared\|extended\|reground` | all | -- | With `--log`: whether this query came from `outline.md` verbatim, extended a section that came up thin, or re-ran a section's query with `--y-prev` after a hand edit |
-| `--y-prev TEXT` | `search` | -- | Append this text (bounded to 1500 characters) to the query for a second retrieval round, merged with the first and capped back to `--k` (FEATURE-ROADMAP.md's E4) |
+| `--y-prev TEXT` | `search` | -- | Append this text (bounded to 1500 characters) to the query for a second retrieval round, merged with the first and capped back to `--k` (FEATURE-ROADMAP.md's E4). The text is never spelling-corrected |
 
 ```bash
 chitragupta draft retrieve search "digital twin architecture" --k 15 \
@@ -739,6 +739,12 @@ needs a sync to migrate, or one that cannot be read; an empty result is
 not an error. A single-character query word never ranks, so either
 subcommand warns, naming it; two-character words (`AI`, `5G`) do rank
 ([RETRIEVAL.md](RETRIEVAL.md#-where-the-token-length-floor-came-from)).
+
+Words added to the query before ranking are noted on stderr, and `--log`
+records them in the `expanded` column: an acronym's expansion
+(`dt -> digital twin`) and, with `[retrieval].spelling_correction` on, a
+spelling correction (`strucutral ~> structural`)
+([RETRIEVAL.md](RETRIEVAL.md#-a-misspelled-query-word-can-reach-its-corpus-spelling)).
 
 ### 📄 `chitragupta draft render`
 
@@ -1197,7 +1203,10 @@ chitragupta review coverage content/drafts/survey.md \
 **`--json`**: the shared envelope plus `queries`, `k`, `coverage_pct`,
 `candidates_total`, `cited_candidates_total`, and one `findings` object
 per itemised citekey (`id`, `citekey`, `title`, `status`:
-`uncited_candidates` or `cited_outside_candidates`).
+`uncited_candidates` or `cited_outside_candidates`). With
+`[retrieval].spelling_correction` on, a `corrections` object maps each
+corrected query to what was added; both reports list them too. The key
+is absent when nothing was corrected.
 
 ### 📖 `chitragupta review provenance`
 

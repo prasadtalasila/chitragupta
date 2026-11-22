@@ -622,6 +622,18 @@ class TestModuleReloadWithEnvOverrides:
         monkeypatch.delenv("RETRIEVAL_ACRONYM_EXPANSION")
         importlib.reload(config)
 
+    def test_spelling_correction_defaults_to_off(self, _empty_config_toml):
+        """#1232 ships this off: switching it on moves the rankings
+        `dossier status` replays for every existing draft."""
+        assert config.SPELLING_CORRECTION is False
+
+    def test_spelling_correction_can_be_switched_on(self, monkeypatch, _empty_config_toml):
+        monkeypatch.setenv("RETRIEVAL_SPELLING_CORRECTION", "true")
+        importlib.reload(config)
+        assert config.SPELLING_CORRECTION is True
+        monkeypatch.delenv("RETRIEVAL_SPELLING_CORRECTION")
+        importlib.reload(config)
+
     def test_a_zero_field_weight_is_allowed(self, monkeypatch, _empty_config_toml):
         """0.0 means "discount this field entirely", which is a coherent
         thing to ask for and is one end of #770's own sweep -- so the
