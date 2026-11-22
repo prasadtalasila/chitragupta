@@ -712,3 +712,50 @@ class TestCorpusWiring:
         prepare(isolated_config)
         assert corpus.main(["discover"]) == 0
         assert "digital twin" in capsys.readouterr().out
+
+
+class TestSearchAnnouncesSpelling:
+    """#1232: the search fallback ranks through `query_terms`, so with
+    spelling correction on it can rank on a word nobody typed. It says so
+    on stderr, as `retrieve` does, so a `--json` caller's stdout stays a
+    payload."""
+
+    @pytest.fixture
+    def fallback(self, isolated_config, monkeypatch):
+        from chitragupta import retrieval, retrieval_spelling
+
+        prepare(isolated_config)
+
+        def refuse():
+            raise ImportError("no sentence_transformers")
+
+        monkeypatch.setattr(_resolve, "_load_model", refuse)
+        monkeypatch.setattr(
+            retrieval,
+            "search",
+            lambda query, k=5: [
+                retrieval.SearchResult(citekey="p3", title="Title of p3", score=1.2, snippet="...")
+            ],
+        )
+        monkeypatch.setattr(retrieval_spelling, "vocabulary", lambda _: {"structural": 3})
+
+    def test_a_correction_is_announced_on_stderr(self, fallback, capsys, monkeypatch):
+        monkeypatch.setattr(config, "SPELLING_CORRECTION", True)
+        assert discover.main(["strucutral", "--json"]) == 0
+        captured = capsys.readouterr()
+        assert "[note] spelling: searched 'structural' for 'strucutral'" in captured.err
+        assert json.loads(captured.out)["resolved_via"] == "search"
+
+    def test_nothing_is_announced_with_correction_off(self, fallback, capsys):
+        assert discover.main(["strucutral", "--json"]) == 0
+        assert "[note]" not in capsys.readouterr().err
+
+    def test_an_acronym_expansion_is_not_announced_here(self, fallback, capsys, monkeypatch):
+        """Only corrections: the fallback announced no acronym expansion
+        before #1232, and that is not this change's to alter."""
+        from chitragupta import acronyms
+
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", True)
+        assert discover.main(["DT", "strucutral", "--json"]) == 0
+        assert "acronym" not in capsys.readouterr().err

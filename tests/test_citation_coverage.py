@@ -4,6 +4,8 @@ made it into a draft's citations. Informational only, not a gate."""
 import json
 from pathlib import Path
 
+import pytest
+
 from chitragupta import config
 from chitragupta.review import _citation_coverage_render, citation_coverage
 
@@ -101,6 +103,49 @@ class TestFormatReport:
         result = citation_coverage.CoverageResult()
         report = _citation_coverage_render.format_report(draft, ["x"], result)
         assert "No candidates found" in report
+
+
+class TestSpellingCorrections:
+    """#1232: a coverage query can rank on a correction nobody typed, so
+    the report says which queries were corrected and how."""
+
+    @pytest.fixture
+    def corrected(self, ledger_con, monkeypatch):
+        add_citable(ledger_con, "a2024", title="Structural Health Monitoring")
+        add_citable(ledger_con, "b2024", title="Structural Models")
+        monkeypatch.setattr(config, "SPELLING_CORRECTION", True)
+
+    def test_corrections_are_recorded_per_query(self, corrected, tmp_path):
+        draft = tmp_path / "draft.md"
+        draft.write_text("Text [@a2024].\n")
+        result = citation_coverage.compute_coverage(draft, ["strucutral health", "models"])
+        assert result.corrections == {"strucutral health": "strucutral ~> structural"}
+        assert set(result.candidates) == {"a2024", "b2024"}
+
+    def test_both_reports_and_the_payload_show_them(self, corrected, isolated_config, capsys):
+        draft = _draft("Text [@a2024].\n")
+        argv = [str(draft), "--query", "strucutral health"]
+        assert citation_coverage.main(argv) == 0
+        out = capsys.readouterr().out
+        assert "Spelling corrections:\n  - strucutral health: strucutral ~> structural" in out
+        assert citation_coverage.main([*argv, "--json", "--write"]) == 0
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["corrections"] == {"strucutral health": "strucutral ~> structural"}
+        written = next(config.REVIEW_DIR.rglob("*.md")).read_text()
+        assert "## Spelling corrections" in written
+        assert "- `strucutral health`: strucutral ~> structural" in written
+
+    def test_without_corrections_nothing_changes(self, ledger_con, isolated_config, capsys):
+        """With correction off, the payload carries no `corrections` key
+        and neither report a section: byte-identical to before #1232."""
+        add_citable(ledger_con, "a2024", title="Digital Twin Composability")
+        draft = _draft()
+        argv = [str(draft), "--query", "digital twin", "--json", "--write"]
+        assert citation_coverage.main(argv) == 0
+        assert "corrections" not in json.loads(capsys.readouterr().out)
+        assert "Spelling corrections" not in next(config.REVIEW_DIR.rglob("*.md")).read_text()
+        assert citation_coverage.main([str(draft), "--query", "digital twin"]) == 0
+        assert "Spelling corrections" not in capsys.readouterr().out
 
 
 def _draft(text: str = "Composable twins [@a2024] are useful.\n", name: str = "draft.md") -> Path:

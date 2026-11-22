@@ -15,6 +15,9 @@ from chitragupta import review
 
 def format_report(draft_path, queries: list[str], result) -> str:
     lines = [f"Citation coverage for {draft_path}", f"Queries: {queries}"]
+    if result.corrections:
+        lines.append("Spelling corrections:")
+        lines += [f"  - {query}: {added}" for query, added in result.corrections.items()]
 
     if result.coverage_pct is None:
         lines.append("No candidates found for any query -- nothing to compare against.")
@@ -62,7 +65,12 @@ def render_markdown(draft_path, queries: list[str], k: int, result, command: str
         "",
     ]
     lines += [f"- `{query}`" for query in queries]
-    lines += ["", f"Top {k} results per query.", "", "## Coverage", ""]
+    lines += ["", f"Top {k} results per query.", ""]
+    if result.corrections:
+        lines += ["## Spelling corrections", ""]
+        lines += [f"- `{query}`: {added}" for query, added in result.corrections.items()]
+        lines.append("")
+    lines += ["## Coverage", ""]
 
     if result.coverage_pct is None:
         lines += ["No candidates found for any query -- nothing to compare against.", ""]
