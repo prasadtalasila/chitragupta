@@ -68,6 +68,7 @@ if it is obvious which is which, so:
 | [2026-09-15 (#762): field-weighted BM25](#2026-09-15-762-field-weighted-bm25----the-seam-lands-the-weights-do-not) | **Current** | Both BM25 ground truths, one arm at a time. **Not established, not declined** -- and the difference matters, because #770 adds two more fields to the same seam. Title weighting is weakly positive on both arms at 2.0 (nDCG +0.0025/+0.0029, no recall lost) but the live-logs gain is **one query in 96** and the two arms disagree in sign at 4.0 and 8.0, so no value is supported by both. Abstract weighting is the clean result: **recall unchanged at every weight** on the independent arm, a 1-to-4-query loss on the circular one, with the field populated for 318 of 642 items so it is not a coverage artefact -- which bears directly on #772. Every weight therefore ships at **1.0**, where the seam costs nothing. Measures no precision, and the 48-row drafting-pair truth again could not be run |
 | [2026-09-09 (#693): capping `support`'s premises works, and the lexical ranker does not](#2026-09-09-693-capping-supports-premises-works-and-the-lexical-ranker-does-not) | **Current, and it rules out the fix #693 proposed** | The cap is as cheap as arithmetic promised -- **5.3x to 102x** fewer entailment pairs, 62s of scoring down to 4s -- and it changes the report at every k from 8 to 128. **Argmax agreement is 0.565 at k = 128** and 0.146 at k = 8: the lexical pre-ranker and the entailment model disagree about which passage supports a claim more often than they agree, which is this project's own provenance-is-not-enough argument reappearing as a cost constraint. The harm is **strongly-supported claims reading as unsupported** (0.995 -> 0.138), i.e. false alarms at the top of the agenda, and the two drafts disagree about which k is safe. `support_premise_topk` therefore ships **off** and no k here is defensible. Points at a *semantic* pre-rank, which `embed_index.search()` already has the machinery for. n = 2, the only two of the five drafts still on disk; measures self-consistency, never precision, which still needs #757 |
 | [2026-09-17 (issue 786): does the cross-encoder need the source title?](#2026-09-17-issue-786-does-the-cross-encoder-need-the-source-title) | **Current; closes 786 as declined** | Pre-registered against `plans/786-title-augmented-rerank-input.md`, on the shipped pipeline's shape, with the ground-truth leak controlled for rather than assumed away. **Title-augmenting the reranker's input wins**: on 256 keyword queries recall@3 0.5508 -> 0.6133, nDCG@5 0.5118 -> 0.5860, the correct paper lost 1x and gained 21x, and the gain **survives the low-overlap stratum** (+3/+4 queries, nDCG +0.036) where a title-only reranker collapses. Confirmed on 96 real logged drafting queries and on a second reranker. Two things the issue does not mention: the unstratified gain is roughly double the real one, and `distinct@5` pays 3.684 -> 3.449. And **it is still not an argument for `rerank = true`** -- on the live logs, no reranker beats the reranked path, and the title only brings it back to level. The two failure modes 786 names are measured: the 512-token window never binds (133 -> 146 median tokens), and the within-document spread compresses 39% without collapsing to ties -- though on the live logs a **title-only** reranker is indistinguishable from title+snippet, so on real queries the document-level signal is most of what the cross-encoder is using. Arm B is still well short of BM25's 0.7695 / 0.8047 / 0.7321 on the same query set. **Declined despite clearing the bar**: the bar compared B to the reranker as it exists, but `rerank` is off by default, and against what actually ships the change is recall@5 +3 of 96 and nDCG +0.002 |
+| [2026-11-22 (#1232): spelling correction](#2026-11-22-1232-spelling-correction-off-and-on) | **Current** | 95.75% of corrections pick the right word; recall@1 on typo'd queries 0.563 -> 0.591, back to the clean-query 0.587. 2 of 964 logged queries changed, one for the worse. Ships off |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -7829,3 +7830,51 @@ this entry, also planted words inside the References list, which
 **Reproducing.** Run the command above over the same files and compare
 `(draft, rule, match)` sets; `tests/test_style_vendored.py` holds the
 overlap probe.
+
+## 2026-11-22 (#1232): spelling correction, off and on
+
+`bench_retrieval_spelling.py`, record in
+`results/2026-11-22-spelling-correction/`. 497 parsed papers, 69,454
+distinct words, 964 distinct logged queries. Acronym expansion off in
+every arm.
+
+**Accuracy.** Four synthetic typos of each 5+-letter query word the
+corpus contains (5,596 typos of 1,399 words):
+
+| Outcome | Typos |
+| --- | --- |
+| Corrected to the right word | 5,029 |
+| Corrected to another word | 223 |
+| No correction | 78 |
+| Typo is itself a corpus word, so left alone | 121 |
+| Typo under five letters, so left alone | 145 |
+
+95.75% of corrections are right. Of the typos correction could act on,
+it fixes 94.3%. Most wrong ones sit one slip from two real words
+(`aeing`: `ageing` or `being`) or pick a neighbouring inflection
+(`architecturl` -> `architecture`), which still searches the right topic.
+
+**Cost.** A vocabulary build takes 0.27 s on a warm cache and 5.9 s with
+none, the first query after a sync. After that, each query with a
+5+-letter word pays 27.6 ms, almost all of it fingerprinting every
+parsed file to notice a sync.
+
+**Harm.** 2 of 964 logged queries gained a correction, both on valid
+words the corpus lacks: `disagrees` -> `disagree`, which brought one
+relevant paper into the top five, and `tumbling` -> `stumbling`, which
+put an unrelated paper first. The logs held no genuine typo.
+
+**Recovery.** The keyword self-retrieval set with one typo per query
+(254 queries; 201 that correction changed):
+
+| | recall@1 | recall@5 | MRR@5 |
+| --- | --- | --- | --- |
+| No typo | 0.5866 | 0.8071 | 0.6741 |
+| Typo, correction off | 0.5630 | 0.7795 | 0.6488 |
+| Typo, correction on | 0.5906 | 0.8071 | 0.6760 |
+
+Correction recovers everything the typo cost. Recall@1 ending above the
+clean figure is one query in 254, within noise.
+
+**Verdict.** It works when a query has a typo, and agent-written queries
+almost never do. It ships off.

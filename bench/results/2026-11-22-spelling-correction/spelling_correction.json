@@ -1,0 +1,162 @@
+{
+ "corpus": {
+  "papers": 497,
+  "no_cache_s": 5.919,
+  "warm_cache_s": 0.27,
+  "check_ms": 27.6,
+  "vocabulary": 69454,
+  "logged_queries": 964
+ },
+ "accuracy": {
+  "words": 1399,
+  "typos": 5596,
+  "buckets": {
+   "right": 5029,
+   "wrong": 223,
+   "none": 78,
+   "typo is a corpus word": 121,
+   "typo too short": 145
+  },
+  "by_kind": {
+   "delete": {
+    "typo too short": 145,
+    "right": 1044,
+    "none": 15,
+    "wrong": 123,
+    "typo is a corpus word": 72
+   },
+   "swap": {
+    "right": 1279,
+    "none": 21,
+    "typo is a corpus word": 44,
+    "wrong": 55
+   },
+   "substitute": {
+    "right": 1337,
+    "none": 21,
+    "wrong": 36,
+    "typo is a corpus word": 5
+   },
+   "insert": {
+    "right": 1369,
+    "none": 21,
+    "wrong": 9
+   }
+  },
+  "right_when_corrected": 0.9575,
+  "fixed_of_all_typos": 0.8987,
+  "pool_size": 30365,
+  "ms_per_word_median": 25.68,
+  "ms_per_word_p95": 26.64,
+  "wrong_examples": [
+   "acausal -> acusal -> causal",
+   "adapters -> adaptrs -> adapts",
+   "adoption -> addption -> addition",
+   "aerial -> aeril -> april",
+   "ageing -> aeing -> being",
+   "ageing -> aeging -> aging",
+   "alerting -> alering -> altering",
+   "architectural -> architecturl -> architecture",
+   "architectures -> architecturs -> architecture",
+   "architectures -> architecturse -> architecture",
+   "automaton -> automaiton -> automation",
+   "behaviour -> behaviur -> behavior",
+   "behaviour -> behaviuor -> behavior",
+   "behavioural -> behaviourl -> behaviour",
+   "belief -> beief -> brief",
+   "black -> balck -> back",
+   "black -> bcack -> back",
+   "blueprints -> blueprins -> blueprint",
+   "blueprints -> blueprinst -> blueprint",
+   "bridging -> briging -> bringing"
+  ]
+ },
+ "harm": {
+  "queries": 964,
+  "corrected": 2,
+  "moved": [
+   {
+    "query": "Gap analysis: what this corpus does not cover, and what it disagrees about",
+    "added": [
+     "disagrees ~> disagree"
+    ],
+    "top5_off": [
+     "dalibor_cross-domain_2022",
+     "noauthor_federated_nodate",
+     "liu_ai_2025",
+     "ellwein_rethinking_2025",
+     "noauthor_devops_nodate"
+    ],
+    "top5_on": [
+     "dalibor_cross-domain_2022",
+     "schweiger_empirical_2019",
+     "noauthor_federated_nodate",
+     "liu_ai_2025",
+     "ellwein_rethinking_2025"
+    ]
+   },
+   {
+    "query": "stream processing windows tumbling sliding late data IoT",
+    "added": [
+     "tumbling ~> stumbling"
+    ],
+    "top5_off": [
+     "munoz_towards_2024",
+     "bellavista_exploiting_2024",
+     "chae_survey_2023",
+     "gomes_sensing_2024",
+     "gomes_sensing_2024-1"
+    ],
+    "top5_on": [
+     "delhibabu_synthesis_2023",
+     "munoz_towards_2024",
+     "bellavista_exploiting_2024",
+     "chae_survey_2023",
+     "gomes_sensing_2024"
+    ]
+   }
+  ]
+ },
+ "recovery": {
+  "overall": {
+   "clean": {
+    "n": 254,
+    "recall@1": 0.5866,
+    "recall@5": 0.8071,
+    "mrr@5": 0.6741
+   },
+   "off": {
+    "n": 254,
+    "recall@1": 0.563,
+    "recall@5": 0.7795,
+    "mrr@5": 0.6488
+   },
+   "on": {
+    "n": 254,
+    "recall@1": 0.5906,
+    "recall@5": 0.8071,
+    "mrr@5": 0.676
+   }
+  },
+  "affected": {
+   "clean": {
+    "n": 201,
+    "recall@1": 0.6219,
+    "recall@5": 0.8308,
+    "mrr@5": 0.7026
+   },
+   "off": {
+    "n": 201,
+    "recall@1": 0.592,
+    "recall@5": 0.796,
+    "mrr@5": 0.6706
+   },
+   "on": {
+    "n": 201,
+    "recall@1": 0.6269,
+    "recall@5": 0.8308,
+    "mrr@5": 0.7051
+   }
+  }
+ }
+}

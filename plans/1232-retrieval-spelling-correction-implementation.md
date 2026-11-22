@@ -5,7 +5,7 @@
 > superpowers:executing-plans to implement this plan task by task. Steps
 > use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **not started.** Written 2026-11-22.
+Status: **done**, all five tasks. Written 2026-11-22.
 
 **Goal:** opt-in, announced spelling correction of free-text retrieval
 query words against the corpus vocabulary, per #1232.

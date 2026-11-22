@@ -263,6 +263,63 @@ document frequency of a query's terms rises from 264 to 292, because
 "digital" and "twin" are in far more of this corpus than `DT` is. Where
 your expansion words are that ambient, consider switching it off.
 
+### 📝 A misspelled query word can reach its corpus spelling
+
+A query word no paper contains scores zero everywhere, so a typo such as
+`strucutral` silently returns nothing or the wrong papers. Spelling
+correction adds the corpus word one typing slip away:
+
+```toml
+[retrieval]
+spelling_correction = true
+```
+
+A slip is one letter missing, extra, wrong, or swapped with its
+neighbour. The rules:
+
+- Only words of five or more letters that **no paper contains** are
+  corrected. A word in even one paper is left alone, however rare.
+  Tokens with a digit are never corrected.
+- The correction must appear in **at least two papers**. More than half
+  the corpus's words appear in only one, and most of those are OCR noise.
+- Among several candidates, the word in the most papers wins.
+- The typed word **stays** in the query. A correction is added and counts
+  as much as a typed word, as an acronym's expansion does.
+- Corrections and acronym expansions read only what you typed: neither
+  is applied to the other's output.
+
+`retrieve` and `discover search` print each correction on stderr, and
+`--log` records it in `retrieval.md`'s `expanded` column as
+`strucutral ~> structural`. The citation coverage report lists them per
+query.
+
+```text
+  [note] spelling: searched 'structural' for 'strucutral'
+```
+
+It is **off by default**, and while it is off the ranking is exactly what
+it was before it existed. `dossier status` re-ranks every draft's
+recorded queries with the current settings, so switching it on can show
+as drift on drafts whose queries held a typo.
+
+#### Measured
+
+On this project's corpus
+([bench/RESULTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/RESULTS.md),
+2026-11-22):
+
+- **Accuracy:** 95.75% of corrections pick the intended word. Most
+  wrong ones sit one slip from two real words: `aeing` could be `ageing`
+  or `being`.
+- **Recovery:** with one typo per query, recall@1 falls from 0.587 to
+  0.563. Correction brings it back to 0.591.
+- **Harm:** 2 of 964 logged queries were corrected, both valid words
+  the corpus lacks. `tumbling` gained `stumbling` and put an unrelated
+  paper first. The logs held no genuine typo, which is why it ships off.
+- **Cost:** the first query after a sync takes 0.27 s to build the
+  vocabulary from a warm cache, or 5.9 s without one. Each later query
+  with a five-letter word costs about 28 ms.
+
 ### 🔡 Where the token-length floor came from
 
 A token shorter than **two characters** is not indexed and not scored,

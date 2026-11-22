@@ -1,6 +1,7 @@
 # 1232: opt-in, announced spelling correction for retrieval queries
 
-Status: **design approved, not built.** Written 2026-11-21, for
+Status: **built**, on branch `worktree-bridge-cse_013sgX9aKLru2uHkKrmCBWNk`
+(PR pending). Written 2026-11-21, for
 [issue 1232](https://github.com/prasadtalasila/chitragupta/issues/1232).
 
 **Written for** whoever builds #1232. **Assumed:** #789's acronym
