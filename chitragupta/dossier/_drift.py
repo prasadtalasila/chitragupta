@@ -18,6 +18,7 @@ and never fatal -- a missing ledger, a missing dossier file and an
 unparsable row are all things to report, not to fail on.
 """
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -31,6 +32,7 @@ from chitragupta.dossier._citekeys import (
 )
 from chitragupta.dossier import (
     EVIDENCE_MD,
+    SCOPE_MD,
     SECTIONS_MD,
     _corpus_rows,
     all_dossiers,
@@ -182,7 +184,7 @@ def drift(dossier: Path, corpus: "Corpus | None" = None) -> Drift:
 
     declined = rejected_reasons(dossier)
     queries, report.unresolved_collections = corpus.resolve(
-        recorded_queries_with_collection(dossier)
+        recorded_queries_with_collection(dossier), _scope_collection(dossier)
     )
     matched = sorted(corpus.matches(queries).items())
     report.candidates = [
@@ -201,6 +203,15 @@ def drift(dossier: Path, corpus: "Corpus | None" = None) -> Drift:
         if citekey in declined and citekey not in cited
     ]
     return report
+
+
+def _scope_collection(dossier: Path) -> str:
+    """The collection `scope.md` records, or "" for none or the whole corpus."""
+    scope = dossier / SCOPE_MD
+    text = scope.read_text(encoding="utf-8") if scope.is_file() else ""
+    match = re.search(r"^- collection:\s*(.*)$", text, re.MULTILINE)
+    value = match.group(1).strip() if match else ""
+    return "" if value.startswith("(") else value
 
 
 def _texts_of(draft: Path | None, dossier: Path) -> list[Path]:

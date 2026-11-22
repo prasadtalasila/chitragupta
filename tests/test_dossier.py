@@ -2326,6 +2326,36 @@ class TestDriftCollectionScoping:
         assert "1 recorded collection(s) no longer resolve" in out
         assert "Digital twins > Modelling" in out
 
+    def test_a_ported_scope_md_covers_old_log_rows(self, draft):
+        """retrieval.md is an append-only log, so an old `groups` value in it
+        is never rewritten; once scope.md records a slug, queries whose
+        logged collection no longer resolves run against that slug."""
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        dossier.log_retrieval(
+            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins > Modelling"
+        )
+        scope = target / "scope.md"
+        scope.write_text(scope.read_text() + "\n- collection: digital-twins   # Digital Twins\n")
+        _seed_corpus(
+            [
+                ("in_shelf_2024", "In shelf", "digital twin architecture", ("digital-twins",)),
+                ("outside_2025", "Outside", "digital twin simulation", ("other-shelf",)),
+            ]
+        )
+        report = _drift.drift(target)
+        assert report.unresolved_collections == []
+        assert [c.citekey for c in report.candidates] == ["in_shelf_2024"]
+
+    def test_a_whole_corpus_scope_is_no_fallback(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100, collection="Old > X")
+        scope = target / "scope.md"
+        scope.write_text(scope.read_text() + "\n- collection: (whole corpus)\n")
+        _seed_corpus([("a_2024", "A", "digital twin architecture", ("digital-twins",))])
+        assert _drift.drift(target).unresolved_collections == ["Old > X"]
+
     def test_an_unresolved_collection_is_listed_once(self, draft):
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)

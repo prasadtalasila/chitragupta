@@ -69,7 +69,9 @@ class Corpus:
                 self._names = {}
         return self._names
 
-    def resolve(self, queries: list[tuple[str, str]]) -> tuple[list[tuple[str, str]], list[str]]:
+    def resolve(
+        self, queries: list[tuple[str, str]], fallback: str = ""
+    ) -> tuple[list[tuple[str, str]], list[str]]:
         """The queries with each recorded collection as a slug path, and
         the recorded collections that no longer name one.
 
@@ -77,7 +79,10 @@ class Corpus:
         recorded before 7.0.0, or a display path a rename has moved -- is
         dropped from the candidate search and reported instead: filtering
         on it would leave nothing to find, and an empty candidate list
-        reads as "no drift".
+        reads as "no drift". `fallback` is the collection `scope.md` records
+        now: `retrieval.md` is an append-only log, so once a draft's scope
+        is re-chosen, a logged value that no longer resolves runs against
+        the scope instead of being reported.
         """
         paths = [path for paths in self.collections.values() for path in paths]
         resolved, unresolved = [], []
@@ -85,6 +90,11 @@ class Corpus:
             try:
                 slug = bib_collections.resolve(collection, self.names, paths) if collection else ""
             except (bib_collections.UnknownCollection, bib_collections.AmbiguousCollection):
+                try:
+                    resolved.append((query, bib_collections.resolve(fallback, self.names, paths)))
+                    continue
+                except (bib_collections.UnknownCollection, bib_collections.AmbiguousCollection):
+                    pass
                 if collection not in unresolved:
                     unresolved.append(collection)
                 continue
