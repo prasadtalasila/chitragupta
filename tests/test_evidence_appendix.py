@@ -341,6 +341,46 @@ class TestQuoteFormatting:
         assert '> "already quoted"' in out
         assert '""' not in out
 
+    def _built(self, isolated_config, ledger_con, evidence: str) -> str:
+        seed(ledger_con, "doe_a_2024")
+        draft = content_draft(isolated_config, "drafts/topic/survey.md")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
+        write_dossier(draft, evidence)
+        return evidence_appendix.build(
+            draft.read_text(encoding="utf-8"), dossier_dir(draft), ledger_con
+        )
+
+    def test_every_quote_in_a_block_is_printed_under_one_heading(self, isolated_config, ledger_con):
+        """#1174: a second `quote:` used to be dropped without a word."""
+        out = self._built(
+            isolated_config,
+            ledger_con,
+            "## `doe_a_2024`\n\nclaim: c\nquote: the first span\nquote: the second span\n",
+        )
+        assert out.count("`doe_a_2024`") == 1
+        assert out.index('> "the first span"') < out.index('> "the second span"')
+
+    def test_a_page_locator_is_not_printed(self, isolated_config, ledger_con):
+        out = self._built(
+            isolated_config, ledger_con, '## `doe_a_2024`\n\nquote: "the span" (p. 24)\n'
+        )
+        assert '> "the span"' in out
+        assert "p. 24" not in out
+
+    def test_a_quote_opening_and_closing_on_quoted_words_keeps_its_marks(
+        self, isolated_config, ledger_con
+    ):
+        out = self._built(
+            isolated_config,
+            ledger_con,
+            '## `doe_a_2024`\n\nquote: "Twin" is used loosely, as is "shadow"\n',
+        )
+        assert '> ""Twin" is used loosely, as is "shadow""' in out
+
+    def test_a_block_with_only_empty_quotes_gives_no_sidecar(self, isolated_config, ledger_con):
+        out = self._built(isolated_config, ledger_con, '## `doe_a_2024`\n\nquote: ""\n')
+        assert out is None
+
     def test_a_citekey_missing_from_the_ledger_is_a_hard_error(self, isolated_config, ledger_con):
         # AGENTS.md's citekey invariant: a cited key with no ledger row is
         # never silently dropped. Same contract as references.build_section.

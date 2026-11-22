@@ -3868,6 +3868,143 @@ class TestCheckEvidenceCommand:
         assert "init" in capsys.readouterr().out
 
 
+class TestSeveralQuotes:
+    """#1174: `quote:` may repeat, and `quotes()` reads every one,
+    normalised. The other fields stay single-valued, and a repeat of one
+    is warned about rather than dropped without a word."""
+
+    def test_every_quote_is_read_in_file_order_and_a_repeat_counted_once(self):
+        block = "claim: c\nquote: first span\nrelevance: r\nquote: second span\nquote: first span\n"
+        assert _evidence_check.quotes(block) == ["first span", "second span"]
+
+    def test_fields_still_returns_the_first_value_of_each(self):
+        assert _evidence_check.fields("quote: one\nquote: two\n")["quote"] == "one"
+
+    @pytest.mark.parametrize(
+        "written",
+        [
+            "the span (p. 24)",
+            "the span (p.24)",
+            "the span (pp. 12-13)",
+            "the span (pp. 12\u201313)",
+            "the span (page 24)",
+            "the span [p. 24]",
+            "the span (P. 24)",
+            '"the span"',
+            "\u201cthe span\u201d",
+            '"the span" (p. 24)',
+            '"the span (p. 24)"',
+            "the span (p. 24).",
+        ],
+    )
+    def test_a_page_locator_and_surrounding_marks_come_off(self, written):
+        assert _evidence_check.normalise_quote(written) == "the span"
+
+    @pytest.mark.parametrize(
+        "kept",
+        [
+            "\u201cTwin\u201d is used loosely, as is \u201cshadow\u201d",
+            '"Twin" is used loosely, as is "shadow"',
+            "the span (p. 24) and then more",
+            "see section 3 (24)",
+            '"unclosed span',
+            "a property every twin satisfies (P1)",
+            "as the primary study reports [P12]",
+            "the span (p3)",
+        ],
+    )
+    def test_a_mark_or_number_that_belongs_to_the_text_stays(self, kept):
+        assert _evidence_check.normalise_quote(kept) == kept
+
+    def test_a_quote_that_normalises_to_nothing_is_dropped(self):
+        assert _evidence_check.quotes('quote: "" (p. 3)\n') == []
+
+    def test_a_repeated_single_valued_field_is_reported(self):
+        block = "claim: one\nclaim: two\nrelevance: r\nquote: a\nquote: b\n"
+        assert _evidence_check.repeated_fields(block) == {"claim": 2}
+
+    def test_a_legacy_block_with_support_and_quote_is_not_a_repeat(self):
+        assert _evidence_check.repeated_fields("support: a window\nquote: a span\n") == {}
+
+    def test_each_quote_is_compared_with_the_claim(self, draft):
+        target = _fill_dossier(
+            draft,
+            evidence=(
+                "## `talasila_realising_2024`\n\n"
+                f"claim: {TestOverlapScore.REWORDED}\n"
+                "quote: an unrelated sentence about tooling choices\n"
+                f"quote: {TestOverlapScore.QUOTE}\n"
+            ),
+        )
+        [(index, of, _)] = _evidence_check.reworded_claims(target)["talasila_realising_2024"]
+        assert (index, of) == (2, 2)
+
+    def test_check_evidence_names_which_quote_was_reworded(self, draft, capsys):
+        _fill_dossier(draft, evidence=_REWORDED_BLOCK + "- quote: a second unrelated sentence\n")
+        assert dossier.main(["check-evidence", str(draft), "--score"]) == 0
+        out = capsys.readouterr().out
+        assert "reads like quote 1 of 2 with its words moved" in out
+        assert "overlap with quote 1 of 2" in out
+
+    def test_check_evidence_warns_on_a_repeated_claim_and_says_nothing_clean(self, draft, capsys):
+        _fill_dossier(draft, evidence=_RESTATED_BLOCK + "- claim: a second claim\n")
+        assert dossier.main(["check-evidence", str(draft)]) == 0
+        out = capsys.readouterr().out
+        assert "[warn] ferko_architecting_2022: 2 claim: lines -- only the first is read." in out
+        assert "No claim: reads like" not in out
+
+
+class TestAValueEndsAtTheNextFieldLine:
+    """A line shaped like a field this parser does not read ends the value
+    above it. Before, a `used in:` note under a `quote:` was checked, and
+    printed in the sidecar, as part of the quotation."""
+
+    def test_a_bulleted_note_under_a_wrapped_quote_is_not_quoted(self):
+        block = (
+            "- claim: c\n"
+            "- quote: a crude model with two-way automatic flow\n"
+            "  is a twin\n"
+            "- used in: Section 2\n"
+        )
+        assert _evidence_check.quotes(block) == [
+            "a crude model with two-way automatic flow\n  is a twin"
+        ]
+
+    def test_a_bare_note_ends_the_quote_and_a_later_quote_still_counts(self):
+        block = "quote: one span\nnote: strongest line\npage: 24\nquote: two span\n"
+        assert _evidence_check.quotes(block) == ["one span", "two span"]
+
+    def test_it_ends_a_claim_the_same_way(self):
+        block = "- claim: the source says so\n- used in: Section 2\n"
+        assert _evidence_check.fields(block)["claim"] == "the source says so"
+
+    @pytest.mark.parametrize(
+        "continuation",
+        [
+            "and the second line",
+            "Definition: a language with formal syntax",
+            "  concepts: model, data and service",
+            "the rest of this list: a colon after five words",
+        ],
+    )
+    def test_a_wrapped_line_that_is_not_a_field_continues_it(self, continuation):
+        assert _evidence_check.quotes(f"quote: the first line\n{continuation}\n") == [
+            f"the first line\n{continuation}"
+        ]
+
+    @pytest.mark.parametrize(
+        "block", ["quote:\n- used in: Section 2\n", "quote:\nnote: strongest line\n"]
+    )
+    def test_an_empty_field_does_not_take_the_note_below_it(self, block):
+        assert _evidence_check.quotes(block) == []
+
+    def test_a_value_may_still_start_on_the_next_line(self):
+        assert _evidence_check.quotes("quote:\n  the span itself\n") == ["the span itself"]
+
+    def test_a_field_shaped_first_line_is_the_value_itself(self):
+        assert _evidence_check.quotes("quote: note: kept as written\n") == ["note: kept as written"]
+
+
 class TestRecordedDraftDigest:
     """`scope.md`'s `- draft digest:` line -- #454, FEATURE-ROADMAP.md's E3."""
 

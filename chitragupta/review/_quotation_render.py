@@ -40,6 +40,17 @@ def _tally(report) -> list[str]:
     ]
 
 
+def which(index: int, of: int) -> str:
+    """The ` (quote N of M)` suffix for a block with several quotes, else
+    nothing -- so two quotes from one source never print as the same line
+    (#1174). The agenda's `misquoted` summary uses it too."""
+    return f" (quote {index} of {of})" if of > 1 else ""
+
+
+def _key(checked) -> str:
+    return f"`{checked.citekey}`{which(checked.index, checked.of)}"
+
+
 def _where(checked) -> str:
     """The page or pages a confirmed span sits on, and how it matched."""
     pages = ", ".join(f"p.{page}" for page in checked.pages) or "page unknown"
@@ -59,7 +70,7 @@ def _finding_lines(report) -> list[str]:
     out = []
     for checked in sorted(report.of("absent"), key=lambda c: (c.near_miss_score, c.citekey)):
         out += [
-            f"### `{checked.citekey}`",
+            f"### {_key(checked)}",
             "",
             f"> {checked.quote}",
             "",
@@ -70,11 +81,11 @@ def _finding_lines(report) -> list[str]:
 
 
 def _confirmed_lines(report) -> list[str]:
-    return [f"- `{c.citekey}` -- {_where(c)}" for c in report.of("found")]
+    return [f"- {_key(c)} -- {_where(c)}" for c in report.of("found")]
 
 
 def _skipped_lines(report) -> list[str]:
-    return [f"- `{c.citekey}` -- {c.reason}" for c in report.of("unverifiable")]
+    return [f"- {_key(c)} -- {c.reason}" for c in report.of("unverifiable")]
 
 
 _EMPTY = {
@@ -183,6 +194,8 @@ def quotation_payload(report, command: str, found: list[dict]) -> dict:
                     "tier": c.tier,
                     "pages": c.pages,
                     "reason": c.reason,
+                    "index": c.index,
+                    "of": c.of,
                 }
                 for c in report.checked
             ],

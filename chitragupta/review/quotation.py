@@ -14,10 +14,9 @@ because the citekey *is* real.
 decisions come along inherited rather than restated, and that is the
 point: only citekeys the draft actually cites; `quote:` and only
 `quote:`, so a legacy `support:` window nobody chose as a quotation is
-not checked as though someone had; and one quote per block, which
-docs/DOSSIER.md's "three possible fields" makes the contract rather than
-`_evidence_check.fields`'s accident. Reading the dossier directly here
-instead would put the support-is-not-a-quote rule in a second place, and
+not checked as though someone had; and every `quote:` a block carries,
+each checked on its own and numbered within its block (#1174). Reading
+the dossier directly here instead would put the support-is-not-a-quote rule in a second place, and
 two modules deciding separately what counts as a published quote is how
 this aid comes to check a set the sidecar does not print.
 
@@ -118,15 +117,16 @@ def build_report(draft: Path) -> Report:
     spans = evidence_appendix.quoted_spans(text, directory, latex=citation_gate.is_latex(draft))
     if not spans:
         return Report(draft, [], "no-quotes")
+    checked = []
     with ledger.reading() as con:
-        return Report(
-            draft,
-            [
-                check_one(citekey, quote, *passages.source_passages(con, citekey))
-                for citekey, quote in spans.items()
-            ],
-            "checked",
-        )
+        for citekey, quotes in spans.items():
+            # Once per source, not per quote: a digest may carry many.
+            found, reason = passages.source_passages(con, citekey)
+            for index, quote in enumerate(quotes, start=1):
+                one = check_one(citekey, quote, found, reason)
+                one.index, one.of = index, len(quotes)
+                checked.append(one)
+    return Report(draft, checked, "checked")
 
 
 def findings(report: Report) -> list[dict]:
@@ -143,6 +143,8 @@ def findings(report: Report) -> list[dict]:
             "quote": c.quote,
             "near_miss_page": c.near_miss_page,
             "near_miss_score": c.near_miss_score,
+            "index": c.index,
+            "of": c.of,
         }
         for c in report.of("absent")
     ]

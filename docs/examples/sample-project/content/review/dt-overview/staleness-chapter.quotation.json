@@ -3,7 +3,7 @@
   "aid": "quotation",
   "draft": "content/drafts/dt-overview/staleness-chapter.md",
   "command": "python -m chitragupta.review quotation content/drafts/dt-overview/staleness-chapter.md --write",
-  "version": "6.166.1",
+  "version": "6.179.0",
   "universe": "checked",
   "quotes_total": 2,
   "found": 0,
@@ -16,7 +16,9 @@
       "verdict": "unverifiable",
       "tier": null,
       "pages": [],
-      "reason": "no reading-ordered passages -- only page-level text"
+      "reason": "no reading-ordered passages -- only page-level text",
+      "index": 1,
+      "of": 1
     },
     {
       "id": "96ff258b3e52",
@@ -24,7 +26,9 @@
       "verdict": "unverifiable",
       "tier": null,
       "pages": [],
-      "reason": "no reading-ordered passages -- only page-level text"
+      "reason": "no reading-ordered passages -- only page-level text",
+      "index": 1,
+      "of": 1
     }
   ],
   "findings": []

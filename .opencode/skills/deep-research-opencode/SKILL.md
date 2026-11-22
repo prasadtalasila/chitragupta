@@ -145,8 +145,8 @@ and say that any reformulation is `--origin extended`.
 
 **Transcribe every packet before starting Phase 3**: each kept claim
 into `evidence.md`, one ``## `citekey` `` block with a `relevance:`
-line, the packet's claim as `claim:` and a `quote:` only where the
-packet singled out a passage; each discarded citekey into `rejected.md`
+line, the packet's claim as `claim:` and a `quote:` line per passage
+the packet singled out, none otherwise; each discarded citekey into `rejected.md`
 with the query that surfaced it and why it did not hold up. That list
 exists nowhere but the packet. Read
 `.claude/skills-common/references/genre-steps.md` §5 for both formats
@@ -233,7 +233,7 @@ subpoint is thin" yourself. Cap concurrency per
 
 When the writers return, copy each `### Sources added` block into
 `evidence.md` yourself, as a `relevance:`/`claim:` block per citekey in
-the writer's words (a `quote:` only if the block singled out a passage),
+the writer's words (a `quote:` line per passage the block singled out),
 and each `### Candidates discarded` block into `rejected.md`. These
 citekeys never passed through Phase 2, so nothing else in the run has
 them; at `quick` depth, record what you found the same way. Done when

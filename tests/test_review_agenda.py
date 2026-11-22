@@ -813,6 +813,28 @@ class TestMisquotedItems:
     def test_unavailable_source_gives_no_items(self):
         assert _items_findings.misquoted_items(_sources.AidSource()) == []
 
+    @staticmethod
+    def _one(**position):
+        finding = {"id": "q1", "citekey": "a2024", "quote": "a span not in the source"}
+        source = _sources.AidSource(available=True, data={"findings": [{**finding, **position}]})
+        return _items_findings.misquoted_items(source)[0]
+
+    def test_a_report_filed_before_several_quotes_reads_as_it_did(self):
+        """#1174: a filed `.quotation.json` with no `index`/`of` keeps
+        today's summary, since bare `agenda` does not refresh it."""
+        assert self._one().summary == (
+            "`[@a2024]`'s quoted span was not found in its source: a span not in the source"
+        )
+
+    def test_a_block_with_several_quotes_names_which_one(self):
+        item = self._one(index=2, of=3)
+        assert "`[@a2024]`'s quoted span (quote 2 of 3) was not found" in item.summary
+
+    def test_the_position_does_not_enter_the_identity(self):
+        """`item_id` hashes the quote text, as before: adding a second
+        quote to a block renames nothing already on the agenda."""
+        assert self._one().id == self._one(index=1, of=2).id
+
     def test_one_item_per_finding_no_line_or_section(self):
         source = _sources.AidSource(
             available=True,

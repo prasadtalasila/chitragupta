@@ -177,7 +177,9 @@ still in front of you:
 - What survives goes into `evidence.md`: one ``## `citekey` `` block
   with a `relevance:` line (why it supports the claim), a `claim:` line
   (what the source establishes, in your own words) and, only when a
-  quotation is genuinely warranted, a `quote:` line (the verbatim span).
+  quotation is genuinely warranted, a `quote:` line (the verbatim span,
+  bare: no quotation marks, no page). A source with several passages
+  worth quoting gets one `quote:` line each, in the one block.
   `claim:` is the only field you may draft prose from later; `quote:` is
   usable in the draft solely inside quotation marks with an attribution.
   Write `claim:` from what you now understand the source to say, not by
@@ -188,14 +190,34 @@ still in front of you:
   it was turned down ("shares vocabulary only", "wrong domain",
   "superseded by X").
 
+**Adding a `quote:` after the draft exists.** A quote is captured when
+the evidence is judged, with one exception: a reviser may add a `quote:`
+line to a kept source's block when a person asked for that quotation, in
+chat or by answering "quotation" to a long verbatim run. Copy the span
+from the source passage, never from memory or the draft:
+
+```bash
+python -m chitragupta.draft retrieve evidence "<the passage's words>" --citekey <key> --log <draft>
+```
+
+Then run `python -m chitragupta.review quotation <draft>`: keep the line
+only if it is `found`, or `unverifiable` and you say so; otherwise
+remove it. Log the addition in `revisions.md`. If the source has no
+block in `evidence.md` yet, an agenda repair adds nothing and reports
+it; a revision records a whole block, `relevance:` and `claim:`
+included, as the bullets above say. Never add one on your own judgement
+or to make the evidence sidecar appear.
+
 The rejected list is the more valuable of the two and the easier to
 skip. It is what stops the next revision retrieving and re-judging the
 same twelve papers you just turned down, the single most expensive piece
 of repeated work in this pipeline.
 
-**The evidence self-check gives two kinds of warning.** `N blocks under
+**The evidence self-check gives three kinds of warning.** `N blocks under
 one citekey` means `evidence.md` has more than one block for that paper
-and only the first is ever read: merge them. A reword warning, a
+and only the first is ever read: merge them. `N claim: lines` (or
+`relevance:`) means one block repeats a field only read once: merge
+those lines. A reword warning, a
 `claim:` that reads like its own `quote:` with the words moved, means
 re-read whether that claim is really your own reading of the source. It
 is not a cue to keep rewording until the warning stops.

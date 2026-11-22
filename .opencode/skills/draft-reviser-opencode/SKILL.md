@@ -235,6 +235,9 @@ whole-file rewrite of a survey-length draft costs thousands of output
 tokens, re-runs the citation-gate hook over everything, and produces a
 diff the user cannot review.
 
+A new quotation the person asked for gets its `quote:` line first, as
+`.claude/skills-common/references/genre-steps.md` §5 says.
+
 Never write a citekey that isn't already in the draft, in `evidence.md`,
 or in a `search()` result you just read. **A fabricated citekey is the
 one failure this whole pipeline exists to prevent.**

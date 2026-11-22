@@ -105,7 +105,9 @@ quotation attributed to a source that does not contain it is the same
 failure class as a fabricated citekey, and one the gate cannot see,
 because the citekey *is* real.
 
-It reports three outcomes. **Found** gives the page and how it matched.
+Every `quote:` in a block is checked on its own; a block with several
+names each as `quote N of M`. It reports three outcomes. **Found**
+gives the page and how it matched.
 **Absent** is the finding, with the page its distinctive words
 concentrate on, so you can tell a fabrication from an edited quotation.
 **Not checkable** is the honest third: where the only text is

@@ -283,9 +283,9 @@ findings in long paragraphs: with a defect marker planted on every prose
 line, Vale reported 636 of 839, and with the same spans blanked to
 spaces of equal width first, all 839. Two ``` ``...'' ``` in one paragraph
 also read as a Markdown code span, hiding the words between them; each
-``` `` ``` is handed over as `""`. A `.md` draft still goes to Vale as a file, and the
-same probe found Markdown losing findings too (106 of 217 on a 15k-word
-survey), which is not fixed yet.
+``` `` ``` is handed over as `""`. A `.md` draft still goes to Vale as a
+file: the same probe on three Markdown drafts lost nothing outside the
+References section, which `BlockIgnores` skips on purpose.
 
 **`TokenIgnores` also skips LaTeX command names and the exercise label**
 (#1187). `\centering` and `\begin{center}` were read as prose, and

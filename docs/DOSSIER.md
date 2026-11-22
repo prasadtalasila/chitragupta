@@ -316,7 +316,8 @@ user.
 
 ## 📖 `evidence.md`'s `claim:`/`quote:` contract (A2)
 
-One `## \`citekey\`` block carries three possible fields:
+One `## \`citekey\`` block carries three kinds of field, `quote:` the
+only one that may repeat:
 
 ```markdown
 ## `sample_dt_sync_2023`
@@ -335,13 +336,23 @@ quote: an optional verbatim span, quotable-only
 - **`quote:`** is optional, verbatim, and usable in a draft **only**
   inside quotation marks with an attribution, except in a verbatim
   digest ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)), whose body is
-  copied runs rendered in place with their citations: there each
-  source's `quote:` records the passage the digest leans on most, every
+  copied runs rendered in place with their citations: there a source's
+  `quote:` lines record the passages the digest leans on most, every
   other run is checked where it stands by `review digest`, and `claim:`
   is drafted from only for the drafter's own sentences. It is absent by
   default: a captured quote is a quote in the drafter's context, which
   is the thing this contract removes, so one is captured only when a
-  quotation is intended.
+  quotation is intended: when the evidence is judged, or later by a
+  reviser when a person asks for that quotation, copied from the source
+  and kept only if `review quotation` finds it. A block may carry
+  several, one line each, for several passages from one source that are
+  each meant to be quoted;
+  each is checked and printed on its own. Write the span bare: a page
+  locator at its end (`(p. 24)`) and quotation marks around the whole
+  of it are stripped before anything reads it, since the page is found
+  by locating the span. `relevance:`, `claim:` and a legacy `support:`
+  are read once: only the first is read, and `check-evidence` warns
+  about the rest.
 
 **A `support:` field.** An older block may carry `support:` instead of
 `claim:`/`quote:`, holding in practice a raw retrieval window
@@ -390,10 +401,12 @@ says what each genre otherwise produces.
 
 **The self-check.**
 `python -m chitragupta.draft dossier check-evidence <draft>` first names
-any citekey carrying more than one block, then compares each block's
-`claim:` against its own `quote:` (`chitragupta/dossier/_evidence_check.py`,
-reusing `chitragupta/overlap_skipgram.py`'s stemmed word stream) and
-warns when the claim reads like the quote with its words moved. It is
+any citekey carrying more than one block and any block that repeats
+`relevance:`, `claim:` or `support:`, then compares each block's
+`claim:` against each of its `quote:` lines
+(`chitragupta/dossier/_evidence_check.py`, reusing
+`chitragupta/overlap_skipgram.py`'s stemmed word stream) and warns when
+the claim reads like a quote with its words moved. It is
 advisory and prints no score by default:
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3 rules out a similarity
 number a drafting step could optimise against. `--score` opts into the
