@@ -73,7 +73,7 @@ cp /path/to/your-library.bib papers/bibliography.bib
 Your reference manager must export the PDF file paths with the entries,
 or the sync below will record citekeys with no text behind them and
 retrieval will find nothing. Zotero users: see
-[EXPORT-ZOTERO-GROUPS.md](EXPORT-ZOTERO-GROUPS.md).
+[ZOTERO.md](ZOTERO.md).
 
 **3. Build the corpus.** This reads the bib, parses each PDF and writes
 `content/ledger.sqlite`:

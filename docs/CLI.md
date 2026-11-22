@@ -424,7 +424,7 @@ chitragupta corpus ledger
 # chitragupta corpus ledger --status no_pdf
 # chitragupta corpus ledger --citekey talasila_composable_2025
 # chitragupta corpus ledger --collections
-# chitragupta corpus ledger --collection "Digital twins"
+# chitragupta corpus ledger --collection digital-twin
 ```
 
 Exits `0` with no ledger yet, or one that needs a sync to migrate it,
@@ -433,11 +433,13 @@ will not read the ledger (an interrupted write's journal, a lock held
 past the timeout, a damaged file). A stale ledger still exits `0` here,
 unlike the gate.
 
-Collections need a Better BibTeX export with JabRef fields enabled
+Collections come from a bib written by chitragupta-importer
 ([ZOTERO.md](ZOTERO.md#-keeping-your-collections-optional)); without
-them `--collections` prints nothing and says why. A parent collection
-selects everything beneath it; matching is case-insensitive and
-per-segment.
+them `--collections` prints nothing and says why. `--collections` prints
+each collection's slug path, display path and paper count, counting the
+papers beneath it. `--collection` takes a slug path or a `/` display
+path, and a parent selects everything beneath it. A value that names no
+collection, or several, **exits 2** with the choices on stderr.
 
 ### 🏷 `chitragupta corpus topics`
 

@@ -143,7 +143,6 @@ citekeys out.
 | `corpus topics` | the topic clustering, once the enrichment layer has built it | [TOPIC-MODELLING.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/TOPIC-MODELLING.md) |
 | `corpus discover` | start from any phrase and find the topics, papers and neighbours your corpus holds | [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) |
 | Two parser backends | `pdftotext` (fast, bit-reproducible) or Docling (layout-aware) | [PDF-PARSER.md](PDF-PARSER.md) |
-| Zotero group support | export a shared group library without Better BibTeX | [EXPORT-ZOTERO-GROUPS.md](EXPORT-ZOTERO-GROUPS.md) |
 
 Four things to know before you rely on it:
 

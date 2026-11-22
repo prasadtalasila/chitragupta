@@ -70,22 +70,15 @@ Paths resolve **relative to the project directory** (the one holding
 | Key | Env var | Accepts | Default |
 | --- | --- | --- | --- |
 | `[bib] path` | `BIB_FILE` | path | `papers/bibliography.bib` |
-| `[bib] collections_field` | `BIB_COLLECTIONS_FIELD` | field name | `groups` |
 | `[content] dir` | `CONTENT_DIR` | path | `content` |
 
 - **`[bib] path`**: the BibTeX export `chitragupta/bib_reader.py` parses.
   The only source of citekeys; nothing in the pipeline invents or renames
   one. Gitignored per-host data.
-- **`[bib] collections_field`**: which BibTeX field carries Zotero
-  collection membership, used by
-  `python -m chitragupta.corpus ledger --collection` and
-  `python -m chitragupta.draft retrieve search --collection` to scope a
-  draft to a curated subset of the library. `groups` is JabRef's field
-  and what Better BibTeX writes under *Export JabRef-specific fields*.
-  **Zotero's own BibTeX exporter drops collections**, so on a plain
-  export nothing is in any collection and no command changes behaviour.
-  [ZOTERO.md](ZOTERO.md#-keeping-your-collections-optional) says how to
-  keep them. Lower-cased on read.
+  Collections are read from the `cg-collections` field chitragupta-importer
+  writes ([ZOTERO.md](ZOTERO.md#-keeping-your-collections-optional)).
+  The `[bib] collections_field` key (`BIB_COLLECTIONS_FIELD`) was removed
+  in 7.0.0; one still set is ignored, and sync says so once.
 - **`[content] dir`**: everything every layer writes (`ledger.sqlite`,
   `parsed/`, `drafts/`, `dossiers/`, `rendered/`, `review/`, and the
   enrichment stages' `docling/`, `chroma/` and `topics.json`), plus two

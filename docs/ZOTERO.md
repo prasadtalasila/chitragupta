@@ -46,14 +46,14 @@ library:
 
 ```bash
 python -m chitragupta.corpus ledger --collections               # what exists
-python -m chitragupta.corpus ledger --collection "Digital twins"
-python -m chitragupta.draft retrieve search "surrogate models" --collection "Digital twins"
+python -m chitragupta.corpus ledger --collection digital-twin
+python -m chitragupta.draft retrieve search "surrogate models" --collection "Digital Twin/Modelling"
 ```
 
 Each genre skill runs `ledger --collections` at scope time. If your
 library has none, it says nothing and records `collection: (whole
-corpus)`. Otherwise it offers the list once, records the answer as a
-`collection:` line in the draft's `scope.md`, and passes `--collection`
+corpus)`. Otherwise it offers the list once, records the chosen slug path
+as a `collection:` line in the draft's `scope.md`, and passes `--collection`
 on every retrieval call; `draft-reviser` and `corpus-reviser` read that
 line back and do not ask again. Decline and everything searches the
 whole library.
@@ -65,39 +65,37 @@ results), and the shelf surfaced ten papers the whole-corpus search never
 returned, because a small pool promotes what a large pool's competition
 buries.
 
-**Zotero's own BibTeX exporter drops collection membership entirely**, so
-on a plain export the commands run and nothing is in any collection.
-Keeping it needs [Better BibTeX](https://retorque.re/zotero-better-bibtex/):
+**Collections come from
+[chitragupta-importer](https://github.com/prasadtalasila/chitragupta-importer).**
+Zotero's own BibTeX exporter drops collection membership, and Better
+BibTeX writes only each collection's own name, so neither can tell two
+`Standards` collections apart or keep a scope working after a rename.
+The importer reads Zotero's storage and writes the `papers/` directory
+this pipeline reads, with two additions to `bibliography.bib`:
 
-1. Install Better BibTeX and restart Zotero.
-2. **Edit -> Settings -> Better BibTeX -> Export -> Fields**, and turn on
-   **Export JabRef-specific fields**. That writes JabRef's `groups` field
-   into every entry, naming each collection the item belongs to.
-3. Export as **Better BibTeX** rather than the built-in BibTeX, with
-   **Export Files** checked as in step 2 above.
-4. Re-run `python -m chitragupta.corpus sync`.
+- each entry's `cg-collections` field lists the **slug path** of every
+  collection it is directly in (`digital-twin.dt-platforms`); being in
+  `a.b.c` means being in `a` and `a.b` too;
+- one `@comment{cg-collections v1 ...}` block at the top maps each slug
+  path to the collection's own name. BibTeX and biber ignore it.
 
-Better BibTeX warns that this option "will disable caching in exports",
-but its
-[performance notes](https://retorque.re/zotero-better-bibtex/support/performance/)
-say the cache "will not be active" when **Export Files** is enabled
-anyway, so an export done this way loses nothing. A *separate* Better
-BibTeX export you keep for something else does lose its cache, since the
-preference is global. If you do not want collections, leave the option
-off: nothing else reads the field.
+A slug is the name lower-cased with runs of anything else turned into
+`-`, frozen per collection by the importer. Renaming a collection keeps
+its slug, so a draft that recorded it keeps working; two siblings with the
+same name get `medical` and `medical-1`.
 
-If Better BibTeX is not an option at all, a discouraged fallback reads
-collection membership out of `zotero.sqlite` directly:
-[EXPORT-ZOTERO-GROUPS.md](EXPORT-ZOTERO-GROUPS.md). It bends two of this
-project's rules. Prefer the option above.
+`--collection` takes either form: a slug path (`digital-twin.dt-platforms`)
+or a display path, the names from the root joined with `/` (`"Digital
+Twin/DT Platforms"`). Asking for a parent selects everything beneath it.
+A value that names no collection, or names two, exits 2 with the
+choices rather than returning nothing. `ledger --collections` prints
+each collection's slug path, display path and paper count.
 
-`groups` follows JabRef's conventions. Several collections are
-comma-separated, and a subcollection arrives as its path from the root
-(`Digital twins > Modelling`). Asking for a parent selects everything
-beneath it. Matching ignores case and is per-segment, not by substring:
-`Modelling` will not match a collection called `Modelling notes`. If your
-exporter writes membership to another field, point
-`[bib].collections_field` in `config.toml` at it ([CONFIG.md](CONFIG.md)).
+Since 7.0.0 the `groups` field Better BibTeX's *Export JabRef-specific
+fields* wrote is no longer read; sync says so once if your bib still has
+it. A draft whose `scope.md` recorded a `groups` path (`Digital twins >
+Modelling`) is listed by `dossier status` under `unresolved_collections`
+until its scope is re-chosen.
 
 A Zotero export is the **only** way to get a paper into this pipeline.
 There is no directory you can drop a raw PDF into: the enrichment layer's

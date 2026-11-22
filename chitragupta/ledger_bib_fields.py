@@ -72,10 +72,10 @@ _BIB_FIELDS_KEPT = (
 
 
 def collections_json(ref: Reference) -> str | None:
-    """`ref`'s Zotero collection paths as a JSON array, or None for no rows.
+    """`ref`'s collection slug paths as a JSON array, or None for no rows.
 
-    None rather than `"[]"` so a library exported without Better BibTeX's
-    JabRef fields leaves the column NULL rather than writing an empty
+    None rather than `"[]"` so a library without chitragupta-importer's
+    `cg-collections` field leaves the column NULL rather than writing an empty
     array into every row -- the two mean the same thing to a reader, and
     NULL is what a pre-migration row already holds.
     """
