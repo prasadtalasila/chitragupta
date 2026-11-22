@@ -134,7 +134,10 @@ further for the symlink case: pandoc and the TeX engine open a draft's
 images and `\input` files by the name the draft spells, so a draft that
 names one through a symlink out of its directory is refused with
 `[error]` before either tool runs, rather than rendered without it. A
-link that stays inside the draft still works.
+link that stays inside the draft still works. A `.tex` draft's preamble
+file (`<slug>.preamble.tex` or `preamble.tex` beside it, which its
+preview loads) is refused the same way, since pandoc reads it with no
+fence.
 
 ### Safer archive restore
 

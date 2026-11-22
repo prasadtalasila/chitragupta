@@ -204,7 +204,7 @@ it anyway: `references.py` takes a Markdown draft, and a `.tex` fragment
 has no Markdown heading. `section_start` returns `None` and the swap
 returns the text unchanged, so that genre needs no exemption.
 
-## 🖼 Figure substitution: four combinations, one real no-op
+## 🖼 Figure substitution: four combinations, one left to LaTeX
 
 `_with_figures_for` (`chitragupta/render_output/_figures.py`) switches
 every figure marker to the form the target format can draw, depending on
@@ -216,11 +216,12 @@ the draft's kind and whether the output is LaTeX-bound
 | Markdown `figure:` marker + ASCII twin | LaTeX-bound | `_substitute_tikz_for_ascii`: marker becomes `{\centering\input{figures/<name>.tex}\par}`; for `pdf`, with a page mark before the `\par` (below) |
 | Markdown `figure:` marker + ASCII twin | non-LaTeX | `_substitute_ascii_for_marker`: marker becomes a fenced ASCII block |
 | `.tex` fragment's inline `\input` + ASCII twin | non-LaTeX (`.md` preview) | `_substitute_ascii_for_tikz`: `\input{...}` becomes a `\begin{verbatim}` block of the ASCII twin |
-| `.tex` fragment's inline `\input` | LaTeX-bound (`tex`/`pdf`) | no-op by design: the TikZ is already inline (but see [open gaps](#-open-gaps)) |
+| `.tex` fragment's inline `\input` | LaTeX-bound (`tex`/`pdf`) | left as written: pandoc reads the draft with `latex+raw_tex`, so the `\input` reaches LuaLaTeX (see [a `.tex` draft's own preview](#-a-tex-drafts-own-preview)) |
 
-The third row exists because pandoc's LaTeX reader resolves the `\input`
-but drops the `tikzpicture` environment, so without the swap a fragment's
-figure would silently vanish from its `.md` preview.
+The third row exists because pandoc's default LaTeX reader, which a
+non-LaTeX render still uses, resolves the `\input` but drops the
+`tikzpicture` environment, so without the swap a fragment's figure would
+silently vanish from its `.md` preview.
 
 What sits beside the table:
 
@@ -285,7 +286,7 @@ reaches the PDF unresolved. With two raw blocks the caption passes
 through the Markdown reader. `_tables._caption_for` has the same shape.
 
 An uncaptioned marker renders as ["Figure substitution"
-above](#-figure-substitution-four-combinations-one-real-no-op)
+above](#-figure-substitution-four-combinations-one-left-to-latex)
 describes: no float, no number, no `\label`. A `figureref` naming an
 uncaptioned or undeclared figure is left as written;
 `python -m chitragupta.draft style` (`chitragupta/style_figures.py`)
@@ -405,27 +406,47 @@ exist until pandoc's reader has run:
   LaTeX writer. On a seven-chapter book: 10 labels defined in more than
   one unit before, none after.
 
+## 🧾 A `.tex` draft's own preview
+
+A thesis-chapter fragment's `tex`/`pdf` render is the only place its
+author sees it typeset before building the thesis. Pandoc's LaTeX reader
+used to lose four things on the way, each with exit `0`, so
+`chitragupta/render_output/_tex_preview.py` changes the non-fragment
+render of a `.tex` draft, and nothing else (a Markdown draft and every
+`--fragment` render are as they were):
+
+| What | How | Formats |
+| --- | --- | --- |
+| The figure | read with `-f latex+raw_tex`, so `\input{figures/x.tex}` reaches LuaLaTeX, through `TEXINPUTS` and the #823 read fence | `tex`, `latex`, `pdf` |
+| Grouped declarations | `\centering`, `\small` and the other alignment and size switches are dropped from the copy pandoc reads when they sit inside a group or an environment: under `raw_tex` pandoc would split a figure into two half-width minipages, and leave a table float's, a `{\centering ...}` group's or a `center` block's declaration bare, changing every paragraph that follows. A top-level one stays, as it changes the rest of the thesis too | `tex`, `latex`, `pdf` |
+| `\ref` numbers | `--number-sections`; LaTeX now resolves the raw `\ref` from the counters that number the headings, so "Section 1.1" names a heading that reads "1.1" | `tex`, `latex`, `pdf` |
+| Absolute column widths | `p{2.6cm}` (and `m`, `b`; `cm`, `mm`, `in`, `pt`, `bp`) becomes `p{0.1633\linewidth}` against the house page's text width, before pandoc reads it, in a spec whose every column is `p`, `m` or `b`: once one column has a width, pandoc gives an `l`, `c` or `r` column none. `em`, `ex` and `*{n}{...}` are left alone | every format |
+| The references heading | `--metadata reference-section-title=References` | every format |
+
+What `raw_tex` costs: a command pandoc does not know now reaches
+LuaLaTeX, where it used to be dropped. One the thesis's preamble defines
+stops the pdf, so the preview loads **the author's preamble file**,
+`content/drafts/<topic>/<slug>.preamble.tex` beside the draft or, failing
+that, a `preamble.tex` its chapters share, with `--include-in-header`,
+before the font header, which stays last. The render names the file it
+loads (`[preamble] <path>`), and refuses one that is a symlink out of the
+draft's directory, as it refuses such a figure: pandoc reads the file
+with no fence. When the pdf stops on an undefined command, the error
+names the command and the file to define it in, and says an agent leaves
+the file to the author. A citation inside a command pandoc keeps raw is
+not resolved; the error says to move it out instead. `draft diff` copies
+the draft's preamble beside each of its two sides.
+
 ## 🕳 Open gaps
 
-- **A `.tex` fragment's TikZ is dropped from its own `tex`/`pdf` render.**
-  `_pandoc_command` (`chitragupta/render_output/_pandoc.py`) passes no
-  `-f`/`--from`, so pandoc's LaTeX reader resolves
-  `\input{figures/<name>.tex}` and drops the `tikzpicture` inside it,
-  with exit `0` and no warning. The fourth row of the [figure
-  substitution table](#-figure-substitution-four-combinations-one-real-no-op)
-  assumes the TikZ passes through, as does `thesis-chapter-writer`'s step
-  12. Passing `-f latex+raw_tex` would leave `\input{...}` for LuaLaTeX
-  and restore the figure; nothing passes it yet. To reproduce:
-
-  ```bash
-  $ printf '\\begin{tikzpicture}\\draw[blue] (0,0) circle (1);\\end{tikzpicture}\n' > figures/fig1.tex
-  $ printf '\\section{Framing}\nPrior work established Y.\n\n\\input{figures/fig1.tex}\n\nText after the figure.\n' > chapter.tex
-  $ pandoc chapter.tex --standalone -o out.tex; echo "exit=$?"
-  exit=0
-  ```
-
-  `out.tex` keeps the section and both sentences; the `tikzpicture` is
-  gone.
+- **A `.tex` fragment's `.md` preview prints section numbers its headings
+  do not show.** Its `md` render keeps pandoc's default reader (a raw
+  `\ref` would print as text there), which resolves
+  `Section~\ref{sec:framing}` to "Section 1.1" while the Markdown
+  writer ignores `--number-sections`, so the heading reads "Framing".
+  The `tex`/`pdf` preview numbers both ([a `.tex` draft's own
+  preview](#-a-tex-drafts-own-preview)). Left as is: the issue it came
+  from was about the pdf.
 - **A `.tex` fragment's own `tex`/`pdf` preview resolves citations with
   `--citeproc`, not `--natbib`.** `--natbib` is used for `--fragment`
   renders of Markdown units (see [citation
@@ -433,5 +454,6 @@ exist until pandoc's reader has run:
   but a thesis fragment's preview bakes in citeproc's numbering, which
   `thesis-chapter-writer` relies on as the only place the fragment's
   citations are shown resolved. Switching would need
-  `-f latex+raw_tex-auto_identifiers` (the fix above, plus no
-  auto-generated `\label` to collide across chapters).
+  `-f latex+raw_tex-auto_identifiers` (the reader the `tex`/`pdf`
+  preview now uses, plus no auto-generated `\label` to collide across
+  chapters).

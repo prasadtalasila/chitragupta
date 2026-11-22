@@ -321,6 +321,15 @@ chitragupta draft render content/drafts/thesis/methods.tex --format pdf
 chitragupta draft render content/drafts/thesis/methods.tex --format md
 ```
 
+The pdf preview numbers its headings, so a `Section~\ref{...}` names a
+heading you can find, titles the reference list, and keeps your figures
+and table widths. It loads none of your thesis's preamble. If the
+chapter uses a command your preamble defines (`\todo`, an acronym
+macro), the preview stops and names it: put the definition in
+`content/drafts/thesis/methods.preamble.tex`, or in
+`content/drafts/thesis/preamble.tex` to share it across chapters, and
+render again. That file is yours; the skill never writes it.
+
 This genre should always emit the evidence sidecar. Your reader is an
 examiner reading adversarially for the claim that outruns its evidence,
 and the sidecar is what lets them check one:
@@ -519,6 +528,7 @@ chitragupta draft dossier export thesis/methods
 | The skill refuses, saying the ledger is empty | no corpus | `chitragupta corpus sync` |
 | `gate` says `FAIL` | a `\citep` key is not in the corpus | correct it or drop the claim; never add it by hand |
 | The preview PDF fails on a figure | the figure's TikZ does not compile | ask to fix the figure, which `figure-drawer` handles; a broken figure fails the whole render |
+| The preview PDF stops on `Undefined control sequence` | the chapter uses a command only your thesis preamble defines | define it in `<chapter>.preamble.tex` beside the chapter, as the error says |
 | Your thesis build fails on `\citep` | no `natbib` in your preamble | add it; the fragment cannot |
 | Your thesis build fails on `of` in a node position | the TikZ library is not loaded in *your* preamble | add `\usetikzlibrary{...}` with the names the figure file lists |
 | The chapter reads like a summary, not an argument | the RQ was never stated | give the RQ and ask `draft-reviser` to re-frame around it |

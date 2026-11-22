@@ -17,7 +17,7 @@ from pathlib import Path
 from chitragupta import config, install, pdf_fonts, programs, tex_engine
 from chitragupta.render_output._csl import _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, _require
-from chitragupta.render_output import _floats, _index_terms, _unit_labels
+from chitragupta.render_output import _floats, _index_terms, _tex_preview, _unit_labels
 from chitragupta.render_output._tables import _LATEX_BOUND
 from chitragupta.render_output._tikz_libraries import header_include, preamble_libraries
 from chitragupta.render_output._unicode import font_header_path
@@ -303,6 +303,11 @@ def _pandoc_command(
     # which the template loads).
     for path in preamble_files or []:
         cmd += ["--include-in-header", str(path)]
+    # A `.tex` draft's preview reads raw TeX, numbers its headings, titles
+    # its reference list and loads the author's preamble file (#1164,
+    # #1120). Here, before the font header the pdf branch adds, which
+    # stays last; `_tex_preview` has why.
+    cmd += _tex_preview.pandoc_args(input_path, output_format, fragment)
     # Where a figure may float (#1065): every standalone LaTeX-bound render,
     # and a copy beside a fragment that draws one. `_floats` has why.
     cmd += _floats.preamble_args(output_format, fragment, figure_refs, out_path.parent)

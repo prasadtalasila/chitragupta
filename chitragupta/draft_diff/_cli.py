@@ -15,6 +15,7 @@ unchanged.
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 from collections.abc import Callable
@@ -32,6 +33,7 @@ from chitragupta.draft_diff._views import VersionView, from_draft, from_file, fr
 from chitragupta.render_output._gate import UngatedDraft
 from chitragupta.render_output._math import MathMappingError
 from chitragupta.render_output._math import mapping_path as math_mapping_path
+from chitragupta.render_output._tex_preview import preamble_file
 from chitragupta.help_format import ClickParser
 from chitragupta.progname import prog_for
 
@@ -159,6 +161,11 @@ def _redline_pdf(
     # so both take the draft's own: figures are shown as they are now
     # (plans/1194-draft-diff.md, decision 12), and so is the mathematics.
     mapping = math_mapping_path(draft)
+    # And the draft's preamble file, which a `.tex` preview loads from
+    # beside its draft (#1164): each side gets a copy named for itself.
+    preamble = preamble_file(draft)
+    for src in (old_src, new_src) if preamble else ():
+        shutil.copyfile(preamble, src.with_name(f"{src.stem}.preamble.tex"))
     old_tex, new_tex = (
         render_output.render(
             str(src),

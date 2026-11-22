@@ -12,6 +12,7 @@ from chitragupta.page import ARTICLE
 from chitragupta.render_output._errors import ConversionError, MissingBinary, OutsideContentDir
 from chitragupta.render_output._figures import _figure_refs
 from chitragupta.render_output._math import MathMappingError
+from chitragupta.render_output._tex_preview import undefined_command_hint
 from chitragupta.help_format import ClickParser
 from chitragupta.progname import prog_for
 
@@ -242,6 +243,7 @@ def _rendered(args: argparse.Namespace) -> Path | None:
         print(
             f"[error] pandoc failed: {exc.stderr or exc}"
             f"{_figure_repair_hint(args.input)}{_unicode_repair_hint(exc.stderr)}"
+            f"{undefined_command_hint(exc.stderr, args.input)}"
         )
         return None
     except ledger.NoLedger as exc:
