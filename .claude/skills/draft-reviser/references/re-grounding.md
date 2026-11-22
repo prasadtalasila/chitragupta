@@ -28,7 +28,7 @@ anything else:
   and still exits 0. Go to "When there is no dossier", bootstrap, and
   come back.
 
-## R3. Act on the three lists -- they are not the same kind of thing
+## R3. Act on the lists -- they are not the same kind of thing
 
 Before the first retrieval call or edit, mark the start of this pass, as
 step 1 does for a revision someone asked for:
@@ -44,6 +44,33 @@ and refuses.
 
 Flattening them into one list of "papers to look at" is the failure mode
 this section exists to prevent.
+
+**`renamed` comes first, and is mechanical.** Each entry is a citekey
+sync recorded as renamed -- the same paper, now under another key -- with
+the key that replaced it (`new`), `same_pdf`, and the sections citing it.
+Do not search for a replacement; swap it:
+
+```bash
+python -m chitragupta.draft dossier apply-renames content/drafts/<path>
+```
+
+It swaps every entry in the draft, `evidence.md`, `sections.md` and
+`rejected.md`, and logs the swap in `revisions.md`. When an entry's
+`same_pdf` is `false` it prints a `review quotation` command: run it
+before going on, and hand every quote it fails to the user, because the
+draft's quotes were taken from a different PDF. If it exits 1 (a cycle,
+or a replacement not in the ledger), treat those entries as `missing`
+instead. This step is not done until `dossier status` lists no `renamed`
+entry.
+
+**`unresolved_collections` comes before any search.** A recorded
+collection that no longer names one: a path written before collections
+were slug paths (`Digital twins > Modelling`), or a display path a rename
+moved. `--collection` with it exits 2. Run
+`python -m chitragupta.corpus ledger --collections`, ask the user once
+which slug path the draft belongs to, rewrite `scope.md`'s `collection:`
+line as `- collection: <slug path>   # <display path>`, and note the change
+in `revisions.md`. Search with the slug from then on.
 
 **`missing` is a defect.** The draft stands on a paper the corpus no
 longer has; `citation_gate` already disagrees with the draft. Always

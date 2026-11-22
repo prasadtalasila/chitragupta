@@ -88,7 +88,9 @@ carries the same `--collection`**, and the user is not asked again. A
 draft grounded in one curated shelf and then revised against the whole
 library has silently changed what it is made of, and nothing shows it:
 the citekeys are all real and the gate still passes. A missing line, or
-`- collection: (whole corpus)`, means search everything.
+`- collection: (whole corpus)`, means search everything. Pass the slug
+path, not its `#` note. If `--collection` exits 2, handle it as
+re-grounding's `unresolved_collections`.
 
 ## The loop
 

@@ -133,7 +133,11 @@ def resolve(wanted: str, names: dict[str, str], paths: Iterable[str]) -> str:
     when it fits none.
     """
     shown = display_paths(names, paths)
-    slug = wanted.strip().casefold()
+    # `scope.md` records `<slug>   # <display path>`; only the slug is the
+    # value. Split only when what precedes the `#` is itself a slug path,
+    # so a name holding `#` (`C# projects`) is never cut.
+    head = wanted.split("#", 1)[0].strip().casefold()
+    slug = head if is_slug_path(head) else wanted.strip().casefold()
     if slug in shown:
         return slug
     target = _normalised_display(wanted)

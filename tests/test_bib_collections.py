@@ -163,6 +163,16 @@ class TestResolve:
             resolve("a.nope", {"a": "A"}, [])
         assert e.value.old_syntax is False
 
+    def test_a_scope_md_value_with_its_note_resolves_to_the_slug(self):
+        """`scope.md` records `- collection: <slug>   # <display path>`; an
+        agent that passes the whole value still gets the slug."""
+        value = "digital-twins.platforms   # Digital Twins / Platforms"
+        assert resolve(value, DEPTH_FOUR, []) == "digital-twins.platforms"
+
+    def test_a_hash_in_a_display_name_is_not_a_note(self):
+        names = {"lang": "Languages", "lang.c-projects": "C# projects"}
+        assert resolve("Languages/C# projects", names, []) == "lang.c-projects"
+
     def test_empty_is_unknown(self):
         with pytest.raises(UnknownCollection):
             resolve("  ", {"a": "A"}, [])
