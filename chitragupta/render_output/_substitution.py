@@ -22,6 +22,7 @@ from chitragupta.render_output import (
     _paths,
     _raw_tex,
     _tables,
+    _tex_preview,
 )
 from chitragupta.render_output._citeproc import drop_manual_refs
 from chitragupta.render_output._figure_captions import figures as _declared_figures
@@ -171,6 +172,10 @@ def _substituted(
             drop_manual_refs(draft_text),
             input_path.suffix.lower() not in _paths._MARKDOWN_SUFFIXES,
         )
+    # A `.tex` draft's preview only: its absolute column widths and a
+    # figure's own `\centering`, which pandoc's reader would lose or
+    # misread (#1120, #1164); `_tex_preview` has why.
+    draft_text = _tex_preview.rewrite(draft_text, input_path, output_format, fragment)
     declared = _declared_figures(draft_text)
     with_captions = substitute_captions(draft_text, output_format, declared)
     with_refs = substitute_refs(with_captions, output_format, declared)
