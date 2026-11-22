@@ -623,11 +623,12 @@ a gate: it takes no lock and opens the ledger read-only.
 | --- | --- |
 | `init <draft> --genre G` | Create the skeleton. Only adds missing files, so it is safe to re-run |
 | `status <draft>` | What each file holds, the section count, and whether the corpus moved since; with an `outline.md`, which declared queries ran, returned nothing (`no evidence`) or were never issued |
-| `status --all` | Corpus drift over every dossier: broken citations and new candidates. Always exits 0 |
+| `status --all` | Corpus drift over every dossier: broken citations, citekeys sync recorded as renamed, recorded collections that no longer resolve, and new candidates. Always exits 0 |
 | `sections <draft>` | Heading -> line range, for editing one section instead of the file |
 | `sections <draft> --citekeys` | The `sections.md` table derived from the draft: each heading with the citekeys cited under it |
 | `outline <draft>` | Read and validate `outline.md` (sections are `##`-or-deeper headings). **Exits 1** if there's no `outline.md`, or a section has neither a `brief:` nor a `claim:` |
 | `mark-revision <draft>` | Record a revision boundary in `retrieval.md`, so `status` totals retrieval cost per revision, and keep a numbered snapshot of the draft and its figures under `versions/` (skipped when unchanged) |
+| `apply-renames <draft>` | Swap every citekey sync recorded as renamed for its replacement, in the draft, `evidence.md`, `sections.md` and `rejected.md`, and log it in `revisions.md`. All or nothing: **exits 1**, changing nothing, if a replacement is not in the ledger or the renames form a cycle. Names the `review quotation` re-check when a renamed paper's PDF changed |
 | `snapshot <draft> --label TEXT` | Keep the draft and its figures as a named version (`002-sent-to-supervisor`) for `draft diff --against`. Always taken |
 | `versions <draft>` | Every snapshot, oldest first: number, date, trigger, label |
 | `stamp <draft>` | Record the draft's text digest in `scope.md`, so `status` reports `CHANGED since last stamp` after a hand edit. Run after `gate` passes, never before |
@@ -648,7 +649,7 @@ a gate: it takes no lock and opens the ledger read-only.
 | `--genre GENRE` | `init` | Required: `survey`, `thesis-chapter`, `textbook-chapter`, `tutorial`, `deep-research`, `digest`, `research-paper` (which also gets a `paper.md`) |
 | `--outline` | `init` | Also create `outline.md`. Opt-in |
 | `--all` | `status` | Report every dossier. Mutually exclusive with a draft path |
-| `--json` | `status`, `versions` | Emit JSON, for `draft-reviser` rather than a terminal |
+| `--json` | `status`, `versions`, `apply-renames` | Emit JSON, for `draft-reviser` rather than a terminal |
 | `--label TEXT` | `mark-revision` | Optional name for this revision; unlabelled markers are numbered (`revision 1`, ...) |
 | `--label TEXT` | `snapshot` | Required: the milestone's name. Not all digits, unique within the draft, with at least one ASCII letter or digit |
 | `--citekeys` | `sections` | Print the derived `sections.md` table. A citekey cited above the first heading is reported on stderr |

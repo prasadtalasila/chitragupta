@@ -30,6 +30,8 @@ from chitragupta.dossier._citekeys import (
     section_citekeys,
 )
 from chitragupta.dossier import (
+    EVIDENCE_MD,
+    SECTIONS_MD,
     _corpus_rows,
     all_dossiers,
     digest,
@@ -38,6 +40,7 @@ from chitragupta.dossier import (
     find_draft,
     recorded_corpus,
 )
+from chitragupta.dossier._renames import renamed_in
 from chitragupta.dossier._retrieval import recorded_queries_with_collection
 
 # Re-exported: callers and tests reach the shared snapshot through `_drift`.
@@ -78,6 +81,7 @@ class Drift:
     reconsider: list[Reconsider] = field(default_factory=list)
     unconsidered: int = 0
     unresolved_collections: list[str] = field(default_factory=list)
+    renamed: dict[str, dict] = field(default_factory=dict)
 
     @property
     def drifted(self) -> bool:
@@ -90,7 +94,7 @@ class Drift:
         # will be true on every sweep after it -- counting it as drift
         # would mark every dossier that ever declined a paper permanently
         # stale, which is exactly the signal this command exists to give.
-        return not self.missing and not self.candidates and not self.unresolved_collections
+        return not (self.missing or self.candidates or self.unresolved_collections or self.renamed)
 
     def as_dict(self) -> dict:
         return {
@@ -103,6 +107,7 @@ class Drift:
             "drifted": self.drifted,
             "missing": self.missing,
             "unresolved_collections": self.unresolved_collections,
+            "renamed": self.renamed,
             "candidates": [
                 {"citekey": c.citekey, "title": c.title, "queries": c.queries}
                 for c in self.candidates
@@ -150,7 +155,7 @@ def drift(dossier: Path, corpus: "Corpus | None" = None) -> Drift:
     # own `evidence.md` heading. The ledger alone cannot answer "which
     # cited papers left the corpus?" for a separator-free key, because a
     # key that left it is not in it -- see `declared_citekeys` (#506/M-28).
-    known = corpus.citekeys | declared_citekeys(dossier)
+    known = corpus.citekeys | declared_citekeys(dossier) | set(corpus.renames)
 
     sections_citing = section_citekeys(dossier, known)
     cited = _citekeys_in(dossier, CITED_FILES, known)
@@ -159,8 +164,13 @@ def drift(dossier: Path, corpus: "Corpus | None" = None) -> Drift:
     # backticked prose, and the skill's own name in the evidence preamble
     # (`tutorial-writer`) was reported as a citation that left the ledger.
     declared = declared_citekeys(dossier) | set(sections_citing)
+    # A renamed key is not missing: sync recorded its replacement, and
+    # `dossier apply-renames` swaps it without a search (plans/1211).
+    texts = [p.read_text(encoding="utf-8") for p in _texts_of(report.draft, dossier)]
+    report.renamed = renamed_in(texts, corpus.renames, corpus.citekeys, sections_citing)
     report.missing = {
-        citekey: sections_citing.get(citekey, []) for citekey in sorted(declared - corpus.citekeys)
+        citekey: sections_citing.get(citekey, [])
+        for citekey in sorted(declared - corpus.citekeys - set(report.renamed))
     }
 
     # Everything the dossier ever weighed -- rejections included, which is
@@ -191,6 +201,12 @@ def drift(dossier: Path, corpus: "Corpus | None" = None) -> Drift:
         if citekey in declined and citekey not in cited
     ]
     return report
+
+
+def _texts_of(draft: Path | None, dossier: Path) -> list[Path]:
+    """The draft and the dossier files a renamed key can be cited in."""
+    paths = [dossier / name for name in (EVIDENCE_MD, SECTIONS_MD)]
+    return [p for p in ([draft] if draft else []) + paths if p.is_file()]
 
 
 def drift_all() -> list[Drift]:

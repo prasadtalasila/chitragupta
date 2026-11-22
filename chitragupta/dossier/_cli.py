@@ -31,6 +31,7 @@ from chitragupta.dossier._retrieval import _cmd_mark_revision
 from chitragupta.dossier._sections import _cmd_sections
 from chitragupta.dossier._outline import _cmd_outline
 from chitragupta.dossier._prune import _cmd_prune
+from chitragupta.dossier._renames import _cmd_apply_renames
 from chitragupta.dossier._status import _cmd_status
 from chitragupta.dossier._versions import VersionError, _cmd_snapshot, _cmd_versions
 from chitragupta.help_format import ClickParser
@@ -74,6 +75,16 @@ def _add_mark_revision_parser(sub) -> None:
         "--label", default="", help="Short name for this revision (the date is already recorded)"
     )
     p_mark_revision.set_defaults(func=_cmd_mark_revision)
+
+
+def _add_apply_renames_parser(sub) -> None:
+    p_apply = sub.add_parser(
+        "apply-renames",
+        help="Swap citekeys sync recorded as renamed, in the draft and its dossier",
+    )
+    p_apply.add_argument("draft", help=_DRAFT_PATH_HELP)
+    p_apply.add_argument("--json", action="store_true", help="Machine-readable list of swaps")
+    p_apply.set_defaults(func=_cmd_apply_renames)
 
 
 def _add_snapshot_parser(sub) -> None:
@@ -255,6 +266,7 @@ def main(argv: list[str] | None = None) -> int:
     _add_init_parser(sub)
     _add_status_parser(sub)
     _add_mark_revision_parser(sub)
+    _add_apply_renames_parser(sub)
     _add_snapshot_parser(sub)
     _add_versions_parser(sub)
     _add_stamp_parser(sub)

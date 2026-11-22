@@ -37,6 +37,13 @@ def _print_drift(report: Drift) -> None:
             list(report.missing.items()),
             _render_missing,
         )
+    if report.renamed:
+        _print_capped(
+            f"    {len(report.renamed)} citekey(s) renamed; run `dossier apply-renames` "
+            "on the draft:",
+            list(report.renamed.items()),
+            _render_renamed,
+        )
     if report.unresolved_collections:
         _print_capped(
             f"    {len(report.unresolved_collections)} recorded collection(s) no longer "
@@ -78,6 +85,13 @@ def _render_missing(item) -> None:
     citekey, in_sections = item
     where = f"  cited in: {', '.join(in_sections)}" if in_sections else ""
     print(f"      {citekey}{where}")
+
+
+def _render_renamed(item) -> None:
+    old, rename = item
+    pdf = "same PDF" if rename["same_pdf"] else "different PDF"
+    where = f"  cited in: {', '.join(rename['sections'])}" if rename["sections"] else ""
+    print(f"      {old} -> {rename['new']} ({pdf}){where}")
 
 
 def _render_candidate(candidate) -> None:

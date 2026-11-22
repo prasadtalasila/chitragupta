@@ -34,6 +34,7 @@ class Corpus:
         self.collections = {row["citekey"]: bib_collections.of_row(row) for row in rows}
         self._index: dict | None = None
         self._names: dict[str, str] | None = None
+        self._renames: dict[str, tuple[str, str, bool]] | None = None
 
     @property
     def index(self) -> dict:
@@ -43,6 +44,18 @@ class Corpus:
 
             self._index = retrieval_cache.read_only_index(self.rows, retrieval._tokenize_item)
         return self._index
+
+    @property
+    def renames(self) -> dict[str, tuple[str, str, bool]]:
+        """The ledger's recorded citekey renames, read once; none when the
+        ledger cannot be read."""
+        if self._renames is None:
+            try:
+                with ledger.reading() as con:
+                    self._renames = ledger_tables.renames(con)
+            except (ledger.NoLedger, sqlite3.Error):
+                self._renames = {}
+        return self._renames
 
     @property
     def names(self) -> dict[str, str]:
