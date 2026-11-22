@@ -82,6 +82,33 @@ CORE_STOPWORDS = frozenset(
 # so "of" and "in" stay out at either floor.
 INDEX = Rule(floor=2, stopwords=CORE_STOPWORDS)
 
+# Question words and question-forming auxiliaries -- rare in academic
+# PDFs, so they carry high IDF and out-compete the terms a question is
+# actually about. Dropped from queries only (`retrieval._query_terms`),
+# never from the index, so they are no part of INDEX's digest.
+# docs/CORPUS-SEARCH.md has the measurement.
+INTERROGATIVES = frozenset(
+    {
+        "what",
+        "why",
+        "how",
+        "who",
+        "whom",
+        "whose",
+        "which",
+        "when",
+        "where",
+        "can",
+        "could",
+        "would",
+        "should",
+        "will",
+        "shall",
+        "does",
+        "did",
+    }
+)
+
 # The words that distinguish one claim from another, which is what the
 # review aids match a claim against a passage on. Stricter than INDEX in
 # both directions and never looser -- a word kept here that BM25 dropped

@@ -251,8 +251,10 @@ shared read-only builder.
   is the same exception acronyms already have, documented in the comment
   above `query_terms`. Accept it and extend that comment. The bench
   should record how many corrections a typical `--y-prev` round adds.
-  (Measured 2026-11-22: 19% of draft paragraphs gain one, mostly wrong.
-  Excluding `--y-prev` prose is the open follow-up.)
+  (Superseded in the same PR, at the owner's request: measured
+  2026-11-22, 19% of draft paragraphs gained a correction, mostly wrong,
+  so `--y-prev` prose now reaches `query_terms` as `context`, ranked on
+  and never corrected.)
 - **`retrieval_iterative.py` and `discover/_resolve.py`** call the private
   `_query_terms` and get neither expansion nor correction. Leave them.
 

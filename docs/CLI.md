@@ -720,7 +720,7 @@ withdrawn).
 | `--windows N` | `evidence` | 2 | How many passages to return |
 | `--log DRAFT` | all | -- | Record the call, its collection and its payload size in DRAFT's dossier `retrieval.md` |
 | `--origin declared\|extended\|reground` | all | -- | With `--log`: whether this query came from `outline.md` verbatim, extended a section that came up thin, or re-ran a section's query with `--y-prev` after a hand edit |
-| `--y-prev TEXT` | `search` | -- | Append this text (bounded to 1500 characters) to the query for a second retrieval round, merged with the first and capped back to `--k` (FEATURE-ROADMAP.md's E4) |
+| `--y-prev TEXT` | `search` | -- | Append this text (bounded to 1500 characters) to the query for a second retrieval round, merged with the first and capped back to `--k` (FEATURE-ROADMAP.md's E4). The text is never spelling-corrected |
 
 ```bash
 chitragupta draft retrieve search "digital twin architecture" --k 15 \

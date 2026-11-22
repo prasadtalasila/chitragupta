@@ -32,20 +32,29 @@ class Added(NamedTuple):
     source: str  # ACRONYM or SPELLING
 
 
-def added_terms(typed: list[str], tokenize, tokenize_item, excluded) -> list[Added]:
-    """What to rank `typed` with beyond itself: acronym expansions in
-    `expand`'s order, then spelling corrections in query order.
+def added_terms(
+    typed: list[str], context: list[str], tokenize, tokenize_item, excluded
+) -> list[Added]:
+    """What to rank `typed` and `context` with beyond themselves: acronym
+    expansions of both in `expand`'s order, then spelling corrections of
+    `typed` alone, in query order.
+
+    `context` is ranked beside the query without being typed as one --
+    `--y-prev`'s draft prose -- and is never corrected: a correction in
+    prose would be a guess at a word nobody searched for, and would reach
+    no note. A correction either part already holds is not added.
 
     The tokenizers and `excluded` (`retrieval._INTERROGATIVES`) are passed
-    in because `chitragupta.retrieval` imports this module. A query with
-    no terms reads no vocabulary.
+    in because `chitragupta.retrieval` imports this module. No terms reads
+    no vocabulary.
     """
-    if not typed:
+    words = typed + context
+    if not words:
         return []
-    added = [Added(a, t, ACRONYM) for a, t in retrieval_expansion.expand(typed, tokenize)]
-    expanded = {entry.term for entry in added}
+    added = [Added(a, t, ACRONYM) for a, t in retrieval_expansion.expand(words, tokenize)]
+    taken = set(words) | {entry.term for entry in added}
     for word, correction in retrieval_spelling.correct(typed, tokenize_item, excluded):
-        if correction not in expanded:
+        if correction not in taken:
             added.append(Added(word, correction, SPELLING))
     return added
 

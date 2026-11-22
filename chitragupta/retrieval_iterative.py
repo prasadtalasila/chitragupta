@@ -57,8 +57,8 @@ def search_iterative(
     collection: str | None = None,
 ) -> tuple[list[SearchResult], bool]:
     """Two-round retrieval: round 1 is `search(query, ...)` unchanged;
-    round 2 appends a bounded `y_prev` (`_bound_y_prev`) to `query` and
-    searches again. Results are merged by citekey -- when a citekey
+    round 2 searches `query` again with a bounded `y_prev`
+    (`_bound_y_prev`) ranked beside it as `context`. Results are merged by citekey -- when a citekey
     scored in both rounds, the higher score wins -- re-sorted
     descending by score (ties broken on citekey, for a deterministic
     order), and sliced to `k`.
@@ -75,7 +75,9 @@ def search_iterative(
     if not bounded or not _query_terms(query):
         return round1, truncated
 
-    round2 = search(f"{query} {bounded}", k=k, snippet_chars=snippet_chars, collection=collection)
+    # The prose goes in as `context`, not appended to the query: it is
+    # ranked on, but never spelling-corrected (#1232).
+    round2 = search(query, k=k, snippet_chars=snippet_chars, collection=collection, context=bounded)
     merged: dict[str, SearchResult] = {}
     for result in (*round1, *round2):
         current = merged.get(result.citekey)

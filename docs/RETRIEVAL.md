@@ -287,10 +287,11 @@ neighbour. The rules:
   as much as a typed word, as an acronym's expansion does.
 - Corrections and acronym expansions read only what you typed: neither
   is applied to the other's output.
+- The draft prose `search --y-prev` adds to its second round is ranked
+  on but **never corrected**. It is full of LaTeX commands and words the
+  corpus lacks, and correcting it would add words nobody searched for.
 
-`retrieve` and `discover search` print each correction on stderr
-(except in `search --y-prev`'s appended prose, which is corrected
-without a note), and
+`retrieve` and `discover search` print each correction on stderr, and
 `--log` records it in `retrieval.md`'s `expanded` column as
 `strucutral ~> structural`. The citation coverage report lists them per
 query.
@@ -318,9 +319,9 @@ On this project's corpus
 - **Harm:** 2 of 964 logged queries were corrected, both valid words
   the corpus lacks. `tumbling` gained `stumbling` and put an unrelated
   paper first. The logs held no genuine typo, which is why it ships off.
-- **`--y-prev`:** 19% of draft paragraphs appended by `search --y-prev`
-  gain a correction, mostly wrong (`citep` -> `cited`), and these reach
-  no note.
+- **`--y-prev`:** had draft prose been corrected, 19% of paragraphs
+  would have gained a correction, mostly wrong (`citep` -> `cited`). That
+  is why it is not.
 - **Cost:** each process builds the vocabulary once: 0.28 s with a
   current BM25 cache, 6.0 s with none. Each later lookup costs about
   27 ms, and `retrieve` makes two per query.

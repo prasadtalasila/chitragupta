@@ -28,8 +28,8 @@ Four arms:
    on, overall and on the queries correction actually changed, beside the
    untouched queries' figures for reference.
 4. **`--y-prev` prose.** Paragraphs of the project's own drafts, as
-   `retrieve search --y-prev` would append them: how many corrections a
-   round adds without a note.
+   `retrieve search --y-prev` passes them: how many corrections they
+   would gain if prose were corrected. It is not, and this arm is why.
 
 Run from the repository, naming the project to measure:
 
@@ -207,10 +207,10 @@ def arm_recovery(index: dict, vocab: dict[str, int]) -> dict:
 
 
 def arm_y_prev(limit: int = 300) -> dict:
-    """What `--y-prev` prose gains: `retrieve search --y-prev` appends up
-    to 1500 characters of draft text to the query, and corrections in it
-    reach no note. Paragraphs of this project's own drafts stand in for
-    that text."""
+    """What correcting `--y-prev` prose would add. `retrieve search
+    --y-prev` ranks up to 1500 characters of draft text beside the query
+    and never corrects it; this calls `correct` on it directly to show
+    why. Paragraphs of this project's own drafts stand in for that text."""
     paragraphs = set()
     for path in sorted(config.DRAFTS_DIR.rglob("*")):
         if path.suffix in {".md", ".tex"} and path.is_file():

@@ -72,6 +72,39 @@ class TestAddedTerms:
         assert retrieval.query_terms("what is the") == ([], [])
 
 
+class TestContext:
+    """`--y-prev` prose reaches ranking as `context`: ranked on, acronyms
+    expanded as before, but never spelling-corrected. Draft prose holds
+    LaTeX commands and words a corpus lacks, and a correction in it would
+    reach no note."""
+
+    def test_context_words_are_ranked_but_never_corrected(self, spelling):
+        terms, entries = retrieval.query_terms("strucutral", context="citep digitl")
+        assert terms == ["strucutral", "citep", "digitl", "structural"]
+        assert entries == [Added("strucutral", "structural", SPELLING)]
+
+    def test_context_acronyms_still_expand(self, vocabulary):
+        assert added_with("fidelity", "DT") == [
+            Added("dt", "digital", ACRONYM),
+            Added("dt", "twin", ACRONYM),
+        ]
+
+    def test_a_correction_the_context_already_holds_is_not_added(self, spelling):
+        assert added_with("strucutral", "structural") == []
+
+    def test_with_correction_off_it_ranks_as_the_joined_string_did(self, vocabulary):
+        """Before #1232's follow-up, `--y-prev` searched the query and the
+        prose joined into one string; with correction off the terms are
+        exactly that string's."""
+        joined = retrieval.query_terms("DT fidelity the compensator recomputes")
+        split = retrieval.query_terms("DT fidelity", context="the compensator recomputes")
+        assert split == joined
+
+
+def added_with(query: str, context: str) -> list[Added]:
+    return retrieval.query_terms(query, context=context)[1]
+
+
 class TestDescribe:
     def test_nothing_added_describes_as_empty(self):
         assert describe([]) == ""

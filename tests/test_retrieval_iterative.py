@@ -127,3 +127,31 @@ class TestSearchIterative:
         )
         assert found[0].citekey == "a2024"
         assert found[0].score == round1[0].score
+
+
+class TestYPrevIsNeverCorrected:
+    """With spelling correction on, round 2 ranks on the query's own
+    correction but never corrects the appended prose: `earns` is in no
+    paper and one slip from `learns`, which is in two."""
+
+    def test_round_two_corrects_the_query_and_not_the_prose(self, ledger_con, monkeypatch):
+        from chitragupta import config, retrieval_scoring
+
+        for citekey in ("a2024", "b2024"):
+            parsed = parsed_file(citekey)
+            parsed.write_text("a structural model that learns its offset")
+            add_citable(ledger_con, citekey, title=citekey)
+            ledger.mark_parsed(ledger_con, citekey, parsed)
+        monkeypatch.setattr(config, "SPELLING_CORRECTION", True)
+        ranked_on = []
+        real = retrieval_scoring.bm25_scores
+        monkeypatch.setattr(
+            retrieval_scoring,
+            "bm25_scores",
+            lambda index, terms: ranked_on.append(set(terms)) or real(index, terms),
+        )
+        retrieval_iterative.search_iterative("strucutral", "the compensator earns its keep")
+        round1, round2 = ranked_on
+        assert "structural" in round1
+        assert {"structural", "compensator", "earns"} <= round2
+        assert "learns" not in round2

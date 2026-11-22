@@ -71,29 +71,8 @@ from chitragupta import (
     retrieval_tables,
 )
 
-# Question words and question-forming auxiliaries -- rare in academic
-# PDFs, so they carry high IDF and out-compete the terms a question is
-# actually about. Query-side only: see _query_terms below.
-# docs/CORPUS-SEARCH.md has the measurement.
-_INTERROGATIVES = {
-    "what",
-    "why",
-    "how",
-    "who",
-    "whom",
-    "whose",
-    "which",
-    "when",
-    "where",
-    "can",
-    "could",
-    "would",
-    "should",
-    "will",
-    "shall",
-    "does",
-    "did",
-}
+# Dropped from queries, never from the index: `_tokens.INTERROGATIVES`.
+_INTERROGATIVES = _tokens.INTERROGATIVES
 
 
 @dataclass
@@ -146,20 +125,22 @@ def _query_terms(query: str) -> list[str]:
 # drift report each tokenized the query for themselves and never expanded
 # it, while the CLI announced (and `--log` recorded) an expansion only
 # `search` had used. Everything that ranks or windows a query goes through
-# here, and every note reads the same entries. One exception remains:
-# `--y-prev`'s second round searches the query with draft prose appended,
-# and an acronym or a misspelling in that prose is expanded or corrected
-# without reaching the note. A query with no terms reads no vocabulary.
+# here, and every note reads the same entries. `context` is text ranked
+# beside the query but not typed as one -- `--y-prev`'s draft prose. Its
+# acronyms expand without reaching the note, as they always have, but it
+# is never spelling-corrected: draft prose is full of LaTeX commands and
+# words a corpus lacks (`citep` -> `cited`), and its corrections would
+# reach no note (bench/RESULTS.md, #1232). No terms reads no vocabulary.
 #
 # Both sources read the typed terms alone and never feed each other or
 # themselves: an added term is not expanded or corrected in turn. An
 # added term then scores exactly as a typed one does -- #789's own sweep
 # put full weight ahead of every fraction of it, so there is no per-term
 # weight here for a caller to set or for the ranker to read.
-def query_terms(query: str) -> tuple[list[str], list[retrieval_added.Added]]:
-    typed = _query_terms(query)
-    added = retrieval_added.added_terms(typed, _tokenize, _tokenize_item, _INTERROGATIVES)
-    return typed + [entry.term for entry in added], added
+def query_terms(query: str, context: str = "") -> tuple[list[str], list[retrieval_added.Added]]:
+    typed, extra = _query_terms(query), _query_terms(context)
+    added = retrieval_added.added_terms(typed, extra, _tokenize, _tokenize_item, _INTERROGATIVES)
+    return typed + extra + [entry.term for entry in added], added
 
 
 # Occurrences of one query term that `_windows` will anchor a candidate
@@ -335,9 +316,16 @@ def _bm25_scores(index: dict, terms: list[str]) -> dict[str, float]:
 
 
 def search(
-    query: str, k: int = 5, snippet_chars: int = 500, collection: str | None = None
+    query: str,
+    k: int = 5,
+    snippet_chars: int = 500,
+    collection: str | None = None,
+    context: str = "",
 ) -> list[SearchResult]:
     """Rank ledger items by BM25 relevance to `query`. Returns top-k.
+
+    `context` is text ranked beside `query` without being typed as one
+    (`--y-prev`'s draft prose): see `query_terms`.
 
     `collection` restricts the result to items in that Zotero collection
     or one beneath it (chitragupta/bib_collections.py), which is #195's curated
@@ -361,7 +349,7 @@ def search(
     much as `enrich.embed_index.search()`. Tested in
     tests/test_retrieval.py so this module cannot silently lose it.
     """
-    terms, _added = query_terms(query)
+    terms, _added = query_terms(query, context)
     if not terms:
         return []
 
