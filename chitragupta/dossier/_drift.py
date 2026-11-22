@@ -50,48 +50,6 @@ from chitragupta.dossier._retrieval import recorded_queries_with_collection
 CANDIDATE_K = 15
 
 
-def _ephemeral_index(rows: list[sqlite3.Row]) -> dict:
-    """A BM25 term-frequency index built in memory and thrown away.
-
-    `chitragupta.retrieval.search()` cannot be used here, because this is a
-    *report*. It reads the ledger read-only since #843, but it goes
-    through `retrieval_cache._load_index`, which calls `_save_cache`
-    whenever any document's fingerprint moved -- which, after the sync
-    that caused the drift being reported, is guaranteed. That would make
-    an inspection mutate the corpus layer it is inspecting.
-
-    The index itself is not the problem, though: `retrieval._tokenize_item`
-    and `retrieval._bm25_scores` are pure, and the only thing that persists
-    is `retrieval_cache`'s cache write between them. So this composes the
-    same two halves and skips the middle -- seeding from the on-disk
-    cache where a fingerprint still matches -- and `_load_cache` is only
-    ever *read* here, which is now a contract rather than an observation:
-    since #511/m-74 it returns a memoized, shared dict rather than a fresh
-    parse, and its docstring cites this module by name as one of the two
-    callers that may not mutate it --
-    tokenizing the rest into memory, and never writing back. A warm cache
-    makes this nearly free; a cold or absent one costs one tokenization
-    of the corpus, paid once per scan and dropped when it returns.
-
-    Imported lazily so that `import chitragupta.dossier` stays as cheap as the
-    rest of the module -- and it stays stdlib-only either way, since
-    `chitragupta.retrieval`/`chitragupta.retrieval_cache` are too.
-    """
-    from chitragupta import retrieval, retrieval_cache
-
-    cached = retrieval_cache._load_cache()
-    index = {}
-    for row in rows:
-        entry = cached.get(row["citekey"])
-        if isinstance(entry, dict) and entry.get("fingerprint") == retrieval_cache._fingerprint(
-            row
-        ):
-            index[row["citekey"]] = entry
-        else:
-            index[row["citekey"]] = retrieval._tokenize_item(row)
-    return index
-
-
 class Corpus:
     """The ledger read once, plus the throwaway index built from it.
 
@@ -111,7 +69,10 @@ class Corpus:
     @property
     def index(self) -> dict:
         if self._index is None:
-            self._index = _ephemeral_index(self.rows)
+            # Read-only: a report must not write the cache it inspects.
+            from chitragupta import retrieval, retrieval_cache
+
+            self._index = retrieval_cache.read_only_index(self.rows, retrieval._tokenize_item)
         return self._index
 
     def matches(self, queries: list[tuple[str, str]], k: int = CANDIDATE_K) -> dict[str, list[str]]:

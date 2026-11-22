@@ -13,10 +13,9 @@ the kind that belongs in the same PR.
 What differs from `retrieval_cache.py` stays separate, deliberately:
 the two are invalidated by different things -- that one by the parsed
 `.txt`, this one by the passage sidecar beside it -- and
-`chitragupta/dossier/_drift.py` composes `retrieval_cache._load_cache`/
-`_fingerprint`/`_tokenize_item` directly, so a shared fingerprint or
-index builder would have two callers pulling one abstraction in opposite
-directions. The file plumbing under them has no caller-specific
+`retrieval_cache` also serves a read-only builder (`read_only_index`), so
+a shared fingerprint or index builder would have two callers pulling one
+abstraction in opposite directions. The file plumbing under them has no caller-specific
 behaviour at all, and since #851 both use `chitragupta/_json_cache.py`
 for it rather than a copy each.
 """
@@ -141,8 +140,8 @@ def load_index(items: list) -> "tuple[dict, int]":
 
     The only name here without a leading underscore, because it is the one
     thing `retrieval_passages.py` calls. The rest is this module's own
-    bookkeeping, and `_drift.py`'s reach into `retrieval_cache`'s privates
-    is the arrangement not to repeat.
+    bookkeeping, as `retrieval_cache`'s is behind `_load_index` and
+    `read_only_index`.
     """
     cached = _load_cache()
     current = {item["citekey"] for item in items}

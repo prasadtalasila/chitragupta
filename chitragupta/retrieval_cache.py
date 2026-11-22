@@ -4,10 +4,9 @@
 Split from `chitragupta/retrieval.py` (#441): fingerprinting, the on-disk
 JSON cache, and assembling the index from it are one self-contained unit
 that `search` calls through `_load_index` and nothing else in that module
-touches directly. `chitragupta/dossier/_drift.py` also composes
-`_load_cache`/`_fingerprint`/`_tokenize_item` directly, by design (see its
-own docstring) -- moving here does not change what it imports from,
-`from chitragupta import retrieval_cache` instead of `retrieval`.
+touches directly. `read_only_index` is the same assembly without the
+write, for callers that must not change the cache: `dossier status`'s
+drift scan and spelling correction's vocabulary (#1232).
 
 `_tokenize`/`_full_text` stay in `chitragupta/retrieval.py`: `search`'s own
 snippet-building needs them independent of caching, so `retrieval.py`
@@ -90,7 +89,7 @@ def _fingerprint(item) -> list:
     # a PDF change can leave parsed_path -- and the file it names -- byte
     # identical while the row moves off 'parsed' (#490). Without it here,
     # a cache entry written before that failure keeps matching and
-    # `_load_index`/`_ephemeral_index` skip `_tokenize_item` -> `_full_text`
+    # `_load_index`/`read_only_index` skip `_tokenize_item` -> `_full_text`
     # entirely, serving the superseded text through the very guard meant
     # to stop that.
     exists, size, mtime_ns = _parsed_file_stat(item["parsed_path"])
@@ -99,7 +98,7 @@ def _fingerprint(item) -> list:
 
 # The memo, its stamp, the version check and the atomic write, shared with
 # the passage index (#851, chitragupta/_json_cache.py). The names below
-# are the ones this module's callers -- `_load_index`, `dossier/_drift.py`,
+# are the ones this module's callers -- `_load_index`, `read_only_index`,
 # the tests -- already use, bound to the shared object's own methods.
 #
 # Staleness across processes is bounded by more than the stamp. Every
@@ -107,8 +106,7 @@ def _fingerprint(item) -> list:
 # carries the parsed file's own size and mtime, so a stale memo can only
 # ever serve an entry that is still valid; it cannot serve superseded
 # text, which is the invariant #490 added. And `_load_cache`'s dict is
-# shared, not copied: `dossier/_drift.py` only reads it ("`_load_cache`
-# only reads", its own docstring says).
+# shared, not copied: `read_only_index` only ever reads it.
 _CACHE = MemoisedJson(lambda: config.RETRIEVAL_INDEX_PATH, _INDEX_SCHEMA_VERSION)
 _load_cache = _CACHE.load
 _save_cache = _CACHE.save
@@ -150,12 +148,7 @@ def _load_index(items: list, tokenize_item) -> dict:
         # counts it (issue 844). fp[2] is the status, fp[3] "file exists".
         _MISSING_PARSED += fp[2] == "parsed" and not fp[3]
         cached_entry = cached.get(citekey)
-        if (
-            isinstance(cached_entry, dict)
-            and cached_entry.get("fingerprint") == fp
-            and isinstance(cached_entry.get("term_freqs"), dict)
-            and isinstance(cached_entry.get("length"), int)
-        ):
+        if _reusable(cached_entry, fp):
             new_index[citekey] = cached_entry
         else:
             new_index[citekey] = {"fingerprint": fp, **tokenize_item(item)}
@@ -163,6 +156,54 @@ def _load_index(items: list, tokenize_item) -> dict:
     if changed:
         _save_cache(new_index)
     return new_index
+
+
+def _reusable(entry, fingerprint: list) -> bool:
+    """Whether a cached entry may stand in for tokenizing its document:
+    its fingerprint matches, and it has the shape `bm25_scores` reads
+    (#504). Shared by both builders, so the read-only one cannot reuse an
+    entry the writing one would have rebuilt."""
+    return (
+        isinstance(entry, dict)
+        and entry.get("fingerprint") == fingerprint
+        and isinstance(entry.get("term_freqs"), dict)
+        and isinstance(entry.get("length"), int)
+    )
+
+
+# `read_only_index`'s last result, keyed on the rows it was built from.
+# One entry, because its callers in one process ask about one corpus:
+# `dossier status` builds the index for its drift scan, and spelling
+# correction (#1232) builds it again for its vocabulary.
+_READ_ONLY_MEMO: dict = {}
+
+
+def read_only_index(rows: list, tokenize_item) -> dict:
+    """The BM25 index for `rows`, built in memory and never saved.
+
+    For a caller that must not write the cache. `_load_index` saves
+    whenever a fingerprint moved, which after a sync is guaranteed, so a
+    report built on it would change the corpus layer it reports on.
+    `dossier status` is one such caller, and spelling correction's
+    vocabulary is another, since `dossier status` reaches it through
+    `retrieval.query_terms`. Cached entries are reused under the same rule
+    `_load_index` applies; everything else is tokenized and dropped when
+    the caller is done. A cold cache costs one tokenization of the corpus
+    per process, which the memo keeps from being paid twice.
+
+    `tokenize_item` is passed in for the reason `_load_index` takes it:
+    this module cannot import `chitragupta.retrieval` back.
+    """
+    key = (tokenize_item, tuple((row["citekey"], tuple(_fingerprint(row))) for row in rows))
+    if _READ_ONLY_MEMO.get("key") == key:
+        return _READ_ONLY_MEMO["index"]
+    cached = _load_cache()
+    index = {}
+    for (citekey, fingerprint), row in zip(key[1], rows):
+        entry = cached.get(citekey)
+        index[citekey] = entry if _reusable(entry, list(fingerprint)) else tokenize_item(row)
+    _READ_ONLY_MEMO.update(key=key, index=index)
+    return index
 
 
 def note_missing_parsed() -> None:
