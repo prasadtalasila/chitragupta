@@ -1,0 +1,159 @@
+{
+  "runs": 3,
+  "model": "commands",
+  "trials": 20000,
+  "files": [
+    "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+  ],
+  "rates": {
+    "codex": {
+      "agenda-reviser": {
+        "fail": 0.0328,
+        "inconclusive": 0.6688,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "book-assembler": {
+        "fail": 0.0,
+        "inconclusive": 0.0,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "corpus-reviser": {
+        "fail": 0.07505,
+        "inconclusive": 0.8666,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "deep-research": {
+        "fail": 0.11555,
+        "inconclusive": 0.87285,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "draft-reviser": {
+        "fail": 0.08765,
+        "inconclusive": 0.87275,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "figure-drawer": {
+        "fail": 0.0,
+        "inconclusive": 0.0,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "review-digest": {
+        "fail": 0.01055,
+        "inconclusive": 0.32365,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "survey-writer": {
+        "fail": 0.1638,
+        "inconclusive": 0.83435,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "textbook-chapter-writer": {
+        "fail": 0.03355,
+        "inconclusive": 0.6688,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "thesis-chapter-writer": {
+        "fail": 0.07305,
+        "inconclusive": 0.86555,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "tutorial-writer": {
+        "fail": 0.0524,
+        "inconclusive": 0.81695,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      }
+    },
+    "opencode": {
+      "agenda-reviser": {
+        "fail": 0.02155,
+        "inconclusive": 0.534,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "book-assembler": {
+        "fail": 0.0,
+        "inconclusive": 0.0,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "corpus-reviser": {
+        "fail": 0.0545,
+        "inconclusive": 0.8089,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "deep-research": {
+        "fail": 0.08215,
+        "inconclusive": 0.87905,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "draft-reviser": {
+        "fail": 0.03355,
+        "inconclusive": 0.66465,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "figure-drawer": {
+        "fail": 0.0,
+        "inconclusive": 0.0,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "review-digest": {
+        "fail": 0.03375,
+        "inconclusive": 0.6716,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "survey-writer": {
+        "fail": 0.06445,
+        "inconclusive": 0.84755,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "textbook-chapter-writer": {
+        "fail": 0.08635,
+        "inconclusive": 0.87325,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "thesis-chapter-writer": {
+        "fail": 0.10585,
+        "inconclusive": 0.8755,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      },
+      "tutorial-writer": {
+        "fail": 0.08435,
+        "inconclusive": 0.8749,
+        "runs": 3,
+        "file": "results/2026-11-22-local-model-candidates/qwen3.6-35b-a3b.json"
+      }
+    }
+  },
+  "over_harnesses": {
+    "agenda-reviser": 0.05364316000000002,
+    "book-assembler": 0.0,
+    "corpus-reviser": 0.12545977500000005,
+    "deep-research": 0.1882075675,
+    "draft-reviser": 0.11825934250000003,
+    "figure-drawer": 0.0,
+    "review-digest": 0.04394393749999992,
+    "survey-writer": 0.21769308999999992,
+    "textbook-chapter-writer": 0.1170029575,
+    "thesis-chapter-writer": 0.17116765750000007,
+    "tutorial-writer": 0.13233006000000003
+  }
+}
