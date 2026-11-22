@@ -62,7 +62,7 @@ from chitragupta.ledger_citable import PARSED
 from chitragupta import (
     _reference_cut,
     _tokens,
-    bib_collections,
+    collection_filter,
     ledger,
     ledger_paths,
     retrieval_cache,
@@ -327,8 +327,10 @@ def search(
     `context` is text ranked beside `query` without being typed as one
     (`--y-prev`'s draft prose): see `query_terms`.
 
-    `collection` restricts the result to items in that Zotero collection
-    or one beneath it (chitragupta/bib_collections.py), which is #195's curated
+    `collection` restricts the result to items in that collection or one
+    beneath it -- a slug path or a display path, resolved by
+    chitragupta/collection_filter.py, which raises `UnknownCollection` or
+    `AmbiguousCollection` for one it cannot resolve. That is #195's curated
     subset: a chapter on modelling searching only the modelling shelf.
     Scoring is deliberately left corpus-wide and the filter applied to the
     ranking -- narrowing the index instead would change every IDF, so the
@@ -359,16 +361,13 @@ def search(
     # of the BM25 cache, so the cache holds exactly this set.
     with ledger.reading() as con:
         items = [item for item in ledger.all_items(con) if item["status"] == PARSED]
+        members = collection_filter.members(con, items, collection)
 
     index = retrieval_cache._load_index(items, _tokenize_item)
     scores = _bm25_scores(index, terms)
     by_citekey = {item["citekey"]: item for item in items}
-    if collection is not None:
-        scores = {
-            citekey: score
-            for citekey, score in scores.items()
-            if bib_collections.matches(bib_collections.of_row(by_citekey[citekey]), collection)
-        }
+    if members is not None:
+        scores = {citekey: score for citekey, score in scores.items() if citekey in members}
     ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)[:k]
 
     term_set = set(terms)

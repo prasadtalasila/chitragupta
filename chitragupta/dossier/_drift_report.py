@@ -37,6 +37,14 @@ def _print_drift(report: Drift) -> None:
             list(report.missing.items()),
             _render_missing,
         )
+    if report.unresolved_collections:
+        _print_capped(
+            f"    {len(report.unresolved_collections)} recorded collection(s) no longer "
+            "resolve; ask which slug path the draft is scoped to (`corpus ledger "
+            "--collections`):",
+            report.unresolved_collections,
+            lambda value: print(f"      {value}"),
+        )
     if report.candidates:
         _print_capped(
             f"    {len(report.candidates)} new candidate(s) matching this "

@@ -13,7 +13,14 @@ import sqlite3
 
 import pytest
 
-from chitragupta import bib_collections, ledger, ledger_cli, retrieval, retrieval_cache
+from chitragupta import (
+    bib_collections,
+    ledger,
+    ledger_cli,
+    ledger_tables,
+    retrieval,
+    retrieval_cache,
+)
 from chitragupta.bib_collections import (
     AmbiguousCollection,
     UnknownCollection,
@@ -291,8 +298,73 @@ class TestRetrievalFilter:
         found = retrieval.search("modelling", k=10, collection="digital-twins")
         assert {r.citekey for r in found} == {"in_sub_2024"}
 
-    def test_an_unknown_collection_returns_nothing(self, corpus):
-        assert retrieval.search("modelling", k=10, collection="nonexistent") == []
+    def test_an_unknown_collection_is_refused(self, corpus):
+        with pytest.raises(UnknownCollection):
+            retrieval.search("modelling", k=10, collection="nonexistent")
+
+    def test_a_display_path_selects_the_same_subtree(self, corpus):
+        con = ledger.connect()
+        try:
+            ledger_tables.replace_collection_names(
+                con, {"digital-twins": "Digital Twins", "digital-twins.modelling": "Modelling"}
+            )
+            con.commit()
+        finally:
+            con.close()
+        found = retrieval.search("modelling", k=10, collection="Digital Twins/Modelling")
+        assert {r.citekey for r in found} == {"in_sub_2024"}
+
+    def test_passage_search_filters_by_the_same_rule(self, corpus):
+        from chitragupta import retrieval_passages
+
+        with pytest.raises(UnknownCollection):
+            retrieval_passages.search_passages("modelling", k=10, collection="nope")
+        found = retrieval_passages.search_passages("modelling", k=10, collection="reading-list")
+        assert {r.citekey for r in found.results} <= {"in_other_2024"}
+
+    def test_the_cli_refuses_an_unknown_collection_with_exit_2(self, corpus, capsys):
+        from chitragupta import retrieval_cli
+
+        assert retrieval_cli.main(["search", "modelling", "--collection", "Digital twins > X"]) == 2
+        err = capsys.readouterr().err
+        assert "no collection 'Digital twins > X'" in err
+        assert "corpus ledger --collections" in err
+        assert "slug paths" in err
+
+    def test_the_cli_refuses_an_ambiguous_display_path(self, corpus, capsys):
+        from chitragupta import retrieval_cli
+
+        con = ledger.connect()
+        try:
+            ledger_tables.replace_collection_names(
+                con, {"u": "Use Cases", "u.medical": "Medical", "u.medical-1": "Medical"}
+            )
+            con.commit()
+        finally:
+            con.close()
+        assert retrieval_cli.main(["search", "modelling", "--collection", "Use Cases/Medical"]) == 2
+        err = capsys.readouterr().err
+        assert "names 2 collections; pass one slug path:" in err
+        assert "u.medical\n" in err and "u.medical-1" in err
+
+    def test_the_log_records_the_resolved_slug(self, corpus, capsys):
+        from chitragupta import dossier, retrieval_cli
+
+        con = ledger.connect()
+        try:
+            ledger_tables.replace_collection_names(con, {"digital-twins": "Digital Twins"})
+            con.commit()
+        finally:
+            con.close()
+        draft = corpus.DRAFTS_DIR / "s.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("# S\n", encoding="utf-8")
+        dossier.init(draft, "survey")
+        argv = ["search", "modelling", "--collection", "digital twins", "--log", str(draft)]
+        assert retrieval_cli.main(argv) == 0
+        log = (dossier.dossier_dir(draft) / "retrieval.md").read_text(encoding="utf-8")
+        assert "| digital-twins |" in log
+        assert "digital twins |" not in log
 
     def test_an_item_with_no_collections_is_excluded_by_any_filter(self, corpus):
         found = retrieval.search("modelling", k=10, collection="reading-list")
@@ -350,9 +422,33 @@ class TestTheLedgerCLI:
         assert "elsewhere_2024" not in out
         assert "bare_2024" not in out
 
-    def test_an_empty_collection_says_so_rather_than_naming_a_status(self, corpus, capsys):
-        """`--list` reports "no items with status None" when empty, which
-        would be a confusing thing to print at someone who asked about a
-        collection."""
-        assert ledger_cli.main(["--collection", "nonexistent"]) == 0
-        assert "No items in collection 'nonexistent'." in capsys.readouterr().out
+    def test_an_unknown_collection_is_refused_with_exit_2(self, corpus, capsys):
+        assert ledger_cli.main(["--collection", "nonexistent"]) == 2
+        err = capsys.readouterr().err
+        assert "no collection 'nonexistent'" in err
+        assert "slug paths" not in err
+
+    def test_an_empty_named_collection_says_so(self, corpus, capsys):
+        """A collection the table names but no paper is in: listed with 0
+        by --collections, and empty rather than refused here."""
+        con = ledger.connect()
+        try:
+            ledger_tables.replace_collection_names(con, {"empty-shelf": "Empty shelf"})
+            con.commit()
+        finally:
+            con.close()
+        assert ledger_cli.main(["--collection", "Empty shelf"]) == 0
+        assert "No items in collection 'empty-shelf'." in capsys.readouterr().out
+
+    def test_collections_lists_names_from_the_ledger(self, corpus, capsys):
+        con = ledger.connect()
+        try:
+            ledger_tables.replace_collection_names(
+                con, {"digital-twins": "Digital Twins", "digital-twins.modelling": "Modelling"}
+            )
+            con.commit()
+        finally:
+            con.close()
+        assert ledger_cli.main(["--collections"]) == 0
+        rows = [line.split() for line in capsys.readouterr().out.splitlines()]
+        assert ["digital-twins.modelling", "Digital", "Twins", "/", "Modelling", "1"] in rows

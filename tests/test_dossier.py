@@ -2303,6 +2303,40 @@ class TestDriftCollectionScoping:
             "outside_shelf_2025",
         }
 
+    def test_an_unresolvable_recorded_collection_is_reported_not_clean(self, draft, capsys):
+        """A scope recorded before slug paths (`Digital twins > Modelling`)
+        would otherwise filter every candidate away and read as clean."""
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        dossier.log_retrieval(
+            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins > Modelling"
+        )
+        _seed_corpus(
+            [("in_shelf_2024", "In shelf", "digital twin architecture", ("digital-twins",))]
+        )
+        report = _drift.drift(target)
+        assert report.unresolved_collections == ["Digital twins > Modelling"]
+        assert report.candidates == []
+        assert report.clean is False
+        assert report.as_dict()["unresolved_collections"] == ["Digital twins > Modelling"]
+        from chitragupta.dossier import _drift_report
+
+        _drift_report._print_drift(report)
+        out = capsys.readouterr().out
+        assert "1 recorded collection(s) no longer resolve" in out
+        assert "Digital twins > Modelling" in out
+
+    def test_an_unresolved_collection_is_listed_once(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        for query in ("digital twin", "twin architecture"):
+            dossier.log_retrieval(draft, "search", query, 15, 15, 100, collection="Old > Path")
+        _seed_corpus([("a_2024", "A", "digital twin architecture", ("digital-twins",))])
+        assert _drift.drift(target).unresolved_collections == ["Old > Path"]
+
+    def test_names_read_as_none_without_a_readable_ledger(self, isolated_config):
+        assert _drift.Corpus([]).names == {}
+
     def test_a_row_predating_the_collection_column_behaves_as_corpus_wide(self, draft):
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)

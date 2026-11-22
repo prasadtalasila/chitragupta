@@ -25,7 +25,7 @@ check.
 import sqlite3
 import sys
 
-from chitragupta import bib_collections, config, ledger
+from chitragupta import bib_collections, collection_filter, config, ledger, ledger_tables
 from chitragupta.progname import prog_for
 
 _STATUS_LABELS = {
@@ -143,16 +143,22 @@ def _list_items(con, status, collection=None) -> int:
     """`--list`/`--status`/`--collection`: matching items, then the count.
 
     The collection filter is applied in Python rather than in SQL because
-    matching is hierarchical -- `Modelling` selects `Modelling >
-    Continuous` too -- and expressing that as a LIKE would have to
-    reproduce bib_collections' normalisation in a second place.
+    a value is a slug path or a display path, resolved through the name
+    table, and matching is a subtree (`chitragupta/collection_filter.py`).
+    A value naming no collection, or several, is refused with exit 2.
     """
     rows = con.execute(
         "SELECT * FROM items WHERE (? IS NULL OR status = ?) ORDER BY citekey",
         (status, status),
     ).fetchall()
     if collection is not None:
-        rows = [r for r in rows if bib_collections.matches(bib_collections.of_row(r), collection)]
+        try:
+            collection = collection_filter.slug_for(con, collection)
+        except (bib_collections.UnknownCollection, bib_collections.AmbiguousCollection) as exc:
+            print("\n".join(collection_filter.refusal(exc)), file=sys.stderr)
+            return collection_filter.REFUSED
+        members = collection_filter.members(con, rows, collection)
+        rows = [r for r in rows if r["citekey"] in members]
     if not rows:
         print(
             f"No items with status {status!r}."
@@ -169,7 +175,7 @@ def _list_items(con, status, collection=None) -> int:
 def _list_collections(con) -> int:
     """`--collections`: what a `--collection` filter can be given."""
     rows = con.execute("SELECT citekey, collections FROM items").fetchall()
-    for line in bib_collections.report(rows, {}):
+    for line in bib_collections.report(rows, ledger_tables.collection_names(con)):
         print(line)
     return 0
 
