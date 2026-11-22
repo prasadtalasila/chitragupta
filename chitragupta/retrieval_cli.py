@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from chitragupta import ledger, retrieval_cache, retrieval_expansion, retrieval_iterative
+from chitragupta import ledger, retrieval_added, retrieval_cache, retrieval_iterative
 from chitragupta.ledger_citable import PARSED
 from chitragupta.retrieval import (
     SearchResult,
@@ -312,15 +312,16 @@ def main(argv: "list[str] | None" = None) -> int:
 
     _warn_of_short_terms(args.query)
     # The other half of "what happened to your query before it was
-    # ranked": the terms the acronym vocabulary added (#789). Announced
+    # ranked": the terms acronym expansion (#789) and spelling correction
+    # (#1232) added. Announced
     # rather than left to the score, because a result that surfaced on a
     # word the caller never typed is the one they would otherwise have no
     # way to explain. The same string goes to `--log`, so the note and
     # `retrieval.md`'s `expanded` column cannot disagree, and both read
     # the pairs every subcommand ranks on (`query_terms`, #953), bar
     # `--y-prev`'s appended prose (see `query_terms`). Silent
-    # when the vocabulary has nothing for the query.
-    expanded = retrieval_expansion.announce(query_terms(args.query)[1])
+    # when nothing was added.
+    expanded = retrieval_added.announce(query_terms(args.query)[1])
 
     # Refused rather than quietly ignored: --y-prev merges two rounds on
     # citekey and caps back to --k, and the passage unit changes what

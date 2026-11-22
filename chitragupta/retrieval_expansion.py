@@ -48,7 +48,6 @@ drops it from the query before this module sees it, so it is not in
 interesting range and is exactly what #798 admitted to the index.
 """
 
-import sys
 from typing import Callable
 
 from chitragupta import acronyms, config
@@ -94,47 +93,3 @@ def expand(terms: list[str], tokenize: Callable[[str], list[str]]) -> list[tuple
             present.add(token)
             added.append((term, token))
     return added
-
-
-def describe(added: list[tuple[str, str]]) -> str:
-    """`added` as one line, for the caller that has to explain a result.
-
-    #789 asks that the retrieval log record which terms were added, so
-    that a caller can see *why* a result surfaced rather than inferring
-    it. This is that record's one rendering, shared by the CLI's note and
-    `retrieval.md`'s `expanded` column so the two cannot drift: an
-    acronym, an arrow, the terms it contributed, semicolons between
-    acronyms. Empty string for an empty list, which is what both callers
-    write when nothing was added.
-    """
-    by_acronym: dict[str, list[str]] = {}
-    for acronym, token in added:
-        by_acronym.setdefault(acronym, []).append(token)
-    return "; ".join(f"{a} -> {' '.join(tokens)}" for a, tokens in by_acronym.items())
-
-
-def announce(added: list[tuple[str, str]]) -> str:
-    """Print the CLI's expansion note for `added`, and return `describe`.
-
-    `added` is what `retrieval.query_terms` returned, the same pairs the
-    subcommand then ranks on, rather than a second `expand` call made
-    here: #953 was this note describing an expansion `evidence` never
-    used. Prints nothing and returns `""` when nothing was added.
-    `stderr`, beside the CLI's "too short to search on" note, for the same reason that one uses it:
-    a genre skill parses this command's stdout as a documented contract,
-    and a note about the query is not a result.
-
-    Here rather than in `retrieval_cli.py`, which is at
-    docs/CODE-STANDARDS.md's 250-code-line ceiling with nothing to give
-    -- and it is not a bad home: the expansion, its one-line rendering
-    and the note that shows it to a person are one fact stated three
-    ways, and keeping them in one file is what stops the note drifting
-    from what was actually added. `search()` never calls this: what a
-    library adds to a query is the caller's business to *read*, through
-    `retrieval.query_terms`, not something a ranker should print from underneath them.
-    """
-    if not added:
-        return ""
-    described = describe(added)
-    print(f"  [note] acronym expansion added: {described}", file=sys.stderr)
-    return described

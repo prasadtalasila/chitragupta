@@ -66,7 +66,7 @@ from chitragupta import (
     ledger,
     ledger_paths,
     retrieval_cache,
-    retrieval_expansion,
+    retrieval_added,
     retrieval_scoring,
     retrieval_tables,
 )
@@ -139,28 +139,27 @@ def _query_terms(query: str) -> list[str]:
     return [w for w in _tokenize(query) if w not in _INTERROGATIVES]
 
 
-# What a query is ranked on: the typed terms, then what the acronym
-# vocabulary added, and the `(acronym, term)` pairs that say which is
-# which. One function because #953 found two pipelines: `evidence`, the
-# passage unit and the drift report each tokenized the query for
-# themselves and never expanded it, while the CLI announced (and `--log`
-# recorded) an expansion only `search` had used. Everything that ranks or
-# windows a query goes through here, and the CLI's note reads the same
-# pairs. One exception remains: `--y-prev`'s second round searches the
-# query with draft prose appended, and an acronym in that prose expands
-# without reaching the note. A query with no terms skips the vocabulary,
-# which it has no use for.
+# What a query is ranked on: the typed terms, then what acronym expansion
+# (#789) and spelling correction (#1232) added, and the `Added` entries
+# that say which is which (chitragupta/retrieval_added.py). One function
+# because #953 found two pipelines: `evidence`, the passage unit and the
+# drift report each tokenized the query for themselves and never expanded
+# it, while the CLI announced (and `--log` recorded) an expansion only
+# `search` had used. Everything that ranks or windows a query goes through
+# here, and every note reads the same entries. One exception remains:
+# `--y-prev`'s second round searches the query with draft prose appended,
+# and an acronym or a misspelling in that prose is expanded or corrected
+# without reaching the note. A query with no terms reads no vocabulary.
 #
-# Expansion is computed from the typed terms alone and never fed back
-# through itself: an added term is not looked up as an acronym in turn,
-# so no vocabulary can expand into a second expansion. An added term then
-# scores exactly as a typed one does -- #789's own sweep put full weight
-# ahead of every fraction of it, so there is no per-term weight here for
-# a caller to set or for the ranker to read.
-def query_terms(query: str) -> tuple[list[str], list[tuple[str, str]]]:
+# Both sources read the typed terms alone and never feed each other or
+# themselves: an added term is not expanded or corrected in turn. An
+# added term then scores exactly as a typed one does -- #789's own sweep
+# put full weight ahead of every fraction of it, so there is no per-term
+# weight here for a caller to set or for the ranker to read.
+def query_terms(query: str) -> tuple[list[str], list[retrieval_added.Added]]:
     typed = _query_terms(query)
-    added = retrieval_expansion.expand(typed, _tokenize) if typed else []
-    return typed + [token for _, token in added], added
+    added = retrieval_added.added_terms(typed, _tokenize, _tokenize_item, _INTERROGATIVES)
+    return typed + [entry.term for entry in added], added
 
 
 # Occurrences of one query term that `_windows` will anchor a candidate
