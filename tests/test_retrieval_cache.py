@@ -21,7 +21,6 @@ def rows(ledger_con):
     add_citable(ledger_con, "a2024", title="A Digital Twin Of A Greenhouse")
     add_citable(ledger_con, "b2024", title="Structural Health Monitoring")
     retrieval_cache._forget_cache()
-    retrieval_cache._READ_ONLY_MEMO.clear()
     return ledger.all_items(ledger_con)
 
 

@@ -62,6 +62,19 @@ def _pin_parser_settings(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _fresh_retrieval_memos():
+    """Start every test with spelling correction's two in-memory caches
+    empty (#1232): `retrieval_cache.read_only_index`'s last index and
+    `retrieval_spelling.vocabulary`'s. Both check their own staleness, so
+    this is isolation rather than correctness -- one test's corpus can
+    never be served to the next."""
+    from chitragupta import retrieval_cache, retrieval_spelling
+
+    retrieval_cache._READ_ONLY_MEMO.clear()
+    retrieval_spelling._MEMO.clear()
+
+
+@pytest.fixture(autouse=True)
 def _no_real_forkserver(monkeypatch):
     """Keep the suite from launching an actual forkserver process.
 

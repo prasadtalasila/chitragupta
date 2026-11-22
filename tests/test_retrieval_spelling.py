@@ -21,6 +21,7 @@ VOCAB = {
     "ageing": 3,
     "being": 40,
     "architecutre": 1,
+    "simulaton": 1,
     "simulation": 30,
     "where": 50,
     "ginger": 3,
@@ -59,7 +60,9 @@ class TestWhatIsCorrected:
         assert correct(["strucutral", "health"], None, NONE) == [("strucutral", "structural")]
 
     def test_a_word_in_one_paper_is_never_corrected(self, on):
-        assert correct(["architecutre"], None, NONE) == []
+        """`simulaton` is one slip from `simulation` (30 papers), so only
+        the rule that a word the corpus has is left alone stops it."""
+        assert correct(["simulaton"], None, NONE) == []
 
     def test_a_word_in_one_paper_is_never_a_target(self, on):
         assert correct(["architecure"], None, NONE) == []

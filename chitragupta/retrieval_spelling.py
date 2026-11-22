@@ -21,7 +21,7 @@ deletion, adjacent swap, substitution or insertion away from the typed
 word, kept only if they are words in at least two papers -- more than
 half the vocabulary appears in one paper, and that tail is mostly OCR
 noise. Among them the word in the most papers wins, then the
-alphabetically first. On this project's corpus 95.7% of its corrections
+alphabetically first. On this project's corpus 95.75% of its corrections
 of synthetic typos are right, and it fixes 94.3% of the typos it can act
 on (bench/RESULTS.md, 2026-11-22). What it gets wrong is mostly a typo
 one slip from two real words: `aeing` could be `ageing` or `being`, and
