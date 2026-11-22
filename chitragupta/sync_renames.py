@@ -49,7 +49,7 @@ def detect(
 ) -> tuple[list[Rename], dict[str, list[str]]]:
     """The 1:1 renames among `stale`, and `{old: [keys]}` for a hash
     several keys in the bib share."""
-    hashes = {key: value for key, value in con.execute("SELECT citekey, pdf_hash FROM items")}
+    hashes = dict(con.execute("SELECT citekey, pdf_hash FROM items"))
     holders: dict[str, list[str]] = defaultdict(list)
     for key, value in hashes.items():
         if value and key in seen:

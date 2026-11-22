@@ -43,8 +43,8 @@ from chitragupta.dossier import (
 from chitragupta.dossier._renames import renamed_in
 from chitragupta.dossier._retrieval import recorded_queries_with_collection
 
-# Re-exported: callers and tests reach the shared snapshot through `_drift`.
-from chitragupta.dossier._drift_corpus import CANDIDATE_K, Corpus  # noqa: F401
+# The shared ledger snapshot one sweep reads once (`_drift_corpus`).
+from chitragupta.dossier._drift_corpus import Corpus
 
 
 @dataclass

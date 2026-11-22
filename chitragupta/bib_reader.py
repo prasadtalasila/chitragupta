@@ -35,7 +35,7 @@ from bibtexparser.latexenc import latex_to_unicode
 from chitragupta import bib_escapes, bib_integrity, bib_names, bib_tables, config, ledger_paths
 
 # Re-exported: callers and tests ask the bib reader whether a citekey is usable.
-from chitragupta.citekey_safety import citekey_problem  # noqa: F401
+from chitragupta.citekey_safety import citekey_problem  # noqa: F401  # pylint: disable=unused-import
 
 # Reference.pdf_resolution values -- *why* a PDF did or didn't resolve.
 # Previously sync.py only ever saw a bare pdf_path of None and reported
