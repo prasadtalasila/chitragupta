@@ -26,20 +26,25 @@ What `raw_tex` costs, accepted by the owner: a command pandoc does not
 know now reaches LuaLaTeX, so a command defined only in the thesis's
 preamble stops the pdf. `preamble_file` is the remedy, an optional file
 beside the draft modelled on the book's `content/specs/<book>/preamble.tex`,
-and `_cli._undefined_command_hint` names it.
+and `undefined_command_hint` names it.
 
-It also costs a float's own `\\centering`, which `raw_tex` keeps as a
-block of its own. In a figure, pandoc then sets two `0.45\\linewidth`
-minipages, an empty one and the picture; without it, pandoc writes its
-own `\\centering` and keeps one block. In a table, pandoc writes a
-`longtable` with no group around it, so the bare `\\centering` centred
-every paragraph after the table (both measured, pandoc 3.1.11; the
-second on a real thesis chapter). So the preview's copy drops it from
-both.
+It also costs every alignment or size declaration pandoc does not keep
+inside its group (`\\centering`, `\\small`, ...): `raw_tex` keeps it as
+raw TeX of its own. In a figure, pandoc then sets two `0.45\\linewidth`
+minipages, an empty one and the picture. In a table float, or a
+`{\\centering ...}` group, or a `center` block, pandoc drops the group,
+so the declaration centres or shrinks every later paragraph (measured,
+pandoc 3.1.11; the table on a real thesis chapter). So the preview's
+copy drops a declaration inside any group or environment, and keeps a
+top-level one, which changes the rest of the thesis too.
+
+A width is rewritten only in a spec whose every column is `p`, `m` or
+`b`: once any column has a width, pandoc gives an `l`, `c` or `r` column
+zero width, so `lp{6cm}` would print its first column a letter wide.
 
 Left alone: `em`/`ex` widths, whose size depends on the thesis's font;
-every Markdown draft; and every `--fragment` render, which is the
-deliverable and never had a reader problem.
+a `*{n}{...}` spec; every Markdown draft; and every `--fragment` render,
+which is the deliverable and never had a reader problem.
 """
 
 import re
@@ -61,8 +66,23 @@ _WIDTH_FIRST = {"tabular*", "tabularx"}
 _COLUMN_RE = re.compile(r"([pmb])\{\s*(\d+(?:\.\d+)?|\.\d+)\s*(cm|mm|in|pt|bp)\s*\}")
 _PT = {"cm": 28.4528, "mm": 2.84528, "in": 72.27, "pt": 1.0, "bp": 1.00375}
 
-_FLOAT_RE = re.compile(r"(\\begin\{((?:figure|table)\*?)\})(.*?)(\\end\{\2\})", re.DOTALL)
-_CENTERING_RE = re.compile(r"\\centering(?![A-Za-z])\s*")
+# The declarations that change every paragraph after them until their
+# group ends, and a control word or symbol.
+_DECLARATIONS = frozenset(
+    "centering raggedright raggedleft tiny scriptsize footnotesize small "
+    "normalsize large Large LARGE huge Huge".split()
+)
+_CONTROL_RE = re.compile(r"\\([A-Za-z]+|.)", re.DOTALL)
+# A spec's decorations, which name no column: `>{...}`, `<{...}`,
+# `@{...}`, `!{...}`, and rules.
+_DECORATION = "<>@!"
+
+# TeX's report of an undefined command; the line after it is the context,
+# whose last control sequence is the one TeX stopped on: `l.4 Plain \\todo`,
+# or `<argument> see \\citep` for one inside another command's argument.
+_UNDEFINED_RE = re.compile(r"! Undefined control sequence\.[ \t]*\n(?P<line>[^\n]*)")
+_NAME_RE = re.compile(r"\\([A-Za-z@]+)")
+_CITE_COMMANDS = frozenset({"cite", "citep", "citet", "citealp", "citeauthor"})
 
 
 def is_tex_draft(input_path: Path) -> bool:
@@ -103,7 +123,7 @@ def rewrite(text: str, input_path: Path, output_format: str, fragment: bool) -> 
         return text
     text = widths_as_fractions(text, ARTICLE.text_width_pt)
     if output_format in _TEX_FORMATS:
-        text = without_lone_centering(text)
+        text = without_grouped_declarations(text)
     return text
 
 
@@ -131,18 +151,88 @@ def widths_as_fractions(text: str, text_width_pt: float) -> str:
         if span is None:
             continue
         start, end = span
+        if not _only_paragraph_columns(text[start:end]):
+            continue
         spec = _COLUMN_RE.sub(lambda m: _fraction(m, text_width_pt), text[start:end])
         out += [text[done:start], spec]
         done = end
     return "".join(out) + text[done:]
 
 
-def without_lone_centering(text: str) -> str:
-    """Every figure's and table's own `\\centering` removed, with the space
-    after it."""
-    return _FLOAT_RE.sub(
-        lambda m: m.group(1) + _CENTERING_RE.sub("", m.group(3)) + m.group(4), text
+def without_grouped_declarations(text: str) -> str:
+    """Every alignment or size declaration inside a brace group or an
+    environment removed, with the spaces after it but never a newline. A
+    top-level one, an escaped character and a comment are left as written."""
+    out, depth, i = [], 0, 0
+    while i < len(text):
+        char = text[i]
+        if char == "%":
+            end = text.find("\n", i)
+            end = len(text) if end < 0 else end
+            out.append(text[i:end])
+            i = end
+        elif char == "\\":
+            match = _CONTROL_RE.match(text, i)
+            name = match.group(1) if match else ""
+            depth += {"begin": 1, "end": -1}.get(name, 0)
+            i = match.end() if match else i + 1
+            if name in _DECLARATIONS and depth > 0:
+                while i < len(text) and text[i] in " \t":
+                    i += 1
+            else:
+                out.append(match.group(0) if match else char)
+        else:
+            depth = max(0, depth + {"{": 1, "}": -1}.get(char, 0))
+            out.append(char)
+            i += 1
+    return "".join(out)
+
+
+def undefined_command_hint(stderr: str | None, input_arg: str) -> str:
+    r"""Where to define the command a `.tex` preview stopped on, or "".
+
+    One the thesis's preamble defines is undefined here, where none of
+    that preamble is loaded, and the remedy is the author's preamble
+    file, which no skill writes for them: the line says so, because it is
+    what an agent reads at the moment it would. A citation command is the
+    exception: inside a command pandoc keeps raw it is never resolved,
+    and defining it would print a key, so the hint says to move it.
+    """
+    path = Path(input_arg)
+    if "Undefined control sequence" not in (stderr or "") or not is_tex_draft(path):
+        return ""
+    match = _UNDEFINED_RE.search(stderr or "")
+    names = _NAME_RE.findall(match.group("line")) if match else []
+    if names and names[-1] in _CITE_COMMANDS:
+        return (
+            f"\n[preamble] \\{names[-1]} sits inside a command pandoc does not know, so "
+            "the preview leaves it unresolved: move the citation out of that command."
+        )
+    command = f"\\{names[-1]}" if names else "the undefined command"
+    return (
+        f"\n[preamble] The preview loads none of your thesis's preamble: define {command} "
+        f"in {path.with_name(f'{path.stem}.preamble.tex')} (or in a preamble.tex beside "
+        "the draft, shared by its chapters). The author writes it from their thesis's "
+        "own preamble; an agent reports this line and leaves the file alone."
     )
+
+
+def _only_paragraph_columns(spec: str) -> bool:
+    """Whether every column `spec` names is `p`, `m` or `b`: decorations
+    and rules skipped, a column's own argument skipped, and a `*{n}{...}`
+    repeat read as not."""
+    columns, i = set(), 0
+    while i < len(spec):
+        char = spec[i]
+        if char in _DECORATION or char.isalpha():
+            if char.isalpha():
+                columns.add(char)
+            i = _skip_group(spec, i + 1, "{", "}") or len(spec)
+        elif char in "| \t\n":
+            i += 1
+        else:
+            return False
+    return bool(columns) and columns <= set("pmb")
 
 
 def _fraction(match: re.Match[str], text_width_pt: float) -> str:

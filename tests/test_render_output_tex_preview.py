@@ -16,8 +16,9 @@ from chitragupta.render_output._tex_preview import (
     pandoc_args,
     preamble_file,
     rewrite,
+    undefined_command_hint,
     widths_as_fractions,
-    without_lone_centering,
+    without_grouped_declarations,
 )
 
 from tests.conftest import (
@@ -69,11 +70,11 @@ def _tex(cfg, name, text, **kwargs):
 
 class TestWidths:
     def test_absolute_widths_become_fractions_of_the_text_width(self):
-        spec = "\\begin{tabular}{p{2.6cm}p{4.5cm}l}\nA & B & C \\\\\n\\end{tabular}"
+        spec = "\\begin{tabular}{p{2.6cm}p{4.5cm}p{6cm}}\nA & B & C \\\\\n\\end{tabular}"
 
         out = widths_as_fractions(spec, 452.97)
 
-        assert "{p{0.1633\\linewidth}p{0.2827\\linewidth}l}" in out
+        assert "{p{0.1633\\linewidth}p{0.2827\\linewidth}p{0.3769\\linewidth}}" in out
 
     def test_relative_widths_and_cell_text_are_left_alone(self):
         text = (
@@ -84,13 +85,35 @@ class TestWidths:
         assert widths_as_fractions(text, 452.97) == text
 
     def test_tabularx_and_longtable_specs_are_read_after_their_arguments(self):
-        tabularx = "\\begin{tabularx}{\\linewidth}[t]{p{1in}X}\\end{tabularx}"
+        tabularx = "\\begin{tabularx}{\\linewidth}[t]{p{1in}p{1in}}\\end{tabularx}"
         longtable = "\\begin{longtable}[c]{m{10mm}b{72.27pt}}\\end{longtable}"
 
-        assert "{p{0.1595\\linewidth}X}" in widths_as_fractions(tabularx, 452.97)
+        assert "{p{0.1595\\linewidth}p{0.1595\\linewidth}}" in widths_as_fractions(tabularx, 452.97)
         assert "{m{0.0628\\linewidth}b{0.1595\\linewidth}}" in widths_as_fractions(
             longtable, 452.97
         )
+
+    def test_a_spec_mixing_in_an_unsized_column_is_left_alone(self):
+        """pandoc gives an `l`, `c` or `r` column zero width once any other
+        column has one, so `lp{6cm}` would print its first column a
+        letter wide (measured); left as `ll`, it stays readable."""
+        for spec in ("{lp{6cm}}", "{|p{2cm}|>{\\raggedright\\arraybackslash}p{3cm}|c|}"):
+            text = f"\\begin{{tabular}}{spec}\\end{{tabular}}"
+            assert widths_as_fractions(text, 452.97) == text
+
+    def test_a_decorated_all_paragraph_spec_is_rewritten(self):
+        text = (
+            "\\begin{tabular}{|>{\\raggedright\\arraybackslash}p{2.6cm}|@{}p{1in}|}\\end{tabular}"
+        )
+
+        out = widths_as_fractions(text, 452.97)
+
+        assert "p{0.1633\\linewidth}" in out and "p{0.1595\\linewidth}" in out
+
+    def test_a_repeated_column_spec_is_left_alone(self):
+        text = "\\begin{tabular}{*{3}{p{2cm}}}\\end{tabular}"
+
+        assert widths_as_fractions(text, 452.97) == text
 
     def test_em_and_ex_widths_are_left_alone(self):
         """Their size depends on the thesis's font, which the preview
@@ -113,30 +136,50 @@ class TestWidths:
         assert widths_as_fractions(text, 452.97) == "\\begin{tabular} {p{0.1633\\linewidth}}"
 
 
-class TestCentering:
-    def test_a_floats_centering_is_dropped_and_others_kept(self):
-        """A figure's would split it into two half-width minipages; a
-        table's would reach the page bare, since pandoc writes the table
-        as a `longtable` with no group around it, and centre every
-        paragraph after it (measured on a real thesis chapter)."""
+class TestDeclarations:
+    """Under `raw_tex` an alignment or size declaration pandoc does not
+    keep inside its group reaches the page bare and changes every later
+    paragraph; one inside a figure splits it into half-width minipages
+    (all measured, pandoc 3.1.11). Only grouped ones go: a top-level one
+    changes the rest of the thesis too, so the preview keeps it."""
+
+    def test_a_floats_centering_and_size_are_dropped(self):
         text = (
             "\\begin{figure}[t]\\centering\n\\input{figures/f.tex}\n\\end{figure}\n"
-            "\\begin{table}[h]\n\\centering\n\\caption{T.}\\end{table}\n"
-            "\\begin{figure*}\n  \\centering\n  y\n\\end{figure*}\n"
-            "\\begin{center}\\centering z\\end{center}"
+            "\\begin{table}[h]\n\\centering\\small\n\\caption{T.}\\end{table}\n"
         )
 
-        out = without_lone_centering(text)
+        out = without_grouped_declarations(text)
 
-        assert "\\begin{figure}[t]\\input{figures/f.tex}" in out
-        assert "\\begin{table}[h]\n\\caption{T.}" in out
-        assert "\\begin{figure*}\n  y" in out
-        assert "\\begin{center}\\centering z" in out
+        assert "\\begin{figure}[t]\n\\input{figures/f.tex}" in out
+        assert "\\begin{table}[h]\n\n\\caption{T.}" in out
+        assert "\\small" not in out
 
-    def test_a_figure_left_open_is_left_alone(self):
-        text = "\\begin{figure}\\centering x"
+    def test_a_brace_group_or_center_block_loses_its_centering(self):
+        text = "{\\centering a line\\par}\n\\begin{center}\\centering z\\end{center}"
 
-        assert without_lone_centering(text) == text
+        out = without_grouped_declarations(text)
+
+        assert out == "{a line\\par}\n\\begin{center}z\\end{center}"
+
+    def test_a_top_level_declaration_stays(self):
+        text = "\\small Text.\n\\centering More."
+
+        assert without_grouped_declarations(text) == text
+
+    def test_a_commented_declaration_is_left_and_the_next_line_kept(self):
+        """A `% \\centering` once ate its newline and commented out the
+        `\\input` below it, so the figure vanished again."""
+        text = "\\begin{figure}\n% \\centering\n\\input{figures/fig1.tex}\n\\end{figure}"
+
+        assert without_grouped_declarations(text) == text
+
+    def test_an_escaped_brace_and_a_longer_name_are_text(self):
+        text = "\\begin{figure}\\{ \\centeringx \\% \\centering\n\\end{figure}"
+
+        assert without_grouped_declarations(text) == (
+            "\\begin{figure}\\{ \\centeringx \\% \n\\end{figure}"
+        )
 
 
 class TestRewrite:
@@ -289,3 +332,46 @@ class TestThePdfRender:
         )
 
         assert render_output.render(str(draft), output_format="pdf").exists()
+
+
+class TestUndefinedCommandHint:
+    """A `.tex` preview reads raw TeX, so a command only the thesis's
+    preamble defines stops the pdf; the hint names the command and the
+    file that would define it. The logs are LuaLaTeX's own."""
+
+    _TODO = "! Undefined control sequence.\nl.4 Plain \\todo\n                       {} here.\n"
+    # `\todo` defined, `\citep` not: TeX shows the argument's context
+    # first, before the `l.` line.
+    _CITE = (
+        "! Undefined control sequence.\n<argument> see \\citep \n           {k}\n"
+        "l.2 Text \\todo{see \\citep{k}}\n                            more.\n"
+    )
+
+    def test_names_the_command_and_the_drafts_preamble_file(self, tmp_path):
+        hint = undefined_command_hint(self._TODO, str(tmp_path / "ch.tex"))
+
+        assert hint.startswith("\n[preamble] ")
+        assert "\\todo" in hint
+        assert str(tmp_path / "ch.preamble.tex") in hint
+        assert "preamble.tex beside the draft" in hint
+        assert "an agent reports this line and leaves the file alone" in hint
+
+    def test_a_citation_inside_a_raw_command_is_told_to_move(self, tmp_path):
+        hint = undefined_command_hint(self._CITE, str(tmp_path / "ch.tex"))
+
+        assert "\\citep" in hint
+        assert "move the citation out" in hint
+        assert "preamble.tex" not in hint
+
+    def test_without_a_context_line_the_file_is_still_named(self, tmp_path):
+        hint = undefined_command_hint("! Undefined control sequence.", str(tmp_path / "ch.tex"))
+
+        assert "the undefined command" in hint
+        assert str(tmp_path / "ch.preamble.tex") in hint
+
+    @pytest.mark.parametrize(
+        ("stderr", "name"),
+        [(_TODO, "x.md"), (None, "ch.tex"), ("", "ch.tex"), ("! Missing $ inserted.", "ch.tex")],
+    )
+    def test_says_nothing_for_markdown_or_another_failure(self, tmp_path, stderr, name):
+        assert undefined_command_hint(stderr, str(tmp_path / name)) == ""

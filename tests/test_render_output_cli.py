@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 import pytest
 from chitragupta import render_output, tex_engine
-from chitragupta.render_output._cli import _undefined_command_hint, _unicode_repair_hint
+from chitragupta.render_output._cli import _unicode_repair_hint
 from tests.conftest import content_draft
 from tests.conftest import MARKED_MD
 from tests.conftest import lualatex_available, pandoc_available, pdflatex_available
@@ -827,45 +827,3 @@ class TestUnicodeRepairHint:
     @pytest.mark.parametrize("stderr", [None, "", "! Undefined control sequence."])
     def test_says_nothing_about_another_failure(self, stderr):
         assert _unicode_repair_hint(stderr) == ""
-
-
-class TestUndefinedCommandHint:
-    """#1164/#1120: a `.tex` draft's preview reads raw TeX, so a command
-    defined only in the thesis's preamble stops the pdf; the hint names
-    the command and the preamble file that would define it."""
-
-    _TODO = (
-        "Error producing PDF.\n! Undefined control sequence.\n"
-        "l.112 Text \\todo\n            {x} more.\n"
-    )
-
-    def test_names_the_command_and_the_drafts_preamble_file(self, tmp_path):
-        hint = _undefined_command_hint(self._TODO, str(tmp_path / "ch.tex"))
-
-        assert hint.startswith("\n[preamble] ")
-        assert "\\todo" in hint
-        assert str(tmp_path / "ch.preamble.tex") in hint
-        assert "preamble.tex beside the draft" in hint
-        assert "an agent reports this line and leaves the file alone" in hint
-
-    def test_a_citation_inside_a_raw_command_is_told_to_move(self, tmp_path):
-        stderr = "! Undefined control sequence.\nl.9 \\todo{see \\citep\n         {a}}\n"
-
-        hint = _undefined_command_hint(stderr, str(tmp_path / "ch.tex"))
-
-        assert "\\citep" in hint
-        assert "move the citation out" in hint
-        assert "preamble.tex" not in hint
-
-    def test_without_a_readable_line_the_file_is_still_named(self, tmp_path):
-        hint = _undefined_command_hint("! Undefined control sequence.", str(tmp_path / "ch.tex"))
-
-        assert "the undefined command" in hint
-        assert str(tmp_path / "ch.preamble.tex") in hint
-
-    @pytest.mark.parametrize(
-        ("stderr", "name"),
-        [(_TODO, "x.md"), (None, "ch.tex"), ("", "ch.tex"), ("! Missing $ inserted.", "ch.tex")],
-    )
-    def test_says_nothing_for_markdown_or_another_failure(self, tmp_path, stderr, name):
-        assert _undefined_command_hint(stderr, str(tmp_path / name)) == ""

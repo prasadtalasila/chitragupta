@@ -12,7 +12,7 @@ from chitragupta.page import ARTICLE
 from chitragupta.render_output._errors import ConversionError, MissingBinary, OutsideContentDir
 from chitragupta.render_output._figures import _figure_refs
 from chitragupta.render_output._math import MathMappingError
-from chitragupta.render_output._tex_preview import is_tex_draft
+from chitragupta.render_output._tex_preview import undefined_command_hint
 from chitragupta.help_format import ClickParser
 from chitragupta.progname import prog_for
 
@@ -103,44 +103,6 @@ def _unicode_repair_hint(stderr: str | None) -> str:
         f"command, e.g. $\\aleph$), or teach this project to print it: add "
         f"\\DeclareUnicodeCharacter{{{code}}}{{...}} to {extra}, e.g. "
         f"\\DeclareUnicodeCharacter{{{code}}}{{\\ensuremath{{\\ast}}}}."
-    )
-
-
-# TeX's own report of an undefined command, and the `l.<n>` line after it,
-# whose last control sequence is the one TeX stopped on.
-_UNDEFINED_RE = re.compile(r"! Undefined control sequence\.\s*\nl\.\d+ ?(?P<line>[^\n]*)")
-_CONTROL_SEQUENCE_RE = re.compile(r"\\([A-Za-z@]+)")
-_CITE_COMMANDS = {"cite", "citep", "citet", "citealp", "citeauthor"}
-
-
-def _undefined_command_hint(stderr: str | None, input_arg: str) -> str:
-    r"""Where to define the command a `.tex` preview stopped on, or "".
-
-    A `.tex` draft's preview reads raw TeX (#1164), so a command pandoc
-    does not know reaches LuaLaTeX, and one the thesis's preamble defines
-    is undefined here, where none of that preamble is loaded. The remedy
-    is the author's preamble file (`_tex_preview.preamble_file`), which
-    no skill writes for them: the line says so, because it is what an
-    agent reads at the moment it would. A citation command is the exception:
-    inside a command pandoc keeps raw it is never resolved, and defining
-    it would print a key, so the hint says to move it instead.
-    """
-    path = Path(input_arg)
-    if "Undefined control sequence" not in (stderr or "") or not is_tex_draft(path):
-        return ""
-    match = _UNDEFINED_RE.search(stderr or "")
-    names = _CONTROL_SEQUENCE_RE.findall(match.group("line")) if match else []
-    if names and names[-1] in _CITE_COMMANDS:
-        return (
-            f"\n[preamble] \\{names[-1]} sits inside a command pandoc does not know, so "
-            "the preview leaves it unresolved: move the citation out of that command."
-        )
-    command = f"\\{names[-1]}" if names else "the undefined command"
-    return (
-        f"\n[preamble] The preview loads none of your thesis's preamble: define {command} "
-        f"in {path.with_name(f'{path.stem}.preamble.tex')} (or in a preamble.tex beside "
-        "the draft, shared by its chapters). The author writes it from their thesis's "
-        "own preamble; an agent reports this line and leaves the file alone."
     )
 
 
@@ -281,7 +243,7 @@ def _rendered(args: argparse.Namespace) -> Path | None:
         print(
             f"[error] pandoc failed: {exc.stderr or exc}"
             f"{_figure_repair_hint(args.input)}{_unicode_repair_hint(exc.stderr)}"
-            f"{_undefined_command_hint(exc.stderr, args.input)}"
+            f"{undefined_command_hint(exc.stderr, args.input)}"
         )
         return None
     except ledger.NoLedger as exc:
