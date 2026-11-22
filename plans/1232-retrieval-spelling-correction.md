@@ -144,11 +144,13 @@ At most one added word per typed word.
 The union of `term_freqs` keys over the document index, with the paper
 count per word, taken from the same parsed-only rows `search` ranks
 (`status == PARSED`, #1118), so the vocabulary is exactly what the
-ranker sees. Memoize it on the ledger's
-`(path, size, mtime_ns)` and the BM25 cache file's `mtime_ns`, the way
-`_json_cache.MemoisedJson` stamps its path. A sync, a cache rewrite or a
-different test tree then invalidates it, which matters for the
-long-lived discover web app as much as for tests.
+ranker sees. Memoize it on the identity of
+the index object `read_only_index` returns, which is the same object
+while the rows' fingerprints are unchanged. A sync, or a different
+project tree, then invalidates it, which matters for the long-lived
+discover web app as much as for tests. (Settled during implementation:
+the planned key on the ledger file's `mtime_ns` could miss a change,
+since two writes milliseconds apart can share one timestamp.)
 
 **Built read-only. It never writes the BM25 cache.** `retrieval_cache._load_index`
 saves the cache whenever a fingerprint moved, which after a sync is
