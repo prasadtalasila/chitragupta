@@ -1,9 +1,9 @@
 {
  "corpus": {
   "papers": 497,
-  "no_cache_s": 5.919,
-  "warm_cache_s": 0.27,
-  "check_ms": 27.6,
+  "no_cache_s": 6.038,
+  "warm_cache_s": 0.278,
+  "check_ms": 26.6,
   "vocabulary": 69454,
   "logged_queries": 964
  },
@@ -46,8 +46,8 @@
   "right_when_corrected": 0.9575,
   "fixed_of_all_typos": 0.8987,
   "pool_size": 30365,
-  "ms_per_word_median": 25.68,
-  "ms_per_word_p95": 26.64,
+  "ms_per_word_median": 25.62,
+  "ms_per_word_p95": 26.83,
   "wrong_examples": [
    "acausal -> acusal -> causal",
    "adapters -> adaptrs -> adapts",
@@ -158,5 +158,43 @@
     "mrr@5": 0.7051
    }
   }
+ },
+ "y_prev": {
+  "paragraphs": 300,
+  "with_a_correction": 56,
+  "mean_corrections": 0.22,
+  "max_corrections": 3,
+  "examples": [
+   "csname ~> sname",
+   "earns ~> learns",
+   "csname ~> sname",
+   "dedupe ~> deduce",
+   "citep ~> cited",
+   "citep ~> cited",
+   "citep ~> cited",
+   "revisits ~> revisit",
+   "refit ~> revit",
+   "refreshes ~> refreshed",
+   "concedes ~> conceded",
+   "csname ~> sname",
+   "retried ~> retired",
+   "tenths ~> tenth",
+   "csname ~> sname",
+   "normalise ~> normalize",
+   "citep ~> cited",
+   "dries ~> tries",
+   "tenths ~> tenth",
+   "sways ~> ways",
+   "rungs ~> runs",
+   "bottjer ~> boettjer",
+   "standardises ~> standardised",
+   "citep ~> cited",
+   "bottjer ~> boettjer",
+   "csname ~> sname",
+   "normalsize ~> normalize",
+   "cgzone ~> czone",
+   "washes ~> wishes",
+   "starves ~> starve"
+  ]
  }
 }

@@ -9,7 +9,7 @@ and `retrieval._bm25_scores`, as the drift report does, so this script
 never writes the BM25 cache. Acronym expansion is held off in every arm,
 so nothing but correction differs between them.
 
-Three arms:
+Four arms:
 
 1. **Accuracy and cost.** Every 5+-letter, all-letter word of the logged
    queries that the corpus contains gets four synthetic typos (one
@@ -27,6 +27,9 @@ Three arms:
    into one eligible word per query. Recall@1, recall@5 and MRR@5 off and
    on, overall and on the queries correction actually changed, beside the
    untouched queries' figures for reference.
+4. **`--y-prev` prose.** Paragraphs of the project's own drafts, as
+   `retrieve search --y-prev` would append them: how many corrections a
+   round adds without a note.
 
 Run from the repository, naming the project to measure:
 
@@ -37,6 +40,7 @@ Run from the repository, naming the project to measure:
 import argparse
 import json
 import random
+import re
 import string
 import sys
 import time
@@ -182,8 +186,12 @@ def arm_recovery(index: dict, vocab: dict[str, int]) -> dict:
         if not words:
             continue
         word = rng.choice(words)
-        typo = rng.choice([t for t in typos(word, rng).values() if t not in vocab])
-        query = truth["query"].lower().replace(word, typo, 1)
+        options = [t for t in typos(word, rng).values() if t not in vocab]
+        if not options:
+            continue
+        # As a whole token: `twin` must not land inside an earlier `twins`.
+        pattern = rf"(?<![a-z0-9]){word}(?![a-z0-9])"
+        query = re.sub(pattern, rng.choice(options), truth["query"].lower(), count=1)
         config.SPELLING_CORRECTION = False
         row = {"clean": _score(ranked(index, truth["query"]), truth["citekey"])}
         row["off"] = _score(ranked(index, query), truth["citekey"])
@@ -198,10 +206,42 @@ def arm_recovery(index: dict, vocab: dict[str, int]) -> dict:
     }
 
 
+def arm_y_prev(limit: int = 300) -> dict:
+    """What `--y-prev` prose gains: `retrieve search --y-prev` appends up
+    to 1500 characters of draft text to the query, and corrections in it
+    reach no note. Paragraphs of this project's own drafts stand in for
+    that text."""
+    paragraphs = set()
+    for path in sorted(config.DRAFTS_DIR.rglob("*")):
+        if path.suffix in {".md", ".tex"} and path.is_file():
+            for block in path.read_text(encoding="utf-8", errors="replace").split("\n\n"):
+                if len(block) >= 200:
+                    paragraphs.add(block[:1500])
+    sample = sorted(paragraphs)
+    sample = random.Random(SEED).sample(sample, min(limit, len(sample)))
+    config.SPELLING_CORRECTION = True
+    counts, examples = [], []
+    for text in sample:
+        found = retrieval_spelling.correct(
+            retrieval._query_terms(text), retrieval._tokenize_item, retrieval._INTERROGATIVES
+        )
+        counts.append(len(found))
+        examples += [f"{typed} ~> {term}" for typed, term in found]
+    return {
+        "paragraphs": len(counts),
+        "with_a_correction": sum(1 for c in counts if c),
+        "mean_corrections": round(sum(counts) / len(counts), 2) if counts else None,
+        "max_corrections": max(counts, default=0),
+        "examples": examples[:30],
+    }
+
+
 def build_times(rows: list) -> dict:
     """What a vocabulary costs to build, and what checking it costs.
 
-    `no_cache_s` is the first query after a sync: every paper tokenized.
+    Each process with correction on builds it once. `no_cache_s` is a
+    build with no BM25 cache file at all, every paper tokenized; a sync
+    re-tokenizes only the papers whose entries it made stale.
     `warm_cache_s` is a build whose every entry the on-disk cache can
     serve, simulated in memory -- this script must not write the cache,
     and the host's may be stale (a re-parse rewrites the `.txt` files,
@@ -280,6 +320,7 @@ def main(argv=None) -> int:
         "accuracy": arm_accuracy(queries, vocab),
         "harm": arm_harm(index, queries),
         "recovery": arm_recovery(index, vocab),
+        "y_prev": arm_y_prev(),
     }
     out_dir = BENCH_DIR / "results" / Path(args.tag).name
     out_dir.mkdir(parents=True, exist_ok=True)

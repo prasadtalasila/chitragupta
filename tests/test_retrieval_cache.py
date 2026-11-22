@@ -84,6 +84,16 @@ def test_unchanged_rows_are_not_tokenized_twice(rows):
     assert sorted(calls) == ["a2024", "b2024"]
 
 
+def test_the_same_rows_in_another_order_are_not_tokenized_again(rows):
+    """Drift reads its rows unordered and the vocabulary reads them by
+    citekey; the memo must treat the two as one corpus."""
+    calls: list[str] = []
+    tokenize_item = counting(calls)
+    first = retrieval_cache.read_only_index(rows, tokenize_item)
+    assert retrieval_cache.read_only_index(list(reversed(rows)), tokenize_item) is first
+    assert sorted(calls) == ["a2024", "b2024"]
+
+
 def test_changed_rows_are_rebuilt(rows, ledger_con):
     calls: list[str] = []
     tokenize_item = counting(calls)

@@ -288,7 +288,9 @@ neighbour. The rules:
 - Corrections and acronym expansions read only what you typed: neither
   is applied to the other's output.
 
-`retrieve` and `discover search` print each correction on stderr, and
+`retrieve` and `discover search` print each correction on stderr
+(except in `search --y-prev`'s appended prose, which is corrected
+without a note), and
 `--log` records it in `retrieval.md`'s `expanded` column as
 `strucutral ~> structural`. The citation coverage report lists them per
 query.
@@ -316,9 +318,12 @@ On this project's corpus
 - **Harm:** 2 of 964 logged queries were corrected, both valid words
   the corpus lacks. `tumbling` gained `stumbling` and put an unrelated
   paper first. The logs held no genuine typo, which is why it ships off.
-- **Cost:** the first query after a sync takes 0.27 s to build the
-  vocabulary from a warm cache, or 5.9 s without one. Each later query
-  with a five-letter word costs about 28 ms.
+- **`--y-prev`:** 19% of draft paragraphs appended by `search --y-prev`
+  gain a correction, mostly wrong (`citep` -> `cited`), and these reach
+  no note.
+- **Cost:** each process builds the vocabulary once: 0.28 s with a
+  current BM25 cache, 6.0 s with none. Each later lookup costs about
+  27 ms, and `retrieve` makes two per query.
 
 ### 🔡 Where the token-length floor came from
 

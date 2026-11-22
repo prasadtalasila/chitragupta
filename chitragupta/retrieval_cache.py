@@ -194,14 +194,20 @@ def read_only_index(rows: list, tokenize_item) -> dict:
     `tokenize_item` is passed in for the reason `_load_index` takes it:
     this module cannot import `chitragupta.retrieval` back.
     """
-    key = (tokenize_item, tuple((row["citekey"], tuple(_fingerprint(row))) for row in rows))
+    fingerprints = [_fingerprint(row) for row in rows]
+    # Sorted, because callers read the same rows in different orders:
+    # drift's query has no ORDER BY, and `ledger.all_items` sorts.
+    key = (
+        tokenize_item,
+        tuple(sorted((row["citekey"], tuple(fp)) for row, fp in zip(rows, fingerprints))),
+    )
     if _READ_ONLY_MEMO.get("key") == key:
         return _READ_ONLY_MEMO["index"]
     cached = _load_cache()
     index = {}
-    for (citekey, fingerprint), row in zip(key[1], rows):
-        entry = cached.get(citekey)
-        index[citekey] = entry if _reusable(entry, list(fingerprint)) else tokenize_item(row)
+    for row, fingerprint in zip(rows, fingerprints):
+        entry = cached.get(row["citekey"])
+        index[row["citekey"]] = entry if _reusable(entry, fingerprint) else tokenize_item(row)
     _READ_ONLY_MEMO.update(key=key, index=index)
     return index
 
