@@ -120,7 +120,8 @@ def _undefined_command_hint(stderr: str | None, input_arg: str) -> str:
     does not know reaches LuaLaTeX, and one the thesis's preamble defines
     is undefined here, where none of that preamble is loaded. The remedy
     is the author's preamble file (`_tex_preview.preamble_file`), which
-    the skill never writes for them. A citation command is the exception:
+    no skill writes for them: the line says so, because it is what an
+    agent reads at the moment it would. A citation command is the exception:
     inside a command pandoc keeps raw it is never resolved, and defining
     it would print a key, so the hint says to move it instead.
     """
@@ -138,7 +139,8 @@ def _undefined_command_hint(stderr: str | None, input_arg: str) -> str:
     return (
         f"\n[preamble] The preview loads none of your thesis's preamble: define {command} "
         f"in {path.with_name(f'{path.stem}.preamble.tex')} (or in a preamble.tex beside "
-        "the draft, shared by its chapters)."
+        "the draft, shared by its chapters). The author writes it from their thesis's "
+        "own preamble; an agent reports this line and leaves the file alone."
     )
 
 

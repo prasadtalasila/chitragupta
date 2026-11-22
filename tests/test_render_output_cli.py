@@ -846,6 +846,7 @@ class TestUndefinedCommandHint:
         assert "\\todo" in hint
         assert str(tmp_path / "ch.preamble.tex") in hint
         assert "preamble.tex beside the draft" in hint
+        assert "an agent reports this line and leaves the file alone" in hint
 
     def test_a_citation_inside_a_raw_command_is_told_to_move(self, tmp_path):
         stderr = "! Undefined control sequence.\nl.9 \\todo{see \\citep\n         {a}}\n"
