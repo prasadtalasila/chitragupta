@@ -6,7 +6,8 @@
 #
 # GPU i serves on port 18080+i with CUDA_VISIBLE_DEVICES=i, one slot and
 # the 131,072-token context docs/examples/opencode/opencode-provider.json
-# declares, under the name the bench asks for (qwen3.6-35b-a3b), with the
+# declares, under the name the bench asks for (MODEL_ALIAS, by default
+# qwen3.6-35b-a3b; the bench's MODEL must match it), with the
 # model's vision projector, so a harness that sends a figure PNG gets an
 # answer and not a 500 that ends its run. One slot
 # a server is deliberate: the bench gives each local job a server of its
@@ -23,6 +24,7 @@ BENCH_TOOLS=${BENCH_TOOLS:-$HOME/bench-tools}
 LLAMA_SERVER=${LLAMA_SERVER:-$BENCH_TOOLS/llama.cpp-b11321/build/bin/llama-server}
 MODEL_FILE=${MODEL_FILE:-$BENCH_TOOLS/models/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf}
 MMPROJ_FILE=${MMPROJ_FILE:-$BENCH_TOOLS/models/mmproj-F16.gguf}
+MODEL_ALIAS=${MODEL_ALIAS:-qwen3.6-35b-a3b}
 RUN=$BENCH_TOOLS/run
 PIDS=$RUN/servers.pid
 WAIT=${WAIT:-600}
@@ -50,7 +52,7 @@ args=()
 for ((gpu = first; gpu < first + count; gpu++)); do
   port=$((18080 + gpu))
   CUDA_VISIBLE_DEVICES=$gpu setsid nohup "$LLAMA_SERVER" -m "$MODEL_FILE" --mmproj "$MMPROJ_FILE" \
-    --alias qwen3.6-35b-a3b --host 127.0.0.1 --port "$port" \
+    --alias "$MODEL_ALIAS" --host 127.0.0.1 --port "$port" \
     -c 131072 -np 1 -ngl 99 --jinja >"$RUN/llama-server-$gpu.log" 2>&1 </dev/null &
   echo $! >>"$PIDS"
   args+=("--base-url http://127.0.0.1:$port/v1")

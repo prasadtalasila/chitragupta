@@ -202,6 +202,7 @@ def test_serve_models_starts_one_server_a_gpu_and_stops_them(tmp_path):
         "LLAMA_SERVER": str(server),
         "MODEL_FILE": str(model),
         "MMPROJ_FILE": str(mmproj),
+        "MODEL_ALIAS": "another-model",
         "WAIT": "30",
     }
     run = lambda *args: subprocess.run(  # noqa: E731
@@ -215,6 +216,7 @@ def test_serve_models_starts_one_server_a_gpu_and_stops_them(tmp_path):
         assert (tools / "run" / "servers.pid").read_text(encoding="utf-8").strip()
         args = (tmp_path / "llama-server.args").read_text(encoding="utf-8").split()
         assert args[args.index("--mmproj") + 1] == str(mmproj), args
+        assert args[args.index("--alias") + 1] == "another-model", args
     finally:
         stopped = run("--stop")
     assert stopped.returncode == 0 and "stopped" in stopped.stdout
