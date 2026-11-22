@@ -269,6 +269,24 @@ def test_diff_pdf_renders_both_sides_and_redlines(isolated_config, ledger_con, m
     assert out.rstrip().endswith(str(_review_dir() / "survey.diff.pdf"))
 
 
+def test_diff_pdf_gives_both_sides_the_drafts_preamble(
+    isolated_config, ledger_con, monkeypatch, capsys
+):
+    """The sides sit in the review directory, so the preamble file a
+    `.tex` preview loads is copied beside each, named for its side."""
+    path = _snapshotted(ledger_con)
+    path.with_name("survey.preamble.tex").write_text("\\newcommand{\\x}{}\n", encoding="utf-8")
+    monkeypatch.setattr(render_output, "render", _fake_render([]))
+    monkeypatch.setattr(_redline, "redline", lambda *a: a[3] / "survey.diff.pdf")
+
+    assert _diff(path, "--format", "pdf") == 0
+
+    work = _review_dir() / "survey.diff"
+    for side in ("old", "new"):
+        copied = work / side / "survey.preamble.tex"
+        assert copied.read_text(encoding="utf-8") == "\\newcommand{\\x}{}\n"
+
+
 def test_diff_pdf_withdraws_a_key_no_longer_citable(
     isolated_config, ledger_con, monkeypatch, capsys
 ):
