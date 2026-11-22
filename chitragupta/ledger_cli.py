@@ -169,7 +169,7 @@ def _list_items(con, status, collection=None) -> int:
 def _list_collections(con) -> int:
     """`--collections`: what a `--collection` filter can be given."""
     rows = con.execute("SELECT citekey, collections FROM items").fetchall()
-    for line in bib_collections.report(rows):
+    for line in bib_collections.report(rows, {}):
         print(line)
     return 0
 

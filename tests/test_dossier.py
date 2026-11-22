@@ -2247,16 +2247,16 @@ class TestDriftCollectionScoping:
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         dossier.log_retrieval(
-            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins"
+            draft, "search", "digital twin", 15, 15, 100, collection="digital-twins"
         )
         _seed_corpus(
             [
-                ("in_shelf_2024", "In shelf", "digital twin architecture", ("Digital twins",)),
+                ("in_shelf_2024", "In shelf", "digital twin architecture", ("digital-twins",)),
                 (
                     "outside_shelf_2025",
                     "Outside shelf",
                     "digital twin simulation",
-                    ("Other shelf",),
+                    ("other-shelf",),
                 ),
             ]
         )
@@ -2267,7 +2267,7 @@ class TestDriftCollectionScoping:
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         dossier.log_retrieval(
-            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins"
+            draft, "search", "digital twin", 15, 15, 100, collection="digital-twins"
         )
         _seed_corpus(
             [
@@ -2275,7 +2275,7 @@ class TestDriftCollectionScoping:
                     "nested_2024",
                     "Nested",
                     "digital twin architecture",
-                    ("Digital twins > Modelling",),
+                    ("digital-twins.modelling",),
                 ),
             ]
         )
@@ -2288,12 +2288,12 @@ class TestDriftCollectionScoping:
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
         _seed_corpus(
             [
-                ("in_shelf_2024", "In shelf", "digital twin architecture", ("Digital twins",)),
+                ("in_shelf_2024", "In shelf", "digital twin architecture", ("digital-twins",)),
                 (
                     "outside_shelf_2025",
                     "Outside shelf",
                     "digital twin simulation",
-                    ("Other shelf",),
+                    ("other-shelf",),
                 ),
             ]
         )
@@ -2312,12 +2312,12 @@ class TestDriftCollectionScoping:
         )
         _seed_corpus(
             [
-                ("in_shelf_2024", "In shelf", "digital twin architecture", ("Digital twins",)),
+                ("in_shelf_2024", "In shelf", "digital twin architecture", ("digital-twins",)),
                 (
                     "outside_shelf_2025",
                     "Outside shelf",
                     "digital twin simulation",
-                    ("Other shelf",),
+                    ("other-shelf",),
                 ),
             ]
         )
