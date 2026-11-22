@@ -43,7 +43,6 @@ from chitragupta.config_load import (
     _get_optional_float,
     _get_positive_int,
     _get_workers,
-    _raw_setting,
 )
 
 # Two roots, because `REPO_ROOT` was doing two unrelated jobs under one
@@ -145,9 +144,7 @@ BIB_FILE_PATH = PROJECT_ROOT / _get("BIB_FILE", "bib", "path", default="papers/b
 # chitragupta-importer's `cg-collections` (chitragupta/bib_collections.py),
 # so the setting is ignored. An old config.toml still loads; this flag
 # lets sync say so once, rather than every command on every import.
-LEGACY_COLLECTIONS_FIELD = (
-    _raw_setting("BIB_COLLECTIONS_FIELD", ("bib", "collections_field")) is not None
-)
+LEGACY_COLLECTIONS_FIELD = bool(_get("BIB_COLLECTIONS_FIELD", "bib", "collections_field"))
 
 CONTENT_DIR = PROJECT_ROOT / _get("CONTENT_DIR", "content", "dir", default="content")
 PARSED_DIR = CONTENT_DIR / "parsed"
