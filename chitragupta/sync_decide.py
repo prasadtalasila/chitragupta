@@ -9,7 +9,7 @@ back into `chitragupta.sync` -- `chitragupta/sync.py` calls these, not
 the reverse.
 """
 
-from chitragupta import bib_reader, config, ledger, sync_residue
+from chitragupta import bib_reader, config, ledger, ledger_tables, sync_residue
 
 
 def _to_parse(con, references, reparse, parser_available, tally) -> list:
@@ -143,6 +143,20 @@ def _refuse_prune(library, stale_count) -> None:
         "stale item(s) below are reported, not deleted. Fix the bib file, "
         "re-export, and re-run with --remove-stale."
     )
+
+
+def _record_and_report(
+    con, library, remove_stale
+) -> tuple[list[tuple[str, str | None]], list[tuple[str, str | None]], bool]:
+    """After ingest: record what the bib says beyond its entries, then
+    prune or report stale rows (`_report_stale`).
+
+    The collection names are rewritten whole, so a collection renamed in
+    the reference manager shows its new name and keeps its slug.
+    """
+    ledger_tables.replace_collection_names(con, library.tables.collection_names)
+    con.commit()
+    return _report_stale(con, library, remove_stale)
 
 
 def _report_stale(
