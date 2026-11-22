@@ -568,3 +568,6 @@ run in some runs and not others, and timeouts on the two longest
 skills. So the local harnesses stay advisory, and their tables are now
 worth reading: a command missing from every after run is a real signal
 on them too.
+[MODEL-COMPLIANCE.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/MODEL-COMPLIANCE.md)
+lists which steps the local model runs every time, never, or now and
+then, and the reasons its transcripts give.
