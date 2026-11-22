@@ -418,7 +418,7 @@ render of a `.tex` draft, and nothing else (a Markdown draft and every
 | What | How | Formats |
 | --- | --- | --- |
 | The figure | read with `-f latex+raw_tex`, so `\input{figures/x.tex}` reaches LuaLaTeX, through `TEXINPUTS` and the #823 read fence | `tex`, `latex`, `pdf` |
-| The figure's width | a figure's own `\centering` is dropped from the copy pandoc reads: under `raw_tex` it is a block of its own, and pandoc would set the figure as two half-width minipages | `tex`, `latex`, `pdf` |
+| A float's `\centering` | dropped from the copy pandoc reads: under `raw_tex` it is a block of its own, so pandoc would set a figure as two half-width minipages, and leave a table's bare after its `longtable`, centring every paragraph that follows | `tex`, `latex`, `pdf` |
 | `\ref` numbers | `--number-sections`; LaTeX now resolves the raw `\ref` from the counters that number the headings, so "Section 1.1" names a heading that reads "1.1" | `tex`, `latex`, `pdf` |
 | Absolute column widths | `p{2.6cm}` (and `m`, `b`; `cm`, `mm`, `in`, `pt`, `bp`) becomes `p{0.1633\linewidth}` against the house page's text width, before pandoc reads it; `em` and `ex` are left alone | every format |
 | The references heading | `--metadata reference-section-title=References` | every format |

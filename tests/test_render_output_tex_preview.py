@@ -114,18 +114,24 @@ class TestWidths:
 
 
 class TestCentering:
-    def test_a_figures_centering_is_dropped_and_others_kept(self):
+    def test_a_floats_centering_is_dropped_and_others_kept(self):
+        """A figure's would split it into two half-width minipages; a
+        table's would reach the page bare, since pandoc writes the table
+        as a `longtable` with no group around it, and centre every
+        paragraph after it (measured on a real thesis chapter)."""
         text = (
             "\\begin{figure}[t]\\centering\n\\input{figures/f.tex}\n\\end{figure}\n"
-            "\\begin{table}\\centering x\\end{table}\n"
-            "\\begin{figure*}\n  \\centering\n  y\n\\end{figure*}"
+            "\\begin{table}[h]\n\\centering\n\\caption{T.}\\end{table}\n"
+            "\\begin{figure*}\n  \\centering\n  y\n\\end{figure*}\n"
+            "\\begin{center}\\centering z\\end{center}"
         )
 
         out = without_lone_centering(text)
 
         assert "\\begin{figure}[t]\\input{figures/f.tex}" in out
-        assert "\\begin{table}\\centering x" in out
+        assert "\\begin{table}[h]\n\\caption{T.}" in out
         assert "\\begin{figure*}\n  y" in out
+        assert "\\begin{center}\\centering z" in out
 
     def test_a_figure_left_open_is_left_alone(self):
         text = "\\begin{figure}\\centering x"

@@ -28,11 +28,14 @@ preamble stops the pdf. `preamble_file` is the remedy, an optional file
 beside the draft modelled on the book's `content/specs/<book>/preamble.tex`,
 and `_cli._undefined_command_hint` names it.
 
-It also costs a figure's own `\\centering`: `raw_tex` keeps it as a
-block of its own, and pandoc then sets the figure as two `0.45\\linewidth`
-minipages, an empty one and the picture (measured, pandoc 3.1.11).
-Without it, pandoc writes its own `\\centering` and keeps one block, so
-the preview's copy drops it.
+It also costs a float's own `\\centering`, which `raw_tex` keeps as a
+block of its own. In a figure, pandoc then sets two `0.45\\linewidth`
+minipages, an empty one and the picture; without it, pandoc writes its
+own `\\centering` and keeps one block. In a table, pandoc writes a
+`longtable` with no group around it, so the bare `\\centering` centred
+every paragraph after the table (both measured, pandoc 3.1.11; the
+second on a real thesis chapter). So the preview's copy drops it from
+both.
 
 Left alone: `em`/`ex` widths, whose size depends on the thesis's font;
 every Markdown draft; and every `--fragment` render, which is the
@@ -58,7 +61,7 @@ _WIDTH_FIRST = {"tabular*", "tabularx"}
 _COLUMN_RE = re.compile(r"([pmb])\{\s*(\d+(?:\.\d+)?|\.\d+)\s*(cm|mm|in|pt|bp)\s*\}")
 _PT = {"cm": 28.4528, "mm": 2.84528, "in": 72.27, "pt": 1.0, "bp": 1.00375}
 
-_FIGURE_RE = re.compile(r"(\\begin\{(figure\*?)\})(.*?)(\\end\{\2\})", re.DOTALL)
+_FLOAT_RE = re.compile(r"(\\begin\{((?:figure|table)\*?)\})(.*?)(\\end\{\2\})", re.DOTALL)
 _CENTERING_RE = re.compile(r"\\centering(?![A-Za-z])\s*")
 
 
@@ -135,8 +138,9 @@ def widths_as_fractions(text: str, text_width_pt: float) -> str:
 
 
 def without_lone_centering(text: str) -> str:
-    """Every figure's own `\\centering` removed, with the space after it."""
-    return _FIGURE_RE.sub(
+    """Every figure's and table's own `\\centering` removed, with the space
+    after it."""
+    return _FLOAT_RE.sub(
         lambda m: m.group(1) + _CENTERING_RE.sub("", m.group(3)) + m.group(4), text
     )
 
