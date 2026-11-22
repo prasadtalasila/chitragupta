@@ -324,3 +324,47 @@ class TestReport:
         }
         assert after == before
         assert not residue_corpus.CHROMA_DIR.exists()
+
+
+class TestDrafts:
+    """Drafts cite a key directly; a rename or removal reaches them too
+    (plans/1211-cg-collections-and-renames.md, D8)."""
+
+    def test_markdown_and_latex_drafts_are_named_with_their_count(self, isolated_config):
+        drafts = isolated_config.DRAFTS_DIR / "dt"
+        drafts.mkdir(parents=True)
+        (drafts / "survey.md").write_text("As [@smith_gone_2020] and [@smith_gone_2020b].\n")
+        (drafts / "chapter.tex").write_text("\\citep{smith_gone_2020, other_2021}\n")
+        (drafts / "notes.txt").write_text("smith_gone_2020\n")
+        found, notes = sync_residue.scan(["smith_gone_2020"])
+        assert notes == []
+        (hit,) = [h for h in found["smith_gone_2020"] if h.artefact == sync_residue.DRAFTS]
+        assert hit.count == 2 and hit.unit == "mention"
+        assert hit.where == (f"{drafts / 'chapter.tex'} (1)", f"{drafts / 'survey.md'} (1)")
+
+    def test_drafts_come_last_in_the_fixed_order(self, isolated_config, monkeypatch):
+        drafts = isolated_config.DRAFTS_DIR
+        drafts.mkdir(parents=True)
+        (drafts / "s.md").write_text("[@k_2020]\n")
+        dossier = isolated_config.DOSSIERS_DIR / "s"
+        dossier.mkdir(parents=True)
+        (dossier / "evidence.md").write_text("## k_2020\n")
+        found, _notes = sync_residue.scan(["k_2020"])
+        assert [h.artefact for h in found["k_2020"]] == [sync_residue.DOSSIERS, sync_residue.DRAFTS]
+
+    def test_an_unreadable_draft_is_noted(self, isolated_config, monkeypatch):
+        drafts = isolated_config.DRAFTS_DIR
+        drafts.mkdir(parents=True)
+        bad = drafts / "s.md"
+        bad.write_text("[@k_2020]\n")
+        real = type(bad).read_text
+
+        def refuse(self, *args, **kwargs):
+            if self == bad:
+                raise PermissionError("denied")
+            return real(self, *args, **kwargs)
+
+        monkeypatch.setattr(type(bad), "read_text", refuse)
+        found, notes = sync_residue.scan(["k_2020"])
+        assert found == {"k_2020": []}
+        assert notes == [f"drafts: {bad} could not be read (denied), so it was not scanned."]

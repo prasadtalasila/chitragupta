@@ -84,3 +84,15 @@ def citekey_path(directory: Path, citekey: str, suffix: str) -> Path:
     if problem:
         raise UnsafeCitekey(f"citekey {citekey!r} cannot name a file: {problem}")
     return directory / f"{citekey}{suffix}"
+
+
+def citekey_pattern(citekey: str) -> "re.Pattern[str]":
+    """The literal citekey, bounded by the characters a citekey may
+    contain, so `smith_2024` does not match inside `smith_2024b`.
+
+    Shared by the corpus layer's residue report (`sync_residue`) and the
+    drafting layer's rename swap (`dossier/_renames.py`), so a key the
+    one reports is exactly a key the other replaces.
+    """
+    edge = r"[A-Za-z0-9_:-]"
+    return re.compile(rf"(?<!{edge}){re.escape(citekey)}(?!{edge})")

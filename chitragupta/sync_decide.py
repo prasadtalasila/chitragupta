@@ -9,7 +9,7 @@ back into `chitragupta.sync` -- `chitragupta/sync.py` calls these, not
 the reverse.
 """
 
-from chitragupta import bib_reader, config, ledger, ledger_tables, sync_residue
+from chitragupta import bib_reader, config, ledger, ledger_tables, sync_renames, sync_residue
 
 
 def _to_parse(con, references, reparse, parser_available, tally) -> list:
@@ -114,7 +114,7 @@ def _lost_pdf_reason(exc: OSError) -> str:
     return bib_reader.PDF_UNREADABLE
 
 
-def _prune(con, seen_citekeys) -> list[tuple[str, str | None]]:
+def _prune(con, seen_citekeys, notes=None) -> list[tuple[str, str | None]]:
     """The --remove-stale deletion itself, residue report first."""
     # Skipped when the bib yielded nothing: prune_missing's guard is
     # about to refuse and raise on exactly that shape, and a residue
@@ -124,7 +124,7 @@ def _prune(con, seen_citekeys) -> list[tuple[str, str | None]]:
         sync_residue.report([key for key, _path in ledger.find_stale(con, seen_citekeys)])
     pruned = ledger.prune_missing(con, seen_citekeys)
     for citekey, _parsed_path in pruned:
-        print(f"  pruned  {citekey} (no longer in {config.BIB_FILE_PATH.name})")
+        print(f"  pruned  {citekey} {_gone(notes, citekey)}")
     return pruned
 
 
@@ -152,15 +152,31 @@ def _record_and_report(
     prune or report stale rows (`_report_stale`).
 
     The collection names are rewritten whole, so a collection renamed in
-    the reference manager shows its new name and keeps its slug.
+    the reference manager shows its new name and keeps its slug. Renames
+    are recorded before `_report_stale` can prune the rows they are read
+    from -- and not at all on a read that lost entries (#841), where a
+    key missing from the read need not be missing from the library.
     """
     ledger_tables.replace_collection_names(con, library.tables.collection_names)
     con.commit()
-    return _report_stale(con, library, remove_stale)
+    notes = {}
+    if not library.unread:
+        seen = library.seen_citekeys
+        stale = [key for key, _path in ledger.find_stale(con, seen)]
+        declared = library.tables.declared_renames
+        renames, shared = sync_renames.detect(con, stale, seen, declared)
+        sync_renames.record(con, renames, seen)
+        notes = sync_renames.suffixes(renames, shared)
+    return _report_stale(con, library, remove_stale, notes)
+
+
+def _gone(notes, citekey) -> str:
+    """A stale or pruned line's bracket, with what sync knows of a rename."""
+    return f"(no longer in {config.BIB_FILE_PATH.name}{(notes or {}).get(citekey, '')})"
 
 
 def _report_stale(
-    con, library, remove_stale
+    con, library, remove_stale, notes=None
 ) -> tuple[list[tuple[str, str | None]], list[tuple[str, str | None]], bool]:
     """Prune or report ledger rows the bib file no longer has.
 
@@ -187,7 +203,7 @@ def _report_stale(
     """
     seen_citekeys = library.seen_citekeys
     if remove_stale and not library.unread:
-        return _prune(con, seen_citekeys), [], False
+        return _prune(con, seen_citekeys, notes), [], False
 
     stale = ledger.find_stale(con, seen_citekeys)
     suspicious = not seen_citekeys and bool(stale)
@@ -218,7 +234,7 @@ def _report_stale(
         if remove_stale and stale:
             _refuse_prune(library, len(stale))
         for citekey, _parsed_path in stale:
-            print(f"  stale   {citekey} (no longer in {config.BIB_FILE_PATH.name})")
+            print(f"  stale   {citekey} {_gone(notes, citekey)}")
         # After the list, before the summary's "re-run with
         # --remove-stale" instruction: this default run *is* the moment
         # the human is being asked to confirm, so the residue belongs
