@@ -25,6 +25,9 @@ LLAMA_SERVER=${LLAMA_SERVER:-$BENCH_TOOLS/llama.cpp-b11321/build/bin/llama-serve
 MODEL_FILE=${MODEL_FILE:-$BENCH_TOOLS/models/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf}
 MMPROJ_FILE=${MMPROJ_FILE:-$BENCH_TOOLS/models/mmproj-F16.gguf}
 MODEL_ALIAS=${MODEL_ALIAS:-qwen3.6-35b-a3b}
+# Extra llama-server flags, split on spaces: a speculative-decoding draft
+# for a dense model, e.g. "--spec-type draft-mtp --spec-draft-n-max 2".
+read -r -a extra <<<"${LLAMA_EXTRA:-}"
 RUN=$BENCH_TOOLS/run
 PIDS=$RUN/servers.pid
 WAIT=${WAIT:-600}
@@ -53,7 +56,7 @@ for ((gpu = first; gpu < first + count; gpu++)); do
   port=$((18080 + gpu))
   CUDA_VISIBLE_DEVICES=$gpu setsid nohup "$LLAMA_SERVER" -m "$MODEL_FILE" --mmproj "$MMPROJ_FILE" \
     --alias "$MODEL_ALIAS" --host 127.0.0.1 --port "$port" \
-    -c 131072 -np 1 -ngl 99 --jinja >"$RUN/llama-server-$gpu.log" 2>&1 </dev/null &
+    -c 131072 -np 1 -ngl 99 --jinja "${extra[@]}" >"$RUN/llama-server-$gpu.log" 2>&1 </dev/null &
   echo $! >>"$PIDS"
   args+=("--base-url http://127.0.0.1:$port/v1")
 done
