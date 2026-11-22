@@ -1205,7 +1205,7 @@ def many_corpus(isolated_config):
     return isolated_config
 
 
-def _recording_executor(submitted):
+def _recording_executor(submitted, pools):
     """A thread executor that records each job's citekey when it is
     *submitted*.
 
@@ -1223,7 +1223,7 @@ def _recording_executor(submitted):
             submitted.append(job[1])  # (pdf_path, citekey, threads)
             return super().submit(fn, job, *args, **kwargs)
 
-    return lambda workers: RecordingExecutor(max_workers=workers)
+    return lambda workers: pools.track(RecordingExecutor(max_workers=workers))
 
 
 def fake_extract_one_factory(record=None, fail_citekeys=()):
@@ -1314,7 +1314,7 @@ class TestParallelParsing:
         ]
         assert printed == [f"doc_{i}_2024" for i in range(6)]
 
-    def test_largest_pdf_is_submitted_first(self, many_corpus, monkeypatch):
+    def test_largest_pdf_is_submitted_first(self, many_corpus, monkeypatch, thread_executor):
         """One 675-page document in this project's real corpus is 5% of
         all its pages. Picked up last, it alone defines the wall clock --
         so submission is biggest-first (by file size, which needs no PDF
@@ -1325,7 +1325,9 @@ class TestParallelParsing:
         """
         submitted = []
         monkeypatch.setattr(pdf_text, "extract_one", fake_extract_one_factory())
-        monkeypatch.setattr(sync_pool, "_executor_for", _recording_executor(submitted))
+        monkeypatch.setattr(
+            sync_pool, "_executor_for", _recording_executor(submitted, thread_executor)
+        )
         sync.run()
         assert submitted == [f"doc_{i}_2024" for i in reversed(range(6))]
 
@@ -1860,7 +1862,7 @@ class TestStallWatchdog:
         assert killed, "workers were left running after the stall"
 
     def test_terminate_workers_runs_before_shutdown_clears_the_processes(
-        self, many_corpus, monkeypatch
+        self, many_corpus, monkeypatch, thread_executor
     ):
         """issue #698: ProcessPoolExecutor.shutdown() sets executor._processes
         to None *unconditionally* -- even with wait=False (CPython
@@ -1921,7 +1923,7 @@ class TestStallWatchdog:
         saved_processes = {}
 
         def factory(workers):
-            executor = _ProcessLikeExecutor(max_workers=workers)
+            executor = thread_executor.track(_ProcessLikeExecutor(max_workers=workers))
             # Captured before shutdown() can null executor._processes, so
             # the assertion below can still see whether terminate_workers
             # reached these specific objects -- if it ran too late, they
@@ -1986,7 +1988,9 @@ class TestStallWatchdog:
             # cancelled has run by the time this returns. Deterministic
             # where a sleep was a race the test could lose by passing.
             # Every executor actually built, so a sync.run() that raised
-            # before building one keeps its own exception.
+            # before building one keeps its own exception. The
+            # thread_executor fixture joins these again at teardown, but
+            # that is too late for the assertion below.
             for executor in executors:
                 executor.shutdown(wait=True)
         assert not any(t.is_alive() for ex in executors for t in ex._threads)

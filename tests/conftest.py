@@ -422,12 +422,18 @@ class ThreadPools:
     fake docling would silently not be used. Swapping the executor keeps
     the concurrency real while leaving the fakes visible.
 
-    The swap loses one thing: on an interrupt the pool code calls
-    `shutdown(wait=False)` and relies on `terminate_workers` to kill
-    what is still running, which has no thread equivalent. A started job
-    then outlives its test, and once `monkeypatch` has restored `config`
-    it writes into the real `content/` (#1226). `join_all` is what the
-    `thread_executor` fixture runs at teardown to stop that.
+    The swap loses one thing: on an interrupt or a stall the pool code
+    calls `shutdown(wait=False)` and relies on `terminate_workers` to
+    kill what is still running, which has no thread equivalent. A
+    started job then outlives its test, and once `monkeypatch` has
+    restored `config` it writes into the real `content/` (#1226).
+    `join_all` is what the `thread_executor` fixture runs at teardown to
+    stop that.
+
+    So every thread pool a test hands to the code goes through here: by
+    calling the factory, or, for a test that needs its own executor
+    class, by passing the pool it built to `track`. A pool built any
+    other way is not joined and can reintroduce #1226.
     """
 
     def __init__(self) -> None:
@@ -436,15 +442,28 @@ class ThreadPools:
     def __call__(self, workers: int):
         from concurrent.futures import ThreadPoolExecutor
 
-        pool = ThreadPoolExecutor(max_workers=workers)
+        return self.track(ThreadPoolExecutor(max_workers=workers))
+
+    def track(self, pool):
+        """Join `pool` at teardown too, and hand it back."""
         self._pools.append(pool)
         return pool
 
     def join_all(self) -> None:
         """Wait for every job already running in every pool built.
-        Queued jobs are cancelled rather than run: the test is over."""
+        Queued jobs are cancelled rather than run: the test is over.
+
+        A `shutdown` that raises (a test can replace it on the instance)
+        does not stop the remaining pools being joined; the first such
+        error is raised once they all have been."""
+        first_error = None
         for pool in self._pools:
-            pool.shutdown(wait=True, cancel_futures=True)
+            try:
+                pool.shutdown(wait=True, cancel_futures=True)
+            except Exception as exc:  # noqa: BLE001 -- re-raised below
+                first_error = first_error or exc
+        if first_error is not None:
+            raise first_error
 
 
 @pytest.fixture

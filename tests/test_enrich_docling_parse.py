@@ -1390,7 +1390,7 @@ class TestParseCorpusParallel:
         assert opts.accelerator_options.num_threads == pdf_text.docling_threads(4)
 
     def test_biggest_document_is_submitted_first(
-        self, isolated_config, fake_docling, tmp_path, monkeypatch
+        self, isolated_config, fake_docling, tmp_path, monkeypatch, thread_executor
     ):
         """Recorded at `submit`, not inside `parse_one`: four worker
         threads start concurrently, so the order they *begin* in is the
@@ -1403,7 +1403,11 @@ class TestParseCorpusParallel:
                 submitted.append(job[0].citekey)
                 return super().submit(fn, job)
 
-        monkeypatch.setattr(_docling_pool, "_executor_for", lambda workers: Recording(workers))
+        monkeypatch.setattr(
+            _docling_pool,
+            "_executor_for",
+            lambda workers: thread_executor.track(Recording(workers)),
+        )
         docling_parse.parse_corpus(self._docs(tmp_path))
         assert submitted == ["d4", "d3", "d2", "d1", "d0"]
 
@@ -1513,7 +1517,7 @@ class TestParseCorpusParallelBrokenPool:
         assert "worker" in capsys.readouterr().out.lower()
 
     def test_a_break_mid_submission_keeps_the_futures_already_submitted(
-        self, isolated_config, fake_docling, monkeypatch, tmp_path
+        self, isolated_config, fake_docling, monkeypatch, thread_executor, tmp_path
     ):
         """Building `futures` via a single list comprehension would let a
         BrokenProcessPool raised partway through the submit loop discard
@@ -1534,7 +1538,7 @@ class TestParseCorpusParallelBrokenPool:
 
         class PartiallyDeadExecutor:
             def __init__(self):
-                self.real_executor = ThreadPoolExecutor(max_workers=4)
+                self.real_executor = thread_executor.track(ThreadPoolExecutor(max_workers=4))
 
             def submit(self, fn, job):
                 doc, _threads = job

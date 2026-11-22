@@ -67,3 +67,47 @@ def test_the_fixture_joins_before_monkeypatch_restores_the_patch(
     # Released after the test body has returned, so only a teardown
     # that waits for the job lets it record anything in time.
     threading.Timer(0.2, release.set).start()
+
+
+def test_track_registers_a_pool_built_outside_the_factory():
+    """A test that needs its own executor class (a subclass that records
+    submissions, say) builds it itself; `track` is how it still gets
+    joined."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    pools = ThreadPools()
+    pool = ThreadPoolExecutor(max_workers=2)
+    assert pools.track(pool) is pool
+    release = threading.Event()
+    seen: list = []
+    pool.submit(_late_job, release, seen)
+    pool.shutdown(wait=False, cancel_futures=True)
+    threading.Timer(0.2, release.set).start()
+
+    pools.join_all()
+
+    assert seen == ["original"]
+
+
+def test_join_all_still_joins_the_other_pools_when_one_shutdown_raises():
+    """One broken `shutdown` (a test can replace it on the instance)
+    must not leave the remaining pools running past the test. The
+    first error is still raised, after every pool has been joined."""
+    pools = ThreadPools()
+    broken = pools(1)
+
+    def refuse(*args, **kwargs):
+        raise RuntimeError("shutdown refused")
+
+    broken.shutdown = refuse
+    late = pools(2)
+    release = threading.Event()
+    seen: list = []
+    late.submit(_late_job, release, seen)
+    late.shutdown(wait=False, cancel_futures=True)
+    threading.Timer(0.2, release.set).start()
+
+    with pytest.raises(RuntimeError, match="shutdown refused"):
+        pools.join_all()
+
+    assert seen == ["original"]
