@@ -82,7 +82,7 @@ def evidence(
         raise KeyError(f"{citekey} is not in the ledger")
     if row["status"] != PARSED:  # not citable, and no text to read (#1118)
         raise KeyError(f"{citekey} has no parsed PDF (status {row['status']})")
-    # `search`'s own terms, acronym expansion included (#953): a paper
+    # `search`'s own terms, added words included (#953, #1232): a paper
     # ranked on "digital twin" for `DT` must have a window for `DT` too.
     terms = set(query_terms(query)[0])
     if not terms:
@@ -318,7 +318,7 @@ def main(argv: "list[str] | None" = None) -> int:
     # word the caller never typed is the one they would otherwise have no
     # way to explain. The same string goes to `--log`, so the note and
     # `retrieval.md`'s `expanded` column cannot disagree, and both read
-    # the pairs every subcommand ranks on (`query_terms`, #953), bar
+    # the entries every subcommand ranks on (`query_terms`, #953), bar
     # `--y-prev`'s appended prose (see `query_terms`). Silent
     # when nothing was added.
     expanded = retrieval_added.announce(query_terms(args.query)[1])
