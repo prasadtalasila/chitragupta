@@ -19,18 +19,12 @@
 # metadata. A manual, point-in-time export from your reference manager,
 # not continuously auto-synced: re-export after adding papers, then
 # re-run `python -m chitragupta.corpus sync`. Gitignored, per-host data.
+# Collections come from the `cg-collections` field and name table that
+# chitragupta-importer writes into this file; any other export has no
+# collections, and every command works without them. docs/ZOTERO.md.
 # Relative to the project directory, or absolute.
 #                                         Default: papers/bibliography.bib
 path = "papers/bibliography.bib"
-
-# Which BibTeX field carries Zotero collection membership, so a draft can
-# retrieve from the subset you curated for it rather than the whole
-# library. `groups` is JabRef's field, and what Better BibTeX writes under
-# "Export JabRef-specific fields". Zotero's own exporter drops
-# collections entirely, so on a plain export nothing is in any collection
-# and no command changes behaviour. docs/ZOTERO.md has the
-# click-path.                                             Default: groups
-collections_field = "groups"
 
 [content]
 # Everything this pipeline writes lives under here: sync's ledger.sqlite
