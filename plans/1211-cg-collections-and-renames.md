@@ -5,8 +5,9 @@
 > superpowers:executing-plans to implement this plan task by task. Steps
 > use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **planned, not built.** Written 2026-11-22. Covers #1211 and
-supersedes #1109.
+Status: **built, not merged.** Written 2026-11-22. Covers #1211 and
+supersedes #1109 (closed). Final review fixes and rulings are recorded in
+the PR.
 
 **Goal:** chitragupta reads collections from chitragupta-importer's
 `cg-collections` field and name table instead of `groups`. Sync
@@ -574,11 +575,13 @@ chitragupta 7.0.0 slug paths. Change nothing else.
       `- collection: <slug path>   # <display path>`.
    d. Append to that dossier's `revisions.md` one entry: "Ported
       collection scope `<old>` to `<slug>` (chitragupta 7.0.0)."
-3. Leave `retrieval.md` as it is: it is a log of what ran.
+3. Leave `retrieval.md` as it is: it is a log of what ran. `dossier
+   status` runs an old logged query against the slug `scope.md` now
+   records.
 4. For each ported draft run
    `python -m chitragupta.draft dossier status content/drafts/<path>`
-   and confirm `unresolved_collections` is empty apart from old log
-   rows. Then run `python -m chitragupta.draft gate content/drafts/<path>`.
+   and confirm `unresolved_collections` is empty. Then run
+   `python -m chitragupta.draft gate content/drafts/<path>`.
 5. Report a table: draft, old value, new slug, or "asked".
 
 Never edit a citekey, the bibliography or the ledger.
