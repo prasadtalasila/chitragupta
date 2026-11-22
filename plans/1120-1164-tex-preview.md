@@ -1,6 +1,13 @@
 # A `.tex` draft's preview shows what the thesis will show
 
-Status: **design, pending approval** (questions answered 2026-11-22).
+Status: **built**, on branch `fix-1120-1164-tex-preview` (v6.179.1,
+PATCH, not released). Changed on the way: the never-write rule rides in
+the error hint, not the skill (a skill edit needs a bench); every
+alignment or size declaration inside a group is dropped, not only a
+figure's `\centering` (a real chapter's table leaked one); widths are
+rewritten only in an all-`p`/`m`/`b` spec, and `em`/`ex` are left alone;
+a preamble symlinked out of the draft's directory is refused, and the
+one loaded is named.
 Written 2026-11-21 for
 [issue 1164](https://github.com/prasadtalasila/chitragupta/issues/1164)
 (item 6 of [issue 1108](https://github.com/prasadtalasila/chitragupta/issues/1108))

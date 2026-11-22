@@ -4,7 +4,7 @@
 > superpowers:executing-plans to implement this plan task-by-task. Steps
 > use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **plan**, written 2026-11-22.
+Status: **built** (v6.179.1), written 2026-11-22.
 
 **Goal:** a `.tex` draft's tex/pdf preview keeps its figures at full
 width, wraps absolute-width tables, numbers its headings so `\ref`
