@@ -40,8 +40,10 @@ deliverable and never had a reader problem.
 """
 
 import re
+import sys
 from pathlib import Path
 
+from chitragupta import config
 from chitragupta.page import ARTICLE
 from chitragupta.render_output._figures import _TEX_FORMATS
 from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES
@@ -68,13 +70,26 @@ def is_tex_draft(input_path: Path) -> bool:
 def preamble_file(input_path: Path) -> Path | None:
     """The author's preamble for this draft's preview:
     `<stem>.preamble.tex` beside it, else a `preamble.tex` its
-    directory's chapters share, else `None`."""
+    directory's chapters share, else `None`.
+
+    Raises `OutsideContentDir` for one that is a symlink out of the
+    draft's directory: pandoc reads the file it is handed with no fence
+    and inlines it into the preview's preamble, so the figures' #823
+    rule (`_assets._refuse_escaping_refs`) applies here too.
+    """
     for candidate in (
         input_path.with_name(f"{input_path.stem}.preamble.tex"),
         input_path.with_name("preamble.tex"),
     ):
-        if candidate.is_file():
-            return candidate
+        if not candidate.is_file():
+            continue
+        if not config.resolves_inside(candidate, input_path.parent):
+            raise config.OutsideContentDir(
+                f"{candidate} resolves outside {input_path.parent} through a symlink. "
+                "pandoc would read it wherever it points; copy the file into the "
+                "draft's directory instead."
+            )
+        return candidate
     return None
 
 
@@ -98,6 +113,8 @@ def pandoc_args(input_path: Path, output_format: str, fragment: bool) -> list[st
         args += ["-f", "latex+raw_tex", "--number-sections"]
         preamble = preamble_file(input_path)
         if preamble is not None:
+            # Named, so a shared `preamble.tex` is never loaded silently.
+            print(f"[preamble] {preamble}", file=sys.stderr)
             args += ["--include-in-header", str(preamble)]
     return args
 

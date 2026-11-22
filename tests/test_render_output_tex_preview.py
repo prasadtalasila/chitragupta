@@ -11,7 +11,7 @@ import subprocess
 
 import pytest
 
-from chitragupta import ledger, render_output
+from chitragupta import config, ledger, render_output
 from chitragupta.render_output._tex_preview import (
     pandoc_args,
     preamble_file,
@@ -162,6 +162,25 @@ class TestPreambleFile:
         (tmp_path / "ch.preamble.tex").write_text("", encoding="utf-8")
         assert preamble_file(draft) == tmp_path / "ch.preamble.tex"
 
+    def test_a_preamble_symlinked_out_of_the_drafts_directory_is_refused(self, tmp_path):
+        """pandoc reads the file it is handed with no fence, and inlines it
+        into the preview's preamble, so `ch.preamble.tex -> ~/.netrc`
+        would carry that file into the pdf (the figures' #823 rule)."""
+        outside = tmp_path / "outside.tex"
+        outside.write_text("NOT-FOR-THE-PDF\n", encoding="utf-8")
+        drafts = tmp_path / "drafts"
+        drafts.mkdir()
+        (drafts / "ch.preamble.tex").symlink_to(outside)
+
+        with pytest.raises(config.OutsideContentDir, match="ch.preamble.tex"):
+            preamble_file(drafts / "ch.tex")
+
+    def test_a_symlink_inside_the_directory_is_followed(self, tmp_path):
+        (tmp_path / "shared.tex").write_text("", encoding="utf-8")
+        (tmp_path / "preamble.tex").symlink_to(tmp_path / "shared.tex")
+
+        assert preamble_file(tmp_path / "ch.tex") == tmp_path / "preamble.tex"
+
 
 class TestPandocArgs:
     def test_markdown_and_fragments_get_none(self, tmp_path):
@@ -176,12 +195,15 @@ class TestPandocArgs:
 
         assert args == [*TITLE, "-f", "latex+raw_tex", "--number-sections"]
 
-    def test_the_preamble_file_is_included_when_there_is_one(self, tmp_path):
+    def test_the_preamble_file_is_included_and_named(self, tmp_path, capsys):
+        """Named, so a shared `preamble.tex` the draft never asked for
+        is not loaded silently."""
         (tmp_path / "ch.preamble.tex").write_text("", encoding="utf-8")
 
         args = pandoc_args(tmp_path / "ch.tex", "tex", False)
 
         assert args[-2:] == ["--include-in-header", str(tmp_path / "ch.preamble.tex")]
+        assert f"[preamble] {tmp_path / 'ch.preamble.tex'}" in capsys.readouterr().err
 
 
 @needs_pandoc
