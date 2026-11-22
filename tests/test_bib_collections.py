@@ -127,8 +127,24 @@ class TestResolve:
             "digital-twins.platforms.cloud"
         )
 
-    def test_slug_path_is_casefolded(self):
-        assert resolve(" Digital-Twins ", DEPTH_FOUR, []) == "digital-twins"
+    def test_a_slug_is_read_only_in_lower_case(self):
+        """A slug is lower case by construction; anything else is a display
+        path, so `Medical` cannot silently become the slug `medical`."""
+        assert resolve(" digital-twins ", DEPTH_FOUR, []) == "digital-twins"
+        with pytest.raises(UnknownCollection):
+            resolve("Digital-Twins", DEPTH_FOUR, [])
+
+    def test_top_level_siblings_with_one_name_are_ambiguous(self):
+        names = {"medical": "Medical", "medical-1": "Medical"}
+        with pytest.raises(AmbiguousCollection) as e:
+            resolve("Medical", names, [])
+        assert e.value.slugs == ["medical", "medical-1"]
+        assert resolve("medical-1", names, []) == "medical-1"
+
+    def test_a_renamed_collection_does_not_capture_its_old_name(self):
+        """`old` renamed to New, then a new collection called Old: the name
+        means the new one."""
+        assert resolve("Old", {"old": "New", "old-1": "Old"}, []) == "old-1"
 
     def test_slug_path_known_only_from_an_entry(self):
         assert resolve("x.y", {}, ["x.y.z"]) == "x.y"
@@ -172,6 +188,10 @@ class TestResolve:
     def test_a_hash_in_a_display_name_is_not_a_note(self):
         names = {"lang": "Languages", "lang.c-projects": "C# projects"}
         assert resolve("Languages/C# projects", names, []) == "lang.c-projects"
+
+    def test_a_hash_name_is_not_cut_to_a_slug(self):
+        names = {"c": "C", "c-projects": "C# projects"}
+        assert resolve("C# projects", names, []) == "c-projects"
 
     def test_empty_is_unknown(self):
         with pytest.raises(UnknownCollection):

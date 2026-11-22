@@ -58,10 +58,10 @@ It swaps every entry in the draft, `evidence.md`, `sections.md` and
 `rejected.md`, and logs the swap in `revisions.md`. When an entry's
 `same_pdf` is `false` it prints a `review quotation` command: run it
 before going on, and hand every quote it fails to the user, because the
-draft's quotes were taken from a different PDF. If it exits 1 (a cycle,
-or a replacement not in the ledger), treat those entries as `missing`
-instead. This step is not done until `dossier status` lists no `renamed`
-entry.
+draft's quotes were taken from a different PDF. If it exits 1, it still
+swapped the rest; each key it names as refused (a cycle, or a
+replacement that is not citable) is handled as `missing` below. This
+step is not done until `dossier status` lists no `renamed` entry.
 
 **`unresolved_collections` comes before any search.** A recorded
 collection that no longer names one: a path written before collections

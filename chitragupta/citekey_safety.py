@@ -86,13 +86,20 @@ def citekey_path(directory: Path, citekey: str, suffix: str) -> Path:
     return directory / f"{citekey}{suffix}"
 
 
+# Any character a citekey may hold: everything but whitespace, the
+# delimiters a citation is written between, and what `citekey_problem`
+# refuses. `.`, `+`, `-` and non-ASCII letters are all key characters.
+_KEY_CHAR = r"[^\s\[\](){},;@'\"`|<>:/\\*?]"
+
+
 def citekey_pattern(citekey: str) -> "re.Pattern[str]":
-    """The literal citekey, bounded by the characters a citekey may
-    contain, so `smith_2024` does not match inside `smith_2024b`.
+    """The literal citekey, bounded by every character a citekey may
+    contain, so `smith2020` matches neither inside `smith2020b`,
+    `smith2020.v2` nor `smith+smith2020`. Dots straight after it are
+    sentence punctuation (`see @smith2020.`), since no citekey ends in one.
 
     Shared by the corpus layer's residue report (`sync_residue`) and the
     drafting layer's rename swap (`dossier/_renames.py`), so a key the
     one reports is exactly a key the other replaces.
     """
-    edge = r"[A-Za-z0-9_:-]"
-    return re.compile(rf"(?<!{edge}){re.escape(citekey)}(?!{edge})")
+    return re.compile(rf"(?<!{_KEY_CHAR}){re.escape(citekey)}(?=\.*(?!{_KEY_CHAR}))")

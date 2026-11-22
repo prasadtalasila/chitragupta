@@ -9,21 +9,25 @@ the draft, `evidence.md`, `sections.md` and `rejected.md` -- the last so
 a paper the draft declined stays declined under its new key.
 
 **Nothing is invented.** The new key is the one the ledger recorded,
-followed to the end of a chain (`a -> b -> c`), and it must be in the
-ledger now; a cycle or a missing target refuses the whole swap and
-writes nothing. A rename whose two PDFs differ (the importer said so,
-the hashes did not) changes which text the draft's quotes came from, so
-those are named for `review quotation` to re-check.
+followed to the end of a chain (`a -> b -> c`), and it must be citable
+now -- a parsed row, the set the citation gate accepts. A cycle or a
+target that is not citable refuses that key alone, changing nothing for
+it, so one bad rename does not hold back the rest. A rename whose two
+PDFs differ (the importer said so, the hashes did not) changes which
+text the draft's quotes came from, so those are named for
+`review quotation` to re-check.
 """
 
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
 
 from chitragupta import ledger, ledger_tables
+from chitragupta.ledger_citable import citable_citekeys
 from chitragupta.citekey_safety import citekey_pattern
 from chitragupta.dossier import (
     EVIDENCE_MD,
@@ -36,6 +40,15 @@ from chitragupta.dossier import (
 from chitragupta.dossier._citekeys import section_citekeys
 
 SWAPPED_FILES = (EVIDENCE_MD, SECTIONS_MD, REJECTED_MD)
+
+
+class RenamesRefused(DossierError):
+    """Some renames could not be applied; `applied` were, `refused` maps
+    each old key to why not."""
+
+    def __init__(self, applied: list, refused: dict[str, str]) -> None:
+        self.applied, self.refused = applied, refused
+        super().__init__("; ".join(refused.values()))
 
 
 @dataclass(frozen=True)
@@ -83,27 +96,26 @@ def _texts(draft: Path) -> dict[Path, str]:
     return {path: path.read_text(encoding="utf-8") for path in paths if path.is_file()}
 
 
-def _plan(draft: Path, texts: dict[Path, str]) -> list[tuple[str, str, bool]]:
+def _plan(texts: dict[Path, str]) -> tuple[list[tuple[str, str, bool]], dict[str, str]]:
+    """The swaps to make, and `{old: reason}` for the ones refused."""
     try:
         with ledger.reading() as con:
-            renames, known = ledger_tables.renames(con), ledger.known_citekeys(con)
+            renames, citable = ledger_tables.renames(con), citable_citekeys(con)
     except (ledger.NoLedger, ledger.StaleLedger, ledger.UnreadableLedger) as exc:
         raise DossierError(f"{exc}; run `chitragupta corpus sync` first") from exc
-    plan = []
+    plan, refused = [], {}
     for old in cited(texts.values(), renames):
         resolved = final(renames, old)
         if resolved is None:
-            raise DossierError(
-                f"the recorded renames of {old} form a cycle; nothing was changed. "
-                "Ask which key the draft should cite."
+            refused[old] = f"the recorded renames of {old} form a cycle; {old} was not changed"
+        elif resolved[0] not in citable:
+            refused[old] = (
+                f"{old} was renamed to {resolved[0]}, but {resolved[0]} is not citable "
+                f"(no parsed ledger row); {old} was not changed"
             )
-        if resolved[0] not in known:
-            raise DossierError(
-                f"{old} was renamed to {resolved[0]}, but {resolved[0]} is not in the "
-                "ledger; nothing was changed. Run sync, or ask which key to cite."
-            )
-        plan.append((old, *resolved))
-    return plan
+        else:
+            plan.append((old, *resolved))
+    return plan, refused
 
 
 def _log(draft: Path, applied: list[AppliedRename], sections: list[str]) -> None:
@@ -122,11 +134,14 @@ def _log(draft: Path, applied: list[AppliedRename], sections: list[str]) -> None
 
 
 def apply_renames(draft: Path) -> list[AppliedRename]:
-    """Swap every recorded rename `draft` and its dossier cite, all or none."""
+    """Swap every recorded rename `draft` and its dossier cite. Raises
+    `RenamesRefused`, after applying the rest, when any was refused."""
     draft = Path(draft)
     texts = _texts(draft)
-    plan = _plan(draft, texts)
+    plan, refused = _plan(texts)
     if not plan:
+        if refused:
+            raise RenamesRefused([], refused)
         return []
     by_key = section_citekeys(dossier_dir(draft), {old for old, _new, _same in plan})
     applied, changed = [], set()
@@ -142,16 +157,23 @@ def apply_renames(draft: Path) -> list[AppliedRename]:
         path.write_text(texts[path], encoding="utf-8")
     sections = sorted({title for old, _n, _s in plan for title in by_key.get(old, [])})
     _log(draft, applied, sections)
+    if refused:
+        raise RenamesRefused(applied, refused)
     return applied
 
 
 def _cmd_apply_renames(args) -> int:
-    applied = apply_renames(Path(args.draft))
+    try:
+        applied, refused = apply_renames(Path(args.draft)), {}
+    except RenamesRefused as exc:
+        applied, refused = exc.applied, exc.refused
     if args.json:
-        print(json.dumps({"applied": [asdict(a) for a in applied]}, indent=2))
-        return 0
-    if not applied:
+        print(json.dumps({"applied": [asdict(a) for a in applied], "refused": refused}, indent=2))
+        return 1 if refused else 0
+    if not applied and not refused:
         print("No recorded rename applies to this draft.")
+    for reason in refused.values():
+        print(f"[refused] {reason}; handle it as missing.", file=sys.stderr)
     for item in applied:
         print(f"renamed {item.old} -> {item.new} in {len(item.files)} file(s)")
     if any(not item.same_pdf for item in applied):
@@ -159,4 +181,4 @@ def _cmd_apply_renames(args) -> int:
             "re-check quotes, a renamed paper's PDF changed: "
             f"python -m chitragupta.review quotation {args.draft}"
         )
-    return 0
+    return 1 if refused else 0

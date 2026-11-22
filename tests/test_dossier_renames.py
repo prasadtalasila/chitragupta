@@ -134,7 +134,7 @@ class TestApply:
     def test_refuses_a_target_absent_from_the_ledger_and_writes_nothing(self, draft):
         _seed([], [("old_2023", "new_2023", True)])
         before = draft.read_text()
-        with pytest.raises(DossierError, match="new_2023 is not in the ledger"):
+        with pytest.raises(DossierError, match="new_2023 is not citable"):
             _renames.apply_renames(draft)
         assert draft.read_text() == before
 
@@ -187,4 +187,83 @@ class TestCli:
     def test_a_refusal_exits_1(self, draft, capsys):
         _seed([], [("old_2023", "new_2023", True)])
         assert _cli.main(["apply-renames", str(draft)]) == 1
-        assert "not in the ledger" in capsys.readouterr().err
+        assert "not citable" in capsys.readouterr().err
+
+
+class TestCitekeyBoundary:
+    """A swap must never touch part of a longer key: citekey_problem allows
+    `.`, `+`, `-` and non-ASCII letters inside a key (final review, #1)."""
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "[@smith2020.v2]",
+            "@smith+smith2020",
+            "[@smith2020-b]",
+            "[@xsmith2020]",
+            "naïvesmith2020",
+        ],
+    )
+    def test_never_matches_inside_a_longer_key(self, text):
+        from chitragupta.citekey_safety import citekey_pattern
+
+        assert citekey_pattern("smith2020").search(text) is None
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "[@smith2020]",
+            "see @smith2020.",
+            "@smith2020, and",
+            "\\citep{a, smith2020}",
+            "## `smith2020`",
+            "(@smith2020; @b)",
+            "smith2020...",
+        ],
+    )
+    def test_matches_a_whole_key(self, text):
+        from chitragupta.citekey_safety import citekey_pattern
+
+        assert citekey_pattern("smith2020").search(text) is not None
+
+    def test_apply_leaves_a_longer_key_alone(self, draft):
+        draft.write_text("As [@old_2023.v2] and [@old_2023].\n", encoding="utf-8")
+        _seed(["new_2023"], [("old_2023", "new_2023", True)])
+        _renames.apply_renames(draft)
+        assert draft.read_text() == "As [@old_2023.v2] and [@new_2023].\n"
+
+
+class TestPartialApply:
+    """One refused rename does not block the others (final review, #4)."""
+
+    def test_good_swaps_apply_and_the_refused_one_is_reported(self, draft):
+        draft.write_text("[@old_2023] and [@other_2020].\n", encoding="utf-8")
+        _seed(["fine_2020"], [("old_2023", "gone_2023", True), ("other_2020", "fine_2020", True)])
+        with pytest.raises(_renames.RenamesRefused) as exc:
+            _renames.apply_renames(draft)
+        assert [(a.old, a.new) for a in exc.value.applied] == [("other_2020", "fine_2020")]
+        assert "old_2023" in exc.value.refused and "gone_2023" in exc.value.refused["old_2023"]
+        assert draft.read_text() == "[@old_2023] and [@fine_2020].\n"
+
+    def test_the_cli_exits_1_after_applying_the_rest(self, draft, capsys):
+        draft.write_text("[@old_2023] and [@other_2020].\n", encoding="utf-8")
+        _seed(["fine_2020"], [("old_2023", "gone_2023", True), ("other_2020", "fine_2020", True)])
+        assert _cli.main(["apply-renames", str(draft)]) == 1
+        captured = capsys.readouterr()
+        assert "renamed other_2020 -> fine_2020" in captured.out
+        assert "old_2023" in captured.err and "handle it as missing" in captured.err
+
+    def test_a_target_that_is_not_parsed_is_refused(self, draft):
+        """The gate cites only `parsed` rows; so does the swap (final review, #3)."""
+        _seed([], [("old_2023", "new_2023", True)])
+        con = ledger.connect()
+        try:
+            con.execute(
+                "INSERT INTO items (citekey, status, last_synced) "
+                "VALUES ('new_2023', 'no_pdf', 'x')"
+            )
+            con.commit()
+        finally:
+            con.close()
+        with pytest.raises(DossierError, match="new_2023 is not citable"):
+            _renames.apply_renames(draft)

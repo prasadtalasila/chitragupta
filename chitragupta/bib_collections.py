@@ -133,13 +133,14 @@ def resolve(wanted: str, names: dict[str, str], paths: Iterable[str]) -> str:
     when it fits none.
     """
     shown = display_paths(names, paths)
-    # `scope.md` records `<slug>   # <display path>`; only the slug is the
-    # value. Split only when what precedes the `#` is itself a slug path,
-    # so a name holding `#` (`C# projects`) is never cut.
-    head = wanted.split("#", 1)[0].strip().casefold()
-    slug = head if is_slug_path(head) else wanted.strip().casefold()
-    if slug in shown:
-        return slug
+    # A slug is lower case by construction, so only a lower-case value is
+    # read as one: `Medical` is a name, and must not quietly become the
+    # slug `medical` when a sibling `medical-1` shares it. `scope.md`
+    # records `<slug>   # <display path>`; a note is cut only after
+    # whitespace, so a name holding `#` (`C# projects`) never is.
+    head = re.split(r"\s+#", wanted.strip(), maxsplit=1)[0]
+    if head == head.lower() and head in shown:
+        return head
     target = _normalised_display(wanted)
     hits = [path for path, display in shown.items() if _normalised_display(display) == target]
     if len(hits) == 1:
