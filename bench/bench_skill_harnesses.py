@@ -82,6 +82,8 @@ from skill_commands import (  # noqa: E402
 EXAMPLES = REPO_ROOT / "docs" / "examples"
 BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:18080/v1")
 LOCAL_MODEL = os.environ.get("MODEL", "qwen3.6-35b-a3b")
+# Claude Code's `--model`, recorded on its rows as the local model's name is.
+CLAUDE_MODEL = "sonnet"
 # The context every llama-server is started with (serve_models.sh's -c) and
 # docs/examples/opencode/opencode-provider.json declares.
 LOCAL_CONTEXT = 131072
@@ -149,7 +151,7 @@ def harness_env(base_url: str = BASE_URL) -> dict:
 def run_model(harness: str) -> str:
     """The model a harness's runs use, recorded on every row: Claude Code's
     `--model`, or the name the local servers serve (`MODEL`)."""
-    return "sonnet" if harness == "claude" else LOCAL_MODEL
+    return CLAUDE_MODEL if harness == "claude" else LOCAL_MODEL
 
 
 def opencode_config(folder: Path, model: str = LOCAL_MODEL) -> Path:
@@ -239,7 +241,7 @@ def command(harness: str, prompt: str, base_url: str = BASE_URL) -> list:
             BINARIES["claude"],
             "-p",
             "--model",
-            "sonnet",
+            CLAUDE_MODEL,
             "--output-format",
             "stream-json",
             "--verbose",
@@ -1181,7 +1183,7 @@ def _check_harness_env(tmp: Path) -> None:
     other = json.loads(opencode_config(tmp / "oc2", model="another-model").read_text("utf-8"))
     assert other["model"] == other["small_model"] == "local/another-model", other
     assert other["provider"]["local"]["models"] == {"another-model": entry}, other
-    assert run_model("claude") == "sonnet" and run_model("codex") == LOCAL_MODEL
+    assert run_model("claude") == CLAUDE_MODEL and run_model("codex") == LOCAL_MODEL
     assert entry["limit"]["context"] == LOCAL_CONTEXT
     saved_binaries = dict(BINARIES)
     BINARIES["codex"] = "codex"
