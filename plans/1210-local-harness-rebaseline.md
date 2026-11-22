@@ -104,6 +104,11 @@ no change to `GATED` (the numbers decide that later, in its own PR).
   log, OpenCode's 6 missing runs were rerun into their slots, and Codex
   was run again whole (above), its run 3 in a second process on the
   idle GPUs. Long benches now run detached (`setsid nohup`).
+- **Two versions of the skills.** The checkout was rebased onto
+  `main` while the first arm ran, and the bench scaffolds from the
+  checkout at each run's start: 16 OpenCode runs have the skills of
+  `9862c8cb`, the other 50 those of `0fd52e29a` (the style step's
+  wording only). The results README records which.
 - **The false-fail rate fell less than the gate pass rate rose.** Every
   usable local run passed the gate, but over all three harnesses an
   unchanged skill still fails `--compare` 0% to 15% (whole runs) or 0%

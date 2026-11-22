@@ -529,8 +529,11 @@ setup, with no skill changed:
 The bench also drops `PYTHONPATH` from every harness's environment, and
 reads subcommands from the click-style `--help` every command now
 prints; before that it found none. The skill-only arm of every user
-skill, 3 runs a harness, on the skills as of `9862c8cb`, is in
-`bench/results/2026-11-21-local-harness-rebaseline/`:
+skill, 3 runs a harness, is in
+`bench/results/2026-11-21-local-harness-rebaseline/`. Its commands ran
+on the package as of `9862c8cb`; 50 of its 66 runs were scaffolded from
+the skills as of `0fd52e29a` and 16 OpenCode runs from those of
+`9862c8cb`, which differ only in the wording of the style step:
 
 | Harness | Usable runs | Gate passed | Named commands run | Median run |
 | --- | ---: | ---: | ---: | ---: |

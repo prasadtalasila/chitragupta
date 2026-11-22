@@ -25,7 +25,9 @@ Every user skill's Tier 2 task, skill-only prompt, 3 runs each, on:
 
 The rows are in `bench/results/2026-11-21-local-harness-rebaseline/`
 (Codex and OpenCode) and each skill's newest skill-only rows from the
-`#1091` series (Claude Code). A **step** here is one command a skill
+`#1091` series (Claude Code). The local runs used two versions of the
+skills, differing only in the wording of the style step; the results
+folder's README says which run had which. A **step** here is one command a skill
 names, in one skill: `draft gate` in survey-writer and `draft gate` in
 tutorial-writer are two steps. There are 201. Timed-out runs are left
 out. Counts are runs that ran the step, out of usable runs.
