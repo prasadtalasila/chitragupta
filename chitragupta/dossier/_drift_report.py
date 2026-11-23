@@ -39,8 +39,9 @@ def _print_drift(report: Drift) -> None:
         )
     if report.renamed:
         _print_capped(
-            f"    {len(report.renamed)} citekey(s) renamed; run `dossier apply-renames` "
-            "on the draft:",
+            f"    {len(report.renamed)} citekey(s) renamed; swap them with "
+            "`chitragupta draft dossier apply-renames "
+            f"{draft_relpath(report.draft) if report.draft else '<draft>'}`:",
             list(report.renamed.items()),
             _render_renamed,
         )

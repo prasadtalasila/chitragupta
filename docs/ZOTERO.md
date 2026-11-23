@@ -91,6 +91,11 @@ A value that names no collection, or names two, exits 2 with the
 choices rather than returning nothing. `ledger --collections` prints
 each collection's slug path, display path and paper count.
 
+The importer may also write a `@comment{cg-renames v1 ...}` block naming
+keys it retired and the key that replaced each. `sync` reads it, beside
+its own PDF-hash check, to recognise a renamed citekey
+([CLI.md](CLI.md#-when-a-citekey-is-renamed)).
+
 Since 7.0.0 the `groups` field Better BibTeX's *Export JabRef-specific
 fields* wrote is no longer read; sync says so once if your bib still has
 it. A draft whose `scope.md` recorded a `groups` path (`Digital twins >

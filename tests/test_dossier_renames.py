@@ -108,7 +108,7 @@ class TestStatus:
         out = capsys.readouterr().out
         assert "1 citekey(s) renamed" in out
         assert "old_2023 -> new_2023 (different PDF)" in out
-        assert "dossier apply-renames" in out
+        assert f"chitragupta draft dossier apply-renames {dossier.draft_relpath(draft)}" in out
 
 
 class TestStaleBeforeThePrune:
@@ -137,6 +137,17 @@ class TestStaleBeforeThePrune:
 
     def test_corpus_stale_reads_as_none_without_a_ledger(self, isolated_config):
         assert _drift.Corpus([]).stale == set()
+
+
+class TestPrintedCommand:
+    def test_a_missing_draft_shows_a_placeholder(self, draft, capsys):
+        from chitragupta.dossier import _drift_report
+
+        _seed(["new_2023"], [("old_2023", "new_2023", True)])
+        report = _drift.drift(dossier.dossier_dir(draft))
+        report.draft = None
+        _drift_report._print_drift(report)
+        assert "chitragupta draft dossier apply-renames <draft>" in capsys.readouterr().out
 
 
 class TestApply:
@@ -201,7 +212,7 @@ class TestCli:
         assert _cli.main(["apply-renames", str(draft)]) == 0
         out = capsys.readouterr().out
         assert "renamed old_2023 -> new_2023 in 3 file(s)" in out
-        assert "python -m chitragupta.review quotation" in out
+        assert f"chitragupta review quotation {draft}" in out
 
     def test_json(self, draft, capsys):
         _seed(["new_2023"], [("old_2023", "new_2023", True)])

@@ -180,6 +180,6 @@ def _cmd_apply_renames(args) -> int:
     if any(not item.same_pdf for item in applied):
         print(
             "re-check quotes, a renamed paper's PDF changed: "
-            f"python -m chitragupta.review quotation {args.draft}"
+            f"chitragupta review quotation {args.draft}"
         )
     return 1 if refused else 0

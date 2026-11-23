@@ -397,6 +397,38 @@ Citekeys match exactly. A class that could not be scanned (no
 `content/chroma/`, no `enrich` extra, a truncated file) gets a `NOTE:`
 line rather than a silent zero.
 
+### 🔁 When a citekey is renamed
+
+A key that leaves the bib while the same paper arrives under another key
+is a **rename**, not a removal plus an addition. `sync` recognises one in
+two ways:
+
+| Source | When it applies |
+| --- | --- |
+| The importer's `@comment{cg-renames v1 ...}` block (`old<TAB>new` rows) | the new key is in the bib; the two PDFs may differ |
+| A matching `pdf_hash` | exactly one key still in the bib has the stale key's PDF, byte for byte |
+
+A PDF that several keys in the bib share (a book and its chapter) is
+reported as `same PDF as a, b`, never guessed. The stale line names the
+new key, in report-only and `--remove-stale` runs alike:
+
+```text
+  stale   lehner_pattern_2023-1 (no longer in bibliography.bib; renamed to lehner_pattern_2023, same PDF)
+```
+
+`sync` writes two things to the ledger, and nothing else:
+
+- `renames`: each `old -> new`, recorded **before** `--remove-stale`
+  can prune the old row, so the mapping outlives it.
+- `stale_citekeys`: every key the last whole read of the bib no longer
+  has.
+
+Nothing is recorded from a read that lost entries, for the reason
+`--remove-stale` refuses on one. `sync` never opens a draft or a
+dossier; the drafting layer reads both tables to report and swap the
+keys
+([DRAFT-ITERATION.md](DRAFT-ITERATION.md#-swapping-a-renamed-citekey)).
+
 ### ♻ When `sync` re-parses a document it already parsed
 
 A PDF whose bytes haven't changed is not re-parsed. The one exception:
