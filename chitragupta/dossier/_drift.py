@@ -18,11 +18,10 @@ and never fatal -- a missing ledger, a missing dossier file and an
 unparsable row are all things to report, not to fail on.
 """
 
-import sqlite3
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from chitragupta import bib_collections
 from chitragupta.dossier._citekeys import (
     CITED_FILES,
     _citekeys_in,
@@ -32,6 +31,9 @@ from chitragupta.dossier._citekeys import (
     section_citekeys,
 )
 from chitragupta.dossier import (
+    EVIDENCE_MD,
+    SCOPE_MD,
+    SECTIONS_MD,
     _corpus_rows,
     all_dossiers,
     digest,
@@ -40,80 +42,12 @@ from chitragupta.dossier import (
     find_draft,
     recorded_corpus,
 )
+from chitragupta.dossier._renames import cited as mentioned_in
+from chitragupta.dossier._renames import renamed_in
 from chitragupta.dossier._retrieval import recorded_queries_with_collection
 
-# How deep to look down each recorded query's ranking. 15 matches
-# `survey-writer`'s own `search(sub_theme, k=15)`: the report should
-# surface a new paper if and only if the draft's original search would
-# have put it in front of the writer, and a different number here would
-# quietly mean something else by "would have been considered".
-CANDIDATE_K = 15
-
-
-class Corpus:
-    """The ledger read once, plus the throwaway index built from it.
-
-    Held as one object so that a sweep over every dossier pays for the
-    table read and the tokenization once between them all, rather than
-    once each. The index is built on first use, so a sweep over dossiers
-    that logged no queries never builds one at all.
-    """
-
-    def __init__(self, rows: list[sqlite3.Row]) -> None:
-        self.rows = rows
-        self.citekeys = {row["citekey"] for row in rows}
-        self.titles = {row["citekey"]: row["title"] or "" for row in rows}
-        self.collections = {row["citekey"]: bib_collections.of_row(row) for row in rows}
-        self._index: dict | None = None
-
-    @property
-    def index(self) -> dict:
-        if self._index is None:
-            # Read-only: a report must not write the cache it inspects.
-            from chitragupta import retrieval, retrieval_cache
-
-            self._index = retrieval_cache.read_only_index(self.rows, retrieval._tokenize_item)
-        return self._index
-
-    def matches(self, queries: list[tuple[str, str]], k: int = CANDIDATE_K) -> dict[str, list[str]]:
-        """citekey -> the recorded queries whose top-k it would land in.
-
-        Each query carries the collection its call actually ran against
-        (`recorded_queries_with_collection`, #254) -- empty for a
-        corpus-wide call. A non-empty collection filters the ranking to
-        that shelf *before* taking the top-k, the same order
-        `chitragupta.retrieval.search()` filters in: a shelf's top-k is not
-        necessarily a prefix of the whole corpus's, so filtering after
-        would report the wrong k candidates for a scoped query.
-
-        The filter itself is a second `bib_collections.matches()` call
-        site rather than a shared helper with `search()`'s: `search()`
-        looks a row's collections up from the ledger rows it already
-        loaded for scoring, while this class precomputes `self.collections`
-        once per sweep (`__init__`, beside `self.titles`) so a multi-dossier
-        `status --all` pays for the lookup once rather than once per
-        dossier -- two different data shapes behind the same one-line call.
-        """
-        from chitragupta import retrieval
-
-        hits: dict[str, list[str]] = {}
-        for query, collection in queries:
-            terms, _added = retrieval.query_terms(query)
-            if not terms:
-                continue
-            scores = retrieval._bm25_scores(self.index, terms)
-            if collection:
-                scores = {
-                    citekey: score
-                    for citekey, score in scores.items()
-                    if bib_collections.matches(self.collections.get(citekey, ()), collection)
-                }
-            # Ties broken by citekey so that two runs over an unchanged
-            # corpus report the same candidates in the same order.
-            ranked = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))[:k]
-            for citekey, _score in ranked:
-                hits.setdefault(citekey, []).append(query)
-        return hits
+# The shared ledger snapshot one sweep reads once (`_drift_corpus`).
+from chitragupta.dossier._drift_corpus import Corpus
 
 
 @dataclass
@@ -149,6 +83,8 @@ class Drift:
     candidates: list[Candidate] = field(default_factory=list)
     reconsider: list[Reconsider] = field(default_factory=list)
     unconsidered: int = 0
+    unresolved_collections: list[str] = field(default_factory=list)
+    renamed: dict[str, dict] = field(default_factory=dict)
 
     @property
     def drifted(self) -> bool:
@@ -161,7 +97,7 @@ class Drift:
         # will be true on every sweep after it -- counting it as drift
         # would mark every dossier that ever declined a paper permanently
         # stale, which is exactly the signal this command exists to give.
-        return not self.missing and not self.candidates
+        return not (self.missing or self.candidates or self.unresolved_collections or self.renamed)
 
     def as_dict(self) -> dict:
         return {
@@ -173,6 +109,8 @@ class Drift:
             "current": list(self.current) if self.current else None,
             "drifted": self.drifted,
             "missing": self.missing,
+            "unresolved_collections": self.unresolved_collections,
+            "renamed": self.renamed,
             "candidates": [
                 {"citekey": c.citekey, "title": c.title, "queries": c.queries}
                 for c in self.candidates
@@ -220,7 +158,7 @@ def drift(dossier: Path, corpus: "Corpus | None" = None) -> Drift:
     # own `evidence.md` heading. The ledger alone cannot answer "which
     # cited papers left the corpus?" for a separator-free key, because a
     # key that left it is not in it -- see `declared_citekeys` (#506/M-28).
-    known = corpus.citekeys | declared_citekeys(dossier)
+    known = corpus.citekeys | declared_citekeys(dossier) | set(corpus.renames)
 
     sections_citing = section_citekeys(dossier, known)
     cited = _citekeys_in(dossier, CITED_FILES, known)
@@ -229,9 +167,7 @@ def drift(dossier: Path, corpus: "Corpus | None" = None) -> Drift:
     # backticked prose, and the skill's own name in the evidence preamble
     # (`tutorial-writer`) was reported as a citation that left the ledger.
     declared = declared_citekeys(dossier) | set(sections_citing)
-    report.missing = {
-        citekey: sections_citing.get(citekey, []) for citekey in sorted(declared - corpus.citekeys)
-    }
+    _missing_and_renamed(report, corpus, declared, sections_citing)
 
     # Everything the dossier ever weighed -- rejections included, which is
     # the point. Re-offering a paper the draft already turned down as if
@@ -241,7 +177,10 @@ def drift(dossier: Path, corpus: "Corpus | None" = None) -> Drift:
     report.unconsidered = len(corpus.citekeys - mentioned)
 
     declined = rejected_reasons(dossier)
-    matched = sorted(corpus.matches(recorded_queries_with_collection(dossier)).items())
+    queries, report.unresolved_collections = corpus.resolve(
+        recorded_queries_with_collection(dossier), _scope_collection(dossier)
+    )
+    matched = sorted(corpus.matches(queries).items())
     report.candidates = [
         Candidate(citekey, corpus.titles.get(citekey, ""), queries)
         for citekey, queries in matched
@@ -258,6 +197,40 @@ def drift(dossier: Path, corpus: "Corpus | None" = None) -> Drift:
         if citekey in declined and citekey not in cited
     ]
     return report
+
+
+def _missing_and_renamed(report: Drift, corpus: Corpus, declared, sections_citing) -> None:
+    """Fill `report.renamed` and `report.missing`.
+
+    A key sync found stale is missing already, though its row waits for
+    `--remove-stale`, and so is one only the draft's text cites: this is
+    the pre-prune warning sync's residue report used to give for drafts
+    and dossiers. A renamed key is not missing: sync recorded its
+    replacement, and `dossier apply-renames` swaps it without a search
+    (plans/1211).
+    """
+    live = corpus.citekeys - corpus.stale
+    texts = [p.read_text(encoding="utf-8") for p in _texts_of(report.draft, report.dossier)]
+    report.renamed = renamed_in(texts, corpus.renames, live, sections_citing)
+    gone = (declared - live) | set(mentioned_in(texts, corpus.stale))
+    report.missing = {
+        citekey: sections_citing.get(citekey, []) for citekey in sorted(gone - set(report.renamed))
+    }
+
+
+def _scope_collection(dossier: Path) -> str:
+    """The collection `scope.md` records, or "" for none or the whole corpus."""
+    scope = dossier / SCOPE_MD
+    text = scope.read_text(encoding="utf-8") if scope.is_file() else ""
+    match = re.search(r"^- collection:\s*(.*)$", text, re.MULTILINE)
+    value = match.group(1).strip() if match else ""
+    return "" if value.startswith("(") else value
+
+
+def _texts_of(draft: Path | None, dossier: Path) -> list[Path]:
+    """The draft and the dossier files a renamed key can be cited in."""
+    paths = [dossier / name for name in (EVIDENCE_MD, SECTIONS_MD)]
+    return [p for p in ([draft] if draft else []) + paths if p.is_file()]
 
 
 def drift_all() -> list[Drift]:

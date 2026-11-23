@@ -111,24 +111,29 @@ runs. Nothing in `brief` is `deep-research`-specific.
 and every draft written before that moment silently drifts. `status
 --all` is the sweep that makes it visible: one report over every dossier
 under `content/dossiers/`, always exiting 0, because "some drafts have
-drifted" is the normal state of a live corpus. `sync` also names the
-dossiers that reference a citekey it is about to drop
-([CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove)),
-but it sees only that removal and cannot tell a missing citekey from a
-candidate.
+drifted" is the normal state of a live corpus. `sync` reads no draft
+or dossier: it records the keys it found stale and the renames it
+recognised in the ledger
+([CLI.md](CLI.md#-when-a-citekey-is-renamed)), points at `status --all`,
+and this sweep reports the drafts that cite them, before
+`--remove-stale` prunes the rows as well as after.
 
 ### ⚖ Two findings, and they are not the same kind of thing
 
 | Finding | What it is | What it costs to ignore |
 | --- | --- | --- |
-| **Missing**: a cited citekey that has left the ledger or no longer parses | a defect | the draft cites a paper the corpus no longer has; the citation gate will fail on it |
+| **Missing**: a cited citekey that has left the ledger, no longer parses, or that the last sync found gone from the bib | a defect | the draft cites a paper the corpus no longer has, or soon will not; the citation gate fails on it once the row is pruned |
+| **Renamed**: a cited citekey sync recorded as replaced by another key for the same paper | a mechanical fix | the same as missing; `apply-renames` swaps it without a search |
+| **Unresolved collection**: a recorded `--collection` value that no longer names a collection | a scope to re-choose | the queries it scoped are left out of the candidate search |
 | **Candidate**: a newly reachable paper the dossier never weighed | a decision | nothing, until the sub-theme it bears on is revised |
 
 They are never collapsed into one "drift" number, because the defect
 would hide inside the offers.
 
-**Missing is computed from `evidence.md` and `sections.md` only, not from
+**Missing is computed from `evidence.md` and `sections.md`, not from
 `rejected.md`.** A paper the draft turned down vanishing is a non-event.
+A key the last sync found stale is also missing wherever the draft's own
+text cites it, so a citation the dossier never recorded is not lost.
 Each missing citekey is reported with the sections that cite it, so the
 reviser need not read the draft to find them.
 
@@ -300,6 +305,66 @@ deliberately not an empty `candidates` list: silencing candidates by
 writing them into `rejected.md` would turn a title into a permanent
 judgment, the same objection that rules out a `triage` stage
 ([REJECTION.md](REJECTION.md)).
+
+### 🔁 Swapping a renamed citekey
+
+A **renamed** entry needs no search and no judgement: the ledger already
+holds the replacement. The full sequence, from a re-import to a pruned
+ledger:
+
+```bash
+# 1. Corpus layer: read the new bib. The stale line names the new key.
+chitragupta corpus sync
+
+# 2. Which drafts cite a renamed or stale key, and the command to run.
+chitragupta draft dossier status --all
+
+# 3. Swap every recorded rename in one draft and its dossier.
+chitragupta draft dossier apply-renames content/drafts/dt/survey.md
+
+# 4. Only when step 3 printed it: a renamed paper's PDF changed, so its
+#    quotes were taken from different text.
+chitragupta review quotation content/drafts/dt/survey.md
+
+# 5. The gate decides, then record the new text.
+chitragupta draft gate content/drafts/dt/survey.md
+chitragupta draft dossier stamp content/drafts/dt/survey.md
+
+# 6. Corpus layer: drop the old rows. The renames outlive them.
+chitragupta corpus sync --remove-stale
+```
+
+What each step prints, from a real run:
+
+```text
+$ chitragupta corpus sync
+  stale   lehner_pattern_2023-1 (no longer in bibliography.bib; renamed to lehner_pattern_2023, same PDF)
+  ...
+    Drafts and dossiers citing these: chitragupta draft dossier status --all
+
+$ chitragupta draft dossier status --all
+  dt/survey
+    1 citekey(s) renamed; swap them with `chitragupta draft dossier apply-renames content/drafts/dt/survey.md`:
+      lehner_pattern_2023-1 -> lehner_pattern_2023 (same PDF)  cited in: 1. Patterns
+
+$ chitragupta draft dossier apply-renames content/drafts/dt/survey.md
+renamed lehner_pattern_2023-1 -> lehner_pattern_2023 in 3 file(s)
+
+$ chitragupta draft gate content/drafts/dt/survey.md
+OK    content/drafts/dt/survey.md: 2 citation(s), all verified against the ledger.
+```
+
+`apply-renames` swaps the key in the draft, `evidence.md`, `sections.md`
+and `rejected.md` (so a declined paper stays declined), and appends one
+`revisions.md` entry with a `Sections:` line. It never invents the new
+key: it follows the recorded chain (`a -> b -> c`) to a key the gate
+accepts, and matches a key only where no character a citekey may hold
+touches it, so `smith2020.v2` is left alone when `smith2020` is renamed.
+A key it cannot swap (a chain that loops, or a replacement that is not
+a parsed ledger row) is named on stderr and left for re-grounding to
+treat as missing; the rest are still swapped, and it exits 1. Steps 1
+and 6 can be one run if you pass `--remove-stale` at step 1: the order
+of the rest does not change.
 
 ### ⚙ The scoped default, and the way out of it
 

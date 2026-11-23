@@ -287,7 +287,6 @@ nav:
       - Parallelism: docs/PARALLELISM.md
       - Auto-improvement: docs/AUTO-IMPROVEMENT.md
       - House style: docs/HOUSE-STYLE.md
-      - Zotero groups without Better BibTeX: docs/EXPORT-ZOTERO-GROUPS.md
       - Developing: DEVELOPER.md
       - Docker build verification: DOCKER-DEVELOPER.md
       - Changing this repo: DEVELOPER-AGENTS.md

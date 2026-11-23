@@ -13,6 +13,8 @@ import re
 from collections import Counter
 from collections.abc import Collection
 
+from chitragupta.citekey_safety import citekey_problem
+
 # @comment/@string/@preamble are legitimate BibTeX constructs that never
 # show up in BibDatabase.entries (bibtexparser tracks them separately,
 # not as dropped entries) -- `bib_reader.read_library` parses with common_strings=True,
@@ -173,3 +175,30 @@ def duplicated_citekeys(entries, bib_name: str) -> tuple[str, ...]:
             "entry its own key in your reference manager, re-export, and re-run sync."
         )
     return duplicated
+
+
+def unfilenameable_citekeys(entries, duplicated) -> tuple[str, ...]:
+    """The citekeys that cannot be a filename, in bib order, each warned.
+
+    Checked before anything else touches an entry: such a citekey would
+    fail much later, inside a parse, as an OSError naming a path rather
+    than the entry that produced it. Skipping the entry loses one paper
+    and says so; letting it through risks writing outside content/. A
+    duplicated key is already skipped and reported as that, so it is not
+    counted twice.
+    """
+    skipped = []
+    for entry in entries:
+        key = entry["ID"]
+        problem = citekey_problem(key)
+        if problem is None or key in duplicated:
+            continue
+        skipped.append(key)
+        print(
+            f"  WARNING skipping citekey {key!r}: {problem}. "
+            "It is used directly as a filename (content/parsed/<citekey>.txt "
+            "and the enrichment layer's own outputs), and this project never "
+            "rewrites a citekey -- the bib file is the source of truth. Rename "
+            "it in your reference manager, re-export, and re-run sync."
+        )
+    return tuple(skipped)

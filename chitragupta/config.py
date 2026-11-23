@@ -139,15 +139,12 @@ config_load.load(CONFIG_PATH)
 # (pathlib behavior), so env var overrides may be absolute or relative.
 BIB_FILE_PATH = PROJECT_ROOT / _get("BIB_FILE", "bib", "path", default="papers/bibliography.bib")
 
-# Which BibTeX field carries Zotero collection membership. `groups` is
-# JabRef's, and what Better BibTeX writes under "Export JabRef-specific
-# fields" -- see chitragupta/bib_collections.py for why that option is the only
-# way collections reach a .bib at all. Configurable rather than hardcoded
-# because a user whose exporter puts them somewhere else (a `keywords`
-# convention, say) should not have to patch the parser to be read.
-BIB_COLLECTIONS_FIELD = (
-    _get("BIB_COLLECTIONS_FIELD", "bib", "collections_field", default="groups").strip().lower()
-)
+# `[bib] collections_field` named the field a Better BibTeX export carried
+# collections in. Since 7.0.0 collections come only from
+# chitragupta-importer's `cg-collections` (chitragupta/bib_collections.py),
+# so the setting is ignored. An old config.toml still loads; this flag
+# lets sync say so once, rather than every command on every import.
+LEGACY_COLLECTIONS_FIELD = bool(_get("BIB_COLLECTIONS_FIELD", "bib", "collections_field"))
 
 CONTENT_DIR = PROJECT_ROOT / _get("CONTENT_DIR", "content", "dir", default="content")
 PARSED_DIR = CONTENT_DIR / "parsed"

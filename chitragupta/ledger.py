@@ -16,7 +16,7 @@ import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
 
-from chitragupta import config, ledger_paths
+from chitragupta import config, ledger_paths, ledger_tables
 
 # upsert_reference's own implementation, and everything it depends on,
 # lives in chitragupta/ledger_upsert.py (#441) -- this module crossed the
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS items (
 # a column that already exists raises, so this is what keeps that
 # specific mistake from crashing every `sync` on every host instead of
 # just being a no-op.
-_MIGRATIONS: list[tuple[tuple[str, str], ...]] = [
+_MIGRATIONS: list[tuple[tuple[str | None, str], ...]] = [
     (
         # version 1: upsert_reference's stat-before-hash skip (module
         # docstring) needs somewhere to persist the (size, mtime) last
@@ -137,6 +137,10 @@ _MIGRATIONS: list[tuple[tuple[str, str], ...]] = [
         # with an empty list.
         ("collections", "ALTER TABLE items ADD COLUMN collections TEXT"),
     ),
+    # version 5: chitragupta-importer's collection names and recorded
+    # citekey renames, and version 4's `groups` paths cleared
+    # (chitragupta/ledger_tables.py).
+    ledger_tables.MIGRATION,
 ]
 
 
@@ -148,7 +152,7 @@ def _migrate(con: sqlite3.Connection) -> None:
     existing_cols = {row[1] for row in con.execute("PRAGMA table_info(items)")}
     for steps in _MIGRATIONS[current:target]:
         for column, statement in steps:
-            if column not in existing_cols:
+            if column is None or column not in existing_cols:
                 con.execute(statement)
     # PRAGMA user_version doesn't accept `?` parameter binding -- target
     # is this module's own len(_MIGRATIONS), never user input.

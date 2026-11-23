@@ -1,14 +1,11 @@
-"""Zotero collection labels: parsing, matching, and the three places they
-are read (#195).
+"""Collection membership: slug paths, the name table, and the places
+they are read.
 
-The feature rests on one factual claim, and it is worth stating where the
-tests can be read: **Zotero's own BibTeX exporter drops collection
-membership.** Nothing here can be exercised by a plain Zotero export, only
-by a Better BibTeX one with JabRef fields enabled, which writes JabRef's
-`groups` field. So the case that matters most is not any of the matching
-rules below -- it is that a library *without* that field keeps working
-exactly as it did, which is why the no-field cases are tested at every
-layer rather than only at the parser.
+chitragupta-importer writes each entry's collections as slug paths in
+`cg-collections` and one `@comment{cg-collections v1 ...}` table mapping
+each slug path to the collection's own name. A library written any other
+way carries no collections, and every command keeps working without them,
+which is why the no-collections cases are tested at every layer.
 """
 
 import json
@@ -16,9 +13,46 @@ import sqlite3
 
 import pytest
 
-from chitragupta import bib_collections, config, ledger, ledger_cli, retrieval, retrieval_cache
+from chitragupta import (
+    bib_collections,
+    ledger,
+    ledger_cli,
+    ledger_tables,
+    retrieval,
+    retrieval_cache,
+)
+from chitragupta.bib_collections import (
+    AmbiguousCollection,
+    UnknownCollection,
+    display_paths,
+    is_slug_path,
+    matches,
+    parse,
+    resolve,
+)
 
 from tests.conftest import make_reference
+
+DEPTH_FOUR = {
+    "digital-twins": "Digital Twins",
+    "digital-twins.platforms": "Platforms",
+    "digital-twins.platforms.cloud": "Cloud",
+    "digital-twins.platforms.cloud.public": "Public",
+}
+
+
+class TestSlugPath:
+    @pytest.mark.parametrize(
+        "value", ["a", "industry-5-0", "digital-twin.use-cases.medical-1", "a1.b2.c3"]
+    )
+    def test_valid(self, value):
+        assert is_slug_path(value)
+
+    @pytest.mark.parametrize(
+        "value", ["", "A", "a..b", ".a", "a.", "a b", "a/b", "a--b", "-a", "a-", "a > b"]
+    )
+    def test_invalid(self, value):
+        assert not is_slug_path(value)
 
 
 class TestParse:
@@ -28,86 +62,175 @@ class TestParse:
             (None, ()),
             ("", ()),
             ("   ", ()),
-            ("Modelling", ("Modelling",)),
-            ("A, B", ("A", "B")),
-            ("Digital twins > Modelling", ("Digital twins > Modelling",)),
-            ("Digital twins>Modelling", ("Digital twins > Modelling",)),
-            ("  Digital twins   >   Modelling  ", ("Digital twins > Modelling",)),
-            ("A > > B", ("A > B",)),
-            ("A >", ("A",)),
-            ("A, A", ("A",)),
-            ("A, , B", ("A", "B")),
+            ("a", ("a",)),
+            ("digital-twin.dt-platforms, a.b , Bad Path", ("digital-twin.dt-platforms", "a.b")),
+            ("a, a", ("a",)),
+            ("a, , b", ("a", "b")),
         ],
     )
-    def test_normalisation(self, value, expected):
-        assert bib_collections.parse(value) == expected
+    def test_reads_slug_paths_and_drops_invalid(self, value, expected):
+        assert parse(value) == expected
 
     def test_order_is_preserved(self):
         """The ledger writes this as JSON, so a stable order is what keeps
         a re-sync of an unchanged entry from rewriting the row."""
-        assert bib_collections.parse("Z, A, M") == ("Z", "A", "M")
+        assert parse("z, a, m") == ("z", "a", "m")
 
 
 class TestMatches:
     @pytest.mark.parametrize(
         "wanted,expected",
         [
-            ("Digital twins", True),  # the parent selects the subtree
-            ("digital TWINS", True),  # a label typed in a GUI, not a token
-            ("Digital twins > Modelling", True),
-            ("Digital twins>Modelling", True),
-            ("Modelling", False),  # a subcollection is not a top-level one
-            ("Digital", False),  # not a substring match
-            ("Digital twins > Mod", False),  # nor within a segment
+            ("a", True),
+            ("a.b", True),
+            ("a.b.c", True),
+            ("a.bc", False),
+            ("b", False),
+            ("a.b.c.d", False),
             ("", False),
-            (">", False),
         ],
     )
-    def test_against_one_nested_path(self, wanted, expected):
-        assert bib_collections.matches(("Digital twins > Modelling",), wanted) is expected
+    def test_is_subtree_per_segment(self, wanted, expected):
+        assert matches(("a.b.c",), wanted) is expected
 
     def test_a_sibling_with_a_shared_prefix_is_not_selected(self):
-        """The reason matching is per-segment rather than `startswith`."""
-        assert bib_collections.matches(("Modelling notes",), "Modelling") is False
+        assert matches(("a.bc",), "a.b") is False
 
     def test_no_collections_matches_nothing(self):
-        assert bib_collections.matches((), "Anything") is False
+        assert matches((), "a") is False
 
 
-class TestNames:
-    def test_ancestors_are_implied(self):
-        """Only the leaf path is stored, but a user may filter on a parent,
-        so listing what they can filter on has to expand them back out."""
-        assert bib_collections.names({"a": ("X > Y > Z",)}) == ["X", "X > Y", "X > Y > Z"]
+class TestDisplayPaths:
+    def test_any_depth(self):
+        shown = display_paths(DEPTH_FOUR, ["digital-twins.platforms.cloud.public"])
+        assert shown["digital-twins.platforms.cloud.public"] == (
+            "Digital Twins / Platforms / Cloud / Public"
+        )
+        assert shown["digital-twins.platforms"] == "Digital Twins / Platforms"
 
-    def test_paths_are_deduplicated_across_items(self):
-        assert bib_collections.names({"a": ("X > Y",), "b": ("X > Z",), "c": ("X",)}) == [
-            "X",
-            "X > Y",
-            "X > Z",
+    def test_ancestors_are_implied_without_a_table(self):
+        assert display_paths({}, ["x.y.z"]) == {"x": "x", "x.y": "x / y", "x.y.z": "x / y / z"}
+
+    def test_a_missing_row_falls_back_to_its_segment(self):
+        assert display_paths({"a": "A"}, ["a.b"])["a.b"] == "A / b"
+
+    def test_a_table_row_with_no_papers_is_listed(self):
+        assert display_paths({"a": "A", "a.c": "C"}, ["a"]) == {"a": "A", "a.c": "A / C"}
+
+    def test_nothing_known(self):
+        assert display_paths({}, []) == {}
+
+
+class TestResolve:
+    def test_slug_path_any_depth(self):
+        assert resolve("digital-twins.platforms.cloud", DEPTH_FOUR, []) == (
+            "digital-twins.platforms.cloud"
+        )
+
+    def test_a_slug_is_read_only_in_lower_case(self):
+        """A slug is lower case by construction; anything else is a display
+        path, so `Medical` cannot silently become the slug `medical`."""
+        assert resolve(" digital-twins ", DEPTH_FOUR, []) == "digital-twins"
+        with pytest.raises(UnknownCollection):
+            resolve("Digital-Twins", DEPTH_FOUR, [])
+
+    def test_top_level_siblings_with_one_name_are_ambiguous(self):
+        names = {"medical": "Medical", "medical-1": "Medical"}
+        with pytest.raises(AmbiguousCollection) as e:
+            resolve("Medical", names, [])
+        assert e.value.slugs == ["medical", "medical-1"]
+        assert resolve("medical-1", names, []) == "medical-1"
+
+    def test_a_renamed_collection_does_not_capture_its_old_name(self):
+        """`old` renamed to New, then a new collection called Old: the name
+        means the new one."""
+        assert resolve("Old", {"old": "New", "old-1": "Old"}, []) == "old-1"
+
+    def test_slug_path_known_only_from_an_entry(self):
+        assert resolve("x.y", {}, ["x.y.z"]) == "x.y"
+
+    def test_display_path_with_loose_spacing(self):
+        assert resolve("digital twins/ platforms /CLOUD", DEPTH_FOUR, []) == (
+            "digital-twins.platforms.cloud"
+        )
+
+    def test_a_name_containing_a_slash_is_never_split(self):
+        names = {"net": "Networking", "net.tcp-ip": "TCP/IP"}
+        assert resolve(" networking/TCP/IP ", names, []) == "net.tcp-ip"
+
+    def test_a_single_segment_display_name(self):
+        assert resolve("Medical", {"med": "Medical"}, []) == "med"
+
+    def test_ambiguous_siblings_list_both(self):
+        names = {"u": "Use Cases", "u.medical": "Medical", "u.medical-1": "Medical"}
+        with pytest.raises(AmbiguousCollection) as e:
+            resolve("Use Cases/Medical", names, [])
+        assert e.value.slugs == ["u.medical", "u.medical-1"]
+        assert e.value.wanted == "Use Cases/Medical"
+
+    def test_unknown_flags_old_syntax(self):
+        with pytest.raises(UnknownCollection) as e:
+            resolve("Digital twins > Modelling", {}, [])
+        assert e.value.old_syntax is True
+        assert e.value.wanted == "Digital twins > Modelling"
+
+    def test_unknown_slug(self):
+        with pytest.raises(UnknownCollection) as e:
+            resolve("a.nope", {"a": "A"}, [])
+        assert e.value.old_syntax is False
+
+    def test_a_scope_md_value_with_its_note_resolves_to_the_slug(self):
+        """`scope.md` records `- collection: <slug>   # <display path>`; an
+        agent that passes the whole value still gets the slug."""
+        value = "digital-twins.platforms   # Digital Twins / Platforms"
+        assert resolve(value, DEPTH_FOUR, []) == "digital-twins.platforms"
+
+    def test_a_hash_in_a_display_name_is_not_a_note(self):
+        names = {"lang": "Languages", "lang.c-projects": "C# projects"}
+        assert resolve("Languages/C# projects", names, []) == "lang.c-projects"
+
+    def test_a_hash_name_is_not_cut_to_a_slug(self):
+        names = {"c": "C", "c-projects": "C# projects"}
+        assert resolve("C# projects", names, []) == "c-projects"
+
+    def test_empty_is_unknown(self):
+        with pytest.raises(UnknownCollection):
+            resolve("  ", {"a": "A"}, [])
+
+
+class TestReport:
+    @staticmethod
+    def rows(spec):
+        return [
+            {"citekey": key, "collections": json.dumps(list(paths)) if paths else None}
+            for key, paths in spec
         ]
 
-    def test_a_corpus_with_none_lists_none(self):
-        assert bib_collections.names({"a": (), "b": ()}) == []
-
-
-class TestTheBibField:
-    def test_the_field_name_is_configurable(self, monkeypatch):
-        """A user whose exporter writes them elsewhere should not have to
-        patch the parser to be read."""
-        from chitragupta import bib_reader
-
-        monkeypatch.setattr(config, "BIB_COLLECTIONS_FIELD", "keywords")
-        entry = {
-            "ID": "k_2024",
-            "ENTRYTYPE": "article",
-            "title": "T",
-            "keywords": "Shelf > Sub",
-            "groups": "Ignored",
-        }
-        assert bib_collections.parse(entry.get(bib_reader.config.BIB_COLLECTIONS_FIELD)) == (
-            "Shelf > Sub",
+    def test_columns_and_counts_include_descendants_and_empty_rows(self):
+        lines = bib_collections.report(
+            self.rows([("k1", ["a.b"]), ("k2", ["a"]), ("k3", [])]),
+            {"a": "Alpha", "a.b": "Beta", "a.c": "Gamma"},
         )
+        assert [line.split() for line in lines[:3]] == [
+            ["a", "Alpha", "2"],
+            ["a.b", "Alpha", "/", "Beta", "1"],
+            ["a.c", "Alpha", "/", "Gamma", "0"],
+        ]
+        assert lines[-1] == "  3 collection(s)."
+
+    def test_a_paper_in_two_branches_counts_once_per_ancestor(self):
+        lines = bib_collections.report(self.rows([("k1", ["a.b", "a.c"])]), {})
+        assert lines[0].split() == ["a", "a", "1"]
+
+    def test_columns_line_up(self):
+        lines = bib_collections.report(self.rows([("k1", ["a.long-name"])]), {})
+        assert lines[0].index("a ") == lines[1].index("a.long-name")
+        assert len({line.rstrip().rfind(" ") for line in lines[:2]}) == 1
+
+    def test_nothing_recorded_points_at_the_importer(self):
+        lines = bib_collections.report(self.rows([("k1", [])]), {})
+        assert lines[0] == "No collections recorded."
+        assert "chitragupta-importer" in lines[1]
 
 
 class TestTheLedgerColumn:
@@ -121,12 +244,10 @@ class TestTheLedgerColumn:
         ledger_con.row_factory = None
 
     def test_a_reference_with_collections_round_trips(self, ledger_con):
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="a_2024", collections=("X > Y",))
-        )
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a_2024", collections=("x.y",)))
         row = ledger_con.execute("SELECT * FROM items WHERE citekey = 'a_2024'").fetchone()
-        assert json.loads(row["collections"]) == ["X > Y"]
-        assert bib_collections.of_row(row) == ("X > Y",)
+        assert json.loads(row["collections"]) == ["x.y"]
+        assert bib_collections.of_row(row) == ("x.y",)
 
     def test_no_collections_is_stored_as_null_not_an_empty_array(self, ledger_con):
         """Most libraries have no such field at all. NULL is what a
@@ -138,10 +259,10 @@ class TestTheLedgerColumn:
         assert bib_collections.of_row(row) == ()
 
     def test_an_update_rewrites_them(self, ledger_con):
-        ledger.upsert_reference(ledger_con, make_reference(citekey="c_2024", collections=("Old",)))
-        ledger.upsert_reference(ledger_con, make_reference(citekey="c_2024", collections=("New",)))
+        ledger.upsert_reference(ledger_con, make_reference(citekey="c_2024", collections=("old",)))
+        ledger.upsert_reference(ledger_con, make_reference(citekey="c_2024", collections=("new",)))
         row = ledger_con.execute("SELECT * FROM items WHERE citekey = 'c_2024'").fetchone()
-        assert bib_collections.of_row(row) == ("New",)
+        assert bib_collections.of_row(row) == ("new",)
 
     @pytest.mark.parametrize("stored", ["not json", "{}", '"a string"', "7"])
     def test_an_unreadable_value_narrows_a_filter_rather_than_raising(self, ledger_con, stored):
@@ -180,8 +301,8 @@ class TestRetrievalFilter:
     @pytest.fixture
     def corpus(self, isolated_config, ledger_con):
         for citekey, collections in (
-            ("in_sub_2024", ("Digital twins > Modelling",)),
-            ("in_other_2024", ("Reading list",)),
+            ("in_sub_2024", ("digital-twins.modelling",)),
+            ("in_other_2024", ("reading-list",)),
             ("uncollected_2024", ()),
         ):
             ref = make_reference(citekey=citekey, collections=collections)
@@ -204,14 +325,79 @@ class TestRetrievalFilter:
         assert {r.citekey for r in found} == {"in_sub_2024", "in_other_2024", "uncollected_2024"}
 
     def test_a_parent_collection_selects_the_subtree(self, corpus):
-        found = retrieval.search("modelling", k=10, collection="Digital twins")
+        found = retrieval.search("modelling", k=10, collection="digital-twins")
         assert {r.citekey for r in found} == {"in_sub_2024"}
 
-    def test_an_unknown_collection_returns_nothing(self, corpus):
-        assert retrieval.search("modelling", k=10, collection="Nonexistent") == []
+    def test_an_unknown_collection_is_refused(self, corpus):
+        with pytest.raises(UnknownCollection):
+            retrieval.search("modelling", k=10, collection="nonexistent")
+
+    def test_a_display_path_selects_the_same_subtree(self, corpus):
+        con = ledger.connect()
+        try:
+            ledger_tables.replace_collection_names(
+                con, {"digital-twins": "Digital Twins", "digital-twins.modelling": "Modelling"}
+            )
+            con.commit()
+        finally:
+            con.close()
+        found = retrieval.search("modelling", k=10, collection="Digital Twins/Modelling")
+        assert {r.citekey for r in found} == {"in_sub_2024"}
+
+    def test_passage_search_filters_by_the_same_rule(self, corpus):
+        from chitragupta import retrieval_passages
+
+        with pytest.raises(UnknownCollection):
+            retrieval_passages.search_passages("modelling", k=10, collection="nope")
+        found = retrieval_passages.search_passages("modelling", k=10, collection="reading-list")
+        assert {r.citekey for r in found.results} <= {"in_other_2024"}
+
+    def test_the_cli_refuses_an_unknown_collection_with_exit_2(self, corpus, capsys):
+        from chitragupta import retrieval_cli
+
+        assert retrieval_cli.main(["search", "modelling", "--collection", "Digital twins > X"]) == 2
+        err = capsys.readouterr().err
+        assert "no collection 'Digital twins > X'" in err
+        assert "corpus ledger --collections" in err
+        assert "slug paths" in err
+
+    def test_the_cli_refuses_an_ambiguous_display_path(self, corpus, capsys):
+        from chitragupta import retrieval_cli
+
+        con = ledger.connect()
+        try:
+            ledger_tables.replace_collection_names(
+                con, {"u": "Use Cases", "u.medical": "Medical", "u.medical-1": "Medical"}
+            )
+            con.commit()
+        finally:
+            con.close()
+        assert retrieval_cli.main(["search", "modelling", "--collection", "Use Cases/Medical"]) == 2
+        err = capsys.readouterr().err
+        assert "names 2 collections; pass one slug path:" in err
+        assert "u.medical\n" in err and "u.medical-1" in err
+
+    def test_the_log_records_the_resolved_slug(self, corpus, capsys):
+        from chitragupta import dossier, retrieval_cli
+
+        con = ledger.connect()
+        try:
+            ledger_tables.replace_collection_names(con, {"digital-twins": "Digital Twins"})
+            con.commit()
+        finally:
+            con.close()
+        draft = corpus.DRAFTS_DIR / "s.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("# S\n", encoding="utf-8")
+        dossier.init(draft, "survey")
+        argv = ["search", "modelling", "--collection", "digital twins", "--log", str(draft)]
+        assert retrieval_cli.main(argv) == 0
+        log = (dossier.dossier_dir(draft) / "retrieval.md").read_text(encoding="utf-8")
+        assert "| digital-twins |" in log
+        assert "digital twins |" not in log
 
     def test_an_item_with_no_collections_is_excluded_by_any_filter(self, corpus):
-        found = retrieval.search("modelling", k=10, collection="Reading list")
+        found = retrieval.search("modelling", k=10, collection="reading-list")
         assert "uncollected_2024" not in {r.citekey for r in found}
 
     def test_scores_do_not_change_when_a_filter_is_applied(self, corpus):
@@ -219,7 +405,7 @@ class TestRetrievalFilter:
         change every IDF, so the same query would rank differently
         depending on the filter, and the cached index could not be shared."""
         unfiltered = {r.citekey: r.score for r in retrieval.search("modelling", k=10)}
-        filtered = retrieval.search("modelling", k=10, collection="Digital twins")
+        filtered = retrieval.search("modelling", k=10, collection="digital-twins")
         assert filtered[0].score == unfiltered["in_sub_2024"]
 
 
@@ -229,8 +415,8 @@ class TestTheLedgerCLI:
     @pytest.fixture
     def corpus(self, isolated_config, ledger_con):
         for citekey, collections in (
-            ("shelved_2024", ("Digital twins > Modelling",)),
-            ("elsewhere_2024", ("Reading list",)),
+            ("shelved_2024", ("digital-twins.modelling",)),
+            ("elsewhere_2024", ("reading-list",)),
             ("bare_2024", ()),
         ):
             ledger.upsert_reference(
@@ -241,11 +427,11 @@ class TestTheLedgerCLI:
 
     def test_collections_lists_every_path_with_its_ancestors(self, corpus, capsys):
         assert ledger_cli.main(["--collections"]) == 0
-        out = capsys.readouterr().out
-        assert "  Digital twins\n" in out
-        assert "  Digital twins > Modelling\n" in out
-        assert "  Reading list\n" in out
-        assert "3 collection(s)." in out
+        rows = [line.split() for line in capsys.readouterr().out.splitlines()]
+        assert ["digital-twins", "digital-twins", "1"] in rows
+        assert ["digital-twins.modelling", "digital-twins", "/", "modelling", "1"] in rows
+        assert ["reading-list", "reading-list", "1"] in rows
+        assert ["3", "collection(s)."] in rows
 
     def test_collections_on_a_corpus_without_any_explains_why(
         self, isolated_config, ledger_con, capsys
@@ -257,18 +443,42 @@ class TestTheLedgerCLI:
         assert ledger_cli.main(["--collections"]) == 0
         out = capsys.readouterr().out
         assert "No collections recorded." in out
-        assert "Better BibTeX" in out
+        assert "chitragupta-importer" in out
 
     def test_collection_filters_the_listing_and_includes_the_subtree(self, corpus, capsys):
-        assert ledger_cli.main(["--collection", "Digital twins"]) == 0
+        assert ledger_cli.main(["--collection", "digital-twins"]) == 0
         out = capsys.readouterr().out
         assert "shelved_2024" in out
         assert "elsewhere_2024" not in out
         assert "bare_2024" not in out
 
-    def test_an_empty_collection_says_so_rather_than_naming_a_status(self, corpus, capsys):
-        """`--list` reports "no items with status None" when empty, which
-        would be a confusing thing to print at someone who asked about a
-        collection."""
-        assert ledger_cli.main(["--collection", "Nonexistent"]) == 0
-        assert "No items in collection 'Nonexistent'." in capsys.readouterr().out
+    def test_an_unknown_collection_is_refused_with_exit_2(self, corpus, capsys):
+        assert ledger_cli.main(["--collection", "nonexistent"]) == 2
+        err = capsys.readouterr().err
+        assert "no collection 'nonexistent'" in err
+        assert "slug paths" not in err
+
+    def test_an_empty_named_collection_says_so(self, corpus, capsys):
+        """A collection the table names but no paper is in: listed with 0
+        by --collections, and empty rather than refused here."""
+        con = ledger.connect()
+        try:
+            ledger_tables.replace_collection_names(con, {"empty-shelf": "Empty shelf"})
+            con.commit()
+        finally:
+            con.close()
+        assert ledger_cli.main(["--collection", "Empty shelf"]) == 0
+        assert "No items in collection 'empty-shelf'." in capsys.readouterr().out
+
+    def test_collections_lists_names_from_the_ledger(self, corpus, capsys):
+        con = ledger.connect()
+        try:
+            ledger_tables.replace_collection_names(
+                con, {"digital-twins": "Digital Twins", "digital-twins.modelling": "Modelling"}
+            )
+            con.commit()
+        finally:
+            con.close()
+        assert ledger_cli.main(["--collections"]) == 0
+        rows = [line.split() for line in capsys.readouterr().out.splitlines()]
+        assert ["digital-twins.modelling", "Digital", "Twins", "/", "Modelling", "1"] in rows

@@ -294,7 +294,10 @@ class TestStaleReportSurvivesItsArtefacts:
     before the stale list prints, so an exception there hid the one
     thing the person needed to see."""
 
-    def test_an_unreadable_dossier_is_a_note(self, isolated_config, monkeypatch):
+    def test_a_dossier_is_never_read(self, isolated_config, monkeypatch):
+        """Dossiers are the drafting layer's, reported by `dossier status`
+        (plans/1211); the corpus layer's scan does not open one, so an
+        unreadable one cannot even produce a note."""
         evidence = isolated_config.DOSSIERS_DIR / "dt" / "survey" / "evidence.md"
         evidence.parent.mkdir(parents=True)
         evidence.write_text("## `gone_2020`\n", encoding="utf-8")
@@ -307,8 +310,7 @@ class TestStaleReportSurvivesItsArtefacts:
 
         monkeypatch.setattr(Path, "read_text", unreadable)
         found, notes = sync_residue.scan(["gone_2020"])
-        assert found == {"gone_2020": []}
-        assert any(str(evidence) in note and "Permission denied" in note for note in notes)
+        assert (found, notes) == ({"gone_2020": []}, [])
 
     def test_a_chroma_error_is_a_note(self, isolated_config, monkeypatch):
         isolated_config.CHROMA_DIR.mkdir(parents=True)

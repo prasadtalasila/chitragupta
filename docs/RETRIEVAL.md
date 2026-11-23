@@ -100,9 +100,9 @@ no venv, nothing to build. `search(query, k)` returns
 `SearchResult(citekey, title, score, snippet)`, and the snippet is a
 window of the real text around the matched terms, so a skill can judge
 relevance itself rather than trusting a score. An optional
-`collection` argument (`retrieve search --collection NAME`) restricts the
-result to one Zotero collection and the ones beneath it, while scoring
-stays corpus-wide ([CLI.md](CLI.md)).
+`collection` argument (`retrieve search --collection PATH`, a slug path
+or a `/` display path) restricts the result to one collection and the
+ones beneath it, while scoring stays corpus-wide ([CLI.md](CLI.md)).
 
 - **Every hit is citable.** It reads the ledger, so every result already
   has a citekey that `citation_gate` will accept.
