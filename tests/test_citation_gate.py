@@ -826,6 +826,18 @@ class TestCliEntrypoint:
         assert "Usage:" in result.stdout
         assert "Traceback" not in result.stderr
 
+    def test_no_args_in_process_is_the_same_usage_error(self, isolated_config, capsys):
+        """The subprocess tests above prove the `-m` wiring; these two
+        hold `main()`'s own branches to the coverage bar, since
+        pytest-cov 7 does not measure a child process."""
+        assert citation_gate.main([]) == 2
+        assert "Usage:" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("flag", ["-h", "--help"])
+    def test_help_in_process_is_the_same_answer(self, isolated_config, capsys, flag):
+        assert citation_gate.main([flag]) == 0
+        assert "Usage:" in capsys.readouterr().out
+
     def test_gate_help_reads_like_click(self, isolated_config):
         """Hand-written, because the gate is not argparse, but laid out
         the way every other command's --help is (#1230)."""

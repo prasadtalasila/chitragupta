@@ -230,7 +230,7 @@ networkx = {version = ">=3.6,<4.0", optional = true}
 # depends on Pillow directly, so it cannot be absent wherever this is.
 pypdfium2 = {version = ">=5.13,<6.0", optional = true}
 pytest = {version = ">=9.0,<10.0", optional = true}
-pytest-cov = {version = ">=6.0,<7.0", optional = true}
+pytest-cov = {version = ">=7.1,<8.0", optional = true}
 pytest-xdist = {version = ">=3.8,<4.0", optional = true}
 pyyaml = {version = ">=6.0,<7.0", optional = true}
 mkdocs-material = {version = ">=9.7,<10.0", optional = true}
@@ -331,19 +331,18 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=9.0,<10.0"
-# **<7 is load-bearing, not staleness.** pytest-cov 6.x ships a
-# `pytest-cov.pth` that turns on coverage in *subprocesses*; 7.0 removed
-# it. Six modules here are measured only that way -- the `main()` and
-# `__main__` paths that `.claude/hooks` and the hook tests reach by
-# spawning a process -- so on 7.1.0 the total drops from 100% to 99.70%
-# and `fail_under = 100` fails the build. Not a hypothetical: this was
-# the bump, and the CI run that caught it.
+# pytest-cov 7 no longer measures child processes: 6.x shipped a
+# `pytest-cov.pth` that did, and 7.0 removed it. The cap at <7 held until
+# every `main()` branch that only a subprocess test reached (30
+# statements and 7 branches, in citation_gate, corpus, draft,
+# review/__main__, review/verbatim_check and scripts/code_standards.py)
+# had an in-process test as well. Those tests carry the coverage now; the subprocess tests
+# beside them still prove the `-m` wiring.
 #
-# coverage's own `patch = ["subprocess"]` is the documented replacement
-# and was tried first; it did not restore those six. Lift the cap when
-# something demonstrably does, checking `scripts/code_standards.py`
-# specifically -- it is 16 of the 34 statements at stake.
-pytest-cov = ">=6.0,<7.0"
+# coverage's own `patch = ["subprocess"]` was tried first and did not
+# restore those statements, so do not reach for it if a new `main()`
+# branch shows up uncovered: add the in-process test.
+pytest-cov = ">=7.1,<8.0"
 
 # `pytest -n auto` spreads the suite over every core. The TeX compiles
 # are independent subprocesses, so they are what it wins on: 15 minutes
