@@ -6,7 +6,9 @@
 #
 # GPU i serves on port 18080+i with CUDA_VISIBLE_DEVICES=i, one slot and
 # the 131,072-token context docs/examples/opencode/opencode-provider.json
-# declares, under the name the bench asks for (qwen3.6-35b-a3b). One slot
+# declares, under the name the bench asks for (qwen3.6-35b-a3b), with the
+# model's vision projector, so a harness that sends a figure PNG gets an
+# answer and not a 500 that ends its run. One slot
 # a server is deliberate: the bench gives each local job a server of its
 # own, so two jobs never share a slot's context.
 #
@@ -20,6 +22,7 @@ set -uo pipefail
 BENCH_TOOLS=${BENCH_TOOLS:-$HOME/bench-tools}
 LLAMA_SERVER=${LLAMA_SERVER:-$BENCH_TOOLS/llama.cpp-b11321/build/bin/llama-server}
 MODEL_FILE=${MODEL_FILE:-$BENCH_TOOLS/models/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf}
+MMPROJ_FILE=${MMPROJ_FILE:-$BENCH_TOOLS/models/mmproj-F16.gguf}
 RUN=$BENCH_TOOLS/run
 PIDS=$RUN/servers.pid
 WAIT=${WAIT:-600}
@@ -40,12 +43,13 @@ if ! [[ $count =~ ^[1-9][0-9]*$ && $first =~ ^[0-9]+$ ]]; then
 fi
 [[ -x $LLAMA_SERVER ]] || { echo "no llama-server at $LLAMA_SERVER: run install_tools.sh" >&2; exit 1; }
 [[ -f $MODEL_FILE ]] || { echo "no model at $MODEL_FILE: run install_tools.sh" >&2; exit 1; }
+[[ -f $MMPROJ_FILE ]] || { echo "no vision projector at $MMPROJ_FILE: run install_tools.sh" >&2; exit 1; }
 mkdir -p "$RUN"
 
 args=()
 for ((gpu = first; gpu < first + count; gpu++)); do
   port=$((18080 + gpu))
-  CUDA_VISIBLE_DEVICES=$gpu setsid nohup "$LLAMA_SERVER" -m "$MODEL_FILE" \
+  CUDA_VISIBLE_DEVICES=$gpu setsid nohup "$LLAMA_SERVER" -m "$MODEL_FILE" --mmproj "$MMPROJ_FILE" \
     --alias qwen3.6-35b-a3b --host 127.0.0.1 --port "$port" \
     -c 131072 -np 1 -ngl 99 --jinja >"$RUN/llama-server-$gpu.log" 2>&1 </dev/null &
   echo $! >>"$PIDS"

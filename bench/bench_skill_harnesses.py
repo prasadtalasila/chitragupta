@@ -74,6 +74,7 @@ from skill_commands import (  # noqa: E402
     expected_commands,
     handed_off,
     handoffs,
+    help_choices,
     score_commands,
     skill_files,
 )
@@ -81,6 +82,9 @@ from skill_commands import (  # noqa: E402
 EXAMPLES = REPO_ROOT / "docs" / "examples"
 BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:18080/v1")
 LOCAL_MODEL = os.environ.get("MODEL", "qwen3.6-35b-a3b")
+# The context every llama-server is started with (serve_models.sh's -c) and
+# docs/examples/opencode/opencode-provider.json declares.
+LOCAL_CONTEXT = 131072
 HARNESSES = ("claude", "codex", "opencode")
 # Filled by main() before any scaffolding, so a missing CLI is named up
 # front rather than failing inside Popen after a corpus sync.
@@ -128,16 +132,36 @@ SECRET = re.compile(r"(?i)^(GH|GITHUB)\w*_TOKEN$|^GH_TOKEN$|^GITHUB_PAT\w*$")
 
 
 def harness_env(base_url: str = BASE_URL) -> dict:
-    """The project's own interpreter first on PATH, and `git` off it for
-    OpenCode, whose runtime never reaps a `git` child in this container
-    and then waits on it forever."""
-    env = {k: v for k, v in os.environ.items() if not SECRET.search(k)}
+    """The project's own interpreter first on PATH, and no `PYTHONPATH`:
+    one naming a checkout makes a model's `python -m chitragupta` read
+    that checkout, and the run is left out as outside its project
+    (measured: 21 of 36 local runs in one experiment). `run()` takes `git`
+    off PATH for OpenCode and points it at `opencode_config()`."""
+    env = {k: v for k, v in os.environ.items() if not SECRET.search(k) and k != "PYTHONPATH"}
     python_dir = str(Path(sys.executable).parent)
     parts = [python_dir, *[p for p in env.get("PATH", "").split(os.pathsep) if p]]
     env["PATH"] = os.pathsep.join(parts)
     env["BASE_URL"] = base_url
     env["OPENCODE_CONFIG"] = str(EXAMPLES / "opencode" / "opencode-provider.json")
     return env
+
+
+def opencode_config(folder: Path) -> Path:
+    """The bench's OpenCode config, written to `folder/opencode.json`: the
+    provider example users copy, plus leave to read and write outside the
+    project. `opencode run` answers an `external_directory` request with
+    `auto-rejecting` and the run ends there (measured: a figure compiled
+    in /tmp, the installed package's source). Claude Code and Codex run
+    with their approvals off, so this only brings OpenCode level with
+    them; the example itself keeps OpenCode's default."""
+    config = json.loads(
+        (EXAMPLES / "opencode" / "opencode-provider.json").read_text(encoding="utf-8")
+    )
+    config["permission"] = {"external_directory": "allow"}
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / "opencode.json"
+    path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+    return path
 
 
 def without_git(env: dict, shim_root: Path) -> dict:
@@ -225,6 +249,14 @@ def command(harness: str, prompt: str, base_url: str = BASE_URL) -> list:
             # json.dumps writes a valid TOML basic string, quotes escaped.
             f'model_providers.local={{name="local",base_url={json.dumps(base_url)},'
             'wire_api="responses"}',
+            # Codex has no metadata for a local model, so it does not know
+            # the server's window and never compacts: two runs ended on a
+            # 400 at 131,625 tokens (#1210). 75% leaves room for one large
+            # tool output after the last compaction.
+            "-c",
+            f"model_context_window={LOCAL_CONTEXT}",
+            "-c",
+            f"model_auto_compact_token_limit={LOCAL_CONTEXT * 3 // 4}",
             "-m",
             LOCAL_MODEL,
             prompt,
@@ -241,6 +273,7 @@ def run(
     env = {**harness_env(base_url), "PWD": str(project)}
     if harness == "opencode":
         env = without_git(env, project.parent / "path-shim")
+        env["OPENCODE_CONFIG"] = str(opencode_config(project.parent / "opencode-config"))
     started = time.monotonic()
     # Its own session, so a timeout kills the harness and everything it
     # started. `subprocess.run(timeout=)` kills only the direct child: a
@@ -719,6 +752,7 @@ def self_check() -> None:
         _check_handoffs(project)
         _check_compare(project)
         _check_shell_shapes()
+        _check_help_layouts()
         (ref / "b.md").write_text("", encoding="utf-8")
         log.write_text(good, encoding="utf-8")
         scored = score_tier1(project, "claude", "x", log)
@@ -730,6 +764,7 @@ def self_check() -> None:
         env = without_git({"PATH": str(tools)}, project / "shim")
         shim = Path(env["PATH"])
         assert sorted(p.name for p in shim.iterdir()) == ["python"], "only git is hidden"
+        _check_harness_env(project)
         _check_flag_guards(project)
 
 
@@ -986,6 +1021,39 @@ def _check_shell_shapes() -> None:
         assert got == want, f"{command!r}: ran {got}, want {want}"
 
 
+CLICK_HELP = """Usage: python -m chitragupta.draft [OPTIONS] COMMAND [ARGS]...
+
+  The drafting layer.
+
+Options:
+  -h, --help  Show this message and exit.
+
+Commands:
+  gate        Verify every citekey in a draft against the ledger
+  dossier     The working state behind a draft: create it...
+  diff        What changed
+  a-command-name-long-enough-to-wrap
+                    Its description, on a line of its own
+
+  Run 'python -m chitragupta.draft COMMAND --help' for a command's flags.
+"""
+
+
+def _check_help_layouts() -> None:
+    """The subcommands a `--help` lists, in the click-style layout every
+    command prints now and in the argparse usage line an older install
+    prints; a leaf command lists none, and an option's choices are not
+    subcommands."""
+    want = {"gate", "dossier", "diff", "a-command-name-long-enough-to-wrap"}
+    assert help_choices(CLICK_HELP) == want, help_choices(CLICK_HELP)
+    old = "usage: draft.py [-h] {gate,dossier,diff} ...\n\nThe drafting layer.\n"
+    assert help_choices(old) == {"gate", "dossier", "diff"}, help_choices(old)
+    leaf = "Usage: python -m chitragupta.draft gate [OPTIONS] FILE...\n\n  Fail if...\n"
+    assert help_choices(leaf) == frozenset(), "a leaf has no subcommands"
+    option = "usage: x [-h] [--where {host,docker}]\n"
+    assert help_choices(option) == frozenset(), "an option's choices"
+
+
 def _check_compare(project: Path) -> None:
     """3 against 3 screens: equal passes, all to none fails, any other move
     is inconclusive. 6 against 6 settles: a move of 4 fails, less passes.
@@ -1063,7 +1131,7 @@ def _check_compare(project: Path) -> None:
     moved.write_text(json.dumps(rows), encoding="utf-8")
     assert compare(arm("b", 3), moved, quiet=True) == 0, "a command the after arm stopped naming"
     # Only the gated harnesses set the exit code (Claude Code by default,
-    # #1210): a local harness's fail is reported, and advisory.
+    # docs/HARNESS.md): a local harness's fail is reported, and advisory.
     local_b, local_a = arm("lb", 3, harness="codex"), arm("la", 0, harness="codex")
     for path, claude in ((local_b, arm("cb", 3)), (local_a, arm("ca", 3))):
         rows = json.loads(path.read_text(encoding="utf-8"))
@@ -1071,6 +1139,41 @@ def _check_compare(project: Path) -> None:
         path.write_text(json.dumps(rows), encoding="utf-8")
     assert compare(local_b, local_a, quiet=True) == 0, "codex is advisory by default"
     assert compare(local_b, local_a, quiet=True, gate=("claude", "codex")) == 1, "unless gated"
+
+
+def _check_harness_env(tmp: Path) -> None:
+    """A `PYTHONPATH` naming a checkout makes a model's `python -m
+    chitragupta` read that checkout, and the run is then left out as
+    outside its project; OpenCode's own config must let a run read and
+    write outside its project, or `opencode run` auto-rejects the request
+    and the run ends there. Both measured (#1210)."""
+    saved = os.environ.get("PYTHONPATH")
+    os.environ["PYTHONPATH"] = str(REPO_ROOT)
+    try:
+        assert "PYTHONPATH" not in harness_env(), "PYTHONPATH reaches the harness"
+    finally:
+        if saved is None:
+            del os.environ["PYTHONPATH"]
+        else:
+            os.environ["PYTHONPATH"] = saved
+    path = opencode_config(tmp / "oc")
+    config = json.loads(path.read_text(encoding="utf-8"))
+    example = json.loads(
+        (EXAMPLES / "opencode" / "opencode-provider.json").read_text(encoding="utf-8")
+    )
+    assert config["permission"] == {"external_directory": "allow"}, config
+    assert {k: v for k, v in config.items() if k != "permission"} == example, "the example"
+    assert "permission" not in example, "the user-facing example stays as it was"
+    assert example["provider"]["local"]["models"][LOCAL_MODEL]["limit"]["context"] == LOCAL_CONTEXT
+    saved_binaries = dict(BINARIES)
+    BINARIES["codex"] = "codex"
+    try:
+        codex = command("codex", "x")
+    finally:
+        BINARIES.clear()
+        BINARIES.update(saved_binaries)
+    assert f"model_context_window={LOCAL_CONTEXT}" in codex, codex
+    assert f"model_auto_compact_token_limit={LOCAL_CONTEXT * 3 // 4}" in codex, codex
 
 
 def _raise(*_args) -> dict:
@@ -1155,7 +1258,7 @@ def parse(argv) -> argparse.Namespace:
         action="append",
         choices=HARNESSES,
         help="--compare: a harness whose verdict sets the exit code, repeatable "
-        "(default claude; the others are advisory until #1210)",
+        "(default claude; the others are advisory, docs/HARNESS.md)",
     )
     args = parser.parse_args(argv)
     if args.compare is None and args.tier is None:

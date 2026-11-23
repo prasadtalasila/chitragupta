@@ -166,6 +166,7 @@ exclude_docs: |
   /docs/DEV-ENV.md
   /docs/RAG.md
   /docs/INSPIRATION.md
+  /docs/MODEL-COMPLIANCE.md
   # Plans are development records, not documentation: nothing in the nav
   # links to one, and a page that cites a plan uses a GitHub URL.
   /plans/
