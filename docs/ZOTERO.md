@@ -1,4 +1,4 @@
-# 📚 Exporting your library from Zotero
+# 📚 Getting your library in from Zotero
 
 Status: **how-to.**
 
@@ -7,7 +7,129 @@ the first time. **Assumed:** nothing. **Not covered here:** what the
 pipeline then does with it; [CLI.md](CLI.md) has the commands.
 
 This is the [README](../README.md) Quickstart's first step, in detail,
-for [Zotero](https://www.zotero.org/) (its own
+for [Zotero](https://www.zotero.org/). There are two ways in:
+
+| Route | Collections | Renamed citekeys recognised by | Citekeys |
+| --- | --- | --- | --- |
+| **[chitragupta-importer](https://github.com/prasadtalasila/chitragupta-importer)** (recommended) | yes, as slug paths | the importer's `cg-renames` block, and a matching PDF | frozen by the importer: a written key never changes |
+| A plain Zotero **BibTeX export** | none | a matching PDF only | Zotero's, rebuilt on every export |
+
+Either way the pipeline reads only `papers/bibliography.bib` and the PDFs
+it points at. It never reads Zotero, and never learns which route wrote
+the file.
+
+## 📥 With chitragupta-importer
+
+The importer reads Zotero's own storage, read-only, and writes the whole
+`papers/` directory. Its first run freezes the citekeys an existing
+bibliography already uses, so drafts that cite them keep working:
+
+```bash
+chitragupta-importer zotero --data-dir ~/Zotero --out papers \
+    --bootstrap old.bib --merge-duplicates --dry-run    # check first
+chitragupta-importer zotero --data-dir ~/Zotero --out papers \
+    --bootstrap old.bib --merge-duplicates              # first run, for real
+chitragupta-importer zotero --data-dir ~/Zotero --out papers \
+    --merge-duplicates                                  # every later run
+chitragupta corpus sync
+```
+
+It writes:
+
+```text
+papers/
+├── bibliography.bib      the tables, then one entry per item that has a PDF
+├── citekeys.lock         the importer's own; chitragupta never reads it
+├── collections.lock      the importer's own; chitragupta never reads it
+└── files/
+    └── <citekey>.pdf     each item's main PDF
+```
+
+### 📄 What `bibliography.bib` looks like
+
+A complete example, with three collections nested two deep and two
+sibling collections that share the name `Medical`. In the tables,
+`<TAB>` stands for **one real tab character**; the importer writes tabs,
+and a row separated by spaces is skipped.
+
+```bibtex
+@comment{cg-collections v1
+digital-twin<TAB>Digital Twin
+digital-twin.dt-platforms<TAB>DT Platforms
+digital-twin.use-cases<TAB>Use Cases
+digital-twin.use-cases.medical<TAB>Medical
+digital-twin.use-cases.medical-1<TAB>Medical
+}
+
+@comment{cg-renames v1
+lehner_pattern_2023-1<TAB>lehner_pattern_2023
+}
+
+@incollection{haselbach_dtus_2020,
+    title = {Digital Twins in Use},
+    booktitle = {Proceedings of the Digital Twin Workshop},
+    author = {Haselbach, Peter and Ortiz, Ana},
+    year = {2020},
+    file = {Full Text PDF:files/haselbach_dtus_2020.pdf:application/pdf},
+    cg-collections = {digital-twin.dt-platforms, digital-twin.use-cases.medical},
+}
+
+@article{lehner_pattern_2023,
+    title = {A Pattern Language for Digital Twins},
+    journal = {Software and Systems Modeling},
+    author = {Lehner, Daniel},
+    year = {2023},
+    file = {Full Text PDF:files/lehner_pattern_2023.pdf:application/pdf},
+    cg-collections = {digital-twin},
+}
+```
+
+BibTeX and biber ignore both `@comment` blocks, and JabRef and BibDesk
+keep them, so the file stays an ordinary bibliography for every other
+tool. The `cg-renames` block is optional. The importer will write it
+once
+[chitragupta-importer#7](https://github.com/prasadtalasila/chitragupta-importer/issues/7)
+lands; chitragupta already reads it.
+
+### 📐 The format, part by part
+
+**`cg-collections` (an entry field).** The slug path of every collection
+the item is directly in, separated by commas. Being in `a.b.c` means being
+in `a` and `a.b` too, so list only the deepest. A malformed path is
+dropped.
+
+**A slug path.** Lower-case segments of `[a-z0-9]`, with single `-`
+inside a segment, joined by `.`: `digital-twin.use-cases.medical-1`. The
+importer makes each segment from the collection's name (`Industry 5.0`
+becomes `industry-5-0`) and freezes it per collection, so renaming a
+collection keeps its slug and moving one keeps its segment. Two siblings
+with the same name get `medical` and `medical-1`.
+
+**Both tables.** One `@comment{...}` block each:
+
+| Part | Rule |
+| --- | --- |
+| First line | `cg-collections v1` or `cg-renames v1`: the name in lower case, a space, the version |
+| Version | `v1` is the one this release knows. Another version, or none, is still read, but sync prints a `WARNING` and exits **3** |
+| Rows | One per line: key `<TAB>` value. Further tab-separated fields are ignored; blank lines are skipped; each field is trimmed |
+| Skipped rows | A row with no tab, or a key that is not valid for the table, is skipped, and sync warns once with the count |
+| Braces | The block ends at its matching `}`. Write a brace inside a value as `\{` or `\}` |
+| Repeats | Two blocks of one name are merged; for a repeated key the first row wins |
+| Place | Anywhere in the file; the importer puts them first |
+
+| Table | Key | Value |
+| --- | --- | --- |
+| `cg-collections` | a slug path | the collection's **own** name (`Medical`), never its path; the display path `Digital Twin / Use Cases / Medical` is rebuilt from the parent rows |
+| `cg-renames` | the retired citekey | the citekey that replaced it. Both must work as filenames ([below](#-citekeys-have-to-work-as-filenames)) |
+
+A `cg-renames` row matters only when its old key has left the bib and its
+new key is in it; [CLI.md](CLI.md#-when-a-citekey-is-renamed) has what
+`sync` then reports and records.
+
+## 📤 With a plain Zotero BibTeX export
+
+Zotero's own exporter still works, with no collections and no
+`cg-renames` block (its
 [export documentation](https://www.zotero.org/support/kb/exporting)
 covers the general feature):
 
@@ -25,7 +147,22 @@ covers the general feature):
    lives (`papers/`). If you rename or move the attachments folder, that
    path breaks silently: after `sync` the entries show up as "without a
    PDF attachment", and no error is raised.
-5. Re-run `python -m chitragupta.corpus sync`.
+5. Re-run `chitragupta corpus sync`.
+
+An entry needs nothing specific to chitragupta, only a `file` field whose
+path is relative to the bib file. The sample project's first entry:
+
+```bibtex
+@article{sample_dt_overview_2024,
+  title   = {Digital Twins: Definitions, Distinctions, and a Short Taxonomy},
+  author  = {Author, A. and Builder, B.},
+  journal = {Synthetic Sample Papers},
+  year    = {2024},
+  volume  = {1},
+  pages   = {1--5},
+  file    = {Full Text PDF:files/sample_dt_overview_2024.pdf:application/pdf}
+}
+```
 
 On Windows, Zotero and Better BibTeX escape the drive colon, every
 backslash (`C\:\\Users\\...`) and a `;` in a file name (`\;`).
@@ -40,23 +177,56 @@ your entries come up "without a PDF attachment", compare against it.
 ## 🗂 Keeping your collections (optional)
 
 Your Zotero collections and subcollections are a judgement you have
-already made (*these are the modelling papers*). This pipeline can use
-them to scope a draft's retrieval to that subset rather than the whole
-library:
+already made (*these are the modelling papers*). With an importer-written
+bib, this pipeline can use them to scope a draft's retrieval to that
+subset rather than the whole library:
 
 ```bash
-python -m chitragupta.corpus ledger --collections               # what exists
-python -m chitragupta.corpus ledger --collection digital-twin
-python -m chitragupta.draft retrieve search "surrogate models" --collection "Digital Twin/Modelling"
+chitragupta corpus ledger --collections              # every collection
+chitragupta corpus ledger --collection digital-twin  # a slug path
+chitragupta draft retrieve search "surrogate models" \
+    --collection "Digital Twin/Use Cases"            # or a display path
+```
+
+`ledger --collections` prints each collection's slug path, display path
+and paper count, counting the papers beneath it; a collection the table
+names but no paper is in shows `0`:
+
+```text
+  digital-twin                      Digital Twin                        2
+  digital-twin.dt-platforms         Digital Twin / DT Platforms         1
+  digital-twin.use-cases            Digital Twin / Use Cases            1
+  digital-twin.use-cases.medical    Digital Twin / Use Cases / Medical  1
+  digital-twin.use-cases.medical-1  Digital Twin / Use Cases / Medical  0
+
+  5 collection(s).
+```
+
+`--collection` takes either form. A slug path is read only in lower case,
+as slugs are written; anything else is compared, whole and ignoring case
+and the spacing around `/`, with every display path, so a name holding
+`/` still matches. A parent selects everything beneath it. A value that
+names no collection, or names two (the two `Medical`s above), **exits 2**
+with the choices rather than returning nothing:
+
+```text
+'Digital Twin/Use Cases/Medical' names 2 collections; pass one slug path:
+  digital-twin.use-cases.medical
+  digital-twin.use-cases.medical-1
 ```
 
 Each genre skill runs `ledger --collections` at scope time. If your
 library has none, it says nothing and records `collection: (whole
-corpus)`. Otherwise it offers the list once, records the chosen slug path
-as a `collection:` line in the draft's `scope.md`, and passes `--collection`
-on every retrieval call; `draft-reviser` and `corpus-reviser` read that
-line back and do not ask again. Decline and everything searches the
-whole library.
+corpus)`. Otherwise it offers the list once and records the chosen slug
+path in the draft's `scope.md`, with the display path as a note:
+
+```text
+- collection: digital-twin.dt-platforms   # Digital Twin / DT Platforms
+```
+
+It passes that slug on every retrieval call; `draft-reviser` and
+`corpus-reviser` read the line back and do not ask again. Decline and
+everything searches the whole library.
 
 On a 642-item corpus, scoping to a 19-item shelf raised the share of
 surfaced papers that were cited from 0.31 to 0.89, at no index cost. It
@@ -65,44 +235,15 @@ results), and the shelf surfaced ten papers the whole-corpus search never
 returned, because a small pool promotes what a large pool's competition
 buries.
 
-**Collections come from
-[chitragupta-importer](https://github.com/prasadtalasila/chitragupta-importer).**
-Zotero's own BibTeX exporter drops collection membership, and Better
-BibTeX writes only each collection's own name, so neither can tell two
-`Standards` collections apart or keep a scope working after a rename.
-The importer reads Zotero's storage and writes the `papers/` directory
-this pipeline reads, with two additions to `bibliography.bib`:
-
-- each entry's `cg-collections` field lists the **slug path** of every
-  collection it is directly in (`digital-twin.dt-platforms`); being in
-  `a.b.c` means being in `a` and `a.b` too;
-- one `@comment{cg-collections v1 ...}` block at the top maps each slug
-  path to the collection's own name. BibTeX and biber ignore it.
-
-A slug is the name lower-cased with runs of anything else turned into
-`-`, frozen per collection by the importer. Renaming a collection keeps
-its slug, so a draft that recorded it keeps working; two siblings with the
-same name get `medical` and `medical-1`.
-
-`--collection` takes either form: a slug path (`digital-twin.dt-platforms`)
-or a display path, the names from the root joined with `/` (`"Digital
-Twin/DT Platforms"`). Asking for a parent selects everything beneath it.
-A value that names no collection, or names two, exits 2 with the
-choices rather than returning nothing. `ledger --collections` prints
-each collection's slug path, display path and paper count.
-
-The importer may also write a `@comment{cg-renames v1 ...}` block naming
-keys it retired and the key that replaced each. `sync` reads it, beside
-its own PDF-hash check, to recognise a renamed citekey
-([CLI.md](CLI.md#-when-a-citekey-is-renamed)).
-
 Since 7.0.0 the `groups` field Better BibTeX's *Export JabRef-specific
 fields* wrote is no longer read; sync says so once if your bib still has
-it. A draft whose `scope.md` recorded a `groups` path (`Digital twins >
+it, and once if `config.toml` still sets `[bib] collections_field`. A
+draft whose `scope.md` recorded a `groups` path (`Digital twins >
 Modelling`) is listed by `dossier status` under `unresolved_collections`
 until its scope is re-chosen.
 
-A Zotero export is the **only** way to get a paper into this pipeline.
+A `bibliography.bib`, written by the importer or exported, is the
+**only** way to get a paper into this pipeline.
 There is no directory you can drop a raw PDF into: the enrichment layer's
 corpus is the bibliography, so anything it can retrieve is something a
 draft may cite (see
@@ -110,16 +251,20 @@ draft may cite (see
 and AGENTS.md's citekey invariant). A PDF without a `.bib` entry pointing
 at it is ignored.
 
-To add papers later, add the entry in Zotero, re-export the same way
-(with **Export Files** ticked), and re-run `sync`.
+To add papers later, add the entry in Zotero, re-run the importer (or
+re-export the same way, with **Export Files** ticked), and re-run `sync`.
 
-To remove a paper, delete the entry in Zotero, re-export and re-run
-`sync`. By default `sync` only *reports* citekeys that dropped out of the
-bib file (`stale   <citekey> (no longer in bibliography.bib)`, plus one
-summary note pointing at `--remove-stale`); it deletes their
+To remove a paper, delete the entry in Zotero, re-import or re-export,
+and re-run `sync`. By default `sync` only *reports* citekeys that dropped
+out of the bib file (`stale   <citekey> (no longer in bibliography.bib)`,
+plus one summary note pointing at `--remove-stale`); it deletes their
 `content/ledger.sqlite` row only when you re-run with `--remove-stale`.
 This is deliberate: a short export is far more often a botched re-export,
 or `BIB_FILE` pointing at the wrong path, than an intentional deletion.
+A key that left because the paper now has another key is reported as
+`renamed to <new key>`; drafts citing it are swapped with
+`chitragupta draft dossier apply-renames`
+([DRAFT-ITERATION.md](DRAFT-ITERATION.md#-swapping-a-renamed-citekey)).
 
 Before either run acts, it names **what else on disk still references
 that citekey** (the overlap index, the topic graph, the chunk vectors),
@@ -156,11 +301,11 @@ warning naming it:
   re-export, and re-run sync.
 ```
 
-Zotero's own key generator won't produce one, so you are most likely to
-hit this with a custom Better BibTeX key pattern. This project never
-rewrites a citekey (the bib file is the source of truth), so the fix is
-always to rename it in the reference manager and re-export. Accented
-characters (`naïve_2024`) are fine.
+Neither the importer nor Zotero's own key generator produces one, so you
+are most likely to hit this with a custom Better BibTeX key pattern. This
+project never rewrites a citekey (the bib file is the source of truth),
+so the fix is always to rename it in the reference manager and
+re-export. Accented characters (`naïve_2024`) are fine.
 
 All paths are set in `config.toml` and overridable per run with an env
 var of the same name, e.g. `BIB_FILE=/path/to/other.bib python -m
