@@ -114,6 +114,15 @@ class TestTheSubcommandsAreTheAids:
         assert "verbatim" in result.stdout
         assert "coverage" in result.stdout
 
+    def test_no_aid_in_process_prints_the_usage_too(self, capsys):
+        """The subprocess test above proves the `-m` wiring; this one is
+        what holds `main()`'s no-aid branch to the coverage bar, since
+        pytest-cov 7 does not measure a child process."""
+        assert entrypoint.main([]) == 0
+        out = capsys.readouterr().out
+        for aid in ("provenance", "verbatim", "coverage"):
+            assert aid in out
+
     def test_an_unknown_aid_is_a_usage_error(self):
         result = run_python("-m", "chitragupta.review", "bogus")
         assert result.returncode == 2

@@ -78,7 +78,7 @@ jobs:
         shell: bash
         run: cp config.toml.example config.toml
 
-      # `poetry.lock` is the key, not `pyproject.toml`: the lock is what
+      # `uv.lock` is the key, not `pyproject.toml`: the lock is what
       # actually determines resolved versions (#275). The restore step
       # runs on every run and every branch, and a cache written on the
       # default branch is readable from any branch -- so a PR whose lock
@@ -87,29 +87,29 @@ jobs:
       # cold, which is the deliberate consequence of the paragraph below.
       # The write asymmetry is what keeps this repository under the
       # 10GB-per-repo cache limit: six open PRs writing their own ~1-2GB
-      # entry would thrash it, one entry per `poetry.lock` hash does not.
+      # entry would thrash it, one entry per `uv.lock` hash does not.
       #
       # **No `restore-keys`** (#512/m-87). The prefix fallback restored
       # the newest same-OS entry on a lock-hash miss, which reads like a
-      # free head start and is not one: `poetry install` without `--sync`
+      # free head start and is not one: the install's `uv sync --inexact`
       # never uninstalls, so a package *removed* from the lock stayed
       # importable in the restored venv -- and on `main` that venv was
       # then re-saved under the **new** lock's hash, carrying the removed
       # package forward for good. CI would keep passing on an import that
       # a clean install cannot satisfy, which is the exact opposite of
-      # what the paragraph below claims this step is for. `--sync` is the
-      # other available fix and is worse here: it would strip the
+      # what the paragraph below claims this step is for. An exact sync is
+      # the other available fix and is worse here: it would strip the
       # cpu-torch wheel swap `install_full_pipeline.sh` performs after
-      # `poetry install`, re-downloading it on every run.
+      # `uv sync`, re-downloading it on every run.
       #
-      # The cost is a cold install whenever `poetry.lock` changes, which
+      # The cost is a cold install whenever `uv.lock` changes, which
       # is exactly when a clean install is the thing worth testing.
       #
       # This never lets a hit skip the install script below: it still
       # runs unconditionally, against whatever `.venv-full` this step
       # restored (empty, on a miss). That is deliberate -- `ci.yml`
       # calling `install_full_pipeline.sh` is itself an end-to-end test
-      # that the script still works on a clean host, and poetry's own
+      # that the script still works on a clean host, and uv's own
       # up-to-date check is what makes a hit fast (nothing left to
       # install) without this workflow needing to know that.
       #
@@ -130,7 +130,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .venv-full
-          key: venv-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('poetry.lock') }}
+          key: venv-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('uv.lock') }}
 
       # Dogfoods the project's own single install path (DEVELOPER-AGENTS.md: "don't
       # add a second install path") rather than hand-rolling equivalent
@@ -145,7 +145,7 @@ jobs:
       # 6.2GB venv, per docker/Dockerfile's own measurement) is downloaded,
       # installed and thrown away on every run. ensure_gpu_torch cannot
       # catch this: it probes for nvidia-smi and returns when there is
-      # none, leaving whatever poetry.lock resolved in place.
+      # none, leaving whatever uv.lock resolved in place.
       #
       # Linux only. The Windows leg skips os-deps entirely and installs no
       # CUDA wheels to remove, and `cpu-torch` is deliberately not part of
@@ -155,27 +155,23 @@ jobs:
         if: runner.os == 'Linux'
         run: bash scripts/install_full_pipeline.sh cpu-torch
 
-      # os-deps' apt-get also installs Poetry itself (python3-poetry) on
-      # Linux -- python-deps' check_poetry() has no other way to find it
-      # on a host that skipped os-deps, confirmed by this leg's first
-      # real run (poetry not found, exit 1). install_full_pipeline.sh's
-      # own check_poetry() already documents "or install Poetry
-      # manually" as the accepted non-apt path; this is that, scoped to
-      # CI rather than added to the shared script (a real end user's
-      # Windows host isn't necessarily bootstrapping Poetry via CI's
-      # exact mechanism).
+      # os-deps also installs uv itself on Linux (a pinned, checksum-
+      # verified binary -- install_full_pipeline.sh's install_uv), and
+      # python-deps' check_uv() has no other way to find it on a host that
+      # skipped os-deps. check_uv() itself names this pip command as the
+      # non-Linux route; this is that, scoped to CI.
       #
       # Pinned to an exact version, wheels only (Sonar S8544/S8541: an
       # unpinned `pip install` resolves to whatever PyPI serves that day,
       # and an sdist fallback would run arbitrary setup scripts at install
-      # time). 2.4.1 is what "latest" resolved to while this leg was
-      # green; bump it deliberately, the way the pinned action SHAs below
+      # time). Bump it deliberately, the way the pinned action SHAs below
       # are bumped, rather than tracking latest silently -- and bump
-      # docs.yml's and release.yml's installs with it, all three together.
-      - name: Install Poetry (non-Linux only -- os-deps' apt-get is Linux-specific)
+      # docs.yml's and release.yml's installs, and the installer's
+      # UV_VERSION and digests, with it.
+      - name: Install uv (non-Linux only -- os-deps' install_uv is Linux-specific)
         if: runner.os != 'Linux'
         shell: bash
-        run: pip install --only-binary ':all:' poetry==2.4.1
+        run: pip install --only-binary ':all:' uv==0.13.9
 
       # os-deps (apt-get: poppler-utils, TeX Live, Pandoc) is
       # Linux-only -- Windows gets the pure-Python python-deps stage
@@ -208,7 +204,7 @@ jobs:
       # every PR branch is exactly the thrash #275 exists to avoid, and
       # re-saving an already-current entry costs upload time for no
       # benefit. `main`'s entry is what a PR branch restores above --
-      # a PR whose `poetry.lock` hashes the same as `main`'s, which since
+      # a PR whose `uv.lock` hashes the same as `main`'s, which since
       # #512/m-87 is the only kind that restores anything at all.
       - name: Save the .venv-full cache (main only, on a miss)
         if: github.ref == 'refs/heads/main' && steps.venv-cache.outputs.cache-hit != 'true'
@@ -217,11 +213,12 @@ jobs:
           path: .venv-full
           key: ${{ steps.venv-cache.outputs.cache-primary-key }}
 
-      # poetry run (not a hardcoded .venv-full/bin/python) resolves
+      # `uv run --active` (not a hardcoded .venv-full/bin/python) resolves
       # correctly on both venv layouts (POSIX bin/ vs a native Windows
-      # Python's Scripts/) via poetry.toml's virtualenvs.create = false
-      # + VIRTUAL_ENV, instead of this workflow needing to know which
-      # one .venv-full actually has.
+      # Python's Scripts/) through VIRTUAL_ENV, instead of this workflow
+      # needing to know which one .venv-full actually has. `--no-sync`:
+      # the install steps above already synced it, and a second sync here
+      # would undo the cpu-torch swap.
       # One floor now, not two (#291). Windows gets
       # python-deps only (os-deps is apt-only: pandoc, TeX Live, poppler),
       # so ~30 render/pdf tests self-skip there -- but rather than budget
@@ -251,7 +248,7 @@ jobs:
         run: |
           export VIRTUAL_ENV="$PWD/.venv-full"
           set -o pipefail
-          poetry run python -m pytest -n auto -m "not slow" --cov --cov-report=term-missing \
+          uv run --active --no-sync python -m pytest -n auto -m "not slow" --cov --cov-report=term-missing \
             --cov-report=xml --cov-fail-under=100 --cov-config=coveragerc-windows.toml -rf | tee pytest-output.txt
 
       # Which test failed is the only actionable part of a red run.
@@ -363,11 +360,12 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
-      - name: poetry check
+      # uv.lock still matches pyproject.toml: a constraint edited without
+      # re-locking fails here, by name, rather than as a confusing
+      # `--locked` refusal inside the install script on the next run.
+      - name: uv lock --check
         shell: bash
-        run: |
-          export VIRTUAL_ENV="$PWD/.venv-full"
-          poetry check
+        run: uv lock --check
 
   # Can the hooks this repository registers actually start? The gate
   # class has exactly one member -- `citation_gate_hook.py`, the only
@@ -380,7 +378,7 @@ jobs:
   # to answer on a host that installed *nothing*. `chitragupta/hook_launchers.py`
   # is standard-library-only and imports no other chitragupta module by
   # design, and `chitragupta/__init__.py` is empty -- so this needs no
-  # venv, no poetry, no `os-deps` and no config.toml, and finishes in
+  # venv, no uv, no `os-deps` and no config.toml, and finishes in
   # seconds rather than paying for the ~6GB install the test matrix
   # needs. Folding it into `test` would make the cheapest check in the
   # repository the slowest.
@@ -461,15 +459,16 @@ jobs:
       #
       # Both pins are Sonar S8544 (don't install unpinned): pylint at what
       # "latest" resolved to while this job was green, bibtexparser at
-      # poetry.lock's resolved version, so the linter sees the same
+      # uv.lock's resolved version, so the linter sees the same
       # library the pipeline runs. No `--only-binary` here, unlike the
-      # Poetry installs: bibtexparser 1.4.x ships only an sdist, so a
-      # wheels-only install cannot resolve it at all. The `--upgrade pip`
+      # uv installs: it was impossible while bibtexparser 1.4.x shipped
+      # only an sdist. 2.x ships a wheel, so it could now be added, with
+      # scripts/check_local.sh's matching line. The `--upgrade pip`
       # that used to lead this line is gone for the same rule -- it was an
       # unpinned moving target, and the runner's own pip installs two
       # pinned packages fine.
       - name: Install pylint and the runtime dependency
-        run: python -m pip install pylint==4.0.7 bibtexparser==1.4.4
+        run: python -m pip install pylint==4.0.7 bibtexparser==2.1.0
 
       # Pinned exactly, not just for Sonar S8544: `[tool.ruff.lint]`'s
       # `RUF100` verdict on a given `except` block depends on ruff's own

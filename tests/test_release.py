@@ -20,8 +20,8 @@ def make_repo(tmp_path):
     subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True)
 
     (repo / "pyproject.toml").write_text(
-        '[tool.poetry]\nname = "x"\nversion = "9.9.9"\n'
-        'repository = "https://github.com/example-owner/example-repo"\n',
+        '[project]\nname = "x"\nversion = "9.9.9"\n'
+        '[project.urls]\nRepository = "https://github.com/example-owner/example-repo"\n',
         encoding="utf-8",
     )
     (repo / "README.md").write_text(
@@ -73,12 +73,12 @@ def repo(tmp_path, monkeypatch):
 
 
 class TestGetVersion:
-    def test_reads_poetry_version(self, repo):
+    def test_reads_the_project_version(self, repo):
         assert release.get_version() == "9.9.9"
 
 
 class TestGetRepository:
-    def test_reads_poetry_repository(self, repo):
+    def test_reads_the_project_repository_url(self, repo):
         assert release.get_repository() == "https://github.com/example-owner/example-repo"
 
 

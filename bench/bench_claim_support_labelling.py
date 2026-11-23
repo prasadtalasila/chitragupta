@@ -33,7 +33,7 @@ Reuses `bench_claim_support.py`'s `_population()` for the findings, so
 the sample is drawn from exactly the pool that script scores, and the ids
 are the ones its own `labels.json` would use.
 
-Needs the "enrich" Poetry group (the entailment model), a synced corpus
+Needs the "enrich" extra (the entailment model), a synced corpus
 and the four real drafts.
 
     CHITRAGUPTA_PROJECT=. .venv-full/bin/python \\

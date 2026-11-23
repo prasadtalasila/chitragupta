@@ -36,7 +36,7 @@ the venv, and its `unmatched` list is the question an author planning a
 draft actually has, which is not "what did the clustering find" but
 "which of my papers does my own topic list fail to describe".
 
-Needs the "enrich" Poetry group, like every other stage here: it calls
+Needs the "enrich" extra, like every other stage here: it calls
 the same sentence-transformers model `embed_index.py` and
 `topic_model.py` do, deliberately, since a similarity computed against a
 different model than the one that embedded the documents is not a

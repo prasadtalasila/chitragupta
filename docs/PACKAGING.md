@@ -8,7 +8,7 @@ installing without a git checkout, and anyone about to change a command
 name. [CLI.md](CLI.md) is the per-flag reference for what each command
 does.
 
-`poetry build` produces `chitragupta_cli-<version>-py3-none-any.whl`,
+`uv build` produces `chitragupta_cli-<version>-py3-none-any.whl`,
 which installs the import package `chitragupta` and the `chitragupta`
 and `cg` commands. Only a major or minor version is released, on GitHub
 and PyPI together.
@@ -50,7 +50,7 @@ a bare tag.
 executables against one entry point:
 
 ```toml
-[tool.poetry.scripts]
+[project.scripts]
 chitragupta = "chitragupta.__main__:main"
 cg          = "chitragupta.__main__:main"
 ```

@@ -189,12 +189,11 @@ _RETRIEVAL_TEMPLATE = """# Retrieval calls
      column, "did this draft follow the outline it declared?" has no
      evidence to answer from.
 
-     `expanded` is what `chitragupta/retrieval_expansion.py` added to the
-     query before ranking it -- `DT -> digital twin`, an acronym and the
-     terms its expansion contributed (#789). Empty for a call that added
-     nothing, which is every call until `[retrieval].acronym_expansion`
-     is turned on, and also how every row written before this column
-     existed reads. Without it, a result that surfaced on a word the
+     `expanded` is what was added to the query before ranking it: an
+     acronym and the terms it stands for (`dt -> digital twin`, #789),
+     or a spelling correction (`strucutral ~> structural`, #1232). Empty
+     for a call that added nothing, and in every row written before this
+     column existed. Without it, a result that surfaced on a word the
      caller never typed leaves no record of why.
 
      `k1` and `b` are the two Okapi BM25 settings in force when the call

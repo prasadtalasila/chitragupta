@@ -17,6 +17,7 @@ from chitragupta import (
     retrieval_cli,
     retrieval_passages,
     retrieval_scoring,
+    retrieval_spelling,
     retrieval_tables,
 )
 
@@ -935,6 +936,71 @@ class TestOneQueryOneSetOfTerms:
         assert "no passage matches" not in captured.out
         row = (dossier.dossier_dir(draft) / "retrieval.md").read_text().rstrip().splitlines()[-1]
         assert [c.strip() for c in row.strip().strip("|").split("|")][8] == "dt -> digital twin"
+
+
+class TestSpellingCorrection:
+    """#1232 end to end, against a vocabulary built from a real ledger:
+    `strucutral` is in no paper, and `structural` is in two, the floor a
+    correction target must clear."""
+
+    @pytest.fixture
+    def corpus(self, ledger_con):
+        for citekey, text in (
+            ("a2024", "opening matter " * 60 + "the structural model of the bridge"),
+            ("b2024", "a structural health monitoring study"),
+            ("c2024", "an unrelated paper about greenhouses"),
+        ):
+            parsed = parsed_file(citekey)
+            parsed.write_text(text)
+            add_citable(ledger_con, citekey, title=citekey)
+            ledger.mark_parsed(ledger_con, citekey, parsed)
+        return ledger_con
+
+    @pytest.fixture
+    def on(self, monkeypatch):
+        monkeypatch.setattr(config, "SPELLING_CORRECTION", True)
+
+    def test_off_a_typo_finds_nothing(self, corpus):
+        assert retrieval.search("strucutral") == []
+
+    def test_on_a_typo_reaches_the_papers_with_its_corpus_spelling(self, corpus, on):
+        assert sorted(r.citekey for r in retrieval.search("strucutral")) == ["a2024", "b2024"]
+
+    def test_off_never_builds_a_vocabulary(self, corpus, monkeypatch):
+        """With the setting off, every query in this file ranks exactly as
+        before #1232: no vocabulary is built, so none can move anything."""
+        monkeypatch.setattr(
+            retrieval_spelling, "vocabulary", lambda _: pytest.fail("built a vocabulary")
+        )
+        for query in ("strucutral", "structural health", "what is a DT", "the of and"):
+            assert all(entry.source == "acronym" for entry in retrieval.query_terms(query)[1])
+
+    def test_evidence_windows_anchor_on_the_correction(self, corpus, on):
+        (window,) = retrieval_cli.evidence("a2024", "strucutral", windows=1)
+        assert "structural model" in window
+
+    def test_the_drift_report_replays_the_correction(self, corpus, on):
+        from chitragupta.dossier import _drift
+
+        with ledger.reading() as con:
+            rows = ledger.all_items(con)
+        matches = _drift.Corpus(rows).matches([("strucutral", "")])
+        assert sorted(matches) == ["a2024", "b2024"]
+
+    def test_the_cli_notes_and_logs_the_correction(self, corpus, on, capsys):
+        from chitragupta import dossier
+
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("# s\n")
+        assert retrieval.main(["search", "strucutral", "--log", str(draft)]) == 0
+        captured = capsys.readouterr()
+        assert "[note] spelling: searched 'structural' for 'strucutral'" in captured.err
+        assert "spelling" not in captured.out
+        row = (dossier.dossier_dir(draft) / "retrieval.md").read_text().rstrip().splitlines()[-1]
+        assert [c.strip() for c in row.strip().strip("|").split("|")][8] == (
+            "strucutral ~> structural"
+        )
 
 
 class TestCli:

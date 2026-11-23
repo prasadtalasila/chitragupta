@@ -660,7 +660,7 @@ class TestUnavailableReason:
 
     def test_docling_mentions_enrich_group(self, monkeypatch):
         monkeypatch.setattr(config, "PARSER", "docling")
-        assert "poetry install --with enrich" in pdf_text.unavailable_reason()
+        assert "bash scripts/install_full_pipeline.sh python-deps" in pdf_text.unavailable_reason()
 
 
 class TestDropStdlibShadowingPathEntries:
@@ -2538,11 +2538,11 @@ class TestAnnotatedOutputOnItsOwn:
 
 
 def test_the_docling_hint_names_each_shape_its_own_command():
-    # #1022 review: `chitragupta install enrich` in a Poetry checkout runs
+    # #1022 review: `chitragupta install enrich` in a checkout runs
     # an unpinned pip install over the editable one, so the hint must not
     # offer it as the checkout's command.
     from chitragupta import pdf_text
 
     hint = pdf_text._INSTALL_HINT["docling"]
-    assert "in a git checkout, 'poetry install --with enrich'" in hint
+    assert "in a git checkout, 'bash scripts/install_full_pipeline.sh python-deps'" in hint
     assert "in an installed project, `chitragupta install enrich`" in hint

@@ -45,7 +45,9 @@ symmetric fix would re-rank every query for no further gain. `search()`,
 recorded query all score through `query_terms()`: `_tokenize()` minus a
 small hand-maintained set of wh-words and question auxiliaries, plus
 [acronym
-expansion](RETRIEVAL.md#-an-acronym-in-the-query-can-reach-the-words-it-stands-for).
+expansion](RETRIEVAL.md#-an-acronym-in-the-query-can-reach-the-words-it-stands-for)
+and, when switched on, [spelling
+correction](RETRIEVAL.md#-a-misspelled-query-word-can-reach-its-corpus-spelling).
 The illustration above shows `_tokenize()`; a real query is scored
 without the interrogatives.
 

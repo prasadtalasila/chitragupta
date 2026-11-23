@@ -51,9 +51,10 @@ def log_retrieval(
     corpus-wide one at the same query and `--k` wrote byte-identical
     rows, and nothing downstream could tell which had actually run.
 
-    `expanded` is what acronym expansion added to the query before it
-    was ranked -- `chitragupta/retrieval_expansion.describe`'s one-line
-    rendering, empty for a call that added nothing (#789). Empty is also
+    `expanded` is what acronym expansion (#789) and spelling correction
+    (#1232) added to the query before it was ranked --
+    `chitragupta/retrieval_added.describe`'s one-line rendering, empty for
+    a call that added nothing. Empty is also
     how every row written before this column existed reads, and unlike
     `origin` that widening is exact rather than approximate: a row logged
     before this existed was ranked with no expansion, because there was

@@ -1,16 +1,23 @@
 # 📦 Poetry, uv, and the lockfile that would not regenerate
 
-Status: **reasoning document.**
+Status: **decided -- migrated to uv** (2026-11-23). See
+[What changed the decision](#-what-changed-the-decision) and
+[What the migration did](#-what-the-migration-did) at the end.
 
-A decision record. `poetry lock --regenerate` does not finish on this
+A decision record. `poetry lock --regenerate` did not finish on this
 project, the investigation produced numbers worth keeping, and "should
-we move to uv?" is a question that will be asked again by someone who
-does not have those numbers.
+we move to uv?" was a question that would be asked again by someone who
+did not have those numbers.
 
-In short: the resolver problem is real and measured, the cheap fix is a
-script and not a migration, and uv's advantage is almost entirely in
-*resolution*. Installation speed, the usual reason people cite for
-switching, is the smaller gain.
+In short: the resolver problem was real and measured, the cheap fix was
+a script and not a migration -- until the script stopped working too --
+and uv's advantage is almost entirely in *resolution*. Installation
+speed, the usual reason people cite for switching, is the smaller gain.
+
+Everything from here to "What changed the decision" is the analysis as
+it stood on 2026-09-05, kept unedited so the reasoning can be checked
+against the outcome. `scripts/relock.py`, which it recommends, has been
+deleted.
 
 ## 🔍 The problem
 
@@ -238,3 +245,76 @@ Stated so nobody mistakes this document for a completed evaluation:
   network. The resolution figures are reproducible and lopsided enough
   that variance does not matter; the install figures are close enough
   that it might.
+
+## 🔄 What changed the decision
+
+The recommendation above rested on `scripts/relock.py` regenerating
+`poetry.lock` in under two minutes. On 2026-11-22 it stopped working,
+and so did the one-package-at-a-time route the recommendation fell back
+on, for one package: torch 2.15.0.
+
+- torch's Linux build depends on `cuda-toolkit`, which brings each
+  `nvidia-*` library in through an extra with a platform marker. Poetry
+  2.4.1 logs "Different requirements found" for each one and retries
+  the whole resolution with an override, and the overrides combine:
+  1,917 retries in 90 seconds, each well under a second, never
+  finishing.
+- `poetry update --lock torch` was still running after 20 minutes.
+  `relock.py`'s pinned pass did not finish in 10, and its second pass
+  (`poetry lock` against the real `pyproject.toml`) does not finish
+  even with a complete lock to start from.
+- Pinning all 203 packages uv resolved made Poetry's first pass finish
+  in 30 seconds, but kept the second pass stuck. Making the pinned pass
+  stand on its own produced a lock that differed from Poetry's own in
+  24 of 203 packages (marker spelling, collapsed forks) and needed its
+  `content-hash` patched through Poetry's private API.
+
+uv resolved the same graph in 2.7 seconds. So "migrate only if the
+dependency set keeps growing" had, in effect, come true: the set did not
+grow, but one upstream release made it unlockable by Poetry at all.
+
+## ✅ What the migration did
+
+One branch, in the order the recommendation set out:
+
+1. **`pyproject.toml` to PEP 621.** `[project]` carries the metadata,
+   the three extras are declared once in
+   `[project.optional-dependencies]` (the Poetry groups, their 17 mirror
+   entries and `tests/test_pyproject_extras.py`'s equality check are
+   gone), and `[tool.uv] environments` holds the Python range the lock
+   resolves for: 3.12-3.14, not 3.14.1, on Linux, macOS and Windows.
+   uv locks for every platform by default, WebAssembly included, where
+   onnxruntime has no wheels.
+2. **poetry-core stays the build backend**, with its `[tool.poetry]`
+   `packages`/`include` lists, so the file set a wheel and sdist carry
+   could not move. Checked against the Poetry-built 6.180.3 artefacts:
+   the same 1,161 wheel files and 1,164 sdist files, the same entry
+   points and long description, and every `Requires-Dist` byte for
+   byte. The only metadata difference is `Requires-Python`, which
+   Poetry spelled `>=3.12, !=2.7.*, ... !=3.11.*` and is now `>=3.12` --
+   the same set of versions. `pip install` of the built wheel was
+   checked for the core package and each extra in clean venvs.
+3. **The version moved to `[project].version`**, for
+   `scripts/release.py`, `release.yml`'s tag check and
+   `review.version()`. `scripts/check_version_bump.py` reads either
+   table, because its base side is `main`.
+4. **`scripts/install_full_pipeline.sh` runs `uv sync`** (`--active
+   --inexact --locked --no-build`; its header says why each), and
+   `os-deps` fetches a pinned, SHA256-verified uv binary in place of
+   apt's `python3-poetry`. Every locked dependency now ships a wheel,
+   so `--no-build` refuses every source build -- what the Sonar comment
+   on the old `poetry install` wanted and could not have.
+5. **CI, docs, release and Docker** install a pinned uv, key the venv
+   cache on `uv.lock`, and check `uv lock --check` where `poetry check`
+   ran.
+
+6. **torch is capped below 2.15**, although uv locks 2.15.0 without
+   trouble. PyTorch published 2.15.0 for CUDA 13.2 and CPU only, so
+   `ensure_gpu_torch` finds no build for a driver older than CUDA 13.2,
+   and such a host would run CPU-only. `pyproject.toml`'s comment on the
+   cap says when to lift it.
+
+What is still not verified, carried over from the list above: uv's
+torch index selection on a GPU host. `ensure_gpu_torch` and
+`ensure_cpu_torch` are unchanged and still swap torch with pip after
+the sync.

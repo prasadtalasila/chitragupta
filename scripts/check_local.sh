@@ -131,7 +131,7 @@ fetch_main_and_tags() {
 }
 
 instead "Create config.toml from the tracked example" copy_config_if_absent
-need "Install pylint and the runtime dependency" pylint==4.0.7 py:bibtexparser==1.4.4
+need "Install pylint and the runtime dependency" pylint==4.0.7 py:bibtexparser==2.1.0
 need "Install ruff" ruff==0.16.4
 instead "Fetch main and tags for the version check" fetch_main_and_tags
 run "Version bump has not been lost to a collision" off_main python3 scripts/check_version_bump.py

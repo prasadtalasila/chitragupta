@@ -62,6 +62,19 @@ def _pin_parser_settings(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _fresh_retrieval_memos():
+    """Start every test with spelling correction's two in-memory caches
+    empty (#1232): `retrieval_cache.read_only_index`'s last index and
+    `retrieval_spelling.vocabulary`'s. Both check their own staleness, so
+    this is isolation rather than correctness -- one test's corpus can
+    never be served to the next."""
+    from chitragupta import retrieval_cache, retrieval_spelling
+
+    retrieval_cache._READ_ONLY_MEMO.clear()
+    retrieval_spelling._MEMO.clear()
+
+
+@pytest.fixture(autouse=True)
 def _no_real_forkserver(monkeypatch):
     """Keep the suite from launching an actual forkserver process.
 
@@ -592,7 +605,7 @@ def _IS_COVERAGE_BOOTSTRAP(name: str) -> bool:
     what `python` resolves to: pytest-cov 6.x ships a `.pth` that
     instruments every subprocess, 7.x does not, and the hook spawns a
     literal `python` rather than `sys.executable`, so a venv on PATH
-    (what `poetry run` gives CI) is instrumented while a bare system
+    (what `uv run --active` gives CI) is instrumented while a bare system
     interpreter is not. Stripping these makes every combination behave
     the same. Nothing is lost: the in-process tests already cover
     `chitragupta/citation_gate.py` fully, which is why the total is 100% on a

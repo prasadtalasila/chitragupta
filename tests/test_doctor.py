@@ -183,10 +183,14 @@ class TestCheckEnrichExtra:
         """The list is `pyproject.toml`'s, read from it rather than
         restated here -- a package added to the extra and not to
         `ENRICH_MODULES` would otherwise go unprobed forever."""
+        import re
         import tomllib
 
         data = tomllib.loads(REPO_ROOT.joinpath("pyproject.toml").read_text(encoding="utf-8"))
-        declared = data["tool"]["poetry"]["extras"]["enrich"]
+        requirements = data["project"]["optional-dependencies"]["enrich"]
+        declared = [
+            re.split(r"[<>=!~;\[ ]", requirement, maxsplit=1)[0] for requirement in requirements
+        ]
         assert [name.replace("-", "_") for name in declared] == list(doctor.ENRICH_MODULES)
 
 

@@ -5,7 +5,7 @@ the other, and neither replaces the other:
 
 | File | What it is | Size | Needs a checkout |
 | --- | --- | --- | --- |
-| `docker/Dockerfile` | The **toolchain image**. Builds the full TeX Live/Pandoc/Poetry/torch stack from this repository's own `scripts/install_full_pipeline.sh`, for hosts where you don't hold root. Ubuntu 26.04 LTS / Python 3.14, with the C headers and compiler triton JITs against. Mount your checkout, get a shell with everything resolved. | 5.09GB (cpu) / 11.6GB (gpu, measured on an earlier base image) | Yes: it is the checkout you mount and work in |
+| `docker/Dockerfile` | The **toolchain image**. Builds the full TeX Live/Pandoc/uv/torch stack from this repository's own `scripts/install_full_pipeline.sh`, for hosts where you don't hold root. Ubuntu 26.04 LTS / Python 3.14, with the C headers and compiler triton JITs against. Mount your checkout, get a shell with everything resolved. | 5.09GB (cpu) / 11.6GB (gpu, measured on an earlier base image) | Yes: it is the checkout you mount and work in |
 | `docker/Dockerfile.claude` | The **agent image**. Node, Claude Code, and a `/opt/venv` install of the published `chitragupta-cli` package, driven by `docker/docker-compose.yml` as a long-lived `claude remote-control` host. The toolchain is *not* baked in; you add what you need at runtime with `chitragupta install`. | ~2.5GB | No, it installs from PyPI |
 
 `docker/Dockerfile` is documented first, then the agent image under
@@ -39,13 +39,13 @@ docker build -t chitragupta -f docker/Dockerfile .
 ```
 
 This runs `scripts/install_full_pipeline.sh` twice as separate,
-independently cached layers: `os-deps`, then `python-deps` (via Poetry,
+independently cached layers: `os-deps`, then `python-deps` (via uv,
 with `SKIP_VENV=1` so it installs into `/opt/venv` instead of creating
 its own). Editing later Dockerfile lines or unrelated repo files
 therefore doesn't force earlier layers to rebuild. Two exceptions: the
 script itself is `COPY`'d once before either stage runs, so editing
 `scripts/install_full_pipeline.sh` invalidates both layers; and
-`pyproject.toml`, `poetry.lock`, `poetry.toml` and `README.md` are
+`pyproject.toml`, `uv.lock` and `README.md` are
 `COPY`'d before the `python-deps` layer, so editing any of them
 rebuilds that layer.
 Docker's cache keys each layer on the exact command *and* any files that
@@ -55,9 +55,8 @@ first build.
 
 ### ⚖ CPU-only vs. GPU-capable: `TORCH_VARIANT`
 
-`torch` isn't pinned in `pyproject.toml` (it's a transitive dependency of
-`sentence-transformers`/`docling`/`accelerate`; see that file's own
-comment). `poetry.lock` resolves whatever plain PyPI's default Linux
+`torch` has only a floor in `pyproject.toml` (see that file's own
+comment). `uv.lock` resolves whatever plain PyPI's default Linux
 wheel currently is, and that wheel bundles the full CUDA runtime as
 separate `nvidia-*` packages (`cublas`, `cudnn`, `nccl`, `triton`, ...)
 regardless of whether the build host or the eventual container ever sees
@@ -70,17 +69,17 @@ one you get:
 | `cpu` | `docker build -t chitragupta -f docker/Dockerfile --build-arg TORCH_VARIANT=cpu .` | 5.09GB | Everything else. Embeddings/clustering/rendering all run fine on CPU, and this is what you want for build-verification or a host with no GPU at all |
 
 The `cpu` variant reinstalls `torch`/`torchvision` from PyTorch's own
-CPU-only wheel index, at the exact version `poetry.lock` resolved (read
+CPU-only wheel index, at the exact version `uv.lock` resolved (read
 back via `pip show` rather than pinned a second time in the Dockerfile,
-so it can't drift from a `poetry lock` re-resolution), then removes the
+so it can't drift from a `uv lock` re-resolution), then removes the
 now-orphaned `nvidia-*`/`triton` packages. Both the swap and the removal
-happen inside the same `RUN` as the original `poetry install`, so the
+happen inside the same `RUN` as the original `uv sync`, so the
 CUDA wheels never end up committed to a layer in the first place.
 Doing this as a later, separate `RUN` only marks them deleted and leaves
 the image *larger*, since the earlier layer's bytes are still stored.
 
-Sizes above also depend on the Poetry/pip download cache being purged in
-that same layer (`rm -rf /root/.cache/pypoetry /root/.cache/pip`, at the
+Sizes above also depend on the uv/pip download cache being purged in
+that same layer (`rm -rf /root/.cache/uv /root/.cache/pip`, at the
 end of the `python-deps` `RUN`). Without it, every build leaves the
 full set of downloaded wheel archives sitting in the final image on top
 of the installed packages (measured: 24.9GB for the `gpu` variant with
@@ -398,7 +397,7 @@ docker exec -it chitragupta-claude tmux attach -t claude
 
 The same commands as the main README's Quickstart work directly with no
 venv prefix, since `/opt/venv` is already on `PATH` (and exported as
-`VIRTUAL_ENV`, so Poetry installs into it rather than creating its own)
+`VIRTUAL_ENV`, so uv installs into it rather than creating its own)
 inside the container:
 
 ```bash

@@ -151,3 +151,34 @@ class TestTheCli:
         payload = json.loads(self._run(str(path), "--json").stdout)
         assert [f["rule"] for f in payload["findings"]] == ["C2"]
         assert payload["findings"][0]["count"] == 300
+
+
+class TestTheCliInProcess:
+    """`main()` and `format_findings()` called directly. TestTheCli above
+    proves the script runs as a script; since pytest-cov 7 a child
+    process is not measured, so these are what hold the two functions to
+    the coverage bar."""
+
+    def test_a_clean_tree_says_so(self, scan, capsys):
+        assert scan.main([]) == 0
+        assert "no findings" in capsys.readouterr().out.lower()
+
+    def test_json_emits_a_findings_list(self, scan, capsys):
+        assert scan.main(["--json"]) == 0
+        assert json.loads(capsys.readouterr().out)["findings"] == []
+
+    def test_a_crossing_is_named_in_the_text_form(self, scan, tmp_path, capsys):
+        path = tmp_path / "m.py"
+        path.write_text("\n".join(f"x{i} = {i}" for i in range(300)), encoding="utf-8")
+        assert scan.main([str(path)]) == 0
+        assert "C2" in capsys.readouterr().out
+
+    def test_each_rule_names_its_own_unit(self, scan):
+        text = scan.format_findings(
+            [
+                {"rule": "C1", "name": "f", "count": 30, "limit": 25},
+                {"rule": "C2", "name": "m.py", "count": 300, "limit": 250},
+            ]
+        )
+        assert "C1  f  30 statements (limit 25)" in text
+        assert "C2  m.py  300 code lines (limit 250)" in text

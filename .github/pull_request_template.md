@@ -56,7 +56,7 @@ What was actually run, not what was intended (see DEVELOPER-AGENTS.md,
       version-bump check, pylint, both ruff checks, shellcheck,
       actionlint, markdownlint, the node tests and the Vale check, in
       CI's order; read its own exit code, not a pipeline's
-- [ ] `poetry check`
+- [ ] `uv lock --check`
 - [ ] At least one real end-to-end smoke test against real dependencies,
       not only mocked unit tests -- [name it here]. For an
       `chitragupta/enrich/*` change, `tests/test_enrich_real_libraries.py`

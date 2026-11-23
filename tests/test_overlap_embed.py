@@ -474,7 +474,7 @@ class TestOpenScope:
         monkeypatch.setattr(overlap_chroma, "optional_stack", lambda: None)
         scope, reason = overlap_embed.open_scope(draft)
         assert scope is None
-        assert "poetry install --with enrich" in reason
+        assert "bash scripts/install_full_pipeline.sh python-deps" in reason
 
     def test_an_unbuilt_collection_says_how_to_build_it(self, isolated_config, monkeypatch):
         draft = write_draft(config, "# T\n\nprose\n", dossier_rows=[("T", "`smith_2024`")])

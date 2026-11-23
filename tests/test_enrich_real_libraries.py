@@ -2,7 +2,7 @@
 
 `tests/test_enrich_embed_index.py` and `tests/test_enrich_topic_model.py`
 put `sys.modules` fakes in front of `chromadb`, `sentence_transformers`
-and `bertopic` on both CI legs, where `poetry install --with enrich` has
+and `bertopic` on both CI legs, where `uv sync --extra enrich` has
 already installed the real ones. Those fakes
 are unusually faithful -- `FakeChromaClient`'s docstring models
 `PersistentClient`'s cross-instance persistence deliberately, because

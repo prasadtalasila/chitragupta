@@ -397,7 +397,7 @@ for someone changing one.
 | Option | Needs | Page breaks | Quotable passages | Speed |
 | --- | --- | --- | --- | --- |
 | `pdftotext` (default) | `poppler-utils` on `PATH` | yes (form feeds) | no | fastest |
-| `docling` | the `enrich` Poetry group, in a venv | yes (form feeds) | **yes**, writes ladder 1's rung 2 | ~6.65s/PDF serial |
+| `docling` | the `enrich` extra, in a venv | yes (form feeds) | **yes**, writes ladder 1's rung 2 | ~6.65s/PDF serial |
 
 **If the one you picked is unavailable:** `sync` warns and skips parsing.
 It does **not** substitute the other backend, because a corpus half

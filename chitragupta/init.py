@@ -193,8 +193,7 @@ DELIBERATE_DIFFERENCES = frozenset(
         # Dev/checkout-only machinery: does something only inside a git
         # checkout of this repository, or names a version/lock fact a `pip
         # install` resolves independently at install time.
-        "poetry.lock",
-        "poetry.toml",
+        "uv.lock",
         "pyproject.toml",
         "scripts",
         "docker",

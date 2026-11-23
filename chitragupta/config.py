@@ -303,6 +303,18 @@ RETRIEVAL_B = _get_bm25_constant("b", 0.75, 1.0)
 ACRONYM_EXPANSION = _get_bool(
     "RETRIEVAL_ACRONYM_EXPANSION", "retrieval", "acronym_expansion", default=True
 )
+# Whether a query word the corpus has never seen also searches for the
+# corpus word one typing slip away from it (#1232) -- `strucutral` also
+# searching for "structural". chitragupta/retrieval_spelling.py has the
+# rules.
+#
+# Off by default. `dossier status` re-ranks every recorded query with the
+# current settings, so switching this on moves existing drafts' rankings
+# and can show as drift. And it has little to fix in agent-written
+# queries: 964 logged queries on this project held no genuine typo.
+SPELLING_CORRECTION = _get_bool(
+    "RETRIEVAL_SPELLING_CORRECTION", "retrieval", "spelling_correction", default=False
+)
 # The same, for chitragupta/retrieval_passages.py's passage-level index
 # (#769). A separate file rather than a second key inside
 # RETRIEVAL_INDEX_PATH above:
@@ -476,7 +488,7 @@ PROVENANCE_GOOD_SCORE = _get_float(
     "PROVENANCE_GOOD_SCORE", "provenance", "good_score", default=0.50
 )
 
-# Heavier optional pipeline (pyproject.toml's "enrich" Poetry group), per chitragupta/enrich/.
+# Heavier optional pipeline (pyproject.toml's "enrich" extra), per chitragupta/enrich/.
 DOCLING_DIR = CONTENT_DIR / "docling"
 # Per-doc (size, mtime_ns) PDF fingerprint, so docling_parse.parse_doc()
 # only re-runs Docling's layout/OCR models -- the slowest stage in this

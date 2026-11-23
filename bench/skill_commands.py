@@ -48,9 +48,8 @@ CONSOLE = {"chitragupta", "cg"}
 
 @functools.lru_cache(maxsize=None)
 def subcommands(path: tuple) -> frozenset:
-    """The subcommand choices `python -m chitragupta.<path...> --help`
-    prints in its usage line's first positional `{a,b}` group; empty for a
-    leaf, or when `--help` fails."""
+    """The subcommands `python -m chitragupta.<path...> --help` lists;
+    empty for a leaf, or when `--help` fails."""
     module, *rest = path
     proc = subprocess.run(
         [sys.executable, "-m", f"chitragupta.{module}", *rest, "--help"],
@@ -60,7 +59,26 @@ def subcommands(path: tuple) -> frozenset:
     )
     if proc.returncode != 0:
         return frozenset()
-    words = proc.stdout.split("\n\n")[0].split()
+    return help_choices(proc.stdout)
+
+
+def help_choices(text: str) -> frozenset:
+    """The subcommands a `--help` text lists: the first word of each line
+    of its click-style `Commands:` block at the block's own indent (a
+    deeper line is a wrapped description), or, from an install older than
+    that layout, the usage line's first positional `{a,b}` group."""
+    lines = text.splitlines()
+    if "Commands:" in lines:
+        names, indent = [], None
+        for line in lines[lines.index("Commands:") + 1 :]:
+            if not line.strip():
+                break
+            depth = len(line) - len(line.lstrip())
+            indent = depth if indent is None else indent
+            if depth == indent:
+                names.append(line.split()[0])
+        return frozenset(names)
+    words = text.split("\n\n")[0].split()
     for before, word in zip(["usage:", *words], words):
         found = re.fullmatch(r"\[?\{([\w,-]+)\}\]?", word)
         # `[--where {host,docker}]` is an option's choices, not subcommands
@@ -469,8 +487,9 @@ def judge(before: list, after: list) -> "tuple[int, list]":
 
 # The harnesses whose verdict sets the exit code. Only Claude Code runs a
 # skill's steps steadily enough at 3 runs an arm to gate on; Codex and
-# OpenCode are judged and printed, but advisory, until #1210 steadies
-# them (docs/HARNESS.md, the 2026-11-13 baseline).
+# OpenCode are judged and printed, but advisory: with their run-ending
+# failures fixed, an unchanged skill still fails on them up to 20% of
+# the time (docs/HARNESS.md, the 2026-11-21 rebaseline).
 GATED = ("claude",)
 
 

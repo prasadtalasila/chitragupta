@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fail a PR whose version bump has silently gone missing (#212).
 
-Every PR must raise `[tool.poetry].version`, because `release.yml`
+Every PR must raise `[project].version`, because `release.yml`
 verifies the pushed tag against that value on `main`. Two branches
 therefore always touch the same line, and the two ways that goes wrong are
 not equally visible:
@@ -60,8 +60,14 @@ def parse(version: str) -> tuple:
 
 
 def version_in(text: str) -> str:
-    """The `[tool.poetry].version` in a pyproject.toml's contents."""
-    return tomllib.loads(text)["tool"]["poetry"]["version"]
+    """The version in a pyproject.toml's contents: `[project].version`,
+    or `[tool.poetry].version` for a commit from before the move to uv.
+    The base side of every comparison is `main`, which kept the version in
+    `[tool.poetry]` until the PR that moved it merged."""
+    data = tomllib.loads(text)
+    if "version" in data.get("project", {}):
+        return data["project"]["version"]
+    return data["tool"]["poetry"]["version"]
 
 
 def problems(current: str, base: str, tags: "list[str] | tuple[str, ...]") -> list[str]:

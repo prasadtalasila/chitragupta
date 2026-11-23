@@ -69,6 +69,15 @@ class TestTheVerbsAreTheDraftingCommands:
         for verb in BACKING_MODULES:
             assert verb in result.stdout
 
+    def test_no_verb_in_process_prints_the_usage_too(self, capsys):
+        """The subprocess test above proves the `-m` wiring; this one is
+        what holds `main()`'s no-verb branch to the coverage bar, since
+        pytest-cov 7 does not measure a child process."""
+        assert entrypoint.main([]) == 0
+        out = capsys.readouterr().out
+        for verb in BACKING_MODULES:
+            assert verb in out
+
     def test_an_unknown_verb_is_a_usage_error(self):
         result = run_python("-m", "chitragupta.draft", "bogus")
         assert result.returncode == 2

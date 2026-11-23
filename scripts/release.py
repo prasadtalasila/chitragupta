@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 """Builds a distributable release/chitragupta-<version>.zip.
 
-Version comes from pyproject.toml's [tool.poetry].version -- the single
-source of truth for it (see that file's own comments on why Poetry here
-is a lockfile/venv manager only, not a publishing mechanism; this script
-doesn't change that, it just reads the version Poetry itself considers
-current).
+Version comes from pyproject.toml's [project].version -- the single
+source of truth for it, the same value `uv build` stamps on the wheel.
 
 Bundles every git-tracked file (`git ls-files`, so .gitignore's exclusions
 -- content/parsed/, papers/bibliography.bib, .venv-full/, etc. -- are
@@ -137,17 +134,17 @@ EXCLUDE_TOP_LEVEL = {
 EMPTY_TOP_LEVEL = {"content", "papers"}
 
 
-def _poetry_table() -> dict:
+def _project_table() -> dict:
     with open(REPO_ROOT / "pyproject.toml", "rb") as f:
-        return tomllib.load(f)["tool"]["poetry"]
+        return tomllib.load(f)["project"]
 
 
 def get_version() -> str:
-    return _poetry_table()["version"]
+    return _project_table()["version"]
 
 
 def get_repository() -> str:
-    return _poetry_table()["repository"]
+    return _project_table()["urls"]["Repository"]
 
 
 def tracked_files() -> list[str]:

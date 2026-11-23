@@ -114,7 +114,7 @@ def version() -> str:
     """
     try:
         with open(config.shipped("pyproject.toml"), "rb") as handle:
-            return tomllib.load(handle)["tool"]["poetry"]["version"]
+            return tomllib.load(handle)["project"]["version"]
     except (OSError, KeyError, tomllib.TOMLDecodeError):
         return "unknown"
 

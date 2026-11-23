@@ -77,7 +77,7 @@ whether the *signal* exists before asking how to compose two of them.
 
 Needs `[enrich].docling_images` crops already on disk
 (`content/docling/*.figures.json` + the PNGs they name) and the `enrich`
-Poetry group's `sentence-transformers`/`transformers`/`torch`/Pillow,
+extra's `sentence-transformers`/`transformers`/`torch`/Pillow,
 plus a working `pdflatex` + `pypdfium2` for the TikZ fixtures. Reports,
 rather than substituting, if the corpus crop count differs from a prior
 run's -- enrichment coverage moves as the corpus is re-synced.

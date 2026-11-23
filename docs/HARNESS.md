@@ -483,8 +483,10 @@ join each arm's runs into one JSON list, and compare again.
 
 **Only Claude Code gates.** The exit code is the worst verdict of the
 `--gate` harnesses, `claude` by default; Codex and OpenCode are printed
-as advisory, because their runs derail as a whole and an unchanged skill
-would fail up to 42% of the time on them. #1210 tracks steadying them.
+as advisory: with the run-ending failures fixed (below), an unchanged
+skill still fails a comparison over all three harnesses 6% to 10% of
+the time for the median skill and up to 20% for the worst, against 0%
+to 7% on Claude Code alone.
 Three runs screen and do not convict: the rule fails a row at 3 runs
 only on all-to-none, so an unchanged skill rarely fails, while a step
 dropped outright still does. Results are comparable within one host and
@@ -505,3 +507,70 @@ bookkeeping but its drafts still pass the gate; OpenCode's
 non-interactive mode ends a run on a read outside the project, so whole
 tails of steps go unrun. The skill-only arm on Claude Code also passed
 the gate in all 33 runs, with 74% of named commands run.
+
+**The local harnesses, rebaselined (2026-11-21).** Three causes outside
+the skills ended local runs early, and each is fixed in the bench's own
+setup, with no skill changed:
+
+- Codex sent the PNG that `figure look` writes to a `llama-server` with
+  no vision projector, got `500 image input is not supported`, and
+  exited. `serve_models.sh` now serves the model's own
+  `mmproj-F16.gguf`, which `install_tools.sh` pins by size and hash.
+- `opencode run` answered an `external_directory` request (a figure
+  compiled in `/tmp`, the installed package's source) with
+  `auto-rejecting`, and the run ended. The bench gives OpenCode its own
+  config, the provider example plus `"permission": {"external_directory":
+  "allow"}`, written beside each run; the example users copy keeps
+  OpenCode's default.
+- Codex has no metadata for a local model, so it never compacted and two
+  runs ended on a 400 at 131,625 tokens. The bench passes
+  `model_context_window` and an auto-compact limit at 75% of it.
+
+The bench also drops `PYTHONPATH` from every harness's environment, and
+reads subcommands from the click-style `--help` every command now
+prints; before that it found none. The skill-only arm of every user
+skill, 3 runs a harness, is in
+`bench/results/2026-11-21-local-harness-rebaseline/`. Its commands ran
+on the package as of `9862c8cb`; 50 of its 66 runs were scaffolded from
+the skills as of `0fd52e29a` and 16 OpenCode runs from those of
+`9862c8cb`, which differ only in the wording of the style step:
+
+| Harness | Usable runs | Gate passed | Named commands run | Median run |
+| --- | ---: | ---: | ---: | ---: |
+| Codex 0.159.3 (Qwen3.6) | 32 of 33 | 32 | 54% | 456 s |
+| OpenCode 1.18.34 (Qwen3.6) | 31 of 33 | 31 | 58% | 546 s |
+
+No run hit an image error, an auto-reject or the context limit. The
+three unusable runs timed out at 1,500 seconds: Codex's agenda-reviser
+once and OpenCode's deep-research twice. One cause remains that no
+setting reaches: now and then the model writes a tool call whose
+arguments are not JSON, `llama-server` answers 500, and Codex resends
+the same history five times and exits (2 runs in an earlier arm the
+same day, none in the recorded one). After the shrinks Codex runs
+`draft dossier init` in every genre writer's run, but in no
+review-digest run: at its step 0 it writes `scope.md` and the other
+dossier files by hand.
+
+`bench/simulate_false_fail.py` says how often an unchanged skill would
+fail `--compare` at 3 runs an arm, drawing both arms from one skill's
+measured runs. Claude Code's rows are each skill's newest skill-only
+rows from the shrink series. "Whole runs" draws runs as they were
+measured; "each command" draws every command on its own, the model the
+earlier 42% estimate was read from, so only that column compares with
+it (it gives 1% to 25% on the 2026-11-13 rows):
+
+| Harness | Whole runs | Each command |
+| --- | ---: | ---: |
+| Claude Code | 0% to 3% | 0% to 7% |
+| Codex | 0% to 9% | 0% to 9% |
+| OpenCode | 0% to 9% | 0% to 13% |
+| All three, at least one fails | 0% to 15% (median 6%) | 0% to 20% (median 10%) |
+
+What is left is command-level, not run-level: optional commands that
+run in some runs and not others, and timeouts on the two longest
+skills. So the local harnesses stay advisory, and their tables are now
+worth reading: a command missing from every after run is a real signal
+on them too.
+[MODEL-COMPLIANCE.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/MODEL-COMPLIANCE.md)
+lists which steps the local model runs every time, never, or now and
+then, and the reasons its transcripts give.

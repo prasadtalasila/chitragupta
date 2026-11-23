@@ -145,8 +145,7 @@ exclude_docs: |
   /CITATION.cff
   /config.toml
   /config.toml.example
-  /poetry.lock
-  /poetry.toml
+  /uv.lock
   /pyproject.toml
   # Kept in git for readers on GitHub, left out of the site to keep it
   # shorter; pages that link to them use GitHub URLs.
@@ -166,6 +165,7 @@ exclude_docs: |
   /docs/DEV-ENV.md
   /docs/RAG.md
   /docs/INSPIRATION.md
+  /docs/MODEL-COMPLIANCE.md
   # Plans are development records, not documentation: nothing in the nav
   # links to one, and a page that cites a plan uses a GitHub URL.
   /plans/

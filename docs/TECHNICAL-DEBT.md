@@ -147,8 +147,9 @@ deletes its entry, in the PR that pays it.
   reads `pyproject.toml`. Under an editable install of another checkout,
   `--version` and the report headers name different versions.
   *Refactor:* one `chitragupta.version()`.
-- **R12.** **Three subprocess wrappers in `scripts/`:** `check_version_bump.py:168`
-  (`_git`), `merge_pr.py:197` (`_gh`) and `relock.py:56` (`_run`).
+- **R12.** **Two subprocess wrappers in `scripts/`:**
+  `check_version_bump.py:168` (`_git`) and `merge_pr.py:197` (`_gh`); a
+  third, `relock.py`'s `_run`, went with that script in the move to uv.
   Each re-derives "decode UTF-8, not the locale", and `merge_pr`
   documents this by pointing at `check_version_bump`. *Refactor:* one
   `scripts/_proc.py`.

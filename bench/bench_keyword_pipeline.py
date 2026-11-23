@@ -32,7 +32,7 @@ The arms move `content/seed_topics.toml`, `content/keywords.toml` and
 `content/topic_seeds.json`; all three are restored to the shipped
 configuration before the script exits, whether it succeeded or not.
 
-Needs the "enrich" Poetry group, a synced corpus and a built
+Needs the "enrich" extra, a synced corpus and a built
 `content/chroma/`.
 
     CHITRAGUPTA_PROJECT=. .venv-full/bin/python \\

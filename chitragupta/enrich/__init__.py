@@ -1,8 +1,8 @@
 """The enrichment layer: Docling -> sentence-transformers/Chroma ->
 BERTopic, over the same corpus `python -m chitragupta.corpus sync` maintains.
 
-Everything in here needs pyproject.toml's "enrich" Poetry group
-(`poetry install --with enrich`), installed in a venv (PEP 668 blocks
+Everything in here needs pyproject.toml's "enrich" extra
+(`bash scripts/install_full_pipeline.sh python-deps`), installed in a venv (PEP 668 blocks
 system pip on the host this was built on). The stdlib-only corpus and
 drafting layers in chitragupta/ (sync, retrieval, citation_gate) do not depend on
 anything here and keep working regardless -- which is the point: this

@@ -33,7 +33,7 @@ or, from a git checkout (for working on the pipeline itself; see
 
 ```bash
 git clone https://github.com/prasadtalasila/chitragupta && cd chitragupta
-pipx install poetry
+pipx install uv
 bash scripts/install_full_pipeline.sh all
 source .venv-full/bin/activate
 ```
@@ -486,7 +486,7 @@ resolution ladder; [EXPLORE-CLI.md](EXPLORE-CLI.md) walks the views.
 | `--origins LIST` | every class | Only topics of these origins: `seed`, `keyword`, `corroborated`, `emergent`. **`seed` and `keyword` each include the corroborated topics**, so `corroborated` alone asks for that intersection. Composes with every view; `--path` refuses a narrowing `--origins` (exit `2`). Exits `1` on an unknown class |
 | `--json` | off | Machine-readable output |
 | `--out FILE` | -- | Also write the topic view as a Markdown overview: papers, linked topics, and verbatim member-paper snippets |
-| `--k N` | `5` | Results to show when falling back to paper search |
+| `--k N` | `5` | Results to show when falling back to paper search. With `[retrieval].spelling_correction` on, that search notes any correction on stderr |
 | `--html FILE` | -- | Write the whole topic graph as one self-contained HTML page and exit. With `--json`, reports the write as `{"written": FILE}` |
 | `--app DIR` | -- | Write the topic graph as an interactive app directory, openable from `file://` ([EXPLORE-WEB.md](EXPLORE-WEB.md)). Composes with `--json` as `--html` does |
 
@@ -720,7 +720,7 @@ withdrawn).
 | `--windows N` | `evidence` | 2 | How many passages to return |
 | `--log DRAFT` | all | -- | Record the call, its collection and its payload size in DRAFT's dossier `retrieval.md` |
 | `--origin declared\|extended\|reground` | all | -- | With `--log`: whether this query came from `outline.md` verbatim, extended a section that came up thin, or re-ran a section's query with `--y-prev` after a hand edit |
-| `--y-prev TEXT` | `search` | -- | Append this text (bounded to 1500 characters) to the query for a second retrieval round, merged with the first and capped back to `--k` (FEATURE-ROADMAP.md's E4) |
+| `--y-prev TEXT` | `search` | -- | Append this text (bounded to 1500 characters) to the query for a second retrieval round, merged with the first and capped back to `--k` (FEATURE-ROADMAP.md's E4). The text is never spelling-corrected |
 
 ```bash
 chitragupta draft retrieve search "digital twin architecture" --k 15 \
@@ -739,6 +739,12 @@ needs a sync to migrate, or one that cannot be read; an empty result is
 not an error. A single-character query word never ranks, so either
 subcommand warns, naming it; two-character words (`AI`, `5G`) do rank
 ([RETRIEVAL.md](RETRIEVAL.md#-where-the-token-length-floor-came-from)).
+
+Words added to the query before ranking are noted on stderr, and `--log`
+records them in the `expanded` column: an acronym's expansion
+(`dt -> digital twin`) and, with `[retrieval].spelling_correction` on, a
+spelling correction (`strucutral ~> structural`)
+([RETRIEVAL.md](RETRIEVAL.md#-a-misspelled-query-word-can-reach-its-corpus-spelling)).
 
 ### 📄 `chitragupta draft render`
 
@@ -1197,7 +1203,10 @@ chitragupta review coverage content/drafts/survey.md \
 **`--json`**: the shared envelope plus `queries`, `k`, `coverage_pct`,
 `candidates_total`, `cited_candidates_total`, and one `findings` object
 per itemised citekey (`id`, `citekey`, `title`, `status`:
-`uncited_candidates` or `cited_outside_candidates`).
+`uncited_candidates` or `cited_outside_candidates`). With
+`[retrieval].spelling_correction` on, a `corrections` object maps each
+corrected query to what was added; both reports list them too. The key
+is absent when nothing was corrected.
 
 ### 📖 `chitragupta review provenance`
 
@@ -1765,9 +1774,9 @@ One install path for both a bare machine and the Docker image. Takes
 
 | Stage | What it does |
 | --- | --- |
-| `python-deps` | **Default when no stage is given.** Creates the venv and runs `poetry install --with enrich`. `chitragupta install` refuses it, naming `chitragupta install enrich` |
-| `os-deps` | `apt-get` the system packages (TeX Live with LuaLaTeX, the render's fonts, Pandoc, poppler-utils, Poetry, git/curl/unzip, OpenCV's runtime libraries ([PDF-PARSER.md](PDF-PARSER.md#-docling-fails-every-document-with-an-opencv-recursion-error)), and `python-is-python3`, which puts the hooks' `python` on `PATH`), plus STIX Two. Needs root; auto-sudo's. Opt-in. Also `chitragupta install os-deps` |
-| `dev-deps` | `poetry install --with dev` into the same venv, plus the pinned `actionlint` and `core.hooksPath` pointed at `git-hooks/`. For running the tests and committing; run `python-deps` first. Pip equivalent: `pip install 'chitragupta-cli[dev]'` |
+| `python-deps` | **Default when no stage is given.** Creates the venv and runs `uv sync --extra enrich`. `chitragupta install` refuses it, naming `chitragupta install enrich` |
+| `os-deps` | `apt-get` the system packages (TeX Live with LuaLaTeX, the render's fonts, Pandoc, poppler-utils, git/curl/unzip, OpenCV's runtime libraries ([PDF-PARSER.md](PDF-PARSER.md#-docling-fails-every-document-with-an-opencv-recursion-error)), and `python-is-python3`, which puts the hooks' `python` on `PATH`), plus STIX Two. Needs root; auto-sudo's. Opt-in. Also `chitragupta install os-deps` |
+| `dev-deps` | `uv sync --extra dev` into the same venv, plus the pinned `actionlint` and `core.hooksPath` pointed at `git-hooks/`. For running the tests and committing; run `python-deps` first. Pip equivalent: `pip install 'chitragupta-cli[dev]'` |
 | `cpu-torch` | Swaps torch to the CPU-only wheel and removes the CUDA runtime. Never part of `all`: it asserts a GPU is absent *for good*, which the script cannot infer |
 | `gpu-torch` | Runs `ensure_gpu_torch` (below) against `CHITRAGUPTA_PYTHON` rather than the script's venv; what `chitragupta install gpu-torch` reaches |
 | `actionlint` | Installs the pinned workflow linter alone, without the venv `dev-deps` also builds |
@@ -1792,9 +1801,10 @@ reinstalls torch from a wheel index matching the NVIDIA driver if the
 default one would silently run CPU-only. It is idempotent and prints
 what it decided.
 
-**Poetry is a prerequisite, not something `python-deps` installs.** It
-is in the `os-deps` package list, so `all` covers it; run on its own,
-`python-deps` needs `pipx install poetry` first. Each stage ends by
+**uv is a prerequisite, not something `python-deps` installs.** `os-deps`
+fetches a pinned, checksum-verified copy, so `all` covers it, and the
+`uv` stage fetches it alone; otherwise `python-deps` needs `pipx install
+uv` first. Each stage ends by
 printing the interpreter path to use afterwards.
 
 ### 📦 `scripts/release.py`

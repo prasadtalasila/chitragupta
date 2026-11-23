@@ -1,0 +1,239 @@
+{
+  "runs": 3,
+  "model": "runs",
+  "trials": null,
+  "files": [
+    "results/2026-11-14-skill-bench-skill-only/tier2.json",
+    "results/2026-11-15-book-assembler-shrink/tier2.json",
+    "results/2026-11-15-draft-reviser-shrink/tier2.json",
+    "results/2026-11-15-deep-research-shrink/after.json",
+    "results/2026-11-15-textbook-chapter-writer-shrink/after.json",
+    "results/2026-11-15-thesis-chapter-writer-shrink/tier2.json",
+    "results/2026-11-15-tutorial-writer-shrink/after.json",
+    "results/2026-11-15-agenda-reviser-shrink/tier2.json",
+    "results/2026-11-16-wrap-up/agenda-reviser.json",
+    "results/2026-11-16-wrap-up/corpus-reviser.json",
+    "results/2026-11-16-wrap-up/review-digest.json",
+    "results/2026-11-16-wrap-up/survey-writer.json",
+    "results/2026-11-21-local-harness-rebaseline/tier2.json"
+  ],
+  "rates": {
+    "claude": {
+      "agenda-reviser": {
+        "fail": 0.0,
+        "inconclusive": 0.0,
+        "runs": 3,
+        "file": "results/2026-11-16-wrap-up/agenda-reviser.json"
+      },
+      "book-assembler": {
+        "fail": 0.0,
+        "inconclusive": 0.0,
+        "runs": 3,
+        "file": "results/2026-11-15-book-assembler-shrink/tier2.json"
+      },
+      "corpus-reviser": {
+        "fail": 0.010973936899862825,
+        "inconclusive": 0.32098765432098764,
+        "runs": 3,
+        "file": "results/2026-11-16-wrap-up/corpus-reviser.json"
+      },
+      "deep-research": {
+        "fail": 0.010973936899862825,
+        "inconclusive": 0.32098765432098764,
+        "runs": 6,
+        "file": "results/2026-11-15-deep-research-shrink/after.json"
+      },
+      "draft-reviser": {
+        "fail": 0.0,
+        "inconclusive": 0.0,
+        "runs": 3,
+        "file": "results/2026-11-15-draft-reviser-shrink/tier2.json"
+      },
+      "figure-drawer": {
+        "fail": 0.0,
+        "inconclusive": 0.0,
+        "runs": 3,
+        "file": "results/2026-11-14-skill-bench-skill-only/tier2.json"
+      },
+      "review-digest": {
+        "fail": 0.010973936899862825,
+        "inconclusive": 0.32098765432098764,
+        "runs": 3,
+        "file": "results/2026-11-16-wrap-up/review-digest.json"
+      },
+      "survey-writer": {
+        "fail": 0.0205761316872428,
+        "inconclusive": 0.4567901234567901,
+        "runs": 3,
+        "file": "results/2026-11-16-wrap-up/survey-writer.json"
+      },
+      "textbook-chapter-writer": {
+        "fail": 0.033650548696844994,
+        "inconclusive": 0.7901877572016461,
+        "runs": 6,
+        "file": "results/2026-11-15-textbook-chapter-writer-shrink/after.json"
+      },
+      "thesis-chapter-writer": {
+        "fail": 0.01772548010973937,
+        "inconclusive": 0.43962191358024694,
+        "runs": 6,
+        "file": "results/2026-11-15-thesis-chapter-writer-shrink/tier2.json"
+      },
+      "tutorial-writer": {
+        "fail": 0.018968621399176953,
+        "inconclusive": 0.8013760288065843,
+        "runs": 6,
+        "file": "results/2026-11-15-tutorial-writer-shrink/after.json"
+      }
+    },
+    "codex": {
+      "agenda-reviser": {
+        "fail": 0.09327846364883402,
+        "inconclusive": 0.8189300411522634,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "book-assembler": {
+        "fail": 0.0,
+        "inconclusive": 0.0,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "corpus-reviser": {
+        "fail": 0.0205761316872428,
+        "inconclusive": 0.4567901234567901,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "deep-research": {
+        "fail": 0.04938271604938271,
+        "inconclusive": 0.823045267489712,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "draft-reviser": {
+        "fail": 0.039780521262002745,
+        "inconclusive": 0.7283950617283951,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "figure-drawer": {
+        "fail": 0.02194787379972565,
+        "inconclusive": 0.6419753086419753,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "review-digest": {
+        "fail": 0.010973936899862825,
+        "inconclusive": 0.32098765432098764,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "survey-writer": {
+        "fail": 0.039780521262002745,
+        "inconclusive": 0.7283950617283951,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "textbook-chapter-writer": {
+        "fail": 0.03017832647462277,
+        "inconclusive": 0.5925925925925926,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "thesis-chapter-writer": {
+        "fail": 0.039780521262002745,
+        "inconclusive": 0.7283950617283951,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "tutorial-writer": {
+        "fail": 0.0,
+        "inconclusive": 0.0,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      }
+    },
+    "opencode": {
+      "agenda-reviser": {
+        "fail": 0.03155006858710562,
+        "inconclusive": 0.7366255144032922,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "book-assembler": {
+        "fail": 0.0,
+        "inconclusive": 0.0,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "corpus-reviser": {
+        "fail": 0.010973936899862825,
+        "inconclusive": 0.32098765432098764,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "deep-research": {
+        "fail": 0.09327846364883402,
+        "inconclusive": 0.9053497942386831,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "draft-reviser": {
+        "fail": 0.010973936899862825,
+        "inconclusive": 0.32098765432098764,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "figure-drawer": {
+        "fail": 0.010973936899862825,
+        "inconclusive": 0.32098765432098764,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "review-digest": {
+        "fail": 0.0205761316872428,
+        "inconclusive": 0.4567901234567901,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "survey-writer": {
+        "fail": 0.0411522633744856,
+        "inconclusive": 0.831275720164609,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "textbook-chapter-writer": {
+        "fail": 0.0411522633744856,
+        "inconclusive": 0.831275720164609,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "thesis-chapter-writer": {
+        "fail": 0.05761316872427984,
+        "inconclusive": 0.8148148148148148,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      },
+      "tutorial-writer": {
+        "fail": 0.039780521262002745,
+        "inconclusive": 0.7283950617283951,
+        "runs": 3,
+        "file": "results/2026-11-21-local-harness-rebaseline/tier2.json"
+      }
+    }
+  },
+  "over_harnesses": {
+    "agenda-reviser": 0.12188559031011903,
+    "book-assembler": 0.0,
+    "corpus-reviser": 0.04195445378212814,
+    "deep-research": 0.14751376765723911,
+    "draft-reviser": 0.05031790923169266,
+    "figure-drawer": 0.032680956117424054,
+    "review-digest": 0.04195445378212814,
+    "survey-writer": 0.09824025853211915,
+    "textbook-chapter-writer": 0.10138070945248856,
+    "thesis-chapter-writer": 0.11114156300468658,
+    "tutorial-writer": 0.057994561014298895
+  }
+}

@@ -21,7 +21,7 @@ usage string must never be the thing that stops `--help` printing.
 import os
 import sys
 
-# The two names `[tool.poetry.scripts]` installs. Matched exactly rather
+# The two names `[project.scripts]` installs. Matched exactly rather
 # than by prefix: a script called `chitragupta-old` on someone's PATH is
 # not this one, and `cg` is short enough that a substring test would
 # match half the executables on a system.
