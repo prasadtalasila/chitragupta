@@ -144,8 +144,9 @@ def unavailable_reason() -> str | None:
     """
     if optional_stack() is None:
         return (
-            f"the enrichment layer is not installed -- `{install.CHECKOUT_ENRICH}` "
-            "adds the sentence-transformers package this aid scores with"
+            "the enrichment layer is not installed; it adds the "
+            "sentence-transformers package this aid scores with. Run, "
+            f"{install.enrich_remedy()}."
         )
     return None
 

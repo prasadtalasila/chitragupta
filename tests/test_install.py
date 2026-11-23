@@ -212,3 +212,16 @@ class TestRemedy:
     def test_a_stage_that_does_not_run_is_refused(self, stage):
         with pytest.raises(ValueError):
             install.remedy(stage)
+
+
+class TestEnrichRemedy:
+    """The enrich stack is the one install that is spelled differently in
+    the two project shapes: `chitragupta install enrich` refuses in a
+    checkout, and a `chitragupta init` project has no `scripts/`. So a
+    message names both, rather than whichever one its author had in
+    front of them."""
+
+    def test_names_the_command_for_each_project_shape(self):
+        text = install.enrich_remedy()
+        assert "in a git checkout, `bash scripts/install_full_pipeline.sh python-deps`" in text
+        assert "in an installed project, `chitragupta install enrich`" in text

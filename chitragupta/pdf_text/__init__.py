@@ -100,8 +100,7 @@ _INSTALL_HINT = {
     "docling": (
         "the 'docling' package isn't usable (not installed, or a "
         "transitive dependency is broken). To extract PDF text with it, run, "
-        f"in a git checkout, '{install.CHECKOUT_ENRICH}'; in an installed "
-        f"project, {install.remedy('enrich')}."
+        f"{install.enrich_remedy()}."
     ),
 }
 

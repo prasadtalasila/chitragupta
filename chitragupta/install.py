@@ -96,6 +96,14 @@ def remedy(stage: str) -> str:
     return f"`chitragupta install {stage}`"
 
 
+def enrich_remedy() -> str:
+    """How to get the enrich stack, for whichever project shape the
+    reader is in. The one install `remedy` cannot spell alone: `install
+    enrich` refuses in a checkout (see `main`), where the install script
+    is the command, and a `chitragupta init` project has no `scripts/`."""
+    return f"in a git checkout, `{CHECKOUT_ENRICH}`; in an installed project, {remedy('enrich')}"
+
+
 # Derived, not restated: choices= alone gives --help no way to show which
 # of the five actually run something (#369 -- a reader who tried
 # python-deps/dev-deps/all off the usage line alone had no reason to

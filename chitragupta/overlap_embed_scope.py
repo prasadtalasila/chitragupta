@@ -78,8 +78,9 @@ def open_scope(draft: Path) -> tuple[Scope | None, str | None]:
     stack = overlap_chroma.optional_stack()
     if stack is None:
         return None, (
-            f"the enrichment layer is not installed -- `{install.CHECKOUT_ENRICH}` "
-            "adds the chromadb/sentence-transformers stack this tier embeds with"
+            "the enrichment layer is not installed; it adds the "
+            "chromadb/sentence-transformers stack this tier embeds with. Run, "
+            f"{install.enrich_remedy()}."
         )
 
     collection = overlap_chroma.built_collection(stack[0])

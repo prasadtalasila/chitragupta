@@ -10,7 +10,7 @@ import types
 
 import pytest
 
-from chitragupta import config, entailment
+from chitragupta import config, entailment, install
 
 
 def test_optional_stack_is_none_without_sentence_transformers(monkeypatch):
@@ -177,7 +177,7 @@ def test_unavailable_reason_names_the_missing_group(monkeypatch):
     monkeypatch.setattr(entailment, "optional_stack", lambda: None)
     reason = entailment.unavailable_reason()
     assert reason is not None
-    assert "enrich" in reason
+    assert install.enrich_remedy() in reason
 
 
 def test_unavailable_reason_is_none_when_the_stack_is_present(monkeypatch):
