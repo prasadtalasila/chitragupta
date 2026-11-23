@@ -121,8 +121,10 @@ with the same name get `medical` and `medical-1`.
 | `cg-renames` | the retired citekey | the citekey that replaced it. Both must work as filenames ([below](#-citekeys-have-to-work-as-filenames)) |
 
 A `cg-renames` row matters only when its old key has left the bib and its
-new key is in it; [CLI.md](CLI.md#-when-a-citekey-is-renamed) has what
-`sync` then reports and records.
+new key is in it. Rows may chain (`a<TAB>b`, then `b<TAB>c`, with only
+`c` in the bib): the chain is followed to the key in the bib.
+[CLI.md](CLI.md#-when-a-citekey-is-renamed) has what `sync` then reports
+and records.
 
 ## 📤 With a plain Zotero BibTeX export
 

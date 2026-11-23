@@ -405,7 +405,7 @@ two ways:
 
 | Source | When it applies |
 | --- | --- |
-| The importer's `@comment{cg-renames v1 ...}` block (`old<TAB>new` rows) | the new key is in the bib; the two PDFs may differ |
+| The importer's `@comment{cg-renames v1 ...}` block (`old<TAB>new` rows) | the new key is in the bib, directly or through a chain of rows (`a -> b`, `b -> c`); the two PDFs may differ. A chain that loops or ends outside the bib falls back to the row below |
 | A matching `pdf_hash` | exactly one key still in the bib has the stale key's PDF, byte for byte, and that key is new to the ledger this sync |
 
 A PDF that several keys share, or that a key already in the ledger had
@@ -666,7 +666,7 @@ a gate: it takes no lock and opens the ledger read-only.
 | `sections <draft> --citekeys` | The `sections.md` table derived from the draft: each heading with the citekeys cited under it |
 | `outline <draft>` | Read and validate `outline.md` (sections are `##`-or-deeper headings). **Exits 1** if there's no `outline.md`, or a section has neither a `brief:` nor a `claim:` |
 | `mark-revision <draft>` | Record a revision boundary in `retrieval.md`, so `status` totals retrieval cost per revision, and keep a numbered snapshot of the draft and its figures under `versions/` (skipped when unchanged) |
-| `apply-renames <draft>` | Swap every citekey sync recorded as renamed for its replacement, in the draft, `evidence.md`, `sections.md` and `rejected.md`, and log it in `revisions.md`. Refuses, changing nothing for it, a key whose recorded renames form a cycle or whose replacement is not citable (a parsed row sync did not find stale), swaps the rest, and **exits 1** naming each refused key. **Exits 1** too for a draft path that does not exist. Names the `review quotation` re-check when a renamed paper's PDF changed |
+| `apply-renames <draft>` | Swap every citekey sync recorded as renamed for its replacement, in the draft, `evidence.md`, `sections.md` and `rejected.md`, and log it in `revisions.md`. Refuses, changing nothing for it, a key whose recorded renames form a cycle or whose replacement is not citable (a parsed row sync did not find stale), swaps the rest, and **exits 1** naming each refused key. Writes every file or none: a failed write (a full disk, say) changes nothing and logs nothing. **Exits 1** too for a draft path that does not exist, or a file that is not UTF-8 text. Names the `review quotation` re-check when a renamed paper's PDF changed |
 | `snapshot <draft> --label TEXT` | Keep the draft and its figures as a named version (`002-sent-to-supervisor`) for `draft diff --against`. Always taken |
 | `versions <draft>` | Every snapshot, oldest first: number, date, trigger, label |
 | `stamp <draft>` | Record the draft's text digest in `scope.md`, so `status` reports `CHANGED since last stamp` after a hand edit. Run after `gate` passes, never before |

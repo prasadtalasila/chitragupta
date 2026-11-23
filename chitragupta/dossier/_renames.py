@@ -21,12 +21,14 @@ text the draft's quotes came from, so those are named for
 from __future__ import annotations
 
 import json
+import os
 import sys
 from dataclasses import asdict, dataclass
 from datetime import date
 from pathlib import Path
 
 from chitragupta import ledger, ledger_tables
+from chitragupta._atomic_write import temp_sibling
 from chitragupta.ledger_citable import citable_citekeys
 from chitragupta.citekey_safety import citekey_pattern
 from chitragupta.dossier import (
@@ -95,7 +97,31 @@ def _texts(draft: Path) -> dict[Path, str]:
     if not draft.is_file():
         raise DossierError(f"no draft at {draft}")
     paths = [draft, *(dossier_dir(draft) / name for name in SWAPPED_FILES)]
-    return {path: path.read_text(encoding="utf-8") for path in paths if path.is_file()}
+    texts = {}
+    for path in (p for p in paths if p.is_file()):
+        try:
+            texts[path] = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError as exc:
+            raise DossierError(f"{path} is not UTF-8 text; nothing was changed") from exc
+    return texts
+
+
+def _write_all(texts: dict[Path, str]) -> None:
+    """Write every file or none: each goes to a temp sibling first
+    (`_atomic_write.temp_sibling`), and only once all are written is each
+    moved into place, so a full disk or a permission error midway changes
+    nothing."""
+    temps: dict[Path, Path] = {}
+    try:
+        for path, text in texts.items():
+            temps[path] = temp_sibling(path)
+            temps[path].write_text(text, encoding="utf-8")
+    except OSError as exc:
+        for temp in temps.values():
+            temp.unlink(missing_ok=True)
+        raise DossierError(f"could not write {path}: {exc}; nothing was changed") from exc
+    for path, temp in temps.items():
+        os.replace(temp, path)
 
 
 def _plan(texts: dict[Path, str]) -> tuple[list[tuple[str, str, bool]], dict[str, str]]:
@@ -156,8 +182,7 @@ def apply_renames(draft: Path) -> list[AppliedRename]:
                 files.append(str(path))
                 changed.add(path)
         applied.append(AppliedRename(old, new, same, tuple(files)))
-    for path in changed:
-        path.write_text(texts[path], encoding="utf-8")
+    _write_all({path: texts[path] for path in changed})
     sections = sorted({title for old, _n, _s in plan for title in by_key.get(old, [])})
     _log(draft, applied, sections)
     if refused:

@@ -84,6 +84,37 @@ class TestDetect:
         )
 
 
+class TestChainsInsideTheBlock:
+    """A `cg-renames` block may chain within itself (`a -> b`, `b -> c`,
+    only `c` in the bib); the chain is followed to the key that is."""
+
+    def test_a_chain_is_followed_to_the_key_in_the_bib(self, ledger_con):
+        _row(ledger_con, "a_2020", "h1")
+        _row(ledger_con, "c_2020", "h2")
+        renames, _shared = sync_renames.detect(
+            ledger_con, ["a_2020"], {"c_2020"}, {"a_2020": "b_2020", "b_2020": "c_2020"}, set()
+        )
+        assert renames == [Rename("a_2020", "c_2020", "cg-renames", False)]
+
+    def test_a_chain_that_loops_falls_back_to_the_hash(self, ledger_con):
+        _row(ledger_con, "a_2020", "h1")
+        _row(ledger_con, "n_2020", "h1")
+        renames, _shared = sync_renames.detect(
+            ledger_con,
+            ["a_2020"],
+            {"n_2020"},
+            {"a_2020": "b_2020", "b_2020": "a_2020"},
+            {"n_2020"},
+        )
+        assert renames == [Rename("a_2020", "n_2020", "pdf_hash", True)]
+
+    def test_a_chain_that_ends_outside_the_bib_falls_back_to_the_hash(self, ledger_con):
+        _row(ledger_con, "a_2020", "h1")
+        assert sync_renames.detect(
+            ledger_con, ["a_2020"], set(), {"a_2020": "b_2020", "b_2020": "c_2020"}, set()
+        ) == ([], {})
+
+
 class TestSharedPdfIsNotGuessed:
     """Final review (Fable), #3: two entries that already shared a PDF --
     a book and its chapter -- are not a rename when one is deleted. A hash

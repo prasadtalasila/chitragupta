@@ -11,7 +11,9 @@ gate later with nothing to say which key replaced it, and once
 - The importer's `cg-renames` table (`chitragupta/bib_tables.py`) says
   so outright. It wins whenever its new key is in the bib, because it is
   the only source for a duplicate merged in the reference manager whose
-  copies had different PDFs.
+  copies had different PDFs. A chain inside the table (`a -> b`,
+  `b -> c`) is followed to the key that is in the bib; one that loops,
+  or ends outside it, falls back to the hash.
 - Otherwise the ledger's `pdf_hash`: a stale row whose hash is held by
   exactly one key still in the bib, and that key is new to the ledger
   this sync. Byte-identical PDFs are the same paper, whichever tool
@@ -46,6 +48,16 @@ class Rename:
     same_pdf: bool
 
 
+def _declared_target(declared: dict[str, str], old: str, seen: set[str]) -> str | None:
+    """Where `declared` takes `old`, followed to a key in the bib; None
+    when it says nothing, loops, or ends outside the bib."""
+    visited, key = {old}, declared.get(old)
+    while key is not None and key not in seen and key not in visited:
+        visited.add(key)
+        key = declared.get(key)
+    return key if key in seen else None
+
+
 def detect(
     con: sqlite3.Connection,
     stale: list[str],
@@ -64,8 +76,8 @@ def detect(
     renames, shared = [], {}
     for old in stale:
         value = hashes.get(old)
-        new = declared.get(old)
-        if new in seen:
+        new = _declared_target(declared, old, seen)
+        if new is not None:
             same = bool(value) and value == hashes.get(new)
             renames.append(Rename(old, new, CG_RENAMES, same))
             continue
