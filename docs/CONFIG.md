@@ -767,8 +767,9 @@ whole and compared against each document, unlike BERTopic's
 `seed_topic_list`, where "monitoring" alone would match every paper with
 a monitoring section.
 
-**You write them.** Your Zotero collection names
-(`chitragupta corpus ledger --collections`) are a good start, minus
+**You write them.** Your collection names
+(`chitragupta corpus ledger --collections`, with a bib from
+chitragupta-importer) are a good start, minus
 shelves such as "To read": nothing can tell those apart mechanically,
 which is why the file is hand-written.
 

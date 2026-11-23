@@ -19,7 +19,9 @@ class TestDetect:
     def test_same_hash_new_key_is_a_rename(self, ledger_con):
         _row(ledger_con, "old_2023", "h1")
         _row(ledger_con, "new_2023", "h1")
-        renames, shared = sync_renames.detect(ledger_con, ["old_2023"], {"new_2023"}, {})
+        renames, shared = sync_renames.detect(
+            ledger_con, ["old_2023"], {"new_2023"}, {}, {"new_2023"}
+        )
         assert renames == [Rename("old_2023", "new_2023", "pdf_hash", True)]
         assert shared == {}
 
@@ -28,7 +30,11 @@ class TestDetect:
         _row(ledger_con, "other_2023", "h1")
         _row(ledger_con, "new_2023", "h2")
         renames, _shared = sync_renames.detect(
-            ledger_con, ["old_2023"], {"new_2023", "other_2023"}, {"old_2023": "new_2023"}
+            ledger_con,
+            ["old_2023"],
+            {"new_2023", "other_2023"},
+            {"old_2023": "new_2023"},
+            {"new_2023", "other_2023"},
         )
         assert renames == [Rename("old_2023", "new_2023", "cg-renames", False)]
 
@@ -36,14 +42,14 @@ class TestDetect:
         _row(ledger_con, "old_2023", "h1")
         _row(ledger_con, "new_2023", "h1")
         renames, _shared = sync_renames.detect(
-            ledger_con, ["old_2023"], {"new_2023"}, {"old_2023": "gone_2023"}
+            ledger_con, ["old_2023"], {"new_2023"}, {"old_2023": "gone_2023"}, {"new_2023"}
         )
         assert renames == [Rename("old_2023", "new_2023", "pdf_hash", True)]
 
     def test_declared_rename_with_no_hashes_is_not_same_pdf(self, ledger_con):
         _row(ledger_con, "old_2023", None)
         renames, _shared = sync_renames.detect(
-            ledger_con, ["old_2023"], {"new_2023"}, {"old_2023": "new_2023"}
+            ledger_con, ["old_2023"], {"new_2023"}, {"old_2023": "new_2023"}, set()
         )
         assert renames == [Rename("old_2023", "new_2023", "cg-renames", False)]
 
@@ -52,7 +58,11 @@ class TestDetect:
         _row(ledger_con, "book_2023", "h1")
         _row(ledger_con, "chapter_2023", "h1")
         renames, shared = sync_renames.detect(
-            ledger_con, ["old_2023"], {"book_2023", "chapter_2023"}, {}
+            ledger_con,
+            ["old_2023"],
+            {"book_2023", "chapter_2023"},
+            {},
+            {"book_2023", "chapter_2023"},
         )
         assert renames == []
         assert shared == {"old_2023": ["book_2023", "chapter_2023"]}
@@ -60,12 +70,41 @@ class TestDetect:
     def test_a_stale_key_without_a_hash_is_plain_stale(self, ledger_con):
         _row(ledger_con, "old_2023", None)
         _row(ledger_con, "new_2023", None)
-        assert sync_renames.detect(ledger_con, ["old_2023"], {"new_2023"}, {}) == ([], {})
+        assert sync_renames.detect(ledger_con, ["old_2023"], {"new_2023"}, {}, {"new_2023"}) == (
+            [],
+            {},
+        )
 
     def test_a_hash_only_another_stale_key_has_is_no_rename(self, ledger_con):
         _row(ledger_con, "old_2023", "h1")
         _row(ledger_con, "older_2023", "h1")
-        assert sync_renames.detect(ledger_con, ["old_2023", "older_2023"], set(), {}) == ([], {})
+        assert sync_renames.detect(ledger_con, ["old_2023", "older_2023"], set(), {}, set()) == (
+            [],
+            {},
+        )
+
+
+class TestSharedPdfIsNotGuessed:
+    """Final review (Fable), #3: two entries that already shared a PDF --
+    a book and its chapter -- are not a rename when one is deleted. A hash
+    match names a rename only for a key new to the ledger this sync."""
+
+    def test_a_key_already_in_the_ledger_is_reported_not_renamed(self, ledger_con):
+        _row(ledger_con, "chapter_2020", "h1")
+        _row(ledger_con, "book_2020", "h1")
+        renames, shared = sync_renames.detect(
+            ledger_con, ["chapter_2020"], {"book_2020"}, {}, set()
+        )
+        assert renames == []
+        assert shared == {"chapter_2020": ["book_2020"]}
+
+    def test_a_declared_rename_still_applies_to_a_known_key(self, ledger_con):
+        _row(ledger_con, "chapter_2020", "h1")
+        _row(ledger_con, "book_2020", "h1")
+        renames, _shared = sync_renames.detect(
+            ledger_con, ["chapter_2020"], {"book_2020"}, {"chapter_2020": "book_2020"}, set()
+        )
+        assert renames == [Rename("chapter_2020", "book_2020", "cg-renames", True)]
 
 
 class TestRecord:
@@ -77,6 +116,11 @@ class TestRecord:
         sync_renames.record(ledger_con, [Rename("a_2023", "b_2023", "pdf_hash", True)], set())
         sync_renames.record(ledger_con, [Rename("a_2023", "c_2023", "cg-renames", False)], set())
         assert ledger_tables.renames(ledger_con) == {"a_2023": ("c_2023", "cg-renames", False)}
+
+    def test_a_changed_same_pdf_is_refreshed(self, ledger_con):
+        sync_renames.record(ledger_con, [Rename("a_2023", "b_2023", "cg-renames", True)], set())
+        sync_renames.record(ledger_con, [Rename("a_2023", "b_2023", "cg-renames", False)], set())
+        assert ledger_tables.renames(ledger_con) == {"a_2023": ("b_2023", "cg-renames", False)}
 
     def test_an_undone_rename_is_deleted(self, ledger_con):
         sync_renames.record(ledger_con, [Rename("a_2023", "b_2023", "pdf_hash", True)], set())
@@ -168,6 +212,39 @@ class TestSyncRun:
         capsys.readouterr()
         sync.run()
         assert "chitragupta draft dossier status --all" in capsys.readouterr().out
+
+    def test_deleting_one_of_two_entries_sharing_a_pdf_is_not_a_rename(
+        self, renamed_corpus, capsys
+    ):
+        bib = renamed_corpus.BIB_FILE_PATH
+        bib.write_text(_bib([("lehner_pattern_2023-1", "a.pdf"), ("lehner_pattern_2023", "b.pdf")]))
+        sync.run()
+        bib.write_text(_bib([("lehner_pattern_2023", "b.pdf")]))
+        capsys.readouterr()
+        sync.run()
+        out = capsys.readouterr().out
+        assert "(no longer in bibliography.bib; same PDF as lehner_pattern_2023)" in out
+        con = ledger.connect()
+        try:
+            assert ledger_tables.renames(con) == {}
+        finally:
+            con.close()
+
+    def test_an_empty_bib_records_no_stale_keys_and_keeps_names(self, renamed_corpus, capsys):
+        """Final review (Fable), #1: a bib read that yields nothing is
+        SUSPICIOUS, not "everything was removed"."""
+        bib = renamed_corpus.BIB_FILE_PATH
+        table = "@comment{cg-collections v1\nshelf\tShelf\n}\n"
+        bib.write_text(table + _bib([("lehner_pattern_2023-1", "a.pdf")]))
+        sync.run()
+        bib.write_text("")
+        sync.run()
+        con = ledger.connect()
+        try:
+            assert ledger_tables.stale(con) == set()
+            assert ledger_tables.collection_names(con) == {"shelf": "Shelf"}
+        finally:
+            con.close()
 
     def test_a_lossy_read_records_nothing(self, renamed_corpus, capsys):
         text = renamed_corpus.BIB_FILE_PATH.read_text()

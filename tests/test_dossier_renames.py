@@ -201,6 +201,11 @@ class TestApply:
     def test_corpus_renames_read_as_none_without_a_ledger(self, isolated_config):
         assert _drift.Corpus([]).renames == {}
 
+    def test_a_draft_that_does_not_exist_is_refused(self, draft):
+        _seed(["new_2023"], [("old_2023", "new_2023", True)])
+        with pytest.raises(DossierError, match="no draft at"):
+            _renames.apply_renames(draft.with_name("typo.md"))
+
     def test_without_a_ledger(self, draft):
         with pytest.raises(DossierError, match="sync"):
             _renames.apply_renames(draft)

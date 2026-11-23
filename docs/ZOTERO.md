@@ -240,6 +240,30 @@ draft whose `scope.md` recorded a `groups` path (`Digital twins >
 Modelling`) is listed by `dossier status` under `unresolved_collections`
 until its scope is re-chosen.
 
+## ⬆ Upgrading from 6.x to 7.0.0
+
+7.0.0 changes how collections reach the pipeline, so a 6.x project needs
+four things, once:
+
+1. **Re-import with chitragupta-importer**
+   ([above](#-with-chitragupta-importer)), then run
+   `chitragupta corpus sync`. That sync migrates the ledger to its new
+   schema. Until it has run, the read-only commands (`ledger`, `retrieve`)
+   refuse: the ledger "predates this version's schema", run sync to
+   migrate it.
+2. **Remove `[bib] collections_field`** from `config.toml`. It is no
+   longer read, and sync says so once while it is there.
+3. **Port every draft scoped by a `groups` path** (`- collection: Digital
+   twins > Modelling` in its `scope.md`). Its next `--collection` exits 2,
+   and `dossier status` lists it under `unresolved_collections`.
+   [chitragupta#1252](https://github.com/prasadtalasila/chitragupta/issues/1252)
+   has an agent prompt that ports them; draft-reviser does the same for
+   one draft when it re-grounds.
+4. **Stop using `scripts/populate_bib_groups.py`.** It is gone, with the
+   `groups` field it wrote; the importer replaces both.
+
+## 🚪 Where papers come from
+
 A `bibliography.bib`, written by the importer or exported, is the
 **only** way to get a paper into this pipeline.
 There is no directory you can drop a raw PDF into: the enrichment layer's

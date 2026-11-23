@@ -237,9 +237,9 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
     parser_available = _parser_available()
     tally = _Tally(bib_problems=library.integrity_problems)
     with ledger.connection() as con:
-        to_parse = sync_decide._to_parse(con, references, reparse, parser_available, tally)
+        had, to_parse = sync_decide._plan(con, references, reparse, parser_available, tally)
         _dispatch_and_apply(con, to_parse, tally)
-        pruned, stale, suspicious = sync_decide._record_and_report(con, library, remove_stale)
+        pruned, stale, suspicious = sync_decide._record_and_report(con, library, remove_stale, had)
         # Read while the connection is still open -- the summary below
         # runs after it is closed.
         kinds = ledger.failure_counts(con)

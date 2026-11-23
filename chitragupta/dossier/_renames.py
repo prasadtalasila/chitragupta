@@ -92,6 +92,8 @@ def renamed_in(texts, renames, citekeys: set[str], sections: dict[str, list[str]
 
 
 def _texts(draft: Path) -> dict[Path, str]:
+    if not draft.is_file():
+        raise DossierError(f"no draft at {draft}")
     paths = [draft, *(dossier_dir(draft) / name for name in SWAPPED_FILES)]
     return {path: path.read_text(encoding="utf-8") for path in paths if path.is_file()}
 

@@ -13,9 +13,11 @@ gate later with nothing to say which key replaced it, and once
   the only source for a duplicate merged in the reference manager whose
   copies had different PDFs.
 - Otherwise the ledger's `pdf_hash`: a stale row whose hash is held by
-  exactly one key still in the bib. Byte-identical PDFs are the same
-  paper, whichever tool wrote the bib. A hash held by several keys (a
-  book and its chapter sharing one file) is reported, never guessed.
+  exactly one key still in the bib, and that key is new to the ledger
+  this sync. Byte-identical PDFs are the same paper, whichever tool
+  wrote the bib, but two entries that already shared one file before
+  this sync (a book and its chapter) are two works: deleting one is a
+  removal, reported as `same PDF as ...`, never guessed to be a rename.
 
 **Recorded before any prune** (`ledger_tables`' `renames` table), so the
 drafting layer can still find the replacement after the old row is gone.
@@ -45,10 +47,15 @@ class Rename:
 
 
 def detect(
-    con: sqlite3.Connection, stale: list[str], seen: set[str], declared: dict[str, str]
+    con: sqlite3.Connection,
+    stale: list[str],
+    seen: set[str],
+    declared: dict[str, str],
+    arrived: set[str],
 ) -> tuple[list[Rename], dict[str, list[str]]]:
-    """The 1:1 renames among `stale`, and `{old: [keys]}` for a hash
-    several keys in the bib share."""
+    """The 1:1 renames among `stale`, and `{old: [keys]}` for a hash that
+    keys in the bib share. `arrived` is the keys new to the ledger this
+    sync: only one of those can be a hash rename's target."""
     hashes = dict(con.execute("SELECT citekey, pdf_hash FROM items"))
     holders: dict[str, list[str]] = defaultdict(list)
     for key, value in hashes.items():
@@ -63,7 +70,7 @@ def detect(
             renames.append(Rename(old, new, CG_RENAMES, same))
             continue
         keys = sorted(holders.get(value, [])) if value else []
-        if len(keys) == 1:
+        if len(keys) == 1 and keys[0] in arrived:
             renames.append(Rename(old, keys[0], PDF_HASH, True))
         elif keys:
             shared[old] = keys
@@ -77,7 +84,7 @@ def record(con: sqlite3.Connection, renames: list[Rename], seen: set[str]) -> No
         "INSERT INTO renames VALUES (?, ?, ?, ?, ?) ON CONFLICT(old) DO UPDATE SET "
         "new = excluded.new, source = excluded.source, same_pdf = excluded.same_pdf, "
         "seen_at = excluded.seen_at WHERE renames.new != excluded.new "
-        "OR renames.source != excluded.source",
+        "OR renames.source != excluded.source OR renames.same_pdf != excluded.same_pdf",
         [(r.old, r.new, r.source, int(r.same_pdf), date.today().isoformat()) for r in renames],
     )
     undone = [(old,) for old in ledger_tables.renames(con) if old in seen]

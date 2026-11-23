@@ -145,8 +145,17 @@ def _refuse_prune(library, stale_count) -> None:
     )
 
 
+def _plan(con, references, reparse, parser_available, tally) -> tuple[set[str], list]:
+    """`(the ledger's citekeys before this sync, what to parse)`. The
+    snapshot is taken first, before anything is written, so
+    `_record_and_report` can tell a key that arrived this sync from one
+    that was already there."""
+    had = ledger.known_citekeys(con)
+    return had, _to_parse(con, references, reparse, parser_available, tally)
+
+
 def _record_and_report(
-    con, library, remove_stale
+    con, library, remove_stale, had=frozenset()
 ) -> tuple[list[tuple[str, str | None]], list[tuple[str, str | None]], bool]:
     """After ingest: record what the bib says beyond its entries, then
     prune or report stale rows (`_report_stale`).
@@ -156,15 +165,24 @@ def _record_and_report(
     are recorded before `_report_stale` can prune the rows they are read
     from -- and not at all on a read that lost entries (#841), where a
     key missing from the read need not be missing from the library.
+    `had` is the ledger's keys before this sync's ingest, so a hash match
+    can tell a key that just arrived from one that was already there.
+
+    A read that yielded no citekey at all records nothing, names
+    included: it is the SUSPICIOUS shape `_report_stale` warns about
+    (an empty export, a wrong `BIB_FILE`), and recording it would turn
+    every cited key into a defect `dossier status` tells a reviser to
+    act on.
     """
-    ledger_tables.replace_collection_names(con, library.tables.collection_names)
-    con.commit()
+    seen = library.seen_citekeys
     notes = {}
-    if not library.unread:
-        seen = library.seen_citekeys
+    if seen:
+        ledger_tables.replace_collection_names(con, library.tables.collection_names)
+        con.commit()
+    if seen and not library.unread:
         stale = [key for key, _path in ledger.find_stale(con, seen)]
         declared = library.tables.declared_renames
-        renames, shared = sync_renames.detect(con, stale, seen, declared)
+        renames, shared = sync_renames.detect(con, stale, seen, declared, seen - had)
         ledger_tables.replace_stale(con, set(stale))
         sync_renames.record(con, renames, seen)
         notes = sync_renames.suffixes(renames, shared)

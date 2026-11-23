@@ -152,7 +152,7 @@ chitragupta corpus ledger
 # chitragupta corpus ledger --list
 # chitragupta corpus ledger --status parse_failed
 # chitragupta corpus ledger --citekey talasila_composable_2025
-# chitragupta corpus ledger --collections    # your Zotero collection names, if the export kept them
+# chitragupta corpus ledger --collections    # your collections, if chitragupta-importer wrote the bib
 
 # 5b. Optional: name your topics in content/seed_topics.toml and see
 #     which papers match each.
@@ -406,11 +406,12 @@ two ways:
 | Source | When it applies |
 | --- | --- |
 | The importer's `@comment{cg-renames v1 ...}` block (`old<TAB>new` rows) | the new key is in the bib; the two PDFs may differ |
-| A matching `pdf_hash` | exactly one key still in the bib has the stale key's PDF, byte for byte |
+| A matching `pdf_hash` | exactly one key still in the bib has the stale key's PDF, byte for byte, and that key is new to the ledger this sync |
 
-A PDF that several keys in the bib share (a book and its chapter) is
-reported as `same PDF as a, b`, never guessed. The stale line names the
-new key, in report-only and `--remove-stale` runs alike:
+A PDF that several keys share, or that a key already in the ledger had
+before this sync (a book and its chapter, one of them deleted), is
+reported as `same PDF as a, b`, never guessed to be a rename. The stale
+line names the new key, in report-only and `--remove-stale` runs alike:
 
 ```text
   stale   lehner_pattern_2023-1 (no longer in bibliography.bib; renamed to lehner_pattern_2023, same PDF)
@@ -449,8 +450,8 @@ a sync is running. With no flags it prints a summary.
 | `--list` | off | List every item |
 | `--status STATUS` | -- | List only items with this status: `parsed`, `no_pdf`, `discovered`, `parse_failed` |
 | `--citekey CITEKEY` | -- | Show one item in full |
-| `--collections` | off | List every Zotero collection the corpus holds, and stop |
-| `--collection NAME` | -- | List only items in this collection, or one beneath it |
+| `--collections` | off | List every collection the corpus holds, with its slug path, display path and paper count, and stop |
+| `--collection PATH` | -- | List only items in this collection or one beneath it: a slug path or a `/` display path. An unknown or ambiguous one exits 2 |
 
 ```bash
 chitragupta corpus ledger
@@ -665,7 +666,7 @@ a gate: it takes no lock and opens the ledger read-only.
 | `sections <draft> --citekeys` | The `sections.md` table derived from the draft: each heading with the citekeys cited under it |
 | `outline <draft>` | Read and validate `outline.md` (sections are `##`-or-deeper headings). **Exits 1** if there's no `outline.md`, or a section has neither a `brief:` nor a `claim:` |
 | `mark-revision <draft>` | Record a revision boundary in `retrieval.md`, so `status` totals retrieval cost per revision, and keep a numbered snapshot of the draft and its figures under `versions/` (skipped when unchanged) |
-| `apply-renames <draft>` | Swap every citekey sync recorded as renamed for its replacement, in the draft, `evidence.md`, `sections.md` and `rejected.md`, and log it in `revisions.md`. All or nothing: **exits 1**, changing nothing, if a replacement is not in the ledger or the renames form a cycle. Names the `review quotation` re-check when a renamed paper's PDF changed |
+| `apply-renames <draft>` | Swap every citekey sync recorded as renamed for its replacement, in the draft, `evidence.md`, `sections.md` and `rejected.md`, and log it in `revisions.md`. Refuses, changing nothing for it, a key whose recorded renames form a cycle or whose replacement is not citable (a parsed row sync did not find stale), swaps the rest, and **exits 1** naming each refused key. **Exits 1** too for a draft path that does not exist. Names the `review quotation` re-check when a renamed paper's PDF changed |
 | `snapshot <draft> --label TEXT` | Keep the draft and its figures as a named version (`002-sent-to-supervisor`) for `draft diff --against`. Always taken |
 | `versions <draft>` | Every snapshot, oldest first: number, date, trigger, label |
 | `stamp <draft>` | Record the draft's text digest in `scope.md`, so `status` reports `CHANGED since last stamp` after a hand edit. Run after `gate` passes, never before |
@@ -752,7 +753,7 @@ withdrawn).
 | --- | --- | --- | --- |
 | `--k N` | `search` | 5 | How many candidates to rank |
 | `--unit document\|passage` | `search` | `document` | What a result is: `passage` ranks paragraphs and returns the scoring paragraph with its page. Scores are not comparable across units |
-| `--collection NAME` | `search` | -- | Rank only inside this Zotero collection or one beneath it (see `ledger --collections`). Scoring stays corpus-wide; only the candidate set narrows |
+| `--collection PATH` | `search` | -- | Rank only inside this collection or one beneath it: a slug path or a `/` display path (see `ledger --collections`). An unknown or ambiguous one exits 2. Scoring stays corpus-wide; only the candidate set narrows |
 | `--chars N` | all | 600 / 500 | Window size (evidence / search) |
 | `--citekey KEY` | `evidence` | required | Which document to read |
 | `--windows N` | `evidence` | 2 | How many passages to return |
