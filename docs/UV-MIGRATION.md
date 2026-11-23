@@ -308,6 +308,12 @@ One branch, in the order the recommendation set out:
    cache on `uv.lock`, and check `uv lock --check` where `poetry check`
    ran.
 
+6. **torch is capped below 2.15**, although uv locks 2.15.0 without
+   trouble. PyTorch published 2.15.0 for CUDA 13.2 and CPU only, so
+   `ensure_gpu_torch` finds no build for a driver older than CUDA 13.2,
+   and such a host would run CPU-only. `pyproject.toml`'s comment on the
+   cap says when to lift it.
+
 What is still not verified, carried over from the list above: uv's
 torch index selection on a GPU host. `ensure_gpu_torch` and
 `ensure_cpu_torch` are unchanged and still swap torch with pip after

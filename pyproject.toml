@@ -121,7 +121,16 @@ enrich = [
     # unconstrained through sentence-transformers/docling: without them a
     # resolver is free to pick a version with no wheels for the running
     # Python -- which is the failure this pair was pinned to fix.
-    "torch>=2.14,<3.0",
+    #
+    # **<2.15 is load-bearing, not staleness.** PyTorch published 2.15.0
+    # for CUDA 13.2 and CPU only (checked 2026-11-23); 2.14.1 also has
+    # cu126 and cu130 builds. scripts/install_full_pipeline.sh's
+    # ensure_gpu_torch keeps the locked version and looks for a build
+    # matching the host's driver, so on a host whose driver predates
+    # CUDA 13.2 torch 2.15 finds none and runs CPU-only, silently. Lift
+    # the cap once download.pytorch.org/whl/cu130 (or older) carries the
+    # new version.
+    "torch>=2.14,<2.15",
     "torchvision>=0.29,<1.0",
     "sentence-transformers>=5.7,<6.0",
     "chromadb>=1.5,<2.0",
