@@ -28,15 +28,13 @@ Usage:
     python3 scripts/populate_bib_groups.py <zotero.sqlite> <in.bib> <out.bib>
 """
 
+import importlib.util
 import re
 import sqlite3
 import sys
 from collections import defaultdict, namedtuple
 from pathlib import Path
 
-import bibtexparser
-from bibtexparser.bparser import BibTexParser
-from bibtexparser.customization import convert_to_unicode
 
 # The field Better BibTeX writes and chitragupta/bib_collections.py parses. Named
 # rather than inlined because it appears in the "don't clobber" check and
@@ -54,6 +52,18 @@ DOI_RE = re.compile(r'10\.\d{4,9}/[^\s,;\'"<>]+')
 _DOI_TRAILING = ").,]>"
 
 Indexes = namedtuple("Indexes", "doi url title collections")
+
+# Reading the .bib lives in a sibling, loaded by path rather than
+# imported: this file runs both as `python3 scripts/populate_bib_groups.py`
+# and as `scripts.populate_bib_groups`, which put different directories on
+# `sys.path` (scripts/release.py loads its sibling the same way). Split out
+# when bibtexparser 2's reading took this module past the 250-line limit.
+_FIELDS_SPEC = importlib.util.spec_from_file_location(
+    "populate_bib_groups_fields", Path(__file__).with_name("populate_bib_groups_fields.py")
+)
+_fields = importlib.util.module_from_spec(_FIELDS_SPEC)
+_FIELDS_SPEC.loader.exec_module(_fields)
+read_fields = _fields.read_fields
 
 
 def open_library(sqlite_path):
@@ -88,26 +98,6 @@ def normalise_title(value: str) -> str:
     remains: any braces that survived, whitespace, and case.
     """
     return re.sub(r"\s+", " ", value.replace("{", "").replace("}", "")).strip().lower()
-
-
-def read_fields(text: str) -> dict:
-    """Every entry's fields, keyed by citekey."""
-    # Parsing is delegated to bibtexparser -- the same library
-    # chitragupta/bib_reader.py uses, and for the same reason it gives there:
-    # nested braces, multi-line values and LaTeX escapes make a
-    # hand-rolled BibTeX parser a worse bet than a maintained one. An
-    # earlier version of this script hand-rolled it with regular
-    # expressions and got accents wrong, decoding `Caf\'{e}` to `Cafe`,
-    # which then failed to match the `Café` Zotero stores.
-    #
-    # convert_to_unicode is what performs that decoding. It is safe here
-    # precisely because this parse is never written back out: the output
-    # file is spliced from the original text, so no decoded value can
-    # leak into it.
-    parser = BibTexParser(common_strings=True)
-    parser.customization = convert_to_unicode
-    database = bibtexparser.loads(text, parser)
-    return {entry["ID"]: entry for entry in database.entries}
 
 
 def _matching_brace(text: str, open_pos: int) -> int:

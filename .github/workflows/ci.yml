@@ -463,13 +463,14 @@ jobs:
       # "latest" resolved to while this job was green, bibtexparser at
       # poetry.lock's resolved version, so the linter sees the same
       # library the pipeline runs. No `--only-binary` here, unlike the
-      # Poetry installs: bibtexparser 1.4.x ships only an sdist, so a
-      # wheels-only install cannot resolve it at all. The `--upgrade pip`
+      # Poetry installs: it was impossible while bibtexparser 1.4.x shipped
+      # only an sdist. 2.x ships a wheel, so it could now be added, with
+      # scripts/check_local.sh's matching line. The `--upgrade pip`
       # that used to lead this line is gone for the same rule -- it was an
       # unpinned moving target, and the runner's own pip installs two
       # pinned packages fine.
       - name: Install pylint and the runtime dependency
-        run: python -m pip install pylint==4.0.7 bibtexparser==1.4.4
+        run: python -m pip install pylint==4.0.7 bibtexparser==2.1.0
 
       # Pinned exactly, not just for Sonar S8544: `[tool.ruff.lint]`'s
       # `RUF100` verdict on a given `except` block depends on ruff's own

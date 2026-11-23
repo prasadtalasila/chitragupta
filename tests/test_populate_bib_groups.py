@@ -138,6 +138,35 @@ class TestReadFields:
         fields = pbg.read_fields(bib("\tDOI = {10.1234/a},"))
         assert fields["smith2020"]["doi"] == "10.1234/a"
 
+    def test_a_url_is_matched_as_written_not_latex_decoded(self):
+        """bibtexparser 2's decoder reads `%` as a comment and `&` as a
+        column separator: on this repository's Zotero export it cut a
+        Google Scholar URL at its first `%` and turned every `&` in nine
+        URLs into spaces, so none of them could match."""
+        url = "https://x.org/s?hl=da&q=a%2C5&btnG="
+        fields = pbg.read_fields(bib("\turl = {" + url + "},"))
+        assert fields["smith2020"]["url"] == url
+
+    def test_a_title_decodes_dashes_and_quotes_as_zotero_stores_them(self):
+        fields = pbg.read_fields(bib("\ttitle = {Twins --- ``Batteries''},"))
+        assert fields["smith2020"]["title"] == "Twins — “Batteries”"
+
+    def test_an_entry_with_a_repeated_field_is_still_matched(self):
+        """bibtexparser 2 refuses the block; 1.x returned it, and three
+        entries in this repository's Mendeley export repeat `annote`."""
+        text = "@article{smith2020,\n\tdoi = {10.1/a},\n\tnote = {x},\n\tnote = {y},\n}\n"
+        assert pbg.read_fields(text)["smith2020"]["doi"] == "10.1/a"
+
+    def test_of_two_entries_under_one_citekey_the_later_is_read(self):
+        """1.x's dict-by-citekey kept the later one, and so does this."""
+        text = "@misc{k, doi = {10.1/first}}\n@misc{k, doi = {10.1/second}}\n"
+        assert pbg.read_fields(text)["k"]["doi"] == "10.1/second"
+
+    def test_a_contentless_stub_is_left_out(self):
+        """Zotero's `@misc{key,\\n}` attachment stub belongs in the
+        `no_fields` bucket, so it must not come back as an entry."""
+        assert pbg.read_fields("@misc{stub,\n}\n") == {}
+
 
 class TestScanEntries:
     """The splice needs byte offsets, which the parser does not report."""

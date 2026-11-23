@@ -182,12 +182,16 @@ python = ">=3.12,<3.14.1 || >3.14.1,<3.15"
 # correct BibTeX parser (nested braces, LaTeX escapes, multi-line
 # values) isn't worth it. `python -m chitragupta.draft gate` needs none of
 # this and still runs with the bare system interpreter, no venv at all.
-bibtexparser = ">=1.4,<2.0"
-# <2.0 is load-bearing, not just a style choice: bibtexparser v2 replaces
-# BibTexParser/customization/bibtexparser.load with a different,
-# incompatible API (bibtexparser.parse_file, no customization hook) that
-# chitragupta/bib_reader.py -- the sole source of citekeys -- doesn't use. Don't
-# relax this ceiling without rewriting that module against v2's API first.
+bibtexparser = ">=2.1,<3.0"
+# 2.x only splits the file into blocks (chitragupta/bib_parse.py); what
+# 1.x did after that -- string interpolation, its whitespace rules, the
+# standard-type filter, and the LaTeX decoding, vendored as
+# chitragupta/bib_latex.py -- is restated there, so the entries
+# bib_reader returns are 1.x's byte for byte (checked on 2,365 real
+# references). 2.x brings pylatexenc as a dependency, which this project
+# does not call: its decoding disagreed with 1.x on 1,242 field values.
+# A 3.x will need the same check: rerun tests/test_bib_parse.py and
+# tests/test_bib_latex.py, which pin 1.x's output, before lifting this.
 
 # Mirrors of the three optional groups below, purely so `pip install
 # 'chitragupta-cli[enrich|dev|docs]'` resolves at all (#265). Poetry groups

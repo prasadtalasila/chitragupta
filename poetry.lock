@@ -481,17 +481,22 @@ vision = ["Pillow (>=9.2.0)", "accelerate (>=0.19.0)"]
 
 [[package]]
 name = "bibtexparser"
-version = "1.4.4"
+version = "2.1.0"
 description = "Bibtex parser for python 3"
 optional = false
-python-versions = "*"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "bibtexparser-1.4.4.tar.gz", hash = "sha256:093b6c824f7a71d3a748867c4057b71f77c55b8dbc07efc993b781771520d8fb"},
+    {file = "bibtexparser-2.1.0-py3-none-any.whl", hash = "sha256:3b4b1de50ce45ee9091ccca72e1efc8732ab3ef615b70bcecc537c17cd84753e"},
+    {file = "bibtexparser-2.1.0.tar.gz", hash = "sha256:9f48851eef4693cb7ef6897f7628966c5d0ef49b6403b13a862679a4c313d176"},
 ]
 
 [package.dependencies]
-pyparsing = ">=2.0.3"
+pylatexenc = ">=2.10,<3.0"
+
+[package.extras]
+docs = ["sphinx"]
+test = ["jupyter", "pytest", "pytest-cov", "pytest-xdist"]
 
 [[package]]
 name = "build"
@@ -5019,7 +5024,6 @@ files = [
     {file = "pylatexenc-2.11-py2.py3-none-any.whl", hash = "sha256:e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0"},
     {file = "pylatexenc-2.11.tar.gz", hash = "sha256:305a072a99ce736246049c9da05841b9d718c0f7ea8888f5f596cf15cb621053"},
 ]
-markers = {main = "extra == \"enrich\""}
 
 [[package]]
 name = "pymdown-extensions"
@@ -5063,21 +5067,6 @@ scipy = ">=1.0"
 
 [package.extras]
 testing = ["pytest"]
-
-[[package]]
-name = "pyparsing"
-version = "3.3.3"
-description = "pyparsing - Classes and methods to define and execute parsing grammars"
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-files = [
-    {file = "pyparsing-3.3.3-py3-none-any.whl", hash = "sha256:ece8c00a69cf01b45d0b1dedabb469c90d8caf996d4fda40f147627a122849a4"},
-    {file = "pyparsing-3.3.3.tar.gz", hash = "sha256:928ae7e20211f3b6f3915a72f06a0cfd29ab9d24279dd6346b6b1a7146397d36"},
-]
-
-[package.extras]
-diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
 name = "pypdfium2"
@@ -7269,4 +7258,4 @@ enrich = ["adapters", "bertopic", "chromadb", "docling", "networkx", "pypdfium2"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.14.1 || >3.14.1,<3.15"
-content-hash = "2c699c9e942a2c52f25e975a126923a225b97129493d08156ad78f07a723f0c4"
+content-hash = "0ca8f2896e970aee9c166d826a68675e326a1e776be4022389fa893b39841034"

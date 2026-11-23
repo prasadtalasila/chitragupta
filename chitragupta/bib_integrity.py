@@ -14,8 +14,8 @@ from collections import Counter
 from collections.abc import Collection
 
 # @comment/@string/@preamble are legitimate BibTeX constructs that never
-# show up in BibDatabase.entries (bibtexparser tracks them separately,
-# not as dropped entries) -- `bib_reader.read_library` parses with common_strings=True,
+# show up among the parsed entries (bibtexparser tracks them separately,
+# not as dropped entries) -- `bib_parse` predefines the month strings,
 # so a real export using any of these is plausible, and counting them as
 # "entries" would fire a false discrepancy warning on a perfectly good file.
 _NON_ENTRY_TYPES = {"comment", "string", "preamble"}
@@ -60,10 +60,10 @@ def count_raw_entries(text: str, kept_types: Collection[str] | None = None) -> i
     file text has, independent of whether bibtexparser managed to parse
     each one.
 
-    bibtexparser (both BibTexParser.parse and the customization hook)
+    bibtexparser (its splitter, and `bib_parse` after it)
     silently skips an entry it can't parse -- e.g. unbalanced braces --
-    with no exception and no entry in the returned BibDatabase, so
-    len(bib_database.entries) alone can't reveal a dropped entry.
+    with no exception and no entry among those returned, so the count of
+    parsed entries alone can't reveal a dropped entry.
     Comparing against this raw count is the only way `read_library` can
     tell "the file has exactly as many entries as it looks like" from
     "some entries silently vanished."

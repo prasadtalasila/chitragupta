@@ -674,9 +674,10 @@ install_python_deps() {
     # Sonar (S8541) flags every `poetry install` here because an sdist in
     # the resolution runs its setup script at build time. A wheels-only
     # refusal (`installer.only-binary :all:`, as docs.yml now sets for its
-    # own group) is not available to *this* install: bibtexparser 1.4.x --
-    # a main-group runtime dependency -- ships no wheel at all, so
-    # forcing wheels breaks the resolve outright. What stands in its
+    # own group) is not available to *this* install:
+    # antlr4-python3-runtime 4.9.3 -- which omegaconf pulls into the enrich
+    # group -- ships no wheel at all, so forcing wheels breaks the resolve
+    # outright. (bibtexparser 1.4.x was the other one, until 2.x.) What stands in its
     # place is the lockfile: every package, sdists included, is
     # hash-pinned in poetry.lock, so the archive whose setup script runs
     # is byte-exact the one that was locked, not whatever the index
