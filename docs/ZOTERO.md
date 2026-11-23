@@ -34,13 +34,11 @@ chitragupta-importer zotero --data-dir ~/Zotero --out papers \
 chitragupta corpus sync
 ```
 
-It writes:
+What chitragupta gets from it is the bib file and the PDFs:
 
 ```text
 papers/
 ├── bibliography.bib      the tables, then one entry per item that has a PDF
-├── citekeys.lock         the importer's own; chitragupta never reads it
-├── collections.lock      the importer's own; chitragupta never reads it
 └── files/
     └── <citekey>.pdf     each item's main PDF
 ```
