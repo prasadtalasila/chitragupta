@@ -35,6 +35,7 @@ input that showed it:
 
 import logging
 import re
+from dataclasses import dataclass
 
 from bibtexparser.model import (
     Block,
@@ -87,21 +88,87 @@ MONTHS = {
 
 _SPACES_AFTER_NEWLINE = re.compile(r"\n[^\S\n]+")
 
+_BLOCK_START = re.compile(r"^[ \t]*@\w+\s*[{(]", re.MULTILINE)
+_LINE_START_AT = re.compile(r"^[ \t]*@", re.MULTILINE)
+_BACKSLASH_BEFORE_BRACE = re.compile(r"\\(?=[{}])")
+
+
+@dataclass(frozen=True)
+class _Masks:
+    """Two private-use code points the file does not hold, standing in
+    while 2.x splits it -- see `_masked`."""
+
+    at: str
+    backslash: str
+
 
 def parse_entries(raw_text: str) -> list[dict]:
     """Every entry `raw_text` holds, as bibtexparser 1.x returned it."""
-    library = Splitter(raw_text.expandtabs()).split()
+    text = raw_text.expandtabs()
+    free = (chr(code) for code in range(0xE000, 0xF900) if chr(code) not in text)
+    mask = _Masks(at=next(free), backslash=next(free))
+    library = Splitter(_masked(text, mask)).split()
     strings = dict(MONTHS)
     entries = []
     for block in library.blocks:
         block = _recovered(block)
         if isinstance(block, String):
-            strings[block.key.lower()] = _value(block.value, strings)
+            strings[block.key.lower()] = _value(block.value, strings, mask)
         elif isinstance(block, Entry):
-            record = _record(block, strings)
+            record = _record(block, strings, mask)
             if record is not None:
                 entries.append(record)
     return entries
+
+
+def _masked(text: str, mask: _Masks) -> str:
+    """`text` as 2.x has to see it to split where 1.x did; `_value` swaps
+    both masks back.
+
+    Every backslash right before a brace becomes `mask.backslash`.
+    BibTeX counts every brace, and so did 1.x, so `\\}` still closes a
+    value; 2.x reads it as an escaped brace and does not count it, so a
+    value ending in a backslash -- a URL chitragupta-importer wrote raw
+    -- never closed, and its entry was dropped.
+
+    And the `@` of every line that begins inside a balanced block becomes
+    `mask.at`. 2.x's splitter starts a new block at any line beginning `@word(` or
+    `@word{`, even inside a value, and drops the entry it was in; 1.x kept
+    it. chitragupta-importer escapes braces but not parentheses, so Zotero
+    text quoting a decorator or an annotation at the start of a line
+    reaches the bib raw. Only a block whose delimiters balance is masked:
+    an unbalanced one is left for 2.x to recover from by its next
+    line-start `@`, which is what 1.x did.
+    """
+    text = _BACKSLASH_BEFORE_BRACE.sub(mask.backslash, text)
+    chars, resume = list(text), 0
+    for start in _BLOCK_START.finditer(text):
+        if start.start() < resume:
+            continue
+        end = _closing(text, start.end() - 1)
+        if end is None:
+            continue
+        for inner in _LINE_START_AT.finditer(text, start.end(), end):
+            chars[inner.end() - 1] = mask.at
+        resume = end + 1
+    return "".join(chars)
+
+
+def _closing(text: str, opener: int) -> int | None:
+    """Where the block whose `{` or `(` is at `opener` closes, or None
+    when its braces never balance."""
+    depth = 0
+    for index in range(opener + 1, len(text)):
+        char = text[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            if depth == 0:
+                return index if text[opener] == "{" else None
+            depth -= 1
+        elif char == ")" and depth == 0 and text[opener] == "(":
+            return index
+    return None
 
 
 def _recovered(block: Block) -> Block:
@@ -113,7 +180,7 @@ def _recovered(block: Block) -> Block:
     return block
 
 
-def _record(entry: Entry, strings: dict[str, str]) -> dict | None:
+def _record(entry: Entry, strings: dict[str, str], mask: _Masks) -> dict | None:
     entry_type = entry.entry_type.lower()
     if entry_type not in STANDARD_TYPES:
         logger.warning("Entry type %s not standard. Not considered.", entry_type)
@@ -125,33 +192,45 @@ def _record(entry: Entry, strings: dict[str, str]) -> dict | None:
         first.setdefault(field.key.lower(), field.value)
     order = dict.fromkeys(field.key.lower() for field in reversed(entry.fields))
     order.pop("file", None)
-    record = {key: bib_latex.latex_to_unicode(_value(first[key], strings)) for key in order}
+    record = {key: _decoded(_value(first[key], strings, mask)) for key in order}
     record["ENTRYTYPE"] = entry_type
-    record["ID"] = bib_latex.latex_to_unicode(entry.key)
+    record["ID"] = _decoded(entry.key)
     if "file" in first:
-        record["file"] = _decoded_file(_value(first["file"], strings))
+        record["file"] = _decoded_file(_value(first["file"], strings, mask))
     return record
 
 
 def _decoded_file(file_field: str) -> str:
     """The `file` field is decoded only where it is LaTeX (#964). Zotero
     and Better BibTeX write it raw, escaping only `\\:`, `\\;` and `\\\\`,
-    which are `bib_escapes`'s to undo; decoding raised `TypeError` on a
-    `\\;` and took the whole read with it. Mendeley writes it as LaTeX
+    which are `bib_escapes`'s to undo. Mendeley writes it as LaTeX
     (`{\\_}` for an underscore), and decoding is what made those paths
-    resolve, so a field holding `{\\` still is. A decode that fails keeps
-    the raw field rather than ending the read."""
+    resolve, so a field holding `{\\` still is."""
     if "{\\" not in file_field:
         return file_field
+    return _decoded(file_field)
+
+
+def _decoded(value: str) -> str:
+    """`value` LaTeX-decoded, or as written when 1.x's decoder raises.
+
+    It raises `TypeError` on `\\;`, which its table maps to a
+    multi-character string, and that took the whole read with it: first
+    from a Zotero `file` field (#964), then from a URL, which
+    chitragupta-importer writes raw. 1.x crashed here, so there is no
+    output of its to keep; one value as written beats a sync that stops.
+    """
     try:
-        return bib_latex.latex_to_unicode(file_field)
+        return bib_latex.latex_to_unicode(value)
     except TypeError:
-        return file_field
+        return value
 
 
-def _value(raw: str, strings: dict[str, str]) -> str:
-    """A raw field or `@string` value, its `#`-joined parts resolved."""
-    return "".join(_part(part, strings) for part in _parts(raw))
+def _value(raw: str, strings: dict[str, str], mask: _Masks) -> str:
+    """A raw field or `@string` value, its `#`-joined parts resolved and
+    whatever `_masked` hid put back."""
+    value = "".join(_part(part, strings) for part in _parts(raw))
+    return value.replace(mask.backslash, "\\").replace(mask.at, "@")
 
 
 def _part(part: str, strings: dict[str, str]) -> str:

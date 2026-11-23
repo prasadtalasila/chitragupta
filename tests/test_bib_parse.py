@@ -11,6 +11,8 @@ exports and differed on none.
 
 import logging
 
+import pytest
+
 from chitragupta import bib_parse
 
 AWKWARD_BIB = r"""@string{myj = "My Journal"}
@@ -197,3 +199,120 @@ class TestTheFileField:
 
         monkeypatch.setattr(bib_parse.bib_latex, "latex_to_unicode", boom)
         assert bib_parse._decoded_file("{\\x}") == "{\\x}"
+
+
+# What chitragupta-importer writes (its bibtex.py): tab-indented fields,
+# braces escaped, parentheses and `@` left raw, and two `@comment` tables
+# ahead of the entries -- `cg-collections` and, since #1253/#1255,
+# `cg-renames`, whose rows can chain (`a` -> `b` -> `c`) and retire a
+# duplicate's key (`-1`).
+IMPORTER_HEAD = (
+    "@comment{cg-renames v1\n"
+    "lehner_pattern_2023-1\tlehner_pattern_2023\n"
+    "old_a_2020\told_b_2020\n"
+    "old_b_2020\tkept_2020\n"
+    "}\n\n"
+    "@comment{cg-collections v1\n"
+    "dt\tDigital Twin\n"
+    "dt.at\tTwins @ Scale\n"
+    "dt.fake\t@article\\{fake, title=\\{x\\}\\}\n"
+    "}\n\n"
+)
+
+
+def _importer_entry(key, abstract):
+    return (
+        f"@article{{{key},\n\ttitle = {{T}},\n\tabstract = {{{abstract}}},\n"
+        f"\tfile = {{Full Text PDF:files/{key}.pdf:application/pdf}},\n"
+        "\tcg-collections = {dt, dt.at},\n}\n"
+    )
+
+
+class TestALineStartingWithAnAtSignInsideAValue:
+    """bibtexparser 2's splitter starts a new block at any line beginning
+    `@word(` or `@word{`, even inside a value, and drops the entry it was
+    in; 1.x kept it. The importer escapes braces but not parentheses, so
+    Zotero text such as a decorator or an annotation quoted at the start of
+    a line reaches the bib raw."""
+
+    @pytest.mark.parametrize(
+        "abstract",
+        [
+            "First line\n@article(see Smith, 2020)",
+            "Code:\n@dataclass(frozen=True)",
+            "Open\n@book( never closed",
+            "Raw braces\n@misc{looks like an entry}",
+            "Indented\n   @Test(expected=Error.class)",
+        ],
+    )
+    def test_the_entry_survives_and_the_value_is_unchanged(self, abstract):
+        text = IMPORTER_HEAD + _importer_entry("k1", abstract) + "\n" + _importer_entry("k2", "x")
+        entries = bib_parse.parse_entries(text)
+        assert [e["ID"] for e in entries] == ["k1", "k2"]
+        # As 1.x read it: the value whole -- indentation after a newline
+        # gone and braces dropped, as everywhere else -- not cut short.
+        expected = bib_parse.bib_latex.latex_to_unicode(abstract.replace("\n   ", "\n"))
+        assert entries[0]["abstract"] == expected
+
+    def test_an_unbalanced_entry_is_still_skipped_and_the_rest_kept(self):
+        """The guard reaches only inside an entry whose braces balance, so
+        recovery after a broken one is exactly 1.x's: the broken entry
+        goes, the ones after it stay."""
+        text = (
+            "@article{a,\n\ttitle = {ok},\n}\n\n"
+            "@article{b,\n\ttitle = {never closed,\n}\n\n"
+            "@article{c,\n\ttitle = {fine},\n}\n\n"
+            "@article{d,\n\ttitle = {fine too},\n}\n"
+        )
+        assert [e["ID"] for e in bib_parse.parse_entries(text)] == ["a", "c", "d"]
+
+    def test_the_comment_tables_yield_no_entry_and_hide_none(self):
+        text = IMPORTER_HEAD + _importer_entry("lehner_pattern_2023", "x")
+        assert [e["ID"] for e in bib_parse.parse_entries(text)] == ["lehner_pattern_2023"]
+
+    def test_a_private_use_character_already_in_the_file_comes_back_as_written(self):
+        """The mask is a private-use code point the file does not hold, so
+        one it does hold is never mistaken for a hidden `@`."""
+        abstract = "has \ue000 in it\n@article(and a guarded line)"
+        text = _importer_entry("k1", abstract) + "\n" + _importer_entry("k2", "x")
+        entries = bib_parse.parse_entries(text)
+        assert [e["ID"] for e in entries] == ["k1", "k2"]
+        assert entries[0]["abstract"] == abstract
+
+
+class TestAValueTheDecoderCannotRead:
+    def test_is_kept_raw_rather_than_ending_the_read(self):
+        r"""1.x's decoder raises `TypeError` on `\;` (its table maps it to a
+        multi-character string), and the importer writes a URL raw -- so
+        one such URL ended the whole sync. The `file` field already kept
+        its raw value on this error (#964); every field does now."""
+        text = (
+            "@misc{k1,\n\ttitle = {T},\n\turl = {https://e.org/a\\;b},\n}\n\n"
+            "@misc{k2,\n\ttitle = {Next},\n}\n"
+        )
+        entries = bib_parse.parse_entries(text)
+        assert [e["ID"] for e in entries] == ["k1", "k2"]
+        assert entries[0]["url"] == r"https://e.org/a\;b"
+
+
+class TestABackslashBeforeABrace:
+    """BibTeX counts every brace, and so did 1.x: `\\}` still closes a value.
+    2.x treats `\\{` and `\\}` as escaped and does not count them, so a value
+    ending in a backslash never closed and the entry was dropped.
+    chitragupta-importer writes a URL and a DOI raw, so a URL ending in
+    `\\` reaches the bib as `url = {...\\}`."""
+
+    @pytest.mark.parametrize("field", ["url", "doi"])
+    def test_a_value_ending_in_a_backslash_keeps_its_entry(self, field):
+        text = (
+            f"@misc{{k1,\n\ttitle = {{T}},\n\t{field} = {{https://e.org/a\\}},\n}}\n\n"
+            "@misc{k2,\n\ttitle = {Next},\n}\n"
+        )
+        entries = bib_parse.parse_entries(text)
+        assert [e["ID"] for e in entries] == ["k1", "k2"]
+        assert entries[0][field] == "https://e.org/a\\"
+
+    def test_an_escaped_brace_inside_a_value_decodes_as_before(self):
+        text = "@misc{k1,\n\ttitle = {Paired \\{X\\} name},\n}\n"
+        (entry,) = bib_parse.parse_entries(text)
+        assert entry["title"] == bib_parse.bib_latex.latex_to_unicode("Paired \\{X\\} name")
