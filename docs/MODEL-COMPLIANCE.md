@@ -1,6 +1,7 @@
 # 🧭 Model compliance: which skill steps a local model runs, and why
 
-Status: **measured** on 2026-11-21, one model on two harnesses.
+Status: **measured** on 2026-11-21 (one model on two harnesses) and
+2026-11-22 (three models on the same two).
 
 This page records what the 2026-11-21 skill bench showed about how
 closely an agent follows a skill's steps when the model behind it is a
@@ -191,6 +192,87 @@ bench first.
 - **A step behind a pointer runs only if the pointer is followed.**
   OpenCode often does not open `critique.md` or load `figure-drawer`.
 
-Whether a stronger model closes most of the gap without any of these is
-the open question; benching a stronger local model on the same tasks is
-the next measurement.
+How much of this a stronger model fixes on its own is the next section.
+
+## 🔬 Stronger local models (2026-11-22)
+
+The same skill-only arm, 3 runs a skill on each local harness, for three
+models, all from one frozen commit so every run had the same skills and
+the same package. `bench/results/2026-11-22-local-model-candidates/`
+holds the rows and says how they were served.
+
+| Model | What it is | Served as |
+| --- | --- | --- |
+| Qwen3.6-35B-A3B | the model above: 35B, about 3B active per token | 4-bit, the control |
+| Gemma 4 31B | dense, all 31B active, another vendor | 8-bit, with its MTP draft |
+| Qwen3.6-27B | dense, all 27B active, the control's family | 8-bit, with its MTP draft |
+
+MTP is speculative decoding with each model's own draft head: it doubled
+generation speed (19.5 to 36.5 tokens a second for Qwen3.6-27B, 16.3 to
+34.0 for Gemma) and keeps only tokens the full model accepts.
+
+| Model | Harness | Usable runs | Gate passed | Named commands run | Median run |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Qwen3.6-35B-A3B | Codex | 32 of 33 | 31 | 50% | 501 s |
+| Qwen3.6-35B-A3B | OpenCode | 33 of 33 | 33 | 53% | 503 s |
+| Gemma 4 31B | Codex | 28 of 33 | 27 | 40% | 461 s |
+| Gemma 4 31B | OpenCode | 32 of 33 | 32 | 49% | 507 s |
+| **Qwen3.6-27B** | Codex | **33 of 33** | **33** | **58%** | 1,133 s |
+| **Qwen3.6-27B** | OpenCode | **33 of 33** | **33** | **56%** | 1,124 s |
+
+For scale, Claude Code ran 74% of named commands in the skill-only arm.
+
+**Qwen3.6-27B follows more steps, and follows them more steadily.** Of
+the steps it can be scored on, it runs 107 in every run on Codex and 29
+only sometimes, against the control's 76 and 60; on OpenCode, 99 and 40
+against 86 and 52. Every one of its 66 runs finished and passed the
+gate, with no timeout. The cost is time: its runs take about 2.3 times
+as long as the control's, even with MTP.
+
+**Gemma 4 31B does not help.** A dense model with about ten times the
+control's active parameters ran fewer named steps on both harnesses. It
+is steadier only in the sense that more steps are never run (113 on
+Codex, against the control's 78). On Codex it sometimes ends its turn
+early, which Codex reads as done: 6 of its Codex sessions ended before a
+draft existed. 4 announced their first step and stopped without running
+a single command ("I'll start by exploring the corpus…", then nothing),
+one stopped after two commands, and one after gathering its evidence and
+reporting progress. 5 of the 6 were the survey a reviser task runs
+first, so the reviser had nothing to revise. It never did so on
+OpenCode. Active parameters alone do not buy
+compliance; the model family matters more.
+
+**What a stronger model fixes, and what it does not.** Re-reading the
+never-followed table above against the three models:
+
+| Step | Command | Control (Codex / OpenCode) | Qwen3.6-27B | What it shows |
+| --- | --- | --- | --- | --- |
+| Open a digest's dossier | `draft dossier init` (review-digest) | 0/3 / 3/3 | 3/3 / 3/3 | **The model.** The stronger model runs it on Codex; issue 1247's wording may not be needed for it |
+| Rebuild the section map | `draft dossier sections` (review-digest, draft-reviser) | 0/3 / 2/3, 0/3 / 3/3 | 3/3 / 3/3, 2/3 / 3/3 | The model, mostly |
+| Mark a revision | `draft dossier mark-revision` (draft-reviser) | 1/3 / 3/3 | 3/3 / 3/3 | The model |
+| Rebuild the reference list after a revision | `draft references` (corpus-reviser) | 0/3 / 1/3 | 0/3 / 3/3 | The model on OpenCode; Codex still skips it |
+| Check the evidence file | `draft dossier check-evidence` (survey, thesis) | 0/3 / 2–3 of 3 | 0/3 / 3/3 | **The harness.** No model runs it on Codex, every model does on OpenCode. Not examined further |
+| Check how sources are spread | `review synthesis` (textbook, deep-research) | 0/3 / 0/3 | 0/3 / 0/3 | **The skill text.** No model runs a command named only in parentheses |
+| Check for an outline first | `draft dossier outline` (tutorial) | 0/3 / 1/3 | 0/3 / 0/3 | The skill text, or a condition the task never meets |
+| Look at the rendered figure | `figure look` (survey, textbook) | 1/3 / 1/3, 0/3 / 3/3 | 2/3 / 0/3, 2/3 / 0/3 | The harness: OpenCode's handoff to `figure-drawer`, for every model |
+
+**Steadiness.** `bench/simulate_false_fail.py` on each model's rows
+alone, the chance an unchanged skill fails `--compare`:
+
+| Model | Codex, worst skill | OpenCode, worst skill | Median skill, both harnesses |
+| --- | ---: | ---: | ---: |
+| Qwen3.6-35B-A3B | 4.1% / 16.4% | 4.0% / 10.6% | 5.3% / 11.8% |
+| Gemma 4 31B | 4.1% / 10.6% | 9.5% / 9.6% | 4.1% / 8.2% |
+| Qwen3.6-27B | 4.1% / 7.5% | 4.9% / 10.8% | 4.3% / 5.7% |
+
+Each cell is "whole runs / each command", the two ways of drawing runs
+HARNESS.md describes. On Codex, Qwen3.6-27B (0% to 4.1%, or 0% to 7.5%)
+is about as steady as Claude Code was (0% to 3%, or 0% to 7%). Three
+runs a skill is too few to change what gates on that alone.
+
+**What it means for a researcher without a Claude subscription.**
+Qwen3.6-27B on either harness is the better local choice: every run
+reached a passing draft, and it skips fewer of the steps that keep a
+dossier honest. It needs an A40-class GPU (48 GB) per run and about
+twice the time. The steps it still skips are the ones the skill text or
+the harness decides, which a model change will not reach.
