@@ -356,7 +356,9 @@ OK    content/drafts/dt/survey.md: 2 citation(s), all verified against the ledge
 
 `apply-renames` swaps the key in the draft, `evidence.md`, `sections.md`
 and `rejected.md` (so a declined paper stays declined), and appends one
-`revisions.md` entry with a `Sections:` line. It never invents the new
+`revisions.md` entry with a `Sections:` line. It writes all of them or
+none: each file goes to a temporary file first, so a write that fails
+midway leaves the draft and its dossier as they were. It never invents the new
 key: it follows the recorded chain (`a -> b -> c`) to a key the gate
 accepts, and matches a key only where no character a citekey may hold
 touches it, so `smith2020.v2` is left alone when `smith2020` is renamed.

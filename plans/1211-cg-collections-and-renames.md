@@ -5,9 +5,11 @@
 > superpowers:executing-plans to implement this plan task by task. Steps
 > use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **built, not merged.** Written 2026-11-22. Covers #1211 and
-supersedes #1109 (closed). Final review fixes and rulings are recorded in
-the PR.
+Status: **merged in #1253, released in 7.0.0.** Written 2026-11-22.
+Covers #1211 and supersedes #1109 (closed). Final review fixes and
+rulings are recorded in the PR. Two of the minor findings it left open,
+chains inside a `cg-renames` block and non-atomic `apply-renames`
+writes, were fixed in the 7.0.1 PATCH that follows it.
 
 **Goal:** chitragupta reads collections from chitragupta-importer's
 `cg-collections` field and name table instead of `groups`. Sync

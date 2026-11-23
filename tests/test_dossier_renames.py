@@ -211,6 +211,36 @@ class TestApply:
             _renames.apply_renames(draft)
 
 
+class TestAllOrNothingWrites:
+    """A write that fails partway leaves every file as it was, no temporary
+    file behind and no `revisions.md` entry."""
+
+    def test_a_failed_write_changes_nothing(self, draft, monkeypatch):
+        _seed(["new_2023"], [("old_2023", "new_2023", True)])
+        target = dossier.dossier_dir(draft)
+        files = [draft, target / "evidence.md", target / "sections.md", target / "revisions.md"]
+        before = {path: path.read_bytes() for path in files}
+        real = type(draft).write_text
+
+        def fail_on_sections(self, *args, **kwargs):
+            if "sections.md" in self.name:
+                raise OSError(28, "No space left on device")
+            return real(self, *args, **kwargs)
+
+        monkeypatch.setattr(type(draft), "write_text", fail_on_sections)
+        with pytest.raises(DossierError, match="nothing was changed"):
+            _renames.apply_renames(draft)
+        assert {path: path.read_bytes() for path in files} == before
+        assert not list(target.glob("*.tmp-*")) and not list(draft.parent.glob("*.tmp-*"))
+
+    def test_a_file_that_is_not_utf8_is_refused(self, draft):
+        _seed(["new_2023"], [("old_2023", "new_2023", True)])
+        (dossier.dossier_dir(draft) / "evidence.md").write_bytes(b"## `old_2023`\n\xff\xfe\n")
+        with pytest.raises(DossierError, match="not UTF-8"):
+            _renames.apply_renames(draft)
+        assert "[@old_2023]" in draft.read_text()
+
+
 class TestCli:
     def test_prints_each_swap_and_the_quote_recheck(self, draft, capsys):
         _seed(["new_2023"], [("old_2023", "new_2023", False)])
