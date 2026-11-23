@@ -1,7 +1,7 @@
 """Ledger schema version 5: the importer's collection names and recorded
 citekey renames (plans/1211-cg-collections-and-renames.md).
 
-Two tables beside `items`, neither keyed to an items row:
+Three tables beside `items`, none keyed to an items row:
 
 - `collection_names`: slug path -> the collection's own name, from the
   bib's `cg-collections` table. Rewritten whole on every sync, so a
@@ -13,6 +13,10 @@ Two tables beside `items`, neither keyed to an items row:
   `--remove-stale`. `source` says how it was learnt (`pdf_hash` match or
   the importer's `cg-renames` table) and `same_pdf` whether the two PDFs
   are byte-identical, which decides whether quotes need re-checking.
+- `stale_citekeys`: the keys the last whole read of the bib no longer
+  has, rewritten on every sync. A stale key's items row stays until
+  `--remove-stale`, so this is how the drafting layer's `dossier status`
+  knows, before the prune, that a draft cites a paper on its way out.
 
 The migration also clears `items.collections`: version 4 stored Better
 BibTeX `groups` paths there, which no longer mean anything, and a row
@@ -43,6 +47,7 @@ MIGRATION: tuple[tuple[str | None, str], ...] = (
         "source TEXT NOT NULL CHECK (source IN ('pdf_hash', 'cg-renames')), "
         "same_pdf INTEGER NOT NULL, seen_at TEXT NOT NULL)",
     ),
+    (None, "CREATE TABLE IF NOT EXISTS stale_citekeys (citekey TEXT PRIMARY KEY)"),
     (None, "UPDATE items SET collections = NULL"),
 )
 
@@ -51,6 +56,17 @@ def replace_collection_names(con: sqlite3.Connection, names: dict[str, str]) -> 
     """Make `collection_names` hold exactly `names`."""
     con.execute("DELETE FROM collection_names")
     con.executemany("INSERT INTO collection_names VALUES (?, ?)", sorted(names.items()))
+
+
+def replace_stale(con: sqlite3.Connection, citekeys: set[str]) -> None:
+    """Make `stale_citekeys` hold exactly `citekeys`."""
+    con.execute("DELETE FROM stale_citekeys")
+    con.executemany("INSERT INTO stale_citekeys VALUES (?)", [(key,) for key in sorted(citekeys)])
+
+
+def stale(con: sqlite3.Connection) -> set[str]:
+    """The citekeys the last sync found missing from the bib."""
+    return {r[0] for r in _rows(con, "SELECT citekey FROM stale_citekeys")}
 
 
 def _rows(con: sqlite3.Connection, query: str) -> list:

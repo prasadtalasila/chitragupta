@@ -100,7 +100,8 @@ def _plan(texts: dict[Path, str]) -> tuple[list[tuple[str, str, bool]], dict[str
     """The swaps to make, and `{old: reason}` for the ones refused."""
     try:
         with ledger.reading() as con:
-            renames, citable = ledger_tables.renames(con), citable_citekeys(con)
+            renames = ledger_tables.renames(con)
+            citable = citable_citekeys(con) - ledger_tables.stale(con)
     except (ledger.NoLedger, ledger.StaleLedger, ledger.UnreadableLedger) as exc:
         raise DossierError(f"{exc}; run `chitragupta corpus sync` first") from exc
     plan, refused = [], {}

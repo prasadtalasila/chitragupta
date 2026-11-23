@@ -1,13 +1,16 @@
 """What else still names a citekey that `sync --remove-stale` is about
 to drop from the ledger -- reported, never repaired (issue #763).
 
-The ledger row is not the only place a citekey lives. Six other
-artefacts carry it: the enrichment layer's chunk vectors under
-`content/chroma/`, the overlap index under `content/overlap/`, the topic
-graph's edges in `content/topic_graph.json`, the topic membership records
-in `content/topic_set.json` and `content/topics.json` (#782), and the
-drafting layer's dossiers under `content/dossiers/` and its drafts under
-`content/drafts/` (plans/1211). Dropping the row
+The ledger row is not the only place a citekey lives. Four other
+artefacts below the drafting layer carry it: the enrichment layer's chunk
+vectors under `content/chroma/`, the overlap index under
+`content/overlap/`, the topic graph's edges in `content/topic_graph.json`,
+and the topic membership records in `content/topic_set.json` and
+`content/topics.json` (#782). Drafts and dossiers cite it too, but they
+are the drafting layer's, and that layer reports them: sync records the
+stale keys in the ledger (`ledger_tables.stale_citekeys`), and
+`dossier status --all` names every draft citing one, before the prune as
+after it (plans/1211). This report ends by pointing there. Dropping the row
 leaves every one of them pointing at a paper the corpus no longer holds --
 `chitragupta/citation_gate.py` catches the draft-side symptom, but only
 at the next gate run and without saying what caused it.
@@ -43,25 +46,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from chitragupta import chroma_paging, config, overlap_chroma
-from chitragupta.citekey_safety import citekey_path, citekey_pattern, citekey_problem
+from chitragupta.citekey_safety import citekey_path, citekey_problem
 
 # Fixed order, so two runs over the same corpus print identically and a
 # reader can diff them. Roughly cheapest-to-costliest to scan.
 OVERLAP = "overlap index"
 TOPIC_GRAPH = "topic graph"
 TOPIC_MEMBERSHIP = "topic membership"
-DOSSIERS = "dossiers"
 CHROMA = "chroma vectors"
-DRAFTS = "drafts"
-
-# The files in a dossier that carry citekeys as *citations of record*.
-# `rejected.md` is deliberately not among them: a citekey there was
-# considered and turned down, so the paper leaving the corpus confirms
-# that decision rather than invalidating it.
-DOSSIER_FILES = ("evidence.md", "sections.md")
-# A draft, its figures and its review sidecars cite a key as directly as
-# a dossier does.
-DRAFT_FILES = ("*.md", "*.tex")
 
 
 @dataclass(frozen=True)
@@ -182,7 +174,7 @@ def _scan_topic_membership(citekeys: list[str], notes: list[str]) -> dict[str, H
     """Which topic each paper belongs to, across the two files that
     record it.
 
-    Named per file with its own count, like `_scan_texts`, because the
+    Named per file with its own count, like the overlap index, because the
     two are written by different stages and either may exist alone.
     Unlike a dossier, this residue is **self-healing**: both files are
     regenerated wholesale by the next enrichment run, so a hit here is a
@@ -204,33 +196,6 @@ def _scan_topic_membership(citekeys: list[str], notes: list[str]) -> dict[str, H
             hits[citekey] = Hit(
                 TOPIC_MEMBERSHIP, sum(n for _path, n in counts), "membership", where
             )
-    return hits
-
-
-def _files(root: Path, names: tuple[str, ...]) -> list[Path]:
-    """Every file under `root` matching one of `names`, in a stable order.
-    Walked off disk rather than through `chitragupta.dossier`, which is
-    the drafting layer's package."""
-    return sorted(path for name in names for path in root.rglob(name))
-
-
-def _scan_texts(artefact: str, files, citekeys: list[str], notes: list[str]) -> dict[str, Hit]:
-    """Bounded mentions of each citekey in text files, per file."""
-    # Noted, not raised, for `_read_json`'s reason (#970).
-    texts = []
-    for path in files:
-        try:
-            texts.append((path, path.read_text(encoding="utf-8", errors="replace")))
-        except OSError as exc:
-            notes.append(_unscanned(artefact, path, exc))
-    hits = {}
-    for citekey in citekeys:
-        pattern = citekey_pattern(citekey)
-        counts = [(path, len(pattern.findall(text))) for path, text in texts]
-        counts = [(path, n) for path, n in counts if n]
-        if counts:
-            where = tuple(f"{path} ({n})" for path, n in counts)
-            hits[citekey] = Hit(artefact, sum(n for _path, n in counts), "mention", where)
     return hits
 
 
@@ -283,9 +248,7 @@ def scan(citekeys: list[str]) -> tuple[dict[str, list[Hit]], list[str]]:
         _scan_overlap(citekeys, notes),
         _scan_topic_graph(citekeys, notes),
         _scan_topic_membership(citekeys, notes),
-        _scan_texts(DOSSIERS, _files(config.DOSSIERS_DIR, DOSSIER_FILES), citekeys, notes),
         chroma,
-        _scan_texts(DRAFTS, _files(config.DRAFTS_DIR, DRAFT_FILES), citekeys, notes),
     ]
     found = {
         citekey: [hits[citekey] for hits in by_class if citekey in hits] for citekey in citekeys
@@ -319,3 +282,4 @@ def report(citekeys: list[str]) -> None:
     for note in notes:
         print(f"    NOTE: {note}")
     print("    Reported, not repaired -- nothing above is touched by this run.")
+    print("    Drafts and dossiers citing these: chitragupta draft dossier status --all")

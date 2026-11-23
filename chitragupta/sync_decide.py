@@ -165,6 +165,7 @@ def _record_and_report(
         stale = [key for key, _path in ledger.find_stale(con, seen)]
         declared = library.tables.declared_renames
         renames, shared = sync_renames.detect(con, stale, seen, declared)
+        ledger_tables.replace_stale(con, set(stale))
         sync_renames.record(con, renames, seen)
         notes = sync_renames.suffixes(renames, shared)
     return _report_stale(con, library, remove_stale, notes)

@@ -367,14 +367,13 @@ directory re-parses nothing ([MIGRATION.md](MIGRATION.md)).
 
 Whenever a run has stale citekeys to report (in report-only mode, and
 again just before `--remove-stale` deletes anything), `sync` names what
-else still points at each one:
+else in the corpus and enrichment layers still points at each one:
 
 | Artefact | Where it lives | Counted as |
 | --- | --- | --- |
 | overlap index | `content/overlap/docs/<citekey>.fpr` and `.skipgram.fpr`, plus the citekey list in `index.json` and `skipgram_index.json` | files, each named |
 | topic graph | `content/topic_graph.json`'s `edges_overlap`, `edges_withheld` and `edges_semantic` | edges |
 | topic membership | `content/topic_set.json`'s `topics[].members[].citekey` and `uncovered`, plus `content/topics.json`'s `assignments` and `memberships` | memberships, per file |
-| dossiers | `evidence.md` and `sections.md` under `content/dossiers/` | mentions, per file |
 | chroma vectors | the chunk collection under `content/chroma/` | vectors |
 
 ```text
@@ -382,17 +381,21 @@ else still points at each one:
   Checking what else still references the 1 stale citekey(s) ...
     smith_example_2024: still referenced by 2 artefact class(es)
       overlap index    2 file(s): .../content/overlap/docs/smith_example_2024.fpr, ...
-      dossiers         4 mention(s): .../content/dossiers/dt/survey/evidence.md (4)
+      topic graph      3 edge(s): .../content/topic_graph.json
     Reported, not repaired -- nothing above is touched by this run.
+    Drafts and dossiers citing these: chitragupta draft dossier status --all
 Review the 1 stale item(s) above, then re-run with --remove-stale ...
 ```
 
-The scan only reports; `--remove-stale` removes only the ledger row,
-because pruning a dossier's `evidence.md` would destroy evidence you
-transcribed by hand. A dossier mention is the hit to act on; topic hits
-expire at the next enrichment run. Citekeys match exactly. A class that
-could not be scanned (no `content/chroma/`, no `enrich` extra, a
-truncated file) gets a `NOTE:` line rather than a silent zero.
+The scan only reports; `--remove-stale` removes only the ledger row.
+Drafts and dossiers are the drafting layer's, so sync does not read
+them: it records the stale keys in the ledger, and
+`chitragupta draft dossier status --all` lists every draft citing one,
+as `missing` or `renamed`, before the prune as well as after it. That is
+the list to act on; topic hits expire at the next enrichment run.
+Citekeys match exactly. A class that could not be scanned (no
+`content/chroma/`, no `enrich` extra, a truncated file) gets a `NOTE:`
+line rather than a silent zero.
 
 ### ♻ When `sync` re-parses a document it already parsed
 
@@ -625,7 +628,7 @@ a gate: it takes no lock and opens the ledger read-only.
 | --- | --- |
 | `init <draft> --genre G` | Create the skeleton. Only adds missing files, so it is safe to re-run |
 | `status <draft>` | What each file holds, the section count, and whether the corpus moved since; with an `outline.md`, which declared queries ran, returned nothing (`no evidence`) or were never issued |
-| `status --all` | Corpus drift over every dossier: broken citations, citekeys sync recorded as renamed, recorded collections that no longer resolve, and new candidates. Always exits 0 |
+| `status --all` | Corpus drift over every dossier: broken citations (including keys the last sync found stale, before `--remove-stale` prunes them), citekeys sync recorded as renamed, recorded collections that no longer resolve, and new candidates. Always exits 0 |
 | `sections <draft>` | Heading -> line range, for editing one section instead of the file |
 | `sections <draft> --citekeys` | The `sections.md` table derived from the draft: each heading with the citekeys cited under it |
 | `outline <draft>` | Read and validate `outline.md` (sections are `##`-or-deeper headings). **Exits 1** if there's no `outline.md`, or a section has neither a `brief:` nor a `claim:` |

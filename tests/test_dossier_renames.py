@@ -33,8 +33,9 @@ def draft(isolated_config):
     return path
 
 
-def _seed(parsed, renames):
-    """Parsed ledger rows for `parsed`, and `renames` rows (old, new, same)."""
+def _seed(parsed, renames, stale=()):
+    """Parsed ledger rows for `parsed`, `renames` rows (old, new, same), and
+    the keys sync last found stale."""
     config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
     con = ledger.connect()
     try:
@@ -50,6 +51,7 @@ def _seed(parsed, renames):
             "INSERT INTO renames VALUES (?, ?, 'pdf_hash', ?, '2026-11-22')",
             [(old, new, int(same)) for old, new, same in renames],
         )
+        con.executemany("INSERT INTO stale_citekeys VALUES (?)", [(key,) for key in stale])
         con.commit()
     finally:
         con.close()
@@ -107,6 +109,34 @@ class TestStatus:
         assert "1 citekey(s) renamed" in out
         assert "old_2023 -> new_2023 (different PDF)" in out
         assert "dossier apply-renames" in out
+
+
+class TestStaleBeforeThePrune:
+    """The pre-prune warning sync's residue report used to give for dossiers,
+    now from the drafting layer: a key sync found stale is `missing` while
+    its ledger row still waits for `--remove-stale`."""
+
+    def test_a_stale_key_the_dossier_declares_is_missing(self, draft):
+        _seed(["old_2023"], [], stale=["old_2023"])
+        report = _drift.drift(dossier.dossier_dir(draft))
+        assert report.missing == {"old_2023": ["1. First"]}
+
+    def test_a_stale_key_cited_only_in_the_draft_is_missing(self, draft):
+        target = dossier.dossier_dir(draft)
+        (target / "evidence.md").write_text("# Kept evidence\n")
+        (target / "sections.md").write_text("# Sections\n")
+        _seed(["old_2023"], [], stale=["old_2023"])
+        assert _drift.drift(target).missing == {"old_2023": []}
+
+    def test_a_stale_target_is_not_a_rename(self, draft):
+        _seed(["new_2023"], [("old_2023", "new_2023", True)], stale=["new_2023"])
+        report = _drift.drift(dossier.dossier_dir(draft))
+        assert report.renamed == {} and "old_2023" in report.missing
+        with pytest.raises(DossierError, match="new_2023 is not citable"):
+            _renames.apply_renames(draft)
+
+    def test_corpus_stale_reads_as_none_without_a_ledger(self, isolated_config):
+        assert _drift.Corpus([]).stale == set()
 
 
 class TestApply:

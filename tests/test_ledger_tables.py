@@ -22,6 +22,7 @@ def _v4_ledger(path) -> None:
     raw = sqlite3.connect(path)
     raw.execute("DROP TABLE collection_names")
     raw.execute("DROP TABLE renames")
+    raw.execute("DROP TABLE stale_citekeys")
     raw.execute(
         "INSERT INTO items (citekey, status, last_synced, collections) VALUES (?, ?, ?, ?)",
         ("old_2020", "discovered", "2020-01-01T00:00:00+00:00", '["Digital twins > Modelling"]'),
@@ -33,7 +34,7 @@ def _v4_ledger(path) -> None:
 
 class TestMigration:
     def test_fresh_ledger_has_v5_tables(self, ledger_con):
-        assert {"collection_names", "renames"} <= _tables(ledger_con)
+        assert {"collection_names", "renames", "stale_citekeys"} <= _tables(ledger_con)
         assert ledger_con.execute("PRAGMA user_version").fetchone()[0] == 5
 
     def test_v4_ledger_migrates_and_clears_groups_paths(self, isolated_config):
@@ -110,15 +111,25 @@ class TestRenames:
             ledger_con.execute("INSERT INTO renames VALUES ('a', 'b', 'guess', 1, '2026-11-22')")
 
 
+class TestStale:
+    def test_replace_and_read(self, ledger_con):
+        ledger_tables.replace_stale(ledger_con, {"a_2020", "b_2020"})
+        assert ledger_tables.stale(ledger_con) == {"a_2020", "b_2020"}
+        ledger_tables.replace_stale(ledger_con, set())
+        assert ledger_tables.stale(ledger_con) == set()
+
+
 class TestWithoutTheTables:
     """A connection to a database without v5's tables -- a caller's own
     sqlite3 handle, say -- reads as "nothing recorded", like `of_row`."""
 
-    @pytest.mark.parametrize("reader", [ledger_tables.collection_names, ledger_tables.renames])
+    @pytest.mark.parametrize(
+        "reader", [ledger_tables.collection_names, ledger_tables.renames, ledger_tables.stale]
+    )
     def test_reads_as_empty(self, reader):
         con = sqlite3.connect(":memory:")
         try:
-            assert reader(con) == {}
+            assert not reader(con)
         finally:
             con.close()
 

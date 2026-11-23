@@ -113,7 +113,6 @@ class TestScan:
             sync_residue.OVERLAP: 3,
             sync_residue.TOPIC_GRAPH: 3,
             sync_residue.TOPIC_MEMBERSHIP: 4,
-            sync_residue.DOSSIERS: 2,
             sync_residue.CHROMA: 2,
         }
 
@@ -130,7 +129,7 @@ class TestScan:
         hits = {hit.artefact: hit.count for hit in found["smith_gone_2020b"]}
         # The membership hit is its own `uncovered` entry, not the two
         # `smith_gone_2020` memberships sitting beside it.
-        assert hits == {sync_residue.TOPIC_MEMBERSHIP: 1, sync_residue.DOSSIERS: 1}
+        assert hits == {sync_residue.TOPIC_MEMBERSHIP: 1}
 
     def test_absent_artefacts_scan_clean(self, isolated_config):
         found, notes = sync_residue.scan(["anything_2000"])
@@ -200,15 +199,21 @@ class TestScan:
         found, notes = sync_residue.scan(["anything_2000"])
         assert (found, notes) == ({"anything_2000": []}, [])
 
-    def test_dossier_mentions_name_the_file_and_the_count(self, residue_corpus):
+    def test_drafting_layer_files_are_not_scanned(self, residue_corpus):
+        """Dossiers and drafts are the drafting layer's, and `dossier status
+        --all` reports them; the corpus layer reads only its own and the
+        enrichment layer's artefacts (the residue fixture's dossier cites
+        `smith_gone_2020`)."""
+        drafts = residue_corpus.DRAFTS_DIR
+        drafts.mkdir(parents=True, exist_ok=True)
+        (drafts / "s.md").write_text("[@smith_gone_2020]\n")
         found, _notes = sync_residue.scan(["smith_gone_2020"])
-        (dossier_hit,) = [
-            hit for hit in found["smith_gone_2020"] if hit.artefact == sync_residue.DOSSIERS
-        ]
-        assert dossier_hit.where == (
-            f"{residue_corpus.DOSSIERS_DIR / 'dt' / 'survey' / 'evidence.md'} (1)",
-            f"{residue_corpus.DOSSIERS_DIR / 'dt' / 'survey' / 'sections.md'} (1)",
-        )
+        assert {hit.artefact for hit in found["smith_gone_2020"]} == {
+            sync_residue.OVERLAP,
+            sync_residue.TOPIC_GRAPH,
+            sync_residue.TOPIC_MEMBERSHIP,
+        }
+        assert not hasattr(sync_residue, "DOSSIERS")
 
 
 class TestChromaBranches:
@@ -260,13 +265,13 @@ class TestReport:
         use_fake_chroma(monkeypatch, residue_corpus, [{"citekey": "smith_gone_2020"}])
         sync_residue.report(["smith_gone_2020"])
         out = capsys.readouterr().out
-        assert "still referenced by 5 artefact class(es)" in out
+        assert "still referenced by 4 artefact class(es)" in out
         assert "overlap index    3 file(s):" in out
         assert "topic graph      3 edge(s):" in out
         assert "topic membership 4 membership(s):" in out
-        assert "dossiers         2 mention(s):" in out
         assert "chroma vectors   1 vector(s):" in out
         assert "Reported, not repaired" in out
+        assert "chitragupta draft dossier status --all" in out
 
     def test_no_residue_is_said_out_loud(self, residue_corpus, capsys):
         sync_residue.report(["never_seen_1999"])
@@ -306,7 +311,7 @@ class TestReport:
         sync_residue.report(["smith_gone_2020"])
         out = capsys.readouterr().out
         assert f"NOTE: {artefact}: {path_of(residue_corpus)} could not be read" in out
-        assert "dossiers         2 mention(s):" in out
+        assert "still referenced by" in out
         assert "Reported, not repaired" in out
 
     def test_it_modifies_no_artefact(self, residue_corpus, capsys):
@@ -324,47 +329,3 @@ class TestReport:
         }
         assert after == before
         assert not residue_corpus.CHROMA_DIR.exists()
-
-
-class TestDrafts:
-    """Drafts cite a key directly; a rename or removal reaches them too
-    (plans/1211-cg-collections-and-renames.md, D8)."""
-
-    def test_markdown_and_latex_drafts_are_named_with_their_count(self, isolated_config):
-        drafts = isolated_config.DRAFTS_DIR / "dt"
-        drafts.mkdir(parents=True)
-        (drafts / "survey.md").write_text("As [@smith_gone_2020] and [@smith_gone_2020b].\n")
-        (drafts / "chapter.tex").write_text("\\citep{smith_gone_2020, other_2021}\n")
-        (drafts / "notes.txt").write_text("smith_gone_2020\n")
-        found, notes = sync_residue.scan(["smith_gone_2020"])
-        assert notes == []
-        (hit,) = [h for h in found["smith_gone_2020"] if h.artefact == sync_residue.DRAFTS]
-        assert hit.count == 2 and hit.unit == "mention"
-        assert hit.where == (f"{drafts / 'chapter.tex'} (1)", f"{drafts / 'survey.md'} (1)")
-
-    def test_drafts_come_last_in_the_fixed_order(self, isolated_config, monkeypatch):
-        drafts = isolated_config.DRAFTS_DIR
-        drafts.mkdir(parents=True)
-        (drafts / "s.md").write_text("[@k_2020]\n")
-        dossier = isolated_config.DOSSIERS_DIR / "s"
-        dossier.mkdir(parents=True)
-        (dossier / "evidence.md").write_text("## k_2020\n")
-        found, _notes = sync_residue.scan(["k_2020"])
-        assert [h.artefact for h in found["k_2020"]] == [sync_residue.DOSSIERS, sync_residue.DRAFTS]
-
-    def test_an_unreadable_draft_is_noted(self, isolated_config, monkeypatch):
-        drafts = isolated_config.DRAFTS_DIR
-        drafts.mkdir(parents=True)
-        bad = drafts / "s.md"
-        bad.write_text("[@k_2020]\n")
-        real = type(bad).read_text
-
-        def refuse(self, *args, **kwargs):
-            if self == bad:
-                raise PermissionError("denied")
-            return real(self, *args, **kwargs)
-
-        monkeypatch.setattr(type(bad), "read_text", refuse)
-        found, notes = sync_residue.scan(["k_2020"])
-        assert found == {"k_2020": []}
-        assert notes == [f"drafts: {bad} could not be read (denied), so it was not scanned."]

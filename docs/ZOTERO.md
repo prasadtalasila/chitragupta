@@ -117,9 +117,10 @@ This is deliberate: a short export is far more often a botched re-export,
 or `BIB_FILE` pointing at the wrong path, than an intentional deletion.
 
 Before either run acts, it names **what else on disk still references
-that citekey** (the overlap index, the topic graph, any dossier's
-`evidence.md`/`sections.md`, the chunk vectors), so you see the residue
-before you confirm. It repairs nothing: only the ledger row is ever
+that citekey** (the overlap index, the topic graph, the chunk vectors),
+so you see the residue before you confirm, and points you at
+`chitragupta draft dossier status --all` for the drafts and dossiers
+that cite it. It repairs nothing: only the ledger row is ever
 removed.
 [CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove)
 has the format.

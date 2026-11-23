@@ -42,6 +42,7 @@ from chitragupta.dossier import (
     find_draft,
     recorded_corpus,
 )
+from chitragupta.dossier._renames import cited as mentioned_in
 from chitragupta.dossier._renames import renamed_in
 from chitragupta.dossier._retrieval import recorded_queries_with_collection
 
@@ -166,14 +167,7 @@ def drift(dossier: Path, corpus: "Corpus | None" = None) -> Drift:
     # backticked prose, and the skill's own name in the evidence preamble
     # (`tutorial-writer`) was reported as a citation that left the ledger.
     declared = declared_citekeys(dossier) | set(sections_citing)
-    # A renamed key is not missing: sync recorded its replacement, and
-    # `dossier apply-renames` swaps it without a search (plans/1211).
-    texts = [p.read_text(encoding="utf-8") for p in _texts_of(report.draft, dossier)]
-    report.renamed = renamed_in(texts, corpus.renames, corpus.citekeys, sections_citing)
-    report.missing = {
-        citekey: sections_citing.get(citekey, [])
-        for citekey in sorted(declared - corpus.citekeys - set(report.renamed))
-    }
+    _missing_and_renamed(report, corpus, declared, sections_citing)
 
     # Everything the dossier ever weighed -- rejections included, which is
     # the point. Re-offering a paper the draft already turned down as if
@@ -203,6 +197,25 @@ def drift(dossier: Path, corpus: "Corpus | None" = None) -> Drift:
         if citekey in declined and citekey not in cited
     ]
     return report
+
+
+def _missing_and_renamed(report: Drift, corpus: Corpus, declared, sections_citing) -> None:
+    """Fill `report.renamed` and `report.missing`.
+
+    A key sync found stale is missing already, though its row waits for
+    `--remove-stale`, and so is one only the draft's text cites: this is
+    the pre-prune warning sync's residue report used to give for drafts
+    and dossiers. A renamed key is not missing: sync recorded its
+    replacement, and `dossier apply-renames` swaps it without a search
+    (plans/1211).
+    """
+    live = corpus.citekeys - corpus.stale
+    texts = [p.read_text(encoding="utf-8") for p in _texts_of(report.draft, report.dossier)]
+    report.renamed = renamed_in(texts, corpus.renames, live, sections_citing)
+    gone = (declared - live) | set(mentioned_in(texts, corpus.stale))
+    report.missing = {
+        citekey: sections_citing.get(citekey, []) for citekey in sorted(gone - set(report.renamed))
+    }
 
 
 def _scope_collection(dossier: Path) -> str:

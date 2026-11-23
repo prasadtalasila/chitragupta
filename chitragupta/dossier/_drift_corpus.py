@@ -35,6 +35,7 @@ class Corpus:
         self._index: dict | None = None
         self._names: dict[str, str] | None = None
         self._renames: dict[str, tuple[str, str, bool]] | None = None
+        self._stale: set[str] | None = None
 
     @property
     def index(self) -> dict:
@@ -44,6 +45,18 @@ class Corpus:
 
             self._index = retrieval_cache.read_only_index(self.rows, retrieval._tokenize_item)
         return self._index
+
+    @property
+    def stale(self) -> set[str]:
+        """The keys the last sync found gone from the bib, whose rows still
+        wait for `--remove-stale`; none when the ledger cannot be read."""
+        if self._stale is None:
+            try:
+                with ledger.reading() as con:
+                    self._stale = ledger_tables.stale(con)
+            except (ledger.NoLedger, sqlite3.Error):
+                self._stale = set()
+        return self._stale
 
     @property
     def renames(self) -> dict[str, tuple[str, str, bool]]:

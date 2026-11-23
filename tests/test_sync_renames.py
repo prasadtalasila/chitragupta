@@ -149,6 +149,26 @@ class TestSyncRun:
         finally:
             con.close()
 
+    def test_stale_keys_are_recorded_for_the_drafting_layer(self, renamed_corpus, capsys):
+        sync.run()
+        con = ledger.connect()
+        try:
+            assert ledger_tables.stale(con) == {"lehner_pattern_2023-1"}
+        finally:
+            con.close()
+        sync.run(remove_stale=True)
+        sync.run()
+        con = ledger.connect()
+        try:
+            assert ledger_tables.stale(con) == set()
+        finally:
+            con.close()
+
+    def test_the_report_points_at_dossier_status(self, renamed_corpus, capsys):
+        capsys.readouterr()
+        sync.run()
+        assert "chitragupta draft dossier status --all" in capsys.readouterr().out
+
     def test_a_lossy_read_records_nothing(self, renamed_corpus, capsys):
         text = renamed_corpus.BIB_FILE_PATH.read_text()
         renamed_corpus.BIB_FILE_PATH.write_text(text + "@article{broken,\n  title = {T\n")
