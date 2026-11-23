@@ -30,7 +30,7 @@ or `draft_text` in a committed result, since those are draft and source
 prose.
 
 **What it needs that the other overlap benches do not.** They are stdlib
-only and run anywhere. This one needs the `enrich` Poetry group
+only and run anywhere. This one needs the `enrich` extra
 (`chromadb`, `sentence-transformers`, and torch under them), a built
 `content/chroma/`, Docling passage sidecars for the cited sources, and a
 dossier for every draft scanned. Any of those missing and tier 3 reports

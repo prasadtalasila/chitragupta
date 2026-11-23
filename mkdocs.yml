@@ -145,8 +145,7 @@ exclude_docs: |
   /CITATION.cff
   /config.toml
   /config.toml.example
-  /poetry.lock
-  /poetry.toml
+  /uv.lock
   /pyproject.toml
   # Kept in git for readers on GitHub, left out of the site to keep it
   # shorter; pages that link to them use GitHub URLs.

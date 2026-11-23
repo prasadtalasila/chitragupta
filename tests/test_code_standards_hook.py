@@ -34,7 +34,7 @@ class HookRepo:
     `installed` picks which shape `safe_path.py` will see, and sets it
     through `PYTHONPATH` rather than trusting whatever this interpreter
     happens to have installed -- a local venv with nothing installed and
-    CI's editable `poetry install` would otherwise disagree. A checkout
+    CI's editable `uv sync` would otherwise disagree. A checkout
     is a `chitragupta` resolving inside the root; an installed project is
     one resolving to the real package, outside it.
     """

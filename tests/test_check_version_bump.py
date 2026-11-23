@@ -162,8 +162,19 @@ class TestTheRules:
 
 
 class TestParsingPyproject:
-    def test_it_reads_the_poetry_version(self, check):
+    def test_it_reads_the_project_version(self, check):
+        assert check.version_in('[project]\nversion = "5.20.0"\n') == "5.20.0"
+
+    def test_it_still_reads_a_poetry_version(self, check):
+        """The base side of the comparison is `main`'s pyproject.toml, and
+        the PR that moved the version to `[project]` was compared against a
+        `main` that still kept it in `[tool.poetry]` -- as is any older
+        commit this is ever pointed at."""
         assert check.version_in('[tool.poetry]\nversion = "5.20.0"\n') == "5.20.0"
+
+    def test_project_wins_where_both_are_present(self, check):
+        text = '[project]\nversion = "5.21.0"\n[tool.poetry]\nversion = "5.20.0"\n'
+        assert check.version_in(text) == "5.21.0"
 
 
 def git_repo(root: Path, base_version: str, head_version: str, tag: str | None):
@@ -186,12 +197,12 @@ def git_repo(root: Path, base_version: str, head_version: str, tag: str | None):
     run("config", "user.email", "t@example.com")
     run("config", "user.name", "t")
     pyproject = root / "pyproject.toml"
-    pyproject.write_text(f'[tool.poetry]\nversion = "{base_version}"\n', encoding="utf-8")
+    pyproject.write_text(f'[project]\nversion = "{base_version}"\n', encoding="utf-8")
     run("add", "pyproject.toml")
     run("commit", "--quiet", "-m", "base")
     if tag:
         run("tag", tag)
-    pyproject.write_text(f'[tool.poetry]\nversion = "{head_version}"\n', encoding="utf-8")
+    pyproject.write_text(f'[project]\nversion = "{head_version}"\n', encoding="utf-8")
     return root
 
 
@@ -331,14 +342,14 @@ class TestTheWarningDoesNotGate:
     def test_an_untagged_base_alone_still_exits_zero(self, check, monkeypatch, capsys):
         monkeypatch.setattr(check, "problems", lambda *a: [])
         monkeypatch.setattr(check, "unreleased", lambda *a: "a release is owed")
-        monkeypatch.setattr(check, "_git", lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
+        monkeypatch.setattr(check, "_git", lambda *a: '[project]\nversion = "0.0.1"\n')
         assert check.main([], fetch=not_on_pypi) == 0
         assert "::warning::a release is owed" in capsys.readouterr().err
 
     def test_a_real_problem_still_exits_one(self, check, monkeypatch, capsys):
         monkeypatch.setattr(check, "problems", lambda *a: ["collision"])
         monkeypatch.setattr(check, "unreleased", lambda *a: "a release is owed")
-        monkeypatch.setattr(check, "_git", lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
+        monkeypatch.setattr(check, "_git", lambda *a: '[project]\nversion = "0.0.1"\n')
         assert check.main([], fetch=not_on_pypi) == 1
         err = capsys.readouterr().err
         assert "::warning::" in err and "::error::collision" in err
@@ -349,7 +360,7 @@ class TestTheWarningDoesNotGate:
         reads, which would defeat the point of adding it."""
         monkeypatch.setattr(check, "problems", lambda *a: [])
         monkeypatch.setattr(check, "unreleased", lambda *a: None)
-        monkeypatch.setattr(check, "_git", lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
+        monkeypatch.setattr(check, "_git", lambda *a: '[project]\nversion = "0.0.1"\n')
         assert check.main([], fetch=not_on_pypi) == 0
         assert "::warning::" not in capsys.readouterr().err
 
@@ -387,7 +398,7 @@ class TestOnPyPI:
 class TestPyPIBlocks:
     def test_a_published_version_fails_the_check(self, check, monkeypatch, capsys):
         monkeypatch.setattr(check, "on_pypi", lambda *a: True)
-        monkeypatch.setattr(check, "_git", lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
+        monkeypatch.setattr(check, "_git", lambda *a: '[project]\nversion = "0.0.1"\n')
         assert check.main([]) == 1
         assert "can never be re-uploaded" in capsys.readouterr().err
 
@@ -395,7 +406,7 @@ class TestPyPIBlocks:
         monkeypatch.setattr(check, "on_pypi", lambda *a: None)
         monkeypatch.setattr(check, "problems", lambda *a: [])
         monkeypatch.setattr(check, "unreleased", lambda *a: None)
-        monkeypatch.setattr(check, "_git", lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
+        monkeypatch.setattr(check, "_git", lambda *a: '[project]\nversion = "0.0.1"\n')
         assert check.main([]) == 0
         assert "could not reach PyPI" in capsys.readouterr().err
 
@@ -406,7 +417,7 @@ class TestPyPIBlocks:
         monkeypatch.setattr(check, "on_pypi", boom)
         monkeypatch.setattr(check, "problems", lambda *a: [])
         monkeypatch.setattr(check, "unreleased", lambda *a: None)
-        monkeypatch.setattr(check, "_git", lambda *a: '[tool.poetry]\nversion = "0.0.1"\n')
+        monkeypatch.setattr(check, "_git", lambda *a: '[project]\nversion = "0.0.1"\n')
         assert check.main(["--offline"]) == 0
         assert "could not reach PyPI" not in capsys.readouterr().err
 

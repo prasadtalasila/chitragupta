@@ -12,7 +12,7 @@
 # version bump and a `## Commit message` section --
 # DEVELOPER-AGENTS.md, "Issues and pull requests").
 #
-# Only `github-actions`. The three `poetry==2.4.1` installs live in `run:`
+# Only `github-actions`. The three `uv==0.13.9` installs live in `run:`
 # lines, which no Dependabot ecosystem reads; the comments at those sites
 # are what keeps them in step.
 version: 2

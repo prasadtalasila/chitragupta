@@ -78,7 +78,7 @@ class TestTheWorkflowsKeepTheirOwnRules:
 
     def test_the_venv_cache_has_no_prefix_fallback(self):
         """m-87: `restore-keys` restored an older lock's venv, and
-        `poetry install` without `--sync` never uninstalls -- so a package
+        the install's `uv sync --inexact` never uninstalls -- so a package
         removed from the lock stayed importable, and on `main` was re-saved
         under the new lock's hash. CI would keep passing on an import a
         clean install cannot satisfy."""

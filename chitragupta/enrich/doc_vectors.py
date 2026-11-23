@@ -8,7 +8,7 @@ seed phrases against them -- and they must be the same vectors, or a
 similarity in the seed report would not explain the topic assignment
 printed beside it.
 
-Needs the "enrich" Poetry group, like everything else in this package.
+Needs the "enrich" extra, like everything else in this package.
 """
 
 import json

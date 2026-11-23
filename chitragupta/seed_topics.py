@@ -31,7 +31,7 @@ is the first kind; the match report is the second.
 
 Why the *reader* lives at tier 1, with no venv and no import from
 `chitragupta/enrich/`: matching needs a GPU, an embedding model and the
-enrich Poetry group, but reading back what it decided needs none of
+enrich extra, but reading back what it decided needs none of
 those, and an author browsing topics to plan a draft is doing the second
 thing. This is the same split #204 made for Zotero collections, where
 `ledger --collections` reads without the venv what only a real sync can

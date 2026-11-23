@@ -240,7 +240,7 @@ Install everything with:
 
 ```bash
 bash scripts/install_full_pipeline.sh              # Python deps only (default) -- what every host needs regardless of OS packages
-bash scripts/install_full_pipeline.sh os-deps      # apt-get: TeX Live, Pandoc, poppler-utils, OpenCV runtime, Poetry, zip/unzip -- needs root, opt-in
+bash scripts/install_full_pipeline.sh os-deps      # apt-get: TeX Live, Pandoc, poppler-utils, OpenCV runtime, zip/unzip, plus a pinned uv -- needs root, opt-in
 bash scripts/install_full_pipeline.sh dev-deps     # pytest/pytest-cov, to run the test suite -- opt-in
 bash scripts/install_full_pipeline.sh all          # os-deps + python-deps
 bash scripts/install_full_pipeline.sh cpu-torch    # swap torch to the cpu-only wheel index -- opt-in
@@ -253,13 +253,13 @@ bash scripts/install_full_pipeline.sh stix-two     # the STIX Two font alone -- 
 This is **the single install script for both the host and Docker and CI**:
 `docker/Dockerfile` calls it once per stage as separate `RUN` lines, and
 `.github/workflows/ci.yml` calls it directly too, rather than any of them
-having their own separate apt-get/pip/poetry install logic. Python
-dependencies are managed by Poetry as a lockfile/venv manager for a
+having their own separate apt-get/pip/uv install logic. Python
+dependencies are managed by uv as the lockfile/venv manager for a
 checkout, Docker and CI ([docs/PACKAGING.md](docs/PACKAGING.md) records
 the decision to also make this a published, pip-installable package, and
 what had to land first). If you find a dependency-order issue, fix it
-once in `pyproject.toml` (+ `poetry lock` to update `poetry.lock`, or
-`python3 scripts/relock.py` to regenerate it from nothing; see
+once in `pyproject.toml` (+ `uv lock` to update `uv.lock`, which
+re-resolves the whole graph in seconds; see
 [docs/UV-MIGRATION.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/UV-MIGRATION.md))
 and every target picks it
 up. Don't add a second install path.
@@ -279,15 +279,13 @@ different meaning than the argument implies, which is worse than
 refusing. Two front doors, one source of truth, still no second place to
 write a version down.
 
-**Extras mirror the three optional Poetry groups below**, so `pip
-install 'chitragupta-cli[enrich]'` resolves the same versions `poetry
-install --with enrich` does. The two declarations are unrelated Poetry
-mechanisms that happen to need the same facts. A group dependency never
-reaches a built wheel's metadata, so an extra needs its own, duplicate
-entry under `[tool.poetry.dependencies]` (`optional = true`), and
-`tests/test_pyproject_extras.py` is what keeps the two from drifting
-apart silently. The one thing pip cannot do that `poetry install
---with enrich` does is match torch to this host's GPU driver
+**The three extras are the one declaration of each optional stack**, in
+`pyproject.toml`'s `[project.optional-dependencies]`: `pip install
+'chitragupta-cli[enrich]'` reads the same list `uv sync --extra enrich`
+does, so the two cannot drift. (Under Poetry each was declared twice, as
+an extra and as a group, with a test to keep them equal; both went with
+the move to uv.) The one thing pip cannot do that the install script
+does is match torch to this host's GPU driver
 (`ensure_gpu_torch`, above): `pip install 'chitragupta-cli[enrich]'` on
 a CUDA host still lands a CPU-only wheel, silently, exactly as a bare
 `pip install torch` would. `chitragupta doctor` detects that mismatch and
@@ -317,11 +315,11 @@ launchers decide which `chitragupta` a hook's child imports by where the
 package resolves *without* the working tree on `sys.path`
 (`.claude/hooks/safe_path.py`, docs/HOOKS.md). A checkout whose venv also
 carries a non-editable `chitragupta-cli` (`pip install chitragupta-cli`
-run inside this same checkout's venv, instead of `poetry install` or
+run inside this same checkout's venv, instead of `uv sync` or
 `pip install -e .`) reads exactly like an installed project to that
 check, so its hooks run the installed copy rather than the working tree,
 and a change here silently stops being what the citation gate enforces.
-`scripts/install_full_pipeline.sh` (above) and `poetry install` give you
+`scripts/install_full_pipeline.sh` (above) and `uv sync` give you
 the editable shape; running `pip install chitragupta-cli` into the same
 venv afterwards is the mistake this warns against, not a supported
 combination to debug around.
@@ -620,7 +618,7 @@ Before saying so, run, in this repo:
   standards" above), not a behavioural test, but there is no separate
   webapp check suite for it to live in instead.
 
-- `poetry check`.
+- `uv lock --check` (uv.lock still matches pyproject.toml).
 - At least one real end-to-end smoke test that exercises the actual
   change against real dependencies, not only its mocked unit tests:
   e.g. if you touch a CLI script, run it for real. Unit tests catch
@@ -1158,7 +1156,7 @@ behaviour.
 
 ## 📦 Versioning and releases
 
-Semantic versioning (`pyproject.toml`'s `[tool.poetry].version`), bumped
+Semantic versioning (`pyproject.toml`'s `[project].version`), bumped
 according to the most significant change in the release, not the number
 of commits:
 

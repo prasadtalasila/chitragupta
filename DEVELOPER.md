@@ -189,7 +189,7 @@ assets/                   data files the pipeline reads at runtime, tracked and 
                           attribute this project needs is injected into a temp copy at render
                           time (see assets/csl/README.md and render_output._collapsed_csl)
   csl/README.md             the vendoring policy, upstream URL and sha256
-.github/workflows/        ci.yml (on push/PR: test suite + coverage + poetry check on Linux and
+.github/workflows/        ci.yml (on push/PR: test suite + coverage + uv lock --check on Linux and
                           Windows, the hook launchers, the lint job, a Docker build and
                           SonarQube), commit-message.yml (checks a PR's squash-commit fence),
                           docs.yml (builds the documentation site on every PR, and publishes it on
@@ -202,19 +202,18 @@ config.toml.example       tracked template for the central config -- paths, pars
 papers/                   gitignored, per-host data -- not shipped in the repo
   bibliography.bib          BibTeX export -- source of truth for citekeys/metadata (config.toml's [bib].path default)
   bibliography/             the export's companion attachment folder, referenced by each entry's file field
-pyproject.toml            Poetry config -- a real, publishable package (name chitragupta-cli, import
-                          package chitragupta, [build-system] = poetry-core; docs/PACKAGING.md has
-                          the decision and the naming) + pytest/coverage tool config
-poetry.toml               project-local Poetry config: virtualenvs.create = false (installs into
-                          whatever venv VIRTUAL_ENV points at, e.g. .venv-full/, instead of Poetry's own)
-poetry.lock               resolved dependency versions -- `poetry lock` after editing one constraint;
-                          `python3 scripts/relock.py` to regenerate it from nothing (docs/UV-MIGRATION.md)
+pyproject.toml            PEP 621 project metadata -- a real, publishable package (name chitragupta-cli,
+                          import package chitragupta, [build-system] = poetry-core, which decides the
+                          files a wheel carries; docs/PACKAGING.md has the decision and the naming) +
+                          uv/pytest/coverage tool config
+uv.lock                   resolved dependency versions -- `uv lock` after editing a constraint
+                          (re-resolves the whole graph in seconds; docs/UV-MIGRATION.md)
 mkdocs.yml                the documentation site published at prasad.talasila.in/chitragupta. `docs_dir: .`
                           on purpose: the site is this repository as it stands, so links between site
                           pages work unchanged and there is no staging step to keep in sync; a link to
                           a page in exclude_docs must be a GitHub URL. Built by
-                          .github/workflows/docs.yml from pyproject.toml's optional `docs` group
-                          (`poetry install --only docs`). Read its header before editing
+                          .github/workflows/docs.yml from pyproject.toml's optional `docs` extra
+                          (`uv sync --extra docs`). Read its header before editing
 chitragupta/                      the corpus and drafting layers (sync needs bibtexparser;
                           citation_gate/references need nothing)
   __main__.py               the `chitragupta`/`cg` console script: dispatches corpus, draft, review,
@@ -307,7 +306,7 @@ chitragupta/review/                the review layer -- one command, `python -m c
   _units.py                 what a "unit" is per genre, and how each genre treats uncited prose --
                           the two per-genre policy tables, pinned against dossier.GENRES
   _synthesis_render.py      how a synthesis report reads; _uncited_render.py is the same for uncited
-chitragupta/enrich/                the enrichment layer (pyproject.toml's "enrich" Poetry group), optional
+chitragupta/enrich/                the enrichment layer (pyproject.toml's "enrich" extra), optional
   __main__.py               the layer's entry point, `python -m chitragupta.enrich --stages …`; orchestrates
                           the stages below, which carry no __main__ block of their own
   corpus.py                 the enrichment layer's view of the ledger -- one CorpusDoc per bib item,
@@ -315,8 +314,7 @@ chitragupta/enrich/                the enrichment layer (pyproject.toml's "enric
   docling_parse.py, embed_index.py, topic_model.py, topic_seeding.py, topic_converge.py
 scripts/                   dev tooling only -- no layer entry point lives here
   install_full_pipeline.sh  single staged install path for host, Docker and CI: os-deps, python-deps,
-                          dev-deps, all, plus the opt-in cpu-torch, gpu-torch, vale, actionlint, stix-two
-  relock.py                 regenerates poetry.lock through uv's resolver (docs/UV-MIGRATION.md)
+                          dev-deps, all, plus the opt-in cpu-torch, gpu-torch, vale, actionlint, stix-two, uv
   release.py                 bundles a distributable release/chitragupta-<version>.zip, dev files excluded
 tests/                    pytest suite -- unit tests per module + end-to-end feature tests (see "Running tests")
 content/                  generated, gitignored (regenerate with sync)
@@ -355,7 +353,7 @@ logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups
                           .codex/hooks.json runs the same hooks on apply_patch
 .opencode/                OpenCode's copy of each SKILL.md (-opencode suffix), its gate plugin, and
                           opencode.json's deny list for the unsuffixed names (docs/HARNESS.md)
-docker/                   Dockerfile (TeX Live/Pandoc/Poetry), Dockerfile.claude + docker-compose.yml +
+docker/                   Dockerfile (TeX Live/Pandoc/uv), Dockerfile.claude + docker-compose.yml +
                           entrypoint.sh + rc-daemon.sh/.env + .env.example (the Claude Code agent container, cpu/gpu profiles)
                           -- CI builds docker/Dockerfile (cpu variant) but never runs it, and does not
                           build Dockerfile.claude; see DOCKER-DEVELOPER.md

@@ -21,7 +21,7 @@ every model load the aid does, because that is what a person waiting for
 a review pass actually waits for. A per-aid median over `--repeats`
 runs, since a single timing on a shared host is noise.
 
-Needs the "enrich" Poetry group, a synced corpus, `content/chroma/` and
+Needs the "enrich" extra, a synced corpus, `content/chroma/` and
 the drafts' own dossiers -- the same five things `verbatim` tier 3 needs.
 Aids that cannot run report their exit status rather than a time.
 

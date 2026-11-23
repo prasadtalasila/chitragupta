@@ -37,7 +37,7 @@ a throwaway directory for the duration, so the corpus's own
 `topics.json`, `topic_seeds.json` and `topic_set.json` are read by
 nothing here and written by nothing here.
 
-Needs the "enrich" Poetry group and a synced corpus. Reuses
+Needs the "enrich" extra and a synced corpus. Reuses
 `content/topic_embed_cache.json` (deliberately not redirected -- it is a
 cache keyed by document and model, so sharing it is free and correct).
 

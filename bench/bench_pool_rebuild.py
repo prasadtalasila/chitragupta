@@ -48,7 +48,7 @@ all four: rebuild wall-clock overhead, documents lost, pool-narrowing
 convergence, and (with `--with-stall-arm`) the stall watchdog's
 cancellation latency.
 
-Needs the "enrich" Poetry group and a synced corpus (it parses real PDFs
+Needs the "enrich" extra and a synced corpus (it parses real PDFs
 named in the ledger).
 
     CHITRAGUPTA_PROJECT=. .venv-full/bin/python \\

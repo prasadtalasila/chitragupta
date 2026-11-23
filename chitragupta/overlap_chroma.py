@@ -1,7 +1,7 @@
 """The only module in tier 3 that reaches the optional embedding stack.
 
 `chromadb` and `sentence-transformers` come from pyproject.toml's
-`enrich` Poetry group, which a checkout need not have installed --
+`enrich` extra, which a checkout need not have installed --
 `chitragupta/enrich/embed_index.py` builds `content/chroma/` with them and is
 the enrichment layer's own business. Tier 3 of the overlap scan
 (`chitragupta/overlap_embed.py`) reads what that layer built, and this module is
@@ -37,8 +37,8 @@ from chitragupta import chroma_paging, config
 
 
 def optional_stack() -> tuple[Any, Any] | None:
-    """`(chromadb, SentenceTransformer)`, or `None` if the enrich Poetry
-    group is not installed.
+    """`(chromadb, SentenceTransformer)`, or `None` if the enrich
+    extra is not installed.
 
     `embed_index.get_client_and_model()` imports these bare and raises
     `ModuleNotFoundError` uncaught, and it `mkdir`s `content/chroma/` on

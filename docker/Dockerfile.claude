@@ -186,7 +186,7 @@ ENV TMUX_SESSION=claude
 # A venv first on PATH makes `python`, `python3`, `pip`, `chitragupta`
 # and `cg` all the same environment, so the hooks resolve the package
 # that the CLI is. VIRTUAL_ENV is set for the same reason
-# docker/Dockerfile sets it: Poetry and pip then install into this venv
+# docker/Dockerfile sets it: uv and pip then install into this venv
 # rather than creating another.
 #
 # Owned by the unprivileged account, so `pip install

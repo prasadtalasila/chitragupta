@@ -5,8 +5,8 @@ itself, without reimplementing the script's logic a second time
 
 **A subset of the script's stages, not all of them, refused rather than
 silently accepted.** `python-deps`, `dev-deps` and `all` mean "create
-`.venv-full/` and `poetry install`" -- repo-shaped, needing a checkout's
-`poetry.lock`, and exactly what `pip install 'chitragupta-cli[...]'`
+`.venv-full/` and `uv sync`" -- repo-shaped, needing a checkout's
+`uv.lock`, and exactly what `pip install 'chitragupta-cli[...]'`
 already replaces. Accepting them here would run something with a
 different meaning than the argument implies, which is worse than
 refusing by name.
@@ -75,6 +75,13 @@ REFUSED = {
 STAGES = ("os-deps", "gpu-torch", "enrich", *REFUSED)
 
 
+# What a git checkout runs to get the enrich stack: the install script's
+# python-deps stage, which is `uv sync --extra enrich` into `.venv-full`.
+# One string, because four messages name it and a checkout is the one
+# place `install enrich` itself is refused (see `main`'s enrich branch).
+CHECKOUT_ENRICH = "bash scripts/install_full_pipeline.sh python-deps"
+
+
 def remedy(stage: str) -> str:
     """The command a message should tell its reader to run, quoted.
 
@@ -134,16 +141,16 @@ def _run_enrich() -> int:
     the enrich extra" means.
 
     Refused outside an installed distribution -- a checkout has no
-    `chitragupta-cli` on any index to add an extra to, and
-    `poetry install --with enrich` is the operation that means this
-    there.
+    `chitragupta-cli` on any index to add an extra to, and the install
+    script's `python-deps` stage (`uv sync --extra enrich`) is the
+    operation that means this there.
     """
     try:
         version = importlib.metadata.version("chitragupta-cli")
     except importlib.metadata.PackageNotFoundError:
         print(
             "enrich needs chitragupta-cli installed as a package. In a git "
-            "checkout the equivalent is: poetry install --with enrich",
+            f"checkout the equivalent is: {CHECKOUT_ENRICH}",
             file=sys.stderr,
         )
         return 1

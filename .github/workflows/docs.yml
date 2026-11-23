@@ -51,42 +51,38 @@ jobs:
         with:
           python-version: '3.12'
 
-      # Resolved versions come from poetry.lock, like every other
+      # Resolved versions come from uv.lock, like every other
       # dependency in this repository -- DEVELOPER-AGENTS.md's "don't add
-      # a second install path". `--only docs` rather than `--with docs`
-      # because a docs build has no use for the enrich stack: this
-      # installs only the mkdocs group's own packages and their
-      # dependencies (31 as of this writing -- count with `grep -c
-      # '"docs"' poetry.lock` rather than trusting a number here, since
-      # it grows with mkdocs-material's own dependencies and this comment
-      # will not track it), so the job stays seconds rather than the
-      # minutes a torch download costs.
+      # a second install path". Only the `docs` extra, because a docs
+      # build has no use for the enrich stack: this installs mkdocs and
+      # its dependencies (plus bibtexparser, the one core dependency), so
+      # the job stays seconds rather than the minutes a torch download
+      # costs.
       #
       # Not `scripts/install_full_pipeline.sh`: that script is the single
       # install path for the *pipeline* (host, Docker and the CI test job
       # all share it), and it deliberately does not know about this
-      # group. Nothing here needs a venv either -- setup-python's
-      # environment is the target, and poetry.toml's
-      # `virtualenvs.create = false` means Poetry installs straight into
-      # it instead of making a second one.
+      # extra. uv makes its own `.venv` here, which the build below runs
+      # in through `uv run`; nothing else in this job needs it.
       #
       # mkdocs-same-dir is what makes mkdocs.yml's `docs_dir: .` legal,
       # which is why this site needs no staging step and no link
       # rewriting. See that file's header comment.
       #
-      # Poetry itself is pinned and wheels-only (Sonar S8544/S8541: an
+      # uv itself is pinned and wheels-only (Sonar S8544/S8541: an
       # unpinned install resolves to whatever PyPI serves that day, and an
       # sdist fallback runs arbitrary setup scripts), mirroring ci.yml's
-      # Windows-leg install and release.yml's -- bump all three together.
-      # `installer.only-binary` extends the same refusal to the docs group
-      # itself: every package in it ships a wheel, so a source build here
-      # could only ever be a substituted artefact, and refusing it costs
-      # nothing.
+      # and release.yml's -- bump all three, and
+      # scripts/install_full_pipeline.sh's UV_VERSION, together.
+      # `--no-build` extends the same refusal to the docs extra itself:
+      # every package in it ships a wheel, so a source build here could
+      # only ever be a substituted artefact, and refusing it costs
+      # nothing. `--locked` fails on a uv.lock that no longer matches
+      # pyproject.toml rather than re-resolving it here.
       - name: Install the docs toolchain
         run: |
-          pip install --only-binary ':all:' poetry==2.4.1
-          poetry config installer.only-binary :all:
-          poetry install --only docs --no-root
+          pip install --only-binary ':all:' uv==0.13.9
+          uv sync --locked --no-build --no-install-project --extra docs
 
       # --strict turns MkDocs' warnings into failures. What it actually
       # catches here is a nav entry pointing at a file that moved and a
@@ -94,7 +90,7 @@ jobs:
       # otherwise, and both easy to introduce, since every document in
       # this repository links freely to every other one.
       - name: Build the site
-        run: mkdocs build --strict
+        run: uv run --no-sync mkdocs build --strict
 
       # `--strict` checks the Markdown MkDocs was given; it says nothing
       # about whether the site it produced is usable. It passed cleanly on

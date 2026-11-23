@@ -3,7 +3,7 @@
 This is the real embedding-based retrieval the corpus layer's
 chitragupta/retrieval.py deliberately deferred (keyword overlap only, pending a
 larger corpus). Needs `sentence-transformers` and `chromadb` from
-pyproject.toml's "enrich" Poetry group, in a venv.
+pyproject.toml's "enrich" extra, in a venv.
 
 build_index() is incremental, mirroring the corpus layer's
 chitragupta/ledger.py: skip reprocessing whatever hasn't detectably changed

@@ -44,7 +44,7 @@
 #     chitragupta
 
 # Pinned to an LTS rather than `ubuntu:latest`: this image's package set
-# (TeX Live, Pandoc, poppler, python3-poetry, OpenCV's runtime libs) is
+# (TeX Live, Pandoc, poppler, OpenCV's runtime libs) is
 # resolved by apt from whatever the base ships, and the base also
 # decides the Python version the venv below is built with -- so a base
 # bump is a thing to take deliberately and re-verify, not to pick up
@@ -64,6 +64,11 @@
 #      than baking it in, so there is no package to install, and 26.04's
 #      Poetry refuses ("does not contain any element") where the older
 #      one tolerated it.
+#
+# (Poetry has since been replaced by uv -- see docs/UV-MIGRATION.md --
+# and the three still hold: the range now lives in pyproject.toml's
+# `[tool.uv] environments`, and NO_ROOT=1 maps to `uv sync
+# --no-install-project`.)
 #
 # Verified by hand on 2026-09-04: `--no-cache` build, then the full
 # suite inside the image -- 4907 passed, 1 skipped -- plus latexmk,
@@ -91,26 +96,26 @@ RUN chmod +x scripts/install_full_pipeline.sh
 # comment has the full reckoning). Its own cached layer -- rarely changes.
 RUN scripts/install_full_pipeline.sh os-deps && rm -rf /var/lib/apt/lists/*
 
-# Stage 2: Python deps -- same script + pyproject.toml/poetry.lock as
-# the host (Poetry itself came from stage 1's os-deps, which apt-installs
-# python3-poetry). python -m chitragupta.draft gate doesn't need any of this
+# Stage 2: Python deps -- same script + pyproject.toml/uv.lock as
+# the host (uv itself came from stage 1's os-deps, which installs a
+# pinned, checksum-verified binary). python -m chitragupta.draft gate doesn't need any of this
 # and still runs with the bare python3 from stage 1; python -m chitragupta.corpus sync
 # needs bibtexparser, the one dependency the rest of the core pipeline
 # can't avoid.
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
 ENV VIRTUAL_ENV=/opt/venv
-# README.md rides along because `poetry install --with enrich` installs
-# the root project (no --no-root), and pyproject.toml declares
-# `readme = "README.md"`. Ubuntu 26.04's Poetry validates that path and
-# refuses -- `Readme path /workspace/chitragupta/README.md does not
-# exist` -- where 24.04's older Poetry did not. The cost is that editing
-# README.md now invalidates the python-deps layer below; that is the
-# cheaper of the two, against a build that does not run at all.
-COPY pyproject.toml poetry.lock poetry.toml README.md ./
+# README.md rides along because pyproject.toml declares
+# `readme = "README.md"`, and reading the project's metadata validates
+# that path -- Ubuntu 26.04's Poetry refused without it (`Readme path
+# /workspace/chitragupta/README.md does not exist`), and it is kept for
+# uv for the same reason. The cost is that editing README.md invalidates
+# the python-deps layer below; that is the cheaper of the two, against a
+# build that does not run at all.
+COPY pyproject.toml uv.lock README.md ./
 
 # torch itself isn't pinned in pyproject.toml (see its own comment on
-# why) -- poetry.lock resolves whatever plain PyPI's default Linux wheel
+# why) -- uv.lock resolves whatever plain PyPI's default Linux wheel
 # is, which bundles the full CUDA runtime as separate nvidia-* packages
 # (cublas, cudnn, nccl, triton, ...) regardless of whether the build host
 # or eventual container has a GPU at all. Measured on this image:
@@ -121,7 +126,7 @@ COPY pyproject.toml poetry.lock poetry.toml README.md ./
 # enough on its own (no host CUDA toolkit needed, just a driver).
 # TORCH_VARIANT=cpu delegates to the install script's `cpu-torch` stage,
 # which reinstalls torch/torchvision from PyTorch's own cpu-only wheel
-# index at the same version poetry.lock resolved, then drops the
+# index at the same version uv.lock resolved, then drops the
 # now-orphaned nvidia-*/triton packages pip's --force-reinstall doesn't
 # remove on its own. That logic used to be written out here; it moved to
 # scripts/install_full_pipeline.sh so this image and CI call one
@@ -139,6 +144,6 @@ RUN SKIP_VENV=1 NO_ROOT=1 scripts/install_full_pipeline.sh python-deps && \
     if [ "$TORCH_VARIANT" = "cpu" ]; then \
         SKIP_VENV=1 scripts/install_full_pipeline.sh cpu-torch; \
     fi && \
-    rm -rf /root/.cache/pypoetry /root/.cache/pip
+    rm -rf /root/.cache/uv /root/.cache/pip
 
 CMD ["/bin/bash"]

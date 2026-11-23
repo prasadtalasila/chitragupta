@@ -34,7 +34,7 @@ per-document progress and warnings that stdout does not.
 
 - OS: [e.g. Ubuntu 26.04]
 - Python version: [`python3 --version`]
-- chitragupta version: [`pyproject.toml`'s `[tool.poetry].version`, e.g. 3.5.0]
+- chitragupta version: [`pyproject.toml`'s `[project].version`, e.g. 3.5.0]
 - Parser backend: [`pdftotext` (default) or `docling`, per `config.toml`]
 - `[parser].workers`: [e.g. 1, the default]
 - Installed via: [`scripts/install_full_pipeline.sh` stages run, or Docker]

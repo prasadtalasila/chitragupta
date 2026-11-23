@@ -37,15 +37,13 @@ def test_a_venv_with_no_pip_module_is_named_before_any_reinstall(tmp_path):
     nvidia_smi.write_text("#!/bin/sh\necho 'CUDA Version: 12.4'\n", encoding="utf-8")
     nvidia_smi.chmod(0o755)
     # Never the real one. Past the check, the stage's restore fallback runs
-    # `poetry install --with enrich` from this checkout, and on a host
-    # whose poetry has `virtualenvs.create = false` that writes the whole
-    # enrich group into the user's site-packages -- which is what running
-    # this test against the unfixed script did once.
-    poetry = fake_bin / "poetry"
-    poetry.write_text(
-        "#!/bin/sh\necho 'fake poetry: not installing' >&2\nexit 1\n", encoding="utf-8"
-    )
-    poetry.chmod(0o755)
+    # `uv sync --extra enrich` from this checkout into whatever venv it is
+    # pointed at -- which, with Poetry in uv's place, once wrote the whole
+    # enrich stack into the user's site-packages when this test ran
+    # against the unfixed script.
+    uv = fake_bin / "uv"
+    uv.write_text("#!/bin/sh\necho 'fake uv: not installing' >&2\nexit 1\n", encoding="utf-8")
+    uv.chmod(0o755)
     python = venv / "bin" / "python"
     env = {
         **os.environ,
@@ -63,4 +61,4 @@ def test_a_venv_with_no_pip_module_is_named_before_any_reinstall(tmp_path):
     assert f"{python} has no pip module" in result.stderr
     assert "ensurepip" in result.stderr
     assert "Reinstalling" not in result.stdout
-    assert "fake poetry" not in result.stderr
+    assert "fake uv" not in result.stderr

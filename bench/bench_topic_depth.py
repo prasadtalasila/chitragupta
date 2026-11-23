@@ -34,7 +34,7 @@ inputs moved. A stability column would not have caught that -- it is
 measured within one corpus state -- but it says which settings are worth
 trusting at all before that question even arises.
 
-Needs the "enrich" Poetry group and a synced corpus with parsed text; it
+Needs the "enrich" extra and a synced corpus with parsed text; it
 drives the real UMAP/HDBSCAN stack. Reuses the document vectors
 chitragupta/enrich/doc_vectors.py caches, so a warm
 content/topic_embed_cache.json makes it minutes rather than tens of

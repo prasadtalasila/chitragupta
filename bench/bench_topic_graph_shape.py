@@ -20,7 +20,7 @@ questions #610 (B7) asks unanswered:
   publishes a summary statistic invites thresholding it -- so they are
   computed here instead, offline, where a number is read by a person.
 
-Needs the "enrich" Poetry group, a synced corpus and a converged
+Needs the "enrich" extra, a synced corpus and a converged
 `content/topic_set.json` (run `--stages converge` first). Reuses
 `content/topic_embed_cache.json`, so a warm cache makes this minutes.
 Reads those artefacts and writes only its own results file.

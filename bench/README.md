@@ -13,7 +13,7 @@ timings behind them are in `results/<date>-<tag>/*.jsonl`.
 
 ## Running it
 
-Needs the "enrich" Poetry group (`bash scripts/install_full_pipeline.sh
+Needs the "enrich" extra (`bash scripts/install_full_pipeline.sh
 python-deps`), since it drives the real Docling stack.
 
 `bench_drift.py` and `bench_overlap.py` are the exceptions: they measure
@@ -80,7 +80,7 @@ score a decision against hand-authored labels.
 
 `bench_overlap_embed.py` is the exception to "stdlib only, no GPU", and
 the only script here that is. It measures tier 3 of the overlap scan
-(#134/#164), which cannot run without the `enrich` Poetry group
+(#134/#164), which cannot run without the `enrich` extra
 (`chromadb`, `sentence-transformers`, torch), a built `content/chroma/`,
 the Docling passage sidecars, **and** a dossier for every draft it
 scans -- so it needs a venv with that group installed, and it prints

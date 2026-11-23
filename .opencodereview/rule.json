@@ -44,7 +44,7 @@
     "papers/**",
     "site/**",
     ".claude/worktrees/**",
-    "poetry.lock",
+    "uv.lock",
     "assets/csl/*.csl",
     "**/__pycache__/**"
   ],
@@ -72,7 +72,7 @@
     {
       "name": "workflows",
       "path": ".github/**",
-      "rule": "Review CI and release workflow definitions.\n\nReport:\n\n- **A step that can fail silently** -- an unchecked exit code, a `continue-on-error` that hides a real failure, a `|| true`.\n- **A coverage floor lowered rather than a test added.** This repository holds 100% line and branch on the Linux leg; the Windows leg's lower floor exists only because `os-deps` is apt-only and ~30 render/pdf tests self-skip there.\n- **A second install path.** `scripts/install_full_pipeline.sh` is the single install script for host, Docker and CI. Hand-rolled apt-get/pip/poetry steps in a workflow are a defect, not a shortcut.\n- **A hardcoded interpreter path** where `poetry run` would resolve correctly on both the POSIX `bin/` and Windows `Scripts/` venv layouts.\n- **A secret, token, or per-host path in plain text.**\n\nDo not report the long explanatory comments: this file is roughly half prose by line count, deliberately, and every paragraph answers a question a future reader would otherwise re-litigate."
+      "rule": "Review CI and release workflow definitions.\n\nReport:\n\n- **A step that can fail silently** -- an unchecked exit code, a `continue-on-error` that hides a real failure, a `|| true`.\n- **A coverage floor lowered rather than a test added.** This repository holds 100% line and branch on the Linux leg; the Windows leg's lower floor exists only because `os-deps` is apt-only and ~30 render/pdf tests self-skip there.\n- **A second install path.** `scripts/install_full_pipeline.sh` is the single install script for host, Docker and CI. Hand-rolled apt-get/pip/uv steps in a workflow are a defect, not a shortcut.\n- **A hardcoded interpreter path** where `poetry run` would resolve correctly on both the POSIX `bin/` and Windows `Scripts/` venv layouts.\n- **A secret, token, or per-host path in plain text.**\n\nDo not report the long explanatory comments: this file is roughly half prose by line count, deliberately, and every paragraph answers a question a future reader would otherwise re-litigate."
     }
   ]
 }

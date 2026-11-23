@@ -1,7 +1,7 @@
 """Stage 7: Pandoc/LaTeX rendering of generated Markdown into PDF/DOCX.
 
 Needs the `pandoc` and TeX Live binaries (apt packages, not pip -- not
-installable via pyproject.toml/Poetry or any other venv mechanism). A pdf is
+installable via pyproject.toml/uv or any other venv mechanism). A pdf is
 LuaLaTeX with the fonts `install_full_pipeline.sh os-deps` installs (#996).
 Where they aren't, this stage fails cleanly with MissingBinary
 rather than hanging or stack-tracing -- see docker/Dockerfile for a
