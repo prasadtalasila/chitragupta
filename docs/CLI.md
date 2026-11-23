@@ -152,7 +152,7 @@ chitragupta corpus ledger
 # chitragupta corpus ledger --list
 # chitragupta corpus ledger --status parse_failed
 # chitragupta corpus ledger --citekey talasila_composable_2025
-# chitragupta corpus ledger --collections    # your Zotero collection names, if the export kept them
+# chitragupta corpus ledger --collections    # your collections, if chitragupta-importer wrote the bib
 
 # 5b. Optional: name your topics in content/seed_topics.toml and see
 #     which papers match each.
@@ -367,14 +367,13 @@ directory re-parses nothing ([MIGRATION.md](MIGRATION.md)).
 
 Whenever a run has stale citekeys to report (in report-only mode, and
 again just before `--remove-stale` deletes anything), `sync` names what
-else still points at each one:
+else in the corpus and enrichment layers still points at each one:
 
 | Artefact | Where it lives | Counted as |
 | --- | --- | --- |
 | overlap index | `content/overlap/docs/<citekey>.fpr` and `.skipgram.fpr`, plus the citekey list in `index.json` and `skipgram_index.json` | files, each named |
 | topic graph | `content/topic_graph.json`'s `edges_overlap`, `edges_withheld` and `edges_semantic` | edges |
 | topic membership | `content/topic_set.json`'s `topics[].members[].citekey` and `uncovered`, plus `content/topics.json`'s `assignments` and `memberships` | memberships, per file |
-| dossiers | `evidence.md` and `sections.md` under `content/dossiers/` | mentions, per file |
 | chroma vectors | the chunk collection under `content/chroma/` | vectors |
 
 ```text
@@ -382,17 +381,54 @@ else still points at each one:
   Checking what else still references the 1 stale citekey(s) ...
     smith_example_2024: still referenced by 2 artefact class(es)
       overlap index    2 file(s): .../content/overlap/docs/smith_example_2024.fpr, ...
-      dossiers         4 mention(s): .../content/dossiers/dt/survey/evidence.md (4)
+      topic graph      3 edge(s): .../content/topic_graph.json
     Reported, not repaired -- nothing above is touched by this run.
+    Drafts and dossiers citing these: chitragupta draft dossier status --all
 Review the 1 stale item(s) above, then re-run with --remove-stale ...
 ```
 
-The scan only reports; `--remove-stale` removes only the ledger row,
-because pruning a dossier's `evidence.md` would destroy evidence you
-transcribed by hand. A dossier mention is the hit to act on; topic hits
-expire at the next enrichment run. Citekeys match exactly. A class that
-could not be scanned (no `content/chroma/`, no `enrich` extra, a
-truncated file) gets a `NOTE:` line rather than a silent zero.
+The scan only reports; `--remove-stale` removes only the ledger row.
+Drafts and dossiers are the drafting layer's, so sync does not read
+them: it records the stale keys in the ledger, and
+`chitragupta draft dossier status --all` lists every draft citing one,
+as `missing` or `renamed`, before the prune as well as after it. That is
+the list to act on; topic hits expire at the next enrichment run.
+Citekeys match exactly. A class that could not be scanned (no
+`content/chroma/`, no `enrich` extra, a truncated file) gets a `NOTE:`
+line rather than a silent zero.
+
+### 🔁 When a citekey is renamed
+
+A key that leaves the bib while the same paper arrives under another key
+is a **rename**, not a removal plus an addition. `sync` recognises one in
+two ways:
+
+| Source | When it applies |
+| --- | --- |
+| The importer's `@comment{cg-renames v1 ...}` block (`old<TAB>new` rows) | the new key is in the bib, directly or through a chain of rows (`a -> b`, `b -> c`); the two PDFs may differ. A chain that loops or ends outside the bib falls back to the row below |
+| A matching `pdf_hash` | exactly one key still in the bib has the stale key's PDF, byte for byte, and that key is new to the ledger this sync |
+
+A PDF that several keys share, or that a key already in the ledger had
+before this sync (a book and its chapter, one of them deleted), is
+reported as `same PDF as a, b`, never guessed to be a rename. The stale
+line names the new key, in report-only and `--remove-stale` runs alike:
+
+```text
+  stale   lehner_pattern_2023-1 (no longer in bibliography.bib; renamed to lehner_pattern_2023, same PDF)
+```
+
+`sync` writes two things to the ledger, and nothing else:
+
+- `renames`: each `old -> new`, recorded **before** `--remove-stale`
+  can prune the old row, so the mapping outlives it.
+- `stale_citekeys`: every key the last whole read of the bib no longer
+  has.
+
+Nothing is recorded from a read that lost entries, for the reason
+`--remove-stale` refuses on one. `sync` never opens a draft or a
+dossier; the drafting layer reads both tables to report and swap the
+keys
+([DRAFT-ITERATION.md](DRAFT-ITERATION.md#-swapping-a-renamed-citekey)).
 
 ### ♻ When `sync` re-parses a document it already parsed
 
@@ -414,8 +450,8 @@ a sync is running. With no flags it prints a summary.
 | `--list` | off | List every item |
 | `--status STATUS` | -- | List only items with this status: `parsed`, `no_pdf`, `discovered`, `parse_failed` |
 | `--citekey CITEKEY` | -- | Show one item in full |
-| `--collections` | off | List every Zotero collection the corpus holds, and stop |
-| `--collection NAME` | -- | List only items in this collection, or one beneath it |
+| `--collections` | off | List every collection the corpus holds, with its slug path, display path and paper count, and stop |
+| `--collection PATH` | -- | List only items in this collection or one beneath it: a slug path or a `/` display path. An unknown or ambiguous one exits 2 |
 
 ```bash
 chitragupta corpus ledger
@@ -424,7 +460,7 @@ chitragupta corpus ledger
 # chitragupta corpus ledger --status no_pdf
 # chitragupta corpus ledger --citekey talasila_composable_2025
 # chitragupta corpus ledger --collections
-# chitragupta corpus ledger --collection "Digital twins"
+# chitragupta corpus ledger --collection digital-twin
 ```
 
 Exits `0` with no ledger yet, or one that needs a sync to migrate it,
@@ -433,11 +469,13 @@ will not read the ledger (an interrupted write's journal, a lock held
 past the timeout, a damaged file). A stale ledger still exits `0` here,
 unlike the gate.
 
-Collections need a Better BibTeX export with JabRef fields enabled
+Collections come from a bib written by chitragupta-importer
 ([ZOTERO.md](ZOTERO.md#-keeping-your-collections-optional)); without
-them `--collections` prints nothing and says why. A parent collection
-selects everything beneath it; matching is case-insensitive and
-per-segment.
+them `--collections` prints nothing and says why. `--collections` prints
+each collection's slug path, display path and paper count, counting the
+papers beneath it. `--collection` takes a slug path or a `/` display
+path, and a parent selects everything beneath it. A value that names no
+collection, or several, **exits 2** with the choices on stderr.
 
 ### 🏷 `chitragupta corpus topics`
 
@@ -623,11 +661,12 @@ a gate: it takes no lock and opens the ledger read-only.
 | --- | --- |
 | `init <draft> --genre G` | Create the skeleton. Only adds missing files, so it is safe to re-run |
 | `status <draft>` | What each file holds, the section count, and whether the corpus moved since; with an `outline.md`, which declared queries ran, returned nothing (`no evidence`) or were never issued |
-| `status --all` | Corpus drift over every dossier: broken citations and new candidates. Always exits 0 |
+| `status --all` | Corpus drift over every dossier: broken citations (including keys the last sync found stale, before `--remove-stale` prunes them), citekeys sync recorded as renamed, recorded collections that no longer resolve, and new candidates. Always exits 0 |
 | `sections <draft>` | Heading -> line range, for editing one section instead of the file |
 | `sections <draft> --citekeys` | The `sections.md` table derived from the draft: each heading with the citekeys cited under it |
 | `outline <draft>` | Read and validate `outline.md` (sections are `##`-or-deeper headings). **Exits 1** if there's no `outline.md`, or a section has neither a `brief:` nor a `claim:` |
 | `mark-revision <draft>` | Record a revision boundary in `retrieval.md`, so `status` totals retrieval cost per revision, and keep a numbered snapshot of the draft and its figures under `versions/` (skipped when unchanged) |
+| `apply-renames <draft>` | Swap every citekey sync recorded as renamed for its replacement, in the draft, `evidence.md`, `sections.md` and `rejected.md`, and log it in `revisions.md`. Refuses, changing nothing for it, a key whose recorded renames form a cycle or whose replacement is not citable (a parsed row sync did not find stale), swaps the rest, and **exits 1** naming each refused key. Writes every file or none: a failed write (a full disk, say) changes nothing and logs nothing. **Exits 1** too for a draft path that does not exist, or a file that is not UTF-8 text. Names the `review quotation` re-check when a renamed paper's PDF changed |
 | `snapshot <draft> --label TEXT` | Keep the draft and its figures as a named version (`002-sent-to-supervisor`) for `draft diff --against`. Always taken |
 | `versions <draft>` | Every snapshot, oldest first: number, date, trigger, label |
 | `stamp <draft>` | Record the draft's text digest in `scope.md`, so `status` reports `CHANGED since last stamp` after a hand edit. Run after `gate` passes, never before |
@@ -648,7 +687,7 @@ a gate: it takes no lock and opens the ledger read-only.
 | `--genre GENRE` | `init` | Required: `survey`, `thesis-chapter`, `textbook-chapter`, `tutorial`, `deep-research`, `digest`, `research-paper` (which also gets a `paper.md`) |
 | `--outline` | `init` | Also create `outline.md`. Opt-in |
 | `--all` | `status` | Report every dossier. Mutually exclusive with a draft path |
-| `--json` | `status`, `versions` | Emit JSON, for `draft-reviser` rather than a terminal |
+| `--json` | `status`, `versions`, `apply-renames` | Emit JSON, for `draft-reviser` rather than a terminal |
 | `--label TEXT` | `mark-revision` | Optional name for this revision; unlabelled markers are numbered (`revision 1`, ...) |
 | `--label TEXT` | `snapshot` | Required: the milestone's name. Not all digits, unique within the draft, with at least one ASCII letter or digit |
 | `--citekeys` | `sections` | Print the derived `sections.md` table. A citekey cited above the first heading is reported on stderr |
@@ -714,7 +753,7 @@ withdrawn).
 | --- | --- | --- | --- |
 | `--k N` | `search` | 5 | How many candidates to rank |
 | `--unit document\|passage` | `search` | `document` | What a result is: `passage` ranks paragraphs and returns the scoring paragraph with its page. Scores are not comparable across units |
-| `--collection NAME` | `search` | -- | Rank only inside this Zotero collection or one beneath it (see `ledger --collections`). Scoring stays corpus-wide; only the candidate set narrows |
+| `--collection PATH` | `search` | -- | Rank only inside this collection or one beneath it: a slug path or a `/` display path (see `ledger --collections`). An unknown or ambiguous one exits 2. Scoring stays corpus-wide; only the candidate set narrows |
 | `--chars N` | all | 600 / 500 | Window size (evidence / search) |
 | `--citekey KEY` | `evidence` | required | Which document to read |
 | `--windows N` | `evidence` | 2 | How many passages to return |

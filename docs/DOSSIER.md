@@ -299,8 +299,10 @@ when it is a member of the ledger or a citekey the dossier *declares* by
 opening an `evidence.md` heading with it, which catches a key that has
 left the ledger. Only a declared key (in an `evidence.md` heading or a
 `sections.md` cell) can be reported missing; a backticked word in prose
-never is. The strict scan is never replaced by the loose one, only
-added to.
+never is. The one exception is a key the last sync found stale: it is
+reported wherever the draft or its dossier mentions it, before
+`--remove-stale` prunes its row. The strict scan is never replaced by
+the loose one, only added to.
 
 ## 💡 Why Markdown
 

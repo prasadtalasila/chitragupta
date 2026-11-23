@@ -547,6 +547,28 @@ class TestModuleReloadWithEnvOverrides:
         empty_toml.write_text("", encoding="utf-8")
         monkeypatch.setenv("CONFIG_PATH", str(empty_toml))
 
+    def test_old_collections_field_key_loads_and_is_flagged(self, tmp_path, monkeypatch):
+        """7.0.0 stopped reading `[bib] collections_field`; a config.toml
+        that still sets it must load, and say so once, during sync
+        (chitragupta/bib_reader.py), not on every import."""
+        toml = tmp_path / "config.toml"
+        toml.write_text('[bib]\ncollections_field = "groups"\n', encoding="utf-8")
+        monkeypatch.setenv("CONFIG_PATH", str(toml))
+        monkeypatch.delenv("BIB_COLLECTIONS_FIELD", raising=False)
+        importlib.reload(config)
+        assert config.LEGACY_COLLECTIONS_FIELD is True
+        assert not hasattr(config, "BIB_COLLECTIONS_FIELD")
+
+    def test_old_collections_field_env_var_is_flagged(self, monkeypatch, _empty_config_toml):
+        monkeypatch.setenv("BIB_COLLECTIONS_FIELD", "groups")
+        importlib.reload(config)
+        assert config.LEGACY_COLLECTIONS_FIELD is True
+
+    def test_no_old_collections_field_setting(self, monkeypatch, _empty_config_toml):
+        monkeypatch.delenv("BIB_COLLECTIONS_FIELD", raising=False)
+        importlib.reload(config)
+        assert config.LEGACY_COLLECTIONS_FIELD is False
+
     def test_retrieval_field_weights_default_to_one(self, monkeypatch, _empty_config_toml):
         """1.0 is the code's default, not this host's setting, and it is
         what makes #762's field weighting inert until someone turns it

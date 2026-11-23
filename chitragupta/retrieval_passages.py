@@ -64,7 +64,7 @@ sub-document units, and needs both a venv and a model download to do it.
 from dataclasses import dataclass
 
 from chitragupta import (
-    bib_collections,
+    collection_filter,
     config,
     ledger,
     passages,
@@ -170,8 +170,9 @@ def _results(ranked: list, by_citekey: dict) -> list[PassageResult]:
 def search_passages(query: str, k: int = 5, collection: str | None = None) -> PassageSearch:
     """Rank the corpus's paragraphs by BM25 relevance to `query`.
 
-    `collection` restricts the result to items in that Zotero collection
-    or one beneath it, filtered on the *ranking* rather than the index --
+    `collection` restricts the result to items in that collection or one
+    beneath it (chitragupta/collection_filter.py), filtered on the
+    *ranking* rather than the index --
     exactly as `retrieval.search` does it, and for the same two reasons:
     narrowing the index would change every IDF, so a query would score
     differently depending on the filter, and one cache could not serve
@@ -193,15 +194,12 @@ def search_passages(query: str, k: int = 5, collection: str | None = None) -> Pa
 
     with ledger.reading() as con:
         items = ledger.all_items(con)
+        members = collection_filter.members(con, items, collection)
 
     index, without_sidecar = retrieval_passages_cache.load_index(items)
     scores = retrieval_scoring.bm25_scores(index, terms)
     by_citekey = {item["citekey"]: item for item in items}
-    if collection is not None:
-        scores = {
-            key: score
-            for key, score in scores.items()
-            if bib_collections.matches(bib_collections.of_row(by_citekey[key[0]]), collection)
-        }
+    if members is not None:
+        scores = {key: score for key, score in scores.items() if key[0] in members}
     ranked = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))
     return PassageSearch(_results(_capped(ranked, k), by_citekey), without_sidecar)

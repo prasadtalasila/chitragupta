@@ -418,9 +418,15 @@ class TestRun:
 
         assert rc == 0
         assert "Checking what else still references the 1 stale citekey(s)" in out
-        assert "noauthor_page_nodate: still referenced by 1 artefact class(es)" in out
-        assert f"dossiers         1 mention(s): {evidence} (1)" in out
         assert "Reported, not repaired" in out
+        # Dossiers are the drafting layer's (plans/1211): sync points there,
+        # and `dossier status` names the citing dossier before the prune.
+        assert "mention(s)" not in out
+        assert "Drafts and dossiers citing these: chitragupta draft dossier status --all" in out
+        from chitragupta.dossier import _drift
+
+        report = _drift.drift(evidence.parent)
+        assert "noauthor_page_nodate" in report.missing
         # Declining -- which is what not passing --remove-stale is --
         # leaves every artefact exactly as it was.
         assert evidence.read_bytes() == before

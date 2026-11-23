@@ -545,7 +545,7 @@ wheels = [
 
 [[package]]
 name = "chitragupta-cli"
-version = "6.181.0"
+version = "7.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "bibtexparser" },

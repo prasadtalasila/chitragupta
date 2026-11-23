@@ -185,8 +185,8 @@ deletes its entry, in the PR that pays it.
   `review/figure_layout/_report.py::_figure_lines`,
   `_markdown_inert.py::_Container._item` and
   `scripts/check_version_bump.py::main`. A further 82 sit at 20 to 24.
-- **R17.** **Seven modules at exactly 250 code lines:**
-  `scripts/populate_bib_groups.py`, `unit/__init__.py`, `sync_residue.py`,
+- **R17.** **Six modules at exactly 250 code lines:**
+  `unit/__init__.py`, `sync_residue.py`,
   `review/verbatim_check/__init__.py`, `render_output/_pandoc.py`,
   `figure/__main__.py` and `dossier/_outline.py`. Another 77 are
   between 200 and 249. The cost is already visible: R14's

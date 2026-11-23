@@ -37,6 +37,7 @@ DRAFT_SUBCOMMANDS = {
         "init",
         "status",
         "mark-revision",
+        "apply-renames",
         "snapshot",
         "versions",
         "stamp",

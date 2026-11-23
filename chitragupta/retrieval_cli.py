@@ -31,7 +31,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from chitragupta import ledger, retrieval_added, retrieval_cache, retrieval_iterative
+from chitragupta import collection_filter, ledger, retrieval_added, retrieval_cache
+from chitragupta import retrieval_iterative
 from chitragupta.ledger_citable import PARSED
 from chitragupta.retrieval import (
     SearchResult,
@@ -137,11 +138,8 @@ def _build_parser() -> Any:
     )
     p_search.add_argument(
         "--collection",
-        metavar="NAME",
-        help="Only items in this Zotero collection, or one beneath it. Needs a "
-        "Better BibTeX export with JabRef fields on (docs/ZOTERO.md); with "
-        "any other export nothing is in any collection and this matches "
-        "nothing",
+        help="Only items in this collection or beneath it: a slug path, or a display path "
+        "with '/' (`corpus ledger --collections` lists both); an unknown one exits 2",
     )
     p_search.add_argument(
         "--y-prev",
@@ -331,6 +329,8 @@ def main(argv: "list[str] | None" = None) -> int:
         print("[error] --y-prev is document-unit only; drop --unit passage.", file=sys.stderr)
         return 1
 
+    if not collection_filter.resolve_args(args):
+        return collection_filter.REFUSED
     if args.command == "evidence":
         outcome = _run_evidence(args)
         if outcome is None:

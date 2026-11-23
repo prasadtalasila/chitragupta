@@ -786,3 +786,117 @@ class TestReadLibrary:
         )
         refs = bib_reader.read_library().references
         assert refs[0].authors == [("Hans", "Müller")]
+
+
+class TestImporterCollectionsAndRenames:
+    """chitragupta-importer's `cg-collections` field and its two @comment
+    tables (plans/1211-cg-collections-and-renames.md, D2, D5, D6)."""
+
+    TABLE = (
+        "@comment{cg-collections v1\n"
+        "digital-twin\tDigital Twin\n"
+        "digital-twin.dt-platforms\tDT Platforms\n"
+        "}\n\n"
+    )
+    ENTRY = (
+        "@incollection{haselbach_dtus_2020,\n"
+        "\ttitle = {Digital Twins},\n"
+        "\tyear = {2020},\n"
+        "\tcg-collections = {digital-twin.dt-platforms, other},\n"
+        "}\n"
+    )
+
+    def test_reads_cg_collections_and_names(self, isolated_config, capsys):
+        write_bib(isolated_config.BIB_FILE_PATH, self.TABLE + self.ENTRY)
+        library = bib_reader.read_library()
+        assert library.references[0].collections == ("digital-twin.dt-platforms", "other")
+        assert library.tables.collection_names == {
+            "digital-twin": "Digital Twin",
+            "digital-twin.dt-platforms": "DT Platforms",
+        }
+        assert library.integrity_problems == {}
+        assert "WARNING" not in capsys.readouterr().out
+
+    def test_no_table_and_no_field_is_no_collections(self, isolated_config, capsys):
+        write_bib(isolated_config.BIB_FILE_PATH, "@article{k_2024, title = {T}}\n")
+        library = bib_reader.read_library()
+        assert (library.references[0].collections, library.tables.collection_names) == ((), {})
+        assert (library.tables.declared_renames, library.integrity_problems) == ({}, {})
+        assert capsys.readouterr().out == ""
+
+    def test_unknown_table_version_still_yields_names_and_is_an_integrity_problem(
+        self, isolated_config, capsys
+    ):
+        table = "@comment{cg-collections v2\ndigital-twin\tDigital Twin\tK7Q2ZP1A\n}\n"
+        write_bib(isolated_config.BIB_FILE_PATH, table + self.ENTRY)
+        library = bib_reader.read_library()
+        assert library.tables.collection_names == {"digital-twin": "Digital Twin"}
+        assert library.integrity_problems == {
+            "cg-collections table v2 (this chitragupta reads v1)": 1
+        }
+        out = capsys.readouterr().out
+        assert "WARNING" in out and "cg-collections v2" in out and "upgrade chitragupta" in out
+
+    def test_skipped_rows_are_warned_about(self, isolated_config, capsys):
+        table = "@comment{cg-collections v1\nBad Row\tX\ndigital-twin\tDigital Twin\n}\n"
+        write_bib(isolated_config.BIB_FILE_PATH, table + self.ENTRY)
+        library = bib_reader.read_library()
+        assert library.tables.collection_names == {"digital-twin": "Digital Twin"}
+        out = capsys.readouterr().out
+        assert "1 row(s) of the cg-collections table skipped" in out
+        assert "Bad Row" in out
+
+    def test_groups_without_cg_collections_warns_once(self, isolated_config, capsys):
+        body = "".join(
+            f"@article{{k{i}_2024, title = {{T}}, groups = {{Shelf > Sub}}}}\n" for i in range(3)
+        )
+        write_bib(isolated_config.BIB_FILE_PATH, body)
+        library = bib_reader.read_library()
+        assert library.references[0].collections == ()
+        assert library.integrity_problems == {}
+        lines = [line for line in capsys.readouterr().out.splitlines() if "groups" in line]
+        assert len(lines) == 1
+        assert "chitragupta-importer" in lines[0]
+
+    def test_groups_beside_cg_collections_is_silent(self, isolated_config, capsys):
+        entry = self.ENTRY.replace("\tyear", "\tgroups = {Old},\n\tyear")
+        write_bib(isolated_config.BIB_FILE_PATH, self.TABLE + entry)
+        bib_reader.read_library()
+        assert "groups" not in capsys.readouterr().out
+
+    def test_cg_renames_block_read_and_unsafe_keys_skipped(self, isolated_config, capsys):
+        block = (
+            "@comment{cg-renames v1\n"
+            "lehner_pattern_2023-1\tlehner_pattern_2023\n"
+            "bad/old\tfine_2024\n"
+            "fine_old_2024\tbad/new\n"
+            "}\n"
+        )
+        write_bib(isolated_config.BIB_FILE_PATH, block + self.ENTRY)
+        library = bib_reader.read_library()
+        assert library.tables.declared_renames == {"lehner_pattern_2023-1": "lehner_pattern_2023"}
+        assert "2 row(s) of the cg-renames table skipped" in capsys.readouterr().out
+
+    def test_unknown_renames_version_is_an_integrity_problem(self, isolated_config, capsys):
+        block = "@comment{cg-renames v9\nold_2024\tnew_2024\n}\n"
+        write_bib(isolated_config.BIB_FILE_PATH, block + self.ENTRY)
+        library = bib_reader.read_library()
+        assert library.tables.declared_renames == {"old_2024": "new_2024"}
+        assert library.integrity_problems == {"cg-renames table v9 (this chitragupta reads v1)": 1}
+
+    def test_the_comment_blocks_are_not_counted_as_dropped_entries(self, isolated_config, capsys):
+        write_bib(isolated_config.BIB_FILE_PATH, self.TABLE + self.ENTRY)
+        assert bib_reader.read_library().dropped_entries == 0
+
+    def test_old_collections_field_setting_prints_one_line(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        from chitragupta import config
+
+        monkeypatch.setattr(config, "LEGACY_COLLECTIONS_FIELD", True)
+        write_bib(isolated_config.BIB_FILE_PATH, self.ENTRY)
+        bib_reader.read_library()
+        lines = [
+            line for line in capsys.readouterr().out.splitlines() if "collections_field" in line
+        ]
+        assert len(lines) == 1 and "no longer read" in lines[0]

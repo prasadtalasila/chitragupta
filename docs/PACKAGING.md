@@ -103,7 +103,7 @@ door and redesigns nothing.
 | `chitragupta draft render <file>` | `--format`, `--documentclass`, `--fontsize`, `--papersize`, `--margin`, `--csl`, `--output-dir`, `--fragment`, `--no-collapse-citations` |
 | `chitragupta draft style <draft>...` | `--language`, `--json` |
 | `chitragupta draft retrieve` | `search`, `evidence` |
-| `chitragupta draft dossier` | `init`, `status`, `mark-revision`, `snapshot`, `versions`, `stamp`, `sections`, `prune`, `outline`, `brief`, `set-language`, `acronyms-suggest`, `check-evidence`, `list`, `export`, `restore` |
+| `chitragupta draft dossier` | `init`, `status`, `mark-revision`, `apply-renames`, `snapshot`, `versions`, `stamp`, `sections`, `prune`, `outline`, `brief`, `set-language`, `acronyms-suggest`, `check-evidence`, `list`, `export`, `restore` |
 | `chitragupta draft spec` | `init`, `show`, `sign`, `status`, `align`, `seed` |
 | `chitragupta draft unit` | `contract`, `accept`, `status` |
 | `chitragupta draft registry` | `build`, `check`, `excerpt`, `index` |
@@ -134,8 +134,8 @@ door and redesigns nothing.
 | `chitragupta enrich` | `--stages docling,embed,bertopic,extract-keywords,seed-topics,converge,topic-graph`, `--for-draft PATH`, `--target host\|docker` (informational only; the probes decide)   |
 
 That is 4 layers and 29 verbs and aids (4 + 13 + 11 + 1), plus 4
-package-level commands, giving **66 invocable leaf commands**: 7 + 4 +
-(7 + 33) + (10 + 4) + 1. A test pins these counts by walking the live
+package-level commands, giving **67 invocable leaf commands**: 7 + 4 +
+(7 + 34) + (10 + 4) + 1. A test pins these counts by walking the live
 parsers, so a verb added without a row here fails the suite.
 
 `chitragupta/sync.py` carries a `__main__` block that looks like a fifth

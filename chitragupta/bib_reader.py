@@ -21,15 +21,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta import (
-    bib_collections,
     bib_escapes,
     bib_integrity,
     bib_names,
     bib_parse,
+    bib_tables,
     config,
     ledger_paths,
 )
-from chitragupta.citekey_safety import citekey_problem
+
+# Re-exported: callers and tests ask the bib reader whether a citekey is usable.
+from chitragupta.citekey_safety import citekey_problem  # noqa: F401  # pylint: disable=unused-import
 
 # Reference.pdf_resolution values -- *why* a PDF did or didn't resolve.
 # Previously sync.py only ever saw a bare pdf_path of None and reported
@@ -130,6 +132,8 @@ class Library:
     duplicate_citekeys: tuple[str, ...] = ()
     dropped_entries: int = 0
     unfilenameable_citekeys: tuple[str, ...] = ()
+    # chitragupta-importer's @comment tables (chitragupta/bib_tables.py).
+    tables: bib_tables.Tables = field(default_factory=bib_tables.Tables)
 
     @property
     def seen_citekeys(self) -> set[str]:
@@ -166,7 +170,7 @@ class Library:
         shared = _described(
             ("citekey", "citekeys", "shared by more than one entry", len(self.duplicate_citekeys))
         )
-        return self.unread | shared
+        return self.unread | shared | self.tables.problems()
 
 
 def _described(*counts) -> dict[str, int]:
@@ -287,33 +291,6 @@ def _clean_title(title: str) -> str:
 # this stays the natural place to find it from the sync side.
 
 
-def _unfilenameable_citekeys(entries, duplicated) -> tuple[str, ...]:
-    """The citekeys that cannot be a filename, in bib order, each warned.
-
-    Checked before anything else touches an entry: such a citekey would
-    fail much later, inside a parse, as an OSError naming a path rather
-    than the entry that produced it. Skipping the entry loses one paper
-    and says so; letting it through risks writing outside content/. A
-    duplicated key is already skipped and reported as that, so it is not
-    counted twice.
-    """
-    skipped = []
-    for entry in entries:
-        key = entry["ID"]
-        problem = citekey_problem(key)
-        if problem is None or key in duplicated:
-            continue
-        skipped.append(key)
-        print(
-            f"  WARNING skipping citekey {key!r}: {problem}. "
-            "It is used directly as a filename (content/parsed/<citekey>.txt "
-            "and the enrichment layer's own outputs), and this project never "
-            "rewrites a citekey -- the bib file is the source of truth. Rename "
-            "it in your reference manager, re-export, and re-run sync."
-        )
-    return tuple(skipped)
-
-
 def _reference(entry: dict, bib_dir: Path) -> Reference:
     """One parsed bib entry, with its PDF resolved, as a `Reference`."""
     if "file" in entry:
@@ -329,7 +306,7 @@ def _reference(entry: dict, bib_dir: Path) -> Reference:
         doi=entry.get("doi"),
         url=entry.get("url"),
         fields=entry,
-        collections=bib_collections.parse(entry.get(config.BIB_COLLECTIONS_FIELD)),
+        collections=bib_tables.collections(entry),
         pdf_path=pdf_path,
         pdf_resolution=pdf_resolution,
     )
@@ -356,7 +333,9 @@ def read_library() -> Library:
     name = config.BIB_FILE_PATH.name
     dropped = bib_integrity.dropped_entries(raw_text, len(entries), name, bib_parse.STANDARD_TYPES)
     duplicated = bib_integrity.duplicated_citekeys(entries, name)
-    unfilenameable = _unfilenameable_citekeys(entries, duplicated)
+    unfilenameable = bib_integrity.unfilenameable_citekeys(entries, duplicated)
     bib_dir = ledger_paths.pdf_root()
     kept = [e for e in entries if e["ID"] not in duplicated and e["ID"] not in unfilenameable]
-    return Library([_reference(e, bib_dir) for e in kept], duplicated, dropped, unfilenameable)
+    tables = bib_tables.read(raw_text, entries, name)
+    references = [_reference(e, bib_dir) for e in kept]
+    return Library(references, duplicated, dropped, unfilenameable, tables)

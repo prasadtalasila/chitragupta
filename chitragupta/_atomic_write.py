@@ -17,6 +17,10 @@ parsed text (`pdf_text`, #894) and the passage sidecar (`passages`,
 The `OSError` still reaches the caller unchanged: what a failed write
 *means* (transient, per #842) is the caller's to decide.
 
+`temp_sibling` is the naming alone, for a caller that writes several
+files all or none (`dossier/_renames.py`): every temp first, then every
+`os.replace`.
+
 Not yet shared by the other writers of the same shape --
 `_json_cache`, `overlap_index_doc` and the two enrichment caches --
 which differ in whether they clean up after a failure.
@@ -27,6 +31,11 @@ import uuid
 from pathlib import Path
 
 
+def temp_sibling(path: Path) -> Path:
+    """A temp path beside `path`, unique per process and per call."""
+    return path.with_name(f"{path.name}.tmp-{os.getpid()}-{uuid.uuid4().hex}")
+
+
 def write_atomically(path: Path, data: bytes | str) -> None:
     """Write `data` to `path` through a temp sibling and `os.replace`.
 
@@ -34,7 +43,7 @@ def write_atomically(path: Path, data: bytes | str) -> None:
     poppler chose. Text is encoded UTF-8, never the locale codec, which is
     cp1252 on CI's Windows leg.
     """
-    tmp = path.with_name(f"{path.name}.tmp-{os.getpid()}-{uuid.uuid4().hex}")
+    tmp = temp_sibling(path)
     try:
         if isinstance(data, bytes):
             tmp.write_bytes(data)

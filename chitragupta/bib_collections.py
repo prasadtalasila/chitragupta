@@ -1,108 +1,153 @@
-"""Zotero collection labels: how they reach the ledger, and how they match.
+"""Collection membership: slug paths, their names, and how they match.
 
-Zotero organises a library into collections and subcollections, and a
-paper's place in that tree is a judgement its owner has already made --
-"these are the modelling papers" -- which this pipeline otherwise throws
-away. #195 asked for it back, to scope a draft's retrieval to the subset
-someone curated for it rather than to the whole library.
+A reference manager's collections are a judgement its owner has already
+made -- "these are the modelling papers" -- and #195 asked for it back,
+to scope a draft's retrieval to the shelf someone curated for it rather
+than to the whole library.
 
-**Zotero's own BibTeX exporter drops collection membership entirely.**
-There is nothing to parse unless the export came from
-[Better BibTeX](https://retorque.re/zotero-better-bibtex/), whose
-*Export -> Fields -> Export JabRef-specific fields* option writes
-JabRef's `groups` field into every entry. docs/ZOTERO.md has the
-click-path and the one cost worth knowing (it disables BBT's export
-cache). A library exported without it parses to nothing here, and every
-command behaves exactly as it did before -- an absent field is not an
-error, because for most users it will simply be absent.
+**Where they come from.** chitragupta-importer reads the reference
+manager's own storage and writes two things into `bibliography.bib`:
 
-Two conventions come with that field, both JabRef's rather than ours:
+- each entry's `cg-collections` field, the slug path of every collection
+  the item is directly in (`digital-twin.dt-platforms, a.b`); ancestors
+  are implied, so an item in `a.b.c` is in `a` and `a.b`;
+- one `@comment{cg-collections v1 ...}` table mapping each slug path to
+  the collection's own name (read by `chitragupta/bib_comments.py`).
 
-- **Comma-separated** for an item in several collections.
-- **`>` for nesting**, so a subcollection arrives as its path from the
-  root, `Digital twins > Modelling`.
+A bib written any other way carries no collections, and every command
+behaves as it does without them: an absent field is not an error.
 
-Whitespace around either separator is not reliable across exporters, so a
-path is normalised on the way in -- segments stripped, rejoined with a
-single ` > ` -- and matching is done on the normalised form. That is the
-whole reason this is a module rather than a `split(",")` at each call
-site: `parse` and `matches` have to agree about spacing, and there are
-three call sites.
+**Why slugs.** A slug segment is lower-case `[a-z0-9-]`, frozen by the
+importer per collection id, so a collection renamed in the reference
+manager keeps its slug and a `scope.md` that recorded it keeps working.
+Two siblings with the same name get distinct slugs (`medical`,
+`medical-1`), so they can never be mixed. Slugs need no escaping and no
+shell quoting; names, which may hold `/`, `>` or `,`, are never split.
 
-**Matching is prefix-by-segment, not substring.** Asking for `Modelling`
-selects `Modelling` and `Modelling > Continuous`, because a parent
-collection in Zotero visually contains its children and a user asking for
-the parent means the subtree. It does not select `Modelling notes`, which
-a `startswith` on the raw string would.
+**Matching is subtree, per segment.** Asking for `a.b` selects `a.b` and
+`a.b.c`, because a parent collection contains its children, but not
+`a.bc`. A user may also name a collection by its display path, the names
+from the root joined with `/`; `resolve` turns either form into one slug
+path or refuses, so a typo or an old `groups` path fails loudly instead
+of silently matching nothing.
 """
 
 from __future__ import annotations
 
 import json
+import re
+from collections.abc import Iterable
 
 ITEM_SEPARATOR = ","
-NESTING_SEPARATOR = ">"
-_JOINED = f" {NESTING_SEPARATOR} "
+SEGMENT_SEPARATOR = "."
+DISPLAY_JOINER = " / "
+TABLE_NAME = "cg-collections"
+
+_SEGMENT = r"[a-z0-9]+(?:-[a-z0-9]+)*"
+_SLUG_PATH = re.compile(rf"{_SEGMENT}(?:\.{_SEGMENT})*")
+
+
+class UnknownCollection(ValueError):
+    """`resolve` found no collection by that slug path or display path."""
+
+    def __init__(self, wanted: str) -> None:
+        self.wanted = wanted
+        # `>` was the old `groups` nesting separator; a value holding one
+        # is almost certainly a scope recorded before slug paths.
+        self.old_syntax = ">" in wanted
+        super().__init__(f"no collection {wanted!r}")
+
+
+class AmbiguousCollection(ValueError):
+    """`resolve` found several collections with that display path."""
+
+    def __init__(self, wanted: str, slugs: list[str]) -> None:
+        self.wanted = wanted
+        self.slugs = slugs
+        super().__init__(f"{wanted!r} names {len(slugs)} collections")
+
+
+def is_slug_path(value: str) -> bool:
+    """Whether `value` is a well-formed slug path."""
+    return bool(_SLUG_PATH.fullmatch(value))
 
 
 def parse(value: str | None) -> tuple[str, ...]:
-    """The collection paths in one entry's field value, normalised.
+    """The slug paths in one entry's `cg-collections` value.
 
-    Order is preserved and duplicates are dropped, so a re-export writes
-    the same JSON for an unchanged entry and the ledger does not churn.
+    A malformed path is dropped, not repaired. Order is preserved and
+    duplicates are dropped, so a re-export writes the same JSON for an
+    unchanged entry and the ledger does not churn.
     """
     if not value:
         return ()
-    paths = []
+    paths: list[str] = []
     for raw in value.split(ITEM_SEPARATOR):
-        path = _normalise(raw)
-        if path and path not in paths:
+        path = raw.strip()
+        if is_slug_path(path) and path not in paths:
             paths.append(path)
     return tuple(paths)
 
 
-def _normalise(raw: str) -> str:
-    """One path with its segments stripped and rejoined predictably.
+def _with_ancestors(path: str) -> list[str]:
+    segments = path.split(SEGMENT_SEPARATOR)
+    return [SEGMENT_SEPARATOR.join(segments[:depth]) for depth in range(1, len(segments) + 1)]
 
-    An empty segment is dropped rather than preserved, so `A > > B` and a
-    stray trailing `>` both normalise to something that still matches
-    `A`; the alternative is a path no query could ever name.
+
+def display_paths(names: dict[str, str], paths: Iterable[str]) -> dict[str, str]:
+    """Every known slug path, ancestors included, mapped to its display path.
+
+    Known means named in the table or used by an entry. A level the
+    table has no row for shows its own slug segment.
     """
-    segments = [seg.strip() for seg in raw.split(NESTING_SEPARATOR)]
-    return _JOINED.join(seg for seg in segments if seg)
+    known = {a for path in [*names, *paths] for a in _with_ancestors(path)}
+    return {
+        path: DISPLAY_JOINER.join(
+            names.get(prefix, prefix.rsplit(SEGMENT_SEPARATOR, 1)[-1])
+            for prefix in _with_ancestors(path)
+        )
+        for path in sorted(known)
+    }
 
 
 def matches(collections: "tuple[str, ...] | list[str]", wanted: str) -> bool:
-    """Whether any of `collections` is `wanted` or sits beneath it.
-
-    Case-insensitive, because a collection name is a label someone typed
-    in a GUI and asking them to reproduce its capitalisation on a command
-    line is a way to make a correct query return nothing.
-    """
-    target = _normalise(wanted).casefold()
-    if not target:
+    """Whether any of `collections` is the slug path `wanted` or beneath it."""
+    if not wanted:
         return False
-    prefix = target + _JOINED.casefold()
-    return any(
-        path == target or path.startswith(prefix) for path in (c.casefold() for c in collections)
-    )
+    prefix = wanted + SEGMENT_SEPARATOR
+    return any(path == wanted or path.startswith(prefix) for path in collections)
 
 
-def names(collections_by_citekey: "dict[str, tuple[str, ...]]") -> list[str]:
-    """Every distinct collection path in the corpus, parents included.
+def _normalised_display(value: str) -> str:
+    collapsed = re.sub(r"\s+", " ", value.strip())
+    return re.sub(r" ?/ ?", "/", collapsed).casefold()
 
-    A path implies its ancestors -- an item in `A > B > C` is in `A` --
-    but only the leaf path is stored, so listing what a user can filter on
-    means expanding each path back out. Sorted, because this exists to be
-    printed.
+
+def resolve(wanted: str, names: dict[str, str], paths: Iterable[str]) -> str:
+    """The one slug path `wanted` names, as a slug path or a display path.
+
+    A slug path is tried first. A display path is compared whole against
+    every rebuilt display path (case, and spacing around `/`, ignored),
+    never split, so a name holding `/` still resolves. Raises
+    `AmbiguousCollection` when it fits several and `UnknownCollection`
+    when it fits none.
     """
-    found = set()
-    for paths in collections_by_citekey.values():
-        for path in paths:
-            segments = path.split(_JOINED)
-            for depth in range(1, len(segments) + 1):
-                found.add(_JOINED.join(segments[:depth]))
-    return sorted(found)
+    shown = display_paths(names, paths)
+    # A slug is lower case by construction, so only a lower-case value is
+    # read as one: `Medical` is a name, and must not quietly become the
+    # slug `medical` when a sibling `medical-1` shares it. `scope.md`
+    # records `<slug>   # <display path>`; a note is cut only after
+    # whitespace, so a name holding `#` (`C# projects`) never is.
+    head = re.split(r"\s+#", wanted.strip(), maxsplit=1)[0]
+    if head == head.lower() and head in shown:
+        return head
+    target = _normalised_display(wanted)
+    hits = [path for path, display in shown.items() if _normalised_display(display) == target]
+    if len(hits) == 1:
+        return hits[0]
+    if hits:
+        raise AmbiguousCollection(wanted, hits)
+    raise UnknownCollection(wanted)
 
 
 def of_row(row) -> tuple[str, ...]:
@@ -125,18 +170,26 @@ def of_row(row) -> tuple[str, ...]:
     return tuple(str(p) for p in loaded) if isinstance(loaded, list) else ()
 
 
-def report(rows) -> list[str]:
-    """The `--collections` listing, as printable lines.
+def report(rows, names: dict[str, str]) -> list[str]:
+    """The `--collections` listing: slug path, display path, paper count.
 
-    The empty case is guidance rather than a result: an empty list here
-    almost always means the export lacked Better BibTeX's JabRef fields,
-    not that the library has no collections.
+    A count includes the papers in every collection beneath it, and a
+    named collection holding no papers is listed with 0, so the listing
+    is the whole tree a `--collection` filter can be given.
     """
-    paths = names({row["citekey"]: of_row(row) for row in rows})
-    if not paths:
+    by_citekey = [of_row(row) for row in rows]
+    shown = display_paths(names, [path for paths in by_citekey for path in paths])
+    if not shown:
         return [
             "No collections recorded.",
-            "Zotero's own BibTeX export drops them; see docs/ZOTERO.md for "
-            "the Better BibTeX option that keeps them.",
+            "Collections come from the cg-collections field chitragupta-importer "
+            "writes; see docs/ZOTERO.md.",
         ]
-    return [f"  {path}" for path in paths] + ["", f"  {len(paths)} collection(s)."]
+    slug_width = max(map(len, shown))
+    display_width = max(map(len, shown.values()))
+    lines = [
+        f"  {path:<{slug_width}}  {display:<{display_width}}  "
+        f"{sum(matches(paths, path) for paths in by_citekey)}"
+        for path, display in shown.items()
+    ]
+    return lines + ["", f"  {len(shown)} collection(s)."]

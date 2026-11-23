@@ -2247,16 +2247,16 @@ class TestDriftCollectionScoping:
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         dossier.log_retrieval(
-            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins"
+            draft, "search", "digital twin", 15, 15, 100, collection="digital-twins"
         )
         _seed_corpus(
             [
-                ("in_shelf_2024", "In shelf", "digital twin architecture", ("Digital twins",)),
+                ("in_shelf_2024", "In shelf", "digital twin architecture", ("digital-twins",)),
                 (
                     "outside_shelf_2025",
                     "Outside shelf",
                     "digital twin simulation",
-                    ("Other shelf",),
+                    ("other-shelf",),
                 ),
             ]
         )
@@ -2267,7 +2267,7 @@ class TestDriftCollectionScoping:
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         dossier.log_retrieval(
-            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins"
+            draft, "search", "digital twin", 15, 15, 100, collection="digital-twins"
         )
         _seed_corpus(
             [
@@ -2275,7 +2275,7 @@ class TestDriftCollectionScoping:
                     "nested_2024",
                     "Nested",
                     "digital twin architecture",
-                    ("Digital twins > Modelling",),
+                    ("digital-twins.modelling",),
                 ),
             ]
         )
@@ -2288,12 +2288,12 @@ class TestDriftCollectionScoping:
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
         _seed_corpus(
             [
-                ("in_shelf_2024", "In shelf", "digital twin architecture", ("Digital twins",)),
+                ("in_shelf_2024", "In shelf", "digital twin architecture", ("digital-twins",)),
                 (
                     "outside_shelf_2025",
                     "Outside shelf",
                     "digital twin simulation",
-                    ("Other shelf",),
+                    ("other-shelf",),
                 ),
             ]
         )
@@ -2302,6 +2302,70 @@ class TestDriftCollectionScoping:
             "in_shelf_2024",
             "outside_shelf_2025",
         }
+
+    def test_an_unresolvable_recorded_collection_is_reported_not_clean(self, draft, capsys):
+        """A scope recorded before slug paths (`Digital twins > Modelling`)
+        would otherwise filter every candidate away and read as clean."""
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        dossier.log_retrieval(
+            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins > Modelling"
+        )
+        _seed_corpus(
+            [("in_shelf_2024", "In shelf", "digital twin architecture", ("digital-twins",))]
+        )
+        report = _drift.drift(target)
+        assert report.unresolved_collections == ["Digital twins > Modelling"]
+        assert report.candidates == []
+        assert report.clean is False
+        assert report.as_dict()["unresolved_collections"] == ["Digital twins > Modelling"]
+        from chitragupta.dossier import _drift_report
+
+        _drift_report._print_drift(report)
+        out = capsys.readouterr().out
+        assert "1 recorded collection(s) no longer resolve" in out
+        assert "Digital twins > Modelling" in out
+
+    def test_a_ported_scope_md_covers_old_log_rows(self, draft):
+        """retrieval.md is an append-only log, so an old `groups` value in it
+        is never rewritten; once scope.md records a slug, queries whose
+        logged collection no longer resolves run against that slug."""
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        dossier.log_retrieval(
+            draft, "search", "digital twin", 15, 15, 100, collection="Digital twins > Modelling"
+        )
+        scope = target / "scope.md"
+        scope.write_text(scope.read_text() + "\n- collection: digital-twins   # Digital Twins\n")
+        _seed_corpus(
+            [
+                ("in_shelf_2024", "In shelf", "digital twin architecture", ("digital-twins",)),
+                ("outside_2025", "Outside", "digital twin simulation", ("other-shelf",)),
+            ]
+        )
+        report = _drift.drift(target)
+        assert report.unresolved_collections == []
+        assert [c.citekey for c in report.candidates] == ["in_shelf_2024"]
+
+    def test_a_whole_corpus_scope_is_no_fallback(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100, collection="Old > X")
+        scope = target / "scope.md"
+        scope.write_text(scope.read_text() + "\n- collection: (whole corpus)\n")
+        _seed_corpus([("a_2024", "A", "digital twin architecture", ("digital-twins",))])
+        assert _drift.drift(target).unresolved_collections == ["Old > X"]
+
+    def test_an_unresolved_collection_is_listed_once(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        for query in ("digital twin", "twin architecture"):
+            dossier.log_retrieval(draft, "search", query, 15, 15, 100, collection="Old > Path")
+        _seed_corpus([("a_2024", "A", "digital twin architecture", ("digital-twins",))])
+        assert _drift.drift(target).unresolved_collections == ["Old > Path"]
+
+    def test_names_read_as_none_without_a_readable_ledger(self, isolated_config):
+        assert _drift.Corpus([]).names == {}
 
     def test_a_row_predating_the_collection_column_behaves_as_corpus_wide(self, draft):
         dossier.init(draft, "survey")
@@ -2312,12 +2376,12 @@ class TestDriftCollectionScoping:
         )
         _seed_corpus(
             [
-                ("in_shelf_2024", "In shelf", "digital twin architecture", ("Digital twins",)),
+                ("in_shelf_2024", "In shelf", "digital twin architecture", ("digital-twins",)),
                 (
                     "outside_shelf_2025",
                     "Outside shelf",
                     "digital twin simulation",
-                    ("Other shelf",),
+                    ("other-shelf",),
                 ),
             ]
         )
