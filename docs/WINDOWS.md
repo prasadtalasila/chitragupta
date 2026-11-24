@@ -71,7 +71,6 @@ Always write `${CLAUDE_PROJECT_DIR}`.
    ```bash
    python -m venv .venv-full
    source .venv-full/Scripts/activate
-   pip install --only-binary ':all:' uv
    bash scripts/install_full_pipeline.sh python-deps
    ```
 

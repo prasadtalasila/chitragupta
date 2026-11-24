@@ -314,7 +314,7 @@ chitragupta/enrich/                the enrichment layer (pyproject.toml's "enric
   docling_parse.py, embed_index.py, topic_model.py, topic_seeding.py, topic_converge.py
 scripts/                   dev tooling only -- no layer entry point lives here
   install_full_pipeline.sh  single staged install path for host, Docker and CI: os-deps, python-deps,
-                          dev-deps, all, plus the opt-in cpu-torch, gpu-torch, vale, actionlint, stix-two, uv
+                          dev-deps, all, plus the opt-in cpu-torch, gpu-torch, vale, actionlint, stix-two
   release.py                 bundles a distributable release/chitragupta-<version>.zip, dev files excluded
 tests/                    pytest suite -- unit tests per module + end-to-end feature tests (see "Running tests")
 content/                  generated, gitignored (regenerate with sync)

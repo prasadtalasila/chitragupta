@@ -73,7 +73,7 @@ jobs:
       # unpinned install resolves to whatever PyPI serves that day, and an
       # sdist fallback runs arbitrary setup scripts), mirroring ci.yml's
       # and release.yml's -- bump all three, and
-      # scripts/install_full_pipeline.sh's UV_VERSION, together.
+      # scripts/uv-requirements.txt, together.
       # `--no-build` extends the same refusal to the docs extra itself:
       # every package in it ships a wheel, so a source build here could
       # only ever be a substituted artefact, and refusing it costs

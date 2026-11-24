@@ -222,10 +222,9 @@ pip install 'chitragupta-cli[enrich]'   # optional, several GB -- only step 4 us
 
 ```bash
 # git checkout: for working on the pipeline itself -- see DEVELOPER-AGENTS.md.
-# Same .venv-full; the script creates it if absent, reuses it if not.
+# Same .venv-full; the script creates it if absent, reuses it if not, and
+# creates config.toml from config.toml.example the first time.
 git clone https://github.com/prasadtalasila/chitragupta && cd chitragupta
-cp config.toml.example config.toml   # git checkout only
-pipx install uv
 bash scripts/install_full_pipeline.sh all
 source .venv-full/bin/activate
 ```
@@ -318,7 +317,7 @@ optional **enrichment layer** is what costs real disk and real time.
 | RAM | ~1-2GB | **8GB minimum, 16GB+ better**. At ~3GB free, Docling on a 17-page PDF pushed the process to 3.6GB RSS and the host swapped 6.3GB; it finished, just slowly |
 | CPU | 1-2 cores | **4+ cores**. Without a GPU, Docling's layout inference and BERTopic's UMAP/HDBSCAN are CPU-bound, and more cores directly cut wall-clock time |
 | GPU | none needed | **none required.** If one is present the installer detects it and torch is set up to use it automatically, worth ~4.7x on the parse |
-| Network | once, for `uv sync` | also for first-run model downloads (the embedding model, Docling's layout/OCR models) |
+| Network | once, for the install | also for first-run model downloads (the embedding model, Docling's layout/OCR models) |
 
 For a sense of scale at the top end, this project's own bibliography
 (501 PDFs, 13,400 pages, 1.54GB) parses in **about 4 minutes** on a

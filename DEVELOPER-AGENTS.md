@@ -240,7 +240,7 @@ Install everything with:
 
 ```bash
 bash scripts/install_full_pipeline.sh              # Python deps only (default) -- what every host needs regardless of OS packages
-bash scripts/install_full_pipeline.sh os-deps      # apt-get: TeX Live, Pandoc, poppler-utils, OpenCV runtime, zip/unzip, plus a pinned uv -- needs root, opt-in
+bash scripts/install_full_pipeline.sh os-deps      # apt-get: TeX Live, Pandoc, poppler-utils, OpenCV runtime, zip/unzip -- needs root, opt-in
 bash scripts/install_full_pipeline.sh dev-deps     # pytest/pytest-cov, to run the test suite -- opt-in
 bash scripts/install_full_pipeline.sh all          # os-deps + python-deps
 bash scripts/install_full_pipeline.sh cpu-torch    # swap torch to the cpu-only wheel index -- opt-in
@@ -281,15 +281,15 @@ write a version down.
 
 **The three extras are the one declaration of each optional stack**, in
 `pyproject.toml`'s `[project.optional-dependencies]`: `pip install
-'chitragupta-cli[enrich]'` reads the same list `uv sync --extra enrich`
-does, so the two cannot drift. (Under Poetry each was declared twice, as
-an extra and as a group, with a test to keep them equal; both went with
-the move to uv.) The one thing pip cannot do that the install script
-does is match torch to this host's GPU driver
+'chitragupta-cli[enrich]'` reads the same list the install script's
+`python-deps` stage does, so the two cannot drift. (Under Poetry each
+was declared twice, as an extra and as a group, with a test to keep them
+equal; both went with the move to uv.) The one thing pip cannot do that
+the install script does is match torch to this host's GPU driver
 (`ensure_gpu_torch`, above): `pip install 'chitragupta-cli[enrich]'` on
 a CUDA host still lands a CPU-only wheel, silently, exactly as a bare
-`pip install torch` would. `chitragupta doctor` detects that mismatch and
-names `chitragupta install gpu-torch` as the fix; nothing makes it
+`pip install torch` would. `chitragupta doctor` detects that mismatch
+and names `chitragupta install gpu-torch` as the fix; nothing makes it
 automatic, because pip has no post-install hook this project would be
 willing to use.
 

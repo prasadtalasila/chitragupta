@@ -155,21 +155,19 @@ jobs:
         if: runner.os == 'Linux'
         run: bash scripts/install_full_pipeline.sh cpu-torch
 
-      # os-deps also installs uv itself on Linux (a pinned, checksum-
-      # verified binary -- install_full_pipeline.sh's install_uv), and
-      # python-deps' check_uv() has no other way to find it on a host that
-      # skipped os-deps. check_uv() itself names this pip command as the
-      # non-Linux route; this is that, scoped to CI.
+      # For this workflow's own `uv lock --check` and `uv run` steps below.
+      # The install script does not need it: it installs the same pinned
+      # uv into .venv-full from scripts/uv-requirements.txt.
       #
       # Pinned to an exact version, wheels only (Sonar S8544/S8541: an
       # unpinned `pip install` resolves to whatever PyPI serves that day,
       # and an sdist fallback would run arbitrary setup scripts at install
       # time). Bump it deliberately, the way the pinned action SHAs below
       # are bumped, rather than tracking latest silently -- and bump
-      # docs.yml's and release.yml's installs, and the installer's
-      # UV_VERSION and digests, with it.
-      - name: Install uv (non-Linux only -- os-deps' install_uv is Linux-specific)
-        if: runner.os != 'Linux'
+      # docs.yml's and release.yml's installs, and
+      # scripts/uv-requirements.txt, with it (tests/test_install_script_uv.py
+      # fails when they disagree).
+      - name: Install uv
         shell: bash
         run: pip install --only-binary ':all:' uv==0.13.9
 

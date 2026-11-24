@@ -300,8 +300,11 @@ One branch, in the order the recommendation set out:
    table, because its base side is `main`.
 4. **`scripts/install_full_pipeline.sh` runs `uv sync`** (`--active
    --inexact --locked --no-build`; its header says why each), and
-   `os-deps` fetches a pinned, SHA256-verified uv binary in place of
-   apt's `python3-poetry`. Every locked dependency now ships a wheel,
+   it installs the pinned uv into the venv it builds, by pip with every
+   wheel's hash checked (`scripts/uv-requirements.txt`), in place of
+   apt's `python3-poetry` -- so a checkout needs nothing installed first,
+   and the script copies `config.toml` from its example as well. Every
+   locked dependency now ships a wheel,
    so `--no-build` refuses every source build -- what the Sonar comment
    on the old `poetry install` wanted and could not have.
 5. **CI, docs, release and Docker** install a pinned uv, key the venv

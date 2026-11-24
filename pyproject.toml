@@ -79,7 +79,7 @@ dependencies = [
 # never reached a built wheel's metadata; tests/test_pyproject_extras.py
 # existed only to keep the two copies equal, and went with them.
 [project.optional-dependencies]
-# The `enrich` extra (`uv sync --extra enrich`): everything chitragupta/enrich/*
+# The `enrich` extra (the install script's `python-deps` stage): everything chitragupta/enrich/*
 # (the Docling/embeddings/Pandoc pipeline, chitragupta/enrich/__main__.py)
 # needs. All of the below were installed and import-verified in a host
 # venv on 2026-07-28 (docker/requirements-full.txt, since replaced by this
@@ -163,7 +163,7 @@ enrich = [
     # depends on Pillow directly, so it cannot be absent wherever this is.
     "pypdfium2>=5.13,<6.0",
 ]
-# The `dev` extra (`uv sync --extra dev`): pytest/pytest-cov are
+# The `dev` extra (the install script's `dev-deps` stage): pytest/pytest-cov are
 # dev-time tooling, not needed to run the pipeline itself -- but the test
 # suite they run is NOT correspondingly light: tests/ exercises
 # bibtexparser (bib_reader) and the whole enrich group
