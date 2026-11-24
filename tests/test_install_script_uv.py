@@ -131,3 +131,16 @@ class TestThePinnedUv:
             text = (REPO_ROOT / ".github" / "workflows" / workflow).read_text(encoding="utf-8")
             pins = re.findall(r"uv==([\d.]+)", text)
             assert pins and set(pins) == {version}, (workflow, pins)
+
+
+def test_the_docker_image_copies_every_file_the_install_reads():
+    """docker/Dockerfile copies only what installing needs into the build,
+    before the source is mounted, so a file the script reads that is not
+    on a COPY line fails the image build -- which is how
+    uv-requirements.txt first reached CI."""
+    dockerfile = (REPO_ROOT / "docker" / "Dockerfile").read_text(encoding="utf-8")
+    copied = " ".join(line for line in dockerfile.splitlines() if line.startswith("COPY "))
+    read = set(re.findall(r'"\$REPO_ROOT/(scripts/[\w.-]+|[\w.-]+\.(?:lock|txt))"', SCRIPT))
+    assert "scripts/uv-requirements.txt" in read
+    missing = sorted(path for path in read if path not in copied)
+    assert missing == [], f"docker/Dockerfile does not COPY {missing}"

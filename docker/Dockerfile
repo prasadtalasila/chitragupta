@@ -113,6 +113,10 @@ ENV VIRTUAL_ENV=/opt/venv
 # the python-deps layer below; that is the cheaper of the two, against a
 # build that does not run at all.
 COPY pyproject.toml uv.lock README.md ./
+# The pinned uv the script installs into /opt/venv (one sha256 per wheel).
+# Here, with the lock, rather than beside the script above: a uv bump then
+# rebuilds this layer only, not the OS packages' one.
+COPY scripts/uv-requirements.txt scripts/uv-requirements.txt
 
 # torch itself isn't pinned in pyproject.toml (see its own comment on
 # why) -- uv.lock resolves whatever plain PyPI's default Linux wheel
