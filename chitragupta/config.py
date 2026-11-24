@@ -485,7 +485,7 @@ PROVENANCE_GOOD_SCORE = _get_float(
     "PROVENANCE_GOOD_SCORE", "provenance", "good_score", default=0.50
 )
 
-# Heavier optional pipeline (pyproject.toml's "enrich" Poetry group), per chitragupta/enrich/.
+# Heavier optional pipeline (pyproject.toml's "enrich" extra), per chitragupta/enrich/.
 DOCLING_DIR = CONTENT_DIR / "docling"
 # Per-doc (size, mtime_ns) PDF fingerprint, so docling_parse.parse_doc()
 # only re-runs Docling's layout/OCR models -- the slowest stage in this

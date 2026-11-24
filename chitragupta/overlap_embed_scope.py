@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from chitragupta import config, dossier, ledger, overlap_chroma
+from chitragupta import config, dossier, install, ledger, overlap_chroma
 
 
 @dataclass
@@ -78,8 +78,9 @@ def open_scope(draft: Path) -> tuple[Scope | None, str | None]:
     stack = overlap_chroma.optional_stack()
     if stack is None:
         return None, (
-            "the enrichment layer is not installed -- `poetry install --with enrich` "
-            "adds the chromadb/sentence-transformers stack this tier embeds with"
+            "the enrichment layer is not installed; it adds the "
+            "chromadb/sentence-transformers stack this tier embeds with. Run, "
+            f"{install.enrich_remedy()}."
         )
 
     collection = overlap_chroma.built_collection(stack[0])

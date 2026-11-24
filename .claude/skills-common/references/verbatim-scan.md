@@ -13,7 +13,7 @@ commands and file contents in a draft do not light it up.
 
 **Say what it did not check.** If `tiers_not_run` is not empty, quote
 each reason as the scan wrote it, and where the reason names a fix
-(`poetry install --with enrich`, `python -m chitragupta.enrich`) pass
+(`chitragupta install enrich`, `python -m chitragupta.enrich`) pass
 that on once. It sees verbatim and near-verbatim reuse only, and
 **genuine restatement is only detected where the embedding tier can
 run**, so a clean scan is not a clean bill of health

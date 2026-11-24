@@ -32,7 +32,7 @@ also save the TOML, so sweeping `--top` to find where coverage plateaus
 (`bench/RESULTS.md`'s 2026-09-03 entry) never clobbers a real
 `content/keywords.toml` by accident.
 
-Needs the "enrich" Poetry group and a synced corpus with parsed text, the
+Needs the "enrich" extra and a synced corpus with parsed text, the
 same as `bench/bench_topic_depth.py`.
 
     CONTENT_DIR=/path/to/content .venv-full/bin/python \\

@@ -24,7 +24,7 @@ about what is safe -- the same argument that already has `overlap_chroma`
 asking `embed_index` for the collection name rather than recomputing it.
 And it belongs to neither layer: it imports nothing, takes the collection
 as an argument, and so is readable by tier 3 of the overlap scan without
-the `enrich` Poetry group installed, the property
+the `enrich` extra installed, the property
 `chitragupta/overlap_chroma.py`'s docstring exists to protect.
 """
 

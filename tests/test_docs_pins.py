@@ -231,10 +231,10 @@ class TestThePylintrcDoesNotDriftFromWhatItConfigures:
         match = re.search(r"^py-version=(\d+)\.(\d+)$", pylintrc, re.MULTILINE)
         assert match, ".pylintrc no longer sets py-version in the shape this test reads"
         declared = tomllib.loads(PYPROJECT_TOML.read_text(encoding="utf-8"))
-        floor = declared["tool"]["poetry"]["dependencies"]["python"]
+        floor = declared["project"]["requires-python"]
         assert floor.lstrip("^~>=").startswith(f"{match.group(1)}.{match.group(2)}"), (
             f".pylintrc's py-version ({match.group(1)}.{match.group(2)}) does not match "
-            f"pyproject.toml's python constraint ({floor}). Pylint would be checking "
+            f"pyproject.toml's requires-python ({floor}). Pylint would be checking "
             "against an interpreter this project does not support."
         )
 

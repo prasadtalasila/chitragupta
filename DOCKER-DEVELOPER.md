@@ -28,13 +28,13 @@ verified by hand: `docker build` with both `TORCH_VARIANT` values, and
 each image's `/opt/venv` confirmed to import
 `sentence_transformers`/`chromadb`/`bertopic`/`docling`/`torch`
 correctly. Re-verify after changing `docker/Dockerfile`,
-`scripts/install_full_pipeline.sh`, or `poetry.lock`; the agent image
+`scripts/install_full_pipeline.sh`, or `uv.lock`; the agent image
 has its own hand-run checks, under
 ["Verify the container"](DOCKER.md#-verify-the-container) in that file.
 
 The base image is Ubuntu 26.04 LTS with its Python 3.14. The `test`
 job's Linux leg runs on `ubuntu-26.04` with the runner's own Python
-3.14, and the `docker-build` job installs `poetry.lock` inside the image
+3.14, and the `docker-build` job installs `uv.lock` inside the image
 too, so a re-lock that drifts below the cp314 wheel line fails in CI
 instead of on a user's machine. `pyproject.toml`'s comment on the
 `python` range explains why

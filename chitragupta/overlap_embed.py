@@ -52,7 +52,7 @@ can be deduplicated against each other), the page range and the score.
 thresholds** -- see that function for the measurement saying why a
 threshold cannot work in this corpus.
 
-Needs the optional `enrich` Poetry group, a built `content/chroma/` and
+Needs the optional `enrich` extra, a built `content/chroma/` and
 a synced ledger to read source passages from. When any of that is
 missing -- or the draft has no dossier, or no source has a passage
 sidecar -- `unavailable_reason()` (in `chitragupta/overlap_embed_scope.py`

@@ -716,7 +716,7 @@ class TestReadLibrary:
         assert "WARNING" not in out
 
     def test_no_warning_for_a_real_export_using_string_abbreviations(self, isolated_config, capsys):
-        # read_library parses with common_strings=True, so a real export
+        # read_library predefines the month strings, so a real export
         # legitimately using @string (a journal-name abbreviation, say)
         # is plausible -- it must not be miscounted as a dropped entry
         # just because _count_raw_entries and bibtexparser need to agree

@@ -20,7 +20,7 @@ both are correct, honest results, not a bug in this script. No stage
 here shells out to a binary; the render path that once did was moved out
 of this layer, as the paragraph below says.
 
-Needs the venv populated by `poetry install --with enrich` (see
+Needs the venv populated by `bash scripts/install_full_pipeline.sh python-deps` (see
 pyproject.toml, and .venv-full/ on the host this was developed on). The
 corpus and drafting layers (python -m chitragupta.corpus sync, python -m chitragupta.draft gate) do
 not depend on any of this and are unaffected either way.

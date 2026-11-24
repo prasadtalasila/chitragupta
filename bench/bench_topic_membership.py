@@ -24,7 +24,7 @@ artefact contradicting each other is worse than one field saying less.
                               what shipped before #298, kept as the row to
                               beat
 
-Needs the "enrich" Poetry group and a synced corpus. Reuses the cached
+Needs the "enrich" extra and a synced corpus. Reuses the cached
 document vectors, so a warm content/topic_embed_cache.json makes this
 minutes rather than tens of minutes.
 

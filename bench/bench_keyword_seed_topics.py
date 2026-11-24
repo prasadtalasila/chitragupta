@@ -21,7 +21,7 @@ only, keywords only, both combined) -- and reports, per arm:
   context for reading it.
 
 Needs `content/keywords.toml` already written (`bench/extract_keywords.py`
-does that) plus the "enrich" Poetry group and a synced corpus, the same
+does that) plus the "enrich" extra and a synced corpus, the same
 as `bench/bench_topic_depth.py`. Reuses the document-vector cache the
 same way.
 

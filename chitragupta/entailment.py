@@ -16,7 +16,7 @@ package.
 import math
 from typing import Any
 
-from chitragupta import config
+from chitragupta import config, install
 
 
 class EntailmentUnavailable(RuntimeError):
@@ -144,8 +144,9 @@ def unavailable_reason() -> str | None:
     """
     if optional_stack() is None:
         return (
-            "the enrichment layer is not installed -- `poetry install --with enrich` "
-            "adds the sentence-transformers package this aid scores with"
+            "the enrichment layer is not installed; it adds the "
+            "sentence-transformers package this aid scores with. Run, "
+            f"{install.enrich_remedy()}."
         )
     return None
 

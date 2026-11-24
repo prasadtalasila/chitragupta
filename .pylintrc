@@ -272,7 +272,7 @@ ignored-classes=optparse.Values,thread._local,_thread._local
 # (useful for modules/projects where namespaces are manipulated during runtime
 # and thus existing member attributes cannot be deduced by static analysis). It
 # supports qualified module names, as well as Unix pattern matching.
-# The "enrich" Poetry group's third-party imports. Every one of these is
+# The "enrich" extra's third-party imports. Every one of these is
 # imported *inside* the function that needs it -- the lazy pattern that
 # keeps tier-1 modules stdlib-only at import time -- but pylint resolves
 # imports statically wherever they sit, so it reports import-error for all

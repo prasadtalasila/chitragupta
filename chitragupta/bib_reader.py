@@ -20,19 +20,15 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import bibtexparser
-
-# v1 legacy API (BibTexParser/customization/bibtexparser.load|loads), not
-# v2 -- a deliberate pin, not drift: see pyproject.toml's `bibtexparser =
-# ">=1.4,<2.0"` line for the full rationale (v2 replaces this API with an
-# incompatible one this module doesn't use). Don't migrate this import
-# without reading that comment and relaxing the ceiling first.
-from bibtexparser.bibdatabase import STANDARD_TYPES
-from bibtexparser.bparser import BibTexParser
-from bibtexparser.customization import convert_to_unicode
-from bibtexparser.latexenc import latex_to_unicode
-
-from chitragupta import bib_escapes, bib_integrity, bib_names, bib_tables, config, ledger_paths
+from chitragupta import (
+    bib_escapes,
+    bib_integrity,
+    bib_names,
+    bib_parse,
+    bib_tables,
+    config,
+    ledger_paths,
+)
 
 # Re-exported: callers and tests ask the bib reader whether a citekey is usable.
 from chitragupta.citekey_safety import citekey_problem  # noqa: F401  # pylint: disable=unused-import
@@ -316,31 +312,6 @@ def _reference(entry: dict, bib_dir: Path) -> Reference:
     )
 
 
-# The `file` field is decoded only where it is LaTeX (#964). Zotero and
-# Better BibTeX write it raw, escaping only `\:`, `\;` and `\\`, which are
-# `bib_escapes`'s to undo; the decoder raised `TypeError` on a `\;` and
-# took the whole read with it. Mendeley writes it as LaTeX (`{\_}` for an
-# underscore), and decoding is what made those paths resolve, so a field
-# holding `{\` still is. A decode that fails keeps the raw field rather
-# than ending the read.
-def _decoded(record: dict) -> dict:
-    """`convert_to_unicode`, with the `file` field left to `_decoded_file`."""
-    file_field = record.pop("file", None)
-    record = convert_to_unicode(record)
-    if file_field is not None:
-        record["file"] = _decoded_file(file_field)
-    return record
-
-
-def _decoded_file(file_field: str) -> str:
-    if "{\\" not in file_field:
-        return file_field
-    try:
-        return latex_to_unicode(file_field)
-    except TypeError:
-        return file_field
-
-
 def read_library() -> Library:
     if not config.BIB_FILE_PATH.exists():
         raise FileNotFoundError(
@@ -350,20 +321,17 @@ def read_library() -> Library:
         )
 
     raw_text = config.BIB_FILE_PATH.read_text(encoding="utf-8", errors="replace")
-    # Deliberately left at bibtexparser's default ignore_nonstandard_types=True:
-    # an entry of a type outside STANDARD_TYPES (`@software`, `@online`,
-    # `@dataset`, ...) is skipped, silently, and never synced. That is the
-    # maintainer's stated intent (issue 888), not an oversight -- do not
-    # "fix" it by passing False. What issue 888 fixed is the count below:
+    # An entry of a type outside bib_parse.STANDARD_TYPES (`@software`,
+    # `@online`, `@dataset`, ...) is skipped, silently, and never synced,
+    # as bibtexparser 1.x's default ignore_nonstandard_types=True did.
+    # That is the maintainer's stated intent (issue 888), not an oversight
+    # -- do not "fix" it. What issue 888 fixed is the count below:
     # such an entry is ignored, not lost, so it is kept off the raw side of
     # the dropped-entry comparison and cannot exit 3 or block a prune.
-    parser = BibTexParser(common_strings=True)
-    parser.customization = _decoded
-    bib_database = bibtexparser.loads(raw_text, parser=parser)
+    entries = bib_parse.parse_entries(raw_text)
 
     name = config.BIB_FILE_PATH.name
-    entries = bib_database.entries
-    dropped = bib_integrity.dropped_entries(raw_text, len(entries), name, STANDARD_TYPES)
+    dropped = bib_integrity.dropped_entries(raw_text, len(entries), name, bib_parse.STANDARD_TYPES)
     duplicated = bib_integrity.duplicated_citekeys(entries, name)
     unfilenameable = bib_integrity.unfilenameable_citekeys(entries, duplicated)
     bib_dir = ledger_paths.pdf_root()

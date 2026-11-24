@@ -328,10 +328,11 @@ states the deployment requirement and mitigations.
 
 ### Dependency and release controls
 
-The checkout uses `poetry.lock` to fix resolved Python package versions
-and hashes. The install path documents when it must allow a source
-archive, while the documentation workflow uses wheels only where that is
-compatible with its dependency set.
+The checkout uses `uv.lock` to fix resolved Python package versions
+and hashes. Every locked dependency ships a wheel, so the install path
+and the documentation workflow both refuse source builds (`uv sync
+--no-build`) and fail on a lock that no longer matches `pyproject.toml`
+(`--locked`).
 
 The workflows use explicit permissions, scoped per workflow or per job
 depending on the file. `docs.yml` grants `contents: read` on the `build`
@@ -355,7 +356,7 @@ the PyPI publish. So `.github/dependabot.yml` proposes the pin bumps as
 one grouped weekly PR, and DEVELOPER-AGENTS.md's "Issues and pull
 requests" says how to finish one.
 
-The release workflow installs Poetry wheels-only
+The release workflow installs uv wheels-only
 (`--only-binary=:all:`), like the CI and documentation workflows. A
 pinned version fixes which release is installed, not whether pip builds
 it, or a dependency, from source when no wheel matches.

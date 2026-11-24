@@ -7,10 +7,10 @@
 #
 # Usage: bash scripts/install_full_pipeline.sh [STAGE ...]
 #
-#   python-deps  (default if no STAGE given) -- venv + `poetry install
-#                --with enrich` (see pyproject.toml/poetry.lock). What
+#   python-deps  (default if no STAGE given) -- venv + `uv sync --extra
+#                enrich` (see pyproject.toml/uv.lock). What
 #                every host needs regardless of which OS packages are
-#                present. Poetry is a dependency/lockfile manager here,
+#                present. uv is the dependency/lockfile manager here,
 #                for a checkout, Docker and CI -- `pip install
 #                'chitragupta-cli[enrich]'` is the equivalent for someone
 #                who installed the package rather than cloned it (#265;
@@ -18,14 +18,15 @@
 #                prints that command, rather than running it a second way).
 #   os-deps      -- apt-get the system packages the full pipeline needs
 #                (TeX Live with LuaLaTeX, the fonts a pdf render uses,
-#                Pandoc, poppler-utils, Poetry itself, git/curl/unzip,
+#                Pandoc, poppler-utils, git/curl/unzip,
 #                OpenCV's runtime libraries, and python-is-python3 -- the
 #                name `python`, which the Claude Code hooks are launched
-#                by), plus the STIX Two font fetched by hand. Needs
+#                by), plus the STIX Two font, fetched pinned and
+#                checksum-verified. Needs
 #                root; auto-sudo's if not already root. Opt-in -- not
 #                everyone wants this script touching apt. Also reachable
 #                as `chitragupta install os-deps` (#265), unmodified.
-#   dev-deps     -- `poetry install --with dev` (pytest, pytest-cov) into
+#   dev-deps     -- `uv sync --extra dev` (pytest, pytest-cov) into
 #                the same venv as python-deps, plus the two things needed
 #                to *change* this repository rather than run it: the
 #                pinned `actionlint` binary, and `core.hooksPath` pointed
@@ -59,17 +60,25 @@
 # later Dockerfile content or repo files doesn't force earlier ones to
 # rebuild.
 #
-# Why Poetry doesn't need its own venv-creation step, in either target:
-# `poetry.toml` (committed, project-local) sets `virtualenvs.create =
-# false`, so Poetry always installs into whatever venv `VIRTUAL_ENV`
-# points at rather than making its own -- this script still creates that
-# venv itself (python3 -m venv on a bare host; already done by
-# docker/Dockerfile via a separate RUN line for /opt/venv), then exports
-# VIRTUAL_ENV before calling `poetry install`. One mechanism for both
-# targets, instead of Poetry inventing a second, differently-named venv
-# convention (its own in-project mode always calls the directory
-# `.venv`, which would silently orphan the existing `.venv-full` this
-# script and every doc already reference).
+# Why uv doesn't make its own venv, in either target: every `uv sync`
+# here passes `--active`, so uv installs into whatever venv `VIRTUAL_ENV`
+# points at rather than its own default `.venv` -- this script still
+# creates that venv itself (python3 -m venv on a bare host; already done
+# by docker/Dockerfile via a separate RUN line for /opt/venv), then
+# exports VIRTUAL_ENV before calling `uv sync`. One mechanism for both
+# targets, instead of a second, differently-named venv (uv's default
+# `.venv` would silently orphan the existing `.venv-full` this script and
+# every doc already reference). A `python3 -m venv` venv also carries
+# pip, which the torch swaps below run as `<python> -m pip`; a `uv venv`
+# one does not.
+#
+# Every sync is `--inexact`, as `poetry install` was before it: a plain
+# `uv sync` removes whatever the lock does not name, which would strip
+# the torch build ensure_gpu_torch/ensure_cpu_torch swapped in, and a
+# later `dev-deps` would remove the enrich stack `python-deps` installed.
+# `--locked` refuses a uv.lock that no longer matches pyproject.toml
+# rather than silently re-resolving it, and `--no-build` refuses to run
+# any package's build script: every locked dependency ships a wheel.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -117,7 +126,7 @@ apt_has_candidate() {
 }
 
 install_os_deps() {
-    echo "Installing OS packages (TeX Live, Pandoc, poppler-utils, OpenCV runtime, Poetry,"
+    echo "Installing OS packages (TeX Live, Pandoc, poppler-utils, OpenCV runtime,"
     echo "the python-is-python3 launcher name) ..."
     sudo_if_needed apt-get update
     # GLib's package was renamed in the 64-bit-time_t transition
@@ -154,7 +163,6 @@ install_os_deps() {
     fi
     sudo_if_needed apt-get install -y --no-install-recommends \
         python3 python3-venv python3-pip python3-dev gcc ${launcher_pkg:+"$launcher_pkg"} \
-        python3-poetry \
         poppler-utils \
         git curl ca-certificates unzip zip \
         pandoc \
@@ -220,10 +228,6 @@ install_os_deps() {
     # to python3.14-dev, which is the version /opt/venv is built from,
     # so the headers triton compiles against are still the matching ones.
     #
-    # python3-poetry (apt), not `pip install poetry`: PEP 668 blocks bare
-    # pip on this host regardless of root (see AGENTS.md), and Poetry is
-    # itself the thing python-deps below shells out to -- it can't
-    # bootstrap itself via the same pip it's meant to replace.
     # lmodern (the LaTeX package providing lmodern.sty) is a separate
     # Debian package from fonts-lmodern (just the OTF font files) --
     # texlive-latex-recommended pulls in the latter but not the former.
@@ -539,12 +543,34 @@ install_git_hooks() {
     echo "git hooks enabled: core.hooksPath=git-hooks"
 }
 
-check_poetry() {
-    if ! command -v poetry >/dev/null 2>&1; then
-        echo "poetry not found. Run '$0 os-deps' first (installs python3-poetry)," >&2
-        echo "or install Poetry manually: https://python-poetry.org/docs/#installation" >&2
-        exit 1
+# A checkout's config.toml, copied from the tracked example the first time,
+# so a fresh clone needs no separate `cp` before anything imports
+# chitragupta.config. Never overwritten. Skipped where there is no example
+# beside the script -- docker/Dockerfile copies only what installing needs.
+copy_config_if_absent() {
+    if [[ -f "$REPO_ROOT/config.toml.example" && ! -f "$REPO_ROOT/config.toml" ]]; then
+        cp "$REPO_ROOT/config.toml.example" "$REPO_ROOT/config.toml"
+        echo "Created config.toml from config.toml.example."
     fi
+}
+
+# The uv every sync runs: the pinned one, which pip installs into the venv
+# itself from scripts/uv-requirements.txt (one sha256 per published wheel),
+# and whose path this prints. So nobody installs uv first, nothing lands
+# on PATH, root is never needed, and Linux, macOS, Windows' Git Bash, CI
+# and Docker all take this one route. Run on every call: pip finds the
+# pinned version already there in about a second. A sync never removes it,
+# because every sync here is `--inexact`. `<python> -m pip` for the reason
+# ensure_gpu_torch gives; a `python3 -m venv` venv always has pip.
+ensure_venv_uv() {
+    local python_bin="$1"
+    if ! "$python_bin" -m pip install --quiet --disable-pip-version-check \
+        --only-binary :all: --require-hashes -r "$REPO_ROOT/scripts/uv-requirements.txt" >&2; then
+        echo "ERROR: could not install the pinned uv into the venv from" >&2
+        echo "       scripts/uv-requirements.txt with ${python_bin} -m pip." >&2
+        return 1
+    fi
+    echo "$(dirname "$python_bin")/uv"
 }
 
 # POSIX venvs (python3 -m venv on Linux/macOS) put the interpreter/pip
@@ -562,9 +588,8 @@ venv_bin_dir() {
 }
 
 # Resolves (and creates, unless SKIP_VENV=1) the venv this script's
-# `poetry install` calls target, and exports VIRTUAL_ENV so Poetry uses
-# it -- poetry.toml's `virtualenvs.create = false` means Poetry will
-# never make its own, by design (see the header comment for why).
+# `uv sync --active` calls target, and exports VIRTUAL_ENV so uv uses it
+# instead of making its own `.venv` (see the header comment for why).
 resolve_venv_dir() {
     if [[ "${SKIP_VENV:-0}" == "1" ]]; then
         VENV_DIR="${VIRTUAL_ENV:-/opt/venv}"
@@ -581,6 +606,13 @@ resolve_venv_dir() {
         fi
     fi
     export VIRTUAL_ENV="$VENV_DIR"
+}
+
+# `uv sync` as every stage here runs it -- see the header comment for why
+# each flag is there. UV_PYTHON_DOWNLOADS=never because the venv already
+# names its interpreter; uv fetching a second Python would be a surprise.
+uv_sync() {
+    UV_PYTHON_DOWNLOADS=never "$UV" sync --active --inexact --locked --no-build "$@"
 }
 
 # Can the *harness's* hook launchers start on this host? Not a question
@@ -627,8 +659,8 @@ report_launcher_faults() {
     # `cd "$REPO_ROOT"` is load-bearing twice over, and both halves were
     # found by running this rather than reading it. `python -` takes its
     # script on stdin and puts the *current directory* on `sys.path`, and
-    # `poetry install` above does not put this package into the venv's
-    # site-packages -- so from any other directory the import below fails,
+    # Docker's NO_ROOT sync above does not put this package into the venv
+    # at all -- so from any other directory the import below fails,
     # `|| true` swallows it, and the report silently finds nothing. That
     # is the exact failure mode this function exists to warn about, which
     # would have made it a courtesy that never fires. It also fixes what
@@ -668,34 +700,22 @@ sys.stdout.write("\n".join(hook_launchers.faults(Path(sys.argv[1]))))'
 }
 
 install_python_deps() {
-    check_poetry
+    copy_config_if_absent
     resolve_venv_dir
-
-    # Sonar (S8541) flags every `poetry install` here because an sdist in
-    # the resolution runs its setup script at build time. A wheels-only
-    # refusal (`installer.only-binary :all:`, as docs.yml now sets for its
-    # own group) is not available to *this* install: bibtexparser 1.4.x --
-    # a main-group runtime dependency -- ships no wheel at all, so
-    # forcing wheels breaks the resolve outright. What stands in its
-    # place is the lockfile: every package, sdists included, is
-    # hash-pinned in poetry.lock, so the archive whose setup script runs
-    # is byte-exact the one that was locked, not whatever the index
-    # serves that day.
-    # NO_ROOT=1 adds --no-root, and docker/Dockerfile sets it. That image
-    # deliberately does not COPY the source in -- it mounts the checkout
-    # at runtime -- so there is no package for Poetry to install, and
-    # Ubuntu 26.04's Poetry refuses with "<path>/chitragupta does not
-    # contain any element" where 24.04's older Poetry tolerated it. The
-    # flag states what was already true there rather than changing it.
-    # Unset on a host, where the root project *should* be installed --
-    # note the gpu-torch fallback below deliberately does not honour it.
-    if [ "${NO_ROOT:-}" = "1" ]; then
-        (cd "$REPO_ROOT" && poetry install --with enrich --no-root)
-    else
-        (cd "$REPO_ROOT" && poetry install --with enrich)
-    fi
     local bin_dir
     bin_dir="$(venv_bin_dir "$VENV_DIR")"
+    UV="$(ensure_venv_uv "$bin_dir/python")"
+
+    # NO_ROOT=1 adds --no-install-project, and docker/Dockerfile sets it.
+    # That image deliberately does not COPY the source in -- it mounts the
+    # checkout at runtime -- so there is no package to install. Unset on a
+    # host, where the root project *should* be installed (editable) --
+    # note the gpu-torch fallback below deliberately does not honour it.
+    local no_root=()
+    if [ "${NO_ROOT:-}" = "1" ]; then
+        no_root=(--no-install-project)
+    fi
+    (cd "$REPO_ROOT" && uv_sync --extra enrich "${no_root[@]}")
     ensure_gpu_torch "$bin_dir/python"
 
     echo
@@ -805,7 +825,7 @@ ensure_gpu_torch() {
     # Pinned to what is already installed, exactly as `ensure_cpu_torch`
     # pins (#512/m-85). Unpinned, this resolves whatever the CUDA index
     # currently offers, so the GPU swap could quietly land a *different*
-    # torch version from the one `poetry.lock` resolved -- the same drift
+    # torch version from the one `uv.lock` resolved -- the same drift
     # its documented mirror pins against, and harder to notice here
     # because the swap is a fallback path nobody watches. Falls back to
     # unpinned only when the version cannot be read, which means torch is
@@ -826,19 +846,19 @@ ensure_gpu_torch() {
 
     echo "Warning: reinstalling torch from ${best_tag} didn't make the GPU" >&2
     echo "visible. Restoring the default wheel ..." >&2
-    # `poetry install --with enrich` only makes sense from a checkout --
+    # `uv sync --extra enrich` only makes sense from a checkout --
     # REPO_ROOT is site-packages when this runs via `chitragupta install
-    # gpu-torch` (#265), which has no pyproject.toml and no poetry.lock to
+    # gpu-torch` (#265), which has no pyproject.toml and no uv.lock to
     # pin against. Fall back to reinstalling with pip directly there --
     # PyPI's current default wheel, not a lockfile-pinned one, so it's a
     # restore to *a* CPU-only state, not necessarily the one that was
     # installed before this function ran (#369: the previous unconditional
     # `poetry install` failed outright in that case, with "Poetry could
     # not find a pyproject.toml file").
-    if [[ -f "$REPO_ROOT/pyproject.toml" ]] && command -v poetry >/dev/null 2>&1; then
-        echo "Via 'poetry install --with enrich' (CPU-only on this driver," >&2
+    if [[ -f "$REPO_ROOT/uv.lock" ]] && UV="$(ensure_venv_uv "$python_bin")"; then
+        echo "Via the install script's python-deps sync (CPU-only on this driver," >&2
         echo "but at least back to a known, lockfile-tracked state) ..." >&2
-        (cd "$REPO_ROOT" && poetry install --with enrich)
+        (cd "$REPO_ROOT" && VIRTUAL_ENV="$(dirname "$(dirname "$python_bin")")" uv_sync --extra enrich)
     else
         # Reuse the specs read back at the top of this function: the
         # restore should land the version that was installed before the
@@ -849,7 +869,7 @@ ensure_gpu_torch() {
         # read, which means torch was not installed and there is nothing
         # to preserve.
         echo "Via '${pip[*]} install --force-reinstall $torch_spec $torchvision_spec'" >&2
-        echo "(CPU-only on this driver; no checkout/poetry.lock here, so pinned" >&2
+        echo "(CPU-only on this driver; no checkout/uv.lock here, so pinned" >&2
         echo "to the previously installed version read back above) ..." >&2
         "${pip[@]}" install --force-reinstall "$torch_spec" "$torchvision_spec"
     fi
@@ -871,7 +891,7 @@ ensure_gpu_torch() {
 # away on every run.
 #
 # The version is read back with `pip show` rather than pinned here, so
-# this never drifts from a `poetry lock` re-resolution the way a second
+# this never drifts from a `uv lock` re-resolution the way a second
 # pinned copy would. docker/Dockerfile did it that way inline before this
 # function existed; the logic lives here now so Docker and CI call one
 # implementation, per DEVELOPER-AGENTS.md's rule that dependency facts
@@ -942,7 +962,7 @@ install_cpu_torch() {
 
 
 install_dev_deps() {
-    check_poetry
+    copy_config_if_absent
     local venv_dir="${VENV_DIR:-$REPO_ROOT/.venv-full}"
     local bin_dir
     bin_dir="$(venv_bin_dir "$venv_dir")"
@@ -951,14 +971,13 @@ install_dev_deps() {
         exit 1
     fi
     export VIRTUAL_ENV="$venv_dir"
+    UV="$(ensure_venv_uv "$bin_dir/python")"
 
-    (cd "$REPO_ROOT" && poetry install --with dev)
-    # `poetry install --with dev` re-resolves the whole lock file, not
-    # just the newly-added group -- it's additive against what's already
-    # installed (verified by hand: running this after `python-deps` did
-    # not remove the enrich group), but it can still touch transitive
-    # packages shared with the enrich group, torch included. Re-run the
-    # same GPU check as python-deps rather than assume it's still fine.
+    (cd "$REPO_ROOT" && uv_sync --extra dev)
+    # `--inexact` keeps the enrich stack python-deps installed, but the dev
+    # extra still shares transitive packages with it, and a sync can touch
+    # those. Re-run the same GPU check as python-deps rather than assume
+    # it's still fine.
     ensure_gpu_torch "$bin_dir/python"
 
     # The developer-side checks that are not Python packages: the
@@ -993,11 +1012,11 @@ for stage in "${STAGES[@]}"; do
         # lint job wants the prose linter and nothing else, and because
         # sourcing this script to reach the function runs the dispatcher
         # below with no stage -- which defaults to python-deps and fails
-        # on a runner that has no poetry.
+        # on a runner that has no uv.
         vale) install_vale ;;
         # actionlint alone, for the same reason `vale` is a stage: CI's
         # lint job wants the workflow linter and nothing else, and it must
-        # not drag in poetry or a venv to get it.
+        # not drag in uv or a venv to get it.
         actionlint) install_actionlint ;;
         # STIX Two alone (#996), for the reason `vale` is a stage: a host
         # whose TeX Live and Noto fonts came from somewhere else can get the

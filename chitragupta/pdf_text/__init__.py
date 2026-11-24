@@ -51,7 +51,7 @@ class MissingBinary(BackendUnavailable):
 
 class MissingDependency(BackendUnavailable):
     """docling specifically isn't installed (not on PATH --
-    a Python package, via pyproject.toml's "enrich" Poetry group)."""
+    a Python package, via pyproject.toml's "enrich" extra)."""
 
 
 class ExtractionError(RuntimeError):
@@ -100,8 +100,7 @@ _INSTALL_HINT = {
     "docling": (
         "the 'docling' package isn't usable (not installed, or a "
         "transitive dependency is broken). To extract PDF text with it, run, "
-        "in a git checkout, 'poetry install --with enrich'; in an installed "
-        f"project, {install.remedy('enrich')}."
+        f"{install.enrich_remedy()}."
     ),
 }
 

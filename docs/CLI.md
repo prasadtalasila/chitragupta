@@ -33,7 +33,6 @@ or, from a git checkout (for working on the pipeline itself; see
 
 ```bash
 git clone https://github.com/prasadtalasila/chitragupta && cd chitragupta
-pipx install poetry
 bash scripts/install_full_pipeline.sh all
 source .venv-full/bin/activate
 ```
@@ -138,8 +137,8 @@ With `.venv-full/bin/activate` sourced (see [Installing](#-installing)):
 #    so no install path populates it). ZOTERO.md has Zotero specifics.
 mkdir -p papers && cp /path/to/your/exported-library.bib papers/bibliography.bib
 
-# 3. Create your config (`chitragupta init` already did). See CONFIG.md.
-cp config.toml.example config.toml   # git checkout only
+# 3. Your config: `chitragupta init` created it, and in a git checkout
+#    the install script did. See CONFIG.md.
 
 # 4. Sync the corpus. Needs the venv; only one sync (or enrichment run)
 #    can write at a time -- a second one exits 2 at once.
@@ -1813,9 +1812,9 @@ One install path for both a bare machine and the Docker image. Takes
 
 | Stage | What it does |
 | --- | --- |
-| `python-deps` | **Default when no stage is given.** Creates the venv and runs `poetry install --with enrich`. `chitragupta install` refuses it, naming `chitragupta install enrich` |
-| `os-deps` | `apt-get` the system packages (TeX Live with LuaLaTeX, the render's fonts, Pandoc, poppler-utils, Poetry, git/curl/unzip, OpenCV's runtime libraries ([PDF-PARSER.md](PDF-PARSER.md#-docling-fails-every-document-with-an-opencv-recursion-error)), and `python-is-python3`, which puts the hooks' `python` on `PATH`), plus STIX Two. Needs root; auto-sudo's. Opt-in. Also `chitragupta install os-deps` |
-| `dev-deps` | `poetry install --with dev` into the same venv, plus the pinned `actionlint` and `core.hooksPath` pointed at `git-hooks/`. For running the tests and committing; run `python-deps` first. Pip equivalent: `pip install 'chitragupta-cli[dev]'` |
+| `python-deps` | **Default when no stage is given.** Creates the venv, creates `config.toml` from the example if there is none, and installs the `enrich` extra from `uv.lock`. `chitragupta install` refuses it, naming `chitragupta install enrich` |
+| `os-deps` | `apt-get` the system packages (TeX Live with LuaLaTeX, the render's fonts, Pandoc, poppler-utils, git/curl/unzip, OpenCV's runtime libraries ([PDF-PARSER.md](PDF-PARSER.md#-docling-fails-every-document-with-an-opencv-recursion-error)), and `python-is-python3`, which puts the hooks' `python` on `PATH`), plus STIX Two. Needs root; auto-sudo's. Opt-in. Also `chitragupta install os-deps` |
+| `dev-deps` | The `dev` extra into the same venv, plus the pinned `actionlint` and `core.hooksPath` pointed at `git-hooks/`. For running the tests and committing; run `python-deps` first. Pip equivalent: `pip install 'chitragupta-cli[dev]'` |
 | `cpu-torch` | Swaps torch to the CPU-only wheel and removes the CUDA runtime. Never part of `all`: it asserts a GPU is absent *for good*, which the script cannot infer |
 | `gpu-torch` | Runs `ensure_gpu_torch` (below) against `CHITRAGUPTA_PYTHON` rather than the script's venv; what `chitragupta install gpu-torch` reaches |
 | `actionlint` | Installs the pinned workflow linter alone, without the venv `dev-deps` also builds |
@@ -1840,10 +1839,10 @@ reinstalls torch from a wheel index matching the NVIDIA driver if the
 default one would silently run CPU-only. It is idempotent and prints
 what it decided.
 
-**Poetry is a prerequisite, not something `python-deps` installs.** It
-is in the `os-deps` package list, so `all` covers it; run on its own,
-`python-deps` needs `pipx install poetry` first. Each stage ends by
-printing the interpreter path to use afterwards.
+**Nothing to install first.** `python-deps` installs the pinned uv into
+the venv it builds, from `scripts/uv-requirements.txt`, with every
+wheel's hash checked, and installs the Python dependencies with it. Each
+stage ends by printing the interpreter path to use afterwards.
 
 ### 📦 `scripts/release.py`
 

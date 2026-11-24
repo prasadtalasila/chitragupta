@@ -41,7 +41,7 @@ jobs:
       - name: Verify tag matches pyproject.toml version
         run: |
           tag_version="${GITHUB_REF_NAME#v}"
-          pyproject_version="$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['tool']['poetry']['version'])")"
+          pyproject_version="$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")"
           if [ "$tag_version" != "$pyproject_version" ]; then
             echo "Tag ${GITHUB_REF_NAME} (version $tag_version) does not match pyproject.toml's version $pyproject_version" >&2
             exit 1
@@ -49,7 +49,7 @@ jobs:
 
       # scripts/release.py is stdlib-only (tomllib/zipfile/shutil) and
       # only needs `git` on PATH (already true after actions/checkout) --
-      # no poetry/enrich-group install needed just to build the archives.
+      # no uv/enrich install needed just to build the archives.
       # Builds both release/chitragupta-<version>.zip and
       # release/chitragupta-docker-<version>.zip in one run.
       - name: Build release archives
@@ -63,18 +63,23 @@ jobs:
       # repository. The wheel installs the code and the CLI, and is what
       # `publish-pypi` below hands to PyPI.
       #
-      # Poetry is pinned and wheels-only, like docs.yml's and ci.yml's
-      # Windows-leg installs (Sonar S8544/S8541: an sdist fallback runs
-      # arbitrary setup scripts at install time) -- and here more than
-      # anywhere, since this Poetry builds what reaches PyPI. `==2.4.1`
-      # fixes the version, not the form: without `--only-binary` pip
-      # still builds Poetry or any dependency from source when no wheel
-      # matches. Bump all three sites together.
-      - name: Install Poetry
-        run: pipx install --pip-args='--only-binary=:all:' poetry==2.4.1
+      # uv is pinned and wheels-only, like docs.yml's and ci.yml's
+      # installs (Sonar S8544/S8541: an sdist fallback runs arbitrary
+      # setup scripts at install time) -- and here more than anywhere,
+      # since this uv builds what reaches PyPI. `==0.13.9` fixes the
+      # version, not the form: without `--only-binary` pip still builds
+      # uv from source when no wheel matches. Bump every site together,
+      # scripts/uv-requirements.txt included.
+      #
+      # uv runs the build; pyproject.toml's [build-system] still names
+      # poetry-core as the backend, which is what decides the files a
+      # wheel carries -- the same backend Poetry itself used, so the
+      # published file set did not move with the switch.
+      - name: Install uv
+        run: pipx install --pip-args='--only-binary=:all:' uv==0.13.9
 
-      # pyproject.toml's `readme` stays README.md (poetry install reads
-      # it too, not just poetry build, so it has to be a file every
+      # pyproject.toml's `readme` stays README.md (uv sync reads
+      # it too, not just uv build, so it has to be a file every
       # checkout actually has -- see that file's own comment; pointing
       # it at a generated file broke ci.yml's install step the first
       # time this was tried, #286). This overwrites README.md with
@@ -85,7 +90,7 @@ jobs:
         run: cp README.pypi.md README.md
 
       - name: Build wheel and sdist
-        run: poetry build
+        run: uv build
 
       # Named with an underscore, not a hyphen: a distribution name
       # normalises that way in a wheel filename, so `chitragupta-cli-*`
@@ -97,9 +102,9 @@ jobs:
 
       # Handed to the publish job rather than rebuilt there, so what
       # reaches PyPI is byte-identical to what is attached to the
-      # release. Two `poetry build` runs are not guaranteed to agree.
+      # release. Two `uv build` runs are not guaranteed to agree.
       - name: Keep the built distributions for the publish job
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dist
           path: dist/
@@ -115,7 +120,7 @@ jobs:
       # and the OIDC publish below. .github/dependabot.yml proposes the
       # bumps; take them deliberately rather than tracking a tag.
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           files: |
             release/chitragupta-*.zip
@@ -145,7 +150,7 @@ jobs:
       id-token: write   # the OIDC token Trusted Publishing exchanges
     steps:
       - name: Fetch the distributions the release job built
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: dist
           path: dist/
@@ -174,4 +179,4 @@ jobs:
       # is: a movable tag on a third-party action that can publish to
       # PyPI is strictly worse than one that can write a release.
       - name: Publish to PyPI (Trusted Publishing)
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3

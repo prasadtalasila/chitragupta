@@ -70,7 +70,7 @@ def self_check():
 
 
 def _venv_python():
-    """Path to the `enrich` Poetry group interpreter (chromadb,
+    """Path to the `enrich` extra interpreter (chromadb,
     sentence-transformers, torch).
 
     Prefers this checkout's own `.venv-full`, matching every other bench
@@ -96,7 +96,7 @@ def _venv_python():
         return str(shared)
     raise RuntimeError(
         f"no .venv-full/bin/python at {local} or {shared} -- "
-        "run `poetry install --with enrich` in one of those checkouts"
+        "run `bash scripts/install_full_pipeline.sh python-deps` in one of those checkouts"
     )
 
 

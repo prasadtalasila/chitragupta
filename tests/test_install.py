@@ -106,17 +106,17 @@ class TestEnrich:
         monkeypatch.setattr(install.subprocess, "run", RecordedRun(returncode=1))
         assert install.main(["enrich"]) == 1
 
-    def test_a_checkout_is_refused_with_the_poetry_equivalent(self, monkeypatch, capsys):
+    def test_a_checkout_is_refused_with_the_install_script_equivalent(self, monkeypatch, capsys):
         """There is no `chitragupta-cli` on an index to add an extra to
-        when running from a source tree, and `poetry install --with
-        enrich` is what the operation means there."""
+        when running from a source tree, and the install script's
+        python-deps stage is what the operation means there."""
 
         def not_installed(_dist):
             raise install.importlib.metadata.PackageNotFoundError
 
         monkeypatch.setattr(install.importlib.metadata, "version", not_installed)
         assert install.main(["enrich"]) == 1
-        assert "poetry install --with enrich" in capsys.readouterr().err
+        assert "bash scripts/install_full_pipeline.sh python-deps" in capsys.readouterr().err
 
 
 class TestGpuTorch:
@@ -212,3 +212,16 @@ class TestRemedy:
     def test_a_stage_that_does_not_run_is_refused(self, stage):
         with pytest.raises(ValueError):
             install.remedy(stage)
+
+
+class TestEnrichRemedy:
+    """The enrich stack is the one install that is spelled differently in
+    the two project shapes: `chitragupta install enrich` refuses in a
+    checkout, and a `chitragupta init` project has no `scripts/`. So a
+    message names both, rather than whichever one its author had in
+    front of them."""
+
+    def test_names_the_command_for_each_project_shape(self):
+        text = install.enrich_remedy()
+        assert "in a git checkout, `bash scripts/install_full_pipeline.sh python-deps`" in text
+        assert "in an installed project, `chitragupta install enrich`" in text

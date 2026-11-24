@@ -261,8 +261,10 @@ class TestVerbatimReadsTheLedgersPdf:
 
 def test_bib_reader_is_the_only_bib_parser():
     """The class test for #956: no module outside the bib reader's own
-    compiles a pattern for an entry header or a `file` field."""
-    allowed = {"bib_reader.py", "bib_integrity.py", "bib_escapes.py"}
+    compiles a pattern for an entry header or a `file` field.
+    `bib_parse.py` is the reader's parsing half, split from `bib_reader.py`
+    when bibtexparser 2 needed 1.x's rules restated."""
+    allowed = {"bib_reader.py", "bib_parse.py", "bib_integrity.py", "bib_escapes.py"}
     entry_or_file = re.compile(
         r"""re\.(?:compile|search|match|findall|finditer)\(\s*r?["']"""
         r"""[^"']*(?:@\\w\+|file\s*=|file = )"""

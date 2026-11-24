@@ -116,7 +116,7 @@ def _check_optional_pdflatex() -> str:
 
 
 # Every top-level import name the `enrich` extra installs, in
-# `pyproject.toml`'s `[tool.poetry.extras]` order. Import names, not
+# `pyproject.toml`'s `[project.optional-dependencies]` order. Import names, not
 # distribution names, because that is what a stage actually does and what
 # a partial install actually breaks -- `sentence-transformers` imports as
 # `sentence_transformers`.

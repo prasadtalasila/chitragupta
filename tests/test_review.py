@@ -416,7 +416,8 @@ class TestVersion:
         import tomllib
 
         with open(config.shipped("pyproject.toml"), "rb") as handle:
-            expected = tomllib.load(handle)["tool"]["poetry"]["version"]
+            expected = tomllib.load(handle)["project"]["version"]
+        assert expected != "unknown"
         assert review.version() == expected
 
     def test_an_unreadable_pyproject_is_not_fatal(self, monkeypatch, tmp_path):

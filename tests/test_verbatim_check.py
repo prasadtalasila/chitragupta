@@ -3016,6 +3016,22 @@ class TestMainInProcess:
 
         assert vc.main(["scan", str(outside)]) == 1
 
+    def test_dispatches_overlap(self, isolated_config, tmp_path, capsys):
+        """In process as well as by subprocess (TestCliDispatch): since
+        pytest-cov 7 a child process is not measured, so this is the test
+        that holds `run()`'s overlap branch to the coverage bar."""
+        draft = _content_draft(tmp_path, "Some claim citing nonexistent_key_2024.\n")
+
+        assert vc.main(["overlap", str(draft), "nonexistent_key_2024"]) == 0
+        assert "no source text for nonexistent_key_2024" in capsys.readouterr().out
+
+    def test_dispatches_locate_without_a_draft(self, isolated_config, capsys):
+        """`locate` returns before `require_reviewable`: it names a
+        citekey and phrases, never a draft. In process for the same
+        reason as the overlap test above."""
+        assert vc.main(["locate", "nonexistent_key_2024", "a phrase"]) == 0
+        assert "nonexistent_key_2024" in capsys.readouterr().out
+
     def test_dispatches_recheck(self, isolated_config, tmp_path, capsys):
         draft = _content_draft(tmp_path, "Nothing to see here at all.\n")
         baseline = tmp_path / "baseline.json"

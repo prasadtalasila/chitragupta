@@ -660,10 +660,10 @@ def _findings(stdout):
 def _run_scan(draft, *args):
     """`scan`, in a child process, against this test's throwaway corpus.
 
-    The coverage variables are stripped rather than inherited. Under the
-    pinned pytest-cov 6.x a .pth file auto-instruments every spawned
-    child, and a child that inherits the parent's coverage settings
-    without the config those settings assume can fail at the *combine*
+    The coverage variables are stripped rather than inherited. Under
+    pytest-cov 6.x, pinned here until 6.179, a .pth file auto-instrumented
+    every spawned child, and a child that inherits the parent's coverage
+    settings without the config those settings assume can fail at the *combine*
     step -- long after every test has passed, with a message
     (`Can't combine statement coverage data with branch data`) that names
     nothing connected to the test that caused it. That happened for real
