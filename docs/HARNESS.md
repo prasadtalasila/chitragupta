@@ -177,9 +177,10 @@ copies agree, a required step present in one is present in all three.
 ### Developer-only skills
 
 A skill for working on this repository rather than with the pipeline,
-so far `demo-recorder` (which records the feature demo) and
-`skill-bench` (which measures a skill change on all three harnesses),
-carries one extra frontmatter field:
+so far `demo-recorder` (which records the feature demo), `skill-bench`
+(which measures a skill change on all three harnesses) and `ai-images`
+(which makes a picture from a prompt on the host's GPU), carries one
+extra frontmatter field:
 
 ```yaml
 metadata:

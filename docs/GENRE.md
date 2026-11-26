@@ -10,8 +10,8 @@ the drafting contract these skills work under.
 `DEVELOPER-AGENTS.md` (git checkout only).
 
 Eleven user-facing skills live in `.claude/` (a git checkout also
-holds `demo-recorder` and `skill-bench`, developer tools no project
-receives): six write a new draft, three change an existing one, one
+holds `demo-recorder`, `skill-bench` and `ai-images`, developer tools no
+project receives): six write a new draft, three change an existing one, one
 assembles a book from units the others wrote, and one draws the figures
 the others hand it. Of the three revisers, one is cheap and scoped, one
 goes back to the whole corpus when you ask it to, and one works the

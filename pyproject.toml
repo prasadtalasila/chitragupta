@@ -23,7 +23,7 @@
 # the move happened.
 [project]
 name = "chitragupta-cli"
-version = "7.1.0"
+version = "7.2.0"
 description = "Bib-sync, citation-gate, and genre-writing pipeline for a research corpus."
 authors = [{ name = "Prasad Talasila" }]
 license = { text = "MIT" }
