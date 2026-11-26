@@ -51,6 +51,7 @@ BUDGET = {
         "guardrail stays inline beside its command, and the rest is commands and "
         "tested text (plans/1091-ledger-agenda-reviser.md)",
     ),
+    "ai-images": (5_000, None),
     "book-assembler": (
         14_000,
         "#1091: deduplicated from 20 KB into book-steps.md and latex-conventions.md; "

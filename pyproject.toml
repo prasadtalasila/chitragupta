@@ -23,7 +23,7 @@
 # the move happened.
 [project]
 name = "chitragupta-cli"
-version = "7.1.0"
+version = "7.2.0"
 description = "Bib-sync, citation-gate, and genre-writing pipeline for a research corpus."
 authors = [{ name = "Prasad Talasila" }]
 license = { text = "MIT" }
@@ -170,6 +170,21 @@ enrich = [
 # (docling/chromadb/bertopic/sentence-transformers via
 # their own test modules), so the full suite needs `--extra enrich` and
 # `--extra dev` together.
+# The `images` extra: what the ai-images skill's gen.py needs to run a
+# diffusers text-to-image model, FLUX.2 klein 4B by default. The model's
+# weights are not here: diffusers fetches them into the Hugging Face
+# default cache (~/.cache/huggingface) on the first run. Resolved and
+# run for real (a 1024x1024 image from klein 4B) against this lock on
+# 2026-11-26; re-verify after a re-lock rather than assuming it still holds.
+images = [
+    # The same window as `enrich`, for the same reason (see its comment):
+    # without it this extra, installed alone, would take torch 2.15, which
+    # has no build for a driver older than CUDA 13.2.
+    "torch>=2.14,<2.15",
+    "diffusers>=0.37,<0.44",
+    "transformers>=4.57.6,<6.0",
+    "accelerate>=1.16,<2.0",
+]
 dev = [
     "pytest>=9.0,<10.0",
     # pytest-cov 7 no longer measures child processes: 6.x shipped a
@@ -254,6 +269,7 @@ include = [
     { path = ".claude/settings.json", format = ["sdist", "wheel"] },
     { path = ".claude/skills-common", format = ["sdist", "wheel"] },
     { path = ".claude/skills/agenda-reviser", format = ["sdist", "wheel"] },
+    { path = ".claude/skills/ai-images", format = ["sdist", "wheel"] },
     { path = ".claude/skills/book-assembler", format = ["sdist", "wheel"] },
     { path = ".claude/skills/corpus-reviser", format = ["sdist", "wheel"] },
     { path = ".claude/skills/deep-research", format = ["sdist", "wheel"] },
@@ -267,6 +283,7 @@ include = [
     # The Codex and OpenCode launchers (#812, #900), for `init --agent`.
     { path = ".codex", format = ["sdist", "wheel"] },
     { path = ".agents/skills/agenda-reviser", format = ["sdist", "wheel"] },
+    { path = ".agents/skills/ai-images", format = ["sdist", "wheel"] },
     { path = ".agents/skills/book-assembler", format = ["sdist", "wheel"] },
     { path = ".agents/skills/corpus-reviser", format = ["sdist", "wheel"] },
     { path = ".agents/skills/deep-research", format = ["sdist", "wheel"] },
@@ -281,6 +298,7 @@ include = [
     { path = ".opencode/opencode.json", format = ["sdist", "wheel"] },
     { path = ".opencode/plugins", format = ["sdist", "wheel"] },
     { path = ".opencode/skills/agenda-reviser-opencode", format = ["sdist", "wheel"] },
+    { path = ".opencode/skills/ai-images-opencode", format = ["sdist", "wheel"] },
     { path = ".opencode/skills/book-assembler-opencode", format = ["sdist", "wheel"] },
     { path = ".opencode/skills/corpus-reviser-opencode", format = ["sdist", "wheel"] },
     { path = ".opencode/skills/deep-research-opencode", format = ["sdist", "wheel"] },
@@ -368,7 +386,7 @@ markers = [
 # hook test files do, contributes no coverage at all. The demo-recorder
 # skill's scripts (#1188) are in scope for the same reason any code is,
 # though no distribution ships them.
-source = ["chitragupta", "scripts", ".claude/hooks", ".claude/skills/demo-recorder/scripts"]
+source = ["chitragupta", "scripts", ".claude/hooks", ".claude/skills/demo-recorder/scripts", ".claude/skills/ai-images/scripts"]
 branch = true
 omit = [
     "*/enrich/__init__.py",

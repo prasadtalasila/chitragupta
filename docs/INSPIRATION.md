@@ -25,6 +25,7 @@ came from.
 - [The feature roadmap](#-the-feature-roadmap)
 - [Topic discovery](#-topic-discovery)
 - [A local wiki builder, read under GPL-3.0](#-a-local-wiki-builder-read-under-gpl-30)
+- [Image generation](#-image-generation)
 - [The rule on borrowing](#-the-rule-on-borrowing)
 
 ## ✍ The drafting layer's method
@@ -544,6 +545,31 @@ expansion from this corpus's own topic vocabulary. They are recorded
 here only so that a later reader does not credit them upstream by
 association. Capping passages per paper, which one of them uses, is
 already credited above to OpenScholar.
+
+## 🖼 Image generation
+
+Two upstreams behind the `ai-images` skill and its `gen.py`
+(`.claude/skills/ai-images/`). `gen.py` is written from scratch: what
+follows is the usage it follows and the model it runs, and no text or
+code from either is copied.
+
+- **[huggingface/diffusers](https://github.com/huggingface/diffusers)**
+  (Apache-2.0): the calling pattern, which is to load a pipeline by Hub
+  id in bfloat16, move it to the device, and call it with a prompt, a
+  size and a seeded `torch.Generator`. It is a dependency of the
+  `images` extra, never vendored. *Not taken:* its model-specific
+  pipeline class (`Flux2KleinPipeline`) in the script itself, because
+  `DiffusionPipeline.from_pretrained` resolves it from the Hub id and
+  keeps `--model` free to name any diffusers model.
+- **[black-forest-labs/FLUX.2-klein-4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B)**
+  (Apache-2.0, ungated): the default model, and the step-distilled
+  settings from its model card's diffusers example, 4 inference steps
+  and guidance 1.0, which `gen.py` applies to klein checkpoints that are
+  not `base` ones. The weights are fetched at run time into the Hugging
+  Face default cache and are not redistributed here. *Not taken:*
+  FLUX.2 [dev] and klein 9B, which were gated on 2026-11-26 and whose
+  licences differ; the skill names them as needing a token and the
+  person's own acceptance, and ships nothing of theirs.
 
 ## 🔑 The rule on borrowing
 

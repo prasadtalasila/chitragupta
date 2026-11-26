@@ -165,8 +165,10 @@ chapter, hands-on tutorial, a heavier multi-perspective deep-research
 mode, and a verbatim digest in the papers' own words), three that
 change a draft that already exists, one that assembles accepted units
 into a book, and one that draws the figures the others hand it
-([docs/GENRE.md](docs/GENRE.md)). Before any draft exists,
-`chitragupta corpus discover` maps what your corpus is about: its
+([docs/GENRE.md](docs/GENRE.md)). A twelfth, `ai-images`, sits outside
+the drafting phase: it makes a picture from a prompt on your own GPU.
+Before any draft exists, `chitragupta corpus discover` maps what your
+corpus is about: its
 topics, their papers, and the links between them
 ([docs/TOPIC-DISCOVERY.md](docs/TOPIC-DISCOVERY.md); worked tours in
 [docs/EXPLORE-CLI.md](docs/EXPLORE-CLI.md) and
@@ -218,6 +220,8 @@ chitragupta init                      # config.toml, .claude/, papers/, content/
 chitragupta --help                    # every command, one per line; COMMAND --help for its flags
 chitragupta install os-deps           # TeX Live, Pandoc, poppler. Debian/Ubuntu, needs root
 pip install 'chitragupta-cli[enrich]'   # optional, several GB -- only step 4 uses it
+pip install 'chitragupta-cli[images]'   # optional -- only the ai-images skill uses it; its model
+                                        # (about 15 GB) downloads into ~/.cache/huggingface
 ```
 
 ```bash
@@ -372,7 +376,7 @@ one-screen router for that.
 | [docs/GLOSSARY.md](docs/GLOSSARY.md) | The working vocabulary (citekey, ledger, dossier, gate, topic, review aid), each defined by what it is *to you*, grouped by when you first meet it. Read it once and every other document gets easier |
 | [docs/MIGRATION.md](docs/MIGRATION.md) | How do I back up my drafts, restore them, or move a project to another directory, another computer or a container without parsing my library again? |
 | [docs/ZOTERO.md](docs/ZOTERO.md) | How do I get my library and its PDFs into the shape this expects? Includes the attachment-path trap that silently leaves every entry without a PDF |
-| [docs/GENRE.md](docs/GENRE.md) | Which of the eleven skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
+| [docs/GENRE.md](docs/GENRE.md) | Which of the twelve skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
 | [docs/FIGURE-DRAWER.md](docs/FIGURE-DRAWER.md) | How do I get a figure into a draft? What to ask for, what the `figure-drawer` skill writes, a worked example, and what to do when a figure breaks the PDF |
 | [docs/MANUAL-FIGURE.md](docs/MANUAL-FIGURE.md) | How do I correct a figure with a pen, or add one from a hand sketch? What to photograph, the read-back of your marks, and how unclear marks are handled |
 | [docs/figure-checks/README.md](docs/figure-checks/README.md) | What does a `figure check` finding mean, and how do I fix it? Every rule in one sentence, then a page per family with a faulty and a fixed figure for each |

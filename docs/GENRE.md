@@ -9,11 +9,12 @@ the drafting contract these skills work under.
 **Not covered here:** how a skill is written or changed. That is
 `DEVELOPER-AGENTS.md` (git checkout only).
 
-Eleven user-facing skills live in `.claude/` (a git checkout also
+Twelve user-facing skills live in `.claude/` (a git checkout also
 holds `demo-recorder` and `skill-bench`, developer tools no project
 receives): six write a new draft, three change an existing one, one
-assembles a book from units the others wrote, and one draws the figures
-the others hand it. Of the three revisers, one is cheap and scoped, one
+assembles a book from units the others wrote, one draws the figures
+the others hand it, and one, `ai-images`, makes a picture from a prompt
+and drafts nothing. Of the three revisers, one is cheap and scoped, one
 goes back to the whole corpus when you ask it to, and one works the
 review agenda's unattended findings.
 
@@ -301,6 +302,9 @@ inside either figure file**, because the gate does not follow `\input`.
 [FIGURE-DRAWER.md](FIGURE-DRAWER.md) is the skill's own page.
 
 ## 🔑 What all eleven have in common
+
+`ai-images` is outside this list: it writes no draft, so the gate, the
+dossier and the scans below have nothing to act on.
 
 These rules are the same in every skill, stated in each `SKILL.md` or,
 where several share the wording, once in a reference under

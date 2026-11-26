@@ -4,6 +4,7 @@
     "skill": {
       "*": "allow",
       "agenda-reviser": "deny",
+      "ai-images": "deny",
       "book-assembler": "deny",
       "corpus-reviser": "deny",
       "deep-research": "deny",
