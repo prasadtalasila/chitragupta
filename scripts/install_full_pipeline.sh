@@ -8,12 +8,11 @@
 # Usage: bash scripts/install_full_pipeline.sh [STAGE ...]
 #
 #   python-deps  (default if no STAGE given) -- venv + `uv sync --extra
-#                enrich --extra images` (see pyproject.toml/uv.lock; the
-#                images extra is what the ai-images skill runs on). What
+#                enrich` (see pyproject.toml/uv.lock). What
 #                every host needs regardless of which OS packages are
 #                present. uv is the dependency/lockfile manager here,
 #                for a checkout, Docker and CI -- `pip install
-#                'chitragupta-cli[enrich,images]'` is the equivalent for someone
+#                'chitragupta-cli[enrich]'` is the equivalent for someone
 #                who installed the package rather than cloned it (#265;
 #                `chitragupta install` refuses this stage by name and
 #                prints that command, rather than running it a second way).
@@ -716,7 +715,7 @@ install_python_deps() {
     if [ "${NO_ROOT:-}" = "1" ]; then
         no_root=(--no-install-project)
     fi
-    (cd "$REPO_ROOT" && uv_sync --extra enrich --extra images "${no_root[@]}")
+    (cd "$REPO_ROOT" && uv_sync --extra enrich "${no_root[@]}")
     ensure_gpu_torch "$bin_dir/python"
 
     echo
