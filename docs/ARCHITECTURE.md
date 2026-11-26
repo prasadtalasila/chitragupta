@@ -133,10 +133,11 @@ answers "what does the corpus hold?" while a sync runs.
 
 ## ✍ Layer 2: the drafting layer
 
-Eleven user-facing skills in `.claude/skills/`: six write a new draft,
+Twelve user-facing skills in `.claude/skills/`: six write a new draft,
 three revise an existing one, `book-assembler` composes a book from
-accepted units, and `figure-drawer` draws the figures the others ask for.
-[GENRE.md](GENRE.md) says what each produces.
+accepted units, `figure-drawer` draws the figures the others ask for,
+and `ai-images` makes a picture from a prompt, drafts nothing and runs
+none of the chain below. [GENRE.md](GENRE.md) says what each produces.
 
 Each skill retrieves from the corpus layer, drafts into
 `content/drafts/`, then runs the same chain on its own output:

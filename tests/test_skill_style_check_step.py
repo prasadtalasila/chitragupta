@@ -50,8 +50,9 @@ _STEP = re.compile(r"-m chitragupta\.draft style\b")
 # Skills that never present a draft, so there is nothing for them to
 # check. Named, not inferred, so a new drafting skill cannot slip in here
 # by accident. `figure-drawer` draws one figure and returns to the skill
-# that called it, which runs the prose check (#1027).
-_HELPERS = {"figure-drawer"}
+# that called it, which runs the prose check (#1027). `ai-images` makes a
+# picture, not a draft.
+_HELPERS = {"figure-drawer", "ai-images"}
 _FRONTMATTER = re.compile(r"\A---\n.*?\n---\n", re.DOTALL)
 
 # Measured over the eight files with the shared reference spliced in

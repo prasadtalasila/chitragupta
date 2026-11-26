@@ -23,7 +23,7 @@ class TestTheExtraIsQuotedWhereverItIsPrinted:
     zsh is macOS's default shell, so this is not an edge case -- it is
     the first command a Mac user copies out of the README. Reported
     against 6.55.0 from a real shell, and confirmed against PyPI: the
-    published metadata declares all three extras correctly, so nothing
+    published metadata declares every extra correctly, so nothing
     is wrong with the *package*. What was wrong is that this repository
     printed a command that cannot run.
 

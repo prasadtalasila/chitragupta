@@ -332,8 +332,7 @@ logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups
                           that draws a figure for the others (figure-drawer). Each has a
                           SKILL.md and, where it needs one, a references/ folder read on
                           demand. Plus demo-recorder, which records the feature demo, and
-                          skill-bench, which measures a skill change on three harnesses, and
-                          ai-images, which makes a picture from a prompt with FLUX.2 klein 4B:
+                          skill-bench, which measures a skill change on three harnesses:
                           developer-only, so no distribution ships them (docs/HARNESS.md)
 .claude/skills-common/    references/ shared by several skills (the genre writers' shared steps,
                           a book skill's shared steps, collection scoping, critique, render and references, prose check,

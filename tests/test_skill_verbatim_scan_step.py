@@ -144,7 +144,8 @@ _OLD_OFFER = re.compile(r"Offer the verbatim scan", re.I)
 # that called it, which runs the scan (#1027). `review-digest` presents a
 # draft that is verbatim by design (#991): the scan would flag every run
 # as reuse, and `review digest` is the check that replaces it there.
-_HELPERS = {"figure-drawer", "review-digest"}
+# `ai-images` makes a picture, not a draft.
+_HELPERS = {"figure-drawer", "review-digest", "ai-images"}
 
 
 def _skill_files():
@@ -307,15 +308,15 @@ def test_no_skill_makes_the_scan_a_condition_of_presenting():
 def test_genre_doc_still_speaks_for_every_skill_that_exists():
     """docs/GENRE.md says "all eleven" in prose. Prose can't count.
 
-    If a twelfth skill lands, the shared-conventions section silently
-    stops covering it -- and that section is where the scan step, the
+    If a twelfth drafting skill lands (`ai-images` is not one: it makes a
+    picture), the shared-conventions section silently stops covering it -- and that section is where the scan step, the
     gate and the read-only-corpus rules are stated once for all of them.
     This fails on the day the count changes, which is the day GENRE.md
     needs editing anyway. It has already done its job once: it caught
     `book-assembler` landing in #139 while that section still said
     eight.
     """
-    count = len(_skill_files())
+    count = len([p for p in _skill_files() if p.parent.name != "ai-images"])
     assert count == 11, (
         f'{count} skills exist but docs/GENRE.md still says "all eleven". '
         "Update that section -- and check the new skill carries the gate, "

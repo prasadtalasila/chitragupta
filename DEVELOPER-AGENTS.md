@@ -279,7 +279,7 @@ different meaning than the argument implies, which is worse than
 refusing. Two front doors, one source of truth, still no second place to
 write a version down.
 
-**The three extras are the one declaration of each optional stack**, in
+**The four extras are the one declaration of each optional stack**, in
 `pyproject.toml`'s `[project.optional-dependencies]`: `pip install
 'chitragupta-cli[enrich]'` reads the same list the install script's
 `python-deps` stage does, so the two cannot drift. (Under Poetry each

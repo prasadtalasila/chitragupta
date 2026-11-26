@@ -104,11 +104,8 @@ def tracked_harness_files() -> list[str]:
 
 
 class TestThisRepository:
-    def test_the_three_developer_skills_are_developer_only_on_every_harness(self):
+    def test_demo_recorder_and_skill_bench_are_developer_only_on_every_harness(self):
         assert developer_skills(REPO_ROOT) == {
-            ".claude/skills/ai-images",
-            ".agents/skills/ai-images",
-            ".opencode/skills/ai-images-opencode",
             ".claude/skills/demo-recorder",
             ".agents/skills/demo-recorder",
             ".opencode/skills/demo-recorder-opencode",

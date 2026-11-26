@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Send one prompt to a diffusers text-to-image model and save a PNG.
 
-Run it with the interpreter `setup.sh` prints, not the system one:
+Run it with the project's `.venv-full`, which has the `images` extra:
 
-    "$PY" .claude/skills/ai-images/scripts/gen.py "a lighthouse at dusk" --out lighthouse.png
+    .venv-full/bin/python .claude/skills/ai-images/scripts/gen.py "a lighthouse at dusk" --out lighthouse.png
 
 The model is `--model`, else $AI_IMAGES_MODEL, else FLUX.2 klein 4B
 (Apache-2.0, ungated). A gated model such as black-forest-labs/FLUX.2-dev
@@ -63,7 +63,7 @@ def main(argv=None):
     settings = sampler_settings(args.model)
     if args.steps:
         settings["num_inference_steps"] = args.steps
-    pipe = DiffusionPipeline.from_pretrained(args.model, dtype=torch.bfloat16).to(device)
+    pipe = DiffusionPipeline.from_pretrained(args.model, torch_dtype=torch.bfloat16).to(device)
     image = pipe(
         prompt=args.prompt,
         width=args.width,

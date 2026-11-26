@@ -181,11 +181,12 @@ are worked tours of the terminal and the app.
 
 ## ✍ Drafting layer: writing something grounded
 
-### 🤖 Eleven skills
+### 🤖 Twelve skills
 
 Six write a new draft, three change one that already exists, one
-assembles a book from units the others wrote, and one draws the figures
-the others hand it. Asking in ordinary words selects one
+assembles a book from units the others wrote, one draws the figures
+the others hand it, and one makes a picture from a prompt, outside the
+drafting chain. Asking in ordinary words selects one
 ([GENRE.md](GENRE.md)).
 
 | Skill | Writes | Reader |
@@ -201,6 +202,7 @@ the others hand it. Asking in ordinary words selects one
 | `agenda-reviser` | repairs the unattended findings a review agenda found | (one item at a time) |
 | `book-assembler` | one LaTeX book from accepted units | [WRITE-A-BOOK.md](WRITE-A-BOOK.md) |
 | `figure-drawer` | one TikZ figure and its ASCII twin, for a draft | [FIGURE-DRAWER.md](FIGURE-DRAWER.md) |
+| `ai-images` | one PNG from a text prompt, made on your GPU with FLUX.2 klein 4B (Apache-2.0); no draft, no citekey | someone who wants a picture, such as a cover; the weights download once into the Hugging Face cache |
 
 The rule that saves the most money is never to re-run a genre skill to
 change a draft that exists
