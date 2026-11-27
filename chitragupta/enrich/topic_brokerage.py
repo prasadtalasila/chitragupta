@@ -1,20 +1,9 @@
 """Stored brokerage for the topic graph (#713).
 
-The app's topic panel answers "is this a theme or a bridge" with four
-numbers per edge family -- neighbour count, ego density, Burt effective
-size, Burt constraint (`assets/webapp/ego.js` egoStats). This module
-computes the same four in the builder and `topic_graph.build` stores
-them in each topic's `analysis`, so the panel reads the artefact and
-`--json` can confirm every number it shows.
-
-networkx's weighted `effective_size` and `constraint` were verified
-equal to egoStats's arithmetic before this was written -- both
-normalise the marginal by the alter's strongest single tie -- and
-`tests/webapp/brokerage_cases.json` keeps them equal: node asserts the
-browser reproduces every row, tests/test_enrich_topic_brokerage.py
-asserts this side does. Per family and never pooled, for the reason
-egoStats gives: a topic that brokers over shared papers but not over
-vocabulary is a different animal from one that does the reverse.
+The four per-edge-family numbers the app's topic panel shows
+(`assets/webapp/ego.js` egoStats), computed here so `--json` can confirm
+them. `tests/webapp/brokerage_cases.json` keeps both sides equal. Per
+family, never pooled: brokering over papers and over vocabulary differ.
 """
 
 import itertools
@@ -23,9 +12,9 @@ _WEIGHT_KEY = {"overlap": "overlap_coeff", "semantic": "similarity"}
 
 
 def _family_stats(graph, label) -> dict:
-    """One ego's four numbers over one family's graph. Null (None)
-    wherever the arithmetic has no answer -- the same rule egoStats
-    follows, because NaN passes every is-a-number guard."""
+    """One ego's four numbers over one family's graph. None wherever the
+    arithmetic has no answer, as egoStats does, because NaN passes every
+    is-a-number guard."""
     import networkx as nx
 
     alters = list(graph[label])

@@ -1,15 +1,8 @@
 """How a document's raw text is fetched, cleaned, and split for an embedder.
 
-Split out of `chitragupta/enrich/embed_index.py` when a #503/#504 fix pushed
-that module past docs/CODE-STANDARDS.md's 250-line ceiling. The boundary
-is real, not arithmetic: everything here answers "what text does this
-document offer an embedder", independent of Chroma or any particular
-model -- `chitragupta/enrich/doc_vectors.py` needs exactly this half without
-the collection-management half, which is why it already called these
-functions through `embed_index` rather than duplicating them. Re-exported
-from `embed_index.py` (imported there, not just used) so every existing
-`embed_index.hash_text`/`.get_text`/`.chunk_text`/`.strip_image_refs`
-call -- inside and outside this package -- keeps working unchanged.
+Independent of Chroma or any model; `doc_vectors.py` needs only this
+half. Re-exported from `embed_index.py`, so `embed_index.get_text` etc.
+keep working.
 """
 
 import hashlib
@@ -34,27 +27,17 @@ def hash_text(text: str) -> str:
 def strip_image_refs(markdown: str) -> str:
     """Drop Docling's image markers from text on its way to the embedder.
 
-    Two forms, depending on config.DOCLING_IMAGES: a bare `<!-- image -->`
-    placeholder, or a real `![Image](<stem>_artifacts/picture_000000.png)`
-    reference. Both forms can appear in *one* document since #600 -- a
-    picture whose crop could not be rendered keeps its placeholder while
-    its neighbours get references -- and a corpus parsed across that
-    change also carries docling's older `image_<index>_<64 hex>.png`
-    names. Neither carries meaning an embedding can use,
-    and the second is worse than the first: chunk_text() splits on
-    whitespace, so a ~100-character path hashes down to a single "word"
-    that displaces real text from a 200-word chunk.
-
-    Captions survive deliberately -- Docling emits them as their own
-    text items ("Figure 3. Sensor placement..."), not as the image's alt
-    text, so they're real prose about the figure and worth embedding.
+    Both a `<!-- image -->` placeholder and a real `![Image](...png)`
+    reference (one document can carry both since #600, plus older
+    `image_<index>_<64 hex>.png` names). A path is worse than nothing:
+    chunk_text() splits on whitespace, so it displaces real text. Captions
+    are separate text items, so they survive and get embedded.
     """
     without_refs = re.sub(r"^[ \t]*!\[[^\]]*\]\([^)]*\)[ \t]*$", "", markdown, flags=re.MULTILINE)
     without_placeholders = re.sub(
         r"^[ \t]*<!--\s*image\s*-->[ \t]*$", "", without_refs, flags=re.MULTILINE
     )
-    # Collapse the blank runs those deletions leave behind, so chunking
-    # doesn't see paragraph gaps where a figure used to sit.
+    # Collapse the blank runs left behind, so no false paragraph gaps.
     return re.sub(r"\n{3,}", "\n\n", without_placeholders)
 
 
@@ -67,17 +50,9 @@ def get_text(doc: CorpusDoc) -> str | None:
     if doc.text_path and Path(doc.text_path).exists():
         return Path(doc.text_path).read_text(encoding="utf-8")
     if doc.pdf_path:
-        # mkstemp with the descriptor closed at once, and a manual unlink
-        # in finally -- deliberately *not* a NamedTemporaryFile `with`
-        # block wrapped around the subprocess call. On Windows an open
-        # handle keeps the file exclusively locked, and pdftotext writing
-        # to that same path while Python still holds it open fails with
-        # PermissionError -- POSIX allows a second open of the same path,
-        # which is why this only surfaced on this repo's Windows CI leg.
-        # Only the *name* is wanted here, so the descriptor is closed
-        # before anything else happens; any construct that held the file
-        # open across the run() below would reintroduce exactly the lock
-        # this close is here to release.
+        # mkstemp with the descriptor closed at once, not a
+        # NamedTemporaryFile `with` block: on Windows an open handle locks
+        # the file, so pdftotext writing to it fails with PermissionError.
         fd, tmp_name = tempfile.mkstemp(suffix=".txt")
         os.close(fd)
         try:
@@ -85,22 +60,17 @@ def get_text(doc: CorpusDoc) -> str | None:
                 [programs.require_program("pdftotext"), "-layout", doc.pdf_path, tmp_name],
                 check=True,
                 capture_output=True,
-                # The sync backend's bound (#824): one PDF that hangs
-                # poppler used to wedge the whole embed run.
+                # The sync backend's bound (#824): one hanging PDF used to
+                # wedge the whole embed run.
                 timeout=config.PARSER_DOCUMENT_TIMEOUT,
             )
             return Path(tmp_name).read_text(encoding="utf-8", errors="ignore")
         except subprocess.TimeoutExpired:
-            # No text rather than a crash: the caller reports the
-            # document as having nothing to embed and moves on, which is
-            # what a parse that never finished amounts to.
+            # No text rather than a crash: reported as nothing to embed.
             return None
         except (subprocess.CalledProcessError, OSError) as exc:
-            # The same, for an encrypted or corrupt PDF and for a host
-            # with no pdftotext (#978). This fallback is reached for
-            # exactly the documents a sync parse already failed on, and
-            # every topic stage reads it, so one of them raising failed
-            # embed, bertopic, seed-topics and topic-graph together.
+            # Likewise an encrypted/corrupt PDF or no pdftotext (#978):
+            # raising here failed every topic stage together.
             logger.warning("no text for %s: pdftotext failed (%s)", doc.citekey, exc)
             return None
         finally:

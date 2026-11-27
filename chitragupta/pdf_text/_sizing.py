@@ -1,45 +1,21 @@
 """How many docling workers to run: CPU arithmetic only, no process or
 GPU state.
-
-Split out of chitragupta/pdf_text.py (#361). `allowed_cpus` is the one
-function every other name below (and `_startup.prestart_pool`, across
-the package boundary) ultimately calls, so it lives with its three
-direct callers rather than the module that only reads its answer.
 """
 
 import os
 
 from chitragupta import config
 
-# Logical CPUs one docling worker is *charged*. Used both as the divisor
-# for `workers = "auto"` and as the ceiling an explicit request is
-# clamped to.
-#
-# The 4 came from a single docling process measured holding ~300% CPU, on
-# the reasoning that "one worker per CPU" would then oversubscribe by
-# about 4x.
-#
-# **A full-corpus sweep does not support it.** Measured over all 501 PDFs
-# (docs/PERFORMANCE.md, bench/results/2026-08-04-full-corpus/):
-#   - 32 workers is ~1.4x faster than the 12 this constant allows on a
-#     48-CPU machine, and 48 workers is no worse;
-#   - docling's own num_threads changes a run by 1.9% -- noise -- so a
-#     worker is not doing four CPUs of parallel work.
-# Past ~32 workers the curve plateaus rather than reversing (32 and 48
-# land within 0.9% over three runs each), so the finding is "this divisor
-# is much too large", not "it should be 1.5".
-#
-# Left at 4 deliberately: changing it alters what every run does on every
-# machine, and it has been validated on exactly one machine and one
-# corpus. See bench/PARALLELISM-PLAN.md's open questions for what would
-# have to be measured before moving it.
+# Logical CPUs one docling worker is *charged*: the `workers = "auto"`
+# divisor and the clamp for an explicit request. A full-corpus sweep says
+# it is much too large (32 workers ~1.4x faster than 12 on 48 CPUs;
+# docs/PERFORMANCE.md, bench/results/2026-08-04-full-corpus/), but it is
+# left at 4 because that was validated on one machine and one corpus; see
+# bench/PARALLELISM-PLAN.md for what must be measured before moving it.
 _CPUS_PER_DOCLING_WORKER = 4
 
-# Docling's own default num_threads. Equal to the divisor above today,
-# and deliberately a separate constant: that one is a CPU budget and the
-# roadmap expects it to shrink, while this one tracks upstream's default.
-# Sharing a literal would have quietly changed the thread cap the first
-# time the budget moved.
+# Docling's own default num_threads: separate from the divisor above,
+# which is a CPU budget expected to shrink, so it doesn't move the cap.
 _DOCLING_DEFAULT_THREADS = 4
 
 
@@ -47,21 +23,10 @@ def allowed_cpus() -> int:
     """How many CPUs this *process* may run on -- not how many the
     machine has.
 
-    `os.cpu_count()` reports the machine. `os.sched_getaffinity(0)`
-    reports the affinity mask actually in force, which a container,
-    `taskset`, or a batch scheduler will have narrowed. On the host this
-    was developed on the two disagree badly: 96 CPUs exist, 48 are
-    permitted, so sizing a pool off `cpu_count()` would spawn twice as
-    many workers as there are CPUs to run them.
-
-    `sched_getaffinity` is Linux-only -- it does not exist on Windows or
-    macOS, and this project's CI has a windows-latest leg -- hence the
-    getattr rather than a bare call.
-
-    Not covered: a cgroup CPU *quota* (`docker --cpus=2`) throttles
-    without narrowing the affinity mask, so this still reports the full
-    set there. config.toml.example says so, and an explicit
-    [parser].workers is the answer on such a host.
+    `os.sched_getaffinity(0)` honours containers, `taskset` and batch
+    schedulers (96 CPUs, 48 permitted on the dev host); it is Linux-only,
+    hence the getattr (CI has a Windows leg). A cgroup CPU *quota* is not
+    seen; an explicit [parser].workers is the answer there.
     """
     getaffinity = getattr(os, "sched_getaffinity", None)
     if getaffinity is not None:
@@ -72,40 +37,24 @@ def allowed_cpus() -> int:
 def worker_ceiling(docling: bool) -> int:
     """The most workers this machine can sustain, whatever the run holds.
 
-    `docling` names whether *this* pool runs Docling workers -- not
-    whether `config.PARSER` currently says "docling". `chitragupta/enrich/`
-    always runs Docling regardless of that setting, so a caller there
-    passes `docling=True` unconditionally rather than this function
-    re-deriving it from a setting that does not describe it -- see #502.
-
-    Split out from resolve_workers because it is the one ceiling that
-    does *not* depend on how many documents there are, so it can be asked
-    before the bibliography has been read -- which is what lets
-    prestart_pool decline on a machine that will end up serial anyway.
+    `docling` names whether *this* pool runs Docling workers, not what
+    `config.PARSER` says (#502). Independent of the document count, so
+    prestart_pool can ask before the bibliography is read.
     """
     cpus = allowed_cpus()
     if docling:
         return max(1, cpus // _CPUS_PER_DOCLING_WORKER)
-    # Each pdftotext is a short, single-threaded subprocess, so charging
-    # it a docling worker's CPU budget would under-use the machine.
+    # A pdftotext is a short single-threaded subprocess: no docling budget.
     return cpus
 
 
 def resolve_workers(n_docs: int, docling: bool) -> tuple[int, str | None]:
     """(workers, complaint) for a run that has `n_docs` to parse.
 
-    `docling` is passed straight through to worker_ceiling -- see its
-    docstring for why this is not re-derived from `config.PARSER` here.
-
-    The resolved count is the smallest of three independent ceilings,
-    floored at 1: what was asked for, what the machine can sustain, and
-    how many documents there actually are. The third matters more than it
-    looks -- standing up 12 docling workers to parse 3 documents pays 12
-    model loads to save two documents' worth of work.
-
-    An explicit request above the machine's ceiling is clamped *and
-    reported*. Obeying it thrashes; ignoring it silently leaves someone
-    believing they configured something they didn't.
+    The smallest of what was asked for, what the machine sustains, and the
+    document count (12 model loads for 3 documents is waste), floored at
+    1. A request above the ceiling is clamped *and reported*, so nobody
+    believes they configured something they didn't.
     """
     cpus = allowed_cpus()
     ceiling = worker_ceiling(docling)
@@ -129,16 +78,8 @@ def docling_threads(workers: int) -> int:
     """Docling's per-worker thread count, divided down so that
     workers x threads still fits the machine.
 
-    Capped at Docling's own default of 4, so the single-worker default
-    resolves to exactly what Docling would have picked on its own and
-    this function changes nothing until someone raises [parser].workers.
-
-    **This matters far less than it looks.** Forcing the value to 1, 2, 4
-    or 8 at 12 workers moved a full-corpus run by 1.9% -- noise (see
-    docs/PERFORMANCE.md). The 8 case needed a temporary bench override,
-    since the cap above puts it out of reach of any shipped
-    configuration. It is kept because dividing down is still the
-    correct thing to do when workers x threads would exceed the machine,
-    not because it buys measurable throughput.
+    Capped at Docling's default of 4, so a single-worker run is unchanged.
+    It barely matters (1-8 threads moved a full-corpus run 1.9%, per
+    docs/PERFORMANCE.md); it is kept as the correct division, not for speed.
     """
     return max(1, min(_DOCLING_DEFAULT_THREADS, allowed_cpus() // max(workers, 1)))

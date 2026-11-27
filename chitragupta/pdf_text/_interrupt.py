@@ -1,44 +1,21 @@
-"""Exiting a running worker pool promptly and cleanly on Ctrl+C.
-
-Split out of chitragupta/pdf_text.py (#361). Self-contained: `terminate_workers`
-and `interrupt_guard` only ever call each other, never anything else in
-this package.
-"""
+"""Exiting a running worker pool promptly and cleanly on Ctrl+C."""
 
 import os
 import signal
 import sys
 from typing import NoReturn
 
-# How long a worker gets to honour SIGTERM before being killed outright.
 _TERMINATE_GRACE_SECONDS = 2.0
 
 
 def terminate_workers(executor) -> None:
     """Kill the pool's worker processes outright.
 
-    shutdown(cancel_futures=True) only drops jobs that have not started;
-    the handful already running keep going, and ProcessPoolExecutor's
-    atexit hook then *joins* them on the way out. With docling that is
-    minutes per in-flight document, which is what "Ctrl+C took forever to
-    exit" actually was.
-
-    There is no public API for this -- ProcessPoolExecutor deliberately
-    exposes no way to cancel running work -- so this reaches for
-    `_processes`. Guarded with getattr because it is private and because
-    a ThreadPoolExecutor (the pdftotext backend, and the tests) has no
-    such attribute and needs no killing.
-
-    `or {}` as well as the getattr default, because the attribute has
-    two empty states and only one of them is absence:
-    `ProcessPoolExecutor.shutdown()` sets `_processes = None` outright
-    (CPython `concurrent/futures/process.py`, the block dropping
-    references "to reduce the risk of opening too many files"). A
-    getattr default never fires for that, so a shut-down pool reached
-    `None.values()` -- on the stall watchdog's own recovery path, where
-    `sync_pool._as_they_land` calls this exactly when the executor may
-    already be tearing down, so the mechanism meant to rescue a stalled
-    sync raised `AttributeError` instead (issue #726).
+    shutdown(cancel_futures=True) leaves running jobs going, and the
+    atexit hook then *joins* them: minutes per docling document. No public
+    API cancels running work, so this reaches for private `_processes`
+    (absent on a ThreadPoolExecutor). `or {}` because `shutdown()` sets it
+    to None, which crashed the stall watchdog's recovery path (#726).
     """
     processes = list((getattr(executor, "_processes", None) or {}).values())
     for process in processes:
@@ -46,10 +23,8 @@ def terminate_workers(executor) -> None:
             process.terminate()
         except Exception:  # noqa: BLE001  # already exited, or already reaped
             pass
-    # SIGTERM is a request, and a worker sitting in onnxruntime or torch
-    # native code does not necessarily honour it promptly -- measured 21
-    # processes still alive after terminate() alone, which would leave
-    # orphans holding GPU memory. Give them a moment, then insist.
+    # A worker in onnxruntime or torch native code may ignore SIGTERM (21
+    # measured still alive), leaving orphans holding GPU memory; then kill.
     for process in processes:
         try:
             process.join(timeout=_TERMINATE_GRACE_SECONDS)
@@ -62,26 +37,12 @@ def terminate_workers(executor) -> None:
 class interrupt_guard:
     """Exit promptly and cleanly on Ctrl+C while a worker pool is running.
 
-    An `except KeyboardInterrupt` around `as_completed()` does NOT work
-    here, and that is the whole reason this exists. Reproduced in a
-    minimal script with no docling in it: SIGINT reaches the parent, the
-    result loop stops consuming, and the handler never runs -- the
-    process then sits until its in-flight workers finish, which with
-    docling is minutes per document. That is the reported symptom,
-    "Ctrl+C took forever to exit", plus docling teardown tracebacks from
-    workers still being driven.
-
-    An explicit SIGINT handler does work: measured 0.0s to exit against
-    60s+ (and counting) for the exception path. It terminates the pool's
-    workers and calls os._exit, deliberately skipping interpreter
-    shutdown -- ProcessPoolExecutor's atexit hook *joins* its workers,
-    which is the thing being avoided. Skipping it is safe for this
-    program's own state because the ledger commits incrementally and
-    synchronously as each document lands: whatever finished is already on
-    disk.
-
-    Restores the previous handler on the way out, so a library caller
-    that installed its own gets it back.
+    `except KeyboardInterrupt` around `as_completed()` does NOT work: the
+    handler never runs and the process waits for in-flight workers
+    (minutes each with docling). An explicit SIGINT handler exits in 0.0s:
+    it terminates the workers and calls os._exit, skipping the atexit hook
+    that *joins* them. Safe because the ledger commits as each document
+    lands. Restores the previous handler on the way out.
     """
 
     def __init__(self, executor, describe) -> None:
@@ -93,8 +54,7 @@ class interrupt_guard:
         try:
             self._previous = signal.signal(signal.SIGINT, self._on_sigint)
         except ValueError:
-            # Not the main thread (a test, or an embedding caller):
-            # signal handling isn't available, and the pool still works.
+            # Not the main thread: no signal handling, the pool still works.
             self._previous = None
         return self
 
@@ -104,12 +64,8 @@ class interrupt_guard:
         return False
 
     def _on_sigint(self, _signum, _frame) -> NoReturn:
-        # Deliberately still a bare print, not chitragupta.sync's logger: this
-        # runs inside a signal handler a couple of lines before
-        # os._exit(130), and print(..., flush=True) is a call this
-        # project has already measured exiting in 0.0s (see the class
-        # docstring) -- not a call site to introduce the logging module's
-        # own locking/formatting machinery into for a marginal gain.
+        # A bare print, not sync's logger: this runs in a signal handler
+        # just before os._exit(130), and print(flush=True) is measured fast.
         print(
             f"\n  interrupted -- {self._describe()}. Work already "
             "finished is kept; re-run to continue.",
