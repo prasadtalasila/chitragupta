@@ -60,7 +60,7 @@ KEYWORD_TOP_N = _get_int("KEYWORD_TOP_N", "enrich", "keyword_top_n", default=40)
 KEYWORD_MIN_DF = _get_int("KEYWORD_MIN_DF", "enrich", "keyword_min_df", default=2)
 
 # Exclude the corpus's own authors from topic *names* (never from
-# clustering). On because `werner kritzinger, fraunhofer austria` was a
+# clustering). On because one author-and-affiliation string was a
 # top-three topic, and dropping bibliographies does not fix it; the cost
 # is five surnames that are also English words (black, brown, can, park,
 # wood). Turn off where that trade is wrong.
