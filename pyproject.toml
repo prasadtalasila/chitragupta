@@ -3,7 +3,7 @@
 # poetry-core is the build backend only (docs/PACKAGING.md).
 [project]
 name = "chitragupta-cli"
-version = "7.2.1"
+version = "7.2.2"
 description = "Bib-sync, citation-gate, and genre-writing pipeline for a research corpus."
 authors = [{ name = "Prasad Talasila" }]
 license = { text = "MIT" }
