@@ -1,63 +1,19 @@
 """Tier 2: deterministic light-paraphrase detection via stemmed skip-grams
 (the CoReMo 2.1 design, Torrejon & Ramos, PAN 2013 winner on quality and
-runtime -- discussion #115, docs/PLAGIARISM-DESIGN.md). Catches the every-few-
-words synonym swap or inflection change an LLM's paraphrase leaves --
-exactly what tier 1's exact 8-gram index (chitragupta/overlap_index.py) is blind
-to by construction, since a single substituted word breaks every
-contiguous n-gram that contains it.
+runtime -- discussion #115, docs/PLAGIARISM-DESIGN.md), catching the
+synonym swaps and inflection changes that break tier 1's exact n-grams.
 
-**The idea.** Split the word stream into two fixed interleaved families
-by *original* position -- even indices, odd indices -- before anything
-else touches it, then stem and drop stopwords independently *within*
-each family (`chitragupta/porter_stemmer.py`), and take ordinary contiguous
-n-grams over each family's own reduced stream
-(`overlap_index.gram_hashes`, reused unchanged). A single substituted
-word at original position p can only ever affect the family whose parity
-p belongs to; the other family's members, and therefore its stems, its
-stopword membership and its n-grams, are untouched -- so at least one
-family survives a lone substitution intact, the same tolerance
-`_merge_runs` gives tier 1 against an edited word, bought here without a
-gap-tolerant merge.
+The word stream is split into even and odd original positions first,
+then each family is stemmed and stopword-filtered and n-grammed on its
+own, so a lone substitution leaves one family intact. Splitting after
+filtering would shift every later word's family when a paraphrase swaps
+a stopword for a content word (as in tests/test_feature_workflows.py's
+fixture). Positions are original word indices, comparable with tier 1's.
 
-The split has to happen on the *original* stream, not on the
-stopword-filtered one: if a paraphrase swaps a stopword for a content
-word or vice versa at some position (`"of a digital twin"` -> `"of one
-digital twin"` is exactly this, and is in this project's own pinned
-paraphrase fixture, tests/test_feature_workflows.py), filtering first
-and splitting the *filtered* stream's parity second would shift every
-later position's family membership between the two texts by one, and
-every family would stop matching from that point on -- not just at the
-substitution. Splitting first pins each original word to its family
-before either text's stopword pattern can diverge from the other's.
-
-**Position bookkeeping.** Every skip-gram's reported `position` is the
-original, unfiltered word-stream index of its first member -- the same
-numbering `overlap_index`'s tier-1 postings use -- so `(citekey,
-position)` from this module's index and from tier 1's are directly
-comparable, and a caller aligning a draft against both tiers does not
-need two different coordinate systems.
-
-**Two independent caches**, mirroring `overlap_index.py`'s shape and
-sharing its atomic-write and cache-validation helpers, but never its
-files or its version constants: a stemmer or stopword-list change should
-invalidate only this tier's cache, not force tier 1 to refingerprint the
-whole corpus, and vice versa. The shared helpers
-(`_parse_cached_postings`, `_parse_corpus_index_binary`) take each
-tier's own `_TOKENIZER_VERSION`/`_HEADER_VERSION` as arguments rather
-than reading a module global, which is what keeps that independence
-intact -- they were extracted because the validate-and-parse mechanics
-were otherwise identical, not because the two tiers' caches were made to
-depend on each other.
-`docs/<citekey>.skipgram.fpr` (own `_TOKENIZER_VERSION`) and
-`skipgram_index.bin`/`skipgram_index.json` (own `_HEADER_VERSION`), all
-under the same `config.OVERLAP_DIR`.
-
-Advisory only for now (discussion #115: "start advisory, promote with
-evidence") -- nothing in this module or in
-`chitragupta/review/verbatim_check/`'s tier-2 finder decides gate-eligibility;
-that is a later, separate decision (issue #130), unlike tier 3
-(embedding), which docs/PLAGIARISM-DESIGN.md rules out from ever gating, by
-construction.
+Caches mirror `overlap_index.py`'s but are separate files with their own
+version constants, so a stemmer change never rebuilds tier 1; the shared
+helpers take each tier's versions as arguments. Advisory only (#115;
+gating is #130's decision).
 """
 
 from __future__ import annotations
@@ -122,18 +78,11 @@ whom
 
 
 def stem_filter(words: list[str]) -> tuple[list[str], list[int]]:
-    """`words` (already tokenized, lowercase `[a-z0-9]+`) reduced to
-    stemmed content words, plus -- parallel -- each one's index in
-    `words` itself. `stems[i]` came from `words[positions[i]]`; a purely
-    numeric token stems to itself (there is nothing to strip) and is kept,
-    since a shared figure or version number is still shared wording.
+    """`words` (lowercase `[a-z0-9]+`) reduced to stemmed content words,
+    plus each one's index in `words`. Numeric tokens are kept as-is.
 
-    Whole-stream, not family-split -- used where robustness to a
-    substitution elsewhere in the text does not matter, e.g. normalizing
-    a short allowlisted phrase for masking (see
-    `chitragupta/review/verbatim_check/`'s tier-2 allowlist handling), not for
-    generating skip-grams themselves (`skipgram_postings`, below, which
-    needs the family split for the reason the module docstring gives).
+    Whole-stream, not family-split: for normalizing allowlisted phrases
+    in `verbatim_check`, never for generating skip-grams.
     """
     stems: list[str] = []
     positions: list[int] = []
@@ -146,10 +95,8 @@ def stem_filter(words: list[str]) -> tuple[list[str], list[int]]:
 
 
 def _families(words: list[str]) -> tuple[list[tuple[str, int]], list[tuple[str, int]]]:
-    """`words` split into its even- and odd-*original*-index families,
-    each still carrying `(word, original_index)` pairs -- stopword
-    filtering and stemming happen after this split, independently per
-    family, per the module docstring's reasoning."""
+    """`words` split into its even- and odd-original-index families, as
+    `(word, original_index)` pairs, before any filtering."""
     return (
         [(w, i) for i, w in enumerate(words) if i % 2 == 0],
         [(w, i) for i, w in enumerate(words) if i % 2 == 1],
@@ -168,31 +115,13 @@ def _stem_filter_family(pairs: list[tuple[str, int]]) -> tuple[list[str], list[i
 
 
 def skipgram_postings(words: list[str], n: int) -> list[tuple[int, int, int]]:
-    """`(gram_hash, start, end)` for every skip-gram in `words` -- `words`
-    already tokenized (`overlap_index._norm`/`verbatim_check.norm`).
-    `start` and `end` are original indices (into `words`) of the
-    skip-gram's first and last family member, `end` inclusive-plus-one
-    so `words[start:end]` (once any interposed stopwords are counted
-    back in) is the full span, matching tier 1's `(start, end)`
-    convention in `verbatim_check.scan_findings`.
+    """`(gram_hash, start, end)` for every skip-gram in already-tokenized
+    `words`; `start`/`end` are original indices of the first and last
+    member, end-exclusive, matching tier 1's convention.
 
-    A corpus-side caller (`_build_fingerprint`, below) keeps `start` only
-    -- a document fingerprint's postings only ever need a position to
-    align a diagonal against, never their own span, since a run's extent
-    is always measured on the draft side. A draft-side caller
-    (`chitragupta/review/verbatim_check/`'s tier-2 finder) needs both, to
-    report where a match starts and ends in the draft actually scanned.
-
-    A window at least `MAX_NUMERIC_SHARE` of whose stems are bare
-    numbers is not emitted at all (#180) -- see that constant for why
-    the test is on the window rather than on the token. Both sides go
-    through this one function, the corpus fingerprint and the draft scan
-    alike, so the suppression is symmetric without either caller knowing
-    about it.
-
-    Order is ascending within each of the two families, families
-    concatenated even-then-odd; not globally sorted by position, since a
-    caller grouping by `(citekey, diagonal)` does not need it to be.
+    Windows with `MAX_NUMERIC_SHARE` or more bare numbers are not emitted
+    (#180); corpus and draft both go through here, so that is symmetric.
+    Ascending within each family, even family first; not globally sorted.
     """
     postings = []
     for pairs in _families(words):
@@ -245,11 +174,8 @@ def _save_doc_cache(fp: DocSkipgramFingerprint) -> None:
 def _build_fingerprint(
     citekey: str, pdf_hash: str, parsed_path: str, n: int
 ) -> DocSkipgramFingerprint:
-    """Mirrors `overlap_index._build_fingerprint`'s page-boundary
-    bookkeeping exactly, over the same per-page word lists -- only the
-    posting generation (skip-grams over the stemmed, filtered stream
-    instead of plain contiguous grams) differs.
-    """
+    """Tier 1's `_build_fingerprint` page bookkeeping, with skip-gram
+    postings in place of contiguous grams."""
     page_words = [_norm(page_text) for page_text in _pages_from_parsed_text(parsed_path)]
     boundaries = list(accumulate(len(words) for words in page_words))
     words = [w for page in page_words for w in page]
@@ -343,12 +269,8 @@ def _save_corpus_index(index: CorpusSkipgramIndex, corpus_key: str) -> None:
 
 
 def build_corpus_index(n: int = DEFAULT_N) -> CorpusSkipgramIndex:
-    """The skip-gram analogue of `overlap_index.build_corpus_index` --
-    same cache-hit/partial-rebuild behaviour, over the same ledger items,
-    keyed the same way (a document's skip-gram cache is only ever stale
-    for the same reasons its exact-tier one is: reparse, backend switch).
-    Shares the merge algorithm itself with tier 1 -- see
-    `overlap_index._merge_corpus_index`.
+    """The skip-gram analogue of `overlap_index.build_corpus_index`, sharing
+    its merge algorithm (`overlap_index._merge_corpus_index`).
     """
     return _merge_corpus_index(
         n, _load_corpus_index, fingerprint_document, CorpusSkipgramIndex, _save_corpus_index

@@ -311,7 +311,7 @@ The ratchet takes the useful half of each. Here:
 
 - Today's offenders are frozen in `code-standards-register.toml`'s
   `[[c1]]` and `[[c2]]` tables: **3
-  functions** and **1 module**. Those two counts are themselves pinned
+  functions** and **0 modules**. Those two counts are themselves pinned
   by `test_the_registers_are_the_size_this_document_says`, so a shrinking
   register cannot leave this sentence stale. The register is a TOML file
   so that the edit-time hook (`.claude/hooks/code_standards_hook.py`) can
