@@ -1,11 +1,7 @@
 """A change report written out: Markdown for a person, JSON for a reviser.
 
-Neither form carries a timestamp of its own. The only date in a report
-is the baseline's, part of its header, so writing the same comparison
-twice gives the same bytes and a report diffs cleanly against the last.
-
-The header is the one line `draft diff` also puts on the redline, so it
-is built here once.
+No timestamp of its own (only the baseline's date), so the same
+comparison gives the same bytes. The header is shared with the redline.
 """
 
 from dataclasses import asdict
@@ -40,9 +36,8 @@ def _figures_summary(figures: list[FigureChange] | None) -> str:
 
 
 def _summary(report: ChangeReport) -> str:
-    # Both counts are of the new draft's sections; a removed one has no
-    # place there, so it is counted on its own. A regenerated References
-    # section is no prose at all, so it is named and never counted.
+    # Counts are of the new draft's sections, so removed ones are counted
+    # apart; a regenerated References section is named, never counted.
     kinds = [c.kind for c in report.sections]
     in_new = [kind for kind in kinds if kind not in ("removed", "regenerated")]
     touched = sum(kind != "unchanged" for kind in in_new)
@@ -54,8 +49,8 @@ def _summary(report: ChangeReport) -> str:
         f"citekeys +{len(report.citekeys_added)} {_MINUS}{len(report.citekeys_dropped)}",
         _figures_summary(report.figures),
     )
-    # One part per line keeps every line inside markdownlint's 80 columns;
-    # the line breaks are soft, so it renders as one line.
+    # One part per line for markdownlint's 80 columns; soft breaks render
+    # as one line.
     return (_SEPARATOR.rstrip() + "\n").join(parts)
 
 
@@ -107,15 +102,13 @@ def _figures(report: ChangeReport) -> list[str]:
 
 
 def to_markdown(report: ChangeReport) -> str:
-    """The report as one Markdown document, ending in a single newline."""
     blocks = [[f"# {header(report)}"]]
     if not report.has_changes:
         blocks.append(["No changes."])
     else:
         blocks.append([_summary(report)])
         if report.hand_edits:
-            # What is measured, not why: an agenda pass never stamps, so
-            # after one this is the pass's own repairs, not a hand edit.
+            # What is measured, not why: an agenda pass never stamps.
             blocks.append(["The draft differs from its last dossier stamp."])
         for title, body in (
             ("Revision log", _revision_log(report)),

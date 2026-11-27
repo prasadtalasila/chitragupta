@@ -1,36 +1,13 @@
 """The generation unit: one section's contract, and the record of its
 acceptance.
 
-`python -m chitragupta.draft unit contract|accept|status` over a book whose
-outline `chitragupta/spec/` already holds. The unit of generation is fixed at the
-**section**, not the chapter (#137): small enough that the spec slice,
-the grounding sources and the genre instructions fit in a context budget
-with room to spare, which is what makes a unit independently
-regenerable -- and independent regeneration is what makes "regenerate one
-section fifty times while 200 pages sit untouched" cheap.
-
-**The contract is explicit and hashed.** Inputs -- the spec slice and the
-sources retrieved for this unit -- go in; a draft and its citations come
-out. The registry excerpts a unit is also generated with
-(`python -m chitragupta.draft registry excerpt`) deliberately stay out of the
-digest; the comment on `registries` below says why. `input_digest`
-covers the inputs *only*: a digest that moved when the prose moved could
-never answer the question it exists for, which is "does this unit need
-regenerating?". That is the same incremental discipline `chitragupta/ledger.py`
-and the enrichment caches already follow, one level up.
-
-**Acceptance is recorded, not asserted.** `accept` writes
-`content/specs/<book>/units/<unit-id>.json` -- the input digest it was
-generated against, the sources, what it cites, and a digest of the prose
-itself. `status` re-derives all three, so it can tell "never written"
-from "written but nobody accepted it" from "accepted, and one of them has
-changed since".
-
-**`accept` invokes the one gate rather than adding a second.** A unit is
-acceptable only if `python -m chitragupta.draft gate` already passes on it; this
-module runs `citation_gate.run` and refuses to write a record when it
-does not. Nothing here judges a draft on its own authority, and nothing
-here blocks a write -- see docs/WRITE-A-BOOK.md.
+The unit is fixed at the **section**, not the chapter (#137), so each
+unit fits a context budget and is independently regenerable.
+`input_digest` covers the inputs *only* (spec slice and sources), so it
+answers "does this unit need regenerating?". `accept` records digests
+of inputs and prose so `status` can tell unwritten, unaccepted and
+changed-since apart. `accept` runs the one citation gate rather than
+adding a second; nothing here blocks a write (docs/WRITE-A-BOOK.md).
 """
 
 import json
@@ -39,9 +16,7 @@ from pathlib import Path
 from chitragupta import config, spec
 from chitragupta.spec._align import chapters, section_described
 
-# Where a book's acceptance records live, beside the outline they are
-# accepted against rather than in a fifth top-level directory under
-# content/: everything about one book stays in one place.
+# Records live beside the outline they are accepted against.
 UNITS_DIRNAME = "units"
 
 
@@ -52,9 +27,8 @@ class UnitError(Exception):
 def _parsed_spec(book: Path) -> tuple[str, dict]:
     """A book's outline text and its parse, refusing anything unusable.
 
-    An outline with problems is refused wholesale rather than worked
-    around: a contract built from a half-parsed spec would hash inputs
-    nobody approved.
+    Refused wholesale: a contract built from a half-parsed spec would
+    hash inputs nobody approved.
     """
     path = spec.spec_path(book)
     if not path.is_file():
@@ -71,15 +45,9 @@ def _parsed_spec(book: Path) -> tuple[str, dict]:
     return text, parsed
 
 
-# A unit id is one path component, and until issue 820 nothing enforced
-# that: an outline heading `{#../../../../victimdir/pwned}` had its
-# acceptance record written outside `content/` altogether. `spec.parse`
-# now refuses such an id, and this refuses the *join* as well, so a
-# future id source -- a machine-written outline, an id typed at the CLI
-# -- cannot reintroduce the hole one layer up. Two roots are asked of a
-# record rather than one: `units/` is what a `..` escapes, and the spec
-# directory is what a `units/` symlinked out of the tree escapes, that
-# second one resolving inside itself and so answering for nothing.
+# A unit id must stay one path component (#820): `..` ids once wrote
+# records outside content/. Two roots are checked: `units/` catches `..`,
+# the spec directory catches a `units/` symlinked out of the tree.
 def _inside(path: Path, *roots: Path) -> Path:
     """`path`, once it is certain it lands under every one of `roots`."""
     if all(config.resolves_inside(path, root) for root in roots):
@@ -91,13 +59,10 @@ def _inside(path: Path, *roots: Path) -> Path:
 
 
 def draft_path(book: Path, unit_id: str) -> Path:
-    """Where unit `unit_id`'s prose lives.
+    """Where unit `unit_id`'s prose lives: `.md`, or `.tex` if that exists.
 
-    `<unit-id>.md` under the book's own directory, unless a `.tex` is
-    there instead -- the two suffixes the genre skills emit, checked in
-    the order `dossier.find_draft` already checks them. The `.md` name is
-    returned when neither exists, so a caller can say where the prose it
-    is missing should go.
+    Checked in `dossier.find_draft`'s order; the `.md` name is returned
+    when neither exists, so a caller can say where the prose should go.
     """
     for suffix in (".md", ".tex"):
         candidate = _inside(Path(book) / f"{unit_id}{suffix}", Path(book))
@@ -107,7 +72,6 @@ def draft_path(book: Path, unit_id: str) -> Path:
 
 
 def record_path(book: Path, unit_id: str) -> Path:
-    """Where `accept` records that this unit was accepted."""
     units = spec.spec_dir(book) / UNITS_DIRNAME
     return _inside(units / f"{unit_id}.json", units, spec.spec_dir(book))
 
@@ -115,31 +79,13 @@ def record_path(book: Path, unit_id: str) -> Path:
 def acceptance_units(book: Path) -> list[dict]:
     """What `accept` records, in outline order.
 
-    Not the same as `sections()`, and the difference is the point.
-    `spec.md` declares **structure** -- headings a human approves before
-    any prose exists, and what `spec align` checks a draft against.
-    Acceptance records an **artifact**: a file the citation gate can run
-    on, whose whole text is hashed into `output_digest` and whose citekeys
-    are extracted. A heading has no independent existence on disk.
-
-    Before #472 the two coincided, because a book was one file per
-    section. A chapter is now one authored document with its sections as
-    headings inside it, so a chapter the outline describes at section
-    level **is** the unit. A chapter described only at chapter level
-    declares no structure of its own, so its single section stays the
-    unit -- that is every book retrofitted from prose written before this
-    track, where the section id is the filename. A chapter with no
-    sections at all is its own unit: a preface declares none, and before
-    #1137 it was silently no unit, so it could never be accepted.
-
-    The asymmetry is load-bearing. Alignment only has content while the
-    outline is finer than the file: collapse them and "did you write what
-    you said you would?" has no possible answer.
-
-    Nothing to do with `chitragupta/review/_units.py`, which owns a third
-    sense of the word -- the scale the multi-source rule binds at, which
-    is genre-dependent (paragraph for a thesis chapter, section for a
-    textbook one). That one is about evidence, this one about artifacts.
+    Not `sections()`: the outline declares **structure**, acceptance
+    records an **artifact** (a file the gate runs on and that is hashed).
+    Since #472 a chapter described at section level is the unit; one
+    described only at chapter level keeps its single section as the
+    unit; a chapter with no sections is its own unit (#1137). Alignment
+    only has content while the outline is finer than the file.
+    Unrelated to `chitragupta/review/_units.py`'s evidence-scale sense.
     """
     _, parsed = _parsed_spec(book)
     found: list[dict] = []
@@ -154,7 +100,6 @@ def acceptance_units(book: Path) -> list[dict]:
 
 
 def contract(book: Path, unit_id: str, sources: list[str]) -> dict:
-    """The inputs one unit is generated from, and what it must produce."""
     text, _ = _parsed_spec(book)
     units = acceptance_units(book)
     found = next((entry for entry in units if entry["id"] == unit_id), None)
@@ -170,22 +115,13 @@ def contract(book: Path, unit_id: str, sources: list[str]) -> dict:
         "ancestors": found["ancestors"],
         "ancestor_titles": found["ancestor_titles"],
         "brief": found["brief"],
-        # Sorted and de-duplicated here rather than at every call site, so
-        # the digest below answers for the *set* of sources a unit was
-        # grounded in and not for the order somebody happened to list them.
+        # Sorted and de-duplicated so the digest answers for the *set*.
         "sources": sorted(set(sources)),
-        # Registry excerpts are supplied at generation time by
-        # `python -m chitragupta.draft registry excerpt`, and deliberately do not
-        # arrive here: a registry grows with every acceptance, so hashing
-        # it into this digest would mark every later unit stale each time
-        # an earlier one was accepted -- destroying the cheap-regeneration
-        # property this contract exists for. It stays in the digest's
-        # shape (empty, labelled) so a caller that does want to pin an
-        # excerpt has somewhere to put it. docs/WRITE-A-BOOK.md has the argument.
+        # Registry excerpts deliberately stay out: a registry grows with
+        # every acceptance, so hashing it would mark every later unit
+        # stale. The empty labelled slot remains (docs/WRITE-A-BOOK.md).
         "registries": [],
-        # POSIX spelling, not the host's: this string is hashed into a
-        # record that has to read the same on the Windows CI leg as on
-        # Linux.
+        # POSIX spelling: the hash must match on the Windows CI leg.
         "draft": draft_path(book, unit_id).as_posix(),
         "signed_off": _signed_off(book, text, found),
     }
@@ -194,16 +130,10 @@ def contract(book: Path, unit_id: str, sources: list[str]) -> dict:
 def _signed_off(book: Path, text: str, found: dict) -> bool:
     """Whether the outline this unit is generated from is approved.
 
-    Asked of the unit's own **chapter**, not of the book. A whole-book
-    answer meant that revising one chapter's brief flipped this False for
-    every unit in every chapter, so `unit accept` refused across a
-    fifteen-chapter book while one chapter sat half-revised (#465). A
-    chapter nobody edited has not moved, and its units stay acceptable.
-
-    Falls back to the whole-book digest when `signoff.md` carries no
-    chapter lines -- every book signed before they existed. That is the
-    old behaviour exactly, which is the point: those books keep working
-    and nothing re-approves them on their author's behalf.
+    Asked of the unit's **chapter**, not the book, so revising one
+    chapter's brief does not block every other chapter (#465). Falls
+    back to the whole-book digest when `signoff.md` has no chapter lines,
+    so older books keep working without re-approval.
     """
     approved = spec.signed_off_chapters(book, text)
     if approved is None:
@@ -214,32 +144,22 @@ def _signed_off(book: Path, text: str, found: dict) -> bool:
 def chapter_of(found: dict) -> str:
     """The chapter whose approval covers this unit.
 
-    Resolved from the unit's own kind, and public because more than one
-    caller needs it: reading "the last ancestor" is right for a section
-    and wrong for a chapter, whose last ancestor is its **part**. A part
-    is never a key in the approved set nor an id `spec align` reports, so
-    getting this wrong fails open in one place and closed in another.
-
-    Works on a contract as well as on a parsed outline entry -- `contract`
-    carries `kind` for exactly this reason.
+    A chapter's last ancestor is its **part**, which is never in the
+    approved set, so "last ancestor" would fail open in one place and
+    closed in another. Works on a contract too (hence its `kind`).
     """
     if found["kind"] != "chapter":
         return found["ancestors"][-1]
-    # A parsed outline entry keys its id `id`; a contract keys the same
-    # value `unit`. Both are passed here, so neither spelling is assumed.
+    # An outline entry keys its id `id`; a contract keys it `unit`.
     return found.get("id") or found["unit"]
 
 
 def input_digest(built: dict) -> str:
     """A fingerprint of everything the unit is generated *from*.
 
-    Deliberately not the whole contract. `draft` is where the output
-    goes, and `signed_off` is a human's approval of the outline -- neither
-    is an input to the prose, and folding either in would make a unit look
-    stale for a reason that changes nothing about what should be written.
-
-    Each part is labelled rather than concatenated bare, so a source
-    citekey and a registry line cannot collide into the same text.
+    Excludes `draft` and `signed_off`: neither is an input to the prose,
+    so either would make a unit look stale for no reason. Parts are
+    labelled so a citekey and a registry line cannot collide.
     """
     parts = [
         f"unit: {built['unit']}",
@@ -258,9 +178,7 @@ def input_digest(built: dict) -> str:
 def record_text(built: dict, draft_text: str, citekeys: list[str]) -> str:
     """What `accept` writes.
 
-    No timestamp, the same rule `spec sign` and the review layer's reports
-    follow: accepting an unchanged unit twice produces byte-identical
-    files, so a diff of `content/specs/` is a diff of what was accepted.
+    No timestamp: accepting an unchanged unit twice is byte-identical.
     """
     payload = {
         "unit": built["unit"],
@@ -276,8 +194,7 @@ def record_text(built: dict, draft_text: str, citekeys: list[str]) -> str:
 def _record(book: Path, unit_id: str) -> dict | None:
     """The acceptance record for a unit, or None if there is no readable one.
 
-    Unreadable and absent are the same answer on purpose: a half-written
-    or hand-edited record is not evidence that anybody accepted anything.
+    A half-written or hand-edited record is not evidence of acceptance.
     """
     path = record_path(book, unit_id)
     if not path.is_file():
@@ -291,10 +208,8 @@ def _record(book: Path, unit_id: str) -> dict | None:
 def state(book: Path, unit_id: str) -> str:
     """Where one unit stands: what `status` prints and a harness branches on.
 
-    The recorded sources are re-used to rebuild the contract, so
-    "stale: inputs changed" means the *outline* moved. Changing which
-    sources a unit is grounded in is done by accepting it again with the
-    new ones, which is a decision rather than a drift.
+    Rebuilt with the recorded sources, so "stale: inputs changed" means
+    the *outline* moved; changing sources is a re-accept, not drift.
     """
     path = draft_path(book, unit_id)
     if not path.is_file():
@@ -312,41 +227,27 @@ def state(book: Path, unit_id: str) -> str:
 
 
 def outline(book: Path) -> list[dict]:
-    """Every entry in a book's outline -- parts and chapters included.
+    """Every entry in a book's outline, parts and chapters included.
 
-    `sections` is the generation unit and is what most callers want. This
-    is for the one question that is about the whole outline rather than
-    about what is generated: which ids exist at all, which is what a
-    cross-reference to a chapter resolves against (#138).
+    For which ids exist at all, what a cross-reference resolves
+    against (#138).
     """
     _, parsed = _parsed_spec(book)
     return parsed["units"]
 
 
-# **Kept deliberately with no production caller** (#515). Nothing in
-# `chitragupta/` calls this today -- `acceptance_units` is what the `unit`
-# verbs need -- and it was reported as removable surface. It stays because
-# it is not surface for its own sake: `acceptance_units` and `outline`
-# both explain themselves *by contrast with this one* ("not the same as
-# `sections()`", "`sections` is the generation unit and is what most
-# callers want"), and test_acceptance_unit.py's
-# `test_the_structural_units_are_unchanged_by_any_of_this` is a real #472
-# regression pin -- widening acceptance to whole chapters must not have
-# moved what the outline *declares*. Inlining the filter there would keep
-# the assertion and lose the name that makes it mean something.
+# Kept with no production caller (#515): `acceptance_units` and `outline`
+# are defined by contrast with it, and a #472 regression test pins it.
 def sections(book: Path) -> list[dict]:
     """Every `####` section the outline declares, in outline order.
 
-    The **structural** units: what a human approved and what `spec align`
-    checks a draft against. `acceptance_units` answers the different
-    question of what `accept` records.
+    The **structural** units: what a human approved and `spec align`
+    checks against.
     """
     return [entry for entry in outline(book) if entry["kind"] == "section"]
 
 
-# Re-exported so `from chitragupta import unit` reaches the entry point
-# `chitragupta/draft.py` dispatches to, exactly as `chitragupta/spec/` and `chitragupta/dossier/`
-# do. Position is load-bearing for the same reason: `_cli` imports the
-# names above from this module.
+# Re-exported as `spec/` and `dossier/` do; placed last because `_cli`
+# imports the names above from this module.
 # pylint: disable=wrong-import-position
 from chitragupta.unit._cli import main

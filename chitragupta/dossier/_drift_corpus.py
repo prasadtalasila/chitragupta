@@ -1,30 +1,21 @@
 """The ledger snapshot one drift sweep shares: rows, collection names and
-a throwaway BM25 index (`Corpus`), split from `_drift` once resolving
-recorded collections (plans/1211-cg-collections-and-renames.md) took it
-over this project's 250-code-line cap. `_drift` computes a report from
-it; this module only answers what the corpus holds and what a recorded
-query would surface.
+a throwaway BM25 index (`Corpus`). `_drift` computes the report from it.
 """
 
 import sqlite3
 
 from chitragupta import bib_collections, ledger, ledger_tables
 
-# How deep to look down each recorded query's ranking. 15 matches
-# `survey-writer`'s own `search(sub_theme, k=15)`: the report should
-# surface a new paper if and only if the draft's original search would
-# have put it in front of the writer, and a different number here would
-# quietly mean something else by "would have been considered".
+# Matches `survey-writer`'s `search(sub_theme, k=15)`, so a paper is
+# surfaced iff the draft's original search would have shown it.
 CANDIDATE_K = 15
 
 
 class Corpus:
     """The ledger read once, plus the throwaway index built from it.
 
-    Held as one object so that a sweep over every dossier pays for the
-    table read and the tokenization once between them all, rather than
-    once each. The index is built on first use, so a sweep over dossiers
-    that logged no queries never builds one at all.
+    One object so a sweep pays for the read once; the index is built
+    lazily, so a sweep with no logged queries never builds it.
     """
 
     def __init__(self, rows: list[sqlite3.Row]) -> None:
@@ -88,14 +79,10 @@ class Corpus:
         """The queries with each recorded collection as a slug path, and
         the recorded collections that no longer name one.
 
-        A query whose collection does not resolve -- a `groups` path
-        recorded before 7.0.0, or a display path a rename has moved -- is
-        dropped from the candidate search and reported instead: filtering
-        on it would leave nothing to find, and an empty candidate list
-        reads as "no drift". `fallback` is the collection `scope.md` records
-        now: `retrieval.md` is an append-only log, so once a draft's scope
-        is re-chosen, a logged value that no longer resolves runs against
-        the scope instead of being reported.
+        An unresolvable collection (pre-7.0.0 `groups` path, or renamed)
+        is reported, not filtered on, since an empty result reads as "no
+        drift". `fallback` is `scope.md`'s current collection: the log is
+        append-only, so after a re-scope the scope is used instead.
         """
         paths = [path for paths in self.collections.values() for path in paths]
         resolved, unresolved = [], []
@@ -117,21 +104,10 @@ class Corpus:
     def matches(self, queries: list[tuple[str, str]], k: int = CANDIDATE_K) -> dict[str, list[str]]:
         """citekey -> the recorded queries whose top-k it would land in.
 
-        Each query carries the collection its call actually ran against
-        (`recorded_queries_with_collection`, #254) -- empty for a
-        corpus-wide call. A non-empty collection filters the ranking to
-        that shelf *before* taking the top-k, the same order
-        `chitragupta.retrieval.search()` filters in: a shelf's top-k is not
-        necessarily a prefix of the whole corpus's, so filtering after
-        would report the wrong k candidates for a scoped query.
-
-        The filter itself is a second `bib_collections.matches()` call
-        site rather than a shared helper with `search()`'s: `search()`
-        looks a row's collections up from the ledger rows it already
-        loaded for scoring, while this class precomputes `self.collections`
-        once per sweep (`__init__`, beside `self.titles`) so a multi-dossier
-        `status --all` pays for the lookup once rather than once per
-        dossier -- two different data shapes behind the same one-line call.
+        A scoped query (#254) is filtered *before* taking top-k, as
+        `retrieval.search()` does; filtering after reports the wrong k.
+        Collections are precomputed per sweep, hence not shared with
+        `search()`.
         """
         from chitragupta import retrieval
 
@@ -147,8 +123,7 @@ class Corpus:
                     for citekey, score in scores.items()
                     if bib_collections.matches(self.collections.get(citekey, ()), collection)
                 }
-            # Ties broken by citekey so that two runs over an unchanged
-            # corpus report the same candidates in the same order.
+            # Ties broken by citekey so reruns report the same order.
             ranked = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))[:k]
             for citekey, _score in ranked:
                 hits.setdefault(citekey, []).append(query)

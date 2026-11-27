@@ -1,16 +1,10 @@
 """`python -m chitragupta.draft diff`: the change report, then the redline.
 
-The report is written to `content/review/<topic>/` before any PDF work
-starts, so a missing latexdiff or a redline that will not compile still
-leaves `<stem>.diff.md` and `<stem>.diff.json` behind. The review
-directory is computed with the rule `review/_paths.report_dir` uses,
-restated rather than imported: the drafting layer does not reach into
-the review layer.
-
-The output is a review copy (plans/1194-draft-diff.md, decision 14): it is
-never gated as a draft, never rendered as a deliverable, and never read
-back as a source. Each side of the redline is still gated by `render()`,
-unchanged.
+The report is written before any PDF work, so a failed redline still
+leaves `<stem>.diff.md` and `.diff.json`. The review directory rule is
+restated, not imported: the drafting layer does not reach into the
+review layer. Each redline side is still gated by `render()`
+(plans/1194-draft-diff.md, decision 14).
 """
 
 import argparse
@@ -44,9 +38,8 @@ class _Refused(ValueError):
     """A diff this command will not make; str() is the whole message."""
 
 
-# Each said as one `[error]` line, the reaction a reviser already has to
-# every other drafting-layer refusal. A pandoc failure and a refused math
-# marker are render failures like `UngatedDraft`, raised by the same call.
+# Each said as one `[error]` line, like every drafting-layer refusal;
+# pandoc and math-marker failures are render failures like `UngatedDraft`.
 _FAILURES = (
     _Refused,
     VersionError,
@@ -110,8 +103,7 @@ def _baseline(draft: Path, ref: str | None) -> VersionView:
 
 def _key_status(draft: Path, old: VersionView, new: VersionView) -> Callable[[str], str]:
     """Each key's standing now, read from the ledger only if either side
-    cites one -- the gate's own test, so a citation-free draft diffs
-    before the first sync, as it renders."""
+    cites one, so a citation-free draft diffs before the first sync."""
     if not any(citation_gate.extract_citekeys_for(draft, v.text) for v in (old, new)):
         # Never consulted: neither side has a key to ask about.
         return lambda key: _STILL_CITABLE
@@ -122,8 +114,8 @@ def _key_status(draft: Path, old: VersionView, new: VersionView) -> Callable[[st
 def _report(
     draft: Path, old: VersionView, new: VersionView
 ) -> "tuple[ChangeReport, Callable[[str], str]]":
-    """The change report, with its log entries and hand-edit flag, and
-    the key-status function it was built with."""
+    """The change report, its log entries, hand-edit flag and key-status
+    function."""
     status = _key_status(draft, old, new)
     report = compare(old, new, status)
     revisions = dossier_dir(draft) / REVISIONS_MD
@@ -140,8 +132,7 @@ def _write_report(report: ChangeReport, review_dir: Path, stem: str) -> None:
     (review_dir / f"{name}.md").write_text(to_markdown(report), encoding="utf-8")
     body = json.dumps(to_json(report), indent=2, ensure_ascii=False) + "\n"
     (review_dir / f"{name}.json").write_text(body, encoding="utf-8")
-    # A redline from an earlier run shows an older state than this
-    # report; it goes now, and only a redline built below replaces it.
+    # A redline from an earlier run is stale against this report.
     for suffix in (".pdf", ".tex"):
         (review_dir / f"{name}{suffix}").unlink(missing_ok=True)
 
@@ -152,17 +143,14 @@ def _redline_pdf(
     stem = draft.stem
     name = f"{stem}.diff"
     work = review_dir / name
-    # Exactly what the gate accepts, so the old side keeps every citation
-    # the gate would pass and loses every one it would refuse.
+    # Exactly the gate's test, so the old side loses only refused citations.
     old_src, new_src = prepare(
         report.old, report.new, work, lambda key: status(key) == _STILL_CITABLE, stem
     )
-    # The sides sit in the review directory, where no `math.md` mirrors,
-    # so both take the draft's own: figures are shown as they are now
-    # (plans/1194-draft-diff.md, decision 12), and so is the mathematics.
+    # No `math.md` mirrors into the review directory, so both sides take
+    # the draft's own; figures show as they are now (decision 12).
     mapping = math_mapping_path(draft)
-    # And the draft's preamble file, which a `.tex` preview loads from
-    # beside its draft (#1164): each side gets a copy named for itself.
+    # And the draft's preamble, which a `.tex` preview loads beside it (#1164).
     preamble = preamble_file(draft)
     for src in (old_src, new_src) if preamble else ():
         shutil.copyfile(preamble, src.with_name(f"{src.stem}.preamble.tex"))
@@ -202,8 +190,7 @@ def _diff(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     """Exit 0 when the report is written (including "No changes."), 1 on
-    any refusal or failed redline, each as one `[error]` line; argparse's
-    2 for a malformed invocation."""
+    any refusal or failed redline; argparse's 2 for a bad invocation."""
     args = _build_parser().parse_args(argv)
     try:
         return _diff(args)

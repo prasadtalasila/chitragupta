@@ -1,16 +1,10 @@
 """Path identity, the corpus fingerprint, and the constants every other
-submodule in this package needs -- the shared plumbing, not a layer of
-its own.
+submodule in this package needs -- the shared plumbing, not a layer.
 
-Split out of what was one 1770-line chitragupta/dossier.py (#219): every other
-submodule in this package imports from here, and this one imports
-nothing from any of them, which is what keeps the package a DAG rather
-than a tangle. `_ROW_SPLIT` and `_SECTIONS_TEMPLATE` live here rather
-than with the modules that look like their obvious home (status,
-create) because both are genuinely shared across three or more
-submodules -- moving either into one specific module would have made
-the others reach into a private (`_`-prefixed) name across a file
-boundary, which is worse than the mild surprise of finding them here.
+Every submodule imports from here and this imports none of them, which
+keeps the package a DAG (#219). Shared constants such as `_ROW_SPLIT`
+and `_SECTIONS_TEMPLATE` live here so no module reaches into another's
+private name.
 """
 
 import argparse
@@ -22,25 +16,15 @@ from pathlib import Path
 from chitragupta import config, ledger
 from chitragupta.ledger_citable import PARSED
 
-# One constant per dossier filename, because each recurs across this
-# module -- as FILES keys, template keys, path joins and report lookups
-# -- and a filename spelled at every use site is a rename that misses
-# one. All seven are named, not only the ones repeated often enough for
-# a duplicated-literal check to notice: a dict keyed by five constants
-# and two bare strings would read as if the two were different in kind.
+# One constant per dossier filename: a filename spelled at every use
+# site is a rename that misses one.
 SCOPE_MD = "scope.md"
 
 
 # The genres `dossier init --genre` names, one per genre skill. Not
-# validated against -- `init` takes the value it is given, because a
-# refusal here would block a draft over a label -- but named, so that
-# `review/_units.py`'s genre-to-unit table can be checked against the
-# same list instead of restating it. A genre added without a unit would
-# otherwise be measured at the fallback in silence. `digest` (#991) is
-# the sixth: a verbatim digest, private study text in the sources' own
-# words, with its own review aid rather than a place on the agenda.
-# `research-paper` is the seventh: the author's own software and results,
-# with the literature as the other half of its evidence.
+# validated (a refusal would block a draft over a label), but named so
+# `review/_units.py`'s genre-to-unit table can be checked against it;
+# otherwise a new genre is silently measured at the fallback.
 GENRES = (
     "survey",
     "thesis-chapter",
@@ -70,35 +54,23 @@ REVISIONS_MD = "revisions.md"
 RETRIEVAL_MD = "retrieval.md"
 
 
-# `retrieval.md`'s `mode` is always "search" or "evidence" -- the two
-# `python -m chitragupta.draft retrieve` subcommands -- except for this one
-# marker, which can't collide with a real logged call. Shared between
-# `_retrieval.py` (writes it, in `mark_revision`) and
-# `_retrieval_queries.py` (reads it, to skip a boundary row rather than
-# count it as a query), split apart in #467 once #455's origin column
-# pushed `_retrieval.py` back over C2 -- living here instead of in either
-# one keeps the other from reaching across a private (`_`-prefixed) name.
+# A `retrieval.md` `mode` that can't collide with a real logged call
+# ("search"/"evidence"). Lives here so neither `_retrieval.py` (writer)
+# nor `_retrieval_queries.py` (reader) reaches across a private name.
 _REVISION_MARKER_MODE = "revision"
 
 
-# `outline.md` (#455): the human's own per-section brief/claim/declared
-# queries, opt-in via `dossier init --outline` rather than one of the
-# seven `init` always writes -- most dossiers don't have one, and `FILES`
-# below is what `status` iterates to report what a dossier holds, which a
-# usually-absent file would misreport as a gap in every dossier that
-# never asked for one. See `_outline.py`.
+# `outline.md` (#455), opt-in via `dossier init --outline`. Outside
+# `FILES`, or `status` would report it as a gap in every dossier.
 OUTLINE_MD = "outline.md"
 
-# `paper.md`: a research paper's paper-level inputs -- the software, the
-# venue, the message, the contributions -- which `outline.md`'s
-# per-section grammar has no room for. Written only for that genre, and
-# outside `FILES` for the reason `OUTLINE_MD` above gives. See `_paper.py`.
+# `paper.md`: a research paper's paper-level inputs. Written only for
+# that genre; outside `FILES` for the reason above. See `_paper.py`.
 PAPER_MD = "paper.md"
 
 
-# The files a dossier holds, in the order `init` writes them and `status`
-# reports them. The value is how `status` counts entries in that file --
-# see `_count`, and the "counts are advisory" note there.
+# The files `init` writes, in `status` order; the value is how `status`
+# counts entries (advisory; see `_count`).
 FILES: dict[str, str] = {
     SCOPE_MD: "prose",
     EVIDENCE_MD: "blocks",
@@ -117,18 +89,10 @@ class DossierError(Exception):
 def dossier_dir(draft: Path) -> Path:
     """Where `draft`'s dossier lives.
 
-    Raises rather than guessing if the draft isn't under
-    `content/drafts/`: the mirroring rule is the only thing tying the two
-    together, and a dossier written somewhere unmirrored would be found
-    by nothing later. That refusal is this module's policy;
-    `config.mirrored_dir` holds only the shared rule, and answers `None`
-    so each caller can decide.
-
-    One shape difference from the other three consumers of that rule: a
-    dossier is a *directory per draft*, not per topic, so the draft's own
-    name is appended. `content/drafts/dt/survey.md` gets
-    `content/dossiers/dt/survey/`, which is what lets two drafts in one
-    topic directory keep separate dossiers.
+    Raises rather than guessing for a draft outside `content/drafts/`:
+    an unmirrored dossier would be found by nothing later. One directory
+    per *draft* (name appended), so two drafts in a topic keep separate
+    dossiers.
     """
     mirrored = config.mirrored_dir(draft, config.DRAFTS_DIR, config.DOSSIERS_DIR)
     if mirrored is None:
@@ -138,14 +102,9 @@ def dossier_dir(draft: Path) -> Path:
             "save it."
         )
     target = mirrored / Path(draft).stem
-    # The draft's own path can't get out -- `mirrored_dir` resolves both
-    # sides before subtracting them, so no argument carries a `..` or a
-    # symlink's spelling past it. What can is the target side: a topic
-    # directory under content/dossiers/ that is itself a symlink out of
-    # the tree. `render_output._output_dir` and
-    # `citation_provenance.write_report` both check their own mirrored
-    # result for exactly this; this is the third consumer of that rule and
-    # was the one that didn't.
+    # `mirrored_dir` keeps the draft side in; the target side can still
+    # escape via a symlinked topic directory, which is checked here as
+    # `render_output` and `citation_provenance` check theirs.
     if not config.resolves_inside(target, config.DOSSIERS_DIR):
         raise DossierError(
             f"{target} resolves to {target.resolve()}, outside "
@@ -172,9 +131,8 @@ def draft_name(draft: Path) -> str:
 def find_draft(dossier: Path) -> Path | None:
     """The draft a dossier belongs to, if it is still on disk.
 
-    The inverse of `dossier_dir`, except that the suffix was dropped on
-    the way in -- so this looks for any suffix a genre skill emits
-    (`.md` from four of them, `.tex` from thesis-chapter-writer).
+    Tries every suffix a genre skill emits (`.md`, or `.tex` from
+    thesis-chapter-writer).
     """
     try:
         relative = dossier.resolve().relative_to(config.DOSSIERS_DIR.resolve())
@@ -198,47 +156,15 @@ def all_dossiers() -> list[Path]:
 def _corpus_rows() -> list[sqlite3.Row] | None:
     """Every parsed ledger item, or None if there is no readable ledger.
 
-    Parsed only (#1118): a row whose PDF never parsed is not citable, so
-    it is no part of the corpus a draft is measured against. A cited key
-    whose row stops being parsed is therefore reported missing, exactly as
-    one that left the `.bib` is.
+    Parsed only (#1118): an unparsed row is not citable. Opened with
+    `ledger.read_connection`: an inspection must not lock or migrate.
 
-    Opened through `ledger.read_connection`, for the same reason
-    `chitragupta.ledger`'s own CLI is: this is an inspection, and it must
-    not take a write lock or run a migration, which
-    `chitragupta.ledger.connect()` would do. A ledger that needs a sync to
-    migrate it is `None` here too: "no readable ledger" is exactly what
-    it is until that sync runs.
-
-    The `timeout` is sqlite's own default rather than 0, matching that
-    CLI, and here the reason is sharper than "the command dies" (issue
-    #552, m-72's other half). The ledger has no `journal_mode = WAL`, so
-    under the default rollback journal a reader is locked out for the
-    length of a writer's commit; `timeout=0` turned that short, certain
-    window into an immediate `SQLITE_BUSY`, which the `except` below
-    swallowed into `None` -- and every caller reads `None` as "there is
-    no readable ledger on this machine". So a `dossier status` that
-    happened to overlap a commit reported a drift scan against no corpus
-    at all, indistinguishable from a machine that has none. A loud
-    failure would have been better than that; waiting is better than
-    both, and takes no lock while it waits.
-
-    That is also why `None` is *still* the answer for a busy ledger
-    rather than a third state: with a timeout the case needs a commit
-    longer than five seconds to happen at all, and inventing a
-    "temporarily unavailable" return for every caller to learn would cost
-    more than the residue is worth. The residue is bounded and honest --
-    `Drift.corpus_available` reports "no corpus", which is unspecific
-    rather than wrong.
-
-    Five columns rather than one because the drift scan needs the same
-    fields `chitragupta.retrieval` indexes on plus the one `bib_collections`
-    reads: `title` and `parsed_path` are what a BM25 entry is built from,
-    `status` is what `retrieval._full_text` requires alongside `parsed_path`
-    to keep a superseded parse from being served as current (#490), `title`
-    is also what makes a reported candidate legible without a second
-    lookup, and `collections` is what lets a scoped query's candidates be
-    filtered to the shelf it actually ran against (#254).
+    `timeout` is sqlite's default, not 0 (#552): with no WAL, `timeout=0`
+    made a reader overlapping a commit fail, which read as "no ledger"
+    and ran drift against no corpus. A busy ledger past the timeout still
+    returns None rather than adding a third state for every caller.
+    `status` and `parsed_path` keep a superseded parse out (#490);
+    `collections` filters scoped candidates (#254).
     """
     try:
         con = ledger.read_connection()
@@ -259,9 +185,7 @@ def _corpus_rows() -> list[sqlite3.Row] | None:
 def known_citekeys() -> set[str] | None:
     """Every parsed citekey in the ledger, or None if there is no readable one.
 
-    None (rather than an empty set) distinguishes "no corpus on this
-    machine" from "a corpus with nothing in it" -- `status` says
-    different things about those two.
+    None distinguishes "no corpus" from "an empty corpus" for `status`.
     """
     rows = _corpus_rows()
     return None if rows is None else {row["citekey"] for row in rows}
@@ -270,18 +194,15 @@ def known_citekeys() -> set[str] | None:
 def digest(citekeys: set[str]) -> str:
     """A short, order-independent fingerprint of a set of citekeys.
 
-    Twelve hex characters, which is plenty to answer the only question
-    asked of it -- "is this the same corpus the draft was written
-    against?" -- and short enough to sit on one line of `scope.md`
-    without looking like something a reader has to parse.
+    Twelve hex characters: enough to tell corpora apart, short enough
+    for one line of `scope.md`.
     """
     joined = "\n".join(sorted(citekeys))
     return hashlib.sha256(joined.encode("utf-8")).hexdigest()[:12]
 
 
-# `- corpus: 501 citekeys, digest `a1b2c3d4e5f6`` in scope.md. Written by
-# `init`, read by `status`, and safe to be absent -- a hand-written
-# dossier that never recorded one just loses the drift check.
+# The corpus line in scope.md, written by `init` and read by `status`.
+# Absent in a hand-written dossier, which just loses the drift check.
 _CORPUS_LINE = re.compile(
     r"^-\s*corpus:\s*(\d+)\s+citekeys?,\s*digest\s*`?([0-9a-f]+)`?", re.MULTILINE
 )
@@ -309,7 +230,6 @@ _SECTIONS_TEMPLATE = """# Sections and their citekeys
 
 
 def draft_relpath(draft: Path) -> str:
-    """`draft` relative to the repo root where possible, for display."""
     try:
         return Path(draft).resolve().relative_to(config.PROJECT_ROOT).as_posix()
     except ValueError:
@@ -320,7 +240,6 @@ _ROW_SPLIT = re.compile(r"(?<!\\)\|")
 
 
 def _resolve_dossier(draft_or_dossier: Path) -> Path:
-    """A dossier directory, given either it or the draft it belongs to."""
     path = Path(draft_or_dossier)
     return path if path.is_dir() else dossier_dir(path)
 
@@ -347,23 +266,10 @@ def _cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
-# Re-exported so `from chitragupta import dossier` keeps reaching these by the
-# same name it always has, from every file outside this package that
-# used to reach a flat chitragupta/dossier.py this way. Found by an AST scan for
-# every `dossier.<attr>` across chitragupta/, scripts/, tests/ and bench/ (a text
-# grep missed multi-line `from chitragupta import (...)` blocks, e.g.
-# chitragupta/overlap_embed.py's) -- this list is exactly that scan's result, not
-# everything this package could plausibly export. Every other name is
-# reached by importing the submodule that owns it, same as chitragupta/review/'s
-# submodules already do.
-#
-# Position is load-bearing, not style: each of these submodules itself
-# does `from chitragupta.dossier import <core name>` to reach what's above this
-# line, so importing any of them before this module has finished
-# defining its own core names would fail with an ImportError on a name
-# that doesn't exist yet. pylint's wrong-import-position (C0413) is
-# right that this is unusual and wrong to do without a reason -- here is
-# the reason.
+# Re-exported so `from chitragupta import dossier` keeps reaching these
+# names (#219); the list is an AST scan's result, not everything
+# exportable. Position is load-bearing: each submodule imports the core
+# names above from this module, so importing them earlier would fail.
 # pylint: disable=wrong-import-position
 from chitragupta.dossier._archive import export, restore
 from chitragupta.dossier._citekeys import citekeys_by_section

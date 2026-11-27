@@ -1,35 +1,15 @@
 """A draft's `## Glossary` in `scope.md`: its entries, and the bullets
 that are not in the shape.
 
-Split out of chitragupta/dossier/_citekeys.py (#1138), which was at its
-C2 line limit. Three readers share this one parser rather than each
-keeping a regex: chitragupta/dossier/_acronyms.py and
-chitragupta/style_acronym_drift.py through `glossary_terms()`, and the
-book's terminology registry, glossary and list of symbols
-(chitragupta/registry/) through `glossary_entries()` and
-`glossary_problems()`.
-
-The shape, which `dossier init`'s template shows by example:
-
-    - **Term** -- definition
-
-A symbol is not written here since #1143: it lives in `math.md`'s
-`## Symbols`, as `| `M_0` | **Baseline** |`. The three spellings #1141
-read are still *recognised*, so each is a problem naming the row to
-write instead: ``- **Baseline** (`M_0`) -- ...``, the symbol inside the
-bold ``- **Baseline (`M_0`)** -- ...``, and a bullet that is only a
-symbol, ``- **`x_k`** -- ...``. A bullet is `-`, `*` or `+` at the
-margin; its definition is the rest of that line and every following line
-indented by at least one space, and it ends at a blank line or a line at
-the margin. So an off-format bullet is never read as part of the
-definition above it, which the earlier match-to-the-next-match reading
-did.
-
-**What `glossary_problems()` cannot see**, stated rather than implied: a
-qualifier inside a well-formed bold term ("**Digital twin (DT), working
-definition for Part I** -- ...") and a well-formed definition that reads
-"as before". Both are text, and the person reading the generated page is
-what catches them.
+The one parser shared by the acronym checks (`glossary_terms()`) and
+the book registries (`glossary_entries()`, `glossary_problems()`). The
+shape is `- **Term** -- definition`. Symbols moved to `math.md`'s
+`## Symbols` (#1143); the old spellings are still recognised so each
+problem names the row to write instead. A definition continues on
+indented lines and ends at a blank or margin line, so an off-format
+bullet is never read into the definition above it. Not detectable: a
+qualifier inside a well-formed bold term, or a definition reading "as
+before".
 """
 
 import re
@@ -41,25 +21,20 @@ from chitragupta.dossier import SCOPE_MD, dossier_dir
 from chitragupta.dossier._draft_fingerprint import _DRAFT_DIGEST_LINE
 from chitragupta.render_output._math_symbols import glossary_section
 
-# Every bullet the pre-#1138 pattern matched still matches: the symbol
-# group is optional and sits between the bold and the ` -- `. Kept after
-# #1143 retired the slot, so the slot can be reported with its
-# replacement row, and so chitragupta/registry/__init__.py's `_prose()`,
-# which uses it line by line, still drops every definition bullet.
+# The symbol group stays optional after #1143 so a retired slot can be
+# reported with its replacement, and so registry's `_prose()` still drops
+# every definition bullet.
 _GLOSSARY_TERM = re.compile(
     r"^-\s*\*\*(?P<term>[^*]+)\*\*(?:\s*\(`(?P<symbol>[^`]+)`\))?\s*--\s*", re.MULTILINE
 )
 
-# A bold term ending in a backticked parenthetical: the other retired
-# spelling of a symbol, `**Baseline (`M_0`)**`.
+# The other retired symbol spelling: a backticked parenthetical in bold.
 _BOLD_SYMBOL = re.compile(r"^(?P<name>.*?)\s*\(`(?P<symbol>[^`]+)`\)$")
 
 _BULLET = re.compile(r"^[-*+]\s")
 
 # A bold phrase followed by a separator inside a definition: a second
-# term defined in the same bullet, which is what several terms written in
-# one bullet become once only the first separator is fixed. Bold that
-# defines nothing ("the chapter says **actual twin**, borrowed") passes.
+# term in the same bullet. Bold that defines nothing passes.
 _SECOND_TERM = re.compile(r"\*\*[^*]+\*\*(?:\s*\(`[^`]+`\))?\s*(?:--|:)")
 
 _SHAPE = "not in the `- **Term** -- definition` shape"
@@ -89,8 +64,8 @@ class Problem(NamedTuple):
 def _section(draft: Path) -> "tuple[int, str] | None":
     """`(line of the heading, body)` of `## Glossary`, or `None`.
 
-    The section reader is `render_output._math_symbols`', shared so the
-    glossary spans `render` counts as `math.md` uses are this section's.
+    Shares `render_output._math_symbols`' section reader, so `render`
+    counts the same spans.
     """
     scope = dossier_dir(draft) / SCOPE_MD
     if not scope.is_file():
@@ -99,21 +74,18 @@ def _section(draft: Path) -> "tuple[int, str] | None":
 
 
 def has_glossary(draft: Path) -> bool:
-    """Whether `draft`'s `scope.md` has a `## Glossary` at all."""
     return _section(draft) is not None
 
 
 class _Bullet(NamedTuple):
     line: int
     text: str
-    # A non-blank line at the margin straight after the bullet: valid
-    # Markdown (lazy continuation), and a definition this parser would
-    # otherwise cut off at its first line without saying so.
+    # A lazy continuation at the margin: valid Markdown that would
+    # otherwise silently cut the definition at its first line.
     lazy: bool
 
 
 def _bullets(draft: Path) -> "list[_Bullet]":
-    """Every bullet at the margin, continuation lines included."""
     section = _section(draft)
     if section is None:
         return []
@@ -121,9 +93,8 @@ def _bullets(draft: Path) -> "list[_Bullet]":
     found: list[list] = []
     in_bullet = False
     for offset, line in enumerate(body.splitlines()):
-        # `dossier stamp` appends its digest line at the end of a scope.md
-        # that predates the field, which is inside `## Glossary`, the last
-        # section: metadata, not a term.
+        # `dossier stamp` may append its digest line inside `## Glossary`,
+        # the last section: metadata, not a term.
         if _DRAFT_DIGEST_LINE.match(line) or not line.strip():
             in_bullet = False
         elif _BULLET.match(line):
@@ -175,7 +146,6 @@ def _retired(parsed: _Parsed) -> str:
 
 
 def _reason(bullet: _Bullet) -> "str | None":
-    """Why `bullet` cannot be printed, or `None` if it can."""
     parsed = _parse(bullet.line, bullet.text)
     if bullet.text[:1] != "-":
         return "a glossary bullet starts with `-`"
@@ -198,7 +168,6 @@ def _reason(bullet: _Bullet) -> "str | None":
 
 
 def glossary_problems(draft: Path) -> "list[Problem]":
-    """Every bullet the book's glossary cannot print, with the reason."""
     problems = []
     for bullet in _bullets(draft):
         reason = _reason(bullet)
@@ -210,10 +179,8 @@ def glossary_problems(draft: Path) -> "list[Problem]":
 def glossary_terms(draft: Path) -> dict[str, str]:
     """Recorded `term -> definition` pairs from the draft's `## Glossary`.
 
-    `{}` if there's no dossier yet, no `## Glossary` heading, or no
-    bullet in the recognised shape. Raises `DossierError` for a draft
-    outside `content/drafts/`, as it always has. A term defined
-    twice keeps its last definition: the dict view the acronym checks
-    were written against. `glossary_entries()` keeps every one.
+    `{}` with no dossier, heading or well-shaped bullet; raises
+    `DossierError` outside `content/drafts/`. A term defined twice keeps
+    its last definition; `glossary_entries()` keeps every one.
     """
     return {entry.term: entry.definition for entry in glossary_entries(draft)}

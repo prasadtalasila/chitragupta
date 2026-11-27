@@ -1,14 +1,8 @@
 """Read a book's outline, and refuse one that does not parse.
 
-Split out of `_cli.py` so the feature modules that carry their own
-commands -- `_align.py`, `_seed.py` -- can reach it without importing the
-module that imports *them*. The alternative was a function-level import
-in each command to break the cycle; a six-line module both of them can
-depend on says the dependency plainly instead.
-
-The same shape `chitragupta/dossier/` already has, where `_outline.py`
-and `_sections.py` hold their own `_cmd_*` and share what they need
-through the package rather than through `_cli.py`.
+Its own module so `_align.py` and `_seed.py` can reach it without
+importing `_cli.py`, which imports them; a plain dependency instead of
+function-level imports to break the cycle.
 """
 
 import sys
@@ -18,7 +12,6 @@ from chitragupta.spec import SpecError, parse, spec_path
 
 
 def read_spec(book: Path) -> tuple[str, dict]:
-    """A book's spec text and its parse, refusing a book that has none."""
     path = spec_path(book)
     if not path.is_file():
         raise SpecError(
@@ -31,9 +24,7 @@ def read_spec(book: Path) -> tuple[str, dict]:
 def report_problems(parsed: dict, book: Path) -> int:
     """Print every parse problem and refuse.
 
-    Always returns 1, so a caller reads as `return report_problems(...)`.
-    Every problem rather than the first: someone fixing an outline wants
-    the whole list, not one round trip per missing id.
+    Always returns 1, so callers `return report_problems(...)`.
     """
     for problem in parsed["problems"]:
         print(f"[spec] {problem}", file=sys.stderr)

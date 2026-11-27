@@ -3,16 +3,9 @@
 optional declared `queries:` a genre skill runs verbatim instead of
 inventing sub-themes.
 
-This reads and validates only. It never calls retrieval and never
-writes `sections.md`/`evidence.md` -- that stays the deciding skill's
-job, the same layer boundary `retrieval_cli` (retrieves and logs) vs.
-the skill (decides what's kept) already holds everywhere else. See
-plans/outline-driven-drafting-and-manual-edits.md, "PR 2: an outline
-the human writes", "What this explicitly does not do".
-
-Deliberately a sibling to `scope.md`, not a second `spec.md`: `spec.md`
-is the book track's own human-authored outline, at book scale, with its
-own `spec sign` gate. This file never applies to a book unit.
+Reads and validates only: retrieval and writing stay the skill's job
+(plans/outline-driven-drafting-and-manual-edits.md). A sibling to
+`scope.md`, not a second `spec.md`; it never applies to a book unit.
 """
 
 import argparse
@@ -24,14 +17,9 @@ from pathlib import Path
 from chitragupta.dossier import OUTLINE_MD, _resolve_dossier, draft_relpath
 from chitragupta.dossier._retrieval import recorded_queries_with_evidence
 
-# Level 2 or deeper, because that is the contract `OutlineSection`'s own
-# docstring states ("one `##` heading") and the one docs/WRITE-A-BOOK.md tells a
-# book to write ("bare `##`"). Matching `#` too was #506/m-64: a file that
-# opened with its own `# Title` line got a section named after that title,
-# with no `brief:` and no `claim:` under it, which `--check` then reported
-# as a real outline problem. Unmatched, a leading `# Title` falls to
-# `dispatch`'s preamble branch and is passed over like any other line
-# before the first section -- which is what it is.
+# Level 2 or deeper, per `OutlineSection`'s contract: matching `#` gave a
+# leading `# Title` a bogus empty section (#506/m-64); it now falls to the
+# preamble branch.
 _HEADING = re.compile(r"^(#{2,6})\s+(.*)$")
 _BRIEF = re.compile(r"^brief:\s*(.*)$", re.IGNORECASE)
 _CLAIM = re.compile(r"^claim:\s*(.*)$", re.IGNORECASE)
@@ -43,9 +31,7 @@ _QUERY_ITEM = re.compile(r"^-\s+(.*)$")
 class OutlineSection:
     """One `##` heading's declared intent: steering (`brief`), content to
     ground (`claim`, zero or more), and the queries a skill runs verbatim
-    for this section. `brief` and `claim` combine -- each carries its own
-    explicit label, so there is no ambiguity left for the two to resolve
-    by being mutually exclusive."""
+    for this section. `brief` and `claim` combine."""
 
     heading: str
     brief: str = ""
@@ -66,14 +52,10 @@ class Outline:
 
 
 class _Parser:
-    """One pass over `outline.md`'s lines, tracked as a small state
-    machine so `parse` itself stays a dispatch loop -- see that
-    function's docstring for what the result means.
+    """One pass over `outline.md`'s lines as a small state machine.
 
-    `mode` is which label is currently accumulating prose: `"brief"`,
-    `"claim"`, `"queries"`, or `None` between labels. `buffer` holds that
-    label's lines until the next label, heading, or end of file flushes
-    it into `section`.
+    `mode` is the label accumulating prose (`"brief"`, `"claim"`,
+    `"queries"` or `None`); `buffer` holds its lines until flushed.
     """
 
     def __init__(self) -> None:
@@ -115,10 +97,7 @@ class _Parser:
         self.mode = "queries"
 
     def add_query_line(self, line: str) -> None:
-        # `line` is already `dispatch`'s rstripped copy, so a match's
-        # captured group can never be empty or whitespace-only -- any
-        # trailing whitespace after the bullet's text would already be
-        # gone, which is why there is no `if query:` guard here.
+        # `line` is already rstripped, so the group is never empty.
         item = _QUERY_ITEM.match(line)
         if item:
             self.section.queries.append(item.group(1))
@@ -158,12 +137,9 @@ class _Parser:
             self.add_line(raw_line, line)
 
     def consume_comment(self, line: str) -> bool:
-        """True if `line` was swallowed as part of an HTML comment --
-        possibly multi-line, since a human's own `<!-- notes -->` is not
-        obliged to fit on one line, and the templates this module ships
-        don't either. A heading-shaped or label-shaped line *inside* a
-        comment is not real structure, so it must never reach dispatch's
-        own matching below -- consumed here, before any of it runs."""
+        """True if `line` was swallowed as part of a (possibly multi-line)
+        HTML comment, so structure-shaped lines inside one never reach
+        dispatch."""
         if self.in_comment:
             if "-->" in line:
                 self.in_comment = False
@@ -187,11 +163,8 @@ def parse(text: str) -> Outline:
     """`outline.md`'s text into one `OutlineSection` per `##`-or-deeper
     heading, plus whatever's wrong with it.
 
-    Advisory about *shape*, not about content -- a heading with neither a
-    `brief:` nor a `claim:` block is reported (nothing else has anything
-    to write that section from), but a `brief:`/`claim:` with only
-    whitespace after it is not: an empty steering paragraph is a human
-    mid-edit, not a malformed file.
+    Advisory about *shape*: a heading with neither `brief:` nor `claim:`
+    is reported, a blank one is not (that is a human mid-edit).
     """
     parser = _Parser()
     for raw_line in text.splitlines():
@@ -204,10 +177,8 @@ class SectionDrift:
     """One `outline.md` section's declared queries, split by whether
     `retrieval.md` shows them actually run verbatim (`origin=declared`).
 
-    `run_empty` is a **subset of `run`** (#480): issued, and every row
-    for it reported zero results. `run` keeps meaning *issued* -- a
-    re-grounding round is reported run on its origin alone (#470) -- and
-    a sub-theme the corpus could not answer is not one covered.
+    `run_empty` is a **subset of `run`** (#480): issued, but every row
+    returned nothing. `run` still means issued (#470).
     """
 
     heading: str
@@ -221,16 +192,9 @@ class OutlineDrift:
     """ "Did this draft follow its declared outline?", read from
     `retrieval.md`'s `origin` column rather than trusted.
 
-    `extended` is flat, not per-section: `retrieval.md` records no
-    section for a call, only the query text and its origin, so an
-    `--extend` addition can be reported as having happened but not
-    attributed to the section that came up thin. `regrounded` is the
-    same shape, for a `--y-prev` re-grounding round after a hand edit
-    (FEATURE-ROADMAP.md's E4) -- counted in `run` too, since the
-    underlying declared query did in fact execute (the CLI logs the
-    original query text, not the round-2 concatenation); listed
-    separately so `dossier status` can still say a hand-edit round
-    happened.
+    `extended` is flat: `retrieval.md` records no section for a call.
+    `regrounded` (E4's `--y-prev` rounds) is also counted in `run`, since
+    the declared query did execute, and listed so `status` can say so.
     """
 
     sections: "dict[str, SectionDrift]" = field(default_factory=dict)
@@ -239,22 +203,16 @@ class OutlineDrift:
 
 
 def _normalised(query: str) -> str:
-    """Whitespace-collapsed the same way `log_retrieval` collapses a
-    query before writing it -- a declared query compared against
-    `retrieval.md`'s text without this would read a query logged with
-    different internal spacing as never having run at all."""
+    """Whitespace-collapsed as `log_retrieval` does, or differently spaced
+    queries read as never run."""
     return " ".join(query.split())
 
 
 def declared_vs_actual(dossier: Path, outline: "Outline | None" = None) -> OutlineDrift:
     """Compares `outline.md`'s declared queries against what
-    `retrieval.md` actually shows ran, by exact (whitespace-normalised)
-    query text.
+    `retrieval.md` actually shows ran, by whitespace-normalised text.
 
-    Reads `outline.md` itself when `outline` isn't already parsed
-    (`_cmd_status` passes one in it already has; a standalone caller
-    doesn't). A dossier with no `outline.md` reports every section
-    empty -- there is nothing declared to have drifted from.
+    With no `outline.md`, every section is empty: nothing to drift from.
     """
     if outline is None:
         path = dossier / OUTLINE_MD

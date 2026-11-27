@@ -1,22 +1,11 @@
 """The index's term table: `registry build --index` (#1168).
 
-The index is built from the glossary the terminology registry already
-reads (`registry/_terms.py`), plus the author's exceptions in
-`content/specs/<book>/index.toml`. This module validates that file and
-writes `index-terms.json`, the one input both later stages read: the
-pandoc filter (`assets/pandoc/index_terms.lua`), which places
-`\\index{<id>}` in each chapter, and `registry/_index_finish.py`, which
-turns ids into printed entries once the book is typeset.
-
-**An id is a hash of the term's key, not a position.** A chapter rendered
-before a term was added keeps its `\\index{<id>}`; a positional id would
-then name a different term without anything noticing. A hashed one names
-the same term or nothing.
-
-**A bad `index.toml` refuses the build** and lists every problem, as
-`build --glossary` refuses a page it would have to leave terms out of. A
-build is not a check: everything that is judgement (a generic term, a
-mention below the threshold) is the report's, `registry/_index_report.py`.
+Validates `content/specs/<book>/index.toml` and writes
+`index-terms.json`, read by the pandoc filter and `_index_finish.py`.
+**An id is a hash of the term's key, not a position**, so an earlier
+rendered chapter's `\\index{<id>}` names the same term or nothing.
+**A bad `index.toml` refuses the build**, listing every problem;
+judgement calls belong to `_index_report.py`.
 """
 
 import hashlib
@@ -29,14 +18,12 @@ from chitragupta.registry._index_toml import settings
 
 TERMS_JSON = "index-terms.json"
 
-# What the filter strips from a word's edges: ASCII punctuation and quotes.
 _EDGES = string.punctuation + "\u201c\u201d\u2018\u2019\u00ab\u00bb"
 
 # A trailing "(DT)": an abbreviation, which gets a "see" entry. Capitals
 # and digits only (a plural `s` allowed), so "(also called X)" is not one.
 _ABBREVIATION = re.compile(r"\(([A-Z][A-Z0-9&/]*s?)\)$")
 
-# Tables whose values name terms.
 _TERM_LISTS = ("variants", "restrict", "always", "see_also")
 
 
@@ -46,10 +33,8 @@ def term_id(key: str) -> str:
 
 
 def spelling(text: str) -> str:
-    """A spelling as `assets/pandoc/index_terms.lua` tokenises prose:
-    each word loses a possessive and its edge punctuation, a hyphen or
-    dash splits it, and it is lowercased. The two must agree word for
-    word, or a term never matches."""
+    """A spelling as `assets/pandoc/index_terms.lua` tokenises prose. The
+    two must agree word for word, or a term never matches."""
     words = []
     for raw in text.split():
         for part in re.split(r"[-\u2013\u2014]", re.sub(r"[\u2019']s$", "", raw)):
@@ -81,7 +66,6 @@ def _glossary_terms(rows: "list[dict]") -> "dict[str, dict]":
 
 
 def _names(doc: dict) -> "list[tuple[str, str]]":
-    """`(table, term)` for every term an `index.toml` table names."""
     names = [(table, name) for table in _TERM_LISTS + ("print",) for name in doc.get(table, {})]
     names += [(name, term) for name in ("drop",) for term in doc.get(name, {}).get("terms", [])]
     names += [
@@ -141,7 +125,6 @@ def _reference_problems(doc: dict, glossary: dict, accepted: "list[str]") -> "li
 
 
 def _target_problems(doc: dict, unholdable: "set[str]") -> "list[str]":
-    """A see or see-also target with no entry of its own to point at."""
     targets = [("see", target) for target in doc.get("see", {}).values()]
     targets += [("see_also", t) for names in doc.get("see_also", {}).values() for t in names]
     return [
@@ -169,7 +152,6 @@ def _spellings(key: str, doc: dict) -> "list[str]":
 
 
 def _keyed(doc: dict, table: str) -> dict:
-    """An `index.toml` table with its keys as term keys."""
     return {term_key(name): value for name, value in doc.get(table, {}).items()}
 
 
@@ -202,7 +184,6 @@ def _entry(key: str, base: dict, doc: dict, linked: dict) -> dict:
 
 
 def _see(doc: dict, glossary: dict, indexed: "set[str]") -> "dict[str, str]":
-    """See entries: each abbreviation to its term, then `[see]` over them."""
     see = {
         base["abbreviation"]: term_id(key)
         for key, base in glossary.items()
@@ -216,9 +197,7 @@ def table(
     rows: "list[dict]", linked: dict, accepted: "list[str]", doc: dict
 ) -> "tuple[dict, list[str]]":
     """The term table `index-terms.json` holds, and every problem that
-    refuses it. `rows` are the registry's glossary rows in outline order,
-    `linked` maps `(unit, term key)` to the symbols that unit links to the
-    term, `doc` is the parsed `index.toml`."""
+    refuses it. `linked` maps `(unit, term key)` to symbols."""
     glossary = _glossary_terms(rows)
     problems = _reference_problems(doc, glossary, accepted)
     for term in doc.get("add", {}).get("terms", []):

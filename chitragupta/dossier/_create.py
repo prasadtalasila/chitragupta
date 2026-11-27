@@ -1,7 +1,5 @@
 """Everything `dossier init` writes: the seven per-dossier template
 files and the logic that decides which of them are still missing.
-
-Split out of chitragupta/dossier.py (#219).
 """
 
 import argparse
@@ -62,13 +60,9 @@ See `docs/DRAFT-ITERATION.md`.
 
 
 def _scope(draft: Path, genre: str, corpus: tuple[int, str] | None) -> str:
-    # `language` ships unset rather than defaulting, and says so in the
-    # value itself. `init` has no way to know the dialect -- it is settled
-    # with the reader, one step later -- and `draft-reviser` reads this
-    # file before every edit, so a plausible-looking `en-US` here would be
-    # a preference nobody chose, silently applied to every future
-    # revision. Same policy as `corpus_line` below, for the same reason:
-    # an honest "not recorded" beats an invented value.
+    # `language` ships as "not recorded": the dialect is settled with the
+    # reader later, and an invented `en-US` would silently steer every
+    # revision. Same policy as `corpus_line`.
     corpus_line = (
         f"- corpus: {corpus[0]} citekeys, digest `{corpus[1]}`"
         if corpus
@@ -268,20 +262,9 @@ _TEMPLATES = {
 def init(draft: Path, genre: str, outline: bool = False) -> list[Path]:
     """Create the dossier skeleton for `draft`. Returns what it wrote.
 
-    Only ever creates missing files, so re-running it on a dossier that
-    a skill has since filled in adds whatever is absent and touches
-    nothing else. That matters because `init` is the one command a genre
-    skill runs before it knows what it will find -- it must not be able
-    to destroy the thing it exists to protect.
-
-    `outline` is opt-in (#455): most dossiers have no `outline.md`, so it
-    is not one of the seven files every dossier always gets -- see
-    `OUTLINE_MD`'s own docstring for why that distinction matters to
-    `status`. Stdlib-only and ledger-read-only like the rest of `init`:
-    the broad-call survey a human runs before filling `outline.md` in is
-    an ordinary `retrieve search`, not something this command runs for
-    them -- `init` stays the one command a genre skill can call before it
-    knows what it will find.
+    Only ever creates missing files: `init` runs before a skill knows what
+    it will find and must not destroy what it protects. `outline` is
+    opt-in (#455). Stdlib-only and ledger-read-only.
     """
     target = dossier_dir(draft)
     target.mkdir(parents=True, exist_ok=True)

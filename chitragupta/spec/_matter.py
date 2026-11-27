@@ -1,24 +1,16 @@
 """Front matter, appendices and back matter: the outline's reserved ids.
 
-A textbook is more than its chapters: a preface and a copyright page
-before them, appendices and the reference pages after them (BCcampus,
-*Self-Publishing Guide*, "Textbook Outline"). The outline names these the
-way it names everything else, by `{#id}`, and three part ids and five
-chapter ids are reserved for them (#1137, #1168):
+Three part ids and five chapter ids are reserved (#1137, #1168):
 
-- `{#front}`, `{#appendices}` and `{#back}` are parts that print no
-  `\\part` page. Each has one legal position, because the `book` class's
-  `\\frontmatter`, `\\appendix` and `\\backmatter` are switches, not
-  containers: a `{#back}` in the middle would turn every later chapter
-  into an unnumbered one.
-- `glossary`, `symbols`, `figures`, `tables` and `index` are pages the
-  assembler generates. Nobody writes them, so they are no unit, carry no
-  sections, and belong only to the front or back matter -- the index to
-  the back matter alone, since it prints after the bibliography.
+- `{#front}`, `{#appendices}` and `{#back}` print no `\\part` page and
+  each has one legal position: `\\frontmatter`, `\\appendix` and
+  `\\backmatter` are switches, so a misplaced `{#back}` would unnumber
+  every later chapter.
+- `glossary`, `symbols`, `figures`, `tables` and `index` are generated
+  pages: no unit, no sections, front or back matter only (the index
+  back only, after the bibliography).
 
-Split from `chitragupta/spec/__init__.py`, which holds the parse itself,
-to keep it under docs/CODE-STANDARDS.md's C2 limit. Nothing here imports
-from that module, so it can be imported at its top.
+Imports nothing from `spec/__init__.py`, so it can be imported at its top.
 """
 
 import re
@@ -32,16 +24,16 @@ _PARTS = (FRONT, APPENDICES, BACK)
 GENERATED = ("glossary", "symbols", "figures", "tables", "index")
 INDEX = "index"
 
-# `- author: Prasad Talasila` under the book's `#` title, beside the
-# `- reader:` and `- scope:` lines the default outline already carries.
+# The `- author:` line under the book's `#` title, beside `- reader:` and
+# `- scope:`.
 _AUTHOR = re.compile(r"^-\s*author:\s*(.*?)\s*$")
 
 
 def author(title_lines: list[str]) -> str | None:
     """The book's author, from the lines under its `#` title, or None.
 
-    Only those lines: a `- author:` inside a chapter's brief is about that
-    chapter, and a line before the title belongs to nothing.
+    Only those lines: an `- author:` in a chapter brief is about that
+    chapter.
     """
     for line in title_lines:
         match = _AUTHOR.match(line)
@@ -105,7 +97,6 @@ def _misplaced_id(entry: dict) -> str | None:
 
 
 def problems(units: list[dict]) -> list[str]:
-    """Every reserved id that is out of place, each named."""
     found = _misplaced_parts([entry["id"] for entry in units if entry["kind"] == "part"])
     for entry in units:
         problem = _misplaced_id(entry)

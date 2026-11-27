@@ -1,10 +1,7 @@
 """The self-contained `discover` views: --why, --groups, --compare.
 
-Each is its own view -- a pair or set question that cannot fall back to
-paper search the way a single phrase does -- with its own refusals,
-moved here from `__init__` when the third of them arrived (#715) and
-the module ratchet said the dispatcher was full. `__init__` still owns
-the parser and the dispatch; this module owns what each view does.
+Pair or set questions that cannot fall back to paper search. `__init__`
+owns the parser and dispatch; this module owns what each view does.
 """
 
 import json as json_module
@@ -23,10 +20,8 @@ def _resolve_names(args, phrases, graph, topic_set, terms) -> "tuple[list, list]
     labels, vias, noted = [], [], set()
     for phrase in phrases:
         resolution = _resolve.resolve(phrase, graph, topic_set, terms)
-        # Each part of a note once (#1023): a model that would not load
-        # degrades every phrase the same way, and says so once. By part,
-        # because `resolve` joins the semantic and reranking notes with
-        # "; " only on the rungs that reach both.
+        # Each note part once (#1023): a failed model degrades every phrase
+        # alike. By part, since `resolve` joins notes with "; ".
         parts = resolution.note.split("; ") if resolution.note else []
         fresh = [part for part in parts if part not in noted]
         noted.update(fresh)
@@ -62,8 +57,7 @@ def own_view(args, graph, topic_set, terms) -> "int | None":
 def why_view(args, graph, topic_set, terms) -> int:
     """The absence verdict's terminal twin (#708)."""
     if args.phrase or args.paper or args.compare:
-        # Exit 2, argparse's own code for a usage error, which is what
-        # combining views is.
+        # Exit 2, argparse's code for a usage error.
         print("--why is its own view: give it two topics and nothing else.", file=sys.stderr)
         return 2
     resolved = _resolve_names(args, args.why, graph, topic_set, terms)
@@ -85,8 +79,7 @@ def why_view(args, graph, topic_set, terms) -> int:
 
 def groups_view(args, graph) -> int:
     """The resolution slider as a view (#709): cut the stored tree at
-    the distance nearest the target. A count is not a phrase, so
-    nothing here resolves or falls back."""
+    the distance nearest the target."""
     if args.phrase or args.paper or args.why or args.compare:
         print(
             "--groups is its own view: give it a target count and nothing else.",
@@ -97,8 +90,7 @@ def groups_view(args, graph) -> int:
         print("--groups needs a target of at least one group.", file=sys.stderr)
         return 2
     if not graph["hierarchy"]:
-        # The same honest degradation the app shows by hiding the
-        # slider: no stored hierarchy, no tree to cut.
+        # As the app hides the slider: no stored hierarchy, nothing to cut.
         print(
             "The artefact stores no merge hierarchy, so there is no tree to "
             "cut -- re-run `chitragupta enrich --stages topic-graph`.",
@@ -111,9 +103,7 @@ def groups_view(args, graph) -> int:
 
 
 def hops_view(args, resolution, graph) -> int:
-    """The ego view's rings as text (#716). Unlike the views above this
-    one rides on a resolved phrase -- it replaces the flat topic view
-    the way the app's rings replace the flat canvas."""
+    """The ego view's rings as text (#716), riding on a resolved phrase."""
     if args.hops == "all":
         bound = None
     elif args.hops.isdigit() and int(args.hops) >= 1:
@@ -121,10 +111,8 @@ def hops_view(args, resolution, graph) -> int:
     else:
         print("--hops takes a positive hop count, or 'all'.", file=sys.stderr)
         return 2
-    # `--family` reached only --path before this, and was accepted and
-    # ignored everywhere else: the rings were always walked over the
-    # union, so "two hops out" meant "two hops over whichever family got
-    # there first" and nothing said so. None still means both.
+    # `--family` was once silently ignored here, walking the union.
+    # None still means both.
     families = [args.family] if args.family else None
     data = _hops.build_hops(graph, resolution.label, bound, families)
     data["resolved_via"] = resolution.via
@@ -134,8 +122,7 @@ def hops_view(args, resolution, graph) -> int:
 
 def clusters_view(args, graph, topic_set) -> int:
     """The disagreement grid as a view (#712), read from the stored
-    partitions -- this side clusters nothing, so an artefact without
-    them is refused with the stage to re-run, not silently recomputed."""
+    partitions; an artefact without them is refused, never recomputed."""
     if args.phrase or args.paper or args.why or args.groups is not None or args.compare:
         print(
             "--clusters is its own view: give it an --inflation at most and nothing else.",
@@ -157,9 +144,8 @@ def clusters_view(args, graph, topic_set) -> int:
 
 def path_view(args, graph, topic_set, terms) -> int:
     """One family's path between two topics (#714), walked from the
-    stored next-hop matrices. The family flag is required, mirroring the
-    app's two buttons: a single fused distance over both families is a
-    number nobody can interpret, and the design refuses it."""
+    stored next-hop matrices. The family flag is required: a fused
+    distance over both families is uninterpretable."""
     if args.phrase or args.paper or args.why or args.groups is not None or args.compare:
         print(
             "--path is its own view: give it two topics, --family, and nothing else.",

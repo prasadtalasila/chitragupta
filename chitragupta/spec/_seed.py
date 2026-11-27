@@ -1,29 +1,12 @@
 """Hand a chapter's declared structure to whoever will draft it.
 
-The book spec owns a book's *structure*; the dossier and the genre skills
-own its *content* (#472). `spec seed` is the handover: for each chapter
-the outline describes at section level, it writes that chapter's section
-names into the chapter dossier's `outline.md` as bare `##` headings, and
-stops. Every `brief:`, `claim:` and `queries:` line under them is left
-for the person who drafts the chapter -- inventing one here would be the
-book track writing content, which is the thing this split exists to
-prevent.
-
-**The write is delegated, not re-implemented.** `content/dossiers/` is
-the dossier package's tree, so `dossier.init` creates the dossier and the
-`outline.md` template, and only the heading lines are appended here. That
-keeps the module that owns a directory the one that creates files in it,
-and it inherits `init`'s own guarantee: it "must not be able to destroy
-the thing it exists to protect".
-
-**Nothing is ever rewritten.** A heading already in `outline.md` is left
-exactly as it stands, whatever a human has written beneath it; only names
-the file does not yet carry are appended. Re-running is therefore a no-op,
-which is what makes it safe to re-run after the spec grows.
-
-**Refuses an unsigned outline.** Seeding from a structure nobody approved
-would put unsettled section names in front of an author as though they
-were decided -- which is exactly what `spec sign` exists to stop.
+`spec seed` appends each section-described chapter's section names to
+its dossier's `outline.md` as bare `##` headings, and stops: writing
+`brief:`/`claim:` lines would be the book track writing content (#472).
+The write is delegated to `dossier.init`, which owns the tree and must
+never destroy what it protects. Existing headings are never rewritten,
+so re-running is a no-op. An unsigned outline is refused: unsettled
+names must not look decided.
 """
 
 import sys
@@ -40,22 +23,16 @@ from chitragupta.spec._read import read_spec, report_problems
 def _existing_headings(path: Path) -> set[str]:
     """What `outline.md` already names, normalised for comparison.
 
-    Reuses the outline parser rather than re-deriving headings, so "does
-    this file already have this section?" is answered the same way
-    `dossier outline` answers it -- including its fence handling, which a
-    fresh regex here would get wrong on a chapter about software.
+    Reuses the outline parser, including its fence handling.
     """
     if not path.is_file():
         return set()
-    # `Outline.sections` is keyed by heading. A heading with no `brief:`
-    # or `claim:` yet is still one of its keys -- it is additionally
-    # reported as a problem, which is exactly right for a seeded outline
-    # nobody has filled in, and is not this module's business.
+    # An unfilled heading is still a key (and reported as a problem by
+    # the parser, which is right for a seeded outline).
     return set(map(normalise, _parse_outline(path.read_text(encoding="utf-8")).sections))
 
 
 def _missing(declared: list[dict], path: Path) -> list[str]:
-    """The declared section titles `outline.md` does not carry yet."""
     have = _existing_headings(path)
     return [entry["title"] for entry in declared if normalise(entry["title"]) not in have]
 
@@ -64,15 +41,12 @@ def _append(path: Path, titles: list[str]) -> None:
     text = path.read_text(encoding="utf-8") if path.is_file() else ""
     if text and not text.endswith("\n"):
         text += "\n"
-    # A blank line before each heading, so appending to a template that
-    # ends in its own comment block still produces valid Markdown rather
-    # than a heading glued to the line above it.
+    # A blank line first, or a heading glues onto a trailing comment.
     body = "".join(f"\n## {title}\n" for title in titles)
     path.write_text(text + body, encoding="utf-8")
 
 
 def seed_chapter(chapter: dict, declared: list[dict], draft: Path, genre: str, write: bool) -> dict:
-    """One chapter's handover: what is missing, and what was done."""
     path = dossier_dir(draft) / OUTLINE_MD
     missing = _missing(declared, path)
     report = {
@@ -90,19 +64,15 @@ def seed_chapter(chapter: dict, declared: list[dict], draft: Path, genre: str, w
 def seed(book: Path, parsed: dict, genre: str, write: bool = True) -> list[dict]:
     """Seed every chapter the outline describes at section level.
 
-    A chapter described only at chapter granularity names no structure
-    worth handing over -- the retrofitted shape -- so it is skipped for
-    the same reason `spec align` does not check it.
+    Chapter-granularity chapters are skipped, as `spec align` skips them.
     """
     described = [
         (chapter, declared)
         for chapter, declared in chapters(parsed)
         if section_described(chapter, declared)
     ]
-    # Every chapter's path is confined *before* any dossier is written:
-    # `chapter_draft` refuses one that leaves its book, and a refusal
-    # half-way through the loop would leave the earlier chapters seeded
-    # with no report saying so.
+    # Confine every path *before* writing, so a refusal cannot leave
+    # earlier chapters seeded with no report.
     drafts = [chapter_draft(book, chapter["id"]) for chapter, _ in described]
     return [
         seed_chapter(chapter, declared, draft, genre, write)
@@ -133,7 +103,6 @@ def _cmd_seed(args) -> int:
 
 
 def add_parser(sub, book_help: str) -> None:
-    """Register `seed`, beside the handover it performs."""
     parser = sub.add_parser(
         "seed", help="Write each chapter's declared sections into its dossier outline"
     )

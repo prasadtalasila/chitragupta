@@ -1,29 +1,11 @@
 """The book's Glossary and List of Symbols, written as LaTeX from the
 terminology registry (#1138): `registry build --glossary/--notation`.
 
-Composition, not prose: every word on both pages is a unit's own
-`scope.md` glossary or `math.md` `## Symbols` (#1143), and nothing here
-writes a definition. The layout
-decisions, recorded in plans/tb-10-book-glossary.md:
-
-- **Glossary.** One entry per term (`registry._terms.term_key`),
-  alphabetical. A term with one definition prints it inline; with
-  several, a numbered list in outline order. Each definition ends with
-  the chapters it came from as `\\Cref{<unit-id>}`, which the
-  assembler's `\\label{<unit-id>}` turns into "Chapter 3" (and, under
-  the skeleton's cleveref, "Chapter A" for an appendix).
-  Identical definitions print once with every chapter. A term's
-  symbols are the `## Symbols` rows linking to it from the unit whose
-  definition it is: in the heading when every definition carries the
-  same ones, otherwise at the start of each numbered definition.
-- **List of Symbols.** One table for the whole book, from the resolved
-  `## Symbols` rows. A symbol with one meaning across chapters is one
-  row listing every unit with a row for it; a symbol naming different
-  things gets a row per meaning, so the clash is on the page as well as
-  in `registry check`.
-
-Deterministic: no timestamp, so rebuilding over unchanged units is
-byte-identical, the rule the other registries follow.
+Composition, not prose: every word comes from a unit's glossary or
+`math.md` `## Symbols` (#1143); layout is in plans/tb-10-book-glossary.md.
+A symbol naming different things gets a row per meaning, so the clash
+shows on the page as well as in `registry check`. No timestamp, so
+rebuilds over unchanged units are byte-identical.
 """
 
 import os
@@ -112,35 +94,31 @@ def _symbol_order(symbol: str) -> "tuple[int, str, str]":
 
 
 def notation_rows(built: dict) -> "list[tuple[str, str, list[str]]]":
-    """`(symbol, meaning, unit ids)` per symbol and meaning, as Markdown."""
     rows = []
     for _, found in sorted(
         _grouped(_in_order(built, _symbols.resolved(built)), lambda row: row["symbol"]).items(),
         key=lambda item: _symbol_order(item[0]),
     ):
-        # The meaning key `registry check`'s `[notation]` finding uses, so
-        # the page and the check cannot disagree on what one meaning is.
+        # `registry check`'s `[notation]` meaning key, so page and check
+        # agree on what one meaning is.
         for same in _grouped(found, lambda row: row["key"]).values():
-            # Typeset as the unit that gives the meaning does, not as one
-            # pointing at it; the two differing is a `[notation]` finding.
+            # Typeset as the defining unit does; a mismatch is a finding.
             source = next((row for row in same if row["kind"] != "see"), same[0])
             rows.append((source["symbol_markdown"], source["label"], _units(same)))
     return rows
 
 
 def _cref(units: "list[str]") -> str:
-    """One `\\Cref` per unit, in outline order. A grouped `\\Cref{a,b}`
-    sorts by counter value and counts an appendix as a chapter, printing
-    "Chapters A and 7" for chapter 7 and appendix A (measured on the real
-    book's build)."""
+    """One `\\Cref` per unit, in outline order: a grouped `\\Cref{a,b}`
+    counts an appendix as a chapter ("Chapters A and 7", measured on the
+    real book)."""
     return "(" + ", ".join(f"\\Cref{{{unit}}}" for unit in units) + ")"
 
 
 def _opening(flag: str, title: str) -> "list[str]":
     """The page's unnumbered chapter, its contents line and its running
-    head. `\\chapter*` sets no mark, so without `\\markboth` every page
-    carried the last appendix's chapter and section (#1182); this is the
-    mark the `book` class's own `\\listoffigures` and bibliography set."""
+    head. `\\chapter*` sets no mark, so without `\\markboth` pages carried
+    the last appendix's heads (#1182)."""
     return [
         _BANNER.format(flag=flag) + f"\\chapter*{{{title}}}",
         f"\\addcontentsline{{toc}}{{chapter}}{{{title}}}",
@@ -172,9 +150,8 @@ def _notation_tex(rows, latex) -> str:
 def render(built: dict, convert) -> "tuple[str | None, str | None]":
     """The two pages as LaTeX, or `None` for one with nothing on it.
 
-    `convert` is `render_output._markdown_to_latex.markdown_to_latex`, passed in so
-    the layout is testable without pandoc. Every Markdown text on both
-    pages goes through it in one call.
+    `convert` (`markdown_to_latex`) is passed in so the layout is
+    testable without pandoc; it is called once for all text.
     """
     entries, rows = glossary_entries(built), notation_rows(built)
     texts = [heading for heading, _ in entries]
@@ -189,8 +166,8 @@ def render(built: dict, convert) -> "tuple[str | None, str | None]":
 
 
 def write(path: Path, text: str) -> None:
-    """`text` to `path` through a temporary file in the same directory,
-    so a failure never leaves a half-written page behind."""
+    """`text` to `path` via a same-directory temp file, so a failure never
+    leaves a half-written page."""
     path.parent.mkdir(parents=True, exist_ok=True)
     handle, temporary = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
     try:

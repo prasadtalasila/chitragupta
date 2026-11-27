@@ -1,29 +1,13 @@
 """Remove an `evidence.md` block for a citekey the draft no longer
-cites -- #701's sub-defect 2, the removal primitive that did not exist.
+cites (#701): a re-runnable, verifiable command instead of a free-form edit.
 
-Every comparable repair in this pipeline has a command:
-`dossier sections --citekeys --write` for a stale section row,
-`python -m chitragupta.draft references` for the reference list. This
-one was a free-form `Edit` offered by `draft-reviser` in prose, so it
-could not be re-run, verified or diffed, and `revisions.md` was the
-only trace it had happened.
+**Dry run by default.** `recorded - cited` cannot tell a cut citation
+from a never-cited candidate that should stay, so `--apply` is opt-in
+after a person reads the report, with no force flag.
 
-**Dry run by default.** `recorded - cited` cannot distinguish "the user
-cut this citation" from "a candidate was transcribed into `evidence.md`
-and never cited at all". The first wants the block gone; the second
-wants it exactly where it is. Deleting recorded evidence unattended
-would trade a cosmetic staleness for a real loss, so `--apply` is
-opt-in and a person reads the report first. That is also why there is
-no `--all`-style force: the confirmation *is* the feature.
-
-**`evidence.md` only.** `sections.md` already has a writer that derives
-the whole table from the draft (`_sections._sections_citekeys`), so a
-stale row there self-heals on the next `--write` and a second writer
-would only be a way for the two to disagree. `rejected.md` is never
-touched, and never can be: `recorded_but_uncited` does not read it, so
-nothing this module iterates can name a declined paper -- an invariant
-by construction rather than by a guard (`_citekeys.CITED_FILES` draws
-the same line for `drift()`).
+**`evidence.md` only.** `sections.md` self-heals via its own derived
+writer. `rejected.md` can never be touched: `recorded_but_uncited`
+does not read it, an invariant by construction.
 """
 
 import argparse
@@ -46,24 +30,10 @@ def _verdict(
 ) -> "tuple[bool, str]":
     """Whether `key` may be pruned, and why not when it may not.
 
-    Returns the bool first and the message second **because the caller
-    branches on the bool**. An earlier shape returned only the message
-    and tested it for `"would remove"`, which makes rewording a string
-    silently break the deletion with no test failing -- the exact
-    "tested against the shape it was blind to" hazard
-    DEVELOPER-AGENTS.md names. The message is presentation only.
-
-    Four refusals rather than one, because a command whose whole design
-    rests on a person confirming it has to say what it declined and
-    why: "still cited" is the one a script most needs to hear, and
-    "recorded only in sections.md" is the one with another command as
-    its answer.
-
-    `recorded` is every citekey either `CITED_FILES` mentions, and it
-    is what separates the first two refusals. Inferring "not recorded"
-    from the absence of an `evidence.md` span instead would report a
-    cited, `sections.md`-only citekey as unrecorded -- false, and
-    exactly the sort of message a person then acts on.
+    The caller branches on the bool, never on message text, so rewording
+    cannot silently break deletion. Each refusal says why. `recorded`
+    separates "still cited" from "not recorded": inferring it from a
+    missing `evidence.md` span would misreport a `sections.md`-only key.
     """
     if key not in orphaned:
         if key in recorded:
@@ -86,10 +56,8 @@ def prune_evidence(draft: Path, citekeys: "set[str] | None", apply: bool) -> dic
     """Prune the named citekeys' `evidence.md` blocks, or every orphan
     when `citekeys` is None. Returns citekey -> what happened.
 
-    Deletes by **line span**, never by matching the text
-    `evidence_blocks` reconstructs -- see `evidence_block_spans` for the
-    three ordinary file shapes that break a substring match, one of
-    which (CRLF) breaks it for every block in the file.
+    Deletes by **line span**, never by matching reconstructed text (see
+    `evidence_block_spans`).
     """
     target = dossier_dir(draft)
     orphaned = recorded_but_uncited(draft)
@@ -108,26 +76,10 @@ def prune_evidence(draft: Path, citekeys: "set[str] | None", apply: bool) -> dic
 
     if apply and doomed:
         path = target / EVIDENCE_MD
-        # `newline=""` on both halves, which is what actually preserves
-        # the file's line endings -- and the bare `read_text` this used
-        # first does not. Universal-newline mode translates CRLF to
-        # `\n` on the way in, so `keepends` faithfully keeps an ending
-        # that has already been rewritten, and pruning one block from a
-        # CRLF dossier silently converted the whole file to LF. Caught
-        # by a smoke test's `od`, not by the unit test, which did its
-        # own join over raw lines and so never exercised this path.
-        #
-        # Via `open()` rather than `read_text(newline=...)`: that
-        # keyword reached `Path.read_text` only in 3.13, while this
-        # project supports 3.12 (`pyproject.toml`'s `python`), so the
-        # tidier spelling passes locally and `TypeError`s in CI. Note
-        # `write_text` *has* taken it since 3.10 -- the asymmetry is
-        # the trap, and matching both to `open()` is what removes it.
-        #
-        # Line *counts* agree between the two modes -- `splitlines`
-        # splits on `\r\n`, `\n` and a lone `\r` alike -- so the spans
-        # `_parse_evidence` computed under universal newlines index
-        # this list correctly.
+        # `newline=""` on both halves preserves line endings: universal
+        # newlines silently converted a CRLF dossier to LF. Via `open()`
+        # because `Path.read_text(newline=)` is 3.13+ and we support 3.12.
+        # Line counts agree in both modes, so the spans still index.
         with path.open(encoding="utf-8", newline="") as handle:
             lines = handle.read().splitlines(keepends=True)
         kept = [line for index, line in enumerate(lines) if not _within(index, doomed)]
@@ -149,8 +101,7 @@ def _cmd_prune(args: argparse.Namespace) -> int:
         print(f"  `{key}`: {message}")
     if not args.apply:
         print("Dry run -- pass --apply to write.")
-    # Exit 1 only when a *named* citekey was refused, so a script that
-    # asked for a specific key hears about it. A bare run that found
-    # nothing to do is a clean state, not a failure.
+    # Exit 1 only when a *named* citekey was refused; a bare run with
+    # nothing to do is clean.
     refused = [key for key, message in report.items() if message not in ("removed", "would remove")]
     return 1 if refused else 0

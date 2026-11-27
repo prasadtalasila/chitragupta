@@ -1,23 +1,11 @@
 """The change report between two versions of a draft, computed purely.
 
-Sections pair by (title, occurrence), the title rule the dossier keys
-`sections.md` by, with the occurrence added so two sections both called
-"Notes" pair first with first and second with second. A rename is
-therefore a removal plus an addition: guessing renames would put a
-"changed" on two sections that may share nothing.
-
-A section is changed when its words differ, compared as whitespace
-tokens, so re-wrapping a paragraph is not a change and a "changed"
-section always has a non-zero word count.
-
-A draft's References section is generated: `draft references` rewrites
-it on every pass, and `render` drops or replaces it. Recognised by the
-heading rule both of those use (`references_section`), a change to it
-is reported as `regenerated`, with no word count, outside the summary's
-ratio and outside what needs a log entry (#1194).
-
-`key_status` is passed in so this module never opens the ledger; the
-caller says what a dropped key's standing is now.
+Sections pair by (title, occurrence), so a rename is a removal plus an
+addition: guessed renames could mark unrelated sections "changed".
+Words are compared as whitespace tokens, so re-wrapping is no change.
+A generated References section is reported `regenerated`, outside the
+ratio and the log check (#1194). `key_status` is passed in so this
+never opens the ledger.
 """
 
 import difflib
@@ -72,12 +60,10 @@ class ChangeReport:
 
     @property
     def unlogged_sections(self) -> list[SectionChange]:
-        """Sections added, moved or changed that no log entry names."""
         return [c for c in self.sections if c.kind in _LOGGED_KINDS and not c.log]
 
     @property
     def unlogged(self) -> list[str]:
-        """Titles of `unlogged_sections`."""
         return [c.title for c in self.unlogged_sections]
 
     @property
@@ -91,7 +77,6 @@ class ChangeReport:
 
 
 def _words_changed(old: str, new: str) -> int:
-    """Words on both sides of every non-equal run between `old` and `new`."""
     matcher = difflib.SequenceMatcher(None, old.split(), new.split(), autojunk=False)
     return sum(
         (i2 - i1) + (j2 - j1) for tag, i1, i2, j1, j2 in matcher.get_opcodes() if tag != "equal"
@@ -101,8 +86,8 @@ def _words_changed(old: str, new: str) -> int:
 def _lcs(old: list, new: list) -> set:
     """The keys of one longest common subsequence of `old` and `new`.
 
-    On a tie the walk drops from `old`, so of two sections that swapped,
-    the later one in the old order is the one reported moved.
+    On a tie the walk drops from `old`, so of two swapped sections the
+    later in old order is reported moved.
     """
     table = [[0] * (len(new) + 1) for _ in range(len(old) + 1)]
     for i, a in enumerate(old):
@@ -129,8 +114,7 @@ def _key(section: Section) -> tuple[str, int]:
 def _generated(sections: list[Section], text: str) -> set[tuple[str, int]]:
     """The key of `text`'s References section, if it has one.
 
-    `section_start` counts lines as `str.splitlines()` does; the copy it
-    reads has the other breaks blanked, as `_sections.split` counts.
+    Lines counted as `_sections.split` counts them (other breaks blanked).
     """
     flat = text.translate(_sections.OTHER_BREAKS)
     start = references_section.section_start(flat.splitlines(keepends=True))
@@ -229,8 +213,7 @@ def _compare_figures(old: dict, new: dict) -> list[FigureChange]:
             if name in held and not _drawn(held[name])
         ]
         if len(missing) == 2:
-            # Undrawn on both sides is no change between them; the draft's
-            # own checks are what report a figure never drawn.
+            # Undrawn on both sides is no change; the draft's checks report it.
             continue
         if missing:
             changes.extend(FigureChange(name, "missing", "", side) for side in missing)
@@ -244,12 +227,10 @@ def _compare_figures(old: dict, new: dict) -> list[FigureChange]:
 
 
 def compare(old: VersionView, new: VersionView, key_status: Callable[[str], str]) -> ChangeReport:
-    """What changed from `old` to `new`; `key_status(key)` says a dropped key's standing."""
     old_sections = _sections.split(old.text, old.suffix)
     new_sections = _sections.split(new.text, new.suffix)
     added, dropped = _compare_citekeys(old, new, new_sections, key_status)
-    # Unknown on either side is unknown: an old figure with no new side
-    # to look at is not a removal.
+    # Unknown on either side is unknown, not a removal.
     known = old.figures is not None and new.figures is not None
     figures = _compare_figures(old.figures, new.figures) if known else None
     return ChangeReport(

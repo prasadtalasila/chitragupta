@@ -2,17 +2,9 @@
 accepted unit's `scope.md` glossary, read into rows, and the two kinds
 of finding those rows make possible (#1138).
 
-The source is the dossier's `## Glossary`, not the unit's prose. Before
-#1138 this registry matched `- **Term** -- definition` lines in the
-draft, and the one real book it was measured on held none, so it was
-empty; the glossary is where every genre skill already pins its terms.
-Parsing is chitragupta/dossier/_glossary.py's, shared with the acronym
-checks. Symbols are not here since #1143: they live in `math.md`'s
-`## Symbols`, read by chitragupta/registry/_symbols.py.
-
-Split from chitragupta/registry/__init__.py, which holds the claim and
-cross-reference halves, to keep both under docs/CODE-STANDARDS.md's C2
-limit.
+The source is the dossier's `## Glossary`, not the prose: matching
+definition lines in drafts found none in the real book. Parsing is
+`dossier/_glossary.py`'s; symbols live in `registry/_symbols.py` (#1143).
 """
 
 import re
@@ -33,7 +25,6 @@ def term_key(term: str) -> str:
 
 
 def read_unit(unit_id: str, draft: Path, built: dict) -> None:
-    """Fold one accepted unit's glossary into `built`."""
     try:
         has_glossary = _glossary.has_glossary(draft)
     except DossierError:
@@ -51,8 +42,7 @@ def read_unit(unit_id: str, draft: Path, built: dict) -> None:
                 "unit": unit_id,
                 "line": entry.line,
                 "definition": definition,
-                # The unit's own math.md applied here, per unit, so the
-                # pages can convert a whole book in one pandoc call.
+                # Converted per unit, so pages convert in one pandoc call.
                 "markdown": _math.substitute(definition, mapping),
             }
         )
@@ -68,7 +58,6 @@ def _grouped(rows, key) -> "dict[str, list[dict]]":
 
 
 def units_counted(rows) -> str:
-    """`a, b (2x)`: each unit once, with a count where it repeats."""
     counts: dict[str, int] = {}
     for row in rows:
         counts[row["unit"]] = counts.get(row["unit"], 0) + 1
@@ -120,5 +109,4 @@ def _glossary_findings(built: dict) -> "list[tuple[str, str]]":
 
 
 def findings(built: dict) -> "list[tuple[str, str]]":
-    """`[term]` and `[glossary]` findings; `_symbols` has the `[notation]` ones."""
     return _term_findings(built) + _glossary_findings(built)

@@ -1,15 +1,8 @@
 """`python -m chitragupta.draft spec`'s six commands and their argparse tree.
 
-Split from `chitragupta/spec/__init__.py` for the reason `chitragupta/dossier/_cli.py`
-was split from its own package: parsing an outline and printing one are
-different jobs, and together they crossed the 250-code-line limit
-docs/CODE-STANDARDS.md sets. Everything here reads the parse; nothing
-here parses.
-
-Deliberately named `_cli.py`, not `__main__.py`, exactly as
-`chitragupta/dossier/_cli.py` is: `python -m chitragupta.draft spec` is this layer's one
-front door, and a package `__main__.py` would quietly open a second --
-see docs/ARCHITECTURE.md's one-entry-point-per-layer invariant.
+Reads the parse; parses nothing. Named `_cli.py`, not `__main__.py`:
+`python -m chitragupta.draft spec` is this layer's one front door
+(docs/ARCHITECTURE.md's one-entry-point-per-layer invariant).
 """
 
 import argparse
@@ -35,9 +28,7 @@ from chitragupta.progname import prog_for
 
 _BOOK_HELP = "The book's directory under content/drafts/ (it need not exist yet)"
 
-# `{title}` is substituted by `str.replace`, not `str.format`: this
-# template is full of `{#id}` heading attributes, and `format` would read
-# every one of them as a field and raise.
+# `str.replace`, not `str.format`: every `{#id}` would read as a field.
 _TEMPLATE = """# {title}
 
 <!-- The outline this book is generated from. Planned top-down; generated
@@ -118,7 +109,6 @@ def _show_tree(parsed: dict) -> None:
 
 
 def _show_unit(book: Path, text: str, parsed: dict, unit_id: str) -> int:
-    """One unit's slice: what a genre skill is handed to generate from."""
     unit = next((entry for entry in parsed["units"] if entry["id"] == unit_id), None)
     if unit is None:
         print(
@@ -151,10 +141,8 @@ def _cmd_show(args) -> int:
 def _signoff_text(text: str, parsed: dict, by: str) -> str:
     """What `sign` writes.
 
-    No timestamp, the same rule the review layer's reports follow: two
-    sign-offs of an unchanged outline produce byte-identical files, which
-    is what makes "did this change?" a diff. *When* it was approved is
-    not a question any check here asks; *what* was approved is.
+    No timestamp: an unchanged outline signs byte-identically, so "did
+    this change?" is a diff. *What* was approved matters, not when.
     """
     lines = [
         "# Sign-off",
@@ -167,9 +155,8 @@ def _signoff_text(text: str, parsed: dict, by: str) -> str:
     ]
     if by:
         lines.append(f"- signed by: {by}")
-    # One line per chapter, so a later edit to one chapter leaves the rest
-    # answerable. Without these, `unit accept` can only ask "has the whole
-    # book moved?" and freezes acceptance everywhere on any edit (#465).
+    # One line per chapter, so one chapter's edit does not freeze
+    # acceptance everywhere (#465).
     lines.append("")
     lines += [
         f"- chapter `{chapter}`: `{value}`"
@@ -184,8 +171,8 @@ def _cmd_sign(args) -> int:
         return report_problems(parsed, args.book)
     path = signoff_path(args.book)
     path.write_text(_signoff_text(text, parsed, args.by), encoding="utf-8")
-    # The breakdown `status` prints, not "N unit(s)": `unit status` counts
-    # only draftable units, so the one word read as two counts (#1165).
+    # A breakdown, not "N unit(s)": `unit status` counts only draftable
+    # units, so one word read as two counts (#1165).
     print(f"Signed off {_breakdown(parsed)} at digest {digest(text)}.")
     print(f"Wrote {path}.")
     stamped = _scaffold.stamp_year(path.parent)
@@ -199,8 +186,8 @@ def _plural(count: int, word: str) -> str:
 
 
 def _breakdown(parsed: dict) -> str:
-    """`2 parts, 4 chapters, 4 sections`: the outline by kind. A generated
-    page is counted as one, not as a chapter someone writes."""
+    """`2 parts, 4 chapters, 4 sections`: the outline by kind; a generated
+    page is counted as one."""
     counts = Counter(
         "generated page" if unit["id"] in GENERATED else unit["kind"] for unit in parsed["units"]
     )
@@ -209,11 +196,9 @@ def _breakdown(parsed: dict) -> str:
 
 
 def _report_moved_chapters(book: Path, text: str) -> None:
-    """Name the chapters that actually moved, so "re-read all fifteen" is
-    not the only thing this report can mean. Silent for a `signoff.md`
-    written before chapter lines existed -- there is nothing finer on
-    disk, and inventing a per-chapter answer from a whole-book digest
-    would be a guess about what a person approved."""
+    """Name the chapters that actually moved. Silent for an older
+    signoff.md: a per-chapter answer from a whole-book digest would be a
+    guess about what a person approved."""
     recorded = recorded_chapter_digests(book)
     if not recorded:
         return
@@ -247,13 +232,10 @@ def _cmd_status(args) -> int:
 
 
 def _parser() -> argparse.ArgumentParser:
-    """The argparse tree, split from `main` so neither crosses the
-    25-statement limit docs/CODE-STANDARDS.md sets.
+    """The argparse tree, split from `main` for the 25-statement limit.
 
-    `align` and `seed` register themselves from their own modules, the
-    way `chitragupta/dossier/` lets `_outline.py` and `_sections.py` carry
-    their own commands: the check and the flags that reach it stay in one
-    file, and this one stops growing a subparser block per feature.
+    `align` and `seed` register themselves from their own modules, so a
+    check and its flags stay in one file.
     """
     parser = ClickParser(
         prog=f"{prog_for('draft')} spec",

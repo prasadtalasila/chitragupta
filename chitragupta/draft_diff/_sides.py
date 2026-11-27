@@ -1,20 +1,10 @@
 """The two sides a redline compares, written out where `render()` reads them.
 
-Each side is a version's text and both forms of each figure it names,
-written to `<work>/old/` or `<work>/new/`. The old side is rewritten in
-one way only (plans/1194-draft-diff.md, decision 11): a citation whose key is
-not citable now becomes the plain words `(citation withdrawn)`, so the
-gate, which runs unchanged on both sides, passes a baseline that cited a
-paper since dropped from the corpus. The new side is the draft as it
-stands; if it cites such a key, the gate refuses it as it would refuse
-the draft itself.
-
-Citations are found by the gate's own grammar -- `_pandoc_cites` for
-Pandoc's `[@key]` and `@key`, `citation_gate`'s LaTeX patterns for
-`\\cite*{...}` -- over the gate's own blanking of code and other
-non-prose, so the rewrite removes exactly what the gate would read.
-Blanking keeps every offset, so a span found in the blanked text is the
-same span in the original.
+The old side's only rewrite (plans/1194-draft-diff.md, decision 11): a
+citation of a key no longer citable becomes `(citation withdrawn)`, so
+the unchanged gate passes a baseline citing a dropped paper. The new
+side is as it stands. Citations are found by the gate's own grammar over
+its offset-preserving blanking, so exactly what it reads is removed.
 """
 
 import shutil
@@ -27,15 +17,12 @@ from chitragupta.draft_diff._views import VersionView
 
 WITHDRAWN = "(citation withdrawn)"
 
-# What may follow a closing `]` for the brackets to be a link, a
-# reference link or a span rather than a citation group: a citation
-# inside one is narrative, and replacing the whole bracket would break
-# the link.
+# What may follow `]` for a link or span, not a citation group; replacing
+# the whole bracket would break the link.
 _NOT_A_GROUP_AFTER = ("(", "[", "{")
 
 
 def key_status(con) -> Callable[[str], str]:
-    """Each key's standing in the ledger now, as the change report words it."""
     citable = ledger_citable.citable_citekeys(con)
     in_ledger = ledger_citable.unparsed_citekeys(con)
 
@@ -79,7 +66,6 @@ def _group_of(
 
 
 def _items(prose: str, opened: int, closed: int) -> list[tuple[int, int]]:
-    """The `;`-separated items of the group `[opened ... closed]`, as spans."""
     items, start, depth = [], opened + 1, 0
     for at in range(opened + 1, closed):
         char = prose[at]
@@ -93,7 +79,6 @@ def _items(prose: str, opened: int, closed: int) -> list[tuple[int, int]]:
 
 
 def _joined(pieces: list[str], separator: str) -> str:
-    """`pieces` joined back, the first without the space its separator left."""
     return separator.join([pieces[0].lstrip(), *pieces[1:]])
 
 
@@ -118,7 +103,6 @@ def _group_edits(
     raw: "list[tuple[int, str]]",
     gone: Callable[[str], bool],
 ) -> "list[tuple[int, int, str]]":
-    """The edits that take the withdrawn keys out of one bracketed group."""
     opened, closed = group
     edits, kept, dropped = [], [], False
     for item_start, item_end in _items(prose, opened, closed):
@@ -132,9 +116,8 @@ def _group_edits(
             dropped = True
             continue
         kept.append((source[item_start:item_end], bool(keys)))
-        # One item citing a kept key and a withdrawn one has no
-        # separator to drop at; the withdrawn one is replaced in place
-        # (a withdrawn raw key, by `_latex_edits`).
+        # No separator to drop at, so the withdrawn key is replaced in
+        # place (a raw one by `_latex_edits`).
         edits += [(start, end, WITHDRAWN) for start, end, key in here if gone(key)]
     if not any(cites_here for _, cites_here in kept):
         return [(opened, closed + 1, WITHDRAWN)]
@@ -180,7 +163,6 @@ def _latex_edits(
         if not any(gone(key) for key in keys):
             continue
         if all(gone(key) for key in keys):
-            # The whole command, its optional arguments with it.
             edits.append((match.start(), match.end(), WITHDRAWN))
             continue
         offset = match.start(1)
@@ -205,9 +187,8 @@ def _withdraw_once(text: str, latex: bool, gone: Callable[[str], bool]) -> str:
     else:
         prose, labels = citation_gate.markdown_prose(text)
     edits = _latex_edits(prose, text, gone) + _pandoc_edits(prose, labels, text, latex, gone)
-    # From the end backwards, so each edit's offsets are still the
-    # original's; an edit overlapping one already made waits for the next
-    # pass, which reads the text afresh.
+    # From the end backwards so offsets hold; an overlapping edit waits
+    # for the next pass.
     floor = len(text) + 1
     for start, end, replacement in sorted(edits, reverse=True):
         if end <= floor:
@@ -219,19 +200,11 @@ def _withdraw_once(text: str, latex: bool, gone: Callable[[str], bool]) -> str:
 def withdraw(text: str, suffix: str, citable: Callable[[str], bool]) -> str:
     """`text` with every citation of a key `citable` rejects taken out.
 
-    A bracketed group whose keys are all withdrawn, a narrative `@key`,
-    and a `\\cite*{...}` (optional arguments included) whose keys are all
-    withdrawn each become `WITHDRAWN`. A group or command that also cites
-    a key still citable keeps it, losing only the withdrawn keys with
-    their separators and, in Markdown, their own prefix and locator. A
-    multicite's leading optional arguments stay with the command when its
-    first group goes; they cannot be told apart from the command's own.
-
-    Repeated until nothing changes, so a citation that one pass could not
-    reach (its edit overlapped another) is reached by the next. Each pass
-    removes text and inserts only `WITHDRAWN`, which holds no `@` or
-    backslash, so the passes end. Text citing no withdrawn key is
-    returned unchanged.
+    A group, narrative `@key` or `\\cite*{...}` citing only withdrawn keys
+    becomes `WITHDRAWN`; one also citing a kept key loses only the
+    withdrawn keys (with separators and, in Markdown, prefix and
+    locator). Repeated until stable; each pass only removes text and
+    inserts `WITHDRAWN` (no `@` or backslash), so it terminates.
     """
     latex = citation_gate.is_latex(f"x{suffix}")
 
@@ -246,13 +219,11 @@ def withdraw(text: str, suffix: str, citable: Callable[[str], bool]) -> str:
 
 
 def _write_side(side_dir: Path, view: VersionView, text: str, draft_stem: str) -> Path:
-    # Afresh each time: a figure an earlier run wrote would otherwise
-    # survive into a side that no longer draws it.
+    # Afresh: an earlier run's figure would survive into this side.
     if side_dir.exists():
         shutil.rmtree(side_dir)
     side_dir.mkdir(parents=True)
-    # Held to the side directory like the figures below: the stem is the
-    # caller's, and a `..` in it would write elsewhere under content/.
+    # Confined like the figures: a `..` stem would write elsewhere.
     source = side_dir / f"{draft_stem}{view.suffix}"
     if not config.resolves_inside(source, side_dir):
         raise ValueError(f"{draft_stem!r} is not a file name: it would write {source.resolve()}")
@@ -260,9 +231,7 @@ def _write_side(side_dir: Path, view: VersionView, text: str, draft_stem: str) -
     for name, forms in (view.figures or {}).items():
         for form, body in zip(_FIGURE_FORMS, (forms.tikz, forms.ascii)):
             target = side_dir / f"{name}{form}"
-            # The view read its figures with the renderer's sibling rule,
-            # which refuses a name escaping the draft's directory; a view
-            # built any other way is held to the same here.
+            # Held to the renderer's sibling rule however the view was built.
             if body is None or not config.resolves_inside(target, side_dir):
                 continue
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -278,12 +247,8 @@ def prepare(
     stem: str,
 ) -> tuple[Path, Path]:
     """Writes `work/old/<stem><suffix>` and `work/new/<stem><suffix>`, each
-    with its `figures/`, the old side with its withdrawn citations taken
-    out; returns the two source paths.
-
-    `work` must be under `content/`, which `render()` would refuse
-    otherwise; the caller passes the diff's own directory under
-    `content/review/`.
+    with its `figures/`, the old side with withdrawn citations taken out;
+    returns the two source paths. `work` must be under `content/`.
     """
     work = config.require_inside_content(Path(work), "diff's work directory")
     old_text = withdraw(old.text, old.suffix, citable)

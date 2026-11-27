@@ -1,22 +1,10 @@
 """`registry index`: turn a typeset book's `book.idx` into its index (#1168).
 
-The second LaTeX pass after `bibtexu` leaves `book.idx` holding one line
-per `\\index{<id>}` the filter placed, each with the page it fell on.
-This reads that file, the term table and every indexed chapter's sidecar
-(all beside `book.idx`, where the book's fragments render), writes
-`book-index.idx` with each id replaced by its printed entry, writes
-`book.ist`, and runs `upmendex`, leaving `book.ind` for the last LaTeX
-pass to print.
-
-**Only the key changes.** hyperref wraps each entry's page in its own
-macro (`|hyperpage`, `|hyperxindexformat{\\textbf}`); that suffix and the
-page are copied verbatim, and the parser never names the macro.
-`book.idx` itself is left alone, so this reruns safely.
-
-**A stale build refuses.** An id the term table does not hold, a chapter
-with no sidecar, or a sidecar rendered against an older table means
-some chapter's entries no longer match the table: printing them would
-put pages under the wrong term, so nothing is written.
+Rewrites each id in `book.idx` to its printed entry as `book-index.idx`,
+writes `book.ist` and runs `upmendex` for `book.ind`. **Only the key
+changes**: hyperref's page suffix is copied verbatim, and `book.idx` is
+untouched, so it reruns safely. **A stale build refuses** (unknown id,
+missing or outdated sidecar): it would put pages under the wrong term.
 """
 
 import hashlib
@@ -92,7 +80,6 @@ def _sidecars(directory: Path, units: "list[str]", want: str) -> "tuple[dict, li
 
 
 def midsentence(sidecars: dict) -> "dict[str, dict[str, int]]":
-    """Each term's mid-sentence casing counts, summed over the chapters."""
     merged: dict[str, dict[str, int]] = {}
     for side in sidecars.values():
         for tid, entry in (side["terms"] or {}).items():
@@ -147,9 +134,8 @@ def _upmendex(idx: Path, rewritten: Path, data: dict, run, result: Result) -> No
     letter = ["-l"] if data["sort"] == "letter" else []
     ind, log = idx.with_suffix(".ind"), idx.with_suffix(".ilg")
     ind.unlink(missing_ok=True)
-    # Relative names, run in the book's own directory: TeX Live's
-    # `openout_any = p` makes upmendex refuse an absolute output path, and
-    # it then exits 0 having printed the index to stdout instead.
+    # Relative names: TeX Live's `openout_any = p` makes upmendex refuse
+    # an absolute output path and exit 0, printing to stdout instead.
     argv = [program, "-q", *letter, "-s", style.name, "-o", ind.name, "-t", log.name]
     completed = run(
         [*argv, rewritten.name], cwd=idx.parent, capture_output=True, text=True, check=False
@@ -181,9 +167,7 @@ def finish(idx: Path, units: "list[str]", convert, run=None) -> Result:
     more, result.dangling = _index_entries.cross_references(result.data, printed, pages, convert)
     result.entries = len(entries)
     if not lines + more:
-        # upmendex exits 255 on an empty .idx ("Nothing written"); an
-        # empty .ind is what it would have meant, and \printindex prints
-        # nothing from one.
+        # upmendex exits 255 on an empty .idx; an empty .ind prints nothing.
         idx.with_suffix(".ind").write_text("", encoding="utf-8")
         return result
     rewritten = idx.with_name(f"{idx.stem}-index.idx")

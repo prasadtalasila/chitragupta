@@ -1,20 +1,13 @@
 """Citekeys the corpus layer recorded as renamed, found in a draft and
 swapped for their replacement (plans/1211-cg-collections-and-renames.md).
 
-`chitragupta/sync_renames.py` records `old -> new` in the ledger when a
-key leaves the bib and the same paper is there under another one; it
-edits nothing. This is the drafting layer's half: `dossier status`
-lists a draft's renamed keys, and `dossier apply-renames` swaps them in
-the draft, `evidence.md`, `sections.md` and `rejected.md` -- the last so
-a paper the draft declined stays declined under its new key.
+`chitragupta/sync_renames.py` records `old -> new` and edits nothing;
+this swaps them in the draft, `evidence.md`, `sections.md` and
+`rejected.md` (so a declined paper stays declined).
 
-**Nothing is invented.** The new key is the one the ledger recorded,
-followed to the end of a chain (`a -> b -> c`), and it must be citable
-now -- a parsed row, the set the citation gate accepts. A cycle or a
-target that is not citable refuses that key alone, changing nothing for
-it, so one bad rename does not hold back the rest. A rename whose two
-PDFs differ (the importer said so, the hashes did not) changes which
-text the draft's quotes came from, so those are named for
+**Nothing is invented.** The new key is the ledger's, followed to the
+end of its chain, and must be citable now. A cycle or uncitable target
+refuses that key alone. A rename whose PDFs differ is named for
 `review quotation` to re-check.
 """
 
@@ -77,7 +70,6 @@ def final(renames: dict[str, tuple[str, str, bool]], old: str) -> tuple[str, boo
 
 
 def cited(texts, renames) -> list[str]:
-    """The renamed keys any of `texts` mentions, bounded as a citekey."""
     return sorted(old for old in renames if any(citekey_pattern(old).search(t) for t in texts))
 
 
@@ -107,9 +99,8 @@ def _texts(draft: Path) -> dict[Path, str]:
 
 
 def _write_all(texts: dict[Path, str]) -> None:
-    """Write every file or none: each goes to a temp sibling first
-    (`_atomic_write.temp_sibling`), and only once all are written is each
-    moved into place, so a full disk or a permission error midway changes
+    """Write every file or none: each goes to a temp sibling first, and
+    only then are all moved into place, so a midway failure changes
     nothing."""
     temps: dict[Path, Path] = {}
     try:
@@ -125,7 +116,6 @@ def _write_all(texts: dict[Path, str]) -> None:
 
 
 def _plan(texts: dict[Path, str]) -> tuple[list[tuple[str, str, bool]], dict[str, str]]:
-    """The swaps to make, and `{old: reason}` for the ones refused."""
     try:
         with ledger.reading() as con:
             renames = ledger_tables.renames(con)

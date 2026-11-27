@@ -1,12 +1,7 @@
 """`content/specs/<book>/index.toml`: read it and check its shape (#1168).
 
-The author's exceptions to an index built from the glossary. This module
-checks only that each table and value has the shape
-docs/book/BOOK-INDEX.md documents; whether the terms it names exist is
+Shape only (docs/book/BOOK-INDEX.md); whether named terms exist is
 `registry/_index_terms.py`'s question, which needs the glossary.
-
-Split from that module to keep both under docs/CODE-STANDARDS.md's C2
-limit.
 """
 
 import tomllib
@@ -21,7 +16,6 @@ DEFAULTS = {
     "skip_sections": ["Exercises", "Solutions"],
 }
 
-# The shape of each table's values.
 _SHAPES = {
     "variants": list,
     "restrict": list,
@@ -104,5 +98,4 @@ def _shape_problems(doc: dict) -> "list[str]":
 
 
 def settings(doc: dict) -> dict:
-    """The settings in force: `[settings]` over the defaults."""
     return {**DEFAULTS, **doc.get("settings", {})}

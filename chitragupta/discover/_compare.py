@@ -1,21 +1,16 @@
 """`discover --compare A B [C ...]`: set comparison across topics (#715).
 
-In the app this answer is the composition of chips, hop rings and
-shared-paper evidence; the terminal gets it as one view -- each pair's
-shared citekeys, the papers held by every named topic, the bridge
-papers held by at least two (with their formatted ledger entries, which
-the app payload cannot even carry), and the mutual edges of both
-families with their evidence. Pure reading of `topic_set.json` members
-and the stored edge lists; nothing here derives a relation.
+Pairwise shared citekeys, papers in every topic, bridge papers (with
+ledger entries the app cannot carry), and mutual edges of both
+families. Pure reading; nothing derives a relation.
 """
 
 import itertools
 
 from chitragupta.discover import _data
 
-# The same honesty the app's paper expansion shows at its cap of three:
-# a comparison over more topics than a person can hold is refused with
-# the limit named, not quietly truncated.
+# As the app's cap of three: too many topics is refused with the limit
+# named, not quietly truncated.
 CAP = 6
 
 
@@ -48,9 +43,8 @@ def build_compare(labels: list, graph: dict, topic_set: dict) -> dict:
 
 
 def _mutual_edges(graph: dict, labels: set) -> dict:
-    """Both families' edges whose two ends are both named -- each with
-    its own evidence, never fused, exactly as the topic view lists
-    them."""
+    """Both families' edges whose two ends are both named, each with its
+    own evidence, never fused."""
     return {
         "overlap": [edge for edge in graph["edges_overlap"] if {edge["a"], edge["b"]} <= labels],
         "semantic": [edge for edge in graph["edges_semantic"] if {edge["a"], edge["b"]} <= labels],

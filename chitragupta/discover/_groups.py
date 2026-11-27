@@ -1,19 +1,10 @@
 """`discover --groups N`: the merge-tree cut's terminal twin (#709).
 
-The app opens on a cut of the stored `hierarchy` and gives the reader a
-resolution slider over it (`assets/webapp/graph.js`: cutTree,
-groupLabel, thresholdForGroups). This module is the same three
-functions on the same array -- a cut of a *stored* tree, so it derives
-no partition the artefact does not already carry, and needs no contract
-change. `tests/webapp/cut_cases.json` pins the two implementations to
-each other: the node suite asserts graph.js reproduces every row,
-tests/test_discover_groups.py asserts this module does.
-
-One representational difference, deliberate: the app payload gives each
-topic a `members` array and groupLabel reads its length, while the
-graph artefact stores the count as `size` -- so the functions here read
-`size`, and the shared case file carries `size` for both (the node test
-synthesizes members arrays of that length).
+The same three functions as `assets/webapp/graph.js` (cutTree,
+groupLabel, thresholdForGroups) on the *stored* tree, so it derives no
+partition. `tests/webapp/cut_cases.json` pins both implementations.
+Reads `size` where the app reads `members.length`; the case file
+carries `size` for both.
 """
 
 from collections.abc import Callable
@@ -21,8 +12,7 @@ from collections.abc import Callable
 
 def group_label(members: list, sizes: dict) -> str:
     """The topic carrying the most papers leads and the rest are
-    counted -- never a name this side invented, exactly graph.js's
-    rule, ties broken alphabetically like its comparator."""
+    counted, never an invented name; ties alphabetical, as graph.js."""
     if len(members) == 1:
         return members[0]
     lead = min(members, key=lambda label: (-sizes.get(label, 0), label))
@@ -30,11 +20,9 @@ def group_label(members: list, sizes: dict) -> str:
 
 
 def _join_below(hierarchy: list, labels: list, threshold: float) -> Callable[[str], str]:
-    """Union-find over the merges at or below `threshold`, internal ids
-    resolved back to the leaves underneath them; returns the find
-    function. A topic could be labelled "node-3" and collide with an
-    internal id, so a name that is a known topic label is always a
-    leaf -- the same hardening graph.js carries."""
+    """Union-find over the merges at or below `threshold`; returns the
+    find function. A known topic label is always a leaf, since a label
+    like "node-3" can collide with an internal id (as graph.js)."""
     is_leaf = set(labels)
     parent = {label: label for label in labels}
 
@@ -61,11 +49,9 @@ def _join_below(hierarchy: list, labels: list, threshold: float) -> Callable[[st
 
 
 def cut_tree(hierarchy: list, topics: list, threshold: float) -> dict:
-    """The cut: which group each topic lands in, with the app's own
-    group ids (payload order) and labels. The app also lengthens the
-    `cluster-` prefix past any topic label starting with it (#859), as a
-    cytoscape element id must not collide; these ids never leave this
-    module, so the fixed prefix is kept here."""
+    """The cut: which group each topic lands in, with the app's group ids
+    and labels. The app lengthens the `cluster-` prefix past colliding
+    labels (#859); these ids stay internal, so the fixed prefix stays."""
     find = _join_below(hierarchy, [t["label"] for t in topics], threshold)
     by_root: dict = {}
     group_of: dict = {}
@@ -86,9 +72,7 @@ def cut_tree(hierarchy: list, topics: list, threshold: float) -> dict:
 
 def threshold_for_groups(hierarchy: list, topics: list, target: int) -> float:
     """The threshold yielding as close to `target` groups as the tree
-    allows. The target is a target: a tree that never joins an outlying
-    topic cannot reach one group, and says so by returning the nearest
-    cut rather than pretending."""
+    allows; an unreachable target returns the nearest cut honestly."""
     best = 0.0
     best_miss = abs(len(topics) - target)
     for merge in hierarchy:
@@ -99,10 +83,8 @@ def threshold_for_groups(hierarchy: list, topics: list, target: int) -> float:
 
 
 def build_groups(graph: dict, target: int) -> dict:
-    """The cut nearest `target` groups, in one machine-readable shape:
-    the target asked for, the count actually reached (the app is honest
-    that they can differ, and so is this), the distance cut at, and the
-    groups with the app's own labels."""
+    """The cut nearest `target` groups: target, count actually reached,
+    distance cut at, and the groups with the app's labels."""
     topics = graph["topics"]
     threshold = threshold_for_groups(graph["hierarchy"], topics, target)
     cut = cut_tree(graph["hierarchy"], topics, threshold)

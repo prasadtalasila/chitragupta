@@ -1,27 +1,11 @@
 """The resolution ladder: from a free phrase to a topic that exists.
 
-Four rungs, best first, and the result names which one fired
-(`resolved_via`), because "which mechanism answered" is the difference
-between a topic membership and a plausible guess:
-
-1. **exact** -- case-insensitive equality against topic labels.
-2. **fuzzy** -- `difflib` near-match, for typos and near-forms.
-3. **hybrid** -- two rankings fused by Reciprocal Rank Fusion: BM25
-   over each topic's own vocabulary (label + its c-TF-IDF terms)
-   beside cosine of the query's embedding against the stored topic
-   centroids. RRF (Cormack et al., 2009) is rank-based, so the two
-   scores never need calibrating against each other -- the reason it
-   was chosen over any weighted interpolation.
-4. **search** -- nothing above answered; the caller falls back to
-   `chitragupta.retrieval.search()` over papers, clearly labelled.
-
-The semantic half of rung 3 needs the enrich extra, and the
-cross-encoder that reorders its result needs `[enrich].rerank` too.
-When either is absent -- not installed, or installed with a model that
-will not load (#977) -- that tier degrades to the one below it and the
-resolution carries a note saying so -- the same honest-degradation
-posture every enrich stage's self-probe takes, never a silent
-substitution.
+Four rungs, best first, and `resolved_via` names which fired: exact,
+fuzzy (`difflib`), hybrid (BM25 over each topic's vocabulary fused with
+centroid cosine by Reciprocal Rank Fusion, which is rank-based so the
+scores need no calibration), then search (paper fallback, labelled).
+Without the enrich extra or a loadable model (#977) a tier degrades with
+a note, never a silent substitution.
 """
 
 import difflib
@@ -31,22 +15,19 @@ from typing import Any
 from chitragupta import config, reranker, retrieval
 from chitragupta.discover import _data
 
-# Cormack et al. (2009)'s constant. Rank-based fusion: each ranking
-# contributes 1/(k + rank), so agreement between the two rankers
-# dominates without either one's raw scale mattering.
+# The standard RRF constant: each ranking contributes 1/(k + rank), so
+# agreement dominates without either raw scale mattering.
 RRF_K = 60
 
-# difflib's default cutoff (0.6) accepts matches a reader would call
-# wrong ("digital twin" for "digital signal"); 0.75 keeps the rung to
-# typos and near-forms, which is all a *lexical* rung should claim.
+# difflib's 0.6 accepts wrong matches ("digital twin" for "digital
+# signal"); 0.75 keeps the lexical rung to typos and near-forms.
 _FUZZY_CUTOFF = 0.75
 
 
 @dataclass
 class Resolution:
-    """What the ladder decided: the winning label (None when the caller
-    should fall back to paper search), the rung that fired, the ranked
-    runner-up labels, the winning rung's own score where it has one, and
+    """What the ladder decided: the winning label (None means fall back
+    to paper search), the rung, ranked runners-up, the rung's score and
     a note when a rung degraded."""
 
     label: "str | None"
@@ -68,9 +49,8 @@ def fuzzy_match(phrase: str, labels) -> "str | None":
 
 
 def topic_vocabulary(topic_set: dict, terms: dict) -> dict:
-    """One small BM25 document per topic: its label plus its c-TF-IDF
-    terms. The label is what a human calls the topic; the terms are what
-    the corpus calls it -- a query matching either deserves the hit."""
+    """One small BM25 document per topic: its label (what a human calls
+    it) plus its c-TF-IDF terms (what the corpus calls it)."""
     return {
         topic["label"]: " ".join([topic["label"], *terms.get(topic["label"], [])])
         for topic in topic_set["topics"]
@@ -78,9 +58,9 @@ def topic_vocabulary(topic_set: dict, terms: dict) -> dict:
 
 
 def bm25_ranking(phrase: str, vocab: dict) -> list:
-    """`[(label, score), ...]` best first, positive scores only --
-    scored by the same tokenizer and BM25 arithmetic the retrieval layer
-    uses, so a term matches a topic exactly when it would match a paper."""
+    """`[(label, score), ...]` best first, positive scores only, with the
+    retrieval layer's tokenizer and BM25, so topic and paper matching
+    agree."""
     index = {
         label: {"term_freqs": _freqs(text), "length": len(retrieval._tokenize(text))}
         for label, text in vocab.items()
@@ -97,36 +77,30 @@ def _freqs(text: str) -> dict:
 
 
 def _load_model() -> "Any":
-    """Isolated so tests fake it and so the import cost is paid only
-    when the ladder actually reaches the semantic rung."""
+    """Isolated so tests fake it and the import cost is paid only at the
+    semantic rung."""
     from sentence_transformers import SentenceTransformer  # pylint: disable=import-outside-toplevel
 
     return SentenceTransformer(config.EMBEDDING_MODEL)
 
 
 def _load_reranker() -> "Any":
-    """The same cross-encoder loader the embed index reranks with --
-    one model, one cache, one config key (`[enrich].rerank_model`)."""
+    """The embed index's cross-encoder loader: one model, one cache, one
+    config key (`[enrich].rerank_model`)."""
     return reranker.load_reranker(config.RERANK_MODEL)
 
 
-# Loaders that already failed in this process, with the note they
-# failed with (#1023). `lru_cache` caches no exception, so without this
-# `--compare A B C` offline asked the Hub, and paid its timeout, once per
-# phrase. Keyed by the loader and the tier it serves, so a test that
-# patches in a new loader starts clean, and one loader standing in for
-# two tiers still names the right one.
+# Loaders that already failed in this process (#1023): `lru_cache` caches
+# no exception, so offline runs paid a Hub timeout per phrase. Keyed by
+# loader and tier so tests start clean and the note names the right tier.
 _FAILED: dict = {}
 
 
 def optional_model(load, tier: str) -> "tuple[Any, str | None]":
     """`(model, None)`, or `(None, note)` naming `tier` when the model
-    cannot be had: the extra not installed, or a checkpoint that will
-    not load (#977). Only `ImportError` used to be caught, but a host
-    with the extra and no cached model raises `OSError` (or, through
-    `reranker.load_reranker`, `RuntimeError`), and that traceback ended
-    `corpus discover` for a tier the ladder can do without. A failure is
-    remembered for the process and not re-attempted."""
+    cannot be had (#977): `OSError` or `RuntimeError` from a missing
+    checkpoint, not just `ImportError`, must not end `discover`. A
+    failure is remembered for the process."""
     key = (load, tier)
     if key in _FAILED:
         return None, _FAILED[key]
@@ -137,8 +111,7 @@ def optional_model(load, tier: str) -> "tuple[Any, str | None]":
     # Broad on purpose: sentence-transformers raises anything from
     # OSError to a huggingface_hub error for a model it cannot load.
     except Exception as exc:  # noqa: BLE001 -- see the comment above
-        # The first line only: huggingface's messages run to several,
-        # and this is one line of a printed view.
+        # First line only: this is one line of a printed view.
         reason = str(exc).partition("\n")[0] or type(exc).__name__
         _FAILED[key] = f"{tier} unavailable (the model would not load: {reason})"
     return None, _FAILED[key]
@@ -146,14 +119,11 @@ def optional_model(load, tier: str) -> "tuple[Any, str | None]":
 
 def _rescored(phrase: str, fused: list, vocab: dict) -> "tuple[list, str | None]":
     """The fused candidate labels, reordered by a cross-encoder over
-    (phrase, topic-vocabulary) pairs -- OpenScholar's recall-then-
-    precision cascade, sized for a topic list rather than 45M papers.
+    (phrase, topic-vocabulary) pairs (a recall-then-precision cascade).
 
-    Reordering only: the scorer sees exactly the candidates the ladder
-    fused and can promote or demote but never add. With `[enrich].rerank`
-    off the model is never loaded, as docs/CONFIG.md says; with it on but
-    unavailable the fused order stands with a note -- the same
-    degradation the semantic rung practises.
+    Reorders only, never adds. With `[enrich].rerank` off the model is
+    never loaded (docs/CONFIG.md); unavailable, the fused order stands
+    with a note.
     """
     if not config.RERANK:
         return fused, None
@@ -161,16 +131,14 @@ def _rescored(phrase: str, fused: list, vocab: dict) -> "tuple[list, str | None]
     if scorer is None:
         return fused, note
     scores = scorer.predict([(phrase, vocab.get(label, label)) for label in fused])
-    # Stable: equal scores keep the fused order, so an indifferent
-    # scorer changes nothing.
+    # Stable: equal scores keep the fused order.
     ordered = sorted(zip(scores, fused), key=lambda pair: -pair[0])
     return [label for _score, label in ordered], None
 
 
 def semantic_ranking(phrase: str, graph: dict, model: "Any") -> list:
     """`[(label, cosine), ...]` against the stored centroids, in the
-    same mean-centred space the graph stage used -- the stored
-    `corpus_mean` is what moves the query there without the embed cache."""
+    graph stage's mean-centred space via the stored `corpus_mean`."""
     vector = model.encode(phrase, show_progress_bar=False)
     scored = [
         (topic["label"], _data.centred_cosine(vector, graph["corpus_mean"], topic["centroid"]))
@@ -198,8 +166,8 @@ def resolve(
     min_similarity: "float | None" = None,
 ) -> Resolution:
     """Walk the ladder. `label is None` tells the caller to fall back to
-    paper search -- the ladder itself never searches papers, so the
-    fallback stays visibly a different thing in the output."""
+    paper search, which the ladder never does itself so it stays
+    visibly different."""
     floor = config.DISCOVER_MIN_SIMILARITY if min_similarity is None else min_similarity
     labels = [topic["label"] for topic in topic_set["topics"]]
 

@@ -1,10 +1,6 @@
 """The three discovery views, each built once as data and rendered
-twice -- prose for a terminal, the same dict for `--json` -- so the two
-outputs cannot disagree about what was found.
-
-Rendering shows relations; it derives none. Every number and every
-citekey below comes from an artefact a stage wrote or a ledger row a
-sync recorded.
+twice (terminal prose and `--json`) so the outputs cannot disagree.
+Rendering derives no relation; every number comes from an artefact.
 """
 
 from chitragupta.discover import _data
@@ -42,8 +38,7 @@ def render_list(data: dict) -> str:
 
 def _linked(graph: dict, label: str) -> dict:
     """Both edge families touching `label`, each keeping its own
-    evidence -- shared citekeys on one side, the bridging pair on the
-    other -- and never merged into a single score."""
+    evidence and never merged into a single score."""
     overlap = [
         {
             "label": edge["b"] if edge["a"] == label else edge["a"],
@@ -68,8 +63,7 @@ def _linked(graph: dict, label: str) -> dict:
 
 def _graph_node(graph: dict, label: str) -> dict:
     """The graph's node for a topic-set label, or the refusal that names
-    the drift: the two artefacts are written by different stages, and one
-    re-run without the other leaves labels only one of them knows."""
+    the drift (one stage re-run without the other)."""
     node = next((t for t in graph["topics"] if t["label"] == label), None)
     if node is None:
         raise _data.MissingArtefact(
@@ -104,9 +98,8 @@ def build_topic(label: str, graph: dict, topic_set: dict, terms: dict) -> dict:
             for m in members
         ],
         "linked": _linked(graph, label),
-        # Stored brokerage (#713): the same four numbers the app panel
-        # shows, read from the artefact. Absent for an older artefact,
-        # and then absent here too -- this view recomputes nothing.
+        # Stored brokerage (#713), as the app panel shows; absent for an
+        # older artefact, since this view recomputes nothing.
         **({"brokerage": node["analysis"]} if "analysis" in node else {}),
     }
 
@@ -152,9 +145,8 @@ def render_topic(data: dict) -> str:
 
 
 def _brokerage_line(stats: dict) -> str:
-    """One family's four numbers with the panel's own reading -- theme,
-    bridge, or too small to say -- so the terminal and the app teach the
-    same interpretation (panel.js statsColumn)."""
+    """One family's four numbers with the panel's own reading, so the
+    terminal and app teach the same interpretation (panel.js statsColumn)."""
     if not stats["degree"]:
         return "no neighbours in this family"
     reading = (
@@ -192,9 +184,8 @@ def render_paper(data: dict) -> str:
 
 
 def build_search(phrase: str, results: list, topic_set: dict) -> dict:
-    """The fallback view, labelled as what it is: paper search, not a
-    topic membership -- with each hit still annotated by its topics so
-    the reader can step from a hit back onto the graph."""
+    """The fallback view, labelled as paper search, not topic membership,
+    with each hit annotated by its topics."""
     by_paper = _data.topics_of(topic_set)
     return {
         "resolved_via": "search",

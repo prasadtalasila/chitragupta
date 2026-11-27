@@ -1,21 +1,8 @@
 """Logging a retrieval call against a dossier, and the revision/cost
 accounting built from that log.
 
-Split out of chitragupta/dossier.py (#219). `_RETRIEVAL_TEMPLATE` is imported
-from `_create` rather than duplicated or promoted to `_core`, because
-unlike `_SECTIONS_TEMPLATE` it has exactly one reader outside `_create`
-itself (`log_retrieval`, for the same "write the header if the file
-doesn't exist yet" reason every other template exists for) -- a
-private name crossing one file boundary once is not the same problem
-as crossing three.
-
-The read side -- `_retrieval_rows` and the `recorded_queries` trio --
-moved to `_retrieval_queries.py` (#467): #455's origin column pushed
-this module back over C2, and unlike the write path and the cost
-accounting below, nothing here needs those three to be defined in this
-file rather than merely reachable through it. They stay importable as
-`_retrieval.recorded_queries`/`_with_collection`/`_with_origin`, via the
-re-export where they used to live, so no existing call site changes.
+The read side lives in `_retrieval_queries.py` (#467) and is
+re-exported here so existing call sites keep working.
 """
 
 import argparse
@@ -44,87 +31,25 @@ def log_retrieval(
 ) -> Path:
     """Append one retrieval call to the dossier's `retrieval.md`.
 
-    `collection` is the Zotero collection the call was scoped to
-    (`retrieval.search(..., collection=...)`, #195) -- `None`/empty for a
-    corpus-wide call, which is also how a row logged before this
-    parameter existed reads back (#254). Without it, a scoped call and a
-    corpus-wide one at the same query and `--k` wrote byte-identical
-    rows, and nothing downstream could tell which had actually run.
+    `collection` is the Zotero scope (#195); without it a scoped and a
+    corpus-wide call wrote identical rows (#254). `expanded` is what
+    acronym expansion (#789) and spelling correction (#1232) added; empty
+    on old rows, which is exact. `origin` is `"declared"` or `"extended"`
+    (#455); empty on old rows is a third state, not a default (see
+    `recorded_queries_with_origin`). Creates the file or directory if
+    missing, so no measurement is lost before `init`.
 
-    `expanded` is what acronym expansion (#789) and spelling correction
-    (#1232) added to the query before it was ranked --
-    `chitragupta/retrieval_added.describe`'s one-line rendering, empty for
-    a call that added nothing. Empty is also
-    how every row written before this column existed reads, and unlike
-    `origin` that widening is exact rather than approximate: a row logged
-    before this existed was ranked with no expansion, because there was
-    none to do.
+    The query is flattened onto one line: a pipe or newline would
+    silently miscount rows `retrieval_cost_by_revision` reads by position.
 
-    `origin` is `"declared"` or `"extended"` (#455) -- whether the query
-    came verbatim from an `outline.md` section or was added because a
-    declared section came up thin. `None`/empty for a call that named
-    neither, which is also how every row logged before this parameter
-    existed reads back. Unlike `collection`, that empty reading is not a
-    safe default to widen into: a pre-`outline.md` call was neither
-    declared nor extended, so it stays its own, third state -- see
-    `recorded_queries_with_origin`.
-
-    Creates the file if the dossier exists but predates it, and creates
-    the dossier directory if a skill logged before running `init` --
-    losing a measurement because the skeleton wasn't there yet would be a
-    silly way to fail, and this writes nothing a later `init` would
-    clobber.
-
-    The query is flattened onto one line before it is written. A pipe
-    would split the row into extra cells and a newline would split it
-    into two rows -- and `retrieval_cost_by_revision` reads rows
-    positionally, so
-    either one turns a logged call into a silently miscounted one rather
-    than a visible error. Whitespace is collapsed with `split()`, which
-    covers newlines, tabs and carriage returns together.
-
-    **Nothing here ever writes at an offset.** That matters because
-    `--log` is a flag on the retrieval CLI and a skill dispatching
-    parallel subagents could hand it to all of them, so two processes
-    can reach this function at once. The file is opened once, in append
-    mode, and the template is written only when that open finds it
-    empty -- so both the template and the row go through `O_APPEND` and
-    land at whatever the end of the file is *at the time of the write*.
-    A writer can therefore never overwrite what another one put there.
-
-    Two earlier shapes could, and both are worth naming because each
-    looks correct:
-
-    - `if not path.exists(): path.write_text(TEMPLATE)` truncates, and
-      the check goes stale between the two calls.
-    - Creating with mode `"x"` fixes that, but publishes an empty file
-      and then writes the template to it from offset 0. A second writer
-      that appends a row in between has it overwritten.
-
-    What this does *not* promise: that the template is written exactly
-    once. Two writers that both find the file empty both write one, so
-    the file can carry a duplicate header. That is deliberately the
-    failure left in, because it loses nothing -- `retrieval_cost_by_revision` skips
-    any row whose last cell isn't an integer, which both the header and
-    its separator are -- and `_count`'s advisory total is one high.
-    Buying exactly-once would need a lock or a link-into-place dance,
-    for a file whose whole point is to be cheap. See the module
-    docstring, and docs/TOKENS.md for why a lock is the wrong instrument
-    here.
-
-    Write atomicity is deliberately *not* claimed. Both writes go
-    through one buffered handle and may well reach the filesystem as a
-    single small write -- but that is an implementation detail of how
-    the template's size compares to a buffer, not behaviour to rely on:
-    buffered text I/O can flush at points of its own choosing, closing
-    may still issue more than one write, and POSIX does not promise that
-    a write to a regular file arrives unsplit. Nothing here depends on
-    any of that. `retrieval_cost_by_revision` skips
-    any row it cannot parse, so a torn row costs that one measurement
-    and leaves every other row intact -- while a row overwritten at an
-    offset would have been silently gone. The guarantee this function
-    makes is the weaker, sufficient one: no writer addresses a position,
-    so no writer can destroy what another wrote.
+    **Nothing here ever writes at an offset**, because parallel subagents
+    can log at once. One append-mode open, template only when empty, so
+    no writer overwrites another. Rejected: `exists()` then `write_text`
+    (truncates, stale check) and mode `"x"` (an append between create and
+    template write is lost). A duplicate header is the accepted failure:
+    it loses nothing, since unparsable rows are skipped. Exactly-once
+    would need a lock (docs/TOKENS.md says why not). Write atomicity is
+    not claimed: a torn row costs one measurement, never another's row.
     """
     target = dossier_dir(draft)
     target.mkdir(parents=True, exist_ok=True)
@@ -133,15 +58,9 @@ def log_retrieval(
     safe_collection = " ".join((collection or "").split()).replace("|", "\\|")
     safe_origin = " ".join((origin or "").split()).replace("|", "\\|")
     safe_expanded = " ".join((expanded or "").split()).replace("|", "\\|")
-    # `k1`/`b` are read from config here rather than taken as parameters
-    # like `collection`, `origin` and `expanded` above (#788). Those three
-    # describe what the *caller* asked for and only the caller knows them;
-    # these describe the ranker that actually ran, are the same for every
-    # call in the process, and a caller who forgot to pass them would
-    # write a blank cell indistinguishable from a row logged before the
-    # columns existed -- the exact ambiguity the columns are here to
-    # remove. Appended after `expanded`, like every column before them,
-    # so no existing cell index moves.
+    # `k1`/`b` come from config, not parameters (#788): they describe the
+    # ranker that ran, and a forgotten argument would write a blank cell
+    # indistinguishable from an old row. Appended last, so no index moves.
     row = (
         f"| {date.today().isoformat()} | {mode} | {safe_query} | {k} | {results} | "
         f"{chars} | {safe_collection} | {safe_origin} | {safe_expanded} | "
@@ -157,26 +76,11 @@ def log_retrieval(
 def mark_revision(draft: Path, label: str = "") -> Path:
     """Append a revision-boundary marker to the dossier's `retrieval.md`.
 
-    `retrieval.md` rows otherwise carry only a date (`log_retrieval` writes
-    `date.today()`), and two revisions on the same day are indistinguishable
-    by it. `draft-reviser`'s loop calls this once per pass, before any
-    retrieval, precisely so same-day revisions don't get silently merged
-    into one figure -- see `retrieval_cost_by_revision`, the reader this
-    writes for.
-
-    Shares `log_retrieval`'s append-only, no-offset-write discipline (see
-    that function's docstring for why), even though nothing calls this one
-    concurrently -- one write path is one fewer thing to get right twice.
-    A marker with `results` and `chars` both 0 costs nothing towards
-    `retrieval_cost_by_revision`'s totals; it is real data only to
-    `retrieval_cost_by_revision`, which reads it as a boundary rather than
-    a call.
-
-    It also snapshots the draft (`_versions.take`), so `draft diff` has
-    the text this pass started from. Before the row, so the snapshot is
-    the state the pass began with; skipped for a draft not on disk, and
-    a snapshot store that cannot be read is warned about rather than
-    allowed to stop the pass -- the row does not depend on it.
+    Rows carry only a date, so same-day revisions would merge without
+    it; `draft-reviser` calls this once per pass before any retrieval.
+    Same append-only discipline as `log_retrieval`. Also snapshots the
+    draft first (`_versions.take`) for `draft diff`; an unreadable store
+    is warned about, never allowed to stop the pass.
     """
     if draft.is_file():
         try:
@@ -207,30 +111,11 @@ class RevisionCost:
 def retrieval_cost_by_revision(dossier: Path) -> list[RevisionCost]:
     """(calls, characters returned) per `mark_revision` segment.
 
-    Boundary rows are excluded from the totals: they record zero
-    retrieval work by construction (`results` and `chars` are always 0),
-    but counted as calls each would be one that fetched nothing,
-    inflating every segment by one.
-
-    There used to be a `retrieval_cost` beside this that answered the
-    same question for the whole file. `_status` computes the lifetime
-    figures as the sum of these segments instead -- parsing `retrieval.md`
-    twice for two views of it was the only thing that function bought --
-    so it was deleted rather than left as surface nothing called (#515).
-
-    Rows logged before the first marker -- which is every row on a dossier
-    revised before this existed, or one revised without `draft-reviser`'s
-    loop -- form a leading segment labelled `"initial draft"`. Each marker
-    after that starts a new segment, labelled with the text passed to
-    `mark_revision` or, if none was given, `"revision N"` counted by marker
-    order (so numbering stays stable even if an earlier revision logged no
-    calls and is dropped below).
-
-    A segment with no calls is dropped rather than reported as a
-    zero-cost revision -- `mark-revision` costs nothing to call even when
-    `draft-reviser` step 4 decides no search is needed, and a list of
-    revisions padded with real ones that did nothing would obscure the
-    ones that did.
+    Boundary rows are not counted as calls. Rows before the first marker
+    form an `"initial draft"` segment; unlabelled markers are numbered
+    by marker order, so numbering stays stable when an empty segment is
+    dropped. Empty segments are dropped. Lifetime totals are the sum of
+    these (#515).
     """
     rows = _retrieval_rows(dossier)
     segments: list[RevisionCost] = []
@@ -242,10 +127,7 @@ def retrieval_cost_by_revision(dossier: Path) -> list[RevisionCost]:
             if calls or chars:
                 segments.append(RevisionCost(label, calls, chars))
             marker_index += 1
-            # `mark_revision` escapes a pipe in the label the same way
-            # `log_retrieval` escapes one in a query, so the row parses;
-            # unescape it back for display, same as `recorded_queries`
-            # does for a query cell.
+            # Unescape the pipe `mark_revision` escaped, as for queries.
             label = row[2].replace("\\|", "|") or f"revision {marker_index}"
             calls = chars = 0
             continue
@@ -256,16 +138,8 @@ def retrieval_cost_by_revision(dossier: Path) -> list[RevisionCost]:
     return segments
 
 
-# `recorded_queries`, `_with_collection` and `_with_origin` moved to
-# `_retrieval_queries.py` (#467) -- re-exported here, at the spot they
-# used to be defined, so `_retrieval.recorded_queries` and its two
-# siblings keep working for every caller this project already has
-# (`_with_evidence`, #480, never lived here and is re-exported only so
-# that the family reads as one from either module)
-# (`chitragupta/review/agenda/_refresh.py`, `chitragupta/dossier/_drift.py`,
-# `chitragupta/dossier/_outline.py`, and this module's own test suite)
-# without a mechanical rename across files the split didn't otherwise
-# need to touch.
+# Re-exported from `_retrieval_queries.py` (#467) so existing callers of
+# `_retrieval.recorded_queries` and its siblings keep working.
 # pylint: disable=unused-import,wrong-import-position
 from chitragupta.dossier._retrieval_queries import (  # noqa: F401,E402
     recorded_queries,

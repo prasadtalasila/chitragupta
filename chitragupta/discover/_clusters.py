@@ -1,20 +1,15 @@
 """`discover --clusters [--inflation X]`: the disagreement grid's
 terminal twin (#712).
 
-Reads the partitions the builder stored (`communities`, one assignment
-array per slider inflation per family) and derives the same two
-disagreement lists the app's grid shows -- pairs one family groups and
-the other splits, with their shared-paper counts, sorted sharpest
-first and capped with the drop reported, exactly families.js's rules.
-Nothing here clusters anything: an artefact from an older run has no
-partitions, and the view refuses naming the stage to re-run rather
-than computing a partition the artefact does not carry.
+Derives families.js's two disagreement lists from the stored
+`communities` partitions. Clusters nothing: an older artefact without
+partitions is refused, naming the stage to re-run.
 """
 
 import itertools
 
-# families.js's own cap, for the same reason: the lists grow with the
-# square of a cluster, and a silent cut would read as "that is all".
+# families.js's cap: lists grow with the square of a cluster, and a silent
+# cut would read as "that is all".
 MAX_PAIRS = 200
 
 

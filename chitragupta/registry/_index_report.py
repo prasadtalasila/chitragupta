@@ -1,14 +1,9 @@
 """The index report (#1168): `content/specs/<book>/registries/index.md` and
 `index.json`, beside the other registries.
 
-Every finding ends with the `index.toml` line that answers it, so acting
-on one is a paste, or one sentence to an agent that reads `index.json`.
-None of it refuses anything: a generic term or a mention below the
-threshold is a judgement for the author, which is why these live here
-and not in `registry/_index_terms.py`'s validation, which does refuse.
-
-Then the whole index as a table, so the author can review every term's
-chapters, not only the ones a rule caught.
+Each finding ends with the `index.toml` line that answers it. Nothing
+refuses: these are author judgements, unlike `_index_terms.py`'s
+validation. Then the whole index as a table for review.
 """
 
 import json
@@ -40,7 +35,6 @@ _ORDER = (
 
 
 def _chapters(sidecars: dict) -> "dict[str, dict[str, dict]]":
-    """Term id -> unit -> that chapter's sidecar entry."""
     found: dict[str, dict[str, dict]] = {}
     for unit, side in sidecars.items():
         for tid, entry in (side["terms"] or {}).items():
@@ -177,7 +171,6 @@ def _unused(data: dict, doc: dict, seen: "dict[str, dict]") -> list:
 
 
 def findings(data: dict, sidecars: dict, doc: dict, units: list, dangling: list) -> list:
-    """Every finding, in `_ORDER` and then term order."""
     seen = _chapters(sidecars)
     found = []
     for tid, term in sorted(data["terms"].items(), key=lambda item: item[1]["key"]):
@@ -205,7 +198,6 @@ def findings(data: dict, sidecars: dict, doc: dict, units: list, dangling: list)
 
 
 def summary(entries: int, found: int, path) -> str:
-    """The one line `registry index` prints."""
     entry_word = "entry" if entries == 1 else "entries"
     finding_word = "finding" if found == 1 else "findings"
     return f"index: {entries} {entry_word}, {found} {finding_word} -> {path} (+ .json)"
@@ -239,7 +231,6 @@ def _cell(chapters: dict, indexed: bool) -> str:
 def write(
     directory: Path, data: dict, sidecars: dict, found: list, entries: int
 ) -> "tuple[Path, Path]":
-    """`index.md` and `index.json` under `directory`; both paths."""
     rows = _rows(data, _chapters(sidecars))
     lines = [
         f"# index\n\n{_BANNER}\n",

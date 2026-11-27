@@ -1,10 +1,5 @@
 """Formatting a `Drift` (or several, for `dossier status --all`) for a
 person to read, and the CLI handler that's the only caller of either.
-
-Split out of `_drift` (#219) once the combined module was over this
-project's 250-code-line cap -- computing a Drift and printing one are
-genuinely separable, confirmed by `status()` in `_status.py` needing
-the former and never the latter.
 """
 
 import json
@@ -13,10 +8,8 @@ from chitragupta import config
 from chitragupta.dossier import draft_relpath
 from chitragupta.dossier._drift import Drift
 
-# How many findings of one kind to print before summarising the rest.
-# A drift report is read to decide what to do next, not as a manifest;
-# what it must never do is truncate silently, so the remainder is always
-# counted out loud.
+# Findings of one kind shown before summarising; the remainder is always
+# counted out loud, never truncated silently.
 _SHOWN = 10
 
 
@@ -60,9 +53,8 @@ def _print_drift(report: Drift) -> None:
             report.candidates,
             _render_candidate,
         )
-    # Only alongside a real finding. On its own this is true on every
-    # sweep forever, so printing it unconditionally would bury the drift
-    # it is meant to help act on.
+    # Only alongside a real finding: on its own it is true forever and
+    # would bury the drift.
     if report.reconsider:
         _print_capped(
             f"    {len(report.reconsider)} previously rejected paper(s) these queries still reach:",
@@ -73,8 +65,7 @@ def _print_drift(report: Drift) -> None:
 
 def _print_capped(header: str, items: list, render) -> None:
     """A listing capped at _SHOWN entries that always counts its
-    remainder out loud -- the never-truncate-silently rule stated at
-    _SHOWN's definition, in one place instead of three."""
+    remainder out loud."""
     print(header)
     for item in items[:_SHOWN]:
         render(item)
@@ -119,17 +110,13 @@ def _cmd_status_all(reports: list[Drift], as_json: bool) -> int:
 
 def _print_drift_summary(reports: list[Drift]) -> None:
     """The human-readable half of `status --all`: every dossier's drift,
-    then the how-to-read-this coda. Split from `_cmd_status_all` so the
-    command keeps one exit and one return -- this text report cannot fail,
-    which is exactly why it returns nothing."""
+    then the how-to-read-this coda. Cannot fail, so returns nothing."""
     print(f"Corpus drift across {len(reports)} dossier(s):\n")
     for report in reports:
         _print_drift(report)
     stale = [r for r in reports if not r.clean]
-    # A dossier with no readable ledger has no findings, which is not the
-    # same as having none to find. Reporting it as current would be the
-    # one way this command could actively mislead: "nothing to do here"
-    # asserted about a check that never ran.
+    # No readable ledger is not "nothing to find": reporting it current
+    # would assert a check that never ran.
     unknown = [r for r in reports if not r.corpus_available]
     print()
     if unknown:

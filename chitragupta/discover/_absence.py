@@ -1,26 +1,16 @@
 """`discover --why A B`: why there is *no* overlap edge here.
 
-The terminal twin of the app's absence verdict (`assets/webapp/
-absence.js`), the gap docs/TOPIC-DISCOVERY-GRAPH.md called nearly
-free to close: the tail's inputs -- each topic's members and `n_docs` --
-are already on this side. Same arithmetic, same verdict, one extra fact
-the app payload drops and the artefact keeps: the gate's own threshold.
-
-The tail must agree with `chitragupta/enrich/topic_graph.py`, which
-calls `scipy.stats.hypergeom.sf(k - 1, n_docs, |A|, |B|)`, and with the
-browser. `tests/webapp/hypergeometric_cases.js` is the three-way
-contract: scipy pins the rows (tests/test_webapp_hypergeometric.py),
-the node suite pins absence.js to them, and tests/test_discover_why.py
-pins this module to the same rows. stdlib `math.lgamma` here rather
-than a scipy import: the verb has to answer on a base install, where
-the enrich extra -- and scipy with it -- may be absent.
+The terminal twin of `assets/webapp/absence.js`, plus the gate's own
+threshold. The tail must match `enrich/topic_graph.py`'s
+`hypergeom.sf(k - 1, n_docs, |A|, |B|)` and the browser:
+`tests/webapp/hypergeometric_cases.js` is the three-way contract.
+stdlib `math.lgamma`, not scipy, so it answers on a base install.
 """
 
 from math import exp, inf, lgamma
 
-# The gate's documented default (docs/TOPIC-DISCOVERY.md), used only
-# when an artefact predates the stored `p_value` field -- the same
-# assumption absence.js makes for every artefact.
+# The gate's documented default (docs/TOPIC-DISCOVERY.md), only for an
+# artefact predating stored `p_value`, as absence.js assumes.
 DEFAULT_THRESHOLD = 0.01
 
 
@@ -32,9 +22,8 @@ def _log_choose(n: int, k: int) -> float:
 
 def survival(k: int, docs: int, a: int, b: int) -> float:
     """P(X >= k) for X hypergeometric: the chance that topics of size
-    `a` and `b` share at least `k` of `docs` papers by drawing at
-    random. Summed in log space because the factorials run to the size
-    of the corpus and 171! overflows a double."""
+    `a` and `b` share at least `k` of `docs` papers at random. Log space,
+    because 171! overflows a double."""
     least = max(0, a + b - docs)
     most = min(a, b)
     if k <= least:
@@ -63,12 +52,10 @@ def _stored_withheld(graph: dict, a: str, b: str) -> dict | None:
 
 
 def explain(graph: dict, topic_set: dict, a: str, b: str) -> dict:
-    """The verdict for one pair, in the shape absence.js's `explain`
-    returns (`shared`, `p`, `sizes`, `docs`, `drawn`) plus what only
-    this side can add: the stored threshold and a named verdict. For a
-    drawn edge `p` is the edge's own stored value, not a recomputation
-    -- the stage's number is the claim, and repeating the arithmetic
-    could only agree or lie."""
+    """The verdict for one pair, in absence.js's `explain` shape plus the
+    stored threshold and a named verdict. A drawn edge reports its stored
+    `p`: the stage's number is the claim, and recomputing could only
+    agree or lie."""
     members = {t["label"]: {m["citekey"] for m in t["members"]} for t in topic_set["topics"]}
     shared = sorted(members[a] & members[b])
     sizes = {"a": len(members[a]), "b": len(members[b])}
@@ -82,9 +69,8 @@ def explain(graph: dict, topic_set: dict, a: str, b: str) -> dict:
         p = None
         verdict = "nothing-shared"
     else:
-        # Prefer the stage's own stored number (#710's edges_withheld);
-        # recompute only for an artefact from an older run. Same rule
-        # absence.js follows, so the two surfaces keep reading alike.
+        # Prefer the stored number (#710); recompute only for older
+        # artefacts, as absence.js does.
         withheld = _stored_withheld(graph, a, b)
         p = withheld["p_value"] if withheld else survival(len(shared), docs, sizes["a"], sizes["b"])
         verdict = "withheld-chance" if p >= threshold else "withheld-unexplained"
@@ -103,8 +89,7 @@ def explain(graph: dict, topic_set: dict, a: str, b: str) -> dict:
 
 def render(data: dict) -> str:
     """The panel's three sentences (panel.js absenceHtml), plus the
-    drawn case the app answers elsewhere -- kept separate here too,
-    because running the readings together would teach the wrong one."""
+    drawn case, kept separate so the readings are not run together."""
     heading = f"{data['a']} — {data['b']}\n"
     count = f"{len(data['shared'])} paper{'s' if len(data['shared']) != 1 else ''}"
     citekeys = ", ".join(data["shared"])

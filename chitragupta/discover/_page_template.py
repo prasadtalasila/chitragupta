@@ -1,22 +1,11 @@
 """The HTML shell for `corpus discover --html`: one self-contained page.
 
-A separate module holding one string, for the same reason the
-code-standards line limit exists at all: `_page.py` owns *what data the
-page gets*, this owns *what the page looks like*, and the two change
-for different reasons. Everything is inline -- CSS, JavaScript, the
-data payload -- because the page must work from file:// with no network
-forever; a CDN reference would rot and a fetch() would violate the
-whole point of a static export.
-
-The layout is a circle, not a force simulation, on purpose: at tens of
-topics a circle with curved chords is legible, renders identically
-every time (diffable screenshots), and costs no physics code to debug.
-The order round that circle is `_page.dendrogram_order`'s, so a
-position is a weak but real encoding rather than a non-choice -- which
-is why the template places topics in the order it receives them and
-computes no ordering of its own.
-`__PAYLOAD__` is replaced by `_page.py` with JSON whose `<` is escaped,
-so a title containing `</script>` cannot break out of the script tag.
+Separate from `_page.py` (data) because the look changes for different
+reasons. Everything is inline so it works from file:// forever. A
+circle layout, not a force simulation: legible at tens of topics,
+deterministic, no physics to debug; the order round it is
+`_page.dendrogram_order`'s. `__PAYLOAD__` is replaced with JSON whose
+`<` is escaped, so `</script>` cannot break out.
 """
 
 TEMPLATE = """<!DOCTYPE html>
