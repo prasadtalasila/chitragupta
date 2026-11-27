@@ -1,10 +1,13 @@
 import argparse
 import importlib.util
+import socket
 
 import pytest
 
 from chitragupta import config
+from chitragupta.runlock import pipeline_lock
 from chitragupta.webapp import __main__ as webapp
+from chitragupta.webapp import _launch, _server
 from tests.conftest import run_python
 
 
@@ -48,5 +51,96 @@ def test_the_command_and_the_cli_never_import_the_web_stack():
     assert result.stdout.strip() == "[]"
 
 
-def test_inside_a_project_with_the_extra_passes_the_checks():
+
+@pytest.fixture
+def served(isolated_config, monkeypatch):
+    """`main` with `serve` replaced: records the app and the socket's port."""
+    calls = {"opened": []}
+
+    def fake_serve(app, sock):
+        calls["port"] = sock.getsockname()[1]
+        calls["files"] = sorted(p.name for p in _launch.runtime_dir().iterdir())
+        hook = calls.get("during")
+        if hook:
+            hook()
+
+    monkeypatch.setattr(_server, "serve", fake_serve)
+    monkeypatch.setattr(_launch, "open_browser", lambda page: calls["opened"].append(page))
+    return calls
+
+
+def test_clean_run_prints_url_and_cleans_up(served, capsys):
     assert webapp.main(["--no-browser"]) == 0
+    out = capsys.readouterr().out
+    assert f"http://127.0.0.1:{served['port']}/#token=" in out
+    assert {"open.html", "server.json"} <= set(served["files"])
+    assert not (_launch.runtime_dir() / "open.html").exists()
+    assert not (_launch.runtime_dir() / "server.json").exists()
+    assert served["opened"] == []
+
+
+def test_the_browser_is_opened_on_the_launch_file(served):
+    assert webapp.main([]) == 0
+    assert served["opened"] == [_launch.runtime_dir() / "open.html"]
+
+
+def test_the_requested_port_is_used(served):
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    free = sock.getsockname()[1]
+    sock.close()
+    assert webapp.main(["--no-browser", "--port", str(free)]) == 0
+    assert served["port"] == free
+
+
+def test_port_taken_refuses(served, capsys):
+    holder = socket.socket()
+    holder.bind(("127.0.0.1", 0))
+    holder.listen()
+    port = holder.getsockname()[1]
+    try:
+        assert webapp.main(["--no-browser", "--port", str(port)]) == webapp.EXIT_REFUSED
+    finally:
+        holder.close()
+    assert str(port) in capsys.readouterr().err
+
+
+def test_second_instance_refuses_with_the_port(served, capsys):
+    directory = _launch.runtime_dir()
+    _launch.write_server_file(directory, 8123, 1)
+    with pipeline_lock(directory / "server.lock"):
+        assert webapp.main(["--no-browser"]) == webapp.EXIT_REFUSED
+    assert "8123" in capsys.readouterr().err
+
+
+def test_second_instance_while_the_first_is_starting(served, capsys):
+    with pipeline_lock(_launch.runtime_dir() / "server.lock"):
+        assert webapp.main(["--no-browser"]) == webapp.EXIT_REFUSED
+    assert "starting" in capsys.readouterr().err
+
+
+def test_does_not_take_the_corpus_lock(served):
+    def take_corpus_lock():
+        with pipeline_lock():
+            served["corpus_lock"] = True
+
+    served["during"] = take_corpus_lock
+    assert webapp.main(["--no-browser"]) == 0
+    assert served["corpus_lock"] is True
+
+
+def test_stale_runtime_files_are_overwritten(served):
+    directory = _launch.runtime_dir()
+    _launch.write_server_file(directory, 1, 1)
+    _launch.write_open_file(directory, "http://127.0.0.1:1/#token=old")
+    assert webapp.main(["--no-browser"]) == 0
+    assert served["port"] != 1
+
+
+def test_keyboard_interrupt_is_a_clean_stop(served):
+    def interrupt():
+        raise KeyboardInterrupt
+
+    served["during"] = interrupt
+    assert webapp.main(["--no-browser"]) == 0
+    assert not (_launch.runtime_dir() / "server.json").exists()
