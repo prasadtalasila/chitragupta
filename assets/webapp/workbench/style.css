@@ -1,0 +1,11 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 2rem auto;
+  max-width: 40rem;
+  padding: 0 1rem;
+  line-height: 1.5;
+}
