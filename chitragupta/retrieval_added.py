@@ -1,18 +1,10 @@
 """The words a query is ranked on beyond those typed, and how they are shown.
 
-Two sources add words to a query: acronym expansion (#789,
-`retrieval_expansion.py`), `DT` adding "digital twin", and spelling
-correction (#1232, `retrieval_spelling.py`), `strucutral` adding
-"structural". `retrieval.query_terms` calls `added_terms` once, and every
-path that ranks or windows a query reads the result (#953). The CLI note
-and the `--log` record read the same entries, so neither can describe an
-addition that was not ranked.
-
-Each entry carries its source, because the two read differently to a
-person: an acronym's terms are what it stands for, a correction is a
-guess at what was meant. Both read the *typed* terms only -- a correction
-is never acronym-expanded, an expansion is never corrected -- and a word
-both would add is added once, by the acronym.
+Acronym expansion (#789) and spelling correction (#1232) both add words.
+`retrieval.query_terms` calls `added_terms` once and every ranking path,
+the CLI note and the `--log` record read that result, so none can
+describe an addition that was not ranked (#953). Each reads the typed
+terms only, and a word both would add is added once, by the acronym.
 """
 
 import sys
@@ -36,17 +28,11 @@ def added_terms(
     typed: list[str], context: list[str], tokenize, tokenize_item, excluded
 ) -> list[Added]:
     """What to rank `typed` and `context` with beyond themselves: acronym
-    expansions of both in `expand`'s order, then spelling corrections of
-    `typed` alone, in query order.
+    expansions of both, then spelling corrections of `typed` alone.
 
-    `context` is ranked beside the query without being typed as one --
-    `--y-prev`'s draft prose -- and is never corrected: a correction in
-    prose would be a guess at a word nobody searched for, and would reach
-    no note. A correction either part already holds is not added.
-
-    The tokenizers and `excluded` (`retrieval._INTERROGATIVES`) are passed
-    in because `chitragupta.retrieval` imports this module. No terms reads
-    no vocabulary.
+    `context` (`--y-prev`'s prose) is never corrected: that would guess at
+    a word nobody searched for. The tokenizers and `excluded` are passed in
+    because `chitragupta.retrieval` imports this module.
     """
     words = typed + context
     if not words:
@@ -60,13 +46,9 @@ def added_terms(
 
 
 def describe(added: list[Added]) -> str:
-    """`added` as one line: `retrieval.md`'s `expanded` column and the
-    CLI's acronym note both use it, so the two cannot drift.
-
-    An acronym and the terms it contributed (`dt -> digital twin`), as
-    every log written before #1232 already reads; a correction as
-    `strucutral ~> structural`; semicolons between entries. Empty string
-    for an empty list.
+    """`added` as one line, shared by `retrieval.md`'s `expanded` column
+    and the CLI note so they cannot drift: `dt -> digital twin` (as pre-
+    #1232 logs read), `strucutral ~> structural`, `;` between entries.
     """
     grouped: dict[tuple[str, str], list[str]] = {}
     for entry in added:
@@ -80,15 +62,9 @@ def describe(added: list[Added]) -> str:
 def announce(added: list[Added]) -> str:
     """Print the CLI's notes for `added`, and return `describe(added)`.
 
-    On stderr, beside the CLI's "too short to search on" note: a genre
-    skill parses `retrieve`'s stdout as a documented contract, and a note
-    about the query is not a result. One acronym note for all expansions,
-    as before #1232, and one line per correction. Prints nothing and
-    returns `""` when nothing was added.
-
-    `added` is what `retrieval.query_terms` returned, never a second
-    computation (#953). `search()` never calls this: what a library adds
-    to a query is the caller's to read, not the ranker's to print.
+    On stderr: a genre skill parses `retrieve`'s stdout as a contract.
+    `added` is what `retrieval.query_terms` returned, never recomputed
+    (#953); `search()` never calls this, since printing is the caller's.
     """
     acronyms = [entry for entry in added if entry.source == ACRONYM]
     if acronyms:

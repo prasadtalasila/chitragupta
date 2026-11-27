@@ -84,70 +84,27 @@ from chitragupta.overlap_index import (
 )
 from chitragupta.porter_stemmer import stem
 
-# A content-word gram width, not a raw-word one: after stopword
-# filtering, roughly two out of every five running words in English
-# prose survive (function words dominate the rest), so 5 stemmed content
-# words already correspond to a raw span comparable in length to tier
-# 1's 8-word floor -- and demanding 8 survives even in a short paragraph
-# where a family's filtered stream may not hold that many.
+# Counted in content words: roughly two in five running words survive
+# filtering, so 5 stems span about tier 1's 8 raw words.
 DEFAULT_N = 5
 
-# Bumped whenever the stemmer, the stopword list, or the even/odd split
-# below changes shape -- the whole migration for this tier's cache, same
-# discipline as overlap_index._TOKENIZER_VERSION.
-#
-# Bumped to 2 for #180: `skipgram_postings` no longer emits a
-# numeric-dominated window (see MAX_NUMERIC_SHARE below), so every
-# `.fpr`/`skipgram_index.bin` written before that change holds postings
-# this tier would no longer generate, and a stale one would keep
-# reporting exactly the findings the fix removes.
-#
-# Bumped to 3 for #505: porter_stemmer's steps 2-4 now stop at the first
-# (longest) matching suffix instead of falling through to a shorter one
-# when its measure condition fails, so words like "argument"/"agreement"
-# stem differently than before.
+# Bumped when the stemmer, stopwords or family split change; it is the
+# whole cache migration. 2: #180's numeric windows; 3: #505's stemmer fix.
 _TOKENIZER_VERSION = 3
 _HEADER_VERSION = 1
 
-# A skip-gram window counts as evidence only if fewer than this share of
-# its stems are bare numbers -- at DEFAULT_N, at most 2 of 5.
+# A window counts only if fewer than this share of its stems are bare
+# numbers (at DEFAULT_N, at most 2 of 5). #180: 97 of 125 findings were
+# numeric tables matching by chance over a ~10-digit vocabulary.
 #
-# #180 measured the failure this fixes: 97 of 125 unique findings on the
-# first real-corpus run were numeric tables colliding by chance with
-# unrelated numeric tables in other papers -- page-number runs, a
-# systematic-review scoring grid repeating 0/0.5/1/1.5/2/2.5/3 down its
-# rows, a requirement-coverage matrix of small counts. `stem_filter`'s
-# rule that "a purely numeric token stems to itself, since a shared
-# figure is still shared wording" is right about a specific figure and
-# wrong about a bare `2`: with the digits 0-9 an effective ~10-token
-# vocabulary, and this tier tolerating a substitution in the opposite
-# family by construction, two long enough numeric tables share a window
-# by chance alone.
-#
-# **A window rule, not a token rule**, which is why the guard is here
-# rather than in `stem_filter`/`_stem_filter_family`. Two reasons:
-#
-# - `WORD = [a-z0-9]+` splits "48.2" into "48" and "2", so there is no
-#   such thing as a multi-digit non-integer *token* to keep and no
-#   token-level test can tell the "2" of "48.2 billion" from the "2" of
-#   a scoring grid. What separates them is their company: the first sits
-#   among content words, the second among other digits.
-# - Dropping numeric tokens outright would lose a genuine shared figure
-#   -- the case #180 explicitly asks to keep -- while this rule leaves
-#   every such window intact as long as most of it is words.
-#
-# `stem_filter` itself is deliberately unchanged: it feeds only
-# `verbatim_check._mask_allowlisted_stemmed`, which normalizes an
-# allowlisted phrase rather than generating evidence, and an allowlist
-# entry that is mostly digits is a host's explicit decision to suppress.
+# A window rule, not a token rule: `WORD` splits "48.2" into two tokens,
+# so only a window's company tells a real figure from a scoring grid, and
+# dropping numbers would lose genuine shared figures. `stem_filter` is
+# unchanged; it only normalizes allowlisted phrases.
 MAX_NUMERIC_SHARE = 0.5
 
-# A short, standard English function-word list -- articles, pronouns,
-# prepositions, conjunctions, auxiliary/copular verb forms, and the most
-# common quantifiers/adverbs. Deliberately not exhaustive: a stopword
-# that leaks through costs nothing but a slightly wider skip-gram window;
-# a content word wrongly listed here would cost real recall, so the list
-# stays conservative rather than reaching for completeness.
+# A conservative function-word list: a leaked stopword only widens a
+# window, while a wrongly listed content word costs recall.
 STOPWORDS = frozenset(
     """
 a an the and or but if then else when while as of to in on at by for
@@ -240,8 +197,7 @@ def skipgram_postings(words: list[str], n: int) -> list[tuple[int, int, int]]:
     postings = []
     for pairs in _families(words):
         stems, positions = _stem_filter_family(pairs)
-        # A running count, so each window's numeric share is a
-        # subtraction rather than a re-scan of its own n stems.
+        # A running count, so each window's share is a subtraction.
         numeric = list(accumulate((s.isdigit() for s in stems), initial=0))
         for j, gh in enumerate(gram_hashes(stems, n)):
             if numeric[j + n] - numeric[j] >= n * MAX_NUMERIC_SHARE:
@@ -255,8 +211,8 @@ class DocSkipgramFingerprint:
     citekey: str
     key: list
     n: int
-    # (gram_hash, page, position), position the *original* word-stream
-    # index of the skip-gram's first stemmed word -- see module docstring.
+    # (gram_hash, page, position), position the original index of the
+    # first stemmed word.
     postings: list[tuple[int, int, int]]
 
 
@@ -301,11 +257,8 @@ def _build_fingerprint(
     postings: list[tuple[int, int, int]] = []
     num_pages = len(boundaries)
     for gh, position, _end in skipgram_postings(words, n):
-        # A fresh bisect per posting, not a shared advancing sweep like
-        # tier 1's: the two families are each ascending in `position`,
-        # but `skipgram_postings` yields even-family postings before
-        # odd-family ones, so `position` as a whole is not monotonic
-        # across this loop the way tier 1's single-stream sweep is.
+        # A bisect per posting, not tier 1's sweep: even postings precede
+        # odd ones, so `position` is not monotonic here.
         page_idx = bisect_right(boundaries, position)
         postings.append((gh, min(page_idx, max(num_pages - 1, 0)) + 1, position))
     return DocSkipgramFingerprint(
@@ -326,10 +279,7 @@ def fingerprint_document(
 
 
 # ---------------------------------------------------------------------
-# The merged corpus-wide skip-gram index -- same shape and reasoning as
-# overlap_index.CorpusIndex, kept as a wholly separate pair of files (see
-# module docstring) so the two tiers' caches never contend or cross-
-# invalidate each other.
+# The merged corpus-wide skip-gram index: tier 1's shape, separate files.
 # ---------------------------------------------------------------------
 
 

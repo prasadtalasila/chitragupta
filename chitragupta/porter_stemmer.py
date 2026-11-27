@@ -1,40 +1,16 @@
 """The classic Porter stemming algorithm (Porter, 1980), vendored.
 
-`chitragupta/overlap_skipgram.py` (tier 2, #133) needs a stemmer to fold
-inflection/synonym-adjacent word forms together before skip-gram hashing --
-the same reduction PAN 2013's winning CoReMo design (Torrejon & Ramos)
-built on, cited in discussion #115 and docs/PLAGIARISM-DESIGN.md. No dependency
-on the corpus already carries this (nltk and its Snowball stemmer are not
-project dependencies), and this algorithm is a fixed, public specification
-rather than a moving target, so it is reimplemented from the published
-rules here rather than pulled in as a new dependency for one function.
+Tier 2 (`overlap_skipgram.py`, #133) stems before skip-gram hashing, as
+PAN 2013's CoReMo did (docs/PLAGIARISM-DESIGN.md). Reimplemented from
+the published rules rather than added as a dependency, and freshly
+written, not transcribed from a port: this feature exists to catch
+verbatim reuse. Input is assumed lowercased `[a-z]+`.
 
-Deliberately a fresh implementation of the published algorithm, not a
-transcription of any single existing open-source port: the whole feature
-this module supports exists to catch verbatim reuse, and copying a
-particular implementation almost word-for-word would be exactly that.
-
-`stem(word)` is the only entry point a caller needs; everything else is
-the five suffix-stripping steps the original paper defines, applied in
-order. Input is assumed already lowercased `[a-z]+` (see
-`chitragupta/overlap_skipgram.py`'s tokenizer) -- this module does no case
-folding or character-class filtering of its own.
-
-Coupled to `overlap_skipgram._TOKENIZER_VERSION` by contract, not by
-import: any change to a suffix rule here changes stemmed output for
-already-cached documents, and that constant is what forces a rebuild.
-There is no automated check that a change here bumped it -- but
-`tests/test_porter_stemmer.py` pins `stem()`'s output for enough words
-across all five steps that an unintended rule change breaks a test
-before it can reach a stale cache silently.
-
-`bench/bench_retrieval_stemming.py` is the one other caller, and the
-only one outside `chitragupta/`: it is the measurement that **declined**
-stemming for BM25 retrieval (#787), so nothing on the retrieval path
-imports this module and no second version constant was added. A change
-to a suffix rule here does move that script's stemmed arm, and so the
-committed comparison in `bench/RESULTS.md`'s 2026-09-15 entry -- which
-the pinned tests above are also the guard for.
+Coupled to `overlap_skipgram._TOKENIZER_VERSION` by contract: a rule
+change alters cached stems and must bump it. tests/test_porter_stemmer.py
+pins enough output to catch an unintended change, which also guards
+`bench/RESULTS.md`'s 2026-09-15 comparison. Retrieval declined stemming
+(#787), so nothing on that path imports this.
 """
 
 from __future__ import annotations
@@ -43,10 +19,8 @@ _VOWELS = "aeiou"
 
 
 def _is_consonant(word: str, i: int) -> bool:
-    """Whether `word[i]` is a consonant, Porter's definition: a letter
-    other than a, e, i, o, u, and 'y' counts as a consonant unless the
-    letter immediately before it is itself a consonant (so "toy" has a
-    consonant y, "syzygy" has consonant y's after the first)."""
+    """Porter's consonant: not a, e, i, o, u, and 'y' only when the letter
+    before it is not itself a consonant."""
     ch = word[i]
     if ch in _VOWELS:
         return False
@@ -56,39 +30,31 @@ def _is_consonant(word: str, i: int) -> bool:
 
 
 def _cv_string(word: str) -> str:
-    """`word` collapsed to its consonant/vowel pattern, e.g. "trouble" ->
-    "cvccvcv" folded to the CV-sequence "cvcv" is not what this returns --
-    this is the raw per-letter C/V string, folded into m() below."""
+    """`word` as its raw per-letter C/V string, folded in `_measure`."""
     return "".join("c" if _is_consonant(word, i) else "v" for i in range(len(word)))
 
 
 def _measure(stem: str) -> int:
-    """Porter's `m`: the number of consonant-sequence -> vowel-sequence
-    transitions in `stem`, i.e. `[C](VC){m}[V]` -- "tree" -> m=0, "trees"
-    -> m=1, "trouble" -> m=1, "troubles" -> m=2. A leading consonant run
-    and a trailing vowel run are both optional and don't themselves count;
-    only a completed VC pair does."""
+    """Porter's `m` in `[C](VC){m}[V]`: "tree" -> 0, "trouble" -> 1,
+    "troubles" -> 2."""
     cv = _cv_string(stem)
     cv = cv.lstrip("c")
     return cv.count("vc")
 
 
 def _ends_with_vowel(stem: str) -> bool:
-    """Porter's `*v*`: stem contains a vowel somewhere (a leading
-    consonant-only stem like "ps" has none)."""
+    """Porter's `*v*`: stem contains a vowel somewhere."""
     return any(not _is_consonant(stem, i) for i in range(len(stem)))
 
 
 def _ends_double_consonant(stem: str) -> bool:
-    """Porter's `*d`: stem ends in two identical consonants ("hopp",
-    "topp") -- caught by 1b's second branch before it strips one."""
+    """Porter's `*d`: stem ends in two identical consonants."""
     return len(stem) >= 2 and stem[-1] == stem[-2] and _is_consonant(stem, len(stem) - 1)
 
 
 def _cvc(stem: str) -> bool:
-    """Porter's `*o`: stem ends consonant-vowel-consonant, where the final
-    consonant is not w, x or y ("wil", "hop" qualify; "wow", "sky" -- the
-    literal exceptions the paper carves out -- do not)."""
+    """Porter's `*o`: stem ends consonant-vowel-consonant, the final one
+    not w, x or y."""
     if len(stem) < 3:
         return False
     return (
@@ -128,13 +94,9 @@ def _step1b(word: str) -> str:
 
 
 def _step1b_restore(stem: str) -> str:
-    """The three-way patch-up 1b applies after stripping "ed"/"ing",
-    once the stem has been shown to contain a vowel: restore a silent
-    "e" where dropping the suffix left an ambiguous ending, undouble a
-    doubled final consonant that isn't l/s/z, and otherwise leave the
-    bare stem alone unless it's a single short cvc word, which also gets
-    an "e" back ("hop" -> "hope", not left as a monosyllable that reads
-    as a different word)."""
+    """1b's patch-up after stripping "ed"/"ing": restore a silent "e",
+    undouble a final consonant other than l/s/z, or give a short cvc stem
+    its "e" back ("hop" -> "hope")."""
     if stem.endswith(("at", "bl", "iz")):
         return stem + "e"
     if _ends_double_consonant(stem) and stem[-1] not in "lsz":
@@ -151,9 +113,7 @@ def _step1c(word: str) -> str:
     return word
 
 
-# (suffix, replacement) pairs for step 2, applied only when the resulting
-# stem has measure > 0 -- Porter's Table for turning derivational endings
-# into their root form ("relational" -> "relate", not just "relat").
+# Step 2 (suffix, replacement) pairs, applied when the stem has m > 0.
 _STEP2_RULES = (
     ("ational", "ate"),
     ("tional", "tion"),
@@ -187,10 +147,8 @@ _STEP3_RULES = (
     ("ness", ""),
 )
 
-# Step 4 endings are dropped outright (measure > 1), no replacement --
-# except "ion", which additionally requires the stem to end in s or t,
-# so "motion" doesn't lose its whole identity to a rule meant for
-# "adoption" -> "adopt".
+# Step 4 endings drop outright (m > 1); "ion" also needs a stem ending in
+# s or t, so "motion" survives a rule meant for "adoption".
 _STEP4_SUFFIXES = (
     "al",
     "ance",
@@ -214,12 +172,9 @@ _STEP4_SUFFIXES = (
 
 
 def _longest_matching_suffix(word: str, suffixes) -> "str | None":
-    """The longest entry of `suffixes` that `word` ends with, or `None` --
-    Porter's steps 2-4 select one suffix per word (the longest that fits,
-    since a shorter listed suffix can itself be a tail of a longer one,
-    e.g. "ational" ends with "tional") and test its condition exactly
-    once, rather than falling through to a shorter suffix when that test
-    fails."""
+    """The longest entry of `suffixes` that `word` ends with, or `None`.
+    Steps 2-4 test one suffix's condition once, never falling through to
+    a shorter one when it fails."""
     longest = None
     for suffix in suffixes:
         if word.endswith(suffix) and (longest is None or len(suffix) > len(longest)):
@@ -275,10 +230,7 @@ def _step5b(word: str) -> str:
 
 def stem(word: str) -> str:
     """`word`'s Porter stem. Words of two letters or fewer are returned
-    unchanged -- the algorithm's measure-based rules need at least a
-    short consonant/vowel run to mean anything, and stemming "as" or "is"
-    would only erase words the stopword list (see `overlap_skipgram.py`)
-    is meant to remove entirely, not shorten."""
+    unchanged; stemming them would only erase stopwords."""
     if len(word) <= 2:
         return word
     word = _step1a(word)

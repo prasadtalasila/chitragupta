@@ -1,11 +1,6 @@
 """Which rules `draft style` runs: the Python-side checks, which Vale
 rule implements which dialect, and how a dialect finding may be
-repaired.
-
-Tables two modules need -- `style_check` to run the checks and build
-Vale's `--filter`, and `style_report` to tell a recorded tag this style
-cannot check from one it can. Their own module so neither imports the
-other.
+repaired. Shared by `style_check` and `style_report`.
 """
 
 from chitragupta.style_acronym_case import findings as acronym_case_findings
@@ -18,14 +13,10 @@ from chitragupta.style_tables import findings as table_findings
 from chitragupta.style_typeset import findings as typeset_findings
 from chitragupta.style_vendored import SECTIONS
 
-# Every Python-side rule, in the order its findings are reported. A rule
-# is a module with a `findings(draft) -> list[dict]` function; each
-# finding carries its own `repair` mode from `style_elements.finding`
-# (#836), so the rule, not this list, decides whether the agenda may
-# repair it unattended. Adding one is the module plus a line here (#852)
-# -- `tests/test_style_check.py` fails on a `style_*.py` that defines
-# `findings` and is missing from this tuple, which would otherwise run
-# nowhere and say nothing.
+# Every Python-side rule, in report order: a module with
+# `findings(draft) -> list[dict]`, each finding carrying its own `repair`
+# mode (#836, #852). tests/test_style_check.py fails on a `style_*.py`
+# defining `findings` that is missing here, as it would run nowhere.
 PYTHON_CHECKS = (
     acronym_drift_findings,
     acronym_case_findings,
@@ -37,14 +28,9 @@ PYTHON_CHECKS = (
     bare_citekey_findings,
 )
 
-# Which rule to keep for a given BCP-47 tag. Everything not named here is
-# filtered out, so an unknown tag disables dialect checking rather than
-# defaulting to one -- an unrecognised `language:` is a typo or a locale
-# this style does not cover, and both deserve silence over a guess.
-#
-# en-IN is not an alias for en-GB. British English accepts both -ise and
-# Oxford -ize, so DialectGB cannot flag -ize without reporting correct
-# prose; Indian English prefers -ise, and DialectIN is that one check.
+# Which rule to keep for a BCP-47 tag. An unknown tag disables dialect
+# checking rather than guessing. en-IN is not en-GB: British English
+# accepts Oxford -ize, while Indian English prefers -ise (DialectIN).
 _DIALECT_GB = "chitragupta.DialectGB"
 _DIALECT_US = "chitragupta.DialectUS"
 _DIALECT_IN = "chitragupta.DialectIN"
@@ -57,18 +43,13 @@ DIALECT_RULES = {
 
 _ALL_DIALECT_RULES = (_DIALECT_GB, _DIALECT_US, _DIALECT_IN)
 
-# The two places a dialect is the author's own statement. `config.toml`
-# is a standing preference for the machine, not for this draft, and
-# `style_check`'s own docstring says why it may be wrong for one.
+# Where a dialect is the author's own statement; `config.toml` is a host
+# preference (see `style_check`'s docstring).
 _AUTHOR_SOURCES = ("scope.md", "--language")
 
-# Vale rules whose every finding needs a reader. `Just` matches the word
-# whatever its part of speech, and only the filler adverb ("just run
-# it") is a defect; the adjective ("a just outcome") is correct prose, so
-# an unattended rewrite would change what the sentence means. The other
-# seven flag phrases a machine overuses (WRITING-STANDARDS.md §4), and
-# each repair is a rewrite of the sentence around its claim, which no
-# pass should make unseen.
+# Rules whose every finding needs a reader: `Just` cannot tell the filler
+# adverb from the adjective, and the others' repairs rewrite a sentence
+# around its claim (WRITING-STANDARDS.md §4).
 _ALWAYS_REVIEW = (
     "chitragupta.Just",
     "chitragupta.BorrowedAuthority",
@@ -82,22 +63,13 @@ _ALWAYS_REVIEW = (
 
 
 def with_repair(findings: "list[dict]", language_source: str) -> "list[dict]":
-    """Vale's collapsed `findings`, each stamped with the `repair` mode
-    `style_elements.finding` gives the Python-side ones (issue 836).
+    """Vale's collapsed `findings`, each stamped with a `repair` mode
+    (issue 836).
 
-    A dialect finding is `"review"` unless the dialect came from the
-    author: re-spelling a whole draft to a host-wide default is not a
-    repair to make unattended when the draft's own dialect may be the
-    deliberate one. A rule in `_ALWAYS_REVIEW` is always `"review"`.
-    A dialect finding whose match starts with a capital letter is
-    `"review"` too, whatever the source: it may be a proper name
-    ("Unified Modeling Language") that an unattended re-spelling would
-    corrupt. The guess only downgrades the repair mode and never
-    suppresses the finding, so a real mis-spelling is still listed
-    (#1187). A vendored rule is always `"review"` (#1186): its packages
-    were written for other prose, and even their narrowest lists hold
-    words a draft uses correctly (`style_vendored`'s docstring). Every
-    other Vale rule is an `"edit"`.
+    `"review"` for: a dialect finding when the dialect did not come from
+    the author; one whose match starts with a capital, as it may be a
+    proper name (only the mode is downgraded, #1187); `_ALWAYS_REVIEW`;
+    and every vendored rule (#1186). Every other Vale rule is `"edit"`.
     """
     for finding in findings:
         dialect = finding["rule"] in _ALL_DIALECT_RULES

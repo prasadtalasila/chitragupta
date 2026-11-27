@@ -1,36 +1,17 @@
 """Shared logic behind the table/figure/equation reference checks.
 
-`chitragupta/style_tables.py` and `chitragupta/style_figures.py` used to
-carry near-identical copies of id-validity, duplicate-id and
-unreferenced/unknown-ref/ref-outside-section checking -- tolerated as
-coincidence at two call sites. Issue 457's `chitragupta/style_equations.py`
-makes a third, which is
-[docs/CODE-STANDARDS.md](../docs/CODE-STANDARDS.md)'s stated line for
-"needless repetition": two similar blocks are a coincidence, three are a
-pattern. This module is the one place that logic is written now.
-
-**What does not move here.** Each kind's own "is this declared at all"
-detection -- a pipe-table/caption-line scan for a table, a
-marker-then-caption pairing gap for a figure, a marker-then-fence pairing
-gap for an equation -- stays in its own module. The three only look
-alike; each reads a different marker shape, and forcing them into one
-function would be the wrong abstraction. What genuinely is identical
-across all three -- once an element is declared, is its id well-formed,
-and does the prose read it -- lives here, parameterised by a `noun` (for
-the sentence a finding prints) and a `prefix` (the `\\label{}` namespace
-a malformed id would corrupt: `tab`, `fig`, `eq`).
+Three modules needed the same id-validity and reference checks, which is
+docs/CODE-STANDARDS.md's line for a pattern. Each kind's own "is this
+declared" detection stays in its module, as the marker shapes differ.
+Parameterised by a `noun` and a `\\label{}` `prefix` (`tab`, `fig`, `eq`).
 """
 
 import re
 
 from chitragupta.render_output._tables import line_of
 
-# A Markdown heading, only to bound a section. Not `review/_blocks.HEADING`:
-# the review layer sits above the drafting layer in docs/ARCHITECTURE.md,
-# so a drafting-layer check reaching into it would be a dependency in the
-# wrong direction for one three-token pattern -- the same reason
-# `style_tables.py`/`style_figures.py` each kept their own copy before
-# this module existed.
+# A Markdown heading, to bound a section. Not `review/_blocks.HEADING`:
+# the review layer sits above this one (docs/ARCHITECTURE.md).
 _HEADING_RE = re.compile(r"^#{1,6}[ \t]+\S.*$", re.MULTILINE)
 
 # The id shape a `\label{<prefix>:<id>}` can carry without further escaping.
@@ -40,14 +21,11 @@ _ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 def finding(
     rules: "dict[str, str]", rule: str, match: str, line: int, message: str, repair: str = "edit"
 ) -> dict:
-    """One finding in the shape `style_check.check()` produces from
-    Vale's own, so `style_report.py` never has to know which check wrote
-    which line.
+    """One finding in `style_check.check()`'s shape, so `style_report.py`
+    never knows which check wrote it.
 
-    `repair` is how the finding may be fixed (issue 836): `"edit"`, the
-    default, lets the review agenda repair it unattended; `"review"` is
-    for a rule whose right repair may be to leave the text alone, which
-    only a person can tell."""
+    `repair` (issue 836): `"edit"` lets the agenda repair it unattended;
+    `"review"` is for a rule whose right repair may be to leave the text."""
     return {
         "rule": rules[rule],
         "match": match,
@@ -60,12 +38,8 @@ def finding(
 
 
 def section_starts(text: str) -> "list[int]":
-    """The 1-based line of every heading, so a line can be placed in one.
-
-    A draft with no headings has exactly one section, which is why the
-    list may be empty and `section_of` returns 0 for that case rather
-    than failing.
-    """
+    """The 1-based line of every heading. Empty for a draft with no
+    headings, which `section_of` treats as one section 0."""
     return [line_of(text, m.start()) for m in _HEADING_RE.finditer(text)]
 
 
@@ -114,11 +88,8 @@ def reference_problems(
     standards_anchor: str,
 ) -> "list[dict]":
     """An element nobody reads from, and a reference to one that is not
-    there -- shared by every `style_*.py` reference check.
-
-    The unknown-ref half is also reported by the renderer at render time.
-    It is repeated here deliberately: every genre skill runs `draft style`
-    before it renders, so this is where the author is still writing.
+    there. The renderer reports unknown refs too; repeated here because
+    `draft style` runs while the author is still writing.
     """
     starts = section_starts(text)
     ids = {element.id for element in elements}

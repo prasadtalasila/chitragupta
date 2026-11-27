@@ -1,18 +1,10 @@
 """The incremental term-frequency cache `chitragupta/retrieval.py`'s
-`search` builds its BM25 index from.
+`search` builds its BM25 index from (#441).
 
-Split from `chitragupta/retrieval.py` (#441): fingerprinting, the on-disk
-JSON cache, and assembling the index from it are one self-contained unit
-that `search` calls through `_load_index` and nothing else in that module
-touches directly. `read_only_index` is the same assembly without the
-write, for callers that must not change the cache: `dossier status`'s
-drift scan and spelling correction's vocabulary (#1232).
-
-`_tokenize`/`_full_text` stay in `chitragupta/retrieval.py`: `search`'s own
-snippet-building needs them independent of caching, so `retrieval.py`
-imports `_load_index` from here (at the bottom of the file, after those
-two are already defined, to avoid the circular import a top-of-file
-import would make) rather than this module importing `search`.
+`read_only_index` is the same assembly without the write, for callers
+that must not change the cache (`dossier status`, spelling correction,
+#1232). `retrieval.py` imports `_load_index` at its bottom, after
+`_tokenize`/`_full_text` exist, to avoid a circular import.
 """
 
 import sys
@@ -20,59 +12,23 @@ import sys
 from chitragupta import _tokens, config, ledger_paths
 from chitragupta._json_cache import MemoisedJson
 
-# 2 since #768: every entry written before it counted the tokens of the
-# document's own reference list, and nothing else in the fingerprint says
-# so -- the parsed file is byte-identical, only the rule for what counts
-# as its text changed. The sidecar that rule reads is deliberately *not*
-# in `_fingerprint` below: `passages.clear_sidecar` runs before every
-# re-parse and the same parse rewrites the `.txt`, so a sidecar cannot
-# move without the parsed file's own mtime moving with it.
-#
-# 3 since #762: an entry written before it carries no `field_freqs`, and
-# `retrieval_scoring.weighted_freq` reads a missing one as "no fields" --
-# which is correct for `discover/_resolve.py`'s hand-built entries and
-# wrong here, where it would silently score a cached document as though
-# its title matched nothing. The parsed file is again byte-identical and
-# the fingerprint again cannot say so, for the same reason as 2.
-#
-# 4 since #790: `retrieval._tokenize`'s length floor moved from 3 to 2,
-# so a byte-identical parsed file now tokenizes differently -- every
-# entry written before it is missing each two-character token's counts
-# and states a `length` that is ~7% short. `_fingerprint` below is a
-# statement about the *file* (size, mtime, status), which has not
-# changed, so it cannot see this and nothing but this constant will
-# invalidate the entry. Same shape as 2 and 3, and the third time the
-# rule for what a parsed file's text counts as has moved under a
-# fingerprint that only watches the file.
-#
-# 5 since issue 844: `retrieval._full_text` decodes with `errors="replace"`
-# rather than "ignore", so a parsed file with a stray non-UTF-8 byte now
-# splits the words either side of it where it used to fuse them. Same
-# shape as 2-4: the file is byte-identical and only the rule moved.
-#
-# Since issue 845 the number covers only that kind of change, and 4's
-# kind is no longer a bump at all: `_tokens.index_version` joins it to a
-# digest of `_tokens.INDEX`, the floor and stopwords `retrieval._tokenize`
-# reads, so editing either moves this version with nobody remembering to.
-# A cache file written under the bare integer reads as another version
-# and is rebuilt once.
+# Bumped when the rule for what a parsed file's text counts as changes
+# while the file stays byte-identical, which `_fingerprint` cannot see:
+# 2 (#768, reference lists dropped), 3 (#762, `field_freqs`), 4 (#790,
+# token floor 3 -> 2), 5 (issue 844, `errors="replace"`). Since issue 845
+# `_tokens.index_version` joins a digest of the tokenizer settings, so
+# those edits move it automatically.
 _INDEX_SCHEMA_VERSION = _tokens.index_version(5)
 
-# How many rows the last `_load_index` saw marked `parsed` whose parsed
-# file is not on disk, so were indexed on their title alone. Held here
-# rather than returned because `retrieval.search`'s return type is a
-# public contract with many callers; `note_missing_parsed` takes it.
+# Rows marked `parsed` whose file is missing, indexed on title alone.
+# Held here because `retrieval.search`'s return type is a public contract.
 _MISSING_PARSED = 0
 
 
-# Confined here as well as at `_full_text` (issue 821), and that is not
-# belt-and-braces: this fingerprint is what decides whether `_full_text`
-# runs at all. An entry written while the row was still trusted would go
-# on matching a `(size, mtime)` taken from the outside file, so the
-# leaked text would be served out of the cache by the very guard meant
-# to stop it. Refusing here makes a repointed row fingerprint as
-# `(False, 0, 0)` and invalidates its entry. The value is relative to
-# `config.PARSED_DIR` (#966), which `parsed_file` resolves.
+# Confined here as well as at `_full_text` (issue 821): this fingerprint
+# decides whether `_full_text` runs, so a repointed row must fingerprint
+# as `(False, 0, 0)` or the cache would serve the leaked text. Relative
+# to `config.PARSED_DIR` (#966).
 def _parsed_file_stat(parsed_path: str | None) -> tuple[bool, int, int]:
     parsed = ledger_paths.parsed_file(parsed_path)
     if parsed:
@@ -85,28 +41,15 @@ def _parsed_file_stat(parsed_path: str | None) -> tuple[bool, int, int]:
 
 
 def _fingerprint(item) -> list:
-    # `status` matters as much as the file itself: a parse failure after
-    # a PDF change can leave parsed_path -- and the file it names -- byte
-    # identical while the row moves off 'parsed' (#490). Without it here,
-    # a cache entry written before that failure keeps matching and
-    # `_load_index`/`read_only_index` skip `_tokenize_item` -> `_full_text`
-    # entirely, serving the superseded text through the very guard meant
-    # to stop that.
+    # `status` too: a failed parse can leave the file identical while the
+    # row leaves 'parsed' (#490), and the cache must not serve it.
     exists, size, mtime_ns = _parsed_file_stat(item["parsed_path"])
     return [item["title"] or "", item["parsed_path"] or "", item["status"], exists, size, mtime_ns]
 
 
-# The memo, its stamp, the version check and the atomic write, shared with
-# the passage index (#851, chitragupta/_json_cache.py). The names below
-# are the ones this module's callers -- `_load_index`, `read_only_index`,
-# the tests -- already use, bound to the shared object's own methods.
-#
-# Staleness across processes is bounded by more than the stamp. Every
-# entry `_load_index` reuses must still match `_fingerprint(item)`, which
-# carries the parsed file's own size and mtime, so a stale memo can only
-# ever serve an entry that is still valid; it cannot serve superseded
-# text, which is the invariant #490 added. And `_load_cache`'s dict is
-# shared, not copied: `read_only_index` only ever reads it.
+# Shared with the passage index (#851, `_json_cache.py`), bound to the
+# names callers already use. A stale memo can only serve an entry still
+# matching `_fingerprint(item)`, never superseded text (#490).
 _CACHE = MemoisedJson(lambda: config.RETRIEVAL_INDEX_PATH, _INDEX_SCHEMA_VERSION)
 _load_cache = _CACHE.load
 _save_cache = _CACHE.save
@@ -117,22 +60,9 @@ def _load_index(items: list, tokenize_item) -> dict:
     """Build the term-frequency index for `items`, reusing cached
     per-document stats for anything whose fingerprint hasn't changed.
 
-    `tokenize_item` is passed in rather than imported so this module
-    doesn't need to import `chitragupta.retrieval` back -- `retrieval.py`
-    already imports `_load_index` from here, and a module needing a name
-    from its own importer is exactly the shape a circular import takes.
-
-    Any cache read/schema problem (missing file, corrupt JSON, stale
-    schema version, or valid JSON in an unexpected shape -- a bare array,
-    an "items"/per-citekey entry that isn't a dict) is treated as a cache
-    miss -- rebuild from scratch rather than fail the search. That
-    promise used to stop at the entry's own shape: a dict with a matching
-    "fingerprint" but a missing or wrong-typed "term_freqs"/"length" (a
-    hand-edited cache, or a future format this version predates) was
-    reused as-is and crashed `_bm25_scores`'s `entry["length"]`/
-    `entry["term_freqs"]` reads with a raw KeyError (#504, M-24) --
-    checked here instead, so the same unexpected-shape entry costs one
-    re-tokenization rather than failing the whole search.
+    `tokenize_item` is passed in to avoid a circular import. Any cache
+    problem, including an entry of the wrong shape (#504, M-24), is a
+    cache miss: rebuild rather than fail the search.
     """
     global _MISSING_PARSED
     cached = _load_cache()
@@ -143,9 +73,8 @@ def _load_index(items: list, tokenize_item) -> dict:
     for item in items:
         citekey = item["citekey"]
         fp = _fingerprint(item)
-        # Counted from the fingerprint, so a run served wholly from the
-        # cache -- the one a missing file used to be invisible on -- still
-        # counts it (issue 844). fp[2] is the status, fp[3] "file exists".
+        # From the fingerprint, so a fully cached run counts it too
+        # (issue 844). fp[2] is the status, fp[3] "file exists".
         _MISSING_PARSED += fp[2] == "parsed" and not fp[3]
         cached_entry = cached.get(citekey)
         if _reusable(cached_entry, fp):
@@ -160,9 +89,8 @@ def _load_index(items: list, tokenize_item) -> dict:
 
 def _reusable(entry, fingerprint: list) -> bool:
     """Whether a cached entry may stand in for tokenizing its document:
-    its fingerprint matches, and it has the shape `bm25_scores` reads
-    (#504). Shared by both builders, so the read-only one cannot reuse an
-    entry the writing one would have rebuilt."""
+    fingerprint matches and shape is what `bm25_scores` reads (#504).
+    Shared, so both builders agree."""
     return (
         isinstance(entry, dict)
         and entry.get("fingerprint") == fingerprint
@@ -171,32 +99,20 @@ def _reusable(entry, fingerprint: list) -> bool:
     )
 
 
-# `read_only_index`'s last result, keyed on the rows it was built from.
-# One entry, because its callers in one process ask about one corpus:
-# `dossier status` builds the index for its drift scan, and spelling
-# correction (#1232) builds it again for its vocabulary.
+# `read_only_index`'s last result, keyed on its rows: one process asks
+# about one corpus, twice (drift scan, then spelling vocabulary).
 _READ_ONLY_MEMO: dict = {}
 
 
 def read_only_index(rows: list, tokenize_item) -> dict:
     """The BM25 index for `rows`, built in memory and never saved.
 
-    For a caller that must not write the cache. `_load_index` saves
-    whenever a fingerprint moved, which after a sync is guaranteed, so a
-    report built on it would change the corpus layer it reports on.
-    `dossier status` is one such caller, and spelling correction's
-    vocabulary is another, since `dossier status` reaches it through
-    `retrieval.query_terms`. Cached entries are reused under the same rule
-    `_load_index` applies; everything else is tokenized and dropped when
-    the caller is done. A cold cache costs one tokenization of the corpus
-    per process, which the memo keeps from being paid twice.
-
-    `tokenize_item` is passed in for the reason `_load_index` takes it:
-    this module cannot import `chitragupta.retrieval` back.
+    `_load_index` saves after any sync, so a report built on it would
+    change what it reports on. Reuses cache entries by `_load_index`'s
+    rule; a cold cache costs one tokenization per process.
     """
     fingerprints = [_fingerprint(row) for row in rows]
-    # Sorted, because callers read the same rows in different orders:
-    # drift's query has no ORDER BY, and `ledger.all_items` sorts.
+    # Sorted: callers read the same rows in different orders.
     key = (
         tokenize_item,
         tuple(sorted((row["citekey"], tuple(fp)) for row, fp in zip(rows, fingerprints))),
@@ -214,13 +130,9 @@ def read_only_index(rows: list, tokenize_item) -> dict:
 
 def note_missing_parsed() -> None:
     """Print the last `_load_index`'s missing-parsed count as a note on
-    stderr, then forget it, so a second call in one process cannot
-    report a search that did not happen.
-
-    On stderr beside `retrieval_cli`'s other notes: stdout is the
-    contract the genre skills parse. The advice is true because
-    `ledger_upsert._parse_outputs_present` reads a missing parsed file
-    as "outputs gone", so the next sync re-parses it.
+    stderr, then forget it, so a second call cannot report a search that
+    did not happen. The next sync re-parses a missing file
+    (`ledger_upsert._parse_outputs_present`).
     """
     global _MISSING_PARSED
     count, _MISSING_PARSED = _MISSING_PARSED, 0

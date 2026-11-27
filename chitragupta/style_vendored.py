@@ -1,31 +1,16 @@
 """The third-party Vale rules `draft style` runs, and how their findings
 meet the house rules' (#1183, #1186).
 
-The rule files under `assets/vale/styles/` other than `chitragupta/` are
-copied byte-identical from pinned releases of four packages, and
-`vale.ini` switches each one on by name. Three things about them cannot
-live in those files without editing them, so they live here:
-
-- **Which section of docs/WRITING-STANDARDS.md each rule implements.**
-  The packages' messages name none, and a finding a reader cannot trace
-  to a rule is one they cannot judge, so the section is appended to the
-  message on the way out.
-- **That none may be repaired unattended.** Every vendored finding is
-  `review` (see `style_rules.with_repair`): the packages were written for
-  other prose, and even their narrowest lists hold words a draft uses
-  correctly ("absolutely continuous", "If anything is unclear" in a
-  tutorial, the noun "pettifogger").
-- **Which rule wins when two report the same words.** The packages were
-  written independently, and a handful of phrases sit in two of them:
-  "at the end of the day" is both a cliché and a conclusion marker. The
-  files cannot be edited to remove the copy, so the copy is dropped from
-  the findings instead. tests/test_style_vendored.py feeds every rule
-  file's tokens to Vale and fails on an overlap that is neither listed
-  here nor recorded there as two different checks.
+The rule files under `assets/vale/styles/` (other than `chitragupta/`)
+are byte-identical copies of pinned releases, so what cannot be edited
+into them lives here: the WRITING-STANDARDS section each implements
+(appended to the message), that none is repaired unattended (they flag
+words a draft uses correctly), and which rule wins an overlap.
+tests/test_style_vendored.py fails on an overlap not recorded here.
 """
 
-# Rule -> the section of docs/WRITING-STANDARDS.md it implements.
-# assets/vale/README.md has the same list with the reason for each.
+# Rule -> the section of docs/WRITING-STANDARDS.md it implements
+# (assets/vale/README.md has the reasons).
 SECTIONS = {
     "proselint.Cliches": 4,
     "proselint.Hedging": 4,
@@ -61,10 +46,8 @@ SECTIONS = {
     "Microsoft.Wordiness": 4,
 }
 
-# Rule -> the rules that win over it. A finding of the rule on the left
-# whose span overlaps, on the same line, a finding of one on the right is
-# dropped. The winner is the more specific check, or the one whose
-# message says what to write instead.
+# Rule -> the rules that win over it on an overlapping span, same line:
+# the more specific check, or the one that says what to write instead.
 SHADOWED_BY = {
     "proselint.Cliches": ("ai-tells.ConclusionMarkers", "Microsoft.Wordiness"),
     "proselint.Needless": ("proselint.Nonwords",),
@@ -88,11 +71,8 @@ def _shadowed(finding: dict, findings: list[dict]) -> bool:
 
 def reconcile(findings: list[dict]) -> list[dict]:
     """Vale's alerts with each shadowed copy dropped and each vendored
-    message ending in the section its rule implements.
-
-    Judged against the alerts as Vale gave them, so a winner that is
-    itself shadowed still removes its own losers: each pair in
-    `SHADOWED_BY` is one decision, not a chain to follow.
+    message ending in its section. Judged against Vale's own alerts, so
+    each `SHADOWED_BY` pair is one decision, not a chain.
     """
     kept = [f for f in findings if not _shadowed(f, findings)]
     for finding in kept:

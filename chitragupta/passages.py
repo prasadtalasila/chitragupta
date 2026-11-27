@@ -13,55 +13,17 @@ One ladder, tried best-first, for any consumer that needs to point at
 4. `pdftotext -layout` on the PDF the ledger recorded, same shape as (3),
    for a citekey parsed by a backend that left no page breaks.
 
-Rungs 1 and 2 are the same data from two independent parses, and they are
-separate files rather than one because the two layers own different
-directories and run on their own schedules. The corpus layer must be able
-to invalidate *its* sidecar on every re-parse -- including a switch back
-to `pdftotext`, which leaves no passages at all -- without deleting an
-enrichment sidecar it did not write and cannot reproduce. Rung 1 wins when
-both exist: the enrichment stage parses the PDF a second time, under its
-own OCR and figure settings, and is the richer of the two.
+Rungs 1 and 2 are separate files because each layer must be able to
+invalidate its own sidecar without deleting the other's; rung 1 wins.
 
-The difference between (1)/(2) and (3)/(4) is not cosmetic, and it is the
-reason this module exists as its own seam. `pdftotext -layout` preserves
-a page's *visual* arrangement rather than its reading order, so on a
-two-column paper each output line splices together two unrelated columns
--- 82%-89% of long lines on 4 of the 10 papers measured in this project's
-own sample. Bag-of-words *scoring* survives that, because splicing moves
-words around within a page rather than between pages. *Quoting* does not:
-an excerpt cut from that text is a collage of two arguments, which is
-worse than no excerpt at all because it reads as evidence.
+`pdftotext -layout` splices two-column pages line by line (82%-89% of
+long lines on 4 of 10 sampled papers), fine for scoring but a collage
+when quoted. So a page-level `Passage` carries `text=None`: the
+guarantee is structural, not advisory.
 
-So the guarantee is structural rather than advisory: a page-level
-`Passage` carries `text=None`, and a caller that wants to quote has
-nothing to quote. `quotable` reports that fact; it does not gate a field
-that is sitting there anyway.
-
-`passage_records()` is re-exported here rather than defined here since
-#627 pushed this module past the 250-line ceiling -- it lives in
-`chitragupta/_passage_records.py`, still stdlib-only, still the one
-definition both producers share (`chitragupta/pdf_text/` in the corpus
-layer and `chitragupta/enrich/docling_parse.py` in the enrichment
-layer). The reason it is reachable *through this module* is unchanged:
-this module is the sidecar's reader, and writer and reader drift apart
-the moment they stop being found in one place. The sidecar *file* --
-its path, its atomic write, and whether it can be read at all -- is
-re-exported the same way from `chitragupta/_passage_sidecar.py`, split
-out when issue 844 needed room here.
-
-Extracted from chitragupta/review/citation_provenance.py, which owned this ladder when
-it was the only consumer, and kept as its own seam for a second one that
-has not been built yet: `chitragupta/retrieval.py` still cuts its snippets as a
-character window straight out of `content/parsed/`. A snippet shown to a
-drafting agent as evidence is under exactly the same constraint as a
-passage shown to a reviewer, and the two should not answer "what does
-this source say here?" from different text -- but today they do.
-
-Stdlib only (sqlite3/subprocess, and json via the sidecar module), like
-citation_gate.py and references.py -- runs with bare `python`, no venv.
-The `re` that used to be in that list left with the stopword vocabulary;
-see `chitragupta/_passage_words.py`, whose `distinctive` is re-exported
-here.
+The record builder and sidecar file live in `_passage_records.py` and
+`_passage_sidecar.py`, re-exported here so writer and reader are found
+in one place. Stdlib only, runs with bare `python`.
 """
 
 import subprocess
@@ -72,12 +34,8 @@ from typing import Any
 from chitragupta import config, ledger_paths, programs
 from chitragupta.citekey_safety import citekey_path, citekey_problem
 
-# Re-exported so `passages.distinctive`, `passages.passage_records`,
-# `passages.PASSAGE_LABELS` and the sidecar-file functions keep resolving
-# for every existing caller -- see chitragupta/_passage_words.py,
-# chitragupta/_passage_records.py and chitragupta/_passage_sidecar.py
-# for why each moved out. `__all__` names them so the imports are not
-# read as unused.
+# Re-exported so existing callers keep resolving; `__all__` marks the
+# imports as used.
 from chitragupta._passage_records import PASSAGE_LABELS, passage_records
 from chitragupta._passage_sidecar import (
     SidecarUnreadable,
@@ -108,8 +66,8 @@ __all__ = [
 @dataclass
 class Passage:
     """A candidate span of source text. `text` is None when the source
-    couldn't be read in reading order, in which case the passage stands
-    for a whole page and must not be quoted."""
+    couldn't be read in reading order: the passage stands for a whole page
+    and must not be quoted."""
 
     page: int | None
     words: set[str]
@@ -124,16 +82,9 @@ class Passage:
 def _page_number(raw) -> int | None:
     """A sidecar's `page` as a 1-based page number, or None.
 
-    `passage_records` writes Docling's own `page_no` here, so the
-    machine-written case is always an int -- but the file is JSON on
-    disk, it may have been hand-edited, and `Passage.page` is both
-    rendered straight into "p.{page}" and typed `int | None` for callers
-    that store it. Anything that isn't a page number a reader could turn
-    to becomes None, which the report already knows how to omit, rather
-    than propagating as one.
-
-    `bool` is excluded explicitly because it is an `int` subclass in
-    Python, and `True` would otherwise report as page 1.
+    The sidecar may be hand-edited, so anything that is not a page a
+    reader could turn to becomes None. `bool` is excluded explicitly, or
+    `True` would read as page 1.
     """
     if isinstance(raw, bool) or not isinstance(raw, int) or raw < 1:
         return None
@@ -147,12 +98,10 @@ def _ledger_row(con, citekey: str) -> Any:
     return row
 
 
-# Asked before any rung (#1153). A corpus change leaves files on disk
-# that no longer describe the paper: a key dropped from the .bib loses its
-# row but keeps its sidecars, and a failed re-parse keeps the old parse's
-# text. Only a `parsed` row's files are current, the rule
-# `retrieval._full_text` follows (#490). No sync hint for a missing row: a
-# sync is what removes such a key, and the key may never have been real.
+# Asked before any rung (#1153): a dropped key keeps its sidecars and a
+# failed re-parse keeps old text, so only a `parsed` row's files are
+# current (#490). No sync hint for a missing row, which may never have
+# been real.
 def _not_current(row) -> str | None:
     """Why `row`'s files may not be read, or None if they may."""
     if row is None:
@@ -166,10 +115,8 @@ def _from_sidecar(path: Path) -> list[Passage] | None:
     try:
         records = read_records(path)
     except SidecarUnreadable:
-        # Falling back to page-level costs nothing lasting: `sync` asks
-        # `sidecar_state` the same question and re-parses a document
-        # whose sidecar is unreadable (issue 844). Raising would take
-        # down a whole report over one damaged file.
+        # Page-level costs nothing lasting: `sync` re-parses a document
+        # with an unreadable sidecar (issue 844).
         return None
     if not records:
         return None
@@ -194,15 +141,9 @@ def _from_sidecar(path: Path) -> list[Passage] | None:
 
 
 def _from_pages(raw: str) -> list[Passage]:
-    """One passage per form-feed-delimited page, not quotable.
-
-    Deliberately whole pages rather than windows within them: a window
-    cut from column-spliced text reads as a quotation while being a
-    collage, and there is no way to tell from the text alone which
-    documents are affected.
-
-    A blank page is dropped but still consumes its number, so a page
-    reported here is the page a reader will turn to.
+    """One passage per form-feed-delimited page, not quotable: a window cut
+    from column-spliced text would read as a quotation. A blank page is
+    dropped but keeps its number, so pages match what a reader turns to.
     """
     return [
         Passage(page=i, words=distinctive(page))
@@ -211,38 +152,19 @@ def _from_pages(raw: str) -> list[Passage]:
     ]
 
 
-# The reason is non-`None` exactly when the list is empty, and that
-# pairing is what #509/m-42 restored at both ends: a held single-page
-# rung-3 result used to be dropped on the way to rung 4 and returned as
-# `([], "no parsed text with page breaks and no readable PDF")` when rung
-# 4 could not run -- false about the first half -- while an empty rung 4
-# returned `([], None)`, no passages and no explanation at all.
+# The reason is non-`None` exactly when the list is empty (#509/m-42).
 def structural_passages(citekey: str) -> list[Passage] | None:
     """Rungs 1 and 2 only -- the reading-ordered, semantically labelled
     records -- or None if neither sidecar is there to read.
 
-    Split out for a caller that needs the *structure* rather than the best
-    available text, and for which the ladder's own fallback would be
-    wrong rather than merely worse. `chitragupta/_abstract.py` asks
-    "where does this document's `Abstract` heading sit, and where does the
-    next heading start?", which rungs 3 and 4 cannot answer at all: a
-    whole-page `Passage` carries `label=None` and `text=None`, so a
-    caller reading down the returned list would find no headings and
-    conclude the paper has no abstract. That is a claim about a document
-    this could not read, which is the one answer worse than no answer --
-    so the distinction stays a `None` here rather than being flattened
-    into an empty result.
-
-    A `pdftotext` parse is exactly that case and is not hypothetical:
-    `pdf_text/_backends.py`'s `_extract_pdftotext` returns None rather
-    than an empty list, so nothing writes a sidecar for it.
+    For callers needing structure, such as `_abstract.py`, for which
+    whole-page fallbacks would wrongly read as "no abstract". `None` keeps
+    "could not read" apart from an empty result; a `pdftotext` parse
+    writes no sidecar, so this is a real case.
     """
     if citekey_problem(citekey):
         return None
-    # Rung 1 before rung 2: both hold the same kind of record, but the
-    # enrichment layer's is a second, independent parse of the PDF under
-    # its own OCR and figure settings, so it is the richer of the two
-    # whenever a run has paid for it.
+    # Rung 1 first: a second, independent parse, and the richer one.
     for path in (
         citekey_path(config.DOCLING_DIR, citekey, ".passages.json"),
         sidecar_path(citekey),
@@ -254,13 +176,9 @@ def structural_passages(citekey: str) -> list[Passage] | None:
 
 
 def corpus_passages(citekey: str) -> list[Passage] | None:
-    """Rung 2 alone -- what *this* layer's own parse recorded.
-
-    `structural_passages` prefers rung 1, which is right for a caller
-    that wants the best structure available. It is wrong for one whose
-    output must not move when someone runs `chitragupta.enrich`:
-    `chitragupta/retrieval.py` promises exactly that of the BM25 index,
-    and `chitragupta/_reference_cut.py` cuts that index on a sidecar.
+    """Rung 2 alone -- what *this* layer's own parse recorded -- for callers
+    that must not move when `chitragupta.enrich` runs (the BM25 index and
+    `_reference_cut.py`).
     """
     return _from_sidecar(sidecar_path(citekey))
 
@@ -268,11 +186,8 @@ def corpus_passages(citekey: str) -> list[Passage] | None:
 def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
     """Best available passages for `citekey`, plus a reason if there are
     none."""
-    # Callers hand this citekeys extracted from a *draft*, not only from
-    # the ledger, and the LaTeX regex accepts nearly anything inside
-    # `\cite{...}` -- so the stem must be validated before it becomes a
-    # path, or `\citep{../../secret}` reads files outside the content
-    # tree (#638). Same validator the bib-sync side has always enforced.
+    # Citekeys may come from a draft, where `\cite{...}` accepts nearly
+    # anything, so the stem is validated before it is a path (#638).
     problem = citekey_problem(citekey)
     if problem:
         return [], f"citekey is unsafe as a filename stem: {problem}"
@@ -284,31 +199,20 @@ def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
     if sidecar:
         return sidecar, None
 
-    # Both columns confined before either is opened (issue 821), each
-    # stored relative to its root (#966). The PDF one is the sharper of
-    # the two: it is not read here but handed to `pdftotext` as an
-    # argument, so an unconfined row ran a subprocess over an arbitrary
-    # host file and quoted the result.
+    # Both columns confined before either is opened (issue 821; relative,
+    # #966). The PDF path is handed to `pdftotext`, so an unconfined row
+    # would run a subprocess over an arbitrary host file.
     parsed_path = ledger_paths.parsed_file(row[0])
     pdf_path = ledger_paths.pdf_file(row[1])
     single_page: list[Passage] = []
     if parsed_path and parsed_path.exists():
         raw = parsed_path.read_text(encoding="utf-8", errors="replace")
         found = _from_pages(raw)
-        # A backend that emits no form feeds yields exactly one "page",
-        # which would report every hit as p.1. Fall through to the PDF.
-        # Both shipped backends do emit them, so this now catches a
-        # genuinely single-page source (where rung 4 says the same thing)
-        # rather than every docling parse.
+        # No form feeds yields one "page", every hit p.1: try the PDF.
         if len(found) > 1:
             return found, None
-        # Held rather than discarded (#509/m-42). Falling through is right
-        # only while rung 4 might still do better; when it cannot -- no
-        # PDF, or pdftotext produces nothing -- returning `[]` threw away
-        # real parsed text and reported "no parsed text with page breaks
-        # and no readable PDF", which is false about the first half. One
-        # page attributed to p.1 is a worse answer than several; it is a
-        # far better one than none.
+        # Held, not discarded (#509/m-42): one page at p.1 beats none when
+        # rung 4 cannot do better.
         single_page = found
 
     if pdf_path and pdf_path.exists():
@@ -319,30 +223,21 @@ def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
     return [], "no parsed text with page breaks and no readable PDF"
 
 
-# `single_page` is whatever rung 3 held -- a form-feed-free parse read as
-# one page. It is the answer whenever this rung cannot better it, which is
-# the half of #509/m-42 that used to return `[]` and a reason that was
-# false about the parsed text it had just thrown away.
+# `single_page` is rung 3's held result, the answer whenever this rung
+# cannot better it (#509/m-42).
 def _from_pdf(pdf_path: str, single_page: list[Passage]) -> tuple[list[Passage], str | None]:
     """Rung 4: `pdftotext` over the PDF, falling back to `single_page`."""
     try:
-        # encoding/errors rather than a bare text=True: that decodes
-        # with the *platform* encoding under strict error handling, so
-        # a single undecodable byte anywhere in a paper -- a ligature,
-        # a stray control character, anything under a C-locale host --
-        # raises UnicodeDecodeError, which is not in the except clause
-        # below and would take down a whole report over one PDF. Same
-        # guard the parsed-text branch above already applies.
+        # Explicit encoding and errors: the platform codec under strict
+        # handling would raise on one bad byte and end the whole report.
         out = subprocess.run(
             [programs.require_program("pdftotext"), "-layout", pdf_path, "-"],
             capture_output=True,
             check=True,
             encoding="utf-8",
             errors="replace",
-            # The bound the sync backend already enforces: a malformed
-            # PDF can hang poppler, and without it the report waited
-            # forever (#824). Running out of it is one more way this rung
-            # cannot run, so it takes the same fallback.
+            # A malformed PDF can hang poppler (#824); a timeout takes the
+            # same fallback.
             timeout=config.PARSER_DOCUMENT_TIMEOUT,
         )
     except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
@@ -354,8 +249,6 @@ def _from_pdf(pdf_path: str, single_page: list[Passage]) -> tuple[list[Passage],
         return from_pdf, None
     if single_page:
         return single_page, None
-    # An empty rung 4 used to return `([], None)` -- no passages and no
-    # reason, which every caller renders as a blank where an explanation
-    # belongs (#509/m-42). pdftotext exiting 0 on a scanned PDF with no
-    # text layer is the ordinary way to get here.
+    # An empty rung 4 must still give a reason (#509/m-42); a scanned PDF
+    # with no text layer is the usual way here.
     return [], "the PDF has no extractable text layer -- it may be scanned images"

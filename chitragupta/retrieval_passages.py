@@ -1,65 +1,22 @@
 """BM25 whose unit is a paragraph rather than a whole document (#769).
 
-`chitragupta/retrieval.py` ranks one bag of words per source and then,
-*after* the top-k is decided, hunts that source's text for a 500-character
-window scored by a different rule entirely -- how many distinct query
-terms fall inside it. So the evidence a drafting skill is shown was
-chosen by a criterion that had no part in deciding the source was worth
-showing, and it is a character window rather than a paragraph: cut
-wherever 500 characters land, carrying no page number.
+`retrieval.search` picks a source, then shows a 500-character window
+chosen by a different rule, with no page. Here the ranked object and the
+displayed object are the same: a reading-ordered paragraph from the
+passage sidecar, verbatim, with its page. An alternative unit, not a
+replacement (`retrieve search --unit passage`).
 
-This module closes that gap by making the ranked object and the displayed
-object the same thing. What ranks is a real reading-ordered paragraph out
-of the corpus layer's passage sidecar; what comes back is that paragraph,
-verbatim, with the page a reader can turn to. `chitragupta/passages.py`'s
-own docstring has named this as the unbuilt consumer its seam was
-extracted for since before this existed.
-
-It is an *alternative* unit, not a replacement. "Did this paper argue X?"
-is genuinely a whole-document question, and `retrieval.search` is
-unchanged -- same signature, same scores, same snippets. The caller
-chooses (`retrieve search --unit passage`).
-
-Scores from the two units are not comparable and must never be sorted
-into one list: `N`, every document frequency and `avgdl` are computed over
-passages here and over documents there, so the numbers are on different
-scales by construction.
-
-#762's field weights are *inert* on this unit, and that is right rather
-than missed. A passage entry carries no `field_freqs`, so
-`retrieval_scoring.weighted_freq` returns the plain frequency however
-`[retrieval].weight_title`/`weight_abstract` are set. Title and abstract
-are properties of a document, and this unit's whole premise is that the
-paragraph is the thing being scored -- weighting one paragraph because
-the *paper* has a matching title would reintroduce exactly the pooling
-this exists to drop. Worth knowing before raising a weight and wondering
-why only one unit moved; docs/CONFIG.md says so too.
-
-Stdlib only, like everything else on the tier-1 path: no venv, no model,
-no `rank_bm25`. `chitragupta/enrich/embed_index.py` also ranks
-sub-document units, and needs both a venv and a model download to do it.
+Scores of the two units are on different scales and must never be sorted
+into one list. #762's field weights are inert here by design: weighting
+a paragraph for its paper's title would reintroduce the pooling this
+drops (docs/CONFIG.md). Stdlib only, no venv or model.
 """
 
-# One source can no longer be trusted to take one result slot, which is
-# the other consequence of the smaller unit. `retrieval.search` is
-# one-per-citekey by construction -- its scores dict is keyed by citekey
-# -- so its docstring can say a cap "would be a no-op here". A
-# well-matched paper has as many passages as it has paragraphs, so this
-# needs the cap that docstring anticipated: `config.MAX_PASSAGES_PER_SOURCE`.
-#
-# Why there is no over-fetch multiplier beside it, which is the obvious
-# thing to look for after reading `embed_index.search`: that path caps a
-# list Chroma already truncated, so without over-fetching, dropping a
-# dominant paper's excess chunks shortens the result instead of promoting
-# another paper's chunk into it -- the failure #305 existed to fix.
-# Nothing truncates here. `bm25_scores` returns every passage that scored
-# above zero, so `_capped` walks the fully ranked list and takes the first
-# k that fit, which is what an unbounded over-fetch would buy.
-#
-# Both said as comments rather than in the docstring above because
-# docs/CODE-STANDARDS.md's C2 counts docstring lines, and this module
-# already paid that limit once: the cache half is
-# chitragupta/retrieval_passages_cache.py for exactly that reason.
+# A well-matched paper has a passage per paragraph, so this unit needs
+# `config.MAX_PASSAGES_PER_SOURCE`, which `retrieval.search` (one per
+# citekey) does not. No over-fetch multiplier as in `embed_index.search`:
+# `bm25_scores` returns every scoring passage, so `_capped` walks the whole
+# ranked list (#305's failure cannot occur).
 
 from dataclasses import dataclass
 
@@ -76,9 +33,8 @@ from chitragupta.retrieval import query_terms
 
 @dataclass
 class PassageResult:
-    """One ranked paragraph. `text` is verbatim and quotable: it comes
-    from a rung-2 sidecar, so it is a real reading-ordered paragraph
-    rather than a window cut out of flattened text."""
+    """One ranked paragraph. `text` is verbatim and quotable, a real
+    reading-ordered paragraph from a rung-2 sidecar."""
 
     citekey: str
     title: str
@@ -93,11 +49,9 @@ class PassageResult:
 class PassageSearch:
     """`results`, plus how many parsed sources this path could not reach.
 
-    A citekey parsed by `pdftotext` leaves no sidecar, so it is not ranked
-    low here -- it is absent from the index entirely. Falling back to a
-    document-level score for those would put two incomparable numbers in
-    one ranking (see the module docstring), so the gap is reported rather
-    than papered over, and a caller that wants it said out loud can.
+    A `pdftotext` parse leaves no sidecar and so is absent, not ranked
+    low; a document-level score would be incomparable, so the gap is
+    reported instead.
     """
 
     results: list[PassageResult]
@@ -106,13 +60,8 @@ class PassageSearch:
 
 def _capped(ranked: list, k: int) -> list:
     """The first `k` of `ranked` in which no citekey appears more than
-    `config.MAX_PASSAGES_PER_SOURCE` times.
-
-    Applied to the whole ranked list rather than to a truncated pool,
-    which is why no over-fetch multiplier is needed -- see the comment at
-    the top of this module. Because the list is already sorted, the
-    passages a source keeps are its highest-scoring ones rather than
-    whichever the loop reached first.
+    `config.MAX_PASSAGES_PER_SOURCE` times; the list is sorted, so each
+    source keeps its best passages.
     """
     limit = config.MAX_PASSAGES_PER_SOURCE
     seen: dict[str, int] = {}
@@ -131,21 +80,9 @@ def _capped(ranked: list, k: int) -> list:
 def _results(ranked: list, by_citekey: dict) -> list[PassageResult]:
     """The ranked keys resolved back to their passages.
 
-    Re-reads each winner's sidecar rather than carrying prose through the
-    index, which holds term counts only: the same trade the document path
-    makes for its snippets, for the same reason -- a cache of every
-    paragraph's text is the corpus a second time over, and only k of them
-    are ever needed.
-
-    That re-read is a *second* read of a file the index was built from, so
-    a hit whose position no longer resolves is dropped rather than raised
-    on. The fingerprint closes the ordinary window -- a rewritten sidecar
-    changes size or mtime, so its entry is rebuilt before anything is
-    ranked -- but it cannot close the one inside this call, where a
-    re-parse lands between the ranking and this loop. A shrunk sidecar
-    would then index out of range, and a search dying with a bare
-    IndexError is a worse answer than a search returning the hits that are
-    still there.
+    Re-reads each winner's sidecar, as the index holds term counts only.
+    A position that no longer resolves (a re-parse landing between the
+    ranking and this loop) is dropped, not raised as an IndexError.
     """
     found = []
     for (citekey, i), score in ranked:
@@ -170,23 +107,11 @@ def _results(ranked: list, by_citekey: dict) -> list[PassageResult]:
 def search_passages(query: str, k: int = 5, collection: str | None = None) -> PassageSearch:
     """Rank the corpus's paragraphs by BM25 relevance to `query`.
 
-    `collection` restricts the result to items in that collection or one
-    beneath it (chitragupta/collection_filter.py), filtered on the
-    *ranking* rather than the index --
-    exactly as `retrieval.search` does it, and for the same two reasons:
-    narrowing the index would change every IDF, so a query would score
-    differently depending on the filter, and one cache could not serve
-    both.
-
-    There is no `snippet_chars`. The text returned is the paragraph that
-    scored, at its own length; choosing a window is what this unit exists
-    not to do.
-
-    Deterministic. Ties break on `(citekey, passage_index)`, and the cap
-    keeps the highest-scoring passages rather than whichever iteration
-    reached first -- both necessary rather than tidy, since per-process
-    string hashing makes anything reading a `set`'s order a different
-    answer run to run (`retrieval._windows`' docstring has the history).
+    `collection` filters the ranking, not the index, as `retrieval.search`
+    does: narrowing the index would change every IDF. No `snippet_chars`:
+    the paragraph is returned at its own length. Deterministic: ties break
+    on `(citekey, passage_index)`, never on `set` order (see
+    `retrieval._windows`).
     """
     terms, _added = query_terms(query)
     if not terms:

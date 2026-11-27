@@ -1,61 +1,26 @@
 """Prose conformance for a draft, checked against docs/WRITING-STANDARDS.md.
 
-`python -m chitragupta.draft style <draft>` reports where a draft departs from the
-rules that document marks decidable in its §9 -- the defect markers of §2,
-the recorded dialect of §8, an acronym never expanded at first use, and
-the fixed phrases of §4 and §7 that 32 vendored third-party rules and
-seven house rules list (`chitragupta/style_vendored.py`) -- and says
-nothing about the rules it marks a judgement. Vale does that
-matching, against the style vendored at assets/vale/; this module decides
-*which* rules apply to *this* draft and turns the result into a report.
-One finding is not Vale's: `chitragupta.style_acronym_drift` checks the draft's
-own recorded glossary against the current acronym vocabulary in plain
-Python, because that vocabulary lives in a per-host file Vale cannot
-read.
+`python -m chitragupta.draft style <draft>` reports the rules §9 marks
+decidable; Vale does the matching against assets/vale/, and this module
+picks which rules apply and builds the report. Python-side checks (such
+as `style_acronym_drift`) cover what Vale cannot read.
 
-**Advisory, and it exits 0 whatever it finds.** Not a gate, and not a
-gate under a flag either. The reason is docs/ARCHITECTURE.md's "Layer 4":
-`chitragupta.draft gate` is measured against the ledger, which is ground truth, so
-an absolute verdict is available; this is measured against a `language:`
-line someone typed into scope.md, which can be wrong, stale, or
-deliberately overridden -- so blocking on it would refuse a correct draft
-on a bad target. DEVELOPER-AGENTS.md bars promoting any new check into a
-gate beside chitragupta/citation_gate.py, and this is the check that rule was
-written for.
+Advisory, exiting 0 whatever it finds, never a gate: it measures against
+a typed `language:` line that can be wrong (docs/ARCHITECTURE.md "Layer
+4"), and DEVELOPER-AGENTS.md bars a gate beside citation_gate.py. Tier 1
+with an optional `vale` binary, reported missing rather than assumed.
 
-**Tier 1 with an optional binary**, exactly like `chitragupta.draft render`: the
-Python here imports nothing outside the standard library and runs on the
-bare system interpreter, and the `vale` binary is probed for and reported
-missing rather than assumed. A host without it loses this report and keeps
-everything else, which is the same bargain render makes with pandoc.
-
-Three behaviours worth knowing before reading the code, each learned from
-running this over a real 178,000-word book rather than chosen up front:
-
-- **The dialect rules are mutually exclusive, and selected per draft.**
-  assets/vale/ ships DialectGB, DialectUS and DialectIN; enabling all
-  three at once makes every draft wrong in two directions. `--filter`
-  picks one, which leaves the vendored config byte-identical to what was
-  reviewed -- appending a second `[*.{md,tex}]` section to a copy does
-  not work, because Vale treats the later section as an override and
-  silently drops `BasedOnStyles`, reporting nothing at all.
-- **Findings are collapsed per (rule, match).** The book uses "AI" 45
-  times without ever expanding it; that is one thing to fix, not 45. The
-  count travels with the finding so nothing is hidden.
-- **A draft whose dialect is unrecorded gets no dialect rules**, and is
-  told so. `scope.md` ships `language:` as "not settled", and every
-  dossier written before 5.12.0 has no such line at all -- guessing en-US
-  for those would report a preference nobody chose.
+Learned on a 178,000-word book: dialect rules are exclusive and picked
+by `--filter` (a second config section makes Vale drop
+`BasedOnStyles`); findings collapse per (rule, match) with a count; and
+an unrecorded dialect gets no dialect rules, and is told so.
 """
 
 import json
 import sys
 
-# `_run` is the one patch point for this module's external launches
-# (#854), in the shape `render_output._pandoc._run_pandoc` set: a test
-# fakes it here and so fakes this module's subprocess and nobody
-# else's. Patching the global `subprocess.run` reached every launch in
-# the process.
+# The one patch point for this module's launches (#854), so a test fakes
+# only this module's subprocess.
 from subprocess import run as _run
 from pathlib import Path
 from typing import Any
@@ -77,9 +42,8 @@ from chitragupta.progname import prog_for
 
 
 class MissingBinary(RuntimeError):
-    """Vale is not on PATH. Named for render_output's exception of the
-    same shape, and handled the same way: reported to the caller as a
-    warning, never raised past the CLI."""
+    """Vale is not on PATH. Reported to the caller as a warning, as
+    render_output does, never raised past the CLI."""
 
 
 def _vale_argv(vale: str, draft: Path, language: str | None) -> list[str]:
@@ -89,25 +53,17 @@ def _vale_argv(vale: str, draft: Path, language: str | None) -> list[str]:
         "--output=JSON",
         "--no-exit",  # findings are not this command's exit code; see the docstring
         f"--filter={rule_filter(language)}",
-        # Resolved rather than passed as the caller typed it: the process
-        # below runs with cwd=config.PROJECT_ROOT so vale can find the
-        # vendored config, but a relative draft path is relative to the
-        # *caller's* cwd -- from anywhere else, vale fails to find the
-        # file while every Python-side check (resolved against the real
-        # cwd) still passes, and that mismatch is exactly the "could not
-        # run" this function exists to catch (#495). A `.tex` draft goes on
-        # stdin instead, its LaTeX markup blanked (`style_latex.for_vale`),
-        # with its extension so `tex = md` still applies.
+        # Resolved: vale runs with cwd=config.PROJECT_ROOT to find its
+        # config, so a caller-relative path would fail there while the
+        # Python checks passed (#495). A `.tex` draft goes on stdin,
+        # blanked, with its extension so `tex = md` still applies.
         "--ext=.tex" if citation_gate.is_latex(draft) else str(Path(draft).resolve()),
     ]
 
 
 def run_vale(draft: Path, language: str | None) -> list[dict]:
     """Vale's findings for `draft`, flattened out of its per-file JSON.
-
-    A `.tex` draft is handed over on stdin with its LaTeX markup blanked
-    (`style_latex.for_vale`), since Vale's own ignores for it lost
-    findings; a `.md` draft goes as the file."""
+    A `.tex` draft goes on stdin blanked by `style_latex.for_vale`."""
     vale = programs.resolve_program("vale")
     if vale is None:
         raise MissingBinary(
@@ -122,30 +78,21 @@ def run_vale(draft: Path, language: str | None) -> list[dict]:
         input=style_latex.for_vale(text) if citation_gate.is_latex(draft) else None,
         capture_output=True,
         text=True,
-        # Not the locale's codec, which on a non-UTF-8 host would refuse
-        # a draft's non-ASCII character going in or a finding coming out.
+        # Not the locale's codec, which could refuse non-ASCII text.
         encoding="utf-8",
         check=False,
         cwd=config.PROJECT_ROOT,
     )
-    # `--no-exit` keeps a nonzero exit reserved for vale itself failing to
-    # run -- a missing file, a broken filter, a malformed config -- rather
-    # than for findings. Those failures write to stderr and leave stdout
-    # empty, which `json.loads(result.stdout or "{}")` below would
-    # otherwise read as "{}": a clean run indistinguishable from a run
-    # that never happened (#495). Checked before the parse, not folded
-    # into the except below, because empty-and-nonzero is vale refusing
-    # to run at all, not vale producing output this module can't read.
+    # `--no-exit` reserves a nonzero exit for vale failing to run, whose
+    # empty stdout would otherwise parse as a clean "{}" (#495).
     if result.returncode != 0 and not result.stdout.strip():
         raise MissingBinary(
             f"vale exited {result.returncode} without checking the draft "
             f"({result.stderr.strip() or 'no stderr output'}). The draft is "
             "unaffected -- this check is advisory."
         )
-    # Vale prints `{}` for a clean run and a JSON object keyed by path
-    # otherwise. A parse failure is a broken vendored config rather than a
-    # broken draft, so it is raised at the caller rather than swallowed
-    # into an empty -- and therefore reassuring -- finding list.
+    # A parse failure is a broken vendored config, raised rather than
+    # turned into a reassuringly empty list.
     try:
         payload = json.loads(result.stdout or "{}")
     except json.JSONDecodeError as exc:
@@ -160,12 +107,8 @@ def run_vale(draft: Path, language: str | None) -> list[dict]:
 
 def collapse(findings: list[dict]) -> list[dict]:
     """One entry per (rule, matched text), carrying the first line it
-    appears on and how many times it appears.
-
-    Measured reason: a book chapter that never expands "AI" produces 45
-    identical findings, and a report of 337 lines where 55 are distinct is
-    one nobody reads to the end. The count is kept rather than dropped so
-    that "once, in passing" and "throughout" stay distinguishable.
+    appears on and how many times it appears (a chapter never expanding
+    "AI" gave 45 identical findings; the count keeps "throughout" visible).
     """
     collapsed: dict[tuple[str, str], dict] = {}
     for finding in sorted(findings, key=lambda f: (f.get("Line", 0), f.get("Check", ""))):
@@ -187,19 +130,11 @@ def collapse(findings: list[dict]) -> list[dict]:
 def propose_language(draft: Path) -> tuple[str, dict[str, int]] | None:
     """Which dialect `draft` reads as, measured by checking it both ways.
 
-    Only ever a suggestion, and only computed when nobody has declared
-    one. docs/HOUSE-STYLE.md's rule is that the machine proposes and the
-    human accepts -- so this prints a command to run and writes nothing.
-    Measured on a real book: 5 findings as en-GB against 400 as en-US, so
-    at document length the signal is not subtle.
-
-    None when the two are too close to call, which is the honest answer
-    for a short draft with no dialect-bearing words in it at all.
+    Only a suggestion when nobody declared one: it prints a command and
+    writes nothing (docs/HOUSE-STYLE.md). None when too close to call.
     """
-    # Dialect findings only. Every other rule fires identically whichever
-    # dialect is assumed, so counting them in would add the same number to
-    # both sides and bury the signal under the noise -- measured on one
-    # chapter, 18 against 31 rather than the true 0 against 26.
+    # Dialect findings only: the rest fire identically either way and
+    # would bury the signal.
     counts = {
         tag: sum(
             1 for f in run_vale(draft, tag) if f.get("Check", "").startswith("chitragupta.Dialect")
@@ -215,18 +150,10 @@ def propose_language(draft: Path) -> tuple[str, dict[str, int]] | None:
 def check(draft: Path, override: str | None = None, propose: bool = True) -> dict:
     """Everything one draft's report is built from, as data.
 
-    `propose=False` skips `propose_language` (two extra Vale runs)
-    entirely -- for a caller that never reads `proposed_language`, such
-    as the review agenda's `_read_style` (#495), those runs cost the
-    same two subprocess launches for nothing every single time it reads
-    the `prose` class."""
-    # The Python-side findings are computed first and survive a missing
-    # Vale. They used to be appended to `run_vale`'s result, so the
-    # `MissingBinary` it raises took the glossary and table findings down
-    # with it -- a host that never ran the `os-deps` install stage lost
-    # two checks that never needed the binary. The absence is reported as
-    # `vale_error` rather than raised, because a report naming what did
-    # not run is this module's whole header discipline.
+    `propose=False` skips `propose_language`'s two extra Vale runs, for a
+    caller such as the agenda's `_read_style` (#495)."""
+    # Python-side findings first, so they survive a missing Vale, which is
+    # reported as `vale_error` rather than raised.
     language, source = resolve_language(draft, override)
     findings = [found for rule in PYTHON_CHECKS for found in rule(draft)]
     vale_error, proposal = None, None
@@ -234,8 +161,7 @@ def check(draft: Path, override: str | None = None, propose: bool = True) -> dic
         findings = with_repair(collapse(run_vale(draft, language)), source) + findings
     except MissingBinary as exc:
         vale_error = str(exc)
-    # Not attempted without Vale: the proposal is measured *by* running
-    # it both ways, so on a host without it there is nothing to measure.
+    # Not attempted without Vale: the proposal is measured by running it.
     proposed = (
         propose_language(draft) if propose and language is None and vale_error is None else None
     )
@@ -274,11 +200,9 @@ def build_parser() -> Any:
 
 
 def main(argv=None) -> int:
-    """0 for any finding, with or without Vale. The exceptions are usage
-    errors -- argparse's, and a broken `style_exceptions.toml` (#1187),
-    which exits 2 with its reason on stderr: a malformed config is a
-    mistake by the caller rather than a finding about the draft, and
-    loading it as empty would silently re-raise every declared term."""
+    """0 for any finding, with or without Vale. Usage errors exit 2,
+    including a broken `style_exceptions.toml` (#1187): loading it as
+    empty would silently re-raise every declared term."""
     args = build_parser().parse_args(argv)
     payloads, warnings = [], []
     for name in args.draft:
@@ -290,10 +214,7 @@ def main(argv=None) -> int:
         except ValueError as exc:
             print(exc, file=sys.stderr)
             return 2
-    # Once, not once per draft: the binary will not appear between two of
-    # them, and repeating an identical warning is noise. Every draft is
-    # still checked, because the findings Vale does not produce do not
-    # depend on it.
+    # Warned once, not per draft; every draft is still checked.
     warnings += sorted({payload["vale_error"] for payload in payloads} - {None})
     if args.json:
         print(

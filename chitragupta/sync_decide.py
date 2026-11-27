@@ -1,12 +1,6 @@
 """The two ledger-vs-bib-file decisions a sync run makes before it does
 any parsing: which references still need work, and which ledger rows
-the bib file no longer accounts for.
-
-Split from `chitragupta/sync.py` (#441): both functions take the open
-ledger connection and what the bib read already yielded -- the parsed
-`references`, or the citekeys the bib file names -- and neither calls
-back into `chitragupta.sync` -- `chitragupta/sync.py` calls these, not
-the reverse.
+the bib file no longer accounts for (#441). Never calls back into `sync`.
 """
 
 from chitragupta import bib_reader, config, ledger, ledger_tables, sync_renames, sync_residue
@@ -16,42 +10,24 @@ def _to_parse(con, references, reparse, parser_available, tally) -> list:
     """The decide half of the decide/parse split: upsert every reference,
     count the ones that need no work, and return the rest.
 
-    Split from the parse half rather than one loop doing both.
-    Every ledger call stays here, on the main thread, because a
-    sqlite3 connection is not safe to share across threads and
-    sqlite has a single writer regardless -- only the backend call
-    (pdftotext/docling, per config.PARSER) is ever handed to a pool.
-
-    Whether there is a pool at all is [parser].workers, which
-    defaults to 1: a routine sync parses zero-to-few documents
-    (chitragupta/ledger.py's (size, mtime)-before-hash skip), so paying pool
-    setup by default would cost more than it saves. It is a bulk or
-    first-time sync that needs this -- 501 PDFs at one audit, ~39
-    minutes serial with docling -- and that case is opt-in.
+    Every ledger call stays on the main thread (sqlite3 connections are
+    not thread-safe, and sqlite has one writer); only the backend call is
+    pooled. `[parser].workers` defaults to 1, as a routine sync parses
+    few documents; a bulk first sync (~39 minutes serial for 501 PDFs) opts in.
     """
     to_parse = []
     try:
         for ref in references:
-            # One transaction for the whole loop rather than one per
-            # reference (#511/m-75). `last_synced` moves on every row on
-            # every run, so a *no-op* sync rewrote all of them -- 646
-            # fsync'd write transactions on the corpus this was measured
-            # against, and 646 windows in which the read-only inspector
-            # could see a half-written ledger.
-            #
-            # `vanished` collects the OSError if the PDF `bib_reader`
-            # resolved has gone away since (issue #556). It is per
-            # reference, not per run, because it decides this
-            # reference's reason below.
+            # One transaction for the loop, not per reference (#511/m-75): a
+            # no-op sync otherwise made 646 fsync'd writes, each a window
+            # for the read-only inspector to see a half-written ledger.
+            # `vanished` catches a PDF gone since the bib read (#556).
             vanished = []
             needs_parse = ledger.upsert_reference(
                 con, ref, force=reparse, commit=False, on_missing_pdf=vanished.append
             )
-            # `ref.pdf_resolution` was decided when `bib_reader` read the
-            # bib file, at which point this PDF was readable -- so one
-            # that stopped being readable between then and the upsert
-            # needs the reason it *would* have been given had it happened
-            # a moment earlier.
+            # The PDF was readable at bib-read time, so one lost since gets
+            # the reason it would have got a moment earlier.
             resolution = _lost_pdf_reason(vanished[0]) if vanished else ref.pdf_resolution
             if vanished or not ref.pdf_path:
                 tally.no_pdf += 1
@@ -67,47 +43,22 @@ def _to_parse(con, references, reparse, parser_available, tally) -> list:
                 continue
             to_parse.append(ref)
     finally:
-        # `finally`, not a plain call after the loop, and this is the
-        # whole reason the batching is acceptable. docs/DESIGN.md rejects
-        # locking the ledger precisely because it "would force a run into
-        # one transaction, discarding the incremental commit points on a
-        # crash". Committing on the way out keeps that guarantee at batch
-        # granularity: every row written is a whole row, so what finished
-        # is still on disk. The raise path this used to name -- a PDF
-        # moved between the bib read and `_stat_pdf`, m-71 -- is closed
-        # now (`ledger_upsert._pdf_identity` catches the `OSError` and
-        # records the row as no-PDF), so the nearest live one is an
-        # interrupt or a `sqlite3` error from the write itself. The
-        # `finally` is not conditional on which: it is what makes the
-        # batching acceptable at all, and dropping it would trade a
-        # measured win for the guarantee docs/DESIGN.md rests on.
+        # `finally` is what makes batching acceptable: docs/DESIGN.md
+        # rests on incremental commit points surviving a crash or
+        # interrupt, and committing on the way out keeps every finished
+        # row on disk.
         con.commit()
     return to_parse
 
 
 def _lost_pdf_reason(exc: OSError) -> str:
-    """Which no-PDF reason an unreadable `ref.pdf_path` reports as.
+    """Which no-PDF reason an unreadable `ref.pdf_path` reports as,
+    classified on the exception's type (DEVELOPER-AGENTS.md).
 
-    Classified on the exception's type, which is this project's standing
-    rule for a failure cause (DEVELOPER-AGENTS.md: "classify a failure by
-    cause on the exception, not by matching its message").
-
-    A gone file gets the reason `bib_reader` already gives that exact
-    condition when its own bib-read-time check catches it -- the same
-    condition, detected a moment later, so it reports as the same thing
-    rather than as a new kind of thing.
-
-    Every other `OSError` is a different diagnosis and must not borrow
-    that one. A PDF that is present but unreadable -- no permission, a
-    failing disk -- would otherwise be reported as "no longer exists on
-    disk", and the remedy the docs attach to that reason (fix the path,
-    or drop the `file` field) is wrong for it. Both are holes in the
-    corpus and both make the run exit nonzero; they just are not the
-    same hole (issue #556).
-
-    `NotADirectoryError` rides with the missing-file case: `ENOTDIR`
-    means a component of the path is not a directory, so nothing is at
-    that path either, which is what the label claims.
+    A gone file (`NotADirectoryError` included) gets `bib_reader`'s own
+    reason for that condition. Any other `OSError` (permissions, a failing
+    disk) must not borrow it, as the documented remedy would be wrong
+    (issue #556).
     """
     if isinstance(exc, (FileNotFoundError, NotADirectoryError)):
         return bib_reader.PDF_PATH_GONE
@@ -116,10 +67,8 @@ def _lost_pdf_reason(exc: OSError) -> str:
 
 def _prune(con, seen_citekeys, notes=None) -> list[tuple[str, str | None]]:
     """The --remove-stale deletion itself, residue report first."""
-    # Skipped when the bib yielded nothing: prune_missing's guard is
-    # about to refuse and raise on exactly that shape, and a residue
-    # report for every row in the ledger would bury the refusal it
-    # is printed just ahead of.
+    # Skipped when the bib yielded nothing: prune_missing is about to
+    # refuse, and a whole-ledger residue report would bury that.
     if seen_citekeys:
         sync_residue.report([key for key, _path in ledger.find_stale(con, seen_citekeys)])
     pruned = ledger.prune_missing(con, seen_citekeys)
@@ -128,11 +77,9 @@ def _prune(con, seen_citekeys, notes=None) -> list[tuple[str, str | None]]:
     return pruned
 
 
-# Issue 841. Printed rather than raised as `ledger.PruneRefused`: that
-# exception ends the run before its summary and exits 1, and this run
-# has a stale list worth reading and a bibliography problem, whose code
-# is EXIT_BIB_INTEGRITY. The list follows, so it says what a clean
-# export *would* prune; nothing is deleted until the read is whole.
+# Issue 841. Printed, not raised as `ledger.PruneRefused`, which would end
+# the run before its summary and with the wrong exit code. Nothing is
+# deleted until the read is whole.
 def _refuse_prune(library, stale_count) -> None:
     """Say why --remove-stale deleted nothing this run."""
     print(
@@ -146,10 +93,8 @@ def _refuse_prune(library, stale_count) -> None:
 
 
 def _plan(con, references, reparse, parser_available, tally) -> tuple[set[str], list]:
-    """`(the ledger's citekeys before this sync, what to parse)`. The
-    snapshot is taken first, before anything is written, so
-    `_record_and_report` can tell a key that arrived this sync from one
-    that was already there."""
+    """`(the ledger's citekeys before this sync, what to parse)`, the
+    snapshot taken before anything is written."""
     had = ledger.known_citekeys(con)
     return had, _to_parse(con, references, reparse, parser_available, tally)
 
@@ -160,19 +105,10 @@ def _record_and_report(
     """After ingest: record what the bib says beyond its entries, then
     prune or report stale rows (`_report_stale`).
 
-    The collection names are rewritten whole, so a collection renamed in
-    the reference manager shows its new name and keeps its slug. Renames
-    are recorded before `_report_stale` can prune the rows they are read
-    from -- and not at all on a read that lost entries (#841), where a
-    key missing from the read need not be missing from the library.
-    `had` is the ledger's keys before this sync's ingest, so a hash match
-    can tell a key that just arrived from one that was already there.
-
-    A read that yielded no citekey at all records nothing, names
-    included: it is the SUSPICIOUS shape `_report_stale` warns about
-    (an empty export, a wrong `BIB_FILE`), and recording it would turn
-    every cited key into a defect `dossier status` tells a reviser to
-    act on.
+    Collection names are rewritten whole, so a rename keeps its slug.
+    Renames are recorded before any prune, and not at all on a read that
+    lost entries (#841). A read with no citekey at all records nothing:
+    it is the suspicious shape, and would mark every cited key a defect.
     """
     seen = library.seen_citekeys
     notes = {}
@@ -199,26 +135,12 @@ def _report_stale(
 ) -> tuple[list[tuple[str, str | None]], list[tuple[str, str | None]], bool]:
     """Prune or report ledger rows the bib file no longer has.
 
-    Returns (pruned, stale, suspicious). Only the ledger row is ever
-    removed -- see prune_missing's own docstring for why the
-    corresponding content/parsed/<citekey>.txt is deliberately left in
-    place. Deletion only happens with --remove-stale (default off): a
-    bib file that comes back short a citekey is far more often a mistake
-    (a botched re-export, BIB_FILE pointing at the wrong path) than an
-    intentional removal, so the default is to report it and let a human
-    confirm rather than delete on every routine sync. Even with it, a
-    read that lost entries (`library.unread`, #841) is only
-    reported: pruning on it would delete the lost papers' rows.
-
-    Either way, `chitragupta/sync_residue.py` first reports what else on
-    disk still names each of those citekeys (issue #763). It runs before
-    the deletion, not after, so the report describes the corpus the
-    person is being asked about rather than the one already changed --
-    and it repairs nothing, which is the whole of its contract.
-
-    Stale is judged against `library.seen_citekeys`, not the references
-    alone: a citekey two entries share, or one that cannot be a filename,
-    is synced from nothing but is still in the bib file (#840, #841).
+    Returns (pruned, stale, suspicious). Only the ledger row is removed
+    (see `prune_missing`), and only with --remove-stale: a short bib is
+    more often a botched export than a removal. A read that lost entries
+    (#841) is only reported. `sync_residue` reports first (#763), so the
+    report describes the corpus the person is asked about. Stale is
+    judged against `library.seen_citekeys`, not the references (#840).
     """
     seen_citekeys = library.seen_citekeys
     if remove_stale and not library.unread:
@@ -227,12 +149,8 @@ def _report_stale(
     stale = ledger.find_stale(con, seen_citekeys)
     suspicious = not seen_citekeys and bool(stale)
     if suspicious:
-        # Same shape prune_missing's guard refuses on -- don't
-        # tell the user to run a command that's just going to
-        # raise. references came back completely empty against a
-        # non-empty ledger, so this is far more likely a botched
-        # re-export or BIB_FILE pointing at the wrong path than
-        # every citekey being legitimately removed at once.
+        # The shape prune_missing refuses on: an empty read against a full
+        # ledger is a botched export, so don't suggest --remove-stale.
         print(
             f"  SUSPICIOUS: the bib file yielded 0 references, so all "
             f"{len(stale)} ledger item(s) show as stale. This usually "
@@ -243,20 +161,13 @@ def _report_stale(
             f"shape)."
         )
     else:
-        # The "pass --remove-stale" instruction is printed once,
-        # in the summary line below, rather than repeated on every
-        # item here -- a bib file truncated from 200 entries to 3
-        # survivors would otherwise print that instruction 197
-        # times, which reads as routine per-item noise rather than
-        # the "review this list before deleting" signal it's
-        # meant to be.
+        # The --remove-stale instruction is printed once, in the summary,
+        # so a truncated bib does not repeat it per item.
         if remove_stale and stale:
             _refuse_prune(library, len(stale))
         for citekey, _parsed_path in stale:
             print(f"  stale   {citekey} {_gone(notes, citekey)}")
-        # After the list, before the summary's "re-run with
-        # --remove-stale" instruction: this default run *is* the moment
-        # the human is being asked to confirm, so the residue belongs
-        # between the names and the invitation to act on them.
+        # Between the names and the invitation to act: this default run is
+        # the moment the human confirms.
         sync_residue.report([citekey for citekey, _parsed_path in stale])
     return [], stale, suspicious

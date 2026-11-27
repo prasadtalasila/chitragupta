@@ -1,11 +1,7 @@
-"""Rewriting a draft's `[@citekey]` markers as IEEE numbers.
+"""Rewriting a draft's `[@citekey]` markers as IEEE numbers (#441).
 
-Split from `chitragupta/references.py` (#441): `renumber` and its
-supporting regexes/helper only ever touch a draft's text and a
-citekey -> number map handed to them by `numbered_markdown`, never the
-ledger or an entry's formatted fields -- a separate concern from
-`chitragupta/references_ieee.py`'s entry formatting, and a separate
-seam from it for the same reason.
+Touches only a draft's text and the citekey -> number map
+`numbered_markdown` hands it, never the ledger.
 """
 
 import bisect
@@ -13,30 +9,18 @@ import re
 
 from chitragupta import _pandoc_cites, citation_gate
 
-# Which citations to renumber is not decided here: `renumber` takes the
-# gate's own (start, end, key) spans, from the gate's own prose blanking.
-# Two readings that drift apart leave a real citation un-numbered or
-# number something that was never one, and they did drift (#1021): this
-# module restated the gate's pattern and never learned the braced form,
-# so `[@{brace.one}]` came out raw, and `[@plain; @{brace.one}]` as
-# `[[3]; @{brace.one}]`, while the reference list numbered `brace.one`.
-# Sharing the spans is also what keeps `@` inside a larger token from
-# reading as a citation -- this project's own tutorial draft carries an
-# author's email address, and a citekey could be named `gmail`.
+# Which citations to renumber is the gate's call: `renumber` takes its
+# (start, end, key) spans, because two readings drifted apart (#1021,
+# the braced form) and the spans keep an email `@` from reading as one.
 #
-# What *is* decided here is a bracket's shape. A bracket holding nothing
-# but citations separated by ";" -- `[@a]`, `[@a; @b; @c]`, `[-@a]` --
-# collapses to its numbers. One citation with a locator -- `[@a, p. 33]`
-# -- becomes `[3, p. 33]`. Anything else, a prefix word included (`[see
-# @a, p. 33]`), is renumbered one key at a time, so the words around it
-# survive: collapsing that bracket would silently delete them. Only a
-# bracket holding no other bracket is a candidate, as before.
+# What is decided here is a bracket's shape: only citations separated by
+# ";" collapse to numbers, one citation with a locator becomes
+# `[3, p. 33]`, and anything else (a prefix word) is renumbered key by key
+# so its words survive. Only a bracket holding no other bracket counts.
 _BRACKET_RE = re.compile(r"\[[^\[\]]*\]")
 _LOCATOR_RE = re.compile(r"\s*,\s*([^\[\]@;]+)")
-# IEEE, and the CSL style's own `collapse="citation-number"`, only
-# contract a run of *three or more*: [1], [2] stays as it is, [3]-[5]
-# collapses. Matching that keeps the numbered Markdown identical to what
-# the same draft's PDF shows.
+# IEEE and the CSL style contract only runs of three or more, so the
+# numbered Markdown matches the PDF.
 _MIN_COLLAPSIBLE_RUN = 3
 
 
@@ -62,11 +46,9 @@ def _locator(text: str, blanked: str, bracket: re.Match, inner: list) -> "str | 
     """`""` for a bracket of ";"-separated citations, the locator for one
     citation with a locator, None for any other shape.
 
-    The words between the citations are read from `text`: in `blanked` a
-    comment is spaces, and a bracket holding one collapsed to its number,
-    deleting the comment from the numbered copy. The locator is matched
-    in `blanked`, where a code span inside it cannot hold an `@` or `;`,
-    and sliced from `text`, so the code span survives.
+    Words between citations are read from `text` (in `blanked` a comment
+    is spaces and would be deleted). The locator is matched in `blanked`
+    and sliced from `text`, so a code span inside it survives.
     """
     gaps = []
     pos = bracket.start() + 1
@@ -84,11 +66,8 @@ def _locator(text: str, blanked: str, bracket: re.Match, inner: list) -> "str | 
 def _group_edits(text: str, blanked: str, cites: list, numbers: dict[str, int]) -> tuple:
     """A group's or a locator bracket's edit, and the citations it covers.
 
-    A bracket holding even one unnumbered key is covered all the same, so
-    it is left exactly as written. Without that the per-key pass would
-    still rewrite its *known* keys and leave `[[1]; @zzz]` -- a mangling
-    worse than the untouched marker, which at least reads as an obvious
-    omission.
+    A bracket with even one unnumbered key is covered and left as written:
+    `[[1]; @zzz]` is worse than an obviously untouched marker.
     """
     starts = [start for start, _, _ in cites]
     edits: list[tuple[int, int, str]] = []
@@ -115,14 +94,9 @@ def _group_edits(text: str, blanked: str, cites: list, numbers: dict[str, int]) 
 def renumber(text: str, numbers: dict[str, int]) -> str:
     """Rewrites `text`'s citekey markers as IEEE numbers from `numbers`.
 
-    Finds the citations in a blanked copy, then edits the original at
-    those offsets -- `citation_gate.markdown_prose` replaces code and
-    other non-prose with spaces while preserving every character
-    position, so a `[@key]` shown inside an example (which the gate
-    itself ignores) is left exactly as written here too.
-
-    A key with no number -- which can only happen if a caller passes a
-    partial map -- is left untouched rather than rendered as `[None]`.
+    Citations are found in `citation_gate.markdown_prose`'s offset-keeping
+    blanked copy, so a `[@key]` in an example is left as written. A key
+    with no number (a partial map) is left untouched, never `[None]`.
     """
     blanked, labels = citation_gate.markdown_prose(text)
     cites = _pandoc_cites.citations(blanked, labels, source=text)

@@ -1,20 +1,12 @@
 """A sync run's printed output: the up-front bibliography-quality
-warnings, the one-line summary, and the per-cause WARNING lines that
-follow it.
-
-Split from `chitragupta/sync.py` (#441): pure formatting over data a
-caller already has (`references`, a `_Tally`, the failure-kind counts)
--- no ledger writes, no parsing, and no call back into
-`chitragupta.sync`.
+warnings, the one-line summary, and the per-cause WARNING lines.
+Pure formatting, no ledger writes (#441).
 """
 
 from chitragupta import bib_reader, config, dedup
 
-# How many timed-out citekeys the summary names before falling back to
-# "(+N more)". Enough that the case worth naming -- a handful of long
-# documents against a limit that is right for the rest of the corpus --
-# is always named in full, and small enough that a corpus-wide timeout
-# stays one readable line.
+# Timed-out citekeys named before "(+N more)": enough to name a handful of
+# long documents in full, few enough that a wholesale timeout stays one line.
 _MAX_NAMED_TIMEOUTS = 10
 
 
@@ -51,17 +43,11 @@ def _summary_line(tally, kinds, stale_count, stale_label) -> str:
         f"{tally.no_pdf} without a PDF attachment, {tally.failed} failed, "
         f"{stale_count} {stale_label}."
     )
-    # A deterministic failure is not retried, so it would otherwise
-    # vanish from view after the run that produced it while still making
-    # every later run exit nonzero. Say what it is and what to do.
+    # A deterministic failure is not retried but keeps every later run
+    # exiting nonzero, so say what it is and what to do.
     if kinds["deterministic"]:
-        # "fix or remove the PDF" is the right remedy for the usual
-        # deterministic failure and the wrong one for a timeout, where
-        # the PDF is fine and a setting is too low. Rather than print
-        # both and let them contradict each other, this line defers to
-        # the per-cause WARNING below whenever this run produced one --
-        # the summary keeps saying what the state is, and the thing that
-        # knows the cause says what to do about it.
+        # "Fix or remove the PDF" is wrong for a timeout, so defer to the
+        # per-cause WARNING below whenever this run produced one.
         remedy = (
             "see the WARNING below for the fix, or re-run with --reparse"
             if tally.timed_out
@@ -72,22 +58,12 @@ def _summary_line(tally, kinds, stale_count, stale_label) -> str:
         summary += f" {kinds['transient']} will be retried next run."
     if tally.backend_unavailable:
         summary += f" {tally.backend_unavailable} skipped ({config.PARSER} unavailable)."
-    # Named here because each one makes the run exit EXIT_BIB_INTEGRITY
-    # (issue 841), and a WARNING scrolled far above is not where anyone
-    # reading only the last line looks for why the exit was nonzero.
+    # Each makes the run exit EXIT_BIB_INTEGRITY (issue 841), so it is
+    # named on the last line, where a reader looks for why.
     if tally.bib_problems:
         summary += f" Bib file: {bib_reader.listed(tally.bib_problems)} -- see the WARNING above."
-    # Skipped on a no-op run (parsed == 0, the common case once a corpus
-    # is caught up) rather than reporting a meaningless "0 pages/s" --
-    # and only after `parsed` is known to be nonzero is `parse_elapsed`
-    # guaranteed to reflect real work rather than a dispatch that found
-    # nothing to do. `workers` is the resolved count pdf_text.resolve_workers
-    # returned, and both it and the
-    # backend ride along because a bare rate has no tuning value without
-    # them. bench/sweep_sync.py doesn't parse this figure yet -- today it
-    # only regexes the [n/N] progress lines and a raw document count --
-    # but could pick it up the same way, to normalize by document size
-    # rather than compare corpora on raw counts alone.
+    # Skipped when nothing was parsed, where "0 pages/s" means nothing.
+    # `workers` and the backend ride along, as a bare rate has no tuning value.
     if tally.parsed and tally.parse_elapsed > 0:
         summary += (
             f" {tally.total_pages} page(s) parsed in {tally.parse_elapsed:.1f}s "
@@ -100,23 +76,10 @@ def _summary_line(tally, kinds, stale_count, stale_label) -> str:
 def _print_parse_warnings(tally) -> None:
     """The per-cause WARNING lines that follow the summary."""
     if tally.timed_out:
-        # Reported on its own line because the "needs attention" advice
-        # above is wrong for this one failure: the fix is a config value,
-        # not the PDF, and a reader following "fix or remove the PDF" on
-        # a document that is merely long has nothing to fix.
-        #
-        # Named rather than counted, because a couple of citekeys points
-        # at those documents (a large scan, OCR on) while most of the
-        # corpus tripping it points at the limit being too low for this
-        # host -- and the list is what tells the two apart.
-        #
-        # Capped, unlike the low_quality list below, because that
-        # distinction is already made by the first handful: past
-        # _MAX_NAMED_TIMEOUTS the count is the diagnosis, and naming all
-        # 646 of a corpus that timed out wholesale would bury it in a
-        # single line no terminal or log aggregator wants. Same
-        # "(+N more)" idiom pdf_text uses on docling's per-page errors,
-        # and the count stays exact either way.
+        # Its own line because the fix is a config value, not the PDF.
+        # Named, since a few citekeys point at those documents while most of
+        # the corpus points at the limit; capped at _MAX_NAMED_TIMEOUTS
+        # because past that the count is the diagnosis.
         named = ", ".join(tally.timed_out[:_MAX_NAMED_TIMEOUTS])
         if len(tally.timed_out) > _MAX_NAMED_TIMEOUTS:
             named += f", (+{len(tally.timed_out) - _MAX_NAMED_TIMEOUTS} more)"
@@ -128,21 +91,17 @@ def _print_parse_warnings(tally) -> None:
             "deterministic failure, so it is not retried on its own."
         )
     if tally.low_quality:
-        # Named in full rather than counted: a handful of citekeys points
-        # at those documents, while most of the corpus tripping it points
-        # at the backend, and the list is what distinguishes the two.
+        # Named in full: a few citekeys point at those documents, most of
+        # the corpus at the backend.
         print(
             f"  WARNING: {len(tally.low_quality)} document(s) look like the parser lost "
             f"word boundaries: {', '.join(tally.low_quality)}. See config.toml's "
             f"[parser] quality-guard settings and docs/PDF-PARSER.md."
         )
     if tally.no_pdf_reasons:
-        # Least-churn fix for the masking this bucket used to cause: the
-        # aggregate "N without a PDF attachment" count above is unchanged
-        # (existing callers/tests depend on that exact wording), but an
-        # audit no longer has to guess whether that N is "never had a
-        # PDF" (routine) or "PDF path silently went missing"/"only an
-        # HTML snapshot, invisible to retrieval" (both worth fixing).
+        # The aggregate "without a PDF attachment" wording above is pinned
+        # by callers and tests; this tells "never had a PDF" from a path
+        # gone missing or an HTML-only snapshot, both worth fixing.
         breakdown = ", ".join(
             f"{tally.no_pdf_reasons[reason]} {label}"
             for reason, label in bib_reader.PDF_RESOLUTION_LABELS.items()

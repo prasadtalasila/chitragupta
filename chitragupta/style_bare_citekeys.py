@@ -1,30 +1,15 @@
 """The `python -m chitragupta.draft style` finding for a citekey printed raw.
 
-A ledger citekey written without its `@` ("the frameworks
-gil_survey_2024 evaluates") or in a code span (`` `obaidat_hubcap_2022` ``)
-is not a citation, so the gate, which counts citations, passes it, and
-the PDF prints the key itself, where a reader can resolve nothing (#1119).
-Both reached a user's drafts the same way: a drafting agent that wanted a
-paper as a noun wrote its key, and a reviser remarking on the corpus
-copied the dossier's own `` `key` `` notation into the prose.
+A ledger citekey written without its `@` or in a code span is not a
+citation, so the gate passes it and the PDF prints the key (#1119).
+Advisory like every style rule (DEVELOPER-AGENTS.md bars a second gate),
+with no silencer: a reader-facing draft has no legitimate bare key
+(docs/WRITING-STANDARDS.md §16).
 
-**Advisory, like every style rule.** DEVELOPER-AGENTS.md bars a second
-gate beside `chitragupta/citation_gate.py`, and the gate stays strict
-about what *is* cited. There is no silencer: a reader-facing draft has no
-legitimate bare key (docs/WRITING-STANDARDS.md §16).
-
-**Only what a reader sees is read.** Measured over 77 real drafts, a
-plain token match found 786 bare keys and 785 were noise: the
-`` [n] entry `key` `` labels `references.build_section` writes (render
-strips that section before pandoc), and keys inside
-`<!-- single-source: ... -->` comments. So the References section is
-blanked, then everything pandoc does not read as prose, then every
-citation by its span, and only what is left is scanned.
-
-**Which keys.** Every ledger row, parsed or not: an unparsed key printed
-raw is still a defect, only one whose repair is not to cite it. Only a
-key with a digit, `_` or `:` is looked for, so a pure-letter key such as
-`smith` is never matched against the ordinary word.
+Only what a reader sees is scanned: measured over 77 drafts, 785 of 786
+plain-token hits were the References labels or `single-source` comments.
+Every ledger row counts, parsed or not, but only keys with a digit, `_`
+or `:`, so a pure-letter key never matches an ordinary word.
 """
 
 import re
@@ -39,10 +24,8 @@ from chitragupta.render_output._tables import line_of
 
 RULES = {"bare-citekey": "chitragupta.BareCitekey"}
 
-# A key-shaped token, whole: not preceded by a character that could
-# continue a key or open a citation, so `doe_2024` is never found inside
-# `doe_2024-1` or `x.doe_2024`. In a `.tex` unit an underscore is written
-# `\_`, which the second pattern accepts and the lookup strips.
+# A whole key-shaped token, never found inside `doe_2024-1` or
+# `x.doe_2024`. In `.tex` an underscore is `\_`, which the lookup strips.
 _BEFORE = r"(?<![\w@\-:.#$%&+?<>~/\\])"
 _MD_TOKEN_RE = re.compile(_BEFORE + _pandoc_cites.PANDOC_KEY)
 _TEX_TOKEN_RE = re.compile(_BEFORE + r"[A-Za-z0-9](?:\w|\\_|-+(?=\w)|[:.](?=\w))*")
@@ -60,7 +43,7 @@ def _blank(text: str, start: int, end: int) -> str:
 
 def _ledger_keys() -> "tuple[set[str], dict[str, str]] | None":
     """(every ledger key worth looking for, the unparsed ones' statuses),
-    or None when there is no ledger to read."""
+    or None when there is no ledger."""
     try:
         with ledger.reading() as con:
             known, unparsed = ledger.known_citekeys(con), unparsed_citekeys(con)

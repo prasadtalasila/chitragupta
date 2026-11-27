@@ -1,15 +1,7 @@
 """What a prose-conformance report looks like: the lines, not the findings.
 
-Split from `chitragupta/style_check.py` for the reason `chitragupta/review/__init__.py` is
-split from the aids it serves -- what a report *says* is a separate
-concern from what produced it, and keeping them together pushed one module
-past the 250-line limit docs/CODE-STANDARDS.md sets.
-
-The header is the part worth care. A report that omits dialect findings
-because nobody recorded a dialect looks exactly like a report on a draft
-that had none, and the second is the reading a reader will take. So every
-line here names *what was checked and on whose authority* before it names
-a single finding.
+Every header line names what was checked and on whose authority, because
+a report that omits findings nobody enabled looks like a clean draft.
 """
 
 from pathlib import Path
@@ -18,8 +10,7 @@ from chitragupta.style_rules import DIALECT_RULES
 
 
 def _dialect_lines(payload: dict) -> list[str]:
-    """The header's dialect lines: what was checked, from where, and -- if
-    nothing was -- what the draft looks like and how to record it."""
+    """The header's dialect lines, and how to record a dialect if none was."""
     language, source = payload["language"], payload["language_source"]
     if language and language in DIALECT_RULES:
         return [f"  dialect: {language} (from {source})"]
@@ -45,21 +36,12 @@ def _dialect_lines(payload: dict) -> list[str]:
 
 
 def report(draft: Path, payload: dict) -> list[str]:
-    """The human-readable lines, including what was *not* checked.
-
-    Naming the skipped rules is the point of the header. A report that
-    silently omits dialect findings because `language:` is unset looks
-    exactly like a draft with none, and the second is the reading a reader
-    will take.
-    """
+    """The human-readable lines, including what was *not* checked."""
     findings = payload["findings"]
     lines = [f"{draft}"] + _dialect_lines(payload)
     if payload.get("vale_error"):
-        # Same discipline as the dialect lines above: findings are missing
-        # here for a reason the reader cannot see, and an unexplained
-        # short report reads as a clean draft. What still ran is named,
-        # because it is not nothing -- the glossary and table checks are
-        # this module's own Python.
+        # An unexplained short report reads as a clean draft, so say why
+        # findings are missing and name what still ran.
         lines.append(
             "  prose rules: not checked -- vale is not installed. The "
             "glossary and table findings below still ran."
