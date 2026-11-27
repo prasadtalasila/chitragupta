@@ -17,6 +17,7 @@ installed rather than cloned (#258):
     chitragupta figure check FILE  ... report every rule one figure breaks (#1053)
     chitragupta figure new DIR NAME --layout ID ... start a figure from a scaffold (#1052)
     chitragupta figure look FILE [--draft DRAFT] ... see one figure as it will print (#1052)
+    chitragupta webapp [--port N] [--no-browser] ... the loopback workbench (#1262)
 
 **A front door, not a command surface.** Like `chitragupta/draft.py`,
 this parses only the layer name and forwards the rest verbatim, so a
@@ -62,8 +63,13 @@ COMMANDS = {
         "doctor": "chitragupta.doctor",
         "install": "chitragupta.install",
         "figure": "chitragupta.figure.__main__",
+        "webapp": "chitragupta.webapp.__main__",
     }.items()
 }
+
+# Reachable but left out of the `--help` tree until the workbench has
+# panes to offer (WA-1, #1261); the server alone is a foundation (#1262).
+HIDDEN = frozenset({"webapp"})
 
 CHOICES = {**LAYERS, **COMMANDS}
 
@@ -91,6 +97,8 @@ def tree_rows() -> list[tuple[str, str]]:
     command_help.py, so help imports no layer."""
     rows = []
     for name, (one_line, _) in HELP.items():
+        if name in HIDDEN:
+            continue
         rows.append((name, one_line))
         rows.extend((f"  {verb}", text) for verb, text in verbs(name).items())
     return rows

@@ -715,7 +715,7 @@ install_python_deps() {
     if [ "${NO_ROOT:-}" = "1" ]; then
         no_root=(--no-install-project)
     fi
-    (cd "$REPO_ROOT" && uv_sync --extra enrich "${no_root[@]}")
+    (cd "$REPO_ROOT" && uv_sync --extra enrich --extra webapp "${no_root[@]}")
     ensure_gpu_torch "$bin_dir/python"
 
     echo
@@ -973,7 +973,7 @@ install_dev_deps() {
     export VIRTUAL_ENV="$venv_dir"
     UV="$(ensure_venv_uv "$bin_dir/python")"
 
-    (cd "$REPO_ROOT" && uv_sync --extra dev)
+    (cd "$REPO_ROOT" && uv_sync --extra dev --extra webapp)
     # `--inexact` keeps the enrich stack python-deps installed, but the dev
     # extra still shares transitive packages with it, and a sync can touch
     # those. Re-run the same GPU check as python-deps rather than assume
