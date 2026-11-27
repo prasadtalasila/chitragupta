@@ -1,20 +1,6 @@
-# Keeps the workflows' action pins moving deliberately (#829).
-#
 # Every `uses:` in .github/workflows/ is pinned to a full commit SHA with a
-# `# vX.Y.Z` comment, first-party `actions/*` included: a major tag such
-# as `@v4` can be moved to any commit by whoever controls the action's
-# repository, and the tj-actions incident in 2025 was exactly that. A pin
-# that nothing ever bumps goes stale instead, so Dependabot proposes the
-# bumps and updates the SHA and the comment together.
-#
-# Grouped into one weekly PR rather than one per action, because each
-# Dependabot PR here needs finishing by hand before it can merge (a
-# version bump and a `## Commit message` section --
-# DEVELOPER-AGENTS.md, "Issues and pull requests").
-#
-# Only `github-actions`. The three `uv==0.13.9` installs live in `run:`
-# lines, which no Dependabot ecosystem reads; the comments at those sites
-# are what keeps them in step.
+# `# vX.Y.Z` comment; Dependabot bumps both together, as one weekly grouped PR.
+# The `uv==` pins live in `run:` lines no ecosystem reads; bump those by hand.
 version: 2
 updates:
   - package-ecosystem: github-actions

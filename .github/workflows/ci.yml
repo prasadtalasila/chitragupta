@@ -1,44 +1,16 @@
 name: CI
 
-# `branches`, not `tags-ignore`. The intent has always been "run on
-# merges, don't double-run on a release tag that release.yml already
-# handles", and `tags-ignore: v*` on its own did the opposite of that.
-# GitHub's rule: when a `push` trigger carries **only** tag filters, the
-# workflow does not run on branch pushes at all. So from the commit that
-# added it (6388bad4, 2026-07-31) this workflow stopped running on `main`
-# entirely -- 81 commits landed without one, the last push-event run being
-# 47d3b99e on the day the filter went in.
-#
-# The visible cost was Codecov: it had no report for the base commit, so
-# every PR comment carried "Please upload report for BASE" and the project
-# dashboard had nothing to show. The reason it was invisible for so long
-# is that `pull_request` kept firing, so PRs were still checked and the
-# only thing missing was the one run nobody watches.
-#
-# Naming `main` rather than `'**'` keeps a PR branch push from starting a
-# second, redundant run beside its `pull_request` one; tags match neither
-# filter, which is the original intent stated positively.
+# `branches`, never `tags-ignore`: a push trigger with only tag filters stops running on branches
+# altogether, and main then gets no runs (and Codecov no base report).
 on:
   push:
-    # improve-figures is the integration branch for the figure-drawer v3
-    # epic (#1044): its PRs and merges get the same checks as main's.
+    # improve-figures: integration branch for #1044, checked like main.
     branches: [main, improve-figures]
   pull_request:
     branches: [main, improve-figures]
   workflow_dispatch:
 
-# A push to the same branch/PR while a previous run is still going
-# (routine during iterative fix-and-repush work, e.g. addressing a
-# review comment) cancels that stale, now-superseded run
-# instead of letting both consume CI minutes -- github.ref is stable
-# per branch/PR, so this only ever cancels an earlier run of the same
-# ref, never a different branch's.
-#
-# Never cancel on `main`, though: two PRs merged in close succession both
-# push `refs/heads/main` and so share a group, and the second would kill
-# the first. A cancelled run uploads nothing, which would leave Codecov
-# without the base report the `push` trigger above exists to produce --
-# the same symptom, arrived at a different way.
+# Never cancel on main: two quick merges share a group, and a cancelled run uploads no base coverage.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -53,73 +25,17 @@ jobs:
       matrix:
         os: [ubuntu-26.04, windows-latest]
     runs-on: ${{ matrix.os }}
-    # windows-latest was exploratory (docs/DESIGN.md's cross-platform-CI
-    # recommendation) and carried `continue-on-error` while real gaps were
-    # found and fixed one at a time. They have been: the leg has run clean
-    # -- every step green, no failing test -- for ten consecutive runs, so
-    # it now blocks like the Linux one rather than reporting success
-    # whatever happens. It gets python-deps without os-deps (apt-only), so
-    # ~30 render/pdf tests self-skip there -- but it holds the same 100%
-    # coverage bar as Linux regardless (#291):
-    # coveragerc-windows.toml excludes exactly the lines that are
-    # genuinely untestable on this platform (missing toolchain, or no
-    # forkserver/shebang support at all), rather than budgeting for the
-    # gap under a lower floor.
+    # Windows blocks like Linux and holds 100% via coveragerc-windows.toml (#291); ~30 render/pdf tests self-skip.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # config.toml is gitignored per-host data, so a checkout never has
-      # one -- and chitragupta/config.py reads it at *import* time and fails hard
-      # when it's absent (deliberately: see its own comment). Without this
-      # step every test in the suite dies on collection, not just the
-      # config ones. CI is the plain example file, unedited, which is also
-      # a free check that the shipped example still parses.
+      # config.py reads config.toml at import time; without it the whole suite dies on collection.
       - name: Create config.toml from the tracked example
         shell: bash
         run: cp config.toml.example config.toml
 
-      # `uv.lock` is the key, not `pyproject.toml`: the lock is what
-      # actually determines resolved versions (#275). The restore step
-      # runs on every run and every branch, and a cache written on the
-      # default branch is readable from any branch -- so a PR whose lock
-      # matches `main`'s benefits from that entry without ever writing
-      # its own. A PR that *changes* the lock matches nothing and installs
-      # cold, which is the deliberate consequence of the paragraph below.
-      # The write asymmetry is what keeps this repository under the
-      # 10GB-per-repo cache limit: six open PRs writing their own ~1-2GB
-      # entry would thrash it, one entry per `uv.lock` hash does not.
-      #
-      # **No `restore-keys`** (#512/m-87). The prefix fallback restored
-      # the newest same-OS entry on a lock-hash miss, which reads like a
-      # free head start and is not one: the install's `uv sync --inexact`
-      # never uninstalls, so a package *removed* from the lock stayed
-      # importable in the restored venv -- and on `main` that venv was
-      # then re-saved under the **new** lock's hash, carrying the removed
-      # package forward for good. CI would keep passing on an import that
-      # a clean install cannot satisfy, which is the exact opposite of
-      # what the paragraph below claims this step is for. An exact sync is
-      # the other available fix and is worse here: it would strip the
-      # cpu-torch wheel swap `install_full_pipeline.sh` performs after
-      # `uv sync`, re-downloading it on every run.
-      #
-      # The cost is a cold install whenever `uv.lock` changes, which
-      # is exactly when a clean install is the thing worth testing.
-      #
-      # This never lets a hit skip the install script below: it still
-      # runs unconditionally, against whatever `.venv-full` this step
-      # restored (empty, on a miss). That is deliberate -- `ci.yml`
-      # calling `install_full_pipeline.sh` is itself an end-to-end test
-      # that the script still works on a clean host, and uv's own
-      # up-to-date check is what makes a hit fast (nothing left to
-      # install) without this workflow needing to know that.
-      #
-      # **The runner image is in the key.** A venv's `bin/python` points at
-      # the image's own interpreter, so a venv cannot move between images.
-      # Keyed by OS and lock alone, the ubuntu-24.04 venv was restored onto
-      # ubuntu-26.04 when `ubuntu-latest` moved, its Python was not there,
-      # and every PR failed in `cpu-torch` before a test ran. `ImageOS`
-      # (`ubuntu26`, `win25`) is a runner variable, which `env.` cannot
-      # read, so a step hands it over.
+      # Keyed on the runner image and uv.lock. No `restore-keys` (#512/m-87): `uv sync --inexact` never
+      # uninstalls, so a prefix hit carries removed packages forward. ImageOS needs a step (env. can't read it).
       - name: Name the runner image for the venv cache key
         id: image
         shell: bash
@@ -132,50 +48,23 @@ jobs:
           path: .venv-full
           key: venv-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('uv.lock') }}
 
-      # Dogfoods the project's own single install path (DEVELOPER-AGENTS.md: "don't
-      # add a second install path") rather than hand-rolling equivalent
-      # steps here -- this is also, itself, a real end-to-end test that
-      # the install script still works on a clean host.
+      # Runs unconditionally, even on a cache hit: it doubles as the install script's end-to-end test.
       - name: Install OS + Python dependencies (os-deps + python-deps)
         if: runner.os == 'Linux'
         run: bash scripts/install_full_pipeline.sh all
 
-      # A hosted runner has no GPU, and never will -- so the CUDA runtime
-      # plain PyPI's torch wheel drags in (nvidia-*, triton: ~4GB of the
-      # 6.2GB venv, per docker/Dockerfile's own measurement) is downloaded,
-      # installed and thrown away on every run. ensure_gpu_torch cannot
-      # catch this: it probes for nvidia-smi and returns when there is
-      # none, leaving whatever uv.lock resolved in place.
-      #
-      # Linux only. The Windows leg skips os-deps entirely and installs no
-      # CUDA wheels to remove, and `cpu-torch` is deliberately not part of
-      # `all` -- it asserts a GPU is absent for good, which is true of this
-      # runner and is not something the script can infer about a laptop.
+      # Linux only: drops the unused CUDA wheels. Not part of `all`, which cannot know a host has no GPU.
       - name: Swap torch for the cpu-only build (no GPU on a hosted runner)
         if: runner.os == 'Linux'
         run: bash scripts/install_full_pipeline.sh cpu-torch
 
-      # For this workflow's own `uv lock --check` and `uv run` steps below.
-      # The install script does not need it: it installs the same pinned
-      # uv into .venv-full from scripts/uv-requirements.txt.
-      #
-      # Pinned to an exact version, wheels only (Sonar S8544/S8541: an
-      # unpinned `pip install` resolves to whatever PyPI serves that day,
-      # and an sdist fallback would run arbitrary setup scripts at install
-      # time). Bump it deliberately, the way the pinned action SHAs below
-      # are bumped, rather than tracking latest silently -- and bump
-      # docs.yml's and release.yml's installs, and
-      # scripts/uv-requirements.txt, with it (tests/test_install_script_uv.py
-      # fails when they disagree).
+      # Pinned, wheels-only (Sonar S8544/S8541). Bump with docs.yml, release.yml and
+      # scripts/uv-requirements.txt (tests/test_install_script_uv.py checks).
       - name: Install uv
         shell: bash
         run: pip install --only-binary ':all:' uv==0.13.9
 
-      # os-deps (apt-get: poppler-utils, TeX Live, Pandoc) is
-      # Linux-only -- Windows gets the pure-Python python-deps stage
-      # only, so pdftotext/pandoc/pdflatex-dependent tests
-      # self-skip there (DEVELOPER.md's "Running tests") rather than
-      # this step failing outright.
+      # os-deps is apt-only; toolchain-dependent tests self-skip on Windows.
       - name: Install Python dependencies (python-deps only -- os-deps is Linux/apt-only)
         if: runner.os != 'Linux'
         shell: bash
@@ -185,10 +74,7 @@ jobs:
         shell: bash
         run: bash scripts/install_full_pipeline.sh dev-deps
 
-      # Exceeding the 10GB cache limit is silent -- eviction, not an
-      # error -- so a miss has to say so in the log rather than pass
-      # unremarked; the install steps above already paid for it either
-      # way, this just says which happened.
+      # Cache eviction past 10GB is silent, so log hit or miss.
       - name: Report whether the venv cache was a hit
         shell: bash
         run: |
@@ -198,12 +84,7 @@ jobs:
             echo "venv cache: MISS for ${{ steps.venv-cache.outputs.cache-primary-key }} (installing from an empty .venv-full)"
           fi
 
-      # Saved only from `main`, and only on a miss -- a cache write on
-      # every PR branch is exactly the thrash #275 exists to avoid, and
-      # re-saving an already-current entry costs upload time for no
-      # benefit. `main`'s entry is what a PR branch restores above --
-      # a PR whose `uv.lock` hashes the same as `main`'s, which since
-      # #512/m-87 is the only kind that restores anything at all.
+      # Saved only from main, on a miss: PR-branch writes would thrash the 10GB cache limit (#275).
       - name: Save the .venv-full cache (main only, on a miss)
         if: github.ref == 'refs/heads/main' && steps.venv-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -211,34 +92,9 @@ jobs:
           path: .venv-full
           key: ${{ steps.venv-cache.outputs.cache-primary-key }}
 
-      # `uv run --active` (not a hardcoded .venv-full/bin/python) resolves
-      # correctly on both venv layouts (POSIX bin/ vs a native Windows
-      # Python's Scripts/) through VIRTUAL_ENV, instead of this workflow
-      # needing to know which one .venv-full actually has. `--no-sync`:
-      # the install steps above already synced it, and a second sync here
-      # would undo the cpu-torch swap.
-      # One floor now, not two (#291). Windows gets
-      # python-deps only (os-deps is apt-only: pandoc, TeX Live, poppler),
-      # so ~30 render/pdf tests self-skip there -- but rather than budget
-      # for that under a lower number, coveragerc-windows.toml excludes
-      # exactly the lines untestable on this platform, toolchain-gated or
-      # not (`pragma: no cover-windows` in source), so both
-      # legs hold pyproject's/that file's own fail_under = 100. A floor
-      # under 100 couldn't tell "a render test self-skipped" from
-      # "Windows-only code that nothing reaches at all"; this can.
-      # HF_HUB_OFFLINE: no test may fetch a Hugging Face model (#861).
-      # tests/conftest.py already fails a test that reaches the
-      # resolver's real loaders; this catches any other path, as an
-      # OSError naming huggingface.co, instead of a ~420 MB download
-      # that turns a Hugging Face outage into a red build.
-      # -m "not slow": the Linux leg leaves out the tests that compile
-      # with a real TeX engine, which were 85% of its pytest time (18-22
-      # minutes serial). A local run keeps them, so they are still
-      # checked before a PR, just not here. The lines only they reach are
-      # the ones Windows already cannot reach, so the Linux leg reads
-      # coveragerc-windows.toml too and still holds 100; marking a test
-      # `slow` that leaves anything else uncovered fails this step.
-      # -n auto spreads what is left over the runner's cores.
+      # `uv run --active` resolves bin/ vs Scripts/ via VIRTUAL_ENV; `--no-sync` keeps the cpu-torch swap.
+      # HF_HUB_OFFLINE: no test may fetch a model (#861). `not slow` skips TeX tests; their lines are already
+      # excluded by coveragerc-windows.toml, so marking anything else `slow` fails the 100% floor.
       - name: Run test suite with coverage
         shell: bash
         env:
@@ -249,21 +105,6 @@ jobs:
           uv run --active --no-sync python -m pytest -n auto -m "not slow" --cov --cov-report=term-missing \
             --cov-report=xml --cov-fail-under=100 --cov-config=coveragerc-windows.toml -rf | tee pytest-output.txt
 
-      # Which test failed is the only actionable part of a red run.
-      # This step mattered most while the Windows leg carried
-      # `continue-on-error` and a failure there left the run reading
-      # "success" -- it is kept now that the leg blocks, because the
-      # summary and the annotations still beat opening a matrix job's log
-      # to find one line, and because a Windows-only failure is the one
-      # this repo's Linux-assuming docs leave you least prepared for.
-      #
-      # (An earlier version of this comment claimed the logs were
-      # unreadable without an actions:read scope. That was wrong -- the
-      # logs endpoint 302s to a signed blob URL that rejects an
-      # Authorization header, so a client that follows the redirect with
-      # the header still attached gets a 401 that looks like a permission
-      # error and isn't. Drop the header on the redirect and the logs read
-      # fine. This step earns its place on visibility, not access.)
       - name: Report which tests failed
         if: failure()
         shell: bash
@@ -278,12 +119,7 @@ jobs:
             echo "::error::${{ matrix.os }}: ${line}"
           done
 
-      # The `sonarqube` job's own coverage-on-new-code condition needs a
-      # coverage.xml -- it does not run the suite itself (see that job's
-      # own comment for why: a second full install+pytest for a report
-      # this job already produced). Linux only: it is the 100%-coverage
-      # leg, and Sonar's Python coverage importer wants exactly one
-      # report, not two disagreeing ones from legs with different floors.
+      # Linux only: Sonar's importer wants exactly one report.
       - name: Upload coverage.xml for the SonarQube job
         if: ${{ !cancelled() && runner.os == 'Linux' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -292,63 +128,12 @@ jobs:
           path: coverage.xml
           retention-days: 1
 
-      # Codecov gets the run's coverage.xml, which the test step above
-      # emits alongside the terminal report it already printed. Both matrix
-      # legs upload under their own flag, because they measure different
-      # things and merging them silently would hide that: the Linux leg
-      # installs os-deps and runs the whole suite, the Windows leg gets
-      # python-deps only, so ~30 render/pdf tests self-skip there and
-      # chitragupta/render_output.py's/pdf_text.py's/hook_launchers.py's
-      # platform-untestable lines are excluded by coveragerc-windows.toml
-      # rather than run at all (#291) -- both hit
-      # 100%, of a different denominator. Two flags keep the two runs
-      # distinguishable in Codecov's UI even though they now agree on the
-      # headline number.
-      # Uploading only the Linux report would also have fixed the timing
-      # problem below, and was rejected for that -- it would leave the
-      # Windows leg's narrower measurement invisible rather than reported
-      # under its own flag.
-      #
-      # `if: ${{ !cancelled() }}` rather than the default: a run that went
-      # red on the coverage floor is exactly the run whose report is worth
-      # looking at, and skipping the upload there would leave Codecov
-      # showing the last *passing* commit as current.
-      #
-      # `fail_ci_if_error: false` is deliberate and stays. The pass/fail
-      # decision on coverage is already made locally by pyproject's
-      # `fail_under = 100`, which needs no network -- so an upload problem
-      # (a missing token, a Codecov outage, a rate limit) would be turning
-      # this repository's CI red for something that is not a fact about
-      # the code.
-      #
-      # An earlier version of this comment invited the next reader to flip
-      # it to true "if uploads prove reliable and you want a silent upload
-      # failure to be loud." That points down a path the evidence rules
-      # out. When `codecov/project` scored a 100% branch as a regression on
-      # #199 and #204, no upload had been silently dropped: both legs
-      # logged `Upload queued for processing complete`, and Codecov's
-      # commit API reports `sessions: 2` for #199's head SHA -- on the
-      # first attempt, with no re-run. The status had simply been computed
-      # against one session. `fail_ci_if_error: true` cannot fire on an
-      # upload the client completed successfully. The gate that does help
-      # is `after_n_builds` in this repository's `codecov.yml`, which holds
-      # the notification until both uploads are in; see that file.
-      #
-      # `disable_search: true` because `files:` below names the one report
-      # that matters and the CLI otherwise walks the tree for more. It
-      # found some: `.venv-full/bin/coverage-3.12` on Linux and
-      # `codecov.exe.SHA256SUM.sig` on Windows, both uploaded as coverage
-      # data on every run. Neither caused the problem above -- this makes
-      # the upload exactly what the step says it is, nothing more.
+      # Both legs upload, under their own flags; codecov.yml's after_n_builds waits for both.
+      # `!cancelled()`: a red coverage run is the one worth reporting. `fail_ci_if_error: false` stays:
+      # coverage pass/fail is decided locally, and an upload error is not a fact about the code.
       - name: Upload coverage to Codecov
         if: ${{ !cancelled() }}
-        # Pinned to a commit SHA rather than the `v5` tag (which currently
-        # resolves to this same commit, v5.5.5) because the first SonarQube
-        # analysis on this file flagged exactly this line: S7637, "use full
-        # commit SHA hash for this dependency", MAJOR. A movable tag on a
-        # third-party action that receives a token is the finding, and it
-        # is a fair one. Bump this deliberately, by resolving the tag again,
-        # rather than by tracking `v5` silently.
+        # SHA-pinned (Sonar S7637): third-party action that receives a token.
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: ./coverage.xml
@@ -358,36 +143,12 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
-      # uv.lock still matches pyproject.toml: a constraint edited without
-      # re-locking fails here, by name, rather than as a confusing
-      # `--locked` refusal inside the install script on the next run.
       - name: uv lock --check
         shell: bash
         run: uv lock --check
 
-  # Can the hooks this repository registers actually start? The gate
-  # class has exactly one member -- `citation_gate_hook.py`, the only
-  # automatic enforcement of CLAUDE.md's binding rule -- and its failure
-  # mode is silence: a launcher whose `command` does not resolve produces
-  # no error and no log line, so settings.json still lists the gate, the
-  # suite still passes, and drafts land ungated (docs/HOOKS.md).
-  #
-  # Its own job, and deliberately not a step in `test`: this must be able
-  # to answer on a host that installed *nothing*. `chitragupta/hook_launchers.py`
-  # is standard-library-only and imports no other chitragupta module by
-  # design, and `chitragupta/__init__.py` is empty -- so this needs no
-  # venv, no uv, no `os-deps` and no config.toml, and finishes in
-  # seconds rather than paying for the ~6GB install the test matrix
-  # needs. Folding it into `test` would make the cheapest check in the
-  # repository the slowest.
-  #
-  # Both platforms, unlike `lint`: this checks behaviour on a host rather
-  # than the source, and the two halves it can catch are platform-split.
-  # A missing interpreter name is the Debian-family case
-  # (`python-is-python3`, which `scripts/install_full_pipeline.sh`'s
-  # os-deps stage installs); an unbraced `$CLAUDE_PROJECT_DIR` is the
-  # Windows one, where the shell is PowerShell without Git Bash and that
-  # syntax expands to nothing.
+  # Guards the citation gate hook, which fails silently if its launcher cannot start (docs/HOOKS.md).
+  # No install on purpose (hook_launchers.py is stdlib-only); both OSes, since the faults are platform-split.
   launchers:
     strategy:
       fail-fast: false
@@ -397,13 +158,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # No `actions/setup-python`, on purpose. That step prepends a
-      # tool-cache interpreter to PATH under both names, which would
-      # manufacture the very `python` whose presence is the question --
-      # a green run that proves nothing about a real host. The probe
-      # interpreter is therefore whichever of the two the runner image
-      # already ships; what it *measures* is the name settings.json
-      # names, resolved by `faults()` against this PATH.
+      # No setup-python on purpose: it would add the very `python` whose presence is being tested.
       - name: Report any registered hook launcher that cannot start
         shell: bash
         run: |
@@ -423,23 +178,13 @@ jobs:
           # nothing installed.
           "$py" -c "import sys; from pathlib import Path; from chitragupta import hook_launchers; faults = hook_launchers.faults(Path('.claude/settings.json')); print('\n'.join('::error::' + f for f in faults)); sys.exit(1 if faults else 0)"
 
-  # Both linters at a binary zero-messages bar, never a fail-under score:
-  # AUTO-IMPROVEMENT.md's R3 rules out driving a number, and a score can
-  # improve while the thing you cared about gets worse. They ride in one
-  # job because neither needs the corpus, the venv or a GPU -- pylint
-  # needs the project's dependencies importable and nothing more, and
-  # markdownlint needs only node.
-  #
-  # Ubuntu only, deliberately: unlike the test matrix these check the
-  # source rather than its behaviour on a platform, so a second leg would
-  # re-report the same findings and halve nothing.
+  # Zero-messages bar, never a score (AUTO-IMPROVEMENT.md R3). Ubuntu only: source checks, not platform.
   lint:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Same reason as the test job: chitragupta/config.py reads config.toml at
-      # import time, and pylint imports what it lints.
+      # pylint imports what it lints, and config.py needs config.toml at import time.
       - name: Create config.toml from the tracked example
         shell: bash
         run: cp config.toml.example config.toml
@@ -448,51 +193,19 @@ jobs:
         with:
           python-version: "3.13"
 
-      # The runtime dependency (bibtexparser) has to be importable or
-      # pylint reports import-error against every module that uses it.
-      # The enrich group is deliberately absent -- those imports are
-      # inside the functions that need them, which is the documented lazy
-      # pattern `import-outside-toplevel` is disabled for, so pylint never
-      # resolves them and never needs to.
-      #
-      # Both pins are Sonar S8544 (don't install unpinned): pylint at what
-      # "latest" resolved to while this job was green, bibtexparser at
-      # uv.lock's resolved version, so the linter sees the same
-      # library the pipeline runs. No `--only-binary` here, unlike the
-      # uv installs: it was impossible while bibtexparser 1.4.x shipped
-      # only an sdist. 2.x ships a wheel, so it could now be added, with
-      # scripts/check_local.sh's matching line. The `--upgrade pip`
-      # that used to lead this line is gone for the same rule -- it was an
-      # unpinned moving target, and the runner's own pip installs two
-      # pinned packages fine.
+      # Pins are Sonar S8544; bibtexparser matches uv.lock. Keep in step with scripts/check_local.sh.
       - name: Install pylint and the runtime dependency
         run: python -m pip install pylint==4.0.7 bibtexparser==2.1.0
 
-      # Pinned exactly, not just for Sonar S8544: `[tool.ruff.lint]`'s
-      # `RUF100` verdict on a given `except` block depends on ruff's own
-      # carve-outs (a block that ends in `raise` isn't "blind"), which are
-      # undocumented and narrower than BLE001 looks -- an unpinned bump
-      # could move that verdict and redden this job on a rule this project
-      # never touched. Bump deliberately, by re-resolving "latest", the
-      # same discipline every other pin in this file follows.
+      # Pinned exactly: ruff's undocumented carve-outs decide RUF100/BLE001 verdicts.
       - name: Install ruff
         run: python -m pip install ruff==0.16.4
 
-      # The bump is what release.yml verifies a tag against, and losing it
-      # is silent: two branches picking the *same* number produce a
-      # byte-identical line, which git merges without a conflict. #212 has
-      # the three collisions that motivated this, one of which reached
-      # main. Needs the base ref and the tags, neither of which the default
-      # shallow checkout fetches.
+      # Needs main and the tags, which the shallow checkout lacks.
       - name: Fetch main and tags for the version check
         run: git fetch --quiet --depth=1 origin "+refs/heads/main:refs/remotes/origin/main" "+refs/tags/*:refs/tags/*"
 
-      # pull_request only: on a push to main, the checked-out commit IS
-      # main, so the fetch above makes origin/main resolve to that same
-      # commit and the comparison is current-against-itself -- it would
-      # fail unconditionally, on every push, forever (confirmed on the
-      # pushes that landed #213 and #214). The check only means something
-      # while main is still a different, older commit than this branch.
+      # pull_request only: on a push to main it compares main to itself and always fails.
       - name: Version bump has not been lost to a collision
         if: github.event_name == 'pull_request'
         run: python3 scripts/check_version_bump.py
@@ -500,53 +213,17 @@ jobs:
       - name: pylint
         run: pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
 
-      # The per-site suppression check pylint's category-wide
-      # `broad-exception-caught` disable can't be (docs/TECHNICAL-DEBT.md's
-      # ruff subsection) -- `# noqa: BLE001` becomes a checked claim rather
-      # than a comment nothing reads. Same roots as pylint, deliberately:
-      # `bench/` stays outside every linter (docs/TECHNICAL-DEBT.md, Tier 5),
-      # unchanged by this. Config lives in `pyproject.toml`'s `[tool.ruff]`,
-      # not a flag here, the same split pylint's own `--rcfile` makes.
       - name: ruff
         run: ruff check chitragupta scripts .claude/hooks
 
-      # #362: the formatter build order named alongside the linter (item
-      # 1) and never landed. Wider roots than the two checks above,
-      # deliberately -- `tests/` and `bench/` are unformatted too, and
-      # narrowing to match the lint roots would just relocate the same
-      # gap rather than close it. `--check` only, never `--fix` here: a
-      # CI job that rewrites the tree it is checking is a check that
-      # can't fail. `ruff format` and `ruff check` share `pyproject.toml`'s
-      # `line-length`; the formatter has no rule selection to disagree
-      # with the linter's `select` over.
+      # Wider roots than lint on purpose. `--check` only: a CI job that rewrites what it checks cannot fail.
       - name: ruff format --check
         run: ruff format --check chitragupta scripts tests bench .claude/hooks
 
-      # scripts/install_full_pipeline.sh is 333 lines with no static check
-      # (added in 6.1.0), and CI now depends on a stage inside
-      # it. A shell script CI calls deserves the bar the Python and the
-      # Markdown already hold.
-      # git-hooks/pre-commit is shell this repository ships and a
-      # developer's git runs on every commit, so it holds the same bar
-      # scripts/*.sh does -- and it is not under scripts/, so the glob
-      # above does not reach it.
-      # docker/*.sh is here on the same reasoning, one step further out:
-      # docker/entrypoint.sh is PID 1 in the container
-      # docker/Dockerfile.claude builds, so a syntax error in it does not
-      # fail a build -- it fails every `docker compose up` afterwards,
-      # and nothing else in CI opens the file. Neither Dockerfile is
-      # built by any workflow (see DOCKER-DEVELOPER.md), so this is the only
-      # automated check that reaches the container path at all.
+      # Also git-hooks/pre-commit and docker/*.sh: nothing else in CI checks entrypoint.sh (PID 1).
       - name: shellcheck
         run: shellcheck scripts/*.sh git-hooks/pre-commit docker/*.sh
 
-      # The same linter git-hooks/pre-commit runs locally. Required in
-      # both places deliberately: the hook catches it at the commit, and
-      # this catches it for anyone who bypassed the hook or never ran the
-      # opt-in dev-deps stage that installs it. Fetched as the pinned
-      # 5.8 MB release binary rather than through a pre-commit framework,
-      # which builds a Go toolchain to compile it from source (measured at
-      # 340-370 MB of cache).
       - name: Install actionlint
         run: bash scripts/install_full_pipeline.sh actionlint
 
@@ -555,60 +232,22 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          # 24, not 20: the webapp step's coverage threshold needs node's
-          # --test-coverage-include (22.5) and --test-coverage-lines (22.8),
-          # and 24 is the current LTS.
+          # 24, not 20: --test-coverage-include/--test-coverage-lines need node >= 22.8.
           node-version: "24"
 
-      # Pinned (Sonar S8543) and `--ignore-scripts` (S6505): npm runs any
-      # package's install/postinstall hooks by default, which is arbitrary
-      # code from the registry; markdownlint-cli2 needs none to work as a
-      # CLI, so refusing them costs nothing. Bump the pin deliberately.
+      # Pinned (Sonar S8543); `--ignore-scripts` (S6505) refuses registry install hooks.
       - name: Install markdownlint-cli2
         run: npm install -g --ignore-scripts markdownlint-cli2@0.23.2
 
-      # Same globs as .markdownlint.yaml's own "Run it with" comment, so
-      # what CI checks and what a contributor runs cannot drift apart.
-      # .claude/ is in scope because its SKILL.md files are prose this
-      # project ships and a reader follows, not configuration -- and
-      # because the two fence rules that dominate the baseline there are
-      # the same ones that reached docs/ unnoticed.
+      # Keep these globs in step with scripts/check_local.sh; !.claude/worktrees matters locally.
       - name: markdownlint
         run: markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" ".agents/**/*.md" ".opencode/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!docs/examples/*/content" "!.claude/worktrees"
 
-      # package.json's one devDependency (acorn), behind
-      # scripts/webapp_code_standards.js -- assets/webapp/'s own C1/C2
-      # ratchet, checked by tests/webapp/code_standards.test.js below.
-      # `npm ci` reads package-lock.json exactly rather than re-resolving,
-      # same reasoning as the pinned installs above; `--ignore-scripts`
-      # again, though acorn ships none.
       - name: Install webapp dev dependencies (acorn)
         run: npm ci --ignore-scripts
 
-      # The interaction code shipped in assets/webapp/ is JavaScript, so
-      # pytest reaches none of it and the coverage bar says nothing about
-      # it. graph.js and panel.js are written to run without a DOM and
-      # without cytoscape precisely so this step can exercise them; it
-      # rides in the lint job because node is already installed here and
-      # a second setup-node in the test matrix would cost both legs.
-      # Node's runner takes files, not a directory, hence the glob.
-      # tests/webapp/code_standards.test.js is one of the files that glob
-      # picks up: assets/webapp/'s own function-size/module-size ratchet,
-      # same standing as C1/C2's pylint-adjacent check above but scoped to
-      # code_standards-register.toml's c1js/c2js tables instead.
-      # The coverage bar is pytest's, 100% of lines, over the modules a
-      # test loads (#858). Node reports only files a test loaded, so the
-      # include glob alone would let a new module with no test go
-      # unmeasured; tests/webapp/browser_load.test.js loads every script
-      # index.html names except the DOM wiring (search.js, pickers.js,
-      # canvas.js, sidepanel.js, app.js), which is what puts each DOM-free
-      # module in the report.
-      # The wiring is not in it either, because node never runs it:
-      # tests/webapp/browser_smoke.test.js (#933), in the same glob, opens
-      # the exported page in headless Chrome and clicks through it. It
-      # skips here: headless Chrome is not run in GitHub Actions, after
-      # its startup timeouts failed PRs that touched no webapp code. It
-      # runs from scripts/check_local.sh on a host with a browser.
+      # browser_load.test.js loads every DOM-free module so the 100% bar measures it (#858).
+      # browser_smoke.test.js skips in Actions (headless Chrome timeouts); check_local.sh runs it.
       - name: Test the webapp modules
         run: >-
           node --test --experimental-test-coverage
@@ -616,74 +255,19 @@ jobs:
           --test-coverage-lines=100
           tests/webapp/*.test.js
 
-      # The OpenCode plugin's helpers (#900), for the same reason as the
-      # webapp: JavaScript pytest cannot measure. tests/test_opencode_plugin.py
-      # also runs this file, and drives the plugin through the real Python
-      # hook, but it skips where node is absent -- this step is what makes
-      # the helpers' tests unskippable in CI.
+      # Makes the plugin helpers' tests unskippable (tests/test_opencode_plugin.py skips without node).
       - name: Test the OpenCode plugin helpers
         run: node --test tests/opencode/*.test.mjs
 
-      # Vale is installed by the same function the host and Docker use, so
-      # a break in that install path fails here rather than on a
-      # contributor's machine. It is one of the two binaries that script
-      # fetches by hand -- actionlint, installed a few steps above, is the
-      # other -- and each verifies a pinned sha256 before unpacking; see
-      # assets/vale/README.md. (#512/m-86 corrected the same "the only
-      # one" sentence inside the script; this is its copy here, and two
-      # files repeating one fact is how it went stale in the first place.)
       - name: Install Vale
         run: bash scripts/install_full_pipeline.sh vale
 
-      # The check itself, and why it reads findings rather than an exit
-      # code, is in the script's header. It is a file rather than an
-      # inline block so scripts/check_local.sh runs this same text (#865).
+      # A script, not inline, so scripts/check_local.sh runs the same text (#865).
       - name: Vale config parses and the exemptions hold
         run: bash scripts/check_style_exemptions.sh
 
-  # SonarQube Cloud's static analysis. The quality-gate summary that is
-  # meant to accompany it on the PR page is not arriving yet -- see the
-  # scan step's own comment below before concluding this job is broken.
-  #
-  # Its own job rather than a step inside the `test` matrix above, and
-  # ubuntu-only, because exactly one analysis per commit is the thing that
-  # has to hold. Two scanners submitting the same commit under the same
-  # `sonar.projectKey` don't add a second opinion -- the later one
-  # overwrites the earlier one -- and Sonar's Python analysis reads source
-  # text, so a Windows leg would find precisely what the Linux leg found
-  # anyway. The matrix above is untouched by this job; the Windows leg
-  # keeps running the suite exactly as before.
-  #
-  # No `if:` guard on the job. "Pull requests and commits on main" is
-  # already exactly what the `on:` block at the top of this file selects,
-  # and for the reason stated there: `branches: [main]` on the `push`
-  # trigger is what stops a PR branch's push starting a second run beside
-  # its `pull_request` one. A job-level condition repeating that would be
-  # a second place to keep in sync with the first. `workflow_dispatch` can
-  # still aim this at a feature branch, which is what a manual dispatch is
-  # for -- Sonar records that as a branch analysis, not as a PR.
-  # #237: docker/Dockerfile had never been built by
-  # anything -- no workflow under .github/ builds it, so a broken change
-  # to it or to scripts/install_full_pipeline.sh (which it wraps) would
-  # ship silently, and scripts/release.py bundles the Dockerfile into
-  # every release archive regardless. This proves the image still builds,
-  # nothing more: no `docker run`, no test suite inside the container, no
-  # registry push -- the same "cheapest real coverage gain" scope the
-  # debt entry itself named.
-  #
-  # No `if:` path filter to `docker/`/`scripts/install_full_pipeline.sh`.
-  # A filter that narrows what runs is invisible by construction -- this
-  # file's own 5.1 entry is the worked example (`tags-ignore` silently
-  # stopped every push-triggered run for six weeks) -- and this job is
-  # cheap enough (a few minutes, no GPU) that the simpler, always-run
-  # form is worth more than the CI time it would save.
-  #
-  # TORCH_VARIANT=cpu, not the `gpu` default: this only proves the image
-  # builds, and the GPU variant is ~11.6GB against the CPU-only build's
-  # ~4.4GB (#248's own measurement) -- the same "no GPU on a hosted
-  # runner" reasoning the `test` job's cpu-torch swap above already
-  # applies, here avoiding a multi-GB pull for a variant nothing in CI
-  # can exercise anyway.
+  # Proves docker/Dockerfile still builds (#237), nothing more. No path filter: narrowing filters fail
+  # invisibly. TORCH_VARIANT=cpu: the GPU image is ~11.6GB and nothing here can use it.
   docker-build:
     name: Docker build
     runs-on: ubuntu-26.04
@@ -695,70 +279,25 @@ jobs:
 
   sonarqube:
     name: SonarQube
-    # Waits on `test` (both matrix legs) so the coverage-download step
-    # below has something to fetch -- see that step's own comment. The
-    # side effect, not a goal in itself: this job no longer starts until
-    # the suite has passed, where it previously ran independently of
-    # `test`'s outcome. Accepted rather than engineered around (e.g. an
-    # `always()` guard tolerating a missing artifact) because a scan
-    # without coverage data on a commit whose tests are red is not a
-    # signal worth the added complexity of running it anyway.
+    # Ubuntu only, one job: a second scan of the same projectKey overwrites the first.
+    # `needs: test` so the coverage artifact exists; a red suite skips the scan, accepted.
     needs: test
     runs-on: ubuntu-26.04
     steps:
-      # fetch-depth: 0, against the default depth-1 clone, because Sonar
-      # attributes each issue to the commit that introduced it by reading
-      # the git history. A shallow clone doesn't fail the scan; it quietly
-      # costs new-code detection and blame, which is most of what the PR
-      # comment is worth reading for.
+      # fetch-depth: 0: Sonar needs history for new-code detection and blame.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      # Reuses the `test` job's own Linux-leg run rather than installing
-      # the whole pipeline and re-running pytest here a second time --
-      # this job only ever needed the number, not the suite, and `needs:
-      # test` above means the artifact should always be here by the time
-      # this job starts. `continue-on-error` is defense in depth, not
-      # load-bearing: if the artifact is ever missing anyway (a retention
-      # or naming mismatch), the scan still runs, just without
-      # `new_coverage` data, which SonarCloud reports as its own
-      # condition rather than as a broken analysis.
+      # continue-on-error is defense in depth: a missing artifact only loses new_coverage.
       - name: Download coverage.xml from the test job
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         continue-on-error: true
         with:
           name: coverage-xml
 
-      # The PR comment is posted server-side by the SonarQube Cloud GitHub
-      # App, from the analysis this step submits -- not by this workflow.
-      # That's why the job needs nothing beyond the read-only `permissions:`
-      # at the top of the file: no `pull-requests: write` would help.
-      #
-      # As of the PR that added this job, the comment is *not* appearing,
-      # and the cause is on SonarCloud's side rather than here. What was
-      # verified on that PR: the secret exists and the step is green; the
-      # scanner logs `ANALYSIS SUCCESSFUL ... &pullRequest=<n>`; and
-      # SonarCloud's own API lists the pull request, its head SHA and its
-      # gate result. What is missing is only the decoration -- no summary
-      # comment and no `sonarqubecloud` check run -- while Codecov's app
-      # comments on the same page without trouble. So look at the
-      # SonarQubeCloud GitHub App's access to this repository and at the
-      # project's pull-request settings; a green scan step here means this
-      # workflow has already done its part.
-      #
-      # The scanner reads the PR number, base branch
-      # and head SHA out of the runner's own GITHUB_* environment, so none
-      # of that is passed here; the project key and organisation come from
-      # sonar-project.properties at the repo root.
-      #
-      # Pinned to a commit SHA rather than the `v8` tag: this is a
-      # third-party action handling a credential, and a tag can be moved to
-      # point at different code. Sonar's own S7637 makes the same point
-      # about the Codecov action above, which is now pinned too. The
-      # first-party `actions/*` uses are pinned the same way since #829:
-      # S7637 did not flag them, but being GitHub's own does not stop a
-      # tag from being moved. .github/dependabot.yml proposes the bumps.
+      # The PR comment comes from the SonarQube Cloud GitHub App, not this workflow; no extra permissions
+      # help. SHA-pinned (Sonar S7637): third-party action handling a credential.
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
         env:
