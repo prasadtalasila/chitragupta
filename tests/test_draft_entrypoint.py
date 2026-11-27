@@ -1,18 +1,3 @@
-"""chitragupta/draft.py: the drafting layer's single entry point.
-
-What each command *computes* is covered in their own test
-files (tests/test_citation_gate.py, tests/test_dossier.py,
-tests/test_retrieval.py, tests/test_references.py,
-tests/test_render_output.py). This file pins only the dispatch, and the
-invariant the dispatch exists to serve: **one entry point per layer, one
-level deep**, the same shape `python -m chitragupta.corpus sync` and `python -m
-chitragupta.review <aid>` already give their layers.
-
-Modeled closely on tests/test_review_entrypoint.py, which pinned the same
-invariant for the review layer first and caught the two-level form
-(`python -m chitragupta.review.verbatim_check`) before it shipped.
-"""
-
 import re
 from pathlib import Path
 
@@ -23,8 +8,6 @@ from tests.conftest import run_python
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# Every module the dispatcher forwards to, keyed by the verb chitragupta/draft.py
-# uses for it.
 BACKING_MODULES = {
     "gate": "citation_gate",
     "dossier": "dossier",
@@ -41,10 +24,6 @@ BACKING_MODULES = {
     "diff": "draft_diff",
 }
 
-# A real top-level entry-point block, anchored at column 0 -- not the
-# string wherever it appears. Same reasoning as test_review_entrypoint.py:
-# a substring check can be fooled by a comment discussing
-# `if __name__ == "__main__":` in prose.
 _MAIN_BLOCK = re.compile(r'^if __name__ == ["\']__main__["\']:', re.MULTILINE)
 
 
@@ -54,25 +33,17 @@ class TestTheVerbsAreTheDraftingCommands:
 
     @pytest.mark.parametrize("verb", sorted(BACKING_MODULES))
     def test_every_verb_is_reachable_and_declares_its_own_flags(self, verb):
-        """--help rather than a run: this pins that the verb's own parser
-        (or, for `gate`, its own usage text) was wired in, without
-        needing a corpus."""
         result = run_python("-m", "chitragupta.draft", verb, "--help")
         assert result.returncode == 0
         assert f"chitragupta.draft {verb}" in result.stdout
 
     def test_no_verb_prints_the_layers_usage_and_exits_zero(self):
-        """ "Tell me how to use this" is not an error -- the same rule
-        each of the commands already applies to a missing mode."""
         result = run_python("-m", "chitragupta.draft")
         assert result.returncode == 0
         for verb in BACKING_MODULES:
             assert verb in result.stdout
 
     def test_no_verb_in_process_prints_the_usage_too(self, capsys):
-        """The subprocess test above proves the `-m` wiring; this one is
-        what holds `main()`'s no-verb branch to the coverage bar, since
-        pytest-cov 7 does not measure a child process."""
         assert entrypoint.main([]) == 0
         out = capsys.readouterr().out
         for verb in BACKING_MODULES:
@@ -85,21 +56,8 @@ class TestTheVerbsAreTheDraftingCommands:
 
 
 class TestTheCommandSurfaceStaysOneLevelDeep:
-    """The invariant this file exists for. See docs/ARCHITECTURE.md."""
-
     @pytest.mark.parametrize("module", sorted(BACKING_MODULES.values()))
     def test_a_backing_module_has_no_main_block(self, module):
-        """`python -m src.<module>` must not become a second,
-        undocumented way in. Without a __main__ block it imports the
-        module and exits 0 having done nothing -- which is a trap, but a
-        silent and harmless one, and the same one `chitragupta/enrich/`'s and
-        `chitragupta/review/`'s submodules carry by design. With one, the layer
-        would have one entry point per module and no single --help.
-
-        `dossier` is a package since #219, not a flat file -- the
-        equivalent property for a package is no `__main__.py` inside it,
-        which `python -m` would run in the flat modules' place.
-        """
         as_package = REPO_ROOT / "chitragupta" / module / "__init__.py"
         if as_package.is_file():
             assert not (REPO_ROOT / "chitragupta" / module / "__main__.py").is_file()
@@ -109,14 +67,6 @@ class TestTheCommandSurfaceStaysOneLevelDeep:
 
     @pytest.mark.parametrize("module", sorted(BACKING_MODULES.values()))
     def test_running_a_backing_module_directly_does_nothing(self, module):
-        """The observable half of the assertion above.
-
-        A package without `__main__.py` can't reach this silently:
-        Python's own `-m` machinery refuses to run it at all, exit 1
-        with a message on stderr rather than exit 0 with empty stdout.
-        Still nothing a drafting-layer command does -- checked here,
-        not assumed, the same as the flat-module case below it.
-        """
         result = run_python("-m", f"chitragupta.{module}")
         if (REPO_ROOT / "chitragupta" / module / "__init__.py").is_file():
             assert result.returncode == 1
@@ -128,13 +78,6 @@ class TestTheCommandSurfaceStaysOneLevelDeep:
 
 
 class TestTheExitCodeContractSurvivesTheDispatch:
-    """Each command's own contract, unchanged by being dispatched to. `0`
-    on success, `1` on a refusal the command already reported gracefully
-    (outside content/, missing ledger, missing dossier), `2` for a
-    malformed invocation. A dispatcher that swallowed or remapped
-    argparse's exit 2, or that mis-forwarded argv so a flag landed on the
-    wrong parser, would show up here."""
-
     def test_gate_on_a_draft_outside_content_exits_one(self, tmp_path):
         outside = tmp_path / "not-in-content.md"
         outside.write_text("# draft\n")
@@ -187,9 +130,6 @@ class TestTheExitCodeContractSurvivesTheDispatch:
 
 
 class TestHelpIsOneCommandPerLine:
-    """#1230: argparse wrapped thirteen verbs into one twenty-line
-    paragraph. It now prints one command and one cut line per row."""
-
     def test_help_lists_one_command_per_line(self, monkeypatch, capsys):
         monkeypatch.setenv("COLUMNS", "80")
         monkeypatch.setattr("sys.argv", ["chitragupta"])
@@ -203,8 +143,6 @@ class TestHelpIsOneCommandPerLine:
         assert out.endswith("Run 'chitragupta draft COMMAND --help' for a command's flags.\n")
 
     def test_diff_row_says_what_it_compares_and_is_not_cut(self, monkeypatch, capsys):
-        # #1207: a 30-line cap on the old one-paragraph help cut diff's
-        # summary to "what changed"; one row per verb leaves room for it.
         monkeypatch.setenv("COLUMNS", "80")
         monkeypatch.setattr("sys.argv", ["chitragupta"])
         with pytest.raises(SystemExit) as excinfo:
@@ -231,11 +169,6 @@ _THIRD_PARTY = (
 
 
 def test_gate_adds_only_the_stdlib_help_modules():
-    """`draft gate` must run on a bare interpreter. #1230 gave the
-    dispatcher two help modules; test_help_format.py proves they import
-    only the standard library, and this proves the gate path loads them
-    and nothing third-party. The baseline child holds whatever start-up
-    shims this interpreter has, so the test reads the same in any venv."""
     gate = run_python(
         "-c",
         "import runpy, sys\n"

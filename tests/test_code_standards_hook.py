@@ -1,16 +1,3 @@
-"""`.claude/hooks/code_standards_hook.py`, run the way the harness runs it.
-
-Spawned as `python <path>` with a `PostToolUse` payload on stdin, which
-is what proves the contract: the branches are
-`tests/test_code_standards_hook_modules.py`'s job, and that split is the
-one `tests/test_hook_modules.py` states for the drafting hooks.
-
-The temporary root holds a real copy of the hook, the scanner and the
-register, for the reason `tests/test_citation_gate_hook.py` records:
-`Path(__file__).resolve()` follows a symlink straight back to the real
-checkout, and the point of a throwaway root is that it is not that.
-"""
-
 import json
 import os
 import shutil
@@ -29,16 +16,6 @@ OVER_C1 = "def f():\n" + "\n".join(f"    x{i} = {i}" for i in range(30)) + "\n"
 
 
 class HookRepo:
-    """A throwaway repo root with the hook, the scanner and the register.
-
-    `installed` picks which shape `safe_path.py` will see, and sets it
-    through `PYTHONPATH` rather than trusting whatever this interpreter
-    happens to have installed -- a local venv with nothing installed and
-    CI's editable `uv sync` would otherwise disagree. A checkout
-    is a `chitragupta` resolving inside the root; an installed project is
-    one resolving to the real package, outside it.
-    """
-
     def __init__(self, root: Path, with_scanner: bool = True, installed: bool = False):
         self.root = root
         hooks = root / ".claude" / "hooks"
@@ -90,9 +67,6 @@ class TestTheHarnessContract:
         assert "C1" in payload["hookSpecificOutput"]["additionalContext"]
 
     def test_stdout_is_json_only(self, repo):
-        """Mixing plain text with JSON on stdout destroys the payload --
-        measured in `docs/HOOKS.md`'s trial 1, and the reason no hook here
-        prints anything alongside its envelope."""
         target = repo.package / "big.py"
         target.write_text(OVER_C1, encoding="utf-8")
         json.loads(repo.run(target).stdout)
@@ -127,10 +101,6 @@ class TestTheHarnessContract:
 
 
 class TestAScaffoldedProject:
-    """`chitragupta init` copies `.claude/` verbatim and scaffolds no
-    `scripts/` tree, so the hook is registered where its scanner does not
-    exist. It has to be inert there, not broken."""
-
     def test_a_missing_scanner_is_silent_and_exits_zero(self, tmp_path):
         repo = HookRepo(tmp_path, with_scanner=False)
         target = repo.package / "big.py"
@@ -139,11 +109,6 @@ class TestAScaffoldedProject:
         assert (result.returncode, result.stdout, result.stderr) == (0, "", "")
 
     def test_a_planted_scanner_is_never_run(self, tmp_path):
-        """Issue 890. `init` scaffolds no `scripts/`, so a
-        `scripts/code_standards.py` in an installed-package project was
-        committed by someone else -- and the hook used to run it by path,
-        with the user's privileges, on the next `.py` write under a
-        watched root. The same shape #822 closed for `-m`."""
         repo = HookRepo(tmp_path, with_scanner=False, installed=True)
         sentinel = tmp_path / "planted_scanner_ran"
         (tmp_path / "scripts").mkdir()

@@ -1,17 +1,3 @@
-"""The skill-bench skill's `install_tools.sh --check` and `serve_models.sh`.
-
-The check is what a session runs first to learn whether it can bench at
-all, and what decides what the install half fetches. It runs here for
-real, in bash, against a PATH of fakes and a BENCH_TOOLS folder holding a
-fake build and a sparse model file of the pinned size, so nothing hashes
-22 GB: the model's verified stamp is what the check trusts while the
-file's size and mtime still match it; the vision projector is checked
-the same way. The install half needs apt, sudo,
-a GPU and the network, so it was run for real on the A40 host instead
-(PR description). `serve_models.sh` runs against a fake `llama-server`
-that answers `/v1/models` on the port it is given.
-"""
-
 import os
 import shutil
 import socket
@@ -39,8 +25,6 @@ pytestmark = pytest.mark.skipif(
 
 
 def sparse(path, size, sha256):
-    """A sparse file of `size` bytes and a `.verified` stamp that matches
-    it, so the check trusts it without hashing."""
     with path.open("wb") as f:
         f.truncate(size)
     stat = path.stat()
@@ -56,9 +40,6 @@ def everything(
     model_bytes=MODEL_BYTES,
     mmproj_bytes=MMPROJ_BYTES,
 ):
-    """A PATH and BENCH_TOOLS holding every tool, as their real versions
-    answer, and a model and vision projector whose stamps match them.
-    `mmproj_bytes=None` leaves the projector out."""
     bin_dir, tools = tmp_path / "bin", tmp_path / "tools"
     build = tools / "llama.cpp-b11321" / "build" / "bin"
     models = tools / "models"
@@ -114,8 +95,6 @@ def test_nothing_present_names_every_tool_and_installs_nothing(tmp_path):
 
 
 def test_another_codex_version_is_not_enough(tmp_path):
-    """The versions are pinned so every baseline in the series stays
-    comparable with the one before it."""
     bin_dir, tools = everything(tmp_path, codex="codex-cli 0.160.0")
     result = check(bin_dir, tools)
     assert result.returncode == 1
@@ -130,8 +109,6 @@ def test_a_cpu_build_of_llama_server_does_not_count(tmp_path):
 
 
 def test_a_model_of_the_wrong_size_fails_without_hashing(tmp_path):
-    """A partial download is caught by its size, before a minute of
-    hashing; its stale stamp is not trusted."""
     bin_dir, tools = everything(tmp_path, model_bytes=1024)
     result = check(bin_dir, tools)
     assert result.returncode == 1
@@ -139,8 +116,6 @@ def test_a_model_of_the_wrong_size_fails_without_hashing(tmp_path):
 
 
 def test_a_missing_vision_projector_fails_the_check(tmp_path):
-    """Without it the server answers Codex's first figure PNG with a 500
-    and the run ends there (#1210), so the bench cannot start without it."""
     bin_dir, tools = everything(tmp_path, mmproj_bytes=None)
     result = check(bin_dir, tools)
     assert result.returncode == 1
@@ -177,7 +152,6 @@ http.server.HTTPServer(("127.0.0.1", port), H).serve_forever()
 
 
 def free_gpu_index():
-    """A GPU index whose port 18080+i nothing on this host listens on."""
     for index in range(40, 400):
         with socket.socket() as probe:
             if probe.connect_ex(("127.0.0.1", 18080 + index)) != 0:

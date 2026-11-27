@@ -1,22 +1,3 @@
-"""chitragupta/review/figure_layout.py: the deterministic TikZ layout check.
-
-The fourth review-layer aid (#314, docs/FEATURE-ROADMAP.md's D2, planned
-in plans/d2-tikz-layout-check.md). Advisory like the other three: it
-reports and never blocks, and exits 0 whatever it finds.
-
-Two kinds of test here, and the split is the module's own:
-
-- **Static checks** -- node text length and the edge list -- parse the
-  figure's own source and need no toolchain at all, so those tests run
-  everywhere.
-- **Geometry checks** -- overlap, protrusion, corner emptiness -- need a
-  real `pdflatex` with `tikz.sty`, and are marked to self-skip without
-  one. They are the reason the plan says "reproduce the probe before
-  writing code": the `CGBOX` line format those tests pin is the single
-  assumption the whole aid rests on, so it is pinned against a real
-  compile rather than a fixture.
-"""
-
 import json
 import subprocess
 from pathlib import Path
@@ -30,16 +11,6 @@ from tests.conftest import needs_tikz
 
 
 class TestFiguresIn:
-    """Which figure files a draft actually references.
-
-    Deliberately not a second parser: this reuses
-    `render_output/_figures.py`'s `_figure_refs()`/`_resolve_sibling()`,
-    which already own the `figure:` marker and `\\input{...}`
-    conventions for the renderer. These tests pin that the reuse is
-    wired up right, not that those functions work -- that is
-    tests/test_render_output_figures.py's job.
-    """
-
     def test_finds_a_markdown_drafts_marked_figure(self, tmp_path):
         (tmp_path / "figures").mkdir()
         figure = tmp_path / "figures" / "flow.tex"
@@ -52,18 +23,12 @@ class TestFiguresIn:
         assert figure_layout.figures_in(draft) == [figure]
 
     def test_drops_a_marker_naming_a_file_that_is_not_there(self, tmp_path):
-        """A dangling marker is `render_output`'s finding to report, not
-        this aid's to crash on -- there is nothing to check the geometry
-        of."""
         draft = tmp_path / "survey.md"
         draft.write_text("<!-- figure: figures/missing -->\n", encoding="utf-8")
 
         assert figure_layout.figures_in(draft) == []
 
     def test_finds_a_tex_fragments_real_input(self, tmp_path):
-        """`thesis-chapter-writer`'s fragment keeps its TikZ inline via a
-        real `\\input`, not a marker -- the one genre that differs, and
-        the aid has to see its figures too."""
         (tmp_path / "figures").mkdir()
         figure = tmp_path / "figures" / "arch.tex"
         figure.write_text(
@@ -82,13 +47,6 @@ class TestFiguresIn:
 
 
 class TestNodeText:
-    """docs/TIKZ-STYLE.md's conciseness rule, as arithmetic: a node whose
-    label runs past 15 words is too long for a box.
-
-    No `pdflatex` anywhere in this class -- word count is a property of
-    the source, so this check runs on a host with no TeX at all.
-    """
-
     def test_a_thirty_word_node_is_reported(self):
         words = " ".join(f"word{n}" for n in range(30))
         source = f"\\begin{{tikzpicture}}\\node (a) {{{words}}};\\end{{tikzpicture}}"
@@ -104,34 +62,23 @@ class TestNodeText:
         assert figure_layout.overlong_nodes(source) == []
 
     def test_exactly_fifteen_words_is_not_reported(self):
-        """The rule is "past about fifteen", so fifteen itself passes --
-        pinned because an off-by-one here is invisible in prose."""
         words = " ".join(f"word{n}" for n in range(15))
         source = f"\\begin{{tikzpicture}}\\node (a) {{{words}}};\\end{{tikzpicture}}"
 
         assert figure_layout.overlong_nodes(source) == []
 
     def test_a_styled_node_still_parses(self):
-        """`\\node[draw, fill=blue!10] (a) at (0,0) {...}` is the ordinary
-        shape a real figure uses, not the bare `\\node (a) {...}`."""
         words = " ".join(f"word{n}" for n in range(20))
         source = f"\\node[draw, fill=blue!10] (a) at (0,0) {{{words}}};"
 
         assert [name for name, _ in figure_layout.overlong_nodes(source)] == ["a"]
 
     def test_latex_markup_in_a_label_is_not_counted_as_words(self):
-        """`\\textbf{x}` is one word to a reader; counting the control
-        sequence separately would flag figures that are actually fine."""
         source = "\\node (a) {\\textbf{alpha} \\emph{beta} gamma};"
 
         assert figure_layout.overlong_nodes(source) == []
 
     def test_a_commented_out_node_is_not_measured(self):
-        """A node an author commented out is not in the figure, so its
-        label length is not a finding about the figure (#404). The same
-        blindness as the probe's, failing safe here rather than loudly
-        -- which is why the two are fixed together: a node measured for
-        geometry but not for text length is a confusing split."""
         words = " ".join(f"word{n}" for n in range(20))
         source = f"% \\node (old) {{{words}}};\n\\node (a) {{short}};\n"
 
@@ -145,12 +92,6 @@ class TestNodeText:
 
 
 class TestEdgeList:
-    """The faithfulness check: what the figure claims connects to what.
-
-    Reported for a human to confirm against the prose, never judged --
-    nothing here knows which edges *should* exist.
-    """
-
     def test_a_three_node_chain(self):
         source = "\\draw (a) -- (b) -- (c);"
 
@@ -162,31 +103,16 @@ class TestEdgeList:
         assert figure_layout.edge_list(source) == [("a", "b"), ("b", "c")]
 
     def test_an_arrow_is_an_edge_like_any_other(self):
-        """`->` vs `--` is a rendering difference; both are the same
-        claim about what connects to what."""
         source = "\\draw[->] (a) -- (b);"
 
         assert figure_layout.edge_list(source) == [("a", "b")]
 
     def test_bare_coordinates_are_not_nodes(self):
-        """`\\draw (0,0) -- (2,0);` is a line, not an edge between two
-        named things -- reporting `0,0 -> 2,0` would be noise."""
         source = "\\draw (0,0) -- (2,0);"
 
         assert figure_layout.edge_list(source) == []
 
     def test_a_foreach_loop_variable_is_not_a_node(self):
-        """`\\foreach \\p in {A,...,F} \\draw (\\p)--(\\q);` -- unlike
-        `(\\x,-0.12)`, a single unrolled loop variable carries no comma,
-        so it would otherwise read as an ordinary node name and the
-        report would carry the literal `\\p -> \\q`, which pdflatex then
-        rejects as an undefined control sequence when the report itself
-        is rendered (#389). A real node name is never spelled with a
-        leading backslash -- that syntax is TikZ's for a macro, not an
-        identifier -- so this is the same "macro-valued, not a name"
-        exclusion `test_bare_coordinates_are_not_nodes` already applies
-        to a comma-bearing coordinate, widened to the token that has no
-        comma to be caught by."""
         source = "\\foreach \\p in {A,...,F} \\draw (\\p)--(\\q);"
 
         assert figure_layout.edge_list(source) == []
@@ -202,35 +128,16 @@ class TestEdgeList:
         assert figure_layout.edge_list(source) == []
 
     def test_a_commented_out_draw_is_not_an_edge(self):
-        """The edge list is the one check read as a list of what the
-        figure *claims*, so a wrong entry is worse than a missing one --
-        and an edge the author commented out is exactly that. Same
-        comment blindness as #404's other two symptoms."""
         source = "% \\draw (a) -- (ghost);\n\\draw (a) -- (b);\n"
 
         assert figure_layout.edge_list(source) == [("a", "b")]
 
 
 class TestEdgeListLimits:
-    """What the regex costs, pinned rather than left in prose.
-
-    This extraction is a regex over TikZ, not a parser of it, and this is
-    the one check where that matters most: the list is read as *what the
-    figure claims*, so a wrong entry is worse than a missing one. These
-    tests exist so the boundary is a decision on record -- if one starts
-    failing, the extraction got better and the docstring in
-    `_source.py::edge_list` needs updating with it.
-    """
-
     def test_an_anchor_rides_along_rather_than_being_stripped(self):
-        """`a.south` is reported as-is. Stripping to `a` would be a guess
-        about which side of the dot is a node name."""
         assert figure_layout.edge_list("\\draw (a.south) -- (b.north);") == [("a.south", "b.north")]
 
     def test_an_edge_drawn_by_a_wrapping_library_is_invisible(self):
-        """`\\graph` never writes `\\draw`, so the list comes back
-        silently short rather than wrong -- indistinguishable from a
-        figure with no edges at all."""
         assert figure_layout.edge_list("\\graph { a -> b };") == []
 
     def test_a_to_with_options_is_still_an_edge(self):
@@ -238,93 +145,42 @@ class TestEdgeListLimits:
 
 
 class TestStrandedArrowheads:
-    """docs/TIKZ-STYLE.md's "one arrow is one `\\draw`" rule, mechanised.
-
-    #399 found it by looking at a rendered PNG: two colinear upward
-    arrows meeting at `(46,36)`, each carrying `->`, render an arrowhead
-    where they join as well as at the end -- a second head pointing at
-    nothing in the middle of the line. Source-only, so it runs on a host
-    with no TeX at all, and it is the half of #399 that recurs; the
-    other half (a `fill=white` band erasing an arrowhead) needs the
-    geometry of anonymous nodes and stays a prose rule.
-    """
-
     def test_the_defect_from_the_issue(self):
-        """`4-1-five-parts-of-a-model`'s two lines, verbatim."""
         source = "\\draw[->] (46,36) -- (46,44);\n\\draw[->] (46,32) -- (46,36);\n"
 
         assert figure_layout.stranded_arrowheads(source) == ["46,36"]
 
     def test_a_chain_through_a_named_node_is_not_a_finding(self):
-        """The discriminator, and the reason this check is precise rather
-        than noisy. TikZ clips a path at a node's boundary, so arrow 1's
-        head lands *on* `parse` -- correctly pointing at it -- and arrow 2
-        starts from the opposite border. `assets/tikz/pipeline.tex`,
-        `control-loop.tex`, `hub-and-spoke-network.tex` and
-        `zoned-spine.tex` are all drawn this way, so treating it as a finding would break
-        tests/test_tikz_scaffolds.py's zero-findings criterion.
-        """
         source = "\\draw[->] (intake) -- (parse);\n\\draw[->] (parse) -- (index);\n"
 
         assert figure_layout.stranded_arrowheads(source) == []
 
     def test_the_last_piece_alone_carrying_the_head_is_the_fix(self):
-        """What docs/TIKZ-STYLE.md tells the author to write instead."""
         source = "\\draw[->] (46,36) -- (46,44);\n\\draw (46,32) -- (46,36);\n"
 
         assert figure_layout.stranded_arrowheads(source) == []
 
     def test_two_arrows_converging_on_one_point_are_not_a_finding(self):
-        """Both heads are at the end of their own stroke and nothing
-        continues past either, so neither is stranded -- it is a junction
-        an author drew on purpose."""
         source = "\\draw[->] (0,0) -- (46,36);\n\\draw[->] (90,0) -- (46,36);\n"
 
         assert figure_layout.stranded_arrowheads(source) == []
 
     def test_whitespace_in_a_coordinate_does_not_hide_the_junction(self):
-        """`(46,36)` and `(46, 36)` are one point spelled two ways."""
         source = "\\draw[->] (46, 36) -- (46,44);\n\\draw[->] (46,32) -- (46,36);\n"
 
         assert figure_layout.stranded_arrowheads(source) == ["46,36"]
 
     def test_a_head_at_the_start_only_is_not_a_finding(self):
-        """`<-` puts the head at the *start* of the path, so the junction
-        at the far end carries nothing to strand."""
         source = "\\draw[<-] (46,36) -- (46,44);\n\\draw[<-] (46,32) -- (46,36);\n"
 
         assert figure_layout.stranded_arrowheads(source) == []
 
     def test_a_perpendicular_bend_strands_a_head_just_as_a_straight_run_does(self):
-        """`1-3-demonstrator-today.tex` as it stood in
-        `content/backup/chitragupta-6.20.7/`, verbatim -- a defect this
-        sweep found that no issue had recorded, since fixed by hand.
-
-        **This is deliberately broader than the rule as written.**
-        docs/TIKZ-STYLE.md says "two *colinear* segments that meet", and
-        these two are perpendicular: a dashed arrow runs east into
-        `(72,32)` and a solid one leaves it going north. The head is
-        stranded all the same -- what makes it a defect is that a stroke
-        continues out of the point, not the angle it continues at. Pinned
-        because narrowing the check to match the doc's wording is the
-        natural thing for a later reader to do, and it would silently
-        drop this whole shape.
-        """
         source = "\\draw[->,dashed] (70,32) -- (72,32);\n\\draw[->] (72,32) -- (72,36);\n"
 
         assert figure_layout.stranded_arrowheads(source) == ["72,32"]
 
     def test_two_dimension_bars_sharing_a_boundary_are_not_a_finding(self):
-        """`1-1-decision-latency.tex`, verbatim -- the only false
-        positive this check produced over the 43 figures of this
-        repository's own drafted book, and the reason the continuing
-        statement's own start head has to be looked at.
-
-        Both bars terminate at `(55,-7)`: the first draws a `>` into it
-        and the second a `<` out of it, so it reads as `|<-->|<-->|` and
-        no head is stranded. Without the `<-` clause this matches every
-        other rule the check applies.
-        """
         source = (
             "\\draw[<->] (10,-7) -- (55,-7) node[midway,above] {detection gap};\n"
             "\\draw[<->] (55,-7) -- (95,-7) node[midway,above] {response gap};\n"
@@ -333,10 +189,6 @@ class TestStrandedArrowheads:
         assert figure_layout.stranded_arrowheads(source) == []
 
     def test_a_curve_continuing_out_of_an_arrowhead_is_a_finding(self):
-        """`2-2-model-simulator-simulation.tex`, verbatim -- the one true
-        positive from that same sweep. The head at `(90,34)` points at
-        empty space and a bezier carries the stroke onwards, which is
-        #399's defect drawn with a different path operator."""
         source = (
             "\\draw[->] (90,10) -- (90,34) node[anchor=south east] {state};\n"
             "\\draw[thick] (90,34) .. controls (100,32) and (106,22) .. (124,18);\n"
@@ -345,16 +197,11 @@ class TestStrandedArrowheads:
         assert figure_layout.stranded_arrowheads(source) == ["90,34"]
 
     def test_a_coordinate_inside_the_option_group_is_not_the_paths_first_point(self):
-        """`shift={(1,0)}` is a parenthesised token in the options, and
-        reading it as where the path starts would compare the wrong
-        coordinate -- here it would miss the junction entirely."""
         source = "\\draw[->] (46,32) -- (46,36);\n\\draw[shift={(1,0)}] (46,36) -- (46,44);\n"
 
         assert figure_layout.stranded_arrowheads(source) == ["46,36"]
 
     def test_a_double_headed_arrow_strands_its_end_head_too(self):
-        """`<->` draws a head at each end, so its end head is stranded by
-        a continuation exactly as `->`'s is."""
         source = "\\draw[<->] (46,32) -- (46,36);\n\\draw (46,36) -- (46,44);\n"
 
         assert figure_layout.stranded_arrowheads(source) == ["46,36"]
@@ -365,8 +212,6 @@ class TestStrandedArrowheads:
         assert figure_layout.stranded_arrowheads(source) == []
 
     def test_one_junction_is_reported_once(self):
-        """Two heads stranded at the same point is one defect to fix, not
-        two findings to read."""
         source = (
             "\\draw[->] (0,0) -- (46,36);\n"
             "\\draw[->] (90,0) -- (46,36);\n"
@@ -376,94 +221,53 @@ class TestStrandedArrowheads:
         assert figure_layout.stranded_arrowheads(source) == ["46,36"]
 
     def test_an_arrows_meta_tip_specification_is_recognised(self):
-        """`-{Stealth}` draws a head at the end just as `->` does, and is
-        read as one since #1162: the head lands mid-line here."""
         source = "\\draw[-{Stealth}] (46,32) -- (46,36);\n\\draw (46,36) -- (46,44);\n"
 
         assert figure_layout.stranded_arrowheads(source) == ["46,36"]
 
 
 class TestStrandedArrowheadLimits:
-    """What this check deliberately does not reach, pinned rather than
-    left in prose -- the same standing `TestEdgeListLimits` has. Every
-    one of these fails *safe*: a finding missed, never a wrong one."""
-
     def test_an_option_group_left_open_is_skipped(self):
-        """`\\draw[thick (a) -- (b);` never closes its options, so it has
-        no points to compare."""
         source = "\\draw[-> (46,32) -- (46,36);\n\\draw (46,36) -- (46,44);\n"
 
         assert figure_layout.stranded_arrowheads(source) == []
 
     def test_a_path_statement_with_no_points_at_all_is_skipped(self):
-        """`\\draw[help lines] grid;` names no point, so there is no
-        endpoint to strand a head at and nothing to compare. Real TikZ,
-        and it reaches this function like any other `\\draw`."""
         source = "\\draw[->] grid;\n\\draw[->] (46,32) -- (46,36);\n"
 
         assert figure_layout.stranded_arrowheads(source) == []
 
     def test_a_reversed_continuation_is_not_recognised(self):
-        """`(46,44) -- (46,36)` draws the same stroke as its reverse, so
-        this is the same defect written backwards. Only the head-to-tail
-        spelling is matched -- the one docs/TIKZ-STYLE.md describes, and
-        the one an author building a line in pieces actually writes.
-        Widening to either endpoint would also fire on an unrelated tick
-        mark that happens to touch the point."""
         source = "\\draw[->] (46,32) -- (46,36);\n\\draw (46,44) -- (46,36);\n"
 
         assert figure_layout.stranded_arrowheads(source) == []
 
 
 class TestScaffold:
-    """The document each figure is compiled inside.
-
-    Two properties are load-bearing and both are asserted rather than
-    left to a reader of the emitted string: it is `article`-based, and
-    it reads coordinates through pgf's public accessor.
-    """
-
     def test_it_is_article_not_standalone(self):
-        """`standalone.cls` is texlive-latex-extra; `tikz.sty` is
-        texlive-pictures. Building on standalone would depend on a
-        package `_require_tikz()` never checks -- the exact bug #226
-        was."""
         scaffold = figure_layout.scaffold("\\node (a) {A};", ["a"])
 
         assert "{article}" in scaffold
         assert "standalone" not in scaffold
 
     def test_it_uses_the_public_coordinate_accessor(self):
-        """Raw `\\pgf@x` needs `\\makeatletter`, and without it degrades
-        to literal text plus 'Undefined control sequence' while still
-        exiting 0 -- a silent wrong answer, which is worse than a loud
-        one."""
         scaffold = figure_layout.scaffold("\\node (a) {A};", ["a"])
 
         assert "\\pgfgetlastxy" in scaffold
         assert "\\pgf@x" not in scaffold
 
     def test_it_probes_the_pictures_own_bounding_box(self):
-        """Protrusion and corner emptiness both need the picture-wide
-        box, which is TikZ's `current bounding box` pseudo-node."""
         scaffold = figure_layout.scaffold("\\node (a) {A};", ["a"])
 
         assert "current bounding box" in scaffold
 
     def test_it_sets_type_as_the_pdf_render_does(self):
-        """#1037: node boxes are measured in the size and fonts the pdf
-        render prints, not pdflatex's 10pt Computer Modern. The render
-        is `article` at 12pt with chitragupta-lualatex.tex's fonts."""
         scaffold = figure_layout.scaffold("\\node (a) {A};", ["a"])
 
         assert "\\documentclass[12pt]{article}" in scaffold
         assert "\\setmainfont{STIX Two Text}" in scaffold
 
     def test_a_box_is_read_from_its_four_sides(self):
-        """#1054: `south west` and `north east` are corners only on a
-        rectangle. On a circle they lie on the curve, so the box came
-        back about 30% too small. #1064: `\\cgsides` keeps the min and max
-        of all four points, so a node turned a quarter is not a point."""
         scaffold = figure_layout.scaffold("\\node (a) {A};", ["a"])
 
         assert "\\cgsides{a}" in scaffold
@@ -472,11 +276,6 @@ class TestScaffold:
         assert "{south west}" not in scaffold
 
     def test_a_name_spelled_with_a_macro_is_declared_but_not_probed(self):
-        """#1072: `\\node (s\\i)` inside a `\\foreach` names a node only
-        while the loop runs. The probes sit after the loop, where `\\i`
-        is undefined, so probing `s\\i` took the compile down with
-        `! Missing \\endcsname inserted.` The name is still declared, so
-        the report can say it went unmeasured."""
         source = "\\foreach \\i in {1,2} { \\node (s\\i) at (\\i,0) {S}; }\n\\node (a) {A};\n"
 
         names = figure_layout.node_names(source)
@@ -488,52 +287,25 @@ class TestScaffold:
 
 
 class TestProbePlacement:
-    """Where the probes are spliced in, and which nodes get probed.
-
-    Pure string work, so these run on a host with no TeX -- which is the
-    point: they were previously exercised only through the compile
-    tests, so CI's Windows leg measured them as uncovered even though
-    nothing here needs a toolchain.
-    """
-
     def test_node_names_finds_every_named_node(self):
         source = "\\node (a) {A};\n\\node[draw] (b) at (1,0) {B};\n"
 
         assert figure_layout.node_names(source) == ["a", "b"]
 
     def test_node_names_ignores_an_unnamed_node(self):
-        """A node with no `(name)` cannot be probed -- `\\pgfpointanchor`
-        has nothing to ask for."""
         assert figure_layout.node_names("\\node {just a label};\n") == []
 
     def test_a_node_named_only_in_a_comment_is_not_probed(self):
-        """#404's first defect, and it produced a *wrong* finding rather
-        than a missed one.
-
-        A comment that merely mentions a node declaration made the probe
-        ask `pdflatex` for a shape nothing had drawn, which fails the
-        compile -- so the aid reported *the figure* as not compiling,
-        about a figure that compiles perfectly well. Hit for real by
-        `assets/tikz/branching-tree.tex`'s own header comment.
-        """
         source = "% see \\node (ghost) for how this works\n\\node (a) {A};\n"
 
         assert figure_layout.node_names(source) == ["a"]
 
     def test_an_escaped_percent_does_not_start_a_comment(self):
-        """`\\%` is a literal percent sign, so what follows it is still
-        the figure. Stripping it as a comment would lose real nodes."""
         source = "\\node (pct) {50\\% of runs}; \\node (b) {B};\n"
 
         assert figure_layout.node_names(source) == ["pct", "b"]
 
     def test_node_names_finds_a_child_syntaxs_names(self):
-        """#404's second defect. `child` spells the same declaration
-        without a leading backslash, and the names are real inside the
-        picture -- `\\pgfpointanchor` resolves them. Finding only the
-        root left the children unmeasured, and `protrudes()` then read
-        the band they occupy as empty and reported a protrusion the
-        figure did not have."""
         source = (
             "\\node (root) {root}\n"
             "  child { node (left) {L} }\n"
@@ -543,30 +315,16 @@ class TestProbePlacement:
         assert figure_layout.node_names(source) == ["root", "left", "right"]
 
     def test_a_mid_path_label_node_is_found_too(self):
-        """Same spelling, same reason: `node (mid)` on a path declares a
-        real named node."""
         source = "\\draw (a) -- node (mid) {label} (b);\n"
 
         assert figure_layout.node_names(source) == ["mid"]
 
     def test_the_word_node_inside_a_label_is_not_a_declaration(self):
-        """The guard on widening the pattern. Prose in a label can
-        contain the word, and treating it as a declaration would
-        reintroduce the crash above by a different route -- so the
-        keyword counts only where a label cannot be."""
         source = "\\node (a) {a node (of sorts)};\n"
 
         assert figure_layout.node_names(source) == ["a"]
 
     def test_a_name_inside_a_macro_definition_is_not_probed(self):
-        """#1012's house block, `assets/tikz/cg-figstyle.tex`, defines
-        `\\cglegenditem` by `\\providecommand`, and its body declares
-        `(#1)` and `(#1-t)`. Those are templates for a name the caller
-        supplies, not names: `#` is TeX's macro-parameter character and
-        no drawn node is spelled with it. Probed anyway, they took the
-        compile down with `! Illegal parameter number`, so every figure
-        carrying the block was reported as broken. The block's own
-        `\\providecommand` lines, verbatim."""
         source = (
             "\\providecommand{\\cglegenditem}[4]{%\n"
             "  \\node[cgswatch=#3] (#1) at (#2) {};\n"
@@ -577,9 +335,6 @@ class TestProbePlacement:
         assert figure_layout.node_names(source) == ["a"]
 
     def test_probes_go_inside_the_picture_not_after_it(self):
-        """`current bounding box` belongs to the picture being built, so
-        a probe placed after `\\end{tikzpicture}` measures an empty one.
-        That bug reported every real figure as 100% empty."""
         source = "\\begin{tikzpicture}\n\\node (a) {A};\n\\end{tikzpicture}\n"
 
         built = figure_layout.scaffold(source, ["a"])
@@ -588,8 +343,6 @@ class TestProbePlacement:
         assert "CGBOX a" in before_end
 
     def test_the_last_picture_is_the_one_measured(self):
-        """A figure built from several pictures is measured as the whole
-        thing a reader sees, not as its first component."""
         source = (
             "\\begin{tikzpicture}\n\\node (a) {A};\n\\end{tikzpicture}\n"
             "\\begin{tikzpicture}\n\\node (b) {B};\n\\end{tikzpicture}\n"
@@ -600,10 +353,6 @@ class TestProbePlacement:
         assert built.index("CGBOX a") > built.index("\\node (b)")
 
     def test_cgbox_lines_parse_out_of_a_log(self):
-        """The format the whole aid rests on, parsed here from a literal
-        log so the parser is measured on any host. The compile test
-        pins the same format against a *real* pdflatex run, which is
-        what stops this fixture from drifting into fiction."""
         log = (
             "This is pdfTeX, Version 3.14\n"
             "CGBOX a -42.87912pt -7.97742pt 42.87912pt 7.97742pt\n"
@@ -620,9 +369,6 @@ class TestProbePlacement:
         assert figure_layout.parse_boxes("pdfTeX ran and said nothing\n") == {}
 
     def test_a_figure_with_no_picture_at_all_still_builds(self):
-        """Nothing to measure, but the scaffold must not raise -- the
-        honest answer for a figure file that draws no picture is an empty
-        result, not a crash."""
         built = figure_layout.scaffold("% just a comment\n", [])
 
         assert "\\begin{document}" in built
@@ -630,18 +376,6 @@ class TestProbePlacement:
 
 @pytest.mark.usefixtures("programs_on_path")
 class TestMaxPrintLineEnv:
-    """pdflatex wraps its log at `max_print_line` (~79 by default),
-    breaking the one-line CGBOX parse for a long node name -- a node
-    reports "declared but not measured" and can raise a false protrusion
-    finding on a figure that compiled fine (#496). kpathsea overrides a
-    texmf.cnf setting with a same-named environment variable, so
-    `node_boxes` has to set `max_print_line` in the subprocess env,
-    generously, rather than leave the ~79-column default wrap in place.
-
-    No real `pdflatex` needed: `subprocess.run` is faked, so this runs
-    everywhere `needs_tikz`'s geometry tests self-skip.
-    """
-
     def test_the_subprocess_env_sets_a_generous_max_print_line(self, tmp_path, monkeypatch):
         calls = []
 
@@ -660,15 +394,9 @@ class TestMaxPrintLineEnv:
         assert len(calls) == 1
         env = calls[0].get("env")
         assert env is not None
-        # Comfortably past any real node name -- the ~79-column default
-        # is what breaks a long one; 1000 columns will not wrap in
-        # practice.
         assert int(env["max_print_line"]) >= 1000
 
     def test_the_rest_of_the_hosts_environment_still_reaches_pdflatex(self, tmp_path, monkeypatch):
-        """The override must not replace the subprocess environment
-        wholesale -- pdflatex still needs PATH/HOME/TEXMF* etc. from the
-        host to find its own installation."""
         monkeypatch.setenv("A_MARKER_ONLY_THE_HOST_SETS", "yes")
         calls = []
 
@@ -689,9 +417,6 @@ class TestMaxPrintLineEnv:
 
 @pytest.mark.usefixtures("programs_on_path")
 class TestProbeTexHardening:
-    """#823: the probe compiles a user's figure file, so it gets the
-    same two settings as the pdf render path."""
-
     def _run(self, tmp_path, monkeypatch):
         calls = []
 
@@ -729,12 +454,6 @@ class TestProbeTexHardening:
 @pytest.mark.slow
 @needs_tikz
 class TestProbeAgainstRealLualatex:
-    """The one assumption everything else rests on, pinned against a real
-    compile rather than a fixture -- plans/d2-tikz-layout-check.md's own
-    instruction, and what caught the `standalone`/`\\makeatletter`
-    problems in the first place.
-    """
-
     def test_cgbox_lines_parse_into_boxes(self, tmp_path):
         figure = tmp_path / "fig.tex"
         figure.write_text(
@@ -753,7 +472,6 @@ class TestProbeAgainstRealLualatex:
             assert x1 < x2 and y1 < y2, f"{name} has a degenerate box"
 
     def test_a_circle_is_measured_at_its_diameter(self, tmp_path):
-        """#1054: a 2cm circle, line width included, is 2cm wide."""
         figure = tmp_path / "fig.tex"
         figure.write_text(
             "\\begin{tikzpicture}\n"
@@ -780,12 +498,6 @@ class TestProbeAgainstRealLualatex:
         assert figure_layout.BBOX_NAME in boxes
 
     def test_a_figure_defining_a_node_macro_compiles_and_is_measured(self, tmp_path):
-        """The same defect end to end: before #1012 this raised
-        `FigureCompileError` on a figure that compiles cleanly on its
-        own. The node the macro draws is not measured -- the source
-        never spells its name -- and that is the honest answer. (The
-        macro's name must be unused: `\\providecommand` silently keeps
-        an existing command, and `\\mark` is a TeX primitive.)"""
         figure = tmp_path / "fig.tex"
         figure.write_text(
             "\\providecommand{\\cgtestmark}[1]{\\node (#1) at (0,1) {#1};}\n"
@@ -801,8 +513,6 @@ class TestProbeAgainstRealLualatex:
         assert set(boxes) == {"a", figure_layout.BBOX_NAME}
 
     def test_compiling_does_not_litter_beside_the_figure(self, tmp_path):
-        """A review aid that leaves .aux/.log/.pdf files next to a
-        user's draft is a bug, not a side effect worth having."""
         figure = tmp_path / "fig.tex"
         figure.write_text(
             "\\begin{tikzpicture}\\node (a) {A};\\end{tikzpicture}\n", encoding="utf-8"
@@ -813,9 +523,6 @@ class TestProbeAgainstRealLualatex:
         assert sorted(p.name for p in tmp_path.iterdir()) == ["fig.tex"]
 
     def test_a_label_only_unicode_fonts_set_is_measured(self, tmp_path):
-        """A node whose label pdflatex cannot typeset without
-        chitragupta-unicode.sty (#948) compiles and is measured, because
-        the probe runs the render's own engine and font chain (#1037)."""
         figure = tmp_path / "fig.tex"
         figure.write_text(
             "\\begin{tikzpicture}\\node (a) {x \u2264 y, \u03b1};\\end{tikzpicture}\n",
@@ -833,9 +540,6 @@ class TestProbeAgainstRealLualatex:
 
 
 class TestOverlap:
-    """Pairwise box intersection. Pure arithmetic over parsed boxes, so
-    no compile is needed to test the rule itself."""
-
     def test_overlapping_boxes_are_reported(self):
         boxes = {"a": (0.0, 0.0, 40.0, 10.0), "b": (20.0, 0.0, 60.0, 10.0)}
 
@@ -847,25 +551,16 @@ class TestOverlap:
         assert figure_layout.overlaps(boxes) == []
 
     def test_boxes_that_only_touch_are_not_overlapping(self):
-        """Edge-to-edge is a design choice, not a collision."""
         boxes = {"a": (0.0, 0.0, 10.0, 10.0), "b": (10.0, 0.0, 20.0, 10.0)}
 
         assert figure_layout.overlaps(boxes) == []
 
     def test_separated_vertically_is_not_an_overlap(self):
-        """Same x range, different y -- a stacked layout, not a
-        collision. Checking x alone would report every layered figure."""
         boxes = {"a": (0.0, 0.0, 40.0, 10.0), "b": (0.0, 50.0, 40.0, 60.0)}
 
         assert figure_layout.overlaps(boxes) == []
 
     def test_a_zone_node_containing_its_children_is_not_an_overlap(self):
-        """Found by running this over the repository's own drafts: a
-        two-zone architecture figure reported eight "overlaps", every one
-        a labelled zone containing the nodes it exists to group. Zones
-        via the `backgrounds` layer are what docs/TIKZ-STYLE.md
-        *recommends*, so reporting them would fire on the standard's own
-        advice."""
         boxes = {
             "control-plane": (0.0, 0.0, 300.0, 100.0),
             "auth": (20.0, 20.0, 80.0, 60.0),
@@ -875,15 +570,11 @@ class TestOverlap:
         assert figure_layout.overlaps(boxes) == []
 
     def test_a_genuine_partial_collision_is_still_reported(self):
-        """The exclusion above must not swallow the real defect: two
-        boxes crossing each other, neither containing the other."""
         boxes = {"a": (0.0, 0.0, 40.0, 20.0), "b": (20.0, 10.0, 60.0, 30.0)}
 
         assert figure_layout.overlaps(boxes) == [("a", "b")]
 
     def test_the_picture_bounding_box_is_not_an_overlap_candidate(self):
-        """It contains every node by construction, so including it would
-        report an overlap against each one."""
         boxes = {
             "a": (0.0, 0.0, 10.0, 10.0),
             figure_layout.BBOX_NAME: (-1.0, -1.0, 11.0, 11.0),
@@ -894,9 +585,6 @@ class TestOverlap:
 
 class TestProtrusionAndEmptiness:
     def test_a_node_protruding_past_the_others_is_reported(self):
-        """docs/TIKZ-STYLE.md's LaTeX-specific veto: an element sticking
-        out above the main block makes surrounding text wrap around the
-        highest point."""
         boxes = {
             "a": (0.0, 0.0, 40.0, 10.0),
             "b": (0.0, 12.0, 40.0, 22.0),
@@ -907,10 +595,6 @@ class TestProtrusionAndEmptiness:
         assert figure_layout.protrudes(boxes) is True
 
     def test_non_node_content_reaching_past_every_node_is_reported(self):
-        """The other shape of the same defect: a stray path or a label
-        outside every node stretches the picture's box past them. The
-        gap between the topmost node and the picture's own edge is what
-        catches it, so one mechanism covers both."""
         boxes = {
             "a": (0.0, 0.0, 40.0, 10.0),
             "b": (0.0, 12.0, 40.0, 22.0),
@@ -920,9 +604,6 @@ class TestProtrusionAndEmptiness:
         assert figure_layout.protrudes(boxes) is True
 
     def test_a_layered_diagram_with_ordinary_row_spacing_is_not_reported(self):
-        """Three stacked rows with real gaps between them is what the
-        layered-stack metaphor looks like -- reporting it would make the
-        check fire on the layouts docs/TIKZ-STYLE.md recommends."""
         boxes = {
             "a": (0.0, 0.0, 40.0, 10.0),
             "b": (0.0, 20.0, 40.0, 30.0),
@@ -958,33 +639,22 @@ class TestProtrusionAndEmptiness:
         assert figure_layout.emptiness(boxes) == pytest.approx(0.0)
 
     def test_a_degenerate_bounding_box_gives_no_proportion(self):
-        """A figure with no drawn extent has no meaningful emptiness --
-        reporting 0.0 would read as "perfectly packed"."""
         boxes = {figure_layout.BBOX_NAME: (0.0, 0.0, 0.0, 0.0)}
 
         assert figure_layout.emptiness(boxes) is None
 
     def test_a_zero_area_bounding_box_with_nodes_gives_no_proportion(self):
-        """A picture whose extent collapsed but which still defines
-        nodes -- the division would be by zero, so there is no
-        proportion to report."""
         boxes = {"a": (0.0, 0.0, 10.0, 10.0), figure_layout.BBOX_NAME: (0.0, 0.0, 0.0, 0.0)}
 
         assert figure_layout.emptiness(boxes) is None
 
     def test_a_figure_with_no_named_nodes_gives_no_proportion(self):
-        """Found by running this over the repository's own drafts: a
-        figure drawn entirely from `\\draw` paths and `\\foreach` bodies
-        names no nodes, so the arithmetic called a visibly full picture
-        "100% empty". That is an artefact, and a percentage invites
-        someone to act on it."""
         boxes = {figure_layout.BBOX_NAME: (0.0, 0.0, 100.0, 100.0)}
 
         assert figure_layout.emptiness(boxes) is None
 
 
 def _draft_with_figure(tmp_path, body: str, name: str = "flow"):
-    """A Markdown draft plus the one figure it marks, under `tmp_path`."""
     (tmp_path / "figures").mkdir(exist_ok=True)
     (tmp_path / "figures" / f"{name}.tex").write_text(body, encoding="utf-8")
     draft = tmp_path / "survey.md"
@@ -994,8 +664,6 @@ def _draft_with_figure(tmp_path, body: str, name: str = "flow"):
 
 
 class TestCheckDraft:
-    """The whole-draft pass: every figure, every check, one result."""
-
     def test_a_draft_with_no_figures_reports_nothing(self, tmp_path):
         draft = tmp_path / "survey.md"
         draft.write_text("No figures at all.\n", encoding="utf-8")
@@ -1003,16 +671,6 @@ class TestCheckDraft:
         assert figure_layout.check_draft(draft) == []
 
     def test_static_checks_run_without_any_compile(self, tmp_path, monkeypatch):
-        """The point of the source/geometry split: a host with no TeX
-        still gets the node-length and edge-list checks.
-
-        Asserts only that *something* was skipped and said so, not which
-        binary was missing. Two separate absences reach here -- no
-        `pdflatex`, and no `tikz.sty` -- and pinning the message to one
-        of them made this fail on a host missing the *other*, which is
-        CI's Windows leg.
-        """
-
         def _no_tikz():
             raise figure_layout.MissingBinary("tikz.sty is not installed")
 
@@ -1031,12 +689,6 @@ class TestCheckDraft:
     def test_a_host_with_no_lualatex_skips_geometry_rather_than_crashing(
         self, tmp_path, monkeypatch
     ):
-        """`_require_tikz()` says nothing where `kpsewhich` is absent, by
-        design, so probing it alone let a host with no TeX at all reach
-        the `subprocess` call and die on `FileNotFoundError`. CI's
-        Windows leg is that host, and this is the regression test for
-        what it caught."""
-
         def _no_lualatex(binary):
             raise figure_layout.MissingBinary(f"'{binary}' is not on PATH.")
 
@@ -1051,8 +703,6 @@ class TestCheckDraft:
     @pytest.mark.slow
     @needs_tikz
     def test_a_broken_figure_does_not_stop_the_others(self, tmp_path):
-        """The failure policy that matters: one bad figure is a finding,
-        and every other figure is still checked."""
         _draft_with_figure(tmp_path, "\\begin{tikzpicture}\n\\node (a) {\n", name="broken")
         draft = _draft_with_figure(
             tmp_path,
@@ -1069,8 +719,6 @@ class TestCheckDraft:
     @pytest.mark.slow
     @needs_tikz
     def test_overlapping_nodes_are_found_end_to_end(self, tmp_path):
-        """The roadmap's own probe, reproduced by the suite rather than
-        by hand -- two nodes placed close enough to collide."""
         draft = _draft_with_figure(
             tmp_path,
             "\\begin{tikzpicture}\n"
@@ -1085,24 +733,6 @@ class TestCheckDraft:
 
 
 class TestMeasurability:
-    """#405: whether anything was measured at all, said rather than
-    inferred.
-
-    The aid measures a node only where the source spells an explicit
-    `(name)`, so a figure that names nothing reports no overlap and no
-    protrusion because there was nothing to run the checks on -- and that
-    was indistinguishable, in the report, from a clean figure. Exactly
-    1 of the 43 figures in this repository's own drafted book names a
-    node (#393), so it is the normal case rather than a corner.
-
-    **Two facts, deliberately on opposite sides of R3's line.** "Nothing
-    was measurable" is binary, is not score-shaped, and is a finding.
-    *Which* declared names went unmeasured is a diagnostic and is kept
-    out of `findings` for the same reason `empty_fraction` is: a ratio of
-    measured to declared is exactly the kind of number an unattended loop
-    would drive to one.
-    """
-
     def test_a_figure_that_names_no_node_measured_nothing(self):
         result = figure_layout.FigureResult(path=Path("flow.tex"), boxes={})
 
@@ -1118,10 +748,6 @@ class TestMeasurability:
         assert result.unmeasured == []
 
     def test_an_uncompiled_figure_makes_no_claim_either_way(self):
-        """`boxes is None` is "we do not know", not "nothing was there".
-        A host with no TeX, and a figure whose own TikZ is broken, both
-        land here -- and reporting either as unmeasurable would be a
-        second wrong answer on top of the one already reported."""
         skipped = figure_layout.FigureResult(path=Path("f.tex"), skipped="no tikz.sty")
         failed = figure_layout.FigureResult(path=Path("f.tex"), failed="! Missing $ inserted.")
 
@@ -1129,10 +755,6 @@ class TestMeasurability:
         assert failed.nothing_measurable is False
 
     def test_a_name_that_did_not_come_back_is_reported(self):
-        """#404's failure mode, kept visible after the fix: a declared
-        name absent from the geometry means the checks ran over less than
-        the figure, and `protrudes()` reads the band the missing node
-        occupies as empty."""
         result = figure_layout.FigureResult(
             path=Path("tree.tex"),
             declared=["source", "batch", "live"],
@@ -1143,9 +765,6 @@ class TestMeasurability:
         assert result.nothing_measurable is False
 
     def test_the_pictures_own_bounding_box_does_not_count_as_a_measured_node(self):
-        """`current bounding box` is in `boxes` for every figure that
-        compiles, so counting it would make "something was measured" true
-        of every figure and close the gap on paper only."""
         result = figure_layout.FigureResult(
             path=Path("flow.tex"), boxes={figure_layout.BBOX_NAME: (0.0, 0.0, 10.0, 10.0)}
         )
@@ -1153,10 +772,6 @@ class TestMeasurability:
         assert result.nothing_measurable is True
 
     def test_check_draft_records_what_the_figure_declared(self, tmp_path, monkeypatch):
-        """The names have to reach the report from the same call the
-        probe asks pdflatex about, or the two can disagree about what was
-        even attempted."""
-
         def _no_tikz():
             raise figure_layout.MissingBinary("tikz.sty is not installed")
 
@@ -1168,9 +783,6 @@ class TestMeasurability:
     @pytest.mark.slow
     @needs_tikz
     def test_an_anonymous_figure_is_reported_as_unmeasurable_end_to_end(self, tmp_path):
-        """The #393 shape, against a real compile: a picture drawn from
-        `\\draw` paths alone compiles perfectly well and yields no
-        geometry to check."""
         draft = _draft_with_figure(
             tmp_path,
             "\\begin{tikzpicture}\n\\draw (0,0) rectangle (2,1);\n\\end{tikzpicture}\n",
@@ -1183,14 +795,7 @@ class TestMeasurability:
 
 
 class TestMeasurabilityReport:
-    """The same fact in all three formats -- `_report.py`'s standing
-    invariant, and the one #405 is about: "clean" and "unmeasurable" have
-    to be different lines rather than the same one."""
-
     def test_the_text_report_no_longer_calls_an_unmeasured_figure_clean(self, tmp_path):
-        """The exact sentence #405 was filed about. It said the same
-        thing whether every check ran and found nothing or no check could
-        run at all."""
         results = [figure_layout.FigureResult(path=tmp_path / "figures" / "quiet.tex", boxes={})]
 
         text = figure_layout.format_report(tmp_path / "s.md", results)
@@ -1200,9 +805,6 @@ class TestMeasurabilityReport:
         assert "names no node" in text
 
     def test_a_genuinely_clean_figure_still_says_it_is_not_a_verdict(self, tmp_path):
-        """The other half of the same distinction: the sentence has to
-        keep printing where it is true, or the fix has only moved the
-        misreading."""
         results = [
             figure_layout.FigureResult(
                 path=tmp_path / "figures" / "flow.tex",
@@ -1227,11 +829,6 @@ class TestMeasurabilityReport:
         assert [f["kind"] for f in body["findings"]] == ["nothing-measurable"]
 
     def test_the_unmeasured_names_are_a_diagnostic_and_never_a_finding(self, tmp_path):
-        """R3, asserted rather than trusted -- the same guard
-        `test_the_emptiness_proportion_is_never_a_finding` puts on the
-        proportion. A count of measured-of-declared is a ratio, and a
-        ratio in a findings array is a ratio something will try to
-        close."""
         results = [
             figure_layout.FigureResult(
                 path=tmp_path / "figures" / "tree.tex",
@@ -1250,10 +847,6 @@ class TestMeasurabilityReport:
         assert body["findings"] == []
 
     def test_an_unmeasured_name_is_printed_beside_the_findings_it_undermines(self, tmp_path):
-        """It has to reach the *text* report too, not only the JSON:
-        an unmeasured node's band reads as empty space, so this is what
-        tells a reader the protrusion finding above it is untrustworthy
-        -- #404's failure mode, made visible instead of silent."""
         results = [
             figure_layout.FigureResult(
                 path=tmp_path / "figures" / "tree.tex",
@@ -1271,10 +864,6 @@ class TestMeasurabilityReport:
         assert "declared but not measured: `batch`, `live`" in text
 
     def test_the_shipped_geometry_checked_key_keeps_its_meaning(self, tmp_path):
-        """It is true because a compile happened, which is what #405
-        calls misleading -- but it is a published key, so the fix is a
-        field beside it rather than a redefinition under a reader who is
-        already consuming it."""
         results = [figure_layout.FigureResult(path=tmp_path / "figures" / "quiet.tex", boxes={})]
 
         figures = figure_layout.payload(tmp_path / "s.md", results, "cmd")["figures"]
@@ -1313,9 +902,6 @@ class TestMeasurabilityReport:
     def test_check_draft_finds_a_stranded_arrowhead_without_any_compile(
         self, tmp_path, monkeypatch
     ):
-        """Source-only, like the node-length and edge-list checks -- so it
-        runs on CI's Windows leg, which installs no TeX at all."""
-
         def _no_tikz():
             raise figure_layout.MissingBinary("tikz.sty is not installed")
 
@@ -1328,18 +914,6 @@ class TestMeasurabilityReport:
 
 
 class TestLoadsLibraryByHand:
-    """#781: a figure file may name the libraries it needs and nothing
-    more.
-
-    Clearing `\\tikz@library@<name>@loaded` or saving and restoring
-    `\\tikz@node@reset@hook` are the two workaround generations for a
-    bug the renderer now fixes in the preamble -- and both are worse than
-    the bug, because `positioning` appends to that hook *globally* on
-    every load, so N loads shift every node N times. Invisible in a
-    single-chapter render: it only misbehaves once a second figure shares
-    the document. Source-only, so it runs where there is no TeX.
-    """
-
     def test_a_plain_load_is_fine(self):
         assert figure_layout.loads_library_by_hand(r"\usetikzlibrary{positioning}") == []
 
@@ -1372,8 +946,6 @@ class TestLoadsLibraryByHand:
         assert figure_layout.loads_library_by_hand(source) == ["tikz@node@reset@hook"]
 
     def test_a_commented_out_workaround_is_not_flagged(self):
-        # Inert in TeX, so flagging it would send an author to fix
-        # something that does nothing -- #404's rule, applied here.
         assert figure_layout.loads_library_by_hand("% \\tikz@node@reset@hook") == []
 
     def test_it_counts_as_a_finding(self, tmp_path):
@@ -1405,9 +977,6 @@ class TestLoadsLibraryByHand:
         ]
 
     def test_check_draft_finds_one_without_any_compile(self, tmp_path, monkeypatch):
-        """Source-only, like the node-length, edge-list and arrowhead
-        checks -- so it runs on CI's Windows leg, which installs no TeX."""
-
         def _no_tikz():
             raise figure_layout.MissingBinary("tikz.sty is not installed")
 
@@ -1429,9 +998,6 @@ class TestReport:
         assert "no figures" in text.lower()
 
     def test_the_continuous_score_is_labelled_as_advisory(self, tmp_path):
-        """R3: a proportion must never read as a verdict. If this label
-        goes missing, the number starts looking like something to
-        optimise."""
         draft = tmp_path / "survey.md"
         result = figure_layout.FigureResult(
             path=tmp_path / "figures" / "flow.tex",
@@ -1445,8 +1011,6 @@ class TestReport:
         assert "50" in text
 
     def test_two_runs_over_an_unchanged_draft_are_byte_identical(self, tmp_path):
-        """No timestamp anywhere, the review layer's standing rule -- so
-        a report kept beside a draft diffs cleanly across revisions."""
         draft = _draft_with_figure(tmp_path, "\\node (a) {A};\n\\draw (a) -- (b);\n")
         results = figure_layout.check_draft(draft)
 
@@ -1470,14 +1034,6 @@ class TestReport:
 
 class TestCli:
     def test_it_exits_zero_even_with_findings(self, tmp_path, isolated_config, capsys):
-        """Advisory, always. An aid that fails a build is a gate, and
-        this project has exactly one of those.
-
-        The finding itself is asserted, not just the exit code: "exits 0"
-        is also what an aid that found nothing does, so without the
-        second assertion this would pass just as happily against a
-        checker that had silently stopped checking.
-        """
         from chitragupta import config
 
         config.DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -1516,10 +1072,6 @@ class TestCli:
         assert review.report_path(draft, "figure", "json").exists()
 
     def test_flags_hang_off_a_parser_the_entry_point_supplies(self):
-        """`review/__main__.py` creates the `figure` subparser and passes
-        it in, so the flags are declared once here and never restated
-        there. The standalone path (`parser is None`) is what `main()`
-        uses; both have to work."""
         import argparse
 
         sub = argparse.ArgumentParser().add_subparsers().add_parser("figure")
@@ -1530,7 +1082,6 @@ class TestCli:
         assert args.draft == "draft.md" and args.json is True
 
     def test_the_recorded_command_carries_the_flags_used(self, tmp_path):
-        """A report read months later has to say how it was produced."""
         command = figure_layout._command(tmp_path / "d.md", True, True)
 
         assert "--json" in command and "--write" in command
@@ -1565,9 +1116,6 @@ class TestMarkdownReport:
         assert [f["kind"] for f in findings] == ["does-not-compile"]
 
     def test_the_emptiness_proportion_is_never_a_finding(self, tmp_path):
-        """R3, asserted rather than trusted: the proportion rides in the
-        per-figure section, never in `findings`, because a number in a
-        findings array is a number something will try to close."""
         results = [
             figure_layout.FigureResult(
                 path=tmp_path / "figures" / "flow.tex",
@@ -1604,9 +1152,6 @@ class TestMarkdownReport:
         assert kinds == {"node-overlap", "content-protrusion"}
 
     def test_overlap_and_protrusion_are_named_in_the_printed_text(self, tmp_path):
-        """The text report is what a reviewer actually reads at the
-        terminal, so both binary geometry findings have to reach it and
-        not only the JSON."""
         results = [
             figure_layout.FigureResult(
                 path=tmp_path / "figures" / "flow.tex",
@@ -1625,17 +1170,6 @@ class TestMarkdownReport:
         assert "protrudes" in text
 
     def test_a_figure_with_nothing_to_say_gets_no_empty_heading(self, tmp_path):
-        """Found running this over real drafts: printing a bare `path:`
-        line for a figure with no findings was most of the output while
-        carrying none of the information.
-
-        The case that motivated it -- a figure drawn from `\\draw` paths
-        alone -- is **no longer one of these**: #405 made "nothing was
-        measurable" a finding in its own right, so such a figure now
-        earns its heading by having something to say under it. What is
-        left here is a result carrying no geometry and no reason for its
-        absence, which is what a bare `FigureResult` is.
-        """
         results = [figure_layout.FigureResult(path=tmp_path / "figures" / "quiet.tex")]
 
         text = figure_layout.format_report(tmp_path / "s.md", results)
@@ -1644,9 +1178,6 @@ class TestMarkdownReport:
         assert "No layout findings" in text
 
     def test_the_markdown_still_names_a_figure_it_had_nothing_to_say_about(self, tmp_path):
-        """The opposite rule to the text report's, deliberately: a filed
-        report is read as a record of what was checked, so a figure
-        silently absent reads as one never looked at."""
         results = [figure_layout.FigureResult(path=tmp_path / "figures" / "quiet.tex")]
 
         body = figure_layout.render_markdown(tmp_path / "s.md", results, "cmd")
@@ -1655,7 +1186,6 @@ class TestMarkdownReport:
         assert "Nothing to report" in body
 
     def test_a_clean_figure_says_it_is_not_a_verdict(self, tmp_path):
-        """An aid reporting nothing must not read as a pass."""
         results = [
             figure_layout.FigureResult(
                 path=tmp_path / "figures" / "flow.tex",
@@ -1695,8 +1225,6 @@ class TestGeometryEdgeCases:
         assert figure_layout.protrudes({figure_layout.BBOX_NAME: (0.0, 0.0, 10.0, 10.0)}) is False
 
     def test_geometry_without_a_bounding_box_is_not_judged(self):
-        """Every check that needs the picture's extent returns a
-        no-answer rather than guessing one."""
         boxes = {"a": (0.0, 0.0, 10.0, 10.0)}
 
         assert figure_layout.protrudes(boxes) is False
@@ -1721,17 +1249,10 @@ class TestCompileErrorDetail:
         assert figure_layout._probe._compile_error_detail(log) == "! Undefined control sequence."
 
     def test_a_failure_with_no_error_line_still_says_something(self):
-        """pdflatex can exit non-zero without a `!` line -- an empty
-        detail would make the finding unreadable."""
         assert "without reporting" in figure_layout._probe._compile_error_detail("")
 
 
 class TestBoxedScaffold:
-    """`figure check`'s probe (#1053): the figure's own libraries loaded
-    in the preamble, and the figure set in a box so the width of the
-    `\\input` itself can be compared with the picture's. The default
-    call, which `review figure` makes, carries neither."""
-
     SOURCE = (
         "\\usetikzlibrary{positioning,fit}%\n\\begin{tikzpicture}\\node (a) {A};\\end{tikzpicture}"
     )
@@ -1750,14 +1271,11 @@ class TestBoxedScaffold:
         assert "\\usepackage{tikz}\n\\usetikzlibrary{positioning,fit}\n" in preamble
 
     def test_a_boxed_scaffold_of_a_figure_loading_nothing_loads_nothing(self):
-        """`\\usetikzlibrary{}` is fatal, so an empty list emits no line."""
         scaffold = figure_layout.scaffold("\\node (a) {A};", ["a"], boxed=True)
 
         assert "\\usetikzlibrary" not in scaffold
 
     def test_a_boxed_scaffold_reports_the_box_width_and_ships_the_box(self):
-        """Shipped, because LuaTeX refuses a run that wrote PDF objects
-        (the `shadows.blur` fadings) and shipped no page (#1037)."""
         scaffold = figure_layout.scaffold(self.SOURCE, ["a"], boxed=True)
 
         body = scaffold.split("\\begin{document}")[1]
@@ -1773,9 +1291,6 @@ class TestBoxedScaffold:
 
 
 class TestCheckFigure:
-    """One figure, checked as `check_draft` checks each of a draft's
-    figures: the body both `review figure` and `figure check` share."""
-
     def test_a_skipped_host_runs_the_static_checks_only(self, tmp_path):
         path = tmp_path / "fig.tex"
         path.write_text("\\node (a) {A};\n\\draw (a) -- (b);\n", encoding="utf-8")
@@ -1817,8 +1332,6 @@ class TestCheckFigure:
     @pytest.mark.slow
     @needs_tikz
     def test_a_line_end_outside_the_picture_widens_the_box(self, tmp_path):
-        """A line ending without `%` is a space in horizontal mode: what
-        `size-stray` exists to catch."""
         path = tmp_path / "fig.tex"
         path.write_text(
             "\\newcommand{\\cgteststray}{}\n"
@@ -1834,8 +1347,6 @@ class TestCheckFigure:
     @pytest.mark.slow
     @needs_tikz
     def test_a_line_end_after_the_picture_widens_the_box_too(self, tmp_path):
-        """The usual stray: `\\end{tikzpicture}` with no `%`. A box that
-        trims its own trailing space (`lrbox` does) would hide it."""
         path = tmp_path / "fig.tex"
         path.write_text("\\begin{tikzpicture}\\node (a) {A};\\end{tikzpicture}\n", encoding="utf-8")
 
@@ -1847,9 +1358,6 @@ class TestCheckFigure:
     @pytest.mark.slow
     @needs_tikz
     def test_a_matrix_compiles_inside_the_box(self, tmp_path):
-        """A `matrix` changes the catcode of `&`, which a macro argument
-        has already frozen, so the box must not be built with `\\sbox`.
-        The `map` scaffold is drawn as one."""
         path = tmp_path / "fig.tex"
         path.write_text(
             "\\usetikzlibrary{matrix}%\n"
@@ -1883,10 +1391,6 @@ class TestCheckFigure:
     @pytest.mark.slow
     @needs_tikz
     def test_a_loop_named_node_compiles_and_is_measured_from_what_tikz_drew(self, tmp_path):
-        """#1072, end to end: the sample book's `run-modes.tex` names its
-        nodes `(s\\i)` in a `\\foreach` and compiles on its own, yet was
-        reported as `does-not-compile`. `figure check`'s hook then says
-        what the name expanded to, and those nodes are measured (#1112)."""
         path = tmp_path / "fig.tex"
         path.write_text(self.LOOP, encoding="utf-8")
 
@@ -1899,8 +1403,6 @@ class TestCheckFigure:
     @pytest.mark.slow
     @needs_tikz
     def test_without_the_hook_a_loop_named_node_is_reported_unmeasured(self, tmp_path):
-        """`review figure` compiles without the drawing hook, so nothing
-        says what `s\\i` became: it stays declared and unmeasured."""
         path = tmp_path / "fig.tex"
         path.write_text(self.LOOP, encoding="utf-8")
 
@@ -1911,9 +1413,6 @@ class TestCheckFigure:
 
 
 class TestLeavesAndEdgeGap:
-    """#1057's two geometry helpers: the nodes that are not zones, which
-    slack counts as filled, and how far apart two joined nodes are."""
-
     def test_a_zone_is_not_a_leaf_and_its_children_are(self):
         boxes = {
             "zone": (0.0, 0.0, 100.0, 50.0),
@@ -1955,9 +1454,6 @@ class TestLeavesAndEdgeGap:
 
 
 class TestAmbiguousEdges:
-    """#1057: the paths whose consecutive tokens are not the two ends of
-    one line, which `figure check`'s squash lists instead of measuring."""
-
     def test_an_edge_chain_is_ambiguous(self):
         source = "\\draw (hub) edge (s1) edge (s2);\n"
 

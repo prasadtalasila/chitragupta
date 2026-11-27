@@ -1,36 +1,3 @@
-""".claude/hooks/citation_gate_hook.py: the PostToolUse hook that
-mechanically enforces AGENTS.md's citation gate on every Write/Edit under
-content/drafts/ (PR #5). This has zero repo-tracked tests of its own --
-its three behavioral fixes (path resolution against the hook's own fixed
-location rather than cwd, is_relative_to containment instead of substring
-matching, and a malformed-stdin guard) were previously only verified with
-ad-hoc pipe-tests during that PR's review cycle.
-
-The hook derives repo_root from its own on-disk location
-(Path(__file__).resolve().parent.parent.parent), not from
-config.CONTENT_DIR. Any test that needs a real gated file therefore gives
-the hook a repo root of its own: `hook_repo` copies the hook script into
-a tmp_path `.claude/hooks/`, so its self-location lands there, and the
-draft goes under that same root's `content/drafts/`. A copy rather than a
-symlink, because `Path(__file__).resolve()` would follow a symlink
-straight back to the real checkout.
-
-That also keeps `content/drafts/` and the ledger in one isolated tree,
-which matters since 3.17.0: `citation_gate` refuses a draft resolving
-outside `CONTENT_DIR`, so a draft in the real repo checked against a
-tmp_path ledger would be rejected for its location rather than judged on
-its citekeys. Pointing both at the same tmp_path is what keeps the two
-consistent -- as they always are in production, where both derive from
-the same repo root.
-
-The hook's own subprocess.run call for `python -m chitragupta.draft gate`
-passes `env=safe_path.child_env(...)`, which starts from the hook's own
-environment, so the gate inherits whatever env this test process hands to
-the hook subprocess -- used here for CONTENT_DIR, and for a PYTHONPATH
-that lets the child import this checkout's real `src` while running from
-the temp root.
-"""
-
 import json
 import os
 import re
@@ -74,24 +41,11 @@ def payload(file_path) -> str:
 
 
 class HookRepo:
-    """A throwaway repo root the hook can call its own.
-
-    `root/.claude/hooks/citation_gate_hook.py` is a real copy of the hook,
-    so the hook's own `Path(__file__).resolve().parent.parent.parent`
-    lands on `root` and it gates `root/content/drafts/`. `src` is not
-    copied -- the child process reaches this checkout's real code through
-    PYTHONPATH, so these tests exercise the actual gate rather than a
-    stale copy of it.
-    """
-
     def __init__(self, root: Path, cfg):
         self.root = root
         self.hook = root / ".claude" / "hooks" / "citation_gate_hook.py"
         self.hook.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(HOOK_PATH, self.hook)
-        # The helper too, or the copy cannot `import draft_target`: a hook
-        # is run by absolute path, so Python puts *its* directory first on
-        # sys.path, and that directory is this temporary one.
         for helper in ("draft_target.py", "safe_path.py", "patch_paths.py"):
             shutil.copy2(HOOK_PATH.parent / helper, self.hook.parent / helper)
         self.drafts = root / "content" / "drafts"
@@ -116,17 +70,6 @@ class HookRepo:
 
 
 def plant_package(root: Path, sentinel: Path, *, checkout: bool = False) -> None:
-    """A `chitragupta/` at `root` whose import leaves `sentinel` behind (#822).
-
-    Two shapes. The default is the attack: a stray package in a scaffolded
-    project, found only because a child's cwd is first on `sys.path`, while
-    the real package is reached through PYTHONPATH -- the stand-in for
-    site-packages. `checkout=True` is a git checkout instead: the package
-    extends its own `__path__` to this checkout's real `chitragupta/`, so
-    every submodule still works, and the caller points PYTHONPATH at
-    `root` so the package resolves *inside* it, as an editable install of
-    a checkout does.
-    """
     pkg = root / "chitragupta"
     pkg.mkdir(exist_ok=True)
     body = f"open({str(sentinel)!r}, 'w').close()\n"
@@ -137,16 +80,10 @@ def plant_package(root: Path, sentinel: Path, *, checkout: bool = False) -> None
 
 @pytest.fixture
 def hook_repo(isolated_config, tmp_path):
-    # tmp_path itself, so the hook's content/drafts/ and isolated_config's
-    # CONTENT_DIR are the same tree -- which is what the gate now requires.
     return HookRepo(tmp_path, isolated_config)
 
 
 class TestMalformedStdinGuard:
-    """Regression coverage for the fix that used to let a malformed
-    PostToolUse payload crash the hook (json.JSONDecodeError/ValueError
-    propagating uncaught) instead of failing open."""
-
     def test_invalid_json_does_not_crash(self):
         result = run_hook("not valid json {{{")
         assert result.returncode == 0
@@ -159,18 +96,11 @@ class TestMalformedStdinGuard:
         assert result.stdout.strip() == ""
 
     def test_json_that_is_not_an_object_does_not_crash(self):
-        # Regression: json.load succeeds on valid-but-wrong-shaped JSON
-        # (a bare array here), which the original guard's except clause
-        # (JSONDecodeError/ValueError only) never caught -- the next line
-        # then called .get() on a list and crashed with an uncaught
-        # AttributeError instead of failing open.
         result = run_hook("[1, 2, 3]")
         assert result.returncode == 0
         assert result.stdout.strip() == ""
 
     def test_tool_input_that_is_not_an_object_does_not_crash(self):
-        # Same class of bug as above, one level deeper: "tool_input"
-        # present but not itself an object.
         result = run_hook(json.dumps({"tool_input": "not-an-object"}))
         assert result.returncode == 0
         assert result.stdout.strip() == ""
@@ -188,8 +118,6 @@ class TestIgnoredPayloads:
         assert result.stdout.strip() == ""
 
     def test_path_outside_drafts_dir_is_ignored(self):
-        # A real .md file, real absolute path -- outside content/drafts/
-        # is the only thing that should exempt it.
         result = run_hook(payload(REPO_ROOT / "AGENTS.md"))
         assert result.returncode == 0
         assert result.stdout.strip() == ""
@@ -203,12 +131,6 @@ class TestIgnoredPayloads:
 
 
 class TestContainmentCheck:
-    """Regression coverage for the is_relative_to fix -- containment must
-    be checked against resolved path parts, not a "/content/drafts/"
-    substring match (which a payload carrying a relative path would
-    silently skip, and which a string like
-    "/tmp/content/drafts/../../evil.md" could spoof)."""
-
     def test_dotdot_traversal_out_of_drafts_dir_is_rejected(self):
         traversal = REPO_ROOT / "content" / "drafts" / ".." / ".." / "AGENTS.md"
         result = run_hook(payload(traversal))
@@ -216,11 +138,6 @@ class TestContainmentCheck:
         assert result.stdout.strip() == ""
 
     def test_lookalike_path_elsewhere_on_disk_is_rejected(self, tmp_path):
-        # A path that contains the literal substring "content/drafts/"
-        # but sits under a completely different directory tree -- a naive
-        # string check (e.g. "content/drafts/" in str(path)) would wrongly
-        # treat this as a gated draft; is_relative_to against the
-        # *resolved* repo_root/content/drafts/ must reject it.
         decoy_file = tmp_path / "not_this_repo" / "content" / "drafts" / "evil.md"
         decoy_file.parent.mkdir(parents=True)
         decoy_file.write_text("[@fabricated_key_not_in_ledger]\n")
@@ -231,17 +148,10 @@ class TestContainmentCheck:
 
 
 class TestPathResolution:
-    """Regression coverage for resolving repo_root from the hook's own
-    fixed on-disk location rather than the target path or cwd -- a
-    relative "content/drafts/<slug>.md" (no leading slash) must still be
-    recognized and gated, invoked from any working directory."""
-
     def test_relative_path_is_resolved_and_gated_regardless_of_cwd(self, hook_repo, tmp_path):
         path = hook_repo.draft()
         path.write_text("No citations in this draft at all.\n")
         rel_path = path.relative_to(hook_repo.root)
-        # cwd is deliberately somewhere else: the hook must resolve a
-        # relative payload against its own location, not against cwd.
         elsewhere = tmp_path / "elsewhere-cwd"
         elsewhere.mkdir()
         result = hook_repo.run(rel_path, cwd=elsewhere)
@@ -250,12 +160,6 @@ class TestPathResolution:
 
 
 class TestCodexPatchPayloads:
-    """A Codex `apply_patch` payload through the real hook process (#812).
-
-    The payload is the fixture's shape -- patch text in
-    `tool_input.command`, paths relative to `cwd` -- pointed at two drafts
-    in this throwaway root, one of which cites a key no ledger holds."""
-
     def test_a_bad_key_in_any_patched_draft_blocks(self, hook_repo):
         clean, bad = hook_repo.draft(), hook_repo.draft()
         clean.write_text("No citations in this one.\n")
@@ -279,11 +183,6 @@ class TestCodexPatchPayloads:
 
 
 class TestGateEnforcement:
-    """The actual point of the hook: a citation_gate FAIL must come back
-    as a blocking decision with a reason naming the bad citekey; a PASS
-    must produce no output at all (PostToolUse only acts on the
-    "decision": "block" shape)."""
-
     def test_fabricated_citation_blocks_with_reason(self, hook_repo):
         path = hook_repo.draft()
         path.write_text("This claim cites [@totally_fabricated_key_2026].\n")
@@ -296,8 +195,6 @@ class TestGateEnforcement:
         assert "Citation gate FAILED" in response["reason"]
 
     def test_an_oversize_draft_blocks_as_too_large_to_gate(self, hook_repo):
-        """#824, end to end: a draft past `MAX_GATED_LINES` gets a named
-        block instead of a gate run the harness might kill silently."""
         path = hook_repo.draft()
         path.write_text("Plain prose with no citations at all.\n" * 100_001)
         result = hook_repo.run(path)
@@ -336,9 +233,6 @@ class TestGateEnforcement:
 
 
 class TestALedgerTheGateCannotRead:
-    """#1066: exit 3 still blocks -- nothing was checked, so nothing
-    passed -- but it is not reported as a citekey to fix."""
-
     def test_it_blocks_without_blaming_a_citekey(self, hook_repo, ledger_con, isolated_config):
         ledger_con.close()
         journal = leave_hot_journal(isolated_config.LEDGER_PATH)
@@ -356,37 +250,17 @@ class TestALedgerTheGateCannotRead:
         assert "Fix the offending citekey" not in reason
 
     def test_its_exit_code_is_the_package_s(self):
-        # The hook runs on bare python and does not import chitragupta,
-        # so it spells the code itself; this keeps the two from parting.
         assert re.search(r"^GATE_COULD_NOT_RUN = (\d+)$", HOOK_PATH.read_text(), re.M).group(
             1
         ) == str(ledger.EXIT_UNREADABLE)
 
 
 class TestEnvironmentFaultDistinctFromCitekeyFault:
-    """#563: a non-zero gate exit means two different things, and the hook
-    used to report only one of them. `hook_repo`'s interpreter always has
-    `chitragupta` importable (PYTHONPATH points at this checkout), so this
-    class removes that -- `system_python` plus an env with no PYTHONPATH is
-    an interpreter that cannot import `chitragupta` at all, exactly like an
-    init-ed project's harness started from a shell that never activated the
-    venv. That must be reported as an environment fault, not blamed on the
-    draft's citekeys, and must still block (fail closed)."""
-
     def test_interpreter_that_cannot_import_chitragupta_is_named_as_the_fault(
         self, hook_repo, system_python
     ):
         env = {**hook_repo.env}
         del env["PYTHONPATH"]
-        # `system_python` is only guaranteed to lack bibtexparser (see its
-        # own docstring in conftest.py) -- a host with chitragupta-cli
-        # installed into the system interpreter would make this probe
-        # succeed, and the test below would then fail for the wrong
-        # reason (a real citekey check, not an environment fault). cwd is
-        # hook_repo.root, not this checkout: `-c` puts an empty-string cwd
-        # entry on sys.path, and this checkout's own root would find
-        # chitragupta/ that way regardless of PYTHONPATH -- exactly the
-        # confound this probe exists to rule out.
         probe = subprocess.run(
             [system_python, "-c", "import chitragupta"],
             env=env,
@@ -411,15 +285,6 @@ class TestEnvironmentFaultDistinctFromCitekeyFault:
 
 
 class TestAPlantedPackageIsNeverImported:
-    """#822: in a scaffolded project the installed package is the one a
-    hook runs, whatever the project directory holds; in a checkout, the
-    checkout's own package still is.
-
-    Both launches count, the gate call and the environment probe that
-    follows a failing one -- the second is covered by the failing draft
-    in each test, since the probe only runs after the gate exits non-zero.
-    """
-
     def test_a_scaffolded_project_ignores_a_planted_package(self, hook_repo, tmp_path):
         sentinel = tmp_path / "planted-ran"
         plant_package(hook_repo.root, sentinel)

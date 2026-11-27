@@ -1,18 +1,3 @@
-"""chitragupta/review/uncited_prose.py: which sentences of a draft carry
-no citation at all.
-
-The fifth review aid, and the one whose whole difficulty is in what it
-declines to report. `citation_coverage` answers the corpus-side question
--- which surfaced candidates got cited -- and nothing before this asked
-the prose-side one. Measured on the four real drafts, the naive reading
-flags four fifths of a survey, so these tests hold the aid to its
-exclusions as tightly as to its findings: a report nobody opens twice
-has failed, whatever it got right.
-
-Advisory like the other five -- exit 0 whatever it finds, no lock, and
-no draft blocked by any of it.
-"""
-
 import json
 from pathlib import Path
 
@@ -29,42 +14,21 @@ def report_for(draft: Path, genre: str | None = None) -> uncited_prose.Report:
 
 
 def found_text(draft: Path, genre: str | None = None) -> list[str]:
-    """The sentence of every finding this draft raises."""
     return [f["sentence"] for f in uncited_prose.findings(report_for(draft, genre))]
 
 
 class TestEachSentenceCarriesItsOwnLine:
     def test_a_five_sentence_block_reports_five_distinct_lines(self):
-        """Every sentence in a block used to carry the block's first
-        line, so a finding could point up to five lines above the
-        sentence quoted beside it (#496). Mapped via `sentences.spans`
-        offsets, each sentence should report the line it actually sits
-        on, one sentence per physical line here."""
         text = "Alpha is true.\nBeta is true.\nGamma is true.\nDelta is true.\nEpsilon is true.\n"
         lines = [s.line for s in _claims.claim_sentences(text)]
         assert lines == [1, 2, 3, 4, 5]
 
     def test_a_wrapped_list_item_falls_back_to_the_blocks_first_line(self):
-        """A hard-wrapped list item is one block across several physical
-        lines (`_blocks.spans`'s own docstring), but `text_of` strips its
-        marker from the *front* of the already-joined text, shifting
-        every line after the first by the marker's length. Reproducing
-        that shift in `line_of_offset` was rejected as unmeasured
-        (#496 review discussion), so every sentence in such a block
-        still reports the block's first line -- a documented coarsening,
-        not a silent wrong answer."""
         text = "- Alpha claims one thing. Beta claims\n  another thing entirely.\n"
         lines = [s.line for s in _claims.claim_sentences(text)]
         assert lines == [1, 1]
 
     def test_a_table_row_or_tex_heading_first_line_is_never_plain(self):
-        """`_blocks.spans` never actually hands `line_of_offset` a
-        multi-line block starting with a table row or a TeX heading --
-        `spans` gives a table row its own one-line block, and a heading
-        block is excluded before `claim_sentences` ever calls this. Both
-        branches of `_is_plain_paragraph` are still pinned directly here
-        so the classification itself, not just what reaches it today, is
-        correct."""
         assert _blocks._is_plain_paragraph(["| a | b |", "| c | d |"]) is False
         assert _blocks._is_plain_paragraph(["\\section{Title}", "more"]) is False
 
@@ -75,9 +39,6 @@ class TestEachSentenceCarriesItsOwnLine:
 
 class TestRegistration:
     def test_the_aid_is_in_both_tables(self):
-        """R10's machine-checked half -- review.AIDS owns the report
-        suffix, review._registry.AIDS owns the subcommand, and the entry point
-        raises at import if they disagree."""
         assert "uncited" in review.AIDS
         assert "uncited" in review_main.AIDS
 
@@ -98,10 +59,6 @@ class TestWhatIsAndIsNotAFinding:
         assert found_text(draft) == ["Most systems sold as digital twins are dashboards."]
 
     def test_only_the_uncited_sentence_of_a_citing_paragraph_is_reported(self, isolated_config):
-        """The failure this aid exists for: a paragraph with one citation
-        at the end and an unrelated assertion before it. Suppressing the
-        whole paragraph because it cites *something* would be blind to
-        exactly the case worth catching."""
         draft = a_draft(
             "The pump runs at 3 a.m. until the pot overflows.\n"
             "Coupling is what separates a twin from a shadow [@Kritzinger2018].\n"
@@ -109,8 +66,6 @@ class TestWhatIsAndIsNotAFinding:
         assert found_text(draft) == ["The pump runs at 3 a.m. until the pot overflows."]
 
     def test_a_latex_citation_counts_as_a_citation(self, isolated_config):
-        """Every genre skill exports .tex beside the .md, so the aid must
-        read a draft in either markup."""
         draft = a_draft("Twins close the loop \\citep{Kritzinger2018}.\n", name="thesis.tex")
         assert found_text(draft) == []
 
@@ -125,9 +80,6 @@ class TestBlockCites:
         assert uncited_prose.findings(report_for(draft))[0]["block_cites"] is True
 
     def test_a_citation_split_across_a_line_break_still_cites(self):
-        """TeX allows a newline between `\\citep` and its `{key}`. A
-        per-line scan matches neither half; `claim_sentences` hands the
-        extractor whole blocks, so the pair is seen as one citation (#854)."""
         sentences = _claims.claim_sentences("Clocks drift \\citep\n{Frasheri2022}.\n")
         assert [(s.cites, s.block_cites) for s in sentences] == [(True, True)]
 
@@ -138,12 +90,7 @@ class TestBlockCites:
 
 
 class TestTheExclusions:
-    """Each one measured against the four real drafts before it was
-    written -- see plans/c1-uncited-prose-report.md."""
-
     def test_the_reference_list_is_excluded(self, isolated_config):
-        """40 of survey.md's 87 naive findings. A bibliography entry is
-        uncited prose by construction."""
         draft = a_draft(
             "A bare claim.\n\n"
             "## 7. References\n\n"
@@ -152,8 +99,6 @@ class TestTheExclusions:
         assert found_text(draft) == ["A bare claim."]
 
     def test_a_numbered_references_heading_still_matches(self, isolated_config):
-        """The real drafts write `## 7. References`, not `## References`,
-        so a pattern anchored straight after the hashes matches neither."""
         draft = a_draft("## 7. References\n\n[1] A paper.\n")
         assert found_text(draft) == []
 
@@ -166,8 +111,6 @@ class TestTheExclusions:
         assert found_text(draft) == []
 
     def test_headings_are_excluded(self, isolated_config):
-        """A numbered heading also splits into two sentences -- `1.` and
-        the title -- so leaving it in costs two findings, not one."""
         draft = a_draft("# Digital twins\n\n## 1. The connection is the twin\n")
         assert found_text(draft) == []
 
@@ -188,10 +131,6 @@ class TestTheExclusions:
         assert found_text(draft) == []
 
     def test_a_pandoc_table_caption_is_excluded(self, isolated_config):
-        """WRITING-STANDARDS.md §13's caption line. Without this the aid
-        reports one false finding per table in every draft written to that
-        section -- on the aid whose whole design problem is alarm
-        fatigue."""
         draft = a_draft(
             "| Starting point | Core idea |\n"
             "|---|---|\n"
@@ -202,17 +141,10 @@ class TestTheExclusions:
         assert found_text(draft) == ["Pattern catalog -- Patterns to instantiate"]
 
     def test_an_inline_table_reference_does_not_reach_the_report(self, isolated_config):
-        """§13's reference marker sits *inside* a sentence, which the
-        block-level COMMENT exclusion cannot see. Left in, a finding
-        quotes pipeline markup back at the reader."""
         draft = a_draft("The platforms in <!-- tableref: start-here --> differ.\n")
         assert found_text(draft) == ["The platforms in Table differ."]
 
     def test_a_table_header_row_is_excluded_and_the_body_rows_are_not(self, isolated_config):
-        """The column names are scaffolding. The rows are claims -- and
-        survey.md's own comparison table attributes each row with a
-        citekey in backticks, which the gate cannot see and neither can
-        this aid, so reporting them is correct."""
         draft = a_draft(
             "| Starting point | Core idea |\n"
             "|---|---|\n"
@@ -221,10 +153,6 @@ class TestTheExclusions:
         assert found_text(draft) == ["Pattern catalog -- Patterns to instantiate"]
 
     def test_a_latex_table_header_row_is_excluded_and_the_body_rows_are_not(self, isolated_config):
-        """The two markups mark the header from opposite sides: markdown's
-        separator follows it, booktabs' `\\toprule` precedes it. Missing
-        this fired in production -- `thesis-chapter` emits `.tex` and is
-        one of the three genres where uncited prose is exceptional."""
         draft = a_draft(
             "\\begin{tabular}{lll}\n"
             "\\toprule\n"
@@ -238,9 +166,6 @@ class TestTheExclusions:
         assert found_text(draft) == ["Patterns -- Instantiate them -- Structure only"]
 
     def test_an_hline_ruled_header_row_is_a_known_gap(self, isolated_config):
-        """Pinned rather than fixed. `\\hline` separates every row from
-        every other, so nothing in it distinguishes the header -- and the
-        genre skills emit booktabs. Stated in `_claims.py` as a limit."""
         draft = a_draft(
             "\\begin{tabular}{ll}\n"
             "\\hline\n"
@@ -253,8 +178,6 @@ class TestTheExclusions:
         assert "Approach -- Core idea" in found_text(draft)
 
     def test_a_comment_only_block_is_excluded(self, isolated_config):
-        """Including WRITING-STANDARDS.md §11's own single-source marker,
-        which must not be read as an uncited claim about the world."""
         draft = a_draft(
             "<!-- single-source: Foo2019 is the only paper covering X -->\n\n% A LaTeX comment.\n"
         )
@@ -269,38 +192,24 @@ class TestTheExclusions:
         ],
     )
     def test_a_marker_touching_a_paragraph_does_not_hide_it(self, isolated_config, marker):
-        """#1172: written directly above or below its paragraph, the
-        marker was the block's first line and took the paragraph out
-        with it."""
         above = a_draft(f"{marker}\nOne reading path.\n")
         below = a_draft(f"One reading path.\n{marker}\n", name="below.md")
         assert found_text(above) == ["One reading path."]
         assert found_text(below) == ["One reading path."]
 
     def test_a_figure_caption_is_excluded(self, isolated_config):
-        """Issue 411's caption line has no self-identifying prefix, unlike
-        a table's `:`-led one -- so this needs the block-membership check
-        `_excluded` already has for a booktabs `\\toprule`, not the
-        first-line prefix check a table's caption gets."""
         draft = a_draft("<!-- figure: figures/fig1 -->\nOne reading path.\n")
         assert found_text(draft) == []
 
     def test_an_inline_figure_reference_does_not_reach_the_report(self, isolated_config):
-        """Mirrors `test_an_inline_table_reference_does_not_reach_the_report`:
-        the marker sits *inside* a sentence, so it must be replaced by the
-        word it stands for rather than left as markup."""
         draft = a_draft("The flow in <!-- figureref: fig1 --> differs.\n")
         assert found_text(draft) == ["The flow in Figure differs."]
 
     def test_an_equation_caption_label_is_excluded(self, isolated_config):
-        """Issue 457's numbered label, `**Equation N:**` -- without this
-        alternative every numbered equation in a draft reads as an uncited
-        claim, one false finding per equation."""
         draft = a_draft("Equation 1: E = mc^2\n")
         assert found_text(draft) == []
 
     def test_an_inline_equation_reference_does_not_reach_the_report(self, isolated_config):
-        """Mirrors the table/figure inline-reference tests."""
         draft = a_draft("Substituting <!-- equationref: energy --> gives the result.\n")
         assert found_text(draft) == ["Substituting Equation gives the result."]
 
@@ -309,23 +218,14 @@ class TestTheExclusions:
         assert found_text(draft) == []
 
     def test_list_scaffolding_flattens_to_nothing_and_is_skipped(self, isolated_config):
-        """A bare `\\item` or an environment opener carries no claim once
-        its marker is stripped."""
         draft = a_draft("\\begin{itemize}\n\\item\n\\end{itemize}\n", name="thesis.tex")
         assert found_text(draft) == []
 
     def test_a_blockquote_is_reported_without_its_markers(self, isolated_config):
-        """A blockquote repeats its `>` on every line, unlike a list item
-        whose continuation lines carry no marker -- so stripping only the
-        first left the rest embedded mid-sentence, and deep-research.md's
-        method banner read back as "Method adapted from > hadufer/...".
-        The quote is still a finding: quoted material needs attribution.
-        """
         draft = a_draft("> Method adapted from\n> hadufer/claude-storm (MIT).\n")
         assert found_text(draft) == ["Method adapted from hadufer/claude-storm (MIT)."]
 
     def test_a_list_item_with_prose_is_still_reported(self, isolated_config):
-        """The marker is scaffolding; what follows it is a claim."""
         draft = a_draft("- Most twins never close the loop.\n")
         assert found_text(draft) == ["Most twins never close the loop."]
 
@@ -338,23 +238,14 @@ class TestTheGenreDecidesWhetherUncitedProseIsAFinding:
 
     @pytest.mark.parametrize("genre", ["textbook-chapter", "tutorial"])
     def test_uncited_prose_is_ordinary_in_an_original_prose_genre(self, isolated_config, genre):
-        """WRITING-STANDARDS §11: a tutorial's body carries no citations
-        by design, and a textbook chapter is mostly worked examples.
-        Measured, book-chapter.md still yields 81 findings after every
-        exclusion above, and not one of them is actionable."""
         draft = a_draft("A bare claim.\n", genre=genre)
         assert found_text(draft) == []
 
     def test_the_counts_are_reported_whatever_the_genre(self, isolated_config):
-        """A textbook chapter whose background section cites nothing is
-        still worth a human's eye; what changes is whether a machine is
-        handed a finding about it."""
         draft = a_draft("A bare claim.\n", genre="tutorial")
         assert len(report_for(draft).uncited) == 1
 
     def test_an_unrecorded_genre_gets_the_strict_reading(self, isolated_config):
-        """Silence reads as clean, so the fallback reports and says the
-        genre was not recorded -- _units.FALLBACK_KIND's own reasoning."""
         draft = draft_at()
         draft.write_text("A bare claim.\n", encoding="utf-8")
         assert found_text(draft) == ["A bare claim."]
@@ -371,18 +262,12 @@ class TestTheGenreDecidesWhetherUncitedProseIsAFinding:
         assert (report.standing, report.genre_source) == ("ordinary", "--genre")
 
     def test_every_genre_has_a_standing(self):
-        """Pinned against dossier.GENRES so a sixth genre cannot arrive
-        as a silent fallback -- the same guard tests/test_review_units.py
-        puts on UNITS."""
         assert set(_units.UNCITED_PROSE) == set(dossier.GENRES)
 
     def test_every_standing_is_one_of_the_two(self):
         assert set(_units.UNCITED_PROSE.values()) <= set(_units.STANDINGS)
 
     def test_the_report_has_a_sentence_for_every_standing(self):
-        """The renderer keys a dict on the standing, so a third one would
-        reach a reader as a KeyError rather than as a missing paragraph.
-        Same guard as the genre pin above, one layer out."""
         assert set(_uncited_render._STANDING) == set(_units.STANDINGS)
 
 
@@ -392,17 +277,12 @@ class TestFindingIdentity:
         assert found_ids(draft) == found_ids(draft)
 
     def test_it_survives_an_unrelated_edit(self, isolated_config):
-        """R2: position-free, so "this finding is gone" stays decidable
-        after a paragraph is inserted above it."""
         draft = a_draft("A bare claim.\n")
         before = found_ids(draft)
         draft.write_text("Something else entirely [@A].\n\nA bare claim.\n", encoding="utf-8")
         assert found_ids(draft) == before
 
     def test_it_survives_a_citation_arriving_elsewhere_in_the_block(self, isolated_config):
-        """The finding is still true -- this sentence still carries no
-        citation -- so it is not renamed into a new one. Only
-        `block_cites` moves."""
         draft = a_draft("A bare claim.\n")
         before = found_ids(draft)
         draft.write_text("A bare claim.\nIts neighbour [@A].\n", encoding="utf-8")
@@ -430,8 +310,6 @@ class TestTheReportIsAnArtefactThatDiffs:
         ) == _uncited_render.render_markdown(report, "cmd", found)
 
     def test_the_markdown_carries_no_date(self, isolated_config):
-        """review/__init__.py's rule: a wall-clock line defeats the diff
-        the report exists to be read through."""
         draft = a_draft("A bare claim.\n")
         report = report_for(draft)
         body = _uncited_render.render_markdown(report, "cmd", [])
@@ -443,9 +321,6 @@ class TestTheReportIsAnArtefactThatDiffs:
         assert review.BANNER in body
 
     def test_it_says_which_genre_and_standing_it_measured_under(self, isolated_config):
-        """A textbook chapter reporting no findings has not passed a
-        check -- none was applied -- and the report must say so on its
-        face, the way synthesis names its unit."""
         draft = a_draft("A bare claim.\n", genre="tutorial")
         body = _uncited_render.render_markdown(report_for(draft), "cmd", [])
         assert "tutorial" in body
@@ -458,9 +333,6 @@ class TestTheReportIsAnArtefactThatDiffs:
         assert "not recorded" in body
 
     def test_the_findings_are_listed_bare_blocks_first(self, isolated_config):
-        """Volume control: the sentences resting on nothing at all are
-        what a reviewer should read before the ones their paragraph
-        frames."""
         draft = a_draft("A framed claim.\nIts evidence [@A].\n\nA bare claim.\n")
         assert found_text(draft) == ["A bare claim.", "A framed claim."]
 
@@ -490,9 +362,6 @@ class TestTheCommandLine:
     def test_the_text_form_says_why_an_original_prose_genre_raised_nothing(
         self, isolated_config, capsys
     ):
-        """stdout is where most of these reports are read, so the
-        sentence that stops a tutorial's empty report reading as a pass
-        has to be there too, not only in the Markdown."""
         draft = a_draft("A bare claim.\n", genre="tutorial")
         uncited_prose.main([str(draft)])
         out = capsys.readouterr().out
@@ -520,8 +389,6 @@ class TestTheCommandLine:
         assert "2026" not in out
 
     def test_the_recorded_command_carries_every_flag(self, isolated_config, capsys):
-        """A count of uncited sentences means something different when a
-        --genre override chose the standing, so the envelope records it."""
         draft = a_draft("A bare claim.\n")
         uncited_prose.main([str(draft), "--genre", "tutorial", "--json"])
         command = json.loads(capsys.readouterr().out)["command"]
@@ -555,10 +422,6 @@ class TestTheCommandLine:
 
 class TestClaimBlocks:
     def test_yields_the_blocks_claim_sentences_is_built_from(self):
-        """`claim_blocks` is the per-block half of `claim_sentences`:
-        headings and the reference list are out, prose paragraphs are in,
-        and the raw lines are the draft's own so a caller can map an
-        offset back to a line."""
         text = (
             "# Title\n\nFirst para one. First para two.\n\n"
             "## Second\n\nSecond para [@smith_example_2024].\n\n"

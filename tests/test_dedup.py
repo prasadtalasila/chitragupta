@@ -1,7 +1,3 @@
-"""chitragupta/dedup.py: near-duplicate citekey detection by shared DOI or
-near-identical title. Advisory only -- see module docstring for why a
-shared title isn't treated as certain proof of duplication."""
-
 from chitragupta import dedup
 
 from tests.conftest import make_reference
@@ -89,10 +85,6 @@ class TestFindDuplicates:
         assert dedup.find_duplicates([]) == []
 
     def test_entries_missing_a_title_are_not_flagged_as_duplicates(self):
-        # bib_reader defaults a missing title field to the literal string
-        # "Untitled"; without excluding that placeholder, every entry
-        # missing a title would fall into one bucket and be flagged as a
-        # duplicate of every other one.
         refs = [
             make_reference(citekey="a2024", title="Untitled"),
             make_reference(citekey="b2024", title="Untitled"),

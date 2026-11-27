@@ -1,10 +1,3 @@
-"""chitragupta/entailment.py: the one seam that reaches the optional
-NLI cross-encoder. sentence_transformers is mocked via sys.modules,
-the same way tests/test_overlap_embed.py does it for the embedding
-stack -- imported lazily inside functions, so patching sys.modules
-before the call shadows the real package without needing it
-uninstalled."""
-
 import sys
 import types
 
@@ -26,21 +19,11 @@ def test_optional_stack_returns_cross_encoder_when_installed(monkeypatch):
 
 
 class FakeCrossEncoderModel:
-    """Stands in for the underlying transformers model CrossEncoder
-    wraps -- only `.config.id2label` is read off it."""
-
     def __init__(self, id2label):
         self.config = types.SimpleNamespace(id2label=id2label)
 
 
 class FakeCrossEncoder:
-    """Stands in for sentence_transformers.CrossEncoder itself.
-
-    `logits` is keyed by the exact (premise, hypothesis) pair handed
-    to `.predict()`, so a test can say "this pair scores these raw
-    logits" without a real model anywhere.
-    """
-
     def __init__(self, logits, id2label):
         self.logits = logits
         self.model = FakeCrossEncoderModel(id2label)
@@ -52,11 +35,6 @@ class FakeCrossEncoder:
 
 
 def test_score_picks_the_entailment_column_by_label_not_position():
-    """The label order is a model property, not a convention this
-    module may assume -- entailment sits at index 1 here and would
-    break silently if the code hard-coded index 0. Same raw logits as
-    the contradiction test below; only the label mapping differs, and
-    that alone must flip which score comes out."""
     fake = FakeCrossEncoder(
         logits={("premise a", "claim a"): [-10.0, 10.0, -10.0]},
         id2label={0: "contradiction", 1: "entailment", 2: "neutral"},
@@ -93,10 +71,6 @@ def test_score_handles_several_pairs_in_one_call():
 
 @pytest.mark.parametrize("spelling", ["ENTAILMENT", "Entailment", "entailment"])
 def test_score_matches_the_entailment_label_whatever_its_case(spelling):
-    """m-67: the lookup was case-sensitive against the one spelling
-    `cross-encoder/nli-deberta-v3-small` happens to use, and
-    `ENTAILMENT`/`Entailment` are both common on HuggingFace NLI
-    checkpoints. Any of the three has to reach the same column."""
     fake = FakeCrossEncoder(
         logits={("premise", "claim"): [-10.0, 10.0, -10.0]},
         id2label={0: "CONTRADICTION", 1: spelling, 2: "NEUTRAL"},
@@ -106,19 +80,6 @@ def test_score_matches_the_entailment_label_whatever_its_case(spelling):
 
 
 def test_score_raises_a_named_error_when_no_label_is_an_entailment_label(monkeypatch):
-    """`LABEL_0`/`LABEL_1`/`LABEL_2` is the other common shape, and it
-    used to raise a bare `StopIteration` out of `next()` -- no message,
-    no model name, nothing pointing at the setting that caused it.
-    Deliberately still a refusal rather than a guess: which logit is
-    entailment is not recoverable from `LABEL_2`, and picking one would
-    decide whether a claim looks supported on a coin flip.
-
-    The configured id is monkeypatched to a distinctive sentinel rather
-    than read from `config`: an `in` assertion against whatever this
-    host's `config.toml` happens to hold is vacuously true if that value
-    is the empty string, which `config._get` returns unchanged, and a
-    test that passes on a substring nobody set is not testing anything.
-    """
     monkeypatch.setattr(config, "ENTAILMENT_MODEL", "some-org/not-an-nli-model")
     fake = FakeCrossEncoder(
         logits={("premise", "claim"): [-10.0, 10.0, -10.0]},
@@ -134,9 +95,6 @@ def test_score_raises_a_named_error_when_no_label_is_an_entailment_label(monkeyp
 
 
 def test_score_of_no_pairs_is_no_scores_and_touches_no_model():
-    """An empty batch must not even reach `.model` -- the property
-    would otherwise try to load the real model for zero work."""
-
     class ExplodingModel:
         @property
         def model(self):
@@ -147,10 +105,6 @@ def test_score_of_no_pairs_is_no_scores_and_touches_no_model():
 
 
 def test_model_property_lazily_constructs_a_cross_encoder(monkeypatch):
-    """No model handed to the constructor: first access to `.model`
-    must import sentence_transformers and build a CrossEncoder from
-    config.ENTAILMENT_MODEL, then cache it -- the same lazy-load shape
-    as chitragupta/overlap_chroma.py's Embedder.model."""
     built = []
 
     class RecordingCrossEncoder:
@@ -168,7 +122,6 @@ def test_model_property_lazily_constructs_a_cross_encoder(monkeypatch):
     assert model.model_name == config.ENTAILMENT_MODEL
     assert built == [config.ENTAILMENT_MODEL]
 
-    # Second access must not build a second one.
     assert entailer.model is model
     assert built == [config.ENTAILMENT_MODEL]
 

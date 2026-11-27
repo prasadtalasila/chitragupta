@@ -1,19 +1,3 @@
-"""Figure drawing is one skill the genre skills hand off to (#1027).
-
-Before #1027 each of the four figure-drawing genre skills carried the
-same ~70 lines of figure riders, in three harness copies each, and
-#1012 had to change one sentence in twelve files. Those riders now live
-once, in `figure-drawer`. This text scan keeps it that way. It pins
-that the shared skill carries every rider, that each genre skill keeps
-only the stub whose loss would be unsafe if a harness skipped the
-handoff, and that no rider drifts back into a genre skill.
-
-It exercises no behaviour: `tests/test_tikz_scaffolds.py`,
-`tests/test_figure_layout.py` and `tests/test_tikz_subcaptions.py` own
-that. `tests/test_skill_harness_copies.py` makes a check against
-`.claude/skills/` hold for the other two copies.
-"""
-
 import re
 from pathlib import Path
 
@@ -21,7 +5,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 DRAWER = "figure-drawer"
 
-# The riders that moved, by a phrase each one cannot be stated without.
 _RIDERS = (
     "Commit to a layout metaphor",
     "pre-flight defect list",
@@ -40,15 +23,12 @@ def _text(name: str) -> str:
 
 
 def _drawer_and_references() -> str:
-    """The drawer's `SKILL.md` and every reference it routes to (#1048)."""
     folder = SKILLS_DIR / DRAWER
     paths = [folder / "SKILL.md", *sorted((folder / "references").rglob("*.md"))]
     return " ".join(re.sub(r"\s+", " ", p.read_text(encoding="utf-8")) for p in paths)
 
 
 def test_the_drawer_carries_every_rider():
-    # #1048 moved the detail behind a rider into references/, so a rider
-    # may sit in either; the no-citekey rule stays in SKILL.md itself.
     text = _drawer_and_references()
     missing = [r for r in _RIDERS if r not in text]
     assert not missing, f"figure-drawer lost: {missing}"
@@ -56,15 +36,11 @@ def test_the_drawer_carries_every_rider():
 
 
 def test_the_drawer_knows_both_placement_shapes():
-    # Direct use has no genre skill loaded, so the drawer is the only
-    # thing telling it a .tex draft takes \input and a .md one the marker.
     text = _text(DRAWER)
     assert _MARKDOWN_SHAPE in text and _THESIS_SHAPE in text
 
 
 def test_the_drawer_hands_back_and_never_presents():
-    # The gate, render, scan and stamp stay with the caller. On direct
-    # use that is draft-reviser's write-back and gate, named by heading.
     text = _text(DRAWER)
     assert "never presents a draft" in text
     assert "`draft-reviser`" in text
@@ -75,8 +51,6 @@ def test_the_drawer_hands_back_and_never_presents():
 
 
 def test_the_drawer_runs_the_existing_checks_in_order():
-    # #1048: `figure check` compiles the figure in the render's engine, so
-    # the hand-built probe went; `kpsewhich` still comes before any file.
     text = _text(DRAWER)
     order = [
         "kpsewhich tikz.sty",
@@ -89,9 +63,6 @@ def test_the_drawer_runs_the_existing_checks_in_order():
 
 
 def test_the_drawer_resolves_or_allows_what_figure_check_reports():
-    # #1053: the geometry step is `figure check` on the one file, and its
-    # rule ids and the cg-allow form live once, in references/check.md,
-    # which every harness copy names by its project-root path.
     for copy in (
         REPO_ROOT / ".claude" / "skills" / DRAWER / "SKILL.md",
         REPO_ROOT / ".agents" / "skills" / DRAWER / "SKILL.md",
@@ -103,8 +74,6 @@ def test_the_drawer_resolves_or_allows_what_figure_check_reports():
 
 
 def test_the_drawer_knows_figure_check_compares_the_twin():
-    # #1056: the twin step no longer says that nothing checks the pair;
-    # it names the rules that do, and what is still the drawer's to see.
     for copy in (
         REPO_ROOT / ".claude" / "skills" / DRAWER / "SKILL.md",
         REPO_ROOT / ".agents" / "skills" / DRAWER / "SKILL.md",
@@ -127,8 +96,6 @@ def test_the_reference_file_has_the_sections_the_procedure_points_at():
         "## 7. Looking at the render",
     ):
         assert heading in ref, heading
-    # That every section is cited by every copy, and every citation lands,
-    # is tests/test_skill_figure_router.py's (#1048).
 
 
 _GENRES = {
@@ -140,9 +107,6 @@ _GENRES = {
 
 
 def test_every_figure_genre_keeps_the_no_citekey_rule():
-    # The one rule whose loss is unsafe if a harness skips the handoff:
-    # the gate does not follow \input (SOUL.md). It must not be trimmed
-    # out of a stub on the grounds that figure-drawer also says it.
     missing = [g for g in _GENRES if _NO_CITEKEY not in _text(g)]
     assert not missing, f"no-citekey rule missing from: {missing}"
 
@@ -159,20 +123,11 @@ def test_every_figure_genre_hands_off():
 
 
 def test_no_rider_has_drifted_back_into_a_genre_skill():
-    # #1012 edited twelve files for one sentence. A rider that reappears
-    # here is that duplication coming back one copy at a time.
     found = {g: [r for r in _RIDERS if r in _text(g)] for g in _GENRES}
     found = {g: rs for g, rs in found.items() if rs}
     assert not found, f"riders belong only in figure-drawer: {found}"
 
 
-# Wording that tells a model a Markdown figure may go without a caption.
-# Every figure has one (docs/writing-standards/figures.md §10), and
-# `draft style` reports a bare marker as `FigureNoCaption` (#421), so a
-# sentence like this asks for a draft the checker then flags. The tutorial
-# skill said "most of this genre's rare figures need no caption at all"
-# until #1091, and the drawer's placement table and FIGURE-DRAWER.md said
-# "if the figure warrants" a caption.
 _CAPTION_OPTIONAL = re.compile(
     r"needs? no caption|if (?:this|the) figure warrants|warrants (?:one|a caption)",
     re.IGNORECASE,
@@ -201,16 +156,11 @@ def test_deep_research_draws_no_figure_and_names_no_drawer():
 def test_draft_reviser_hands_redrawing_to_the_drawer():
     text = _text("draft-reviser")
     assert f"`{DRAWER}`" in text
-    # The revision-only rule stays here: both forms change together, and
-    # the change is logged. That is not a drawing rule.
     assert "Touch a figure, touch both forms" in text
     assert not [r for r in _RIDERS if r in text]
 
 
 def test_every_stub_probes_for_tikz_and_guards_originality_itself():
-    # If the handoff is skipped, the stub alone must still look for TikZ
-    # before falling back, and still forbid redrawing a source's figure.
-    # Neither may depend on figure-drawer having been loaded.
     for g in _GENRES:
         text = _text(g)
         missing = [
@@ -220,10 +170,6 @@ def test_every_stub_probes_for_tikz_and_guards_originality_itself():
 
 
 def test_the_drawer_covers_what_direct_use_has_no_genre_step_for():
-    # On direct use the caller is draft-reviser, which has no figure step,
-    # so the drawer itself must name the TikZ fallback per shape, the flat
-    # draft case and the thesis fragment's preamble warnings. Since #1048
-    # they sit in references/placement.md, which SKILL.md points at.
     assert "`.claude/skills/figure-drawer/references/placement.md`" in _text(DRAWER)
     text = _drawer_and_references()
     for needle in (
@@ -237,12 +183,6 @@ def test_the_drawer_covers_what_direct_use_has_no_genre_step_for():
 
 
 def test_the_drawer_checks_the_figure_in_the_real_render():
-    # The probe sets the figure in a bare article class, not the render's; the
-    # pipeline's own pdf is LuaLaTeX at the document's body font, where
-    # labels wrap and gaps close differently. A figure that passed the
-    # probe came out with a hyphenated label and an arrow through a zone
-    # title in a real render (#1027), so the drawer must look at the page.
-    # Since #1052 one command does the look, alone and in the draft.
     text = _text(DRAWER)
     assert "python -m chitragupta.figure look" in text and "--draft" in text
     at_check = text.find("python -m chitragupta.figure check")
@@ -253,29 +193,18 @@ def test_the_drawer_checks_the_figure_in_the_real_render():
 
 
 def test_the_drawer_starts_a_figure_with_figure_new():
-    # #1052: one command copies the scaffold, keeps its `% cg-layout:`
-    # line and syncs the block, and never overwrites a figure; the hand
-    # `cp` it replaced did none of the last.
     text = _text(DRAWER)
     assert "python -m chitragupta.figure new" in text
     assert "cp assets/tikz" not in text
 
 
 def test_the_render_check_says_what_to_do_without_the_tools():
-    # The look needs pandoc, LuaLaTeX and pdftoppm, which a bare pip
-    # install does not bring, and a harness that can view an image. Without
-    # them the step must degrade to `figure check`'s result and say so,
-    # never block. The tool list is reference detail since #1048.
     references = _drawer_and_references()
     assert "[missing-binary]" in references and "pdftoppm" in references
     text = _text(DRAWER)
     assert "say so in chat" in text[text.find("python -m chitragupta.figure look") :]
 
 
-# The same for a LaTeX fragment. "A captioned figure goes inside a
-# float" and "when captioned" read as though a thesis figure might have
-# no caption; every figure has one, and a thesis figure's is LaTeX's own
-# `\caption` in a `figure` float (#1091, the owner's 2026-11-16 answer).
 _TEX_CAPTION_OPTIONAL = re.compile(r"a captioned figure|when captioned", re.IGNORECASE)
 _THESIS = "thesis-chapter-writer"
 
@@ -298,9 +227,6 @@ def test_nothing_a_latex_figure_genre_reads_makes_its_caption_optional():
 
 
 def test_the_thesis_fragment_advice_names_the_lualatex_preamble():
-    # FIGURE-DRAWER.md told a reader to copy `chitragupta-unicode.sty` for
-    # a `[unicode]` line after the pdf render had moved to LuaLaTeX
-    # (#1037); the drawer's own placement.md §4 was corrected in #1223.
     text = (REPO_ROOT / "docs" / "FIGURE-DRAWER.md").read_text("utf-8")
     section = text[text.index("## 🎓 Thesis fragments") :]
     section = section[: section.index("\n## ", 5)]

@@ -1,11 +1,3 @@
-"""chitragupta/sentences.py: the one sentence splitter, shared by the provenance
-report and tier 3 of the overlap scan.
-
-Stdlib-only and pure, so these are all direct calls -- no fixtures, no
-config. The behaviour worth pinning is the pair invariant between
-`split` and `spans`: two functions over one regex, and a caller that
-slices `spans` back out of the text has to get what `split` returns."""
-
 from chitragupta import sentences
 
 
@@ -18,9 +10,6 @@ class TestSplit:
         ]
 
     def test_does_not_split_inside_the_abbreviations_these_drafts_contain(self):
-        # The whole reason the regex carries lookbehinds: splitting at
-        # "Fig." or "e.g." reintroduces the fragment problem one level
-        # down, which is what `citation_provenance` wrote them for.
         for text in (
             "See Fig. 2 for the layout.",
             "See Sect. 1.2 for detail.",
@@ -32,10 +21,6 @@ class TestSplit:
             assert len(sentences.split(text)) == 1, text
 
     def test_et_al_before_a_parenthesised_year_does_not_split(self):
-        # The most common shape in a survey (#835): the `(` in the
-        # lookahead used to split "Smith et al." off its own "(2020)",
-        # leaving a subjectless claim for provenance to score and a bare
-        # "Smith et al." for the uncited-prose aid to flag.
         assert sentences.split(
             "Smith et al. (2020) found this. As Dr. Jones vs. Brown noted, so."
         ) == [
@@ -44,11 +29,6 @@ class TestSplit:
         ]
 
     def test_the_issue_reproduction_verbatim_no_longer_fragments(self):
-        # #835's own string. It comes back as ONE sentence, not two:
-        # "X." is a lone capital before a period, which the single-initial
-        # lookbehind reads as "J. Smith" -- existing behaviour, unrelated
-        # to the abbreviations. What matters is that none of the four
-        # fragments the issue recorded survive.
         text = "Smith et al. (2020) found X. As Dr. Jones vs. Brown noted, Y."
         assert sentences.split(text) == [text]
 
@@ -68,8 +48,6 @@ class TestSplit:
         ]
 
     def test_al_inside_a_longer_word_still_ends_a_sentence(self):
-        # `\bal\.`, not `al\.`: the lookbehind is for the free-standing
-        # "al." of "et al.", not every word that happens to end in it.
         assert sentences.split("It was fatal. Then it stopped.") == [
             "It was fatal.",
             "Then it stopped.",
@@ -81,8 +59,6 @@ class TestSplit:
         ]
 
     def test_splits_before_a_bracket_or_parenthesis_too(self):
-        # Drafts open sentences with a citation marker, so the character
-        # after the space is not always a capital letter.
         assert sentences.split("A claim. [@key_2024] supports it.") == [
             "A claim.",
             "[@key_2024] supports it.",
@@ -98,10 +74,6 @@ class TestSpans:
         assert [text[a:b] for a, b in sentences.spans(text)] == sentences.split(text)
 
     def test_offsets_index_the_original_not_a_stripped_copy(self):
-        # The difference `split`'s own `.strip()` hides, and the reason
-        # this function exists: tier 3 reports `char_start` into the file
-        # as written, so an offset measured against a stripped copy would
-        # be wrong by the leading whitespace for every sentence.
         text = "\n\n  First one. Second one.\n"
         first, second = sentences.spans(text)
         assert text[first[0] : first[1]] == "First one."
@@ -114,7 +86,5 @@ class TestSpans:
         assert sentences.spans("") == []
 
     def test_a_trailing_separator_does_not_leave_an_empty_span(self):
-        # `re.split` on a text ending in a separator yields a final empty
-        # piece; a consumer that embedded one would be embedding "".
         spans = sentences.spans("A sentence. ")
         assert len(spans) == 1

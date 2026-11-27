@@ -1,13 +1,3 @@
-"""A shadowed node drawn after an `on background layer` scope (#1111).
-
-Each `cgsoft` shadow declares a fading, which pgf typesets as a picture
-of its own; closing it took every layer's box, so the figure's zone
-cards went into the fading and never printed. The house block now saves
-and restores the layers around a fading. The check is the rendered
-page: the same figure with the shadowed node drawn before the scope and
-after it must look the same.
-"""
-
 import shutil
 from pathlib import Path
 

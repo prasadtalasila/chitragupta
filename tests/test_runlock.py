@@ -1,24 +1,3 @@
-"""chitragupta/runlock.py: one writer at a time across content/.
-
-Deliberately a sqlite file used purely as a mutex, not an O_EXCL lock
-file and not the ledger itself. The experiment behind that choice, run
-against real sqlite before any of this was written:
-
-  - a connection holding BEGIN IMMEDIATE does NOT block other processes
-    from READING, so citation_gate and the drafting skills keep working
-    during a sync (a RESERVED lock permits readers);
-  - a second process attempting BEGIN IMMEDIATE gets SQLITE_BUSY, so it
-    works as a mutex;
-  - after kill -9 on the holder the lock is released immediately, so
-    stale locks self-heal with no PID liveness check -- which is the
-    part an O_EXCL lock file cannot do portably;
-  - a bare BEGIN IMMEDIATE with no write still holds it.
-
-The ledger itself is not used, because chitragupta/ledger.py commits at five
-separate points: wrapping a run in one transaction would trade
-incremental durability for the mutex.
-"""
-
 import json
 import contextlib
 import multiprocessing
@@ -33,9 +12,6 @@ from chitragupta import config, runlock
 from tests.lock_holder import hold
 
 
-# Every cross-process wait in this file is bounded by this. A spawned
-# child that never starts must fail the case it belongs to, not stall the
-# session -- see issue #45.
 _CHILD_TIMEOUT = 30
 
 
@@ -61,8 +37,6 @@ class TestAcquire:
                 with runlock.pipeline_lock(path):
                     pass
         message = str(excinfo.value)
-        # The lock dies with its holder, so "another run holds it" is
-        # always true when this is seen -- the message can say so plainly.
         assert "already running" in message.lower()
         assert "nothing is lost" in message.lower()
 
@@ -72,9 +46,6 @@ class TestAcquire:
             assert path.exists()
 
     def test_the_lock_file_is_never_deleted(self, tmp_path):
-        """Unlinking it is unsafe: on Windows removing an open file
-        fails, and on POSIX a delete-then-recreate race gives two
-        processes locks on different inodes, both believing they hold it."""
         path = tmp_path / "pipeline.lock.db"
         with runlock.pipeline_lock(path):
             pass
@@ -85,9 +56,6 @@ class TestReadersAreNotBlocked:
     def test_a_reader_can_still_read_the_ledger_while_a_run_holds_the_lock(
         self, isolated_config, tmp_path
     ):
-        """The lock is a separate file precisely so this stays true --
-        citation_gate and the drafting skills read the ledger while sync
-        writes it."""
         from chitragupta import ledger
 
         con = ledger.connect()
@@ -100,15 +68,6 @@ class TestReadersAreNotBlocked:
 
 @contextlib.contextmanager
 def _holder_process(path):
-    """A child process holding the lock, reaped whatever the test does.
-
-    Everything here is bounded and everything is cleaned up, because a
-    cross-process test that hangs takes the whole suite with it rather
-    than failing one case. `started.wait` reports the child's exit code
-    when it times out: a child that died on import and one that is merely
-    slow look identical from the parent otherwise, and only the first is
-    a bug in this repository.
-    """
     ctx = multiprocessing.get_context("spawn")
     started = ctx.Event()
     holder = ctx.Process(target=hold, args=(path, started))
@@ -123,12 +82,6 @@ def _holder_process(path):
         if holder.is_alive():
             holder.kill()
         holder.join(_CHILD_TIMEOUT)
-        # close() reaps the process object -- without it a killed child is
-        # left as a zombie for the rest of the session -- but it raises on
-        # a process that is somehow still alive. Raising *here* would
-        # replace whatever the test was actually failing on with a
-        # ValueError about cleanup, so the unreaped case is left alone and
-        # the test's own assertion stands.
         if not holder.is_alive():
             holder.close()
 
@@ -142,9 +95,6 @@ class TestAcrossProcesses:
                     pass
 
     def test_a_killed_holder_releases_the_lock(self, tmp_path):
-        """The property that makes this design better than a PID file:
-        no liveness check, no staleness heuristic, no platform-specific
-        code -- the OS closing the fd is what releases it."""
         path = str(tmp_path / "pipeline.lock.db")
         with _holder_process(path) as holder:
             holder.kill()
@@ -164,9 +114,6 @@ class TestAcrossProcesses:
 
 class TestFailuresThatAreNotContention:
     def test_an_unusable_lock_file_is_not_reported_as_another_run(self, tmp_path):
-        """OperationalError also covers disk-full, permissions and a
-        corrupt file. Reporting those as "already running" would send
-        someone hunting for a process that does not exist."""
         path = tmp_path / "pipeline.lock.db"
         path.write_text("this is not a sqlite database")
         with pytest.raises(sqlite3.DatabaseError):
@@ -176,8 +123,6 @@ class TestFailuresThatAreNotContention:
 
 class TestCleanup:
     def test_a_failure_that_is_not_busy_still_closes_the_connection(self, tmp_path, monkeypatch):
-        """Whatever goes wrong during acquisition, the connection must
-        not be left open -- an open connection is a held lock."""
         path = tmp_path / "pipeline.lock.db"
         lock = runlock.pipeline_lock(path)
         closed = []
@@ -195,23 +140,15 @@ class TestCleanup:
         assert closed, "the connection was left open, i.e. the lock was left held"
         assert lock._con is None
 
-        # ...and the lock is genuinely free afterwards.
         monkeypatch.undo()
         with runlock.pipeline_lock(path):
             pass
 
     def test_exiting_without_having_acquired_is_harmless(self, tmp_path):
-        """__exit__ can run after a failed __enter__ (a `with` that
-        raised), and must not blow up on the connection it never got."""
         lock = runlock.pipeline_lock(tmp_path / "pipeline.lock.db")
         assert lock.__exit__(None, None, None) is False
 
     def test_a_non_busy_operational_error_is_reraised_not_misreported(self, tmp_path, monkeypatch):
-        """A full disk or an unwritable content/ raises OperationalError
-        too. Reporting that as "another run is already running" would
-        send someone hunting for a process that does not exist, so the
-        error *code* decides, not the exception type."""
-
         class FailingConnection:
             def execute(self, *_args):
                 raise sqlite3.OperationalError("disk I/O error")
@@ -226,13 +163,6 @@ class TestCleanup:
 
 
 class TestHolderVisibility:
-    """Exit 2 is the one code that carries no information about how long
-    it has been true. The lock message says "nothing is lost -- the next
-    run continues", which is reassuring and wrong if a run has been
-    wedged for a week: every cycle exits 2 and the pipeline silently
-    stops making progress.
-    """
-
     def test_the_refusal_reports_how_long_the_holder_has_been_running(self, tmp_path, monkeypatch):
         path = tmp_path / "pipeline.lock.db"
         with runlock.pipeline_lock(path):
@@ -244,8 +174,6 @@ class TestHolderVisibility:
         assert "pid" in message.lower()
 
     def test_a_long_held_lock_escalates_the_wording(self, tmp_path, monkeypatch):
-        """A grep-able marker, so an unattended caller can alert on it
-        rather than on exit 2 alone -- which is normal."""
         path = tmp_path / "pipeline.lock.db"
         with runlock.pipeline_lock(path):
             monkeypatch.setattr(runlock, "_STUCK_AFTER_SECONDS", 0.0)
@@ -255,19 +183,12 @@ class TestHolderVisibility:
         assert "POSSIBLY STUCK" in str(excinfo.value)
 
     def test_holder_details_live_beside_the_lock_not_inside_it(self, tmp_path):
-        """They must not be a row in the lock database. Writing one means
-        committing on the lock connection, and a COMMIT *releases*
-        BEGIN IMMEDIATE -- so commit-then-reacquire opens a window where
-        a second process can take the lock while this one still believes
-        it holds it. A sidecar touches the transaction not at all."""
         path = tmp_path / "pipeline.lock.db"
         with runlock.pipeline_lock(path):
             data = json.loads((tmp_path / "pipeline.lock.db.holder").read_text())
         assert data["pid"] == os.getpid()
 
     def test_recording_the_holder_never_costs_the_lock(self, tmp_path, monkeypatch):
-        """The details are advisory. If the sidecar cannot be written,
-        the lock we just won must still be held."""
         path = tmp_path / "pipeline.lock.db"
 
         def refuse(*_a, **_k):
@@ -281,9 +202,6 @@ class TestHolderVisibility:
                     pass
 
     def test_a_missing_holder_row_does_not_break_the_refusal(self, tmp_path, monkeypatch):
-        """Defensive: an older lock file has no holder table, and failing
-        to describe the holder must not replace a useful refusal with a
-        crash."""
         path = tmp_path / "pipeline.lock.db"
         with runlock.pipeline_lock(path):
             monkeypatch.setattr(runlock, "_describe_holder", lambda _p: None)
@@ -293,8 +211,6 @@ class TestHolderVisibility:
         assert "already running" in str(excinfo.value).lower()
 
     def test_a_missing_sidecar_is_handled(self, tmp_path):
-        """A lock file from a version that didn't write one: describe
-        nothing rather than crash."""
         path = tmp_path / "pipeline.lock.db"
         path.write_bytes(b"")
         assert runlock._describe_holder(path) is None
@@ -305,7 +221,6 @@ class TestHolderVisibility:
         assert runlock._describe_holder(path) is None
 
     def test_the_refusal_survives_an_undescribable_holder(self, tmp_path):
-        """_refusal_message must still say the useful part."""
         message = runlock._refusal_message(tmp_path / "never-created.db")
         assert "already running" in message.lower()
         assert "nothing is lost" in message.lower()

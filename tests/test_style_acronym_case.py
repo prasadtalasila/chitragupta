@@ -1,6 +1,3 @@
-"""`chitragupta.AcronymCase`: an expansion written before "(ACRO)" in a
-different case from the vocabulary (#1187)."""
-
 from pathlib import Path
 
 import pytest
@@ -67,8 +64,6 @@ def test_proper_name_written_lower_case_is_reported(monkeypatch, tmp_path):
 
 
 def test_flipped_first_letter_at_line_start_is_reported(monkeypatch, tmp_path):
-    """#1187: only a capitalised first letter is tolerated; lower-casing the
-    first letter of a proper name is still a case error."""
     _vocab(monkeypatch, tmp_path, UML="Unified Modeling Language")
     found = _run(tmp_path, "unified Modeling Language (UML) is old.\n")
     assert [f["match"] for f in found] == ["unified Modeling Language"]

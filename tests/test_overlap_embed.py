@@ -1,13 +1,3 @@
-"""chitragupta/overlap_embed.py and chitragupta/overlap_chroma.py: tier 3's policy, and
-the one seam that reaches the optional embedding stack.
-
-chromadb/sentence_transformers are mocked via sys.modules, the same way
-tests/test_enrich_embed_index.py does it and for the same reason: both
-are imported lazily inside functions, so patching sys.modules before the
-call shadows the real packages without needing them uninstalled. The
-alignment itself is exercised with a fake embedder that returns a
-hand-written matrix -- no model, no vectors, no numpy."""
-
 import json
 import random
 import sqlite3
@@ -28,18 +18,10 @@ from chitragupta import (
 from tests.conftest import add_citable
 
 
-# SQLite's SQLITE_MAX_VARIABLE_NUMBER on 3.32+, and so the ceiling on how
-# many rows one Chroma `get` may return -- see FakeCollection.get.
 SQLITE_VARIABLE_LIMIT = 32766
 
 
 class FakeEmbedder:
-    """Encodes to the texts themselves and compares by table lookup.
-
-    `similarity` is handed whatever `encode` returned, which is the real
-    class's contract too -- so a test can say "this draft segment against
-    that source segment scores 0.8" without a vector anywhere."""
-
     def __init__(self, scores=None):
         self.scores = scores or {}
         self.encoded = []
@@ -56,22 +38,12 @@ class FakeEmbedder:
 
 
 class FakeCollection:
-    """`get` and `count` only. A test that needs `query` uses
-    `ChunkCollection` below, which ranks chunks the way Chroma does."""
-
     def __init__(self, count=1, get_response=None):
         self.get_response = get_response
         self.gets = []
         self._count = count
 
     def get(self, where, include=None, limit=None, offset=None):
-        """Paged, and refusing an over-large page, because Chroma's
-        SQLite backend does both (#581): one bound variable per row
-        *returned*, so a result set past SQLITE_VARIABLE_LIMIT raises
-        instead of coming back short. `ids` is synthesised rather than
-        stored -- a real `get` always returns it, `chroma_paging.all_rows`
-        reads it to decide whether a page was the last one, and nothing
-        here cares what the ids say."""
         self.gets.append({"where": where, "include": include, "limit": limit, "offset": offset})
         metadatas = (self.get_response or {}).get("metadatas", [])
         metadatas = metadatas[offset or 0 :]
@@ -101,9 +73,6 @@ class FakeClient:
 
 @pytest.fixture
 def fake_chromadb(monkeypatch):
-    """Install a chromadb/sentence_transformers pair in sys.modules, and
-    hand back the client the module under test will build."""
-
     def install(collections):
         client = FakeClient(collections)
         chromadb = types.SimpleNamespace(PersistentClient=lambda path: client)
@@ -117,8 +86,6 @@ def fake_chromadb(monkeypatch):
 
 
 def write_draft(cfg, text, *, dossier_rows=None):
-    """A draft under content/drafts/ with a dossier beside it, which is
-    what tier 3 needs before it will run at all."""
     draft = cfg.DRAFTS_DIR / "topic" / "draft.md"
     draft.parent.mkdir(parents=True, exist_ok=True)
     draft.write_text(text, encoding="utf-8")
@@ -138,9 +105,6 @@ class TestOptionalStack:
         assert overlap_chroma.optional_stack() is not None
 
     def test_a_missing_package_is_not_installed_rather_than_an_exception(self, monkeypatch):
-        # `embed_index.get_client_and_model()` imports these bare and
-        # raises ModuleNotFoundError uncaught, which would take the whole
-        # scan down; this is the probe that exists so it does not.
         monkeypatch.setitem(sys.modules, "chromadb", None)
         assert overlap_chroma.optional_stack() is None
 
@@ -152,9 +116,6 @@ class TestBuiltCollection:
         assert overlap_chroma.built_collection(chromadb) is None
 
     def test_a_directory_with_no_matching_collection_is_none(self, isolated_config, fake_chromadb):
-        # The corpus was embedded under a different `embedding_model`:
-        # the collection is namespaced per model, so this one is simply
-        # not there and the tier has nothing to read.
         config.CHROMA_DIR.mkdir(parents=True)
         client = fake_chromadb({"corpus-someone-elses-model": FakeCollection()})
         chromadb = types.SimpleNamespace(PersistentClient=lambda path: client)
@@ -180,7 +141,6 @@ class TestBuiltCollection:
         assert overlap_chroma.built_collection(chromadb) is collection
 
     def test_a_client_listing_bare_names_is_handled_too(self, isolated_config, fake_chromadb):
-        # chromadb 0.5 lists collection objects and 1.0 lists names.
         from chitragupta.enrich import embed_index
 
         config.CHROMA_DIR.mkdir(parents=True)
@@ -198,10 +158,6 @@ class TestBuiltCollection:
 
 class TestCorpusKey:
     def test_it_matches_the_collection_name_with_no_chroma_installed(self, monkeypatch):
-        """Decided by `config.EMBEDDING_MODEL` alone -- available even on
-        a host with neither the enrich group nor a built collection,
-        which is what lets `scan_payload` record it unconditionally
-        (#500)."""
         from chitragupta.enrich import embed_index
 
         monkeypatch.setitem(sys.modules, "chromadb", None)
@@ -209,14 +165,7 @@ class TestCorpusKey:
 
 
 class TestEmbedder:
-    """The lazy model handle. Every method here is one line over the
-    model, so what is worth pinning is the laziness and the shapes."""
-
     class FakeVectors(list):
-        """Stands in for the numpy array `model.encode` returns: `@`,
-        `.T` and `.tolist()` are the whole of what this module asks of
-        it, which is why it never imports numpy."""
-
         @property
         def T(self):
             return self
@@ -251,9 +200,6 @@ class TestEmbedder:
         assert embedder.similarity(left, right) == [[6.0]]
 
     def test_the_model_is_loaded_once_and_only_on_first_use(self, monkeypatch):
-        # A scan whose draft has no dossier -- the ordinary case on a
-        # host that never ran the drafting pipeline -- must not pay a
-        # multi-hundred-megabyte load to find out it has nothing to do.
         loads = []
 
         def fake_get_client_and_model():
@@ -271,19 +217,6 @@ class TestEmbedder:
 
 
 class ChunkCollection:
-    """A collection that ranks *chunks*, as Chroma does: each query
-    embedding gets its own `n_results` nearest chunks among those the
-    `where` filter admits, and a source owns as many chunks as it was
-    given. That is the shape issue #954 needed a fake to have --
-    `FakeCollection` answers every query with one canned response, so a
-    source crowding out another could never happen in it.
-
-    `chunks` maps a citekey to its chunks' distances, the same for every
-    query embedding: the section's own text never varies the answer here,
-    because what is under test is what `shortlist` does with chunks it is
-    handed, not how near they are.
-    """
-
     def __init__(self, chunks):
         self.chunks = chunks
         self.queries = []
@@ -332,8 +265,6 @@ class TestShortlist:
         ) == ["a_2024", "b_2024"]
 
     def test_a_citekey_the_collection_never_embedded_ranks_last_not_nowhere(self):
-        # A source whose PDF never parsed has no chunk; dropping it would
-        # shrink the shortlist below its cap for no stated reason.
         collection = ChunkCollection({"indexed_2024": [0.2]})
         assert overlap_chroma.shortlist(
             collection, FakeEmbedder(), ["missing_2024", "indexed_2024"], "prose", 5
@@ -347,11 +278,6 @@ class TestShortlist:
         assert found == ["k0_2024", "k1_2024"]
 
     def test_a_dominant_source_does_not_crowd_the_others_out_of_the_ranking(self):
-        """#954: one source with at least `limit` chunks nearer than any
-        other source's best used to fill every slot of a query capped at
-        `limit`, so the others never came back and were appended in
-        citation order. Here that put the never-embedded `g_2024` in the
-        shortlist and dropped `b_2024`, the second-nearest source."""
         collection = ChunkCollection(
             {
                 "a_2024": [0.10, 0.11, 0.12, 0.13, 0.14],
@@ -372,10 +298,6 @@ class TestShortlist:
         ]
 
     def test_every_embedded_source_is_ranked_ahead_of_every_unembedded_one(self):
-        """The property #954 asks for, over random corpora: whatever the
-        chunk counts, every cited source with at least one chunk is
-        ranked by its own best distance, and only sources with none
-        follow, in citation order. Seeded, so a failure reproduces."""
         rng = random.Random(954)
         for _ in range(300):
             cited = [f"k{i}_2024" for i in range(rng.randint(2, 8))]
@@ -392,8 +314,6 @@ class TestShortlist:
             assert found == expected, (chunks, cited, limit)
 
     def test_the_section_is_encoded_once_however_many_sources_it_cites(self):
-        # Encoding is the cost at scan scale; a query against embeddings
-        # already in hand is milliseconds.
         collection = ChunkCollection({})
         embedder = FakeEmbedder()
         calls = []
@@ -409,10 +329,6 @@ class TestShortlist:
 
 
 class TestAbsentCitekeys:
-    """#499 (M-16): a metadata-only presence check, distinct from
-    `shortlist`'s similarity ranking -- see `absent_citekeys`'s
-    docstring for why the two cannot share one signal."""
-
     def test_every_cited_key_present_is_empty(self):
         collection = FakeCollection(
             get_response={"metadatas": [{"citekey": "a_2024"}, {"citekey": "b_2024"}]}
@@ -441,12 +357,6 @@ class TestAbsentCitekeys:
         ]
 
     def test_cited_sources_owning_more_chunks_than_sqlite_allows_are_still_read(self):
-        """#581: the `$in` list is short -- one entry per source a draft
-        cites -- but the *result set* is every chunk those sources own,
-        and that is what SQLite counts. A draft citing enough well-chunked
-        papers put this past the limit, and the presence check raised
-        instead of reporting.
-        """
         present = [{"citekey": "a_2024"} for _ in range(SQLITE_VARIABLE_LIMIT + 1)]
         collection = FakeCollection(get_response={"metadatas": present})
 
@@ -466,8 +376,6 @@ class TestOpenScope:
         scope, reason = overlap_embed.open_scope(draft)
         assert scope is None
         assert "records no citekeys" in reason
-        # And it names the rule rather than just failing: never the whole
-        # corpus.
         assert "whole corpus" in reason
 
     def test_a_missing_enrichment_layer_says_how_to_install_it(self, isolated_config, monkeypatch):
@@ -486,9 +394,6 @@ class TestOpenScope:
         assert "python -m chitragupta.enrich" in reason
 
     def test_everything_present_opens_a_scope(self, isolated_config, ledger_con, monkeypatch):
-        """`ledger_con` is a fixture request, not decoration: since
-        #516/m-79 this tier connects **read-only**, so a ledger that does
-        not exist is a reason rather than something it creates."""
         draft = write_draft(config, "# T\n\nprose\n", dossier_rows=[("T", "`smith_2024`")])
         collection = FakeCollection()
         monkeypatch.setattr(overlap_chroma, "optional_stack", lambda: ("chromadb", None))
@@ -502,10 +407,6 @@ class TestOpenScope:
     def test_an_absent_ledger_is_a_reason_not_a_ledger_this_tier_creates(
         self, isolated_config, monkeypatch
     ):
-        """m-79 (#516). `ledger.connect()` runs the schema, the migrations
-        and a commit -- a *writer*, opened inside a review aid whose whole
-        contract is that it never takes the write lock. On a fresh
-        checkout it created the ledger it was supposed to be reading."""
         draft = write_draft(config, "# T\n\nprose\n", dossier_rows=[("T", "`smith_2024`")])
         monkeypatch.setattr(overlap_chroma, "optional_stack", lambda: ("chromadb", None))
         monkeypatch.setattr(overlap_chroma, "built_collection", lambda module: FakeCollection())
@@ -533,9 +434,6 @@ class TestOpenScope:
     def test_unavailable_reason_does_not_leak_the_scope_it_opened(
         self, isolated_config, ledger_con, monkeypatch
     ):
-        """It opens a scope purely to read the *reason* and used to drop
-        the rest on the floor -- one connection per call, and it is called
-        once per draft per report."""
         draft = write_draft(config, "# T\n\nprose\n", dossier_rows=[("T", "`smith_2024`")])
         monkeypatch.setattr(overlap_chroma, "optional_stack", lambda: ("chromadb", None))
         monkeypatch.setattr(overlap_chroma, "built_collection", lambda module: FakeCollection())
@@ -547,8 +445,6 @@ class TestOpenScope:
             opened.append(con)
             return con
 
-        # Patched on `ledger`, which `overlap_embed_scope` reaches by
-        # attribute at call time -- the one read-only opener (#843).
         monkeypatch.setattr(ledger, "read_connection", tracked)
         assert overlap_embed.unavailable_reason(draft) is None
         assert len(opened) == 1
@@ -565,9 +461,6 @@ class TestOpenScope:
     def test_the_dossier_check_comes_before_anything_imports_torch(
         self, isolated_config, tmp_path, monkeypatch
     ):
-        # Ordering, not a nicety: on a host that never ran the drafting
-        # pipeline every draft lands here, and loading the embedding
-        # stack to discover that would cost seconds per scan.
         called = []
         monkeypatch.setattr(overlap_chroma, "optional_stack", lambda: called.append(True))
         stray = tmp_path / "elsewhere.md"
@@ -617,12 +510,6 @@ class TestAlignDraft:
     def test_a_near_verbatim_pair_is_aligned_here_and_deduplicated_upstream(
         self, isolated_config, ledger_con, source
     ):
-        # No lexical-overlap ceiling: `scan_findings` drops an alignment
-        # a real exact or skip-gram finding overlaps, which is the check
-        # a ceiling could only guess at. Measured on the graded fixture,
-        # a ceiling threw away the strongest alignment in it -- which
-        # neither deterministic tier caught, because substituting words
-        # also moved them.
         source("smith_2024", [{"text": "a claim", "label": "text", "page": 1}])
         embedder = FakeEmbedder({("a claim", "a claim"): 0.99})
         scope = overlap_embed.Scope({}, FakeCollection(), ledger_con, embedder)
@@ -635,8 +522,6 @@ class TestAlignDraft:
     def test_each_source_is_encoded_once_for_the_whole_draft(
         self, isolated_config, ledger_con, source
     ):
-        # Encoding is essentially the whole cost of this tier, and a
-        # book chapter's sections routinely cite the same paper.
         source("smith_2024", [{"text": "the source claim.", "label": "text", "page": 1}])
         embedder = FakeEmbedder()
         scope = overlap_embed.Scope({}, FakeCollection(), ledger_con, embedder)
@@ -666,8 +551,6 @@ class TestReport:
         )
 
     def test_the_same_span_matching_several_sources_reports_once(self):
-        # A section's passage aligning against four of its five cited
-        # sources is one place to look, not four.
         found = overlap_embed.report(
             [
                 self.alignment(citekey="a_2024", score=0.9),
@@ -688,10 +571,6 @@ class TestReport:
         assert [(a.section, a.score) for a in found] == [("A", 0.9), ("B", 0.1)]
 
     def test_a_weak_alignment_in_its_own_section_still_reports(self):
-        # The whole point of ranking per section rather than per draft:
-        # scores are not comparable across sections, and a draft-wide
-        # top-N drops the one hand-verified organic paraphrase in
-        # chapter 1 of the real book.
         found = overlap_embed.report(
             [
                 self.alignment(section=f"S{i}", score=1.0 - i / 100, start=i * 20, end=i * 20 + 10)
@@ -701,10 +580,6 @@ class TestReport:
         assert len(found) == 30
 
     def test_a_later_span_overlapping_a_kept_one_is_dropped_across_sections(self):
-        # Sections do not overlap in the draft, but two alignments can
-        # still share draft words when a section limit of more than one
-        # is in force -- the overlap check is what keeps the reported
-        # spans disjoint regardless.
         found = overlap_embed.report(
             [
                 self.alignment(section="A", score=0.9, start=0, end=10),

@@ -1,5 +1,3 @@
-"""The project's style-exceptions term list (#1187)."""
-
 import pytest
 
 from chitragupta import config, style_exceptions

@@ -1,14 +1,3 @@
-"""chitragupta/enrich/keyword_extract.py: each paper's own declared
-Keywords:/Index Terms line, extracted into content/keywords.toml.
-
-Pure text processing throughout -- no model, no fake embeddings. The
-constants asserted here (a 200-line detection window, a 300-character
-line truncation, a 60-character phrase cap) are not invented by the
-tests: bench/RESULTS.md's 2026-09-03c entry measured them on this
-project's own corpus, and plans/604-declared-keyword-seeding.md carries
-them as the contract.
-"""
-
 import tomllib
 
 import pytest
@@ -32,9 +21,6 @@ class TestDeclaredPhrases:
         assert keyword_extract.declared_phrases(text) == ("federated learning", "edge computing")
 
     def test_middle_dot_beats_comma_when_both_present(self):
-        """Separator priority is the line's own, best first: a middle dot
-        is only ever a deliberate separator, while a comma can sit inside
-        one phrase ('modeling, simulation and control')."""
         text = "Keywords: modeling, simulation · digital twin\n"
         assert keyword_extract.declared_phrases(text) == ("modeling, simulation", "digital twin")
 
@@ -43,10 +29,6 @@ class TestDeclaredPhrases:
         assert keyword_extract.declared_phrases("Keywords: a; b\n") == ("a", "b")
 
     def test_fallback_splits_at_lower_to_upper_word_boundary(self):
-        """No separator at all -- Docling flattened the punctuation out.
-        The fallback is lossy by design: 'Digital Twin' splits apart,
-        which bench/RESULTS.md 2026-09-03c measured and accepted rather
-        than silently dropping 27% of detected declarations."""
         text = "Keywords: Digital Twin Internet of Things\n"
         assert keyword_extract.declared_phrases(text) == (
             "digital",
@@ -67,8 +49,6 @@ class TestDeclaredPhrases:
         assert keyword_extract.declared_phrases("Title\n\nJust prose.\n") == ()
 
     def test_declaration_past_the_window_is_ignored(self):
-        """A References entry titled 'Keywords in ...' sits far down the
-        document; the 200-line window is what keeps it out."""
         text = "\n" * 200 + "Keywords: digital twin\n"
         assert keyword_extract.declared_phrases(text) == ()
 
@@ -81,9 +61,6 @@ class TestDeclaredPhrases:
         assert keyword_extract.declared_phrases(text) == ("first",)
 
     def test_line_truncated_before_splitting(self):
-        """Docling occasionally flattens a whole PDF column -- the
-        declaration, affiliations, the abstract -- into one line. Only
-        the first 300 characters after the marker are split."""
         text = "Keywords: aaa, bbb, " + "c" * 300 + ", ddd\n"
         phrases = keyword_extract.declared_phrases(text)
         assert phrases[:2] == ("aaa", "bbb")
@@ -112,10 +89,6 @@ class TestAggregate:
         assert keyword_extract.aggregate(per_doc, min_df=2, top_n=40) == ["shared"]
 
     def test_counts_distinct_documents_not_occurrences(self):
-        """One paper repeating a phrase never inflates it: 'twice' appears
-        twice in one document and once in another (2 docs), while 'both'
-        appears once in each of two documents (also 2) -- with top_n=1 the
-        alphabetical tie-break proves neither outranked the other."""
         per_doc = {"a": ("twice", "twice", "both"), "b": ("twice", "both")}
         assert keyword_extract.aggregate(per_doc, min_df=2, top_n=1) == ["both"]
 
@@ -128,8 +101,6 @@ class TestAggregate:
         assert keyword_extract.aggregate(per_doc, min_df=2, top_n=1) == ["popular"]
 
     def test_result_is_sorted_alphabetically(self):
-        """Rank decides membership; the artifact itself is read by a
-        person, so it is written in the order a person scans."""
         per_doc = {"a": ("zeta", "alpha"), "b": ("zeta", "alpha")}
         assert keyword_extract.aggregate(per_doc, min_df=2, top_n=40) == ["alpha", "zeta"]
 
@@ -145,8 +116,6 @@ class TestRunStage:
         )
         result = keyword_extract.run_stage(docs)
         assert result["status"] == "ok"
-        # min_df=2 (the pinned default): only the phrase both papers
-        # declared survives.
         assert seed_topics.load(isolated_config.KEYWORDS_PATH) == ("digital twin",)
 
     def test_detail_counts_documents_and_declarations(self, isolated_config, tmp_path):
@@ -167,9 +136,6 @@ class TestRunStage:
         }
 
     def test_no_declarations_is_ok_and_writes_an_empty_list(self, isolated_config, tmp_path):
-        """Half this project's own corpus declares nothing; that is the
-        ordinary state, not an error, and the artifact says so rather
-        than going stale from a previous run."""
         docs = make_docs(tmp_path, {"a": "Just prose.\n"})
         result = keyword_extract.run_stage(docs)
         assert result["status"] == "ok"
@@ -178,8 +144,6 @@ class TestRunStage:
             assert tomllib.load(handle) == {"topics": []}
 
     def test_regenerates_fresh_over_a_previous_run(self, isolated_config, tmp_path):
-        """A generated artifact, not a curated one: whatever a previous
-        run (or a misguided hand-edit) left there is replaced whole."""
         isolated_config.KEYWORDS_PATH.parent.mkdir(parents=True, exist_ok=True)
         isolated_config.KEYWORDS_PATH.write_text('topics = ["stale phrase"]', encoding="utf-8")
         docs = make_docs(
@@ -197,9 +161,6 @@ class TestRunStage:
         assert not isolated_config.KEYWORDS_PATH.exists()
 
     def test_generated_header_names_the_promotion_path(self, isolated_config, tmp_path):
-        """The file must tell its reader it is machine output -- the
-        header is the one place a person about to hand-curate it will
-        actually look."""
         docs = make_docs(tmp_path, {"a": "Keywords: iot\n", "b": "Keywords: iot\n"})
         keyword_extract.run_stage(docs)
         header = isolated_config.KEYWORDS_PATH.read_text(encoding="utf-8")
@@ -217,15 +178,11 @@ class TestRunStage:
         monkeypatch.setattr(isolated_config, "KEYWORD_TOP_N", 1)
         docs = make_docs(tmp_path, {"a": "Keywords: beta\n", "b": "Keywords: alpha, beta\n"})
         keyword_extract.run_stage(docs)
-        # beta is declared by two documents, alpha by one; top_n=1 keeps
-        # the higher count, proving rank (not alphabet) decides membership.
         assert seed_topics.load(isolated_config.KEYWORDS_PATH) == ("beta",)
 
 
 class TestModuleHasNoEntryPoint:
     def test_import_alone_does_nothing(self):
-        """Same invariant every stage module holds (docs/ARCHITECTURE.md):
-        `python -m chitragupta.enrich` is the only entry point."""
         assert not hasattr(keyword_extract, "main")
 
 

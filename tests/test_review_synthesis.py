@@ -1,14 +1,3 @@
-"""chitragupta/review/synthesis.py: how many sources each unit of a draft
-rests on, at the unit its genre binds at.
-
-One of the six review aids. Advisory like the rest -- it exits 0 whatever
-it finds, takes no lock, and blocks no draft. What these
-tests hold it to is that the numbers are honest about *what* was
-measured: a tutorial reporting no multi-source paragraphs has not failed,
-it was never measured at paragraph scale, and the report has to say so on
-its face.
-"""
-
 import json
 import re
 from pathlib import Path
@@ -22,16 +11,12 @@ from tests.test_review_units import a_draft
 
 
 def _render(draft: Path) -> str:
-    """The Markdown report for `draft`, at whatever unit its genre binds at."""
     report = synthesis.build_report(draft, *synthesis.resolve(draft, None))
     return _synthesis_render.render_markdown(report, "cmd", synthesis.findings(report))
 
 
 class TestRegistration:
     def test_the_aid_is_in_both_tables(self):
-        """R10's machine-checked half -- review.AIDS owns the report
-        suffix, review._registry.AIDS owns the subcommand, and the entry point
-        raises at import if they disagree."""
         assert "synthesis" in review.AIDS
         assert "synthesis" in review_main.AIDS
 
@@ -79,8 +64,6 @@ class TestTheCounts:
         assert (report.uncited, report.single_source, report.multi_source) == (1, 1, 1)
 
     def test_the_proportion_is_of_units_that_cite_at_all(self, isolated_config):
-        """An uncited unit is not a failed multi-source unit -- most of a
-        textbook chapter is original prose."""
         draft = a_draft("None.\n\nNone either.\n\nOne [@A].\n\nTwo [@A] and [@B].\n")
         report = synthesis.build_report(draft, *synthesis.resolve(draft, None))
         assert report.single_source_pct == 50.0
@@ -111,8 +94,6 @@ class TestFindings:
         )
 
     def test_an_uncited_unit_is_counted_but_is_never_a_finding(self, isolated_config):
-        """Making original prose a finding would bury the one thing this
-        report is for."""
         draft = a_draft("Original prose, no citation at all.\n")
         report = synthesis.build_report(draft, *synthesis.resolve(draft, None))
         assert report.uncited == 1
@@ -137,15 +118,11 @@ class TestFindings:
         assert findings[0]["longest_run"] == 3
 
     def test_a_commented_out_citation_in_a_tex_draft_is_not_a_second_source(self, isolated_config):
-        """#873: read with Markdown rules, the `%` line made this unit
-        look like it fused two sources."""
         draft = a_draft("Text \\citep{A}.\n% Dropped in review: \\citep{B}\n", name="survey.tex")
         report = synthesis.build_report(draft, *synthesis.resolve(draft, None))
         assert [u.citekeys for u in report.units] == [("A",)]
 
     def test_a_single_source_section_raises_one_finding_not_two(self, isolated_config):
-        """Its run is as long as it has paragraphs, by construction --
-        reporting that beside the spread says nothing twice."""
         draft = a_draft("## S\n\nOne [@A].\n\nTwo [@A].\n\nThree [@A].\n", genre="textbook-chapter")
         findings = synthesis.findings(
             synthesis.build_report(draft, *synthesis.resolve(draft, None))
@@ -162,8 +139,6 @@ class TestFindings:
         )
 
     def test_spread_alone_cannot_tell_the_two_apart(self, isolated_config):
-        """The point of measuring the run: both sections below span two
-        sources, and only one of them fuses anything."""
         blocked = a_draft(
             "## S\n\n[@A] one.\n\n[@A] two.\n\n[@A] three.\n\n[@B] four.\n",
             genre="textbook-chapter",
@@ -189,8 +164,6 @@ class TestFindingIdentity:
         assert [f["id"] for f in first] == [f["id"] for f in second]
 
     def test_is_unchanged_by_declaring_the_unit(self, isolated_config):
-        """Otherwise the declared/undeclared split renames every finding
-        the moment someone explains one -- which is what R2 forbids."""
         plain = a_draft("One [@A].\n", name="plain.md")
         declared = a_draft("One [@A].\n<!-- single-source: because -->\n", name="declared.md")
         ids = [
@@ -200,9 +173,6 @@ class TestFindingIdentity:
         assert ids[0] == ids[1]
 
     def test_is_unchanged_by_an_edit_above_it(self, isolated_config):
-        """Position-free, for the reason
-        citation_provenance/_citation_provenance_render.finding_id is: a
-        line-based identity renames every finding below an edit."""
         before = a_draft("One [@A].\n", name="before.md")
         after = a_draft("A new opening paragraph [@X] and [@Y].\n\nOne [@A].\n", name="after.md")
         ids = [
@@ -269,8 +239,6 @@ class TestTheCommandLine:
         assert "synthesis.md" in captured.err
 
     def test_it_has_a_standalone_parser_too(self, isolated_config):
-        """build_parser(None) is the path `python -m chitragupta.review
-        synthesis` does not take, and the other aids all keep it."""
         args = synthesis.build_parser().parse_args(["draft.md"])
         assert args.draft == "draft.md"
 
@@ -293,13 +261,6 @@ class TestRepeatability:
         assert payloads[0] == payloads[1]
 
     def test_the_report_carries_no_date(self, isolated_config):
-        """A wall-clock line defeats the diff across revisions, which is
-        the reason to write a report to disk at all.
-
-        Matched as a date rather than as the digits of a year: the header
-        quotes the draft's own path, and under pytest that path contains
-        a run number which is sometimes '20'.
-        """
         draft = a_draft("One [@A].\n")
         assert re.search(r"\b\d{4}-\d{2}-\d{2}\b", _render(draft)) is None
 
@@ -341,8 +302,6 @@ class TestTheRenderedReport:
 
 
 class TestTheTextReport:
-    """stdout's form, which is what the default invocation prints."""
-
     def test_an_uncited_draft_says_so(self, isolated_config):
         draft = a_draft("Original prose only.\n")
         report = synthesis.build_report(draft, *synthesis.resolve(draft, None))
@@ -358,16 +317,11 @@ class TestTheTextReport:
 
 class TestTheStandaloneEntryPoint:
     def test_main_parses_its_own_argv(self, isolated_config, capsys):
-        """`synthesis.main` is the path `python -m chitragupta.review
-        synthesis` does not take, and the other aids all keep it."""
         draft = a_draft("One [@A].\n")
         assert synthesis.main([str(draft)]) == 0
         assert "Multi-source synthesis" in capsys.readouterr().out
 
     def test_the_recorded_command_carries_the_unit_flag(self, isolated_config, capsys):
-        """A single-source count means something different on a draft
-        measured at a unit its genre did not choose, so the report has to
-        record the flag that chose it."""
         draft = a_draft("One [@A].\n", genre="tutorial")
         review_main.main(["synthesis", str(draft), "--unit", "paragraph", "--json"])
         assert "--unit paragraph" in json.loads(capsys.readouterr().out)["command"]

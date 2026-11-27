@@ -1,6 +1,3 @@
-"""`markdown_to_latex`: Markdown snippets to LaTeX in one pandoc process,
-for the book's generated glossary and list of symbols (#1138)."""
-
 import pytest
 
 from chitragupta.render_output import _markdown_to_latex
@@ -43,8 +40,6 @@ def test_a_missing_pandoc_is_the_render_layers_own_error(monkeypatch):
 
 @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
 def test_a_text_that_would_continue_a_definition_list_stays_its_own():
-    """A paragraph starting `: ` turns the paragraph before it into a
-    definition-list term, which a bare separator paragraph would be."""
     out = _markdown_to_latex.markdown_to_latex(["first", ": second", "third"])
     assert out[0] == "first"
     assert out[2] == "third"
@@ -63,7 +58,6 @@ def test_a_conversion_that_loses_a_text_is_refused(monkeypatch):
 
 
 def test_the_output_is_split_on_the_separator_block(monkeypatch):
-    """No pandoc needed, so every leg covers the split, Windows included."""
     seen = {}
 
     class Result:

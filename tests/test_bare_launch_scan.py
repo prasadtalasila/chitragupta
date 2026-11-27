@@ -1,19 +1,3 @@
-"""No launch in the package or the hooks hands `subprocess.run` a bare name (#974).
-
-A bare name leaves the lookup to the OS, and on Windows `CreateProcess`
-searches the current directory before PATH, so a program planted in a
-cloned project is what runs. `chitragupta/programs.py` is the fix; this
-is what keeps every launch on it.
-"""
-
-# An argv's first element must be `sys.executable`, a resolver's result,
-# or a name that provably holds one, followed through local assignments,
-# same-module argv builders and same-module callers. A shape the scan
-# cannot follow fails rather than passes, so a new shape is never a way
-# around it. Read with `ast`, like tests/test_subprocess_launch_scan.py,
-# whose launch-name helpers this reuses: that scan polices the tests'
-# launches of the package, this one the package's launches of the rest.
-
 import ast
 import os
 import re
@@ -29,8 +13,7 @@ _RESOLVERS = {"resolve_program", "require_program"}
 
 
 class Unfollowed(Exception):
-    """An argv shape the scan cannot follow. Failing on it, rather than
-    passing, keeps a new shape from being a way around the check."""
+    pass
 
 
 def _call_name(node) -> "str | None":
@@ -41,8 +24,6 @@ def _call_name(node) -> "str | None":
 
 
 def _launch_argv(node, modules, functions):
-    """The argv a `subprocess` launch is given, positionally or as
-    `args=`; None if `node` is not a launch."""
     if not isinstance(node, ast.Call):
         return None
     func = node.func
@@ -69,7 +50,6 @@ def _functions(tree) -> dict:
 
 
 def _enclosing(tree, target):
-    """The innermost function holding `target`, or the module."""
     inner = tree
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and any(
@@ -80,11 +60,7 @@ def _enclosing(tree, target):
     return inner
 
 
-# Any binding but a plain `name = value` -- a `for` target, `with ... as`,
-# `+=`, an annotation, a walrus, tuple unpacking, an import -- is a value
-# the scan does not follow, so it raises rather than reading as none.
 def _bindings(scope, name: str) -> list:
-    """Values bound to `name` in `scope` by a plain `name = value`."""
     plain = [
         node.value
         for node in ast.walk(scope)
@@ -110,9 +86,6 @@ def _bindings(scope, name: str) -> list:
 
 
 def _argv_lists(arg, scope, tree) -> list:
-    """Every (list or tuple literal, the scope that built it) `arg` can
-    be: itself, a name bound to one, or what a same-module function
-    returns -- whose elements are then judged in *that* function."""
     if isinstance(arg, (ast.List, ast.Tuple)):
         return [(arg, scope)]
     if isinstance(arg, ast.Name) and _bindings(scope, arg.id):
@@ -125,8 +98,6 @@ def _argv_lists(arg, scope, tree) -> list:
 
 
 def _argument(call, function, name: str):
-    """The expression `call` passes for `function`'s parameter `name`:
-    positional, keyword, or the default. Splats and methods raise."""
     if any(isinstance(a, ast.Starred) for a in call.args) or any(
         k.arg is None for k in call.keywords
     ):
@@ -148,8 +119,6 @@ def _argument(call, function, name: str):
 
 
 def _is_resolved(node, scope, tree) -> bool:
-    """`sys.executable`, a resolver's result, or a name holding one -- a
-    local, or a parameter every same-module caller passes one for."""
     if isinstance(node, ast.Attribute):
         return node.attr == "executable" and getattr(node.value, "id", None) == "sys"
     if isinstance(node, ast.Call):
@@ -167,7 +136,6 @@ def _is_resolved(node, scope, tree) -> bool:
 
 
 def bare_launches(source: str) -> "list[tuple[int, str]]":
-    """(line, why) for each launch whose program is not resolved."""
     tree = ast.parse(source)
     modules, functions = _subprocess_names(tree)
     found = []
@@ -208,7 +176,6 @@ def test_no_launch_in_the_package_or_the_hooks_takes_a_bare_name():
 
 
 def test_the_scan_reaches_the_launches_it_is_about():
-    """A scan that finds no launch at all passes for the wrong reason."""
     launches = 0
     for path in _scanned():
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -218,9 +185,6 @@ def test_the_scan_reaches_the_launches_it_is_about():
 
 
 class TestTheScanSeesTheShapesItWasWrittenFor:
-    """Fed the real pre-#974 launches, so a scan reporting clean is shown
-    not to be blind."""
-
     def test_a_bare_literal(self):
         old = 'def f(p):\n    subprocess.run(["pdftotext", "-layout", p, "-"])\n'
         assert bare_launches(old) == [(2, "'pdftotext'")]
@@ -233,7 +197,6 @@ class TestTheScanSeesTheShapesItWasWrittenFor:
         assert bare_launches(old) == [(3, "'bash'")]
 
     def test_an_argv_a_same_module_function_builds(self):
-        """style_check's `_run(_vale_argv(draft, language))`."""
         old = (
             "from subprocess import run as _run\n"
             'def _vale_argv(d):\n    return ["vale", d]\n'
@@ -242,7 +205,6 @@ class TestTheScanSeesTheShapesItWasWrittenFor:
         assert bare_launches(old) == [(5, "'vale'")]
 
     def test_a_parameter_a_caller_fills_with_a_bare_name(self):
-        """hook_launchers' `_import_fault(program, env)`, before #1025 moved it."""
         old = (
             "def _import_fault(program):\n"
             '    subprocess.run([program, "-c", "import chitragupta"])\n'
@@ -268,8 +230,6 @@ class TestTheScanSeesTheShapesItWasWrittenFor:
         assert bare_launches(old) == [(2, "cannot follow cmd")]
 
     def test_an_element_is_judged_where_its_list_was_built(self):
-        """A resolved local of the same name at the launch site must not
-        vouch for a bare one in the builder."""
         old = (
             'def _argv(d):\n    tool = "vale"\n    return [tool, d]\n'
             'def run(d):\n    tool = resolve_program("vale")\n    subprocess.run(_argv(d))\n'
@@ -304,20 +264,12 @@ class TestTheScanSeesTheShapesItWasWrittenFor:
         assert bare_launches(old) == [(4, "cannot follow p")]
 
 
-# The JavaScript a harness adapter runs (#1025): `.opencode/` today, and
-# any later adapter written in Node. Python's `ast` cannot read it, so the
-# check is narrower and textual: a `child_process` launcher whose first
-# argument is a string literal is a bare name left to the OS lookup. The
-# fix is the adapter's own resolver, as `.opencode/chitragupta/gate.js`'s
-# `resolveProgram`; a launch through anything else (a parameter, a
-# resolver's result) is not a literal and is left alone.
 _JS_LAUNCH = re.compile(
     r"\b(spawn|spawnSync|exec|execSync|execFile|execFileSync|fork)\s*\(\s*([\"'`])"
 )
 
 
 def bare_js_launches(source: str) -> "list[tuple[int, str]]":
-    """(line, launcher) for each JS launch whose program is a literal."""
     return [
         (source.count("\n", 0, match.start()) + 1, match.group(1))
         for match in _JS_LAUNCH.finditer(source)
@@ -328,11 +280,6 @@ _NOT_SHIPPED = {".git", ".venv", "venv", "node_modules", "site-packages", "tests
 
 
 def _scanned_js() -> list:
-    """Every JavaScript file the repository ships that imports
-    `child_process`, outside the tests and any installed packages.
-
-    Pruned while walking, not filtered after: from the main checkout a
-    full walk descends into every worktree and venv and takes ~24s."""
     found = []
     for directory, dirnames, filenames in os.walk(REPO_ROOT):
         dirnames[:] = [d for d in dirnames if d not in _NOT_SHIPPED]
@@ -358,7 +305,6 @@ def test_no_launch_in_a_javascript_adapter_takes_a_bare_name():
 
 
 def test_the_javascript_scan_reaches_the_opencode_gate():
-    """A scan that reads no file passes for the wrong reason."""
     assert REPO_ROOT / ".opencode" / "chitragupta" / "gate.js" in _scanned_js()
 
 

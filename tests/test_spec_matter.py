@@ -1,13 +1,3 @@
-"""Front matter, appendices and back matter in a book's outline (#1137).
-
-Three part ids are reserved, each with one legal position, and four
-chapter ids name pages the assembler generates rather than prose anyone
-writes. What is pinned here is that a misplaced one is a parse problem
-named by its id -- a book whose `{#back}` sits in the middle would
-otherwise assemble its glossary between two chapters -- and that the
-default outline `spec init` writes obeys every rule it introduces.
-"""
-
 import pytest
 
 from chitragupta import spec
@@ -146,9 +136,6 @@ def test_the_author_line_inside_a_fence_or_before_the_title_is_not_read():
         "## Part I {#part-i}\n\n### One {#ch-1}\n"
     )
     assert spec.parse(text)["author"] is None
-
-
-# --- what `spec init`, `sign` and `show` do with them ----------------------
 
 
 def test_init_writes_an_outline_with_the_matter_and_the_two_files_the_author_owns(

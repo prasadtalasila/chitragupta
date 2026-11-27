@@ -1,12 +1,3 @@
-"""`discover TOPIC --hops N`: the ego rings' terminal twin (#716).
-
-The property under test: the terminal walks the same BFS the app's ego
-view walks, types ring one by the same rule, and is honest about what
-the topic cannot reach -- `tests/webapp/hop_cases.json` is the
-contract, asserted from node by tests/webapp/ego.test.js and from here
-by this module.
-"""
-
 import json
 from pathlib import Path
 
@@ -28,9 +19,6 @@ class TestSharedCases:
     def test_every_shared_hop_case_matches(self):
         rows = cases()
         assert len(rows) >= 2  # non-vacuity
-        # A row naming its families is what pins the per-family walk to
-        # the app's; a table of both-family rows only would let the two
-        # surfaces disagree the moment either narrowed.
         assert any("families" in row for row in rows)
         for row in rows:
             graph = {
@@ -85,9 +73,6 @@ class TestBuild:
         assert "unreached" not in prose
 
     def test_an_edge_between_two_roots_types_neither(self):
-        """ego.js's mark() skips a pinned end; the port must too, or a
-        two-root walk would label a root by the family that reached its
-        sibling."""
         graph = self.graph()
         via = _hops.reached_via(graph, ["E", "a"])
         assert "E" not in via
@@ -96,11 +81,6 @@ class TestBuild:
 
 
 class TestOneFamily:
-    """`--hops N --family F`: the rings over one family, which the app's
-    Edges picker asks of the same walk. Until it existed the terminal
-    measured over the union whatever the reader wanted, the same defect
-    the app had -- so this is the twin, not a new capability."""
-
     def graph(self) -> dict:
         row = cases()[0]
         return {
@@ -116,8 +96,6 @@ class TestOneFamily:
 
         one = _hops.build_hops(self.graph(), "E", 2, ["overlap"])
         assert one["families"] == ["overlap"]
-        # `c` was two hops out over a path that changed family. Over
-        # shared papers alone it is not two hops out; it is unreached.
         assert [ring["hop"] for ring in one["rings"]] == [1]
         assert [t["label"] for t in one["rings"][0]["topics"]] == ["a"]
         assert one["unreached"] == 3
@@ -133,8 +111,6 @@ class TestOneFamily:
     def test_the_prose_names_the_family_it_walked(self):
         prose = _hops.render_hops(_hops.build_hops(self.graph(), "E", 2, ["semantic"]))
         assert "over semantic nearness" in prose
-        # With both walked there is nothing to qualify, and a header
-        # saying "over both families" on every default run is noise.
         assert "over" not in _hops.render_hops(_hops.build_hops(self.graph(), "E", 2))
 
     def test_an_unreachable_topic_says_which_family_could_not_reach_it(self):
@@ -143,7 +119,6 @@ class TestOneFamily:
         assert "in either family" in _hops.render_hops(_hops.build_hops(self.graph(), "island", 2))
 
     def test_the_families_default_to_both(self):
-        """Every caller written before the flag passes three arguments."""
         assert _hops.build_hops(self.graph(), "E", 2) == _hops.build_hops(
             self.graph(), "E", 2, ["overlap", "semantic"]
         )
@@ -171,17 +146,12 @@ class TestHopsCli:
         assert "--hops" in capsys.readouterr().err
 
     def test_family_composes_with_hops(self, isolated_config, capsys):
-        """The flag existed for --path only and was silently ignored
-        everywhere else: `--hops 2 --family semantic` measured over both
-        families and said nothing about it."""
         write_artefacts(isolated_config, graph=WHY_GRAPH, topic_set=WHY_TOPIC_SET)
         assert discover.main(["machine learning", "--hops", "all", "--family", "overlap"]) == 0
         out = capsys.readouterr().out
         assert "over shared papers" in out
         assert "formal methods  (via shared papers)" in out
 
-        # WHY_GRAPH holds no semantic edges at all, so the same
-        # neighbourhood over that family is empty -- and says so.
         assert discover.main(["machine learning", "--hops", "all", "--family", "semantic"]) == 0
         assert "no topic is reachable from here over semantic nearness" in capsys.readouterr().out
 

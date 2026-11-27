@@ -1,11 +1,3 @@
-"""chitragupta/enrich/topic_mcl.py: stored MCL communities (#712).
-
-The property under test: the builder's numpy MCL and the browser's
-families.js clustering produce the same assignments --
-`tests/webapp/mcl_cases.json` is the contract, asserted from node by
-tests/webapp/families.test.js and from here by this module.
-"""
-
 import json
 from pathlib import Path
 
@@ -47,8 +39,6 @@ def test_communities_cover_every_slider_step():
         assert sorted(held["partitions"]) == sorted(f"{i:.1f}" for i in topic_mcl.INFLATIONS)
         for assignments in held["partitions"].values():
             assert len(assignments) == len(row["topics"])
-    # The recorded case rows are among the stored steps, so the stored
-    # block agrees with the case file by construction.
     assert block["overlap"]["partitions"]["2.0"] == row["expected"]["overlap"]["2.0"]
 
 
@@ -64,8 +54,6 @@ def test_no_topics_cluster_to_nothing():
 
 
 def test_an_edge_naming_an_unknown_label_is_skipped():
-    """Artefact drift tolerance, same as families.js: an edge end the
-    topic list does not know places nothing."""
     result = topic_mcl.cluster(
         ["a", "b"], [{"a": "a", "b": "ghost", "overlap_coeff": 0.9}], "overlap_coeff", 2.0
     )
@@ -73,8 +61,6 @@ def test_an_edge_naming_an_unknown_label_is_skipped():
 
 
 def test_a_capped_iteration_count_still_reads_clusters(monkeypatch):
-    """The loop can exhaust MAX_ITERATIONS without converging; the read
-    still partitions every topic exactly once."""
     monkeypatch.setattr(topic_mcl, "MAX_ITERATIONS", 1)
     row = cases()[0]
     result = topic_mcl.cluster(row["topics"], row["edges_overlap"], "overlap_coeff", 2.0)
@@ -82,8 +68,6 @@ def test_a_capped_iteration_count_still_reads_clusters(monkeypatch):
 
 
 def test_an_unclaimed_column_stands_alone():
-    """MCL does not promise a partition: a column no attractor holds
-    still lands somewhere, alone -- families.js's own tail rule."""
     import numpy as np
 
     matrix = np.array([[1.0, 0.0], [0.0, 0.0]])

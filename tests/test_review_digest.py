@@ -1,14 +1,3 @@
-"""chitragupta/review/verbatim_digest.py and its render/recheck halves:
-the eleventh review aid, over a verbatim digest.
-
-A digest is private study text written mostly in the sources' own words
-(discussion #991). The aid leads with the unsupported fraction, lists
-every sentence that is not verified source text as a `[surfaced]` item
-in the agenda's own line format, and under `--baseline` says whether a
-repair pass made the fraction fall. Advisory like the other ten: exit 0
-whatever it finds, no lock, no draft blocked.
-"""
-
 import json
 import shlex
 from pathlib import Path
@@ -35,8 +24,6 @@ SOURCE = (
 
 @pytest.fixture(autouse=True)
 def _a_synced_ledger(isolated_config):
-    """An empty, current ledger: the aid reads read-only (#843) and a
-    missing one is refused, so every test has to say it synced."""
     ledger.connect().close()
 
 
@@ -274,9 +261,6 @@ def a_payload_checked(*findings: match.Finding) -> match.Checked:
 
 class TestLoadBaseline:
     def test_a_payload_missing_a_metric_is_refused(self, tmp_path):
-        """A truncated or hand-edited baseline that passed the shared
-        loader but lacks what `compare` reads is a usage error, not a
-        comparison against zeros that reads as a regression."""
         data = a_payload(a_digest(DIGEST))
         for key in ("counts", "unsupported_fraction", "copied_fraction"):
             path = tmp_path / f"no-{key}.json"
@@ -342,14 +326,10 @@ class TestCompare:
             recheck.compare(a_payload(draft, stays), a_payload(draft, gone, stays))["fell"] is True
         )
         assert recheck.compare(a_payload(draft, stays), a_payload(draft, stays))["fell"] is False
-        # One item gone but the digest shrank more: the fraction rose.
         shrunk = a_payload(draft, stays, total=2)
         assert recheck.compare(shrunk, a_payload(draft, gone, stays))["fell"] is False
 
     def test_fell_is_false_when_a_new_item_appeared_even_if_counts_fell(self):
-        """Two items resolved and one fresh one in the same class: the
-        counts fall and the fraction falls, and the pass still does not
-        count, because `new` is not empty."""
         draft = a_digest(DIGEST)
         gone = match.Finding("unquoted-text", 6, "Gone sentence.", (KEY,))
         gone_too = match.Finding("unquoted-text", 7, "Gone as well.", (KEY,))
@@ -362,10 +342,6 @@ class TestCompare:
         assert result["fell"] is False
 
     def test_two_identical_sentences_in_one_section_share_an_id(self):
-        """The id hashes the sentence, never its line, as agenda's does:
-        a repeated bridge sentence yields two rows with one id, and the
-        baseline comparison then sees one item. Pinned so the behaviour
-        is a documented limit rather than a surprise."""
         draft = a_digest(DIGEST)
         twice = (
             match.Finding("unquoted-text", 6, "In summary.", (KEY,)),
@@ -441,14 +417,10 @@ class TestRun:
         assert md.is_file() and js.is_file()
         assert str(md) in out and str(js) in out
         data = json.loads(js.read_text(encoding="utf-8"))
-        # `shlex.join`, not an f-string: on Windows the draft path carries
-        # backslashes, which `shlex.join` quotes and a bare f-string does not.
         expected = ["python", "-m", "chitragupta.review", "digest", str(draft), "--formats", "md"]
         assert data["command"] == shlex.join(expected)
         assert data["counts"]["unquoted-text"] == 2
         assert data["counts"]["unsupported-text"] == 2
-        # Copied: the two source sentences, 9 + 8 words. Flagged: the two
-        # bridge sentences, 6 + 6 words, each counted once despite two classes.
         assert data["words_copied"] == 17 and data["words_flagged"] == 12
         assert data["unsupported_fraction"] == round(12 / data["words_total"], 3)
         assert "Unsupported fraction" in md.read_text(encoding="utf-8")
@@ -492,7 +464,6 @@ class TestRun:
         draft = a_digest(DIGEST)
         review_main.main(["digest", str(draft), "--formats", "md"])
         js = config.REVIEW_DIR / "dt" / "notes.digest.json"
-        # The repair: delete the closing thought.
         draft.write_text(DIGEST.replace("And a closing thought of mine.\n", ""), encoding="utf-8")
         assert (
             review_main.main(["digest", str(draft), "--baseline", str(js), "--formats", "md"]) == 0
@@ -540,11 +511,6 @@ class TestRun:
         assert calls == [KEY]
 
     def test_main_with_default_formats_files_the_bare_command(self, capsys):
-        """`main()` is the standalone entry the entry-point tests do not
-        reach, and the default `--formats` is the one branch of
-        `_command` a run that names its formats never takes. Rendering
-        `tex`/`pdf` needs pandoc; without it each is skipped with a
-        warning, which is the documented behaviour, not a failure."""
         a_source(KEY, (4, SOURCE))
         draft = a_digest(DIGEST)
         assert verbatim_digest.main([str(draft)]) == 0
@@ -555,22 +521,13 @@ class TestRun:
         assert "notes.digest.md" in capsys.readouterr().out
 
     def test_a_page_level_parse_is_not_checkable_and_names_the_stage(self):
-        """A `pdftotext` parse has no reading order, and a run copied from
-        one can be a collage of two columns, so the aid does not match
-        against it: the run is not checkable, and the reason says which
-        enrichment stage gives the source a sidecar."""
         add_item(KEY, parsed_text=f"Front matter only.\f{SOURCE}")
         checked, _ = verbatim_digest.build_report(a_digest(DIGEST))
         assert checked.spans == [] and len(checked.unverifiable) == 2
         assert "enrich --stages docling" in checked.unverifiable[0].reason
-        # Both cited runs, 9 + 14 words: the bridge sentence sits inside
-        # the second run, before its citation, so it is part of that run.
         assert checked.words_unverifiable == 23 and checked.words_copied == 0
 
     def test_the_standalone_parser_carries_the_same_defaults(self):
-        """`tests/test_review_entrypoint.py` already pins that every aid
-        declares its flags on the subparser and has no `__main__` block;
-        this only covers `build_parser(None)`, the shape `main()` uses."""
         parser = verbatim_digest.build_parser()
         args = parser.parse_args(["x.md"])
         assert (args.formats, args.json, args.baseline) == ("md,tex,pdf", False, None)

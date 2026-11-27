@@ -1,11 +1,3 @@
-"""chitragupta/retrieval_added.py: the words added to a query, and their
-rendering (#789 acronyms, #1232 spelling).
-
-The rendering is pinned exactly, because two readers depend on it: a
-person reading the CLI's notes, and `retrieval.md`'s `expanded` column,
-where every row logged before #1232 already reads `dt -> digital twin`.
-"""
-
 import pytest
 
 from chitragupta import acronyms, config, retrieval, retrieval_spelling
@@ -22,7 +14,6 @@ def vocabulary(monkeypatch):
 
 @pytest.fixture
 def spelling(monkeypatch):
-    """Correction on, against a fixed vocabulary."""
     monkeypatch.setattr(config, "SPELLING_CORRECTION", True)
     monkeypatch.setattr(
         retrieval_spelling, "vocabulary", lambda _: {"structural": 3, "digital": 9, "twin": 9}
@@ -55,8 +46,6 @@ class TestAddedTerms:
         ]
 
     def test_an_acronym_expansion_is_never_corrected(self, monkeypatch, spelling):
-        """`dgital` is a misspelling inside the vocabulary's expansion,
-        not in anything typed, so it is added as written."""
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DX": "dgital twin"})
         monkeypatch.setattr(config, "ACRONYM_EXPANSION", True)
         assert [entry.source for entry in added("DX")] == [ACRONYM, ACRONYM]
@@ -73,11 +62,6 @@ class TestAddedTerms:
 
 
 class TestContext:
-    """`--y-prev` prose reaches ranking as `context`: ranked on, acronyms
-    expanded as before, but never spelling-corrected. Draft prose holds
-    LaTeX commands and words a corpus lacks, and a correction in it would
-    reach no note."""
-
     def test_context_words_are_ranked_but_never_corrected(self, spelling):
         terms, entries = retrieval.query_terms("strucutral", context="citep digitl")
         assert terms == ["strucutral", "citep", "digitl", "structural"]
@@ -93,9 +77,6 @@ class TestContext:
         assert added_with("strucutral", "structural") == []
 
     def test_with_correction_off_it_ranks_as_the_joined_string_did(self, vocabulary):
-        """Before #1232's follow-up, `--y-prev` searched the query and the
-        prose joined into one string; with correction off the terms are
-        exactly that string's."""
         joined = retrieval.query_terms("DT fidelity the compensator recomputes")
         split = retrieval.query_terms("DT fidelity", context="the compensator recomputes")
         assert split == joined
@@ -135,8 +116,6 @@ class TestAnnounce:
         assert "acronym" not in err
 
     def test_the_notes_go_to_stderr(self, vocabulary, spelling, capsys):
-        """A genre skill parses `retrieve`'s stdout as a contract; a note
-        about the query is not a result."""
         announce(added("DT strucutral"))
         captured = capsys.readouterr()
         assert captured.out == ""

@@ -1,6 +1,3 @@
-"""chitragupta/review/citation_coverage.py: how much of retrieval's candidates actually
-made it into a draft's citations. Informational only, not a gate."""
-
 import json
 from pathlib import Path
 
@@ -57,7 +54,6 @@ class TestComputeCoverage:
 
         assert result.candidates == {}
         assert result.coverage_pct is None
-        # still reports the citation even though no candidate surfaced it
         assert result.cited_outside_candidates == {"a2024"}
 
     def test_cited_outside_candidates_tracked_separately(self, ledger_con, tmp_path):
@@ -106,9 +102,6 @@ class TestFormatReport:
 
 
 class TestSpellingCorrections:
-    """#1232: a coverage query can rank on a correction nobody typed, so
-    the report says which queries were corrected and how."""
-
     @pytest.fixture
     def corrected(self, ledger_con, monkeypatch):
         add_citable(ledger_con, "a2024", title="Structural Health Monitoring")
@@ -136,8 +129,6 @@ class TestSpellingCorrections:
         assert "- `strucutral health`: strucutral ~> structural" in written
 
     def test_without_corrections_nothing_changes(self, ledger_con, isolated_config, capsys):
-        """With correction off, the payload carries no `corrections` key
-        and neither report a section: byte-identical to before #1232."""
         add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft()
         argv = [str(draft), "--query", "digital twin", "--json", "--write"]
@@ -149,7 +140,6 @@ class TestSpellingCorrections:
 
 
 def _draft(text: str = "Composable twins [@a2024] are useful.\n", name: str = "draft.md") -> Path:
-    """A draft where the review layer will accept one: under content/drafts/."""
     path = config.DRAFTS_DIR / name
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text)
@@ -187,10 +177,6 @@ class TestMain:
 
 
 class TestWrite:
-    """`--write` puts the report in content/review/, mirroring the draft's
-    path, so it sits beside the same draft's provenance and verbatim
-    reports rather than only in a terminal that gets closed."""
-
     def test_off_by_default(self, ledger_con, isolated_config, capsys):
         add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft()
@@ -219,8 +205,6 @@ class TestWrite:
         assert report.is_file()
 
     def test_the_report_records_its_queries(self, ledger_con, isolated_config, capsys):
-        """A coverage figure is meaningless without the queries it was
-        measured against, so the header carries the whole invocation."""
         add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft()
 
@@ -241,16 +225,12 @@ class TestWrite:
 
         text = (config.REVIEW_DIR / "draft.coverage.md").read_text()
         assert "Review aid, not a gate" in text
-        # shlex-quoted, so a multi-word query is re-runnable as printed.
         assert "--query 'digital twin' --query composability" in text
         assert "--k 3" in text
 
     def test_no_candidates_says_so_rather_than_reporting_zero_percent(
         self, ledger_con, isolated_config, capsys
     ):
-        """An empty ledger means nothing was retrieved, which is not the
-        same finding as "0% of what was retrieved is cited" -- the report
-        must not let those read alike."""
         draft = _draft("[@a2024]\n")
 
         citation_coverage.main(
@@ -264,9 +244,6 @@ class TestWrite:
     def test_uncited_candidates_are_listed_with_their_titles(
         self, ledger_con, isolated_config, capsys
     ):
-        """The whole point of the report: a source retrieval surfaced and
-        the draft never cited. A bare citekey would make the reader look
-        each one up."""
         add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft("Cites nothing from the corpus.\n")
 
@@ -281,9 +258,6 @@ class TestWrite:
     def test_a_citekey_cited_but_not_surfaced_is_listed_as_not_a_gap(
         self, ledger_con, isolated_config, capsys
     ):
-        """Listed so the report cannot be misread as a complete picture
-        of the draft's sources -- and labelled so it is not misread as a
-        finding either."""
         add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         add_citable(ledger_con, "b2023", title="Unrelated Runtime Verification")
         draft = _draft("Cites both [@a2024] [@b2023].\n")
@@ -307,10 +281,6 @@ class TestWrite:
         assert "`b2023`" in text
 
     def test_the_recorded_command_regenerates_the_file(self, ledger_con, isolated_config, capsys):
-        """The header records the invocation so a reader can re-run it.
-        Without `--write` the recorded command prints to stdout and writes
-        nothing -- it reproduces the *findings* but not the file, which is
-        the one thing someone holding the file wants."""
         add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft()
 
@@ -324,8 +294,6 @@ class TestWrite:
     def test_two_runs_over_unchanged_input_are_byte_identical(
         self, ledger_con, isolated_config, capsys
     ):
-        """No wall-clock timestamp anywhere in a report: the point of
-        writing one is that it diffs cleanly against the next revision's."""
         add_citable(ledger_con, "a2024", title="Digital Twin Composability")
         draft = _draft()
         argv = [str(draft), "--query", "digital twin", "--write", "--formats", "md"]
@@ -339,12 +307,6 @@ class TestWrite:
 
 
 class TestJsonPayload:
-    """`--json`, widening #127's plumbing from `verbatim scan` to the rest
-    of the review layer (#309). Mirrors `verbatim scan`'s own contract:
-    printing stays the default, `--json` prints the payload instead, and
-    `--write` files it beside the Markdown whether or not `--json` was
-    also given."""
-
     def test_json_flag_prints_the_payload_instead_of_text(
         self, ledger_con, isolated_config, capsys
     ):
@@ -397,10 +359,6 @@ class TestJsonPayload:
     def test_a_citekey_outside_the_candidates_is_still_a_finding_with_no_candidates_at_all(
         self, ledger_con, isolated_config, capsys
     ):
-        """The printed report only shows `coverage_pct` when there are
-        candidates, but a citation outside the (empty) candidate set is
-        still worth reporting -- pin that the payload doesn't inherit the
-        printed form's conditional."""
         draft = _draft("Nothing relevant [@a2024].\n")
 
         citation_coverage.main(
@@ -489,8 +447,6 @@ class TestInputIsConfinedToContent:
     def test_a_draft_outside_the_content_dir_is_refused(
         self, ledger_con, isolated_config, tmp_path, capsys
     ):
-        """The tier-1 rule 3.17.0 set for the gate chain, which the three
-        review aids did not follow until 4.0.0."""
         outside = tmp_path / "outside.md"
         outside.write_text("[@a2024]\n")
 

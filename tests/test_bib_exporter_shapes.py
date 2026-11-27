@@ -1,22 +1,3 @@
-"""What real reference managers write into bibliography.bib, read the
-way `bib_reader` must read it (#964, folding in #956 and #965).
-
-Three things the exporters do that the reader got wrong:
-
-- **Escaped delimiters in `file`.** Zotero and Better BibTeX escape the
-  drive colon and every backslash of a Windows path
-  (`C\\:\\\\Users\\\\me\\\\x.pdf`), and a `;` that is part of a file name
-  (`a\\;b.pdf`). Splitting on bare `:`/`;` rebuilt `C\\:\\Users\\me\\x.pdf`,
-  which exists nowhere, so every Windows entry was "no PDF" and sync
-  exited 3; and `\\;` crashed bibtexparser's LaTeX decoder outright.
-- **BibTeX inside a field value.** An abstract or `note` quoting an
-  entry, wrapped so that `@article{` starts a line, was counted as an
-  entry, giving a phantom drop that exits 3 and blocks `--remove-stale`.
-- **A second bib parser.** The verbatim aid matched `@\\w+\\{key,` and
-  `file = \\{...\\},` with its own regexes; `test_bib_reader_is_the_only_bib_parser`
-  is the scan that keeps it from coming back.
-"""
-
 import re
 import sys
 from pathlib import Path
@@ -34,11 +15,9 @@ class TestSplitUnescaped:
         [
             ("a:b:c", ":", ["a", "b", "c"]),
             (r"a\:b:c", ":", [r"a\:b", "c"]),
-            # An escaped backslash does not escape what follows it.
             (r"a\\:b", ":", [r"a\\", "b"]),
             (r"x\;y.pdf:t;z", ";", [r"x\;y.pdf:t", "z"]),
             ("", ":", [""]),
-            # A trailing lone backslash is kept rather than lost.
             ("a\\", ":", ["a\\"]),
         ],
     )
@@ -51,7 +30,6 @@ class TestSplitUnescaped:
             (r"C\:\\Users\\me\\x.pdf", r"C:\Users\me\x.pdf"),
             (r"a\;b.pdf", "a;b.pdf"),
             ("/home/me/x.pdf", "/home/me/x.pdf"),
-            # Only the three escapes the exporters write are undone.
             (r"\n\x", r"\n\x"),
         ],
     )
@@ -60,9 +38,6 @@ class TestSplitUnescaped:
 
 
 class TestAttachments:
-    """`bib_escapes.attachments`: the `file` field as `(path, mime)`
-    pairs, one per attachment, in the order the exporter wrote them."""
-
     @pytest.mark.parametrize(
         ("field", "expected"),
         [
@@ -99,8 +74,6 @@ class TestAttachments:
                 [("pdfs/a;b.pdf", "application/pdf")],
                 id="literal-semicolon-in-path",
             ),
-            # An unescaped drive colon, as a hand edit writes it, still
-            # rejoins: only the first and last parts are not the path.
             pytest.param(
                 r"D:C:\x.pdf:application/pdf",
                 [(r"C:\x.pdf", "application/pdf")],
@@ -115,8 +88,6 @@ class TestAttachments:
 
 class TestReadLibraryResolvesEscapedFields:
     def test_a_literal_semicolon_in_a_path_resolves(self, isolated_config):
-        """The `\\;` that crashed bibtexparser's LaTeX decoder for the
-        whole file now names the PDF it means."""
         bib_dir = isolated_config.BIB_FILE_PATH.parent
         (bib_dir / "a;b.pdf").write_bytes(b"%PDF-1.4")
         isolated_config.BIB_FILE_PATH.write_text(
@@ -128,9 +99,6 @@ class TestReadLibraryResolvesEscapedFields:
         assert Path(reference.pdf_path).name == "a;b.pdf"
 
     def test_a_file_field_without_latex_markup_is_kept_as_written(self, isolated_config):
-        """Every Zotero and Better BibTeX export: the exporters' own
-        escapes reach `bib_escapes` untouched, and the other fields are
-        still decoded as before."""
         isolated_config.BIB_FILE_PATH.write_text(
             '@article{k_2024,\n  title = {M{\\"o}bius},\n'
             "  file = {A:C\\:\\\\x\\;y.pdf:application/pdf},\n}\n",
@@ -141,10 +109,6 @@ class TestReadLibraryResolvesEscapedFields:
         assert reference.fields["file"] == "A:C\\:\\\\x\\;y.pdf:application/pdf"
 
     def test_a_mendeley_latex_escaped_path_is_still_decoded(self, isolated_config):
-        """Mendeley writes the field as LaTeX: an underscore is `{\\_}`
-        and an umlaut `{\\"u}`. Decoding it is what made such a path
-        resolve before #964, so a field holding LaTeX markup is still
-        decoded."""
         bib_dir = isolated_config.BIB_FILE_PATH.parent
         (bib_dir / "Smith_Müller.pdf").write_bytes(b"%PDF-1.4")
         isolated_config.BIB_FILE_PATH.write_text(
@@ -156,8 +120,6 @@ class TestReadLibraryResolvesEscapedFields:
         assert Path(reference.pdf_path).name == "Smith_Müller.pdf"
 
     def test_latex_markup_the_decoder_cannot_read_is_kept_raw(self, isolated_config):
-        """Markup and a `\\;` together: the decoder raises on the `\\;`,
-        and that must cost the field its decoding, not the read its life."""
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{both_2024,\n  title = {T},\n  file = {:a{\\_}b\\;c.pdf:pdf},\n}\n",
             encoding="utf-8",
@@ -182,8 +144,6 @@ class TestReadLibraryResolvesEscapedFields:
 
 
 ENTRY = "@article{{{key},\n  title = {{T}},\n  year = {{2024}},\n{extra}}}\n"
-# Field text a reference manager really exports and wraps: BibTeX quoted
-# inside an abstract or a note, with the `@` landing at a line start.
 QUOTED = [
     "  note = {cite as\n@article{inner_2001, title={x}}},\n",
     "  abstract = {We write\n@misc(other_2002, title = {y})\nin our tool.},\n",
@@ -199,10 +159,6 @@ class TestEntriesInsideFieldValues:
         assert bib_integrity.count_raw_entries(text) == 1
 
     def test_the_count_matches_every_composition(self):
-        """Every ordering of every quoted fragment across a run of real
-        entries counts exactly the entries composed: the deterministic
-        stand-in for a property test, since this project carries no
-        hypothesis dependency."""
         for n in range(1, 5):
             for offset in range(len(QUOTED)):
                 text = "\n".join(
@@ -220,10 +176,6 @@ class TestEntriesInsideFieldValues:
         assert library.unread == {}
 
     def test_an_entry_after_one_unbalanced_entry_is_still_counted(self):
-        """Why the bound is depth one, not zero: after an entry missing
-        its closing brace the depth never returns to zero, and a depth-0
-        rule would stop counting every entry after it -- hiding the drop
-        this count exists to show (`bib_integrity.block_has_fields`)."""
         text = (
             "@article{broken_2024,\n  title = {Unclosed,\n  year = {2024},\n}\n\n"
             + ENTRY.format(key="after_2024", extra="")
@@ -232,10 +184,6 @@ class TestEntriesInsideFieldValues:
 
 
 class TestVerbatimReadsTheLedgersPdf:
-    """#956: `verbatim locate`/`overlap` find a paper's PDF through the
-    ledger row `sync` wrote with `bib_reader`, never by re-parsing the
-    bib file -- so whatever bib_reader handles, they handle."""
-
     def test_a_shape_the_old_regex_missed_is_found(self, isolated_config, ledger_con):
         from chitragupta.review.verbatim_check import _corpus
 
@@ -243,8 +191,6 @@ class TestVerbatimReadsTheLedgersPdf:
         pdf = bib_dir / "pdfs" / "x.pdf"
         pdf.parent.mkdir(parents=True, exist_ok=True)
         pdf.write_bytes(b"%PDF-1.4")
-        # `@article{ key ,` and an unbraced last `file` field: the two
-        # shapes `bib_entry`'s regexes did not match.
         isolated_config.BIB_FILE_PATH.write_text(
             '@article{ spaced_2024 ,\n  title = {T},\n  file = "A:pdfs/x.pdf:application/pdf"\n}\n',
             encoding="utf-8",
@@ -260,10 +206,6 @@ class TestVerbatimReadsTheLedgersPdf:
 
 
 def test_bib_reader_is_the_only_bib_parser():
-    """The class test for #956: no module outside the bib reader's own
-    compiles a pattern for an entry header or a `file` field.
-    `bib_parse.py` is the reader's parsing half, split from `bib_reader.py`
-    when bibtexparser 2 needed 1.x's rules restated."""
     allowed = {"bib_reader.py", "bib_parse.py", "bib_integrity.py", "bib_escapes.py"}
     entry_or_file = re.compile(
         r"""re\.(?:compile|search|match|findall|finditer)\(\s*r?["']"""

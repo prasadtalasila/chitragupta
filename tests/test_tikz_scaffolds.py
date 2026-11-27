@@ -1,46 +1,3 @@
-"""assets/tikz/: the known-good layout scaffolds, one per metaphor.
-
-docs/FEATURE-ROADMAP.md's D3 (#382). docs/TIKZ-STYLE.md tells an author
-to commit to a layout metaphor before placing a node; these are what
-that choice hands them, so a figure starts from a file rather than from
-an empty `tikzpicture`.
-
-**The point of this file is that "known-good" is a check and not a
-claim.** #382's acceptance criterion is that every scaffold reports zero
-binary findings from `python -m chitragupta.review figure`, and the aid
-shipped in #314, so the criterion is testable and is tested here rather
-than asserted in a README.
-
-Two things it guards that are easy to miss:
-
-- **The metaphor list is read out of docs/TIKZ-STYLE.md**, not restated.
-  Adding a row to that table without adding a file here fails, which is
-  the coverage half of the criterion.
-- **Zero findings has to be earned, not vacuous.** The aid measures a
-  node's geometry only where the source spells an explicit `(name)`, so
-  a picture that names nothing reports no overlap and no protrusion
-  because nothing was measurable at all. Exactly 1 of the 43 figures in
-  this repository's own drafted book names a node (#393), so this is the
-  normal case rather than a corner. Every scaffold is therefore also
-  asserted to have every name it declares come back measured. That
-  assertion used to be this file's own workaround for the aid reporting
-  the two cases identically; #405 moved the distinction into the aid, so
-  it is now a second opinion on a thing `has_findings` already covers
-  rather than the only thing covering it.
-
-#1012 added the house figure-style block, `assets/tikz/cg-figstyle.tex`,
-which every scaffold and exemplar carries verbatim. Two more guards
-follow from that:
-
-- **The copies cannot fork.** Duplication on purpose fails one way,
-  silently: a copy edited in one file. Every carrier's marked region is
-  compared byte for byte with the block.
-- **The type floor is read back out of the PDF**, not out of the
-  source. A `\\scriptsize` in the source is the easy case; the one that
-  matters is a size arriving from somewhere the figure file cannot see,
-  such as a `\\resizebox` in the draft that inputs it.
-"""
-
 import ctypes
 import math
 import re
@@ -64,22 +21,15 @@ SCAFFOLD_DIR = REPO_ROOT / "assets" / "tikz"
 EXEMPLAR_DIR = SCAFFOLD_DIR / "exemplars"
 STYLE_DOC = REPO_ROOT / "docs" / "TIKZ-STYLE.md"
 
-# The house block, and the two comment lines that bound its copy inside a
-# figure. The markers are the shape #1013's `figure sync` will rewrite
-# between; matching the start by prefix leaves its version free to move.
 BLOCK = SCAFFOLD_DIR / "cg-figstyle.tex"
 _REGION_START = "% >>> chitragupta figure style v"
 _REGION_END = "% >>> end chitragupta figure style <<<\n"
 
-# The metaphor table in docs/TIKZ-STYLE.md, found by its header rather
-# than by position: the rows after `| Metaphor | TikZ idiom |` and its
-# `| --- |` separator, up to the first line that is not a table row.
 _TABLE_HEADER = "| Metaphor | TikZ idiom |"
 _ROW_RE = re.compile(r"^\|\s*(?P<metaphor>[^|]+?)\s*\|\s*(?P<idiom>[^|]+?)\s*\|$")
 
 
 def _metaphors() -> list[str]:
-    """Every metaphor docs/TIKZ-STYLE.md's table names, in its order."""
     lines = STYLE_DOC.read_text(encoding="utf-8").splitlines()
     start = lines.index(_TABLE_HEADER) + 2  # header, then the `| --- |`
     found = []
@@ -92,26 +42,18 @@ def _metaphors() -> list[str]:
 
 
 def _slug(metaphor: str) -> str:
-    """The file name a metaphor maps to: `Layered stack` ->
-    `layered-stack`. Mechanical on purpose -- the mapping is a rule a
-    reader can apply, not a lookup table that has to be maintained
-    alongside the doc it mirrors."""
     return re.sub(r"[^a-z0-9]+", "-", metaphor.lower()).strip("-")
 
 
 def _scaffolds() -> list[Path]:
-    """One file per metaphor: everything here except the block itself."""
     return sorted(path for path in SCAFFOLD_DIR.glob("*.tex") if path != BLOCK)
 
 
 def _carriers() -> list[Path]:
-    """Every figure this directory ships, scaffolds and exemplars alike.
-    Each carries the block, and each is held to the same checks."""
     return _scaffolds() + sorted(EXEMPLAR_DIR.glob("*.tex"))
 
 
 def _region(text: str) -> str | None:
-    """The block's copy inside `text`, markers included, or None."""
     start = text.find(_REGION_START)
     end = text.find(_REGION_END, start)
     if start < 0 or end < 0:
@@ -119,8 +61,6 @@ def _region(text: str) -> str | None:
     return text[start : end + len(_REGION_END)]
 
 
-# The well a `pic` is drawn into, and the `pic`s themselves, both read
-# out of the block rather than restated, so the test follows an edit.
 _WELL_RE = re.compile(
     r"cgwell/\.style=\{[^}]*minimum width=(?P<w>[\d.]+)mm, minimum height=(?P<h>[\d.]+)mm"
 )
@@ -131,25 +71,20 @@ _LIBRARIES = "arrows.meta,positioning,fit,backgrounds,calc,shadows.blur"
 
 
 def _pics() -> list[str]:
-    """Every `pic` the block defines, in the order it defines them."""
     return _PIC_RE.findall(BLOCK.read_text(encoding="utf-8"))
 
 
 def _pics_overriding_the_join(source: str) -> list[str]:
-    """The `pic`s in `source` whose own code sets a line join. Each
-    definition runs from its `pics/<name>/` key to the next one."""
     starts = list(_PIC_RE.finditer(source))
     ends = [m.start() for m in starts[1:]] + [len(source)]
     return [m["name"] for m, end in zip(starts, ends) if "line join" in source[m.start() : end]]
 
 
-# The house-shape table in docs/TIKZ-STYLE.md, found by its header.
 _PIC_TABLE_HEADER = "| `pic` | Stands for | Twin says |"
 _PIC_ROW_RE = re.compile(r"^\|\s*`(?P<name>\w+)`\s*\|")
 
 
 def _documented_pics() -> list[str]:
-    """The `pic`s docs/TIKZ-STYLE.md's house-shape table names."""
     lines = STYLE_DOC.read_text(encoding="utf-8").splitlines()
     start = lines.index(_PIC_TABLE_HEADER) + 2
     found = []
@@ -161,28 +96,12 @@ def _documented_pics() -> list[str]:
     return found
 
 
-# Parametrised by file rather than by metaphor so a failure names the
-# scaffold a reader would go and open.
 by_scaffold = pytest.mark.parametrize("scaffold", _scaffolds(), ids=lambda p: p.stem)
 by_carrier = pytest.mark.parametrize("scaffold", _carriers(), ids=lambda p: p.stem)
 
 
 class TestMetaphorCoverage:
-    """The set covers docs/TIKZ-STYLE.md's table, in both directions."""
-
     def test_the_table_was_actually_read_past_its_first_row(self):
-        """The non-vacuous-scan guard every repo-walking test here owes.
-
-        A doc reformat that renamed a column or reflowed the table makes
-        `_metaphors()` return nothing, and an empty list satisfies
-        `test_every_metaphor_has_a_scaffold` for the wrong reason. More
-        than one row also catches the row loop breaking early.
-
-        Deliberately not `>= 6`: the number of metaphors is the style
-        doc's to change, and pinning today's count here would turn
-        dropping one into a test failure in the wrong file. The set
-        equality below is what actually holds the two in step.
-        """
         assert len(_metaphors()) > 1
 
     def test_every_metaphor_has_a_scaffold(self):
@@ -191,18 +110,11 @@ class TestMetaphorCoverage:
         assert missing == []
 
     def test_no_scaffold_names_a_metaphor_the_doc_dropped(self):
-        """The other direction: a row deleted from the table leaves a
-        file here claiming to implement guidance that no longer
-        exists."""
         expected = {_slug(m) for m in _metaphors()}
 
         assert {path.stem for path in _scaffolds()} == expected
 
 
-# #1049: the figure-drawer skill routes a pattern to a layout in
-# patterns.md, and each layout has one reference file carrying its
-# reference ranges. The skill's references live once, under .claude/
-# (#1039), whichever harness reads them.
 REFERENCES = REPO_ROOT / ".claude" / "skills" / "figure-drawer" / "references"
 PATTERNS = REFERENCES / "patterns.md"
 SKILL_COPIES = [
@@ -213,13 +125,8 @@ SKILL_COPIES = [
 
 _PATTERN_LINK_RE = re.compile(r"\]\(layouts/(?P<slug>[\w-]+)\.md\)")
 
-# What the fractions are of: the render's 12pt A4 1in page, the same
-# constants `figure check` divides by, so a reference row and a checked
-# figure are measured alike (#1057).
 _TEXT_WIDTH_PT = ARTICLE.text_width_pt
 _TEXT_HEIGHT_PT = ARTICLE.text_height_pt
-# Two decimals are written, and the probe's numbers move by a little with
-# the TeX installation; more than this is the source having changed.
 _FRACTION_TOLERANCE = 0.02
 
 
@@ -236,14 +143,11 @@ def _all_range_rows() -> list[RangeRow]:
 
 
 def _counted(source: Path) -> tuple[int, int]:
-    """Nodes and edges, read from the source the way `review figure` reads them."""
     text = source.read_text(encoding="utf-8")
     return len(figure_layout.node_names(text)), len(figure_layout.edge_list(text))
 
 
 def _measured(source: Path) -> tuple[float, float, float]:
-    """Width and height as fractions of the text block, and slack: the
-    share of the picture no leaf node fills, zone cards excluded."""
     boxes = figure_layout.node_boxes(source)
     bx1, by1, bx2, by2 = boxes[figure_layout.BBOX_NAME]
     return (bx2 - bx1) / _TEXT_WIDTH_PT, (by2 - by1) / _TEXT_HEIGHT_PT, slack(boxes)
@@ -266,10 +170,6 @@ def _extent_mismatch(row: RangeRow) -> str | None:
 
 
 class TestEveryLayoutHasAReferenceFile:
-    """#1049: one reference file per layout, and patterns.md routing
-    only to layouts that exist. The layout list is TIKZ-STYLE.md's table,
-    the same one the scaffolds are held to above."""
-
     def test_every_metaphor_has_a_reference_file(self):
         missing = [m for m in _metaphors() if not _layout_file(_slug(m)).exists()]
 
@@ -316,11 +216,6 @@ class TestEveryLayoutHasAReferenceFile:
 
 
 class TestEveryReferenceFigureDeclaresItsLayout:
-    """#1057: `figure check` reads a figure's reference range through its
-    `% cg-layout:` line, so every file a range is measured from declares
-    the layout whose file measures it, and a figure copied from a
-    scaffold starts out declaring the right one."""
-
     @pytest.mark.parametrize("metaphor", _metaphors(), ids=_slug)
     def test_each_scaffold_declares_its_own_layout(self, metaphor):
         source = (SCAFFOLD_DIR / f"{_slug(metaphor)}.tex").read_text(encoding="utf-8")
@@ -343,11 +238,6 @@ class TestEveryReferenceFigureDeclaresItsLayout:
 
 
 class TestTheReferenceRangesAreMeasured:
-    """#1049's criterion that a reference range is derived from the
-    scaffold and exemplar, not typed by hand: every written number is
-    re-measured here, so a range moves only when its source does. A
-    failure prints the measured row to paste back."""
-
     def test_the_tables_were_read(self):
         assert len(_all_range_rows()) > len(_metaphors())
 
@@ -373,10 +263,6 @@ class TestTheReferenceRangesAreMeasured:
 
 
 class TestTheWellSizeIsStatedOnce:
-    """The probe reads the well's size out of `cgwell`'s style, so a
-    resized well moves the test with it. These two sentences state the
-    size in prose, and would otherwise go on saying the old number."""
-
     def test_the_prose_names_the_well_the_block_draws(self):
         match = _WELL_RE.search(BLOCK.read_text(encoding="utf-8"))
         stated = re.findall(r"(\d+)mm `cgwell`", BLOCK.read_text(encoding="utf-8"))
@@ -389,11 +275,6 @@ class TestTheWellSizeIsStatedOnce:
 
 
 class TestTheShapesAreTheDocumentedOnes:
-    """#1014: a shape is added only when a metaphor wants it, and the
-    argument is made in writing. The doc row is where that argument
-    lands, so a `pic` the table does not name cannot ship, and a row
-    for a `pic` that was removed cannot linger."""
-
     def test_the_table_was_read(self):
         assert len(_documented_pics()) > 1
 
@@ -401,8 +282,6 @@ class TestTheShapesAreTheDocumentedOnes:
         assert _documented_pics() == _pics()
 
     def test_a_scaffold_draws_one_into_a_well(self):
-        """So every run compiles the construct and measures the well,
-        rather than leaving it to the exemplars alone."""
         drawn = re.compile(
             r"\\node\[cgwell\b[^]]*\]\s*\((?P<well>[\w-]+)\)"
             r"[^\n]*\n\s*\\pic\b[^\n]*at \((?P=well)\)"
@@ -412,19 +291,12 @@ class TestTheShapesAreTheDocumentedOnes:
 
 
 class TestEverySourceProperty:
-    """What can be checked without a toolchain, so it runs everywhere."""
-
     @by_carrier
     def test_carries_its_own_usetikzlibrary_line(self, scaffold):
-        """The renderer's preamble loads `tikz` and no library, so a
-        scaffold that relies on `positioning`/`matrix`/`fit` and does
-        not load it fails the whole render rather than just itself."""
         assert "\\usetikzlibrary{" in scaffold.read_text(encoding="utf-8")
 
     @by_carrier
     def test_names_the_nodes_it_draws(self, scaffold):
-        """The measurability precondition, checked from source so it
-        also holds on a host with no TeX."""
         assert figure_layout.node_names(scaffold.read_text(encoding="utf-8"))
 
     @by_carrier
@@ -435,9 +307,6 @@ class TestEverySourceProperty:
 
     @by_carrier
     def test_its_ascii_twin_agrees_with_it(self, scaffold):
-        """#1056: a figure copied from here starts as a pair, so every
-        carrier ships its `.txt`, in WRITING-STANDARDS §10's 7-bit
-        alphabet and about 70 columns, naming what its TikZ names."""
         twin = scaffold.with_suffix(".txt")
         text = twin.read_bytes().decode("ascii") if twin.is_file() else None
 
@@ -448,12 +317,8 @@ class TestEverySourceProperty:
 @pytest.mark.slow
 @needs_tikz
 class TestEveryGeometryProperty:
-    """The half that needs a real `lualatex`."""
-
     @by_carrier
     def test_compiles_and_measures_every_name_it_declares(self, scaffold):
-        """Zero findings, earned rather than vacuous -- see this
-        module's docstring."""
         source = scaffold.read_text(encoding="utf-8")
         boxes = figure_layout.node_boxes(scaffold)
         measured = set(boxes) - {figure_layout.BBOX_NAME}
@@ -472,16 +337,6 @@ class TestEveryGeometryProperty:
 @pytest.mark.slow
 @needs_tikz
 class TestThroughTheDocumentedCommand:
-    """One scaffold checked the way an author actually reaches it.
-
-    Everything above calls the library's own functions. This goes
-    through `check_draft()`, which is what
-    `python -m chitragupta.review figure <draft>` runs -- and which
-    resolves a figure only *beside the draft that marks it*, so a
-    scaffold is reached by being copied into a draft's `figures/`
-    directory, exactly as assets/tikz/README.md tells an author to.
-    """
-
     def test_a_draft_that_starts_from_a_scaffold_reports_no_finding(self, tmp_path):
         figures = tmp_path / "figures"
         figures.mkdir()
@@ -493,11 +348,6 @@ class TestThroughTheDocumentedCommand:
 
         assert len(results) == 1
         assert results[0].skipped == ""
-        # `has_findings` now carries the whole criterion, because #405
-        # put "nothing was measurable" inside it. Before that this had to
-        # additionally assert that every declared name came back measured
-        # -- the aid could not tell a clean figure from an unmeasured
-        # one, so every caller had to make the distinction for itself.
         assert results[0].has_findings is False
         assert results[0].unmeasured == []
 
@@ -506,9 +356,6 @@ class TestThroughTheDocumentedCommand:
 @needs_tikz
 @pytest.mark.parametrize("figure", _carriers(), ids=lambda p: p.stem)
 def test_every_asset_passes_every_rule(figure):
-    """What figure-drawer copies from must not hand a defect on (#1161):
-    every scaffold and exemplar is clean under every rule, and the
-    connector rules ran on it (a round node is all c4 may set aside)."""
     result = check(figure, ARTICLE.text_width_pt)
 
     assert [(f.rule, f.target) for f in result.findings] == []
@@ -522,17 +369,10 @@ def test_every_asset_passes_every_rule(figure):
 
 
 class TestTheBlockTravelsUnforked:
-    """#1012's acceptance: the block is byte-identical in every file
-    carrying it, because the first edit to one copy is otherwise
-    invisible until two figures in one book disagree."""
-
     def test_there_is_more_than_one_carrier(self):
-        """The non-vacuous guard: an empty glob passes every check below."""
         assert len(_scaffolds()) > 1 and len(_carriers()) > len(_scaffolds())
 
     def test_the_block_file_is_exactly_its_own_region(self):
-        """Nothing outside the markers, so a copy of the region is a copy
-        of the whole file and `figure sync` (#1013) has one thing to stamp."""
         text = BLOCK.read_text(encoding="utf-8")
 
         assert _region(text) == text
@@ -545,8 +385,6 @@ class TestTheBlockTravelsUnforked:
         assert _region(text) == BLOCK.read_text(encoding="utf-8")
 
     def test_a_one_value_edit_is_caught(self):
-        """The shape this guard exists for, fed to it: one corner radius
-        changed inside a copy, everything else intact."""
         text = (SCAFFOLD_DIR / "pipeline.tex").read_text(encoding="utf-8")
         forked = text.replace("rounded corners=3pt", "rounded corners=2pt", 1)
 
@@ -554,16 +392,10 @@ class TestTheBlockTravelsUnforked:
         assert _region(forked) != BLOCK.read_text(encoding="utf-8")
 
 
-# A colour no figure uses, given to everything set in math mode, so the
-# PDF reader can tell TeX's script style -- the one size the type floor
-# exempts -- from text that was shrunk.
 _MATH_RGB = (1, 2, 3)
 
 
 def _lualatex(directory: Path, body: str) -> subprocess.CompletedProcess:
-    """Compile `body` inside the minimal document WRITING-STANDARDS.md
-    §10 tells an author to probe a figure with, plus the math marker,
-    under LuaLaTeX, the engine the pdf render uses (#1037)."""
     (directory / "probe.tex").write_text(
         "\\documentclass{article}\n\\usepackage{tikz}\n\\pagestyle{empty}\n"
         "\\everymath\\expandafter{\\the\\everymath\\color[RGB]{%d,%d,%d}}\n"
@@ -581,11 +413,6 @@ def _lualatex(directory: Path, body: str) -> subprocess.CompletedProcess:
 
 
 class TestALoopKeepsTheHouseArrow:
-    """pgf's `topaths` sets `every loop/.style={->,shorten >=1pt}`, and a
-    `loop` applies it after the edge's own options, so a self-loop drawn
-    `cgedge` ends in pgf's default tip beside every other transition's
-    `Latex` one (#1062). The picture style empties it."""
-
     def test_the_picture_style_empties_every_loop(self):
         text = BLOCK.read_text(encoding="utf-8")
         start = text.index("  cg/.style={")
@@ -597,16 +424,6 @@ class TestALoopKeepsTheHouseArrow:
 @pytest.mark.slow
 @needs_tikz
 class TestTheBlockTypesetsNothing:
-    """`\\input` of the block adds no material to the page, and `\\input`
-    of a figure adds nothing beyond its picture.
-
-    A line ending after `}` is a space token, and in horizontal mode a
-    space has width. The block as first drafted set fifteen of them, 50pt
-    of blank to the left of any picture `\\input` beside text. A figure
-    float starts in vertical mode and drops them, which is why nothing
-    showed; a `standalone` preview or an inline `\\input` does not.
-    """
-
     @staticmethod
     def _width(directory: Path, source: Path) -> str:
         result = _lualatex(
@@ -620,17 +437,10 @@ class TestTheBlockTypesetsNothing:
 
     @by_carrier
     def test_a_whole_figure_sets_only_its_picture(self, scaffold, tmp_path):
-        """The same property for everything around the block: the
-        `\\usetikzlibrary` line and the picture's own last line end in
-        `%`, so `\\input` of the file is exactly as wide as the picture
-        alone. Libraries and block are loaded first, outside the boxes,
-        so the bare picture can compile on its own."""
         source = scaffold.read_text(encoding="utf-8")
-        # After the block, whose comments mention `\\begin{tikzpicture}[cg]`.
         start = source.index("\\begin{tikzpicture}", source.index(_REGION_END))
         end = source.rindex("\\end{tikzpicture}") + len("\\end{tikzpicture}")
         bare = tmp_path / "bare.tex"
-        # The `%` stops the bare file's own last line setting a space.
         bare.write_text(source[start:end] + "%", encoding="utf-8")
         libraries = f"{_LIBRARIES},matrix,trees"
         result = _lualatex(
@@ -638,9 +448,6 @@ class TestTheBlockTypesetsNothing:
             f"\\usetikzlibrary{{{libraries}}}\\input{{{BLOCK}}}%\n"
             f"\\setbox0\\hbox{{\\input{{{scaffold}}}}}\\typeout{{CGFULL=\\the\\wd0}}%\n"
             f"\\setbox2\\hbox{{\\input{{{bare}}}}}\\typeout{{CGBARE=\\the\\wd2}}%\n"
-            # Shipped, not dropped: LuaTeX stops a run that wrote pdf
-            # objects (shadows.blur's fadings) but put no page out, which
-            # pdflatex let pass (#1037).
             "\\box0\\box2",
         )
         assert result.returncode == 0, result.stdout[-2000:]
@@ -649,8 +456,6 @@ class TestTheBlockTypesetsNothing:
         assert full == re.search(r"CGBARE=(\S+)", result.stdout).group(1)
 
     def test_the_probe_sees_a_stray_space(self, tmp_path):
-        """The probe against the exact shape it was written for: one
-        colour line with its comment set off by spaces, as drafted."""
         stray = tmp_path / "stray.tex"
         stray.write_text("\\definecolor{cgInk}{HTML}{1A1A1A}     % ink\n", encoding="utf-8")
 
@@ -665,13 +470,6 @@ class _Glyph(NamedTuple):
 
 
 def _effective_sizes(pdf_path: Path, page: int) -> list[_Glyph]:
-    """Every glyph on `page`, with its printed size and where it sits.
-
-    pdfium's own font size is the size the font was *selected* at, which
-    is blind to a `\\resizebox`: that arrives as a transformation matrix,
-    not as a font change. Each glyph's matrix carries it, so the printed
-    size is the font size times the matrix's linear scale.
-    """
     pdfium = pytest.importorskip("pypdfium2")
     raw = pytest.importorskip("pypdfium2.raw")
     document = pdfium.PdfDocument(str(pdf_path))
@@ -697,25 +495,12 @@ def _effective_sizes(pdf_path: Path, page: int) -> list[_Glyph]:
         document.close()
 
 
-# Rounding slack only. pdfium reports sizes in big points and a matrix
-# that has been through pdfTeX's decimal output, so equal sizes can
-# differ in the fourth figure; a real step down the ramp is 1pt or more.
 _SIZE_TOLERANCE = 0.01
 
-# TeX's script style at a 10pt body is 7pt: the exemption, as a ratio.
 _SCRIPT_RATIO = 0.7
 
 
 def _floor_ratios(floor: float, glyphs: list[_Glyph]) -> list[float]:
-    """Each glyph's size as a fraction of the floor it answers to.
-
-    A math glyph answers to the script floor only when it hangs off a
-    full-size math glyph, within one body size across and up or down,
-    which is what a subscript or an exponent does. Math that is small
-    throughout -- `\\scriptsize $k$` -- has nothing to hang off, so it
-    answers to the body size like any other text.
-    """
-
     def attached(glyph: _Glyph) -> bool:
         return any(
             other.in_math
@@ -734,20 +519,8 @@ def _floor_ratios(floor: float, glyphs: list[_Glyph]) -> list[float]:
 @pytest.mark.slow
 @needs_tikz
 class TestTheTypeFloor:
-    """Nothing in a figure prints smaller than the paragraph beside it,
-    and, since house block v4, nothing prints larger either.
-
-    Body text on page 1 is the reference, measured from the same PDF so
-    no number here depends on a class or a unit; the figure alone is on
-    page 2. A subscript or exponent may drop to TeX's own script size,
-    the exemption #1012 names, and no further; every other glyph, math
-    included, is held to the body size itself.
-    """
-
     @staticmethod
     def _floor_and_figure(directory: Path, figure: str) -> tuple[float, list[float]]:
-        """The body size, and each figure glyph's size as a fraction of
-        the floor it answers to (1.0 is exactly on it)."""
         result = _lualatex(directory, f"Body text.\n\\clearpage\n{figure}")
         assert result.returncode == 0, result.stdout[-2000:]
         pdf = directory / "probe.pdf"
@@ -756,10 +529,6 @@ class TestTheTypeFloor:
 
     @staticmethod
     def _largest(directory: Path, figure: str) -> float:
-        """The figure's largest printed glyph as a fraction of the body
-        size. Raw sizes, not `_floor_ratios`: that measures a math glyph
-        beside a subscript against the script size, which is right for a
-        floor and would read a full-size `k` as 1.4 times too large."""
         result = _lualatex(directory, f"Body text.\n\\clearpage\n{figure}")
         assert result.returncode == 0, result.stdout[-2000:]
         pdf = directory / "probe.pdf"
@@ -777,30 +546,22 @@ class TestTheTypeFloor:
 
     @by_carrier
     def test_no_glyph_is_set_above_the_body_size(self, scaffold, tmp_path):
-        """House block v4 (#1054): one size, the body's. Names and titles
-        are told apart by weight, so a figure never reads louder than the
-        paragraph beside it."""
         largest = self._largest(tmp_path, f"\\begin{{center}}\\input{{{scaffold}}}\\end{{center}}")
 
         assert largest <= 1 + _SIZE_TOLERANCE
 
     def test_a_larger_name_is_caught(self, tmp_path):
-        """The shape the ceiling exists for: v3's `\\large\\bfseries` name."""
         largest = self._largest(tmp_path, "\\tikz\\node[font=\\large\\bfseries]{Intake};")
 
         assert largest > 1 + _SIZE_TOLERANCE
 
     def test_the_floor_holds_inside_a_smaller_group(self, tmp_path):
-        """`[cg]` sets `\\normalsize` as a picture option rather than
-        inheriting it, so a figure input inside `\\small` keeps its size."""
         figure = SCAFFOLD_DIR / "pipeline.tex"
         _, sizes = self._floor_and_figure(tmp_path, f"{{\\small\\input{{{figure}}}}}")
 
         assert min(sizes) >= 1 - _SIZE_TOLERANCE
 
     def test_a_resizebox_in_the_draft_is_caught(self, tmp_path):
-        """The case reading the source cannot see: the figure file is
-        clean and the scaling lives in the document that inputs it."""
         figure = SCAFFOLD_DIR / "pipeline.tex"
         _, sizes = self._floor_and_figure(
             tmp_path, f"\\resizebox{{0.6\\textwidth}}{{!}}{{\\input{{{figure}}}}}"
@@ -809,10 +570,6 @@ class TestTheTypeFloor:
         assert min(sizes) < 1 - _SIZE_TOLERANCE
 
     def test_a_subscript_is_exempt_and_shrunk_math_is_not(self, tmp_path):
-        """The exemption is TeX's script style, not math as such: a
-        subscript passes, and math set inside `\\scriptsize` does not --
-        with a subscript or without one, so the small base glyph is what
-        fails rather than an even smaller subscript beside it."""
         _, subscript = self._floor_and_figure(tmp_path, "\\tikz\\node{$k_1$};")
         _, shrunk = self._floor_and_figure(tmp_path, "\\tikz\\node{\\scriptsize $k$};")
         _, shrunk_sub = self._floor_and_figure(tmp_path, "\\tikz\\node{\\scriptsize $k_1$};")
@@ -822,7 +579,6 @@ class TestTheTypeFloor:
         assert min(shrunk_sub) < 1 - _SIZE_TOLERANCE
 
     def test_a_shrunk_label_in_the_figure_is_caught(self, tmp_path):
-        """The common case, through the same reader."""
         shrunk = tmp_path / "shrunk.tex"
         source = (SCAFFOLD_DIR / "pipeline.tex").read_text(encoding="utf-8")
         shrunk.write_text(
@@ -835,16 +591,8 @@ class TestTheTypeFloor:
 
 @needs_tikz
 class TestEveryPicFitsItsWell:
-    """#1014: a `pic` is drawn into a `cgwell`, and a zone card `fit`s
-    the well, not the `pic`. A `pic` that outgrows its well therefore
-    pokes through its own zone card and nothing measures it, because a
-    path has no name. `cgdocs` as #1026 shipped it did exactly that,
-    0.92mm through the top."""
-
     @staticmethod
     def _extents(directory: Path, names: list[str], extra: str = "") -> dict:
-        """Each `pic`'s ink box in mm, origin at the well's centre.
-        `current bounding box` includes half the stroke width."""
         body = "".join(
             f"\\begin{{tikzpicture}}[cg]\\pic{{{name}}};"
             "\\pgfpointanchor{current bounding box}{south west}\\pgfgetlastxy\\cgxa\\cgya"
@@ -870,8 +618,6 @@ class TestEveryPicFitsItsWell:
         return -half_w <= x0 and x1 <= half_w and -half_h <= y0 and y1 <= half_h
 
     def test_there_are_pics_to_measure(self):
-        """The non-vacuous guard: a regex that stops matching makes every
-        check below pass on an empty list."""
         assert len(_pics()) > 1 and _WELL_RE.search(BLOCK.read_text(encoding="utf-8"))
 
     def test_every_pic_is_measured_and_fits(self, tmp_path):
@@ -881,7 +627,6 @@ class TestEveryPicFitsItsWell:
         assert [n for n, box in extents.items() if not self._inside_the_well(box)] == []
 
     def test_the_probe_sees_an_oversize_pic(self, tmp_path):
-        """The probe against the shape it exists to catch."""
         oversize = (
             "\\tikzset{pics/cgoversize/.style={code={"
             "\\path[draw] (-6mm,-6mm) rectangle (6mm,6mm);}}}"
@@ -891,12 +636,6 @@ class TestEveryPicFitsItsWell:
         assert not self._inside_the_well(extents["cgoversize"])
 
     def test_no_pic_overrides_the_round_join(self):
-        """The probe is exact only under round joins: `current bounding
-        box` pads a path by half its line width, which is where a round
-        join's ink ends, but a mitre's point runs past it -- 0.8mm for a
-        20-degree spike at 1pt, measured with Ghostscript's bbox device.
-        `cg` sets `line join=round`, so a pic is safe until it sets a
-        join of its own."""
         assert _pics_overriding_the_join(BLOCK.read_text(encoding="utf-8")) == []
 
     def test_the_join_check_sees_a_mitred_pic(self):
@@ -908,8 +647,6 @@ class TestEveryPicFitsItsWell:
         assert _pics_overriding_the_join(spike) == ["cgspike"]
 
     def test_a_pic_colour_does_not_leak_to_the_next_pic(self, tmp_path):
-        """`cg pic colour` is set per `\\pic`, so the next un-keyed one in
-        the same picture is the default again, not the last zone's hue."""
         result = _lualatex(
             tmp_path,
             f"\\usetikzlibrary{{{_LIBRARIES}}}\\input{{{BLOCK}}}\n"
@@ -924,12 +661,6 @@ class TestEveryPicFitsItsWell:
 @pytest.mark.slow
 @needs_tikz
 class TestDrawnAtFinalWidth:
-    """Every scaffold fits the article class's text width as drawn, so it
-    is `\\input` bare and never scaled. Every exemplar fits the render's
-    453pt at 12pt (#1050), which is what a figure copied from one is
-    checked against; the scaffolds' own `figure check` run is in
-    tests/test_figure_check.py."""
-
     @by_scaffold
     def test_fits_the_text_width_unscaled(self, scaffold, tmp_path):
         result = _lualatex(tmp_path, f"\\begin{{center}}\\input{{{scaffold}}}\\end{{center}}")

@@ -1,12 +1,3 @@
-"""The precision tier over the resolution ladder (G7): cross-encoder
-rescoring of the hybrid rung's fused candidates, and a personalised-
-PageRank neighbourhood when a query resolves near several topics.
-
-The property under test: precision machinery *reorders* what the ladder
-already found and never invents a candidate -- and, like the semantic
-rung, it degrades honestly when the enrich extra is absent.
-"""
-
 import json
 
 import pytest
@@ -18,9 +9,6 @@ from tests.test_discover import GRAPH, TOPIC_SET, FakeModel, prepare
 
 
 class FakeReranker:
-    """Scores each (query, text) pair by a table, so a test can invert
-    the fused order and assert the cross-encoder's ranking won."""
-
     SCORES: dict = {}
 
     def predict(self, pairs):
@@ -30,12 +18,9 @@ class FakeReranker:
 class TestCrossEncoderRescoring:
     @pytest.fixture(autouse=True)
     def _rerank_on(self, monkeypatch):
-        """The rung runs only with `[enrich].rerank` on (#977)."""
         monkeypatch.setattr(config, "RERANK", True)
 
     def test_the_reranker_reorders_the_fused_candidates(self, isolated_config, monkeypatch):
-        """BM25 and cosine both fuse 'machine learning' ahead; the
-        cross-encoder disagrees, and its ordering is the contract."""
         FakeModel.VECTORS = {"learning about twins": [-1.0, 1.0]}
         monkeypatch.setattr(_resolve, "_load_model", lambda: FakeModel())
         FakeReranker.SCORES = {
@@ -100,7 +85,6 @@ class TestPersonalisedPageRank:
     def test_mass_flows_from_the_seed_along_edges(self):
         ranking = _walk.personalised_pagerank(self.GRAPH_3, seeds=["a"])
         order = [label for label, _ in ranking]
-        # b is adjacent to the seed, c two hops out, d disconnected.
         assert order.index("b") < order.index("c") < order.index("d")
 
     def test_two_seeds_pull_their_shared_neighbour_up(self):
@@ -120,9 +104,6 @@ class TestPersonalisedPageRank:
         assert sum(score for _, score in ranking) == pytest.approx(1.0)
 
     def test_a_duplicated_seed_changes_nothing(self):
-        """A duplicate must not inflate the teleport divisor: the walk
-        seeded ["a", "a"] is the walk seeded ["a"], and both still sum
-        to 1."""
         once = _walk.personalised_pagerank(self.GRAPH_3, seeds=["a"])
         twice = _walk.personalised_pagerank(self.GRAPH_3, seeds=["a", "a"])
         assert once == twice
@@ -145,8 +126,6 @@ class TestNeighbourhoodInTheView:
         assert set(labels) == {"digital twin", "machine learning"}
 
     def test_an_exact_resolution_has_no_neighbourhood_block(self, isolated_config, capsys):
-        """One rung, one answer: the linked-topics lists already cover a
-        singular resolution, and a PPR over one seed would restate them."""
         prepare(isolated_config)
         assert discover.main(["digital twin", "--json"]) == 0
         data = json.loads(capsys.readouterr().out)

@@ -1,12 +1,3 @@
-"""chitragupta/render_output/_assets.py: local files copied beside the rendered output.
-
-Split from one test module to mirror `chitragupta/render_output/`'s own split,
-the way `tests/test_enrich_*.py` mirrors `chitragupta/enrich/`. Shared setup --
-the binary probes and the figure fixtures -- lives in `tests/conftest.py`
-so the eight modules do not each re-run a `kpsewhich` subprocess at
-import.
-"""
-
 from pathlib import Path
 
 import pytest
@@ -32,18 +23,10 @@ class TestLocalImageRefs:
         assert render_output._local_image_refs("Just text, no images.\n") == []
 
     def test_a_bracketed_target_with_a_space_is_matched(self):
-        # m-58: `[^)\s]+` never matched a path with a literal space at
-        # all -- CommonMark's answer to that is wrapping the destination
-        # in angle brackets, which this must also recognise.
         text = "![alt](<my figure.png>)\n"
         assert render_output._local_image_refs(text) == ["my figure.png"]
 
     def test_a_percent_encoded_space_is_unquoted(self):
-        # m-58: pandoc/CommonMark's answer for an *unwrapped* destination
-        # with a space is percent-encoding it -- the regex already
-        # matches "my%20figure.png" as one token (no whitespace in it),
-        # but it must be decoded before it's treated as a filesystem path
-        # or it never resolves to the real file.
         text = "![alt](my%20figure.png)\n"
         assert render_output._local_image_refs(text) == ["my figure.png"]
 
@@ -52,10 +35,6 @@ class TestLocalImageRefs:
         assert render_output._local_image_refs(text) == ["my figure.png"]
 
     def test_a_caption_ending_in_a_cite_string_is_matched(self):
-        # The verbatim digest (#991) places a source figure with a caption
-        # that ends in its cite string, so the alt text carries a
-        # bracketed citation; `[^\]]*` stopped at the citation's `]` and
-        # the image was never found, so `tex` output shipped without it.
         text = (
             "![Layers of a twin-as-a-service platform: Figure 2 of "
             "[@zech_digital-twins-as--service_2024], p.4](figures/zech-fig2.png)\n"
@@ -124,10 +103,6 @@ class TestCopyLocalImages:
         assert list(dest_dir.iterdir()) == []
 
     def test_copies_a_bracketed_target_with_a_space_in_its_name(self, tmp_path):
-        # m-58: a genuinely realistic filename -- a screenshot or export
-        # saved with its default, space-containing name -- was silently
-        # never copied, so a `tex` output referencing it failed to
-        # compile standalone.
         src_dir = tmp_path / "drafts"
         src_dir.mkdir()
         (src_dir / "my figure.png").write_bytes(b"fake png bytes")
@@ -167,7 +142,6 @@ class TestCopyLocalImages:
         assert (dest_dir / "figures" / "figure.png").read_bytes() == b"fake png bytes"
 
     def test_skips_an_image_symlinked_out_of_the_draft(self, tmp_path):
-        # The image copier used to have its own spelling-only check (#823).
         outside = tmp_path / "outside" / "secret.png"
         outside.parent.mkdir()
         outside.write_bytes(b"not yours")
@@ -242,10 +216,6 @@ class TestCopyLocalTexIncludes:
 
 class TestCopyLocalTexIncludesFollowsMarkers:
     def test_a_markdown_marker_gets_its_figure_copied(self, tmp_path):
-        # Without this the standalone .tex in content/rendered/ emits an
-        # \input for a file that was never copied beside it, and fails to
-        # compile on its own -- the exact regression #226's own copy test
-        # exists to catch, reintroduced through the marker path.
         figure_pair(tmp_path)
         draft = tmp_path / "draft.md"
         draft.write_text(MARKED_MD)
@@ -258,13 +228,6 @@ class TestCopyLocalTexIncludesFollowsMarkers:
 
 
 class TestRenderingIntoTheDraftsOwnDirectory:
-    """`--output-dir <the draft's own directory>` is what a book assembly
-    does: the fragments have to sit beside the `book.tex` that \\input-s
-    them, which is the same directory the chapters live in. The asset copy
-    then has the same file as source and destination, and `shutil.copy2`
-    raises `SameFileError` -- so a 15-chapter book with figures failed
-    every fragment conversion at once (2026-08-19)."""
-
     def test_a_figure_beside_the_draft_is_not_copied_onto_itself(self, tmp_path):
         draft_dir = tmp_path / "book"
         (draft_dir / "figures").mkdir(parents=True)
@@ -290,12 +253,6 @@ class TestRenderingIntoTheDraftsOwnDirectory:
 
 
 class TestTheBookBibliographyBesideAFragment:
-    """`bibtex` resolves `\\bibliography{...}` against the directory it runs
-    in, which for a book is `content/rendered/<book>/`. A fragment's
-    citations are deferred, so the `.bib` has to be there or every citation
-    in the assembled book renders `[?]` with pdflatex still exiting 0.
-    """
-
     def test_the_corpus_bib_lands_in_the_output_directory(self, isolated_config, tmp_path):
         isolated_config.BIB_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
         isolated_config.BIB_FILE_PATH.write_text(
@@ -310,9 +267,6 @@ class TestTheBookBibliographyBesideAFragment:
         assert "@article{smith_2024," in written.read_text(encoding="utf-8")
 
     def test_double_hyphen_keys_are_aliased_to_match_the_fragments(self, isolated_config, tmp_path):
-        """The fragment carries `\\citep{..._state-x2d-x2d-art_...}`, so the
-        copy has to agree or bibtex answers nothing -- the silent half of
-        the `--` problem, since pdflatex reports it only as a warning."""
         isolated_config.BIB_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{tygesen_state---art_2019, title={A}}\n", encoding="utf-8"
@@ -325,8 +279,6 @@ class TestTheBookBibliographyBesideAFragment:
         assert "@article{tygesen_state-x2d-x2d-art_2019," in written
 
     def test_the_users_own_bib_is_never_modified(self, isolated_config, tmp_path):
-        """`papers/bibliography.bib` is the human's export and the source of
-        truth for every citekey in the project."""
         isolated_config.BIB_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
         original = "@article{tygesen_state---art_2019, title={A}}\n"
         isolated_config.BIB_FILE_PATH.write_text(original, encoding="utf-8")
@@ -336,9 +288,6 @@ class TestTheBookBibliographyBesideAFragment:
         assert isolated_config.BIB_FILE_PATH.read_text(encoding="utf-8") == original
 
     def test_a_project_with_no_bibliography_yet_is_not_an_error(self, isolated_config, tmp_path):
-        """The render that produced the fragment would have failed on the
-        missing file long before this, and a book with no citations has
-        nothing for bibtex to answer either way."""
         dest = tmp_path / "out"
 
         render_output._assets._copy_book_bibliography(dest)
@@ -346,10 +295,6 @@ class TestTheBookBibliographyBesideAFragment:
         assert not (dest / isolated_config.BIB_FILE_PATH.name).exists()
 
     def test_copy_local_assets_brings_the_bib_only_for_a_fragment(self, isolated_config, tmp_path):
-        """A standalone render resolves its own citations, so a `.bib`
-        beside it would be an unused file in the publish output. A fragment
-        defers, so it is the one thing between its `\\citep{...}` and a
-        resolved reference."""
         isolated_config.BIB_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
         isolated_config.BIB_FILE_PATH.write_text("@article{a_2024, title={A}}\n", encoding="utf-8")
         draft = tmp_path / "unit.md"
@@ -368,12 +313,6 @@ class TestTheBookBibliographyBesideAFragment:
 
 
 class TestRenderRefusesEscapingReferences:
-    """#823 review: `_resolve_sibling` guards only chitragupta's own reads.
-    pandoc and pdflatex open a draft's `\\input` and image references
-    themselves, and the TeX read fence checks the name as TeX spells it, so a
-    `figures/x.tex` that is a symlink out of the draft was still compiled
-    into the PDF. The render refuses such a draft before either tool runs."""
-
     def _draft(self, isolated_config, tmp_path, name, text, link, target_name):
         isolated_config.BIB_FILE_PATH.write_text("")
         outside = tmp_path / "outside" / target_name
@@ -401,7 +340,6 @@ class TestRenderRefusesEscapingReferences:
             render_output.render(str(draft), output_format=output_format)
 
     def test_a_suffixless_input_is_checked_as_tex_finds_it(self, isolated_config, tmp_path):
-        # `\input{figures/x}` is `figures/x.tex` to TeX.
         draft = self._draft(
             isolated_config, tmp_path, "ch.tex", "\\input{figures/x}\n", "figures/x.tex", "x.tex"
         )

@@ -1,37 +1,3 @@
-"""`scripts/check_local.sh` must run what `ci.yml`'s `lint` job runs (#865).
-
-The point of the script is that a green local run predicts a green CI
-run, and that only holds while the two lists are the same list. Before
-it, DEVELOPER-AGENTS.md's checklist named seven of the lint job's
-commands and missed `check_version_bump.py`, `shellcheck`, `actionlint`,
-the webapp and OpenCode node tests and the Vale exemptions check -- four
-red CI runs in one session came from exactly that gap. A hand-kept list
-drifts the same way the prose one did, so this file reads both sides
-and compares them, step by step and in order.
-
-The script states each step in one of three shapes, one per line and
-starting at column 0, and
-this test is what gives the shapes their meaning:
-
-- `run "<step name>" <command>` -- CI's `run:` text, byte for byte
-  after whitespace is collapsed. `off_main` in front of the command is
-  the local spelling of CI's `if: github.event_name == 'pull_request'`.
-- `need "<step name>" <tool>[==<pin>|@<pin>] ...` -- an install step.
-  CI installs into a throwaway runner; locally that would write into the
-  contributor's own environment, so the script checks the tool is on
-  PATH instead (`py:<package>` is checked by import). What it checks
-  and what CI installs must be the same targets, pins included, so a
-  bumped pin, a new package or a swapped install stage in `ci.yml`
-  reddens here too.
-- `instead "<step name>" <command>` -- a step whose CI form would do
-  harm locally (overwrite a per-host `config.toml`, make a full clone
-  shallow). Reserved for those two steps, each pinned at its CI command
-  in `_INSTEAD_STEPS`; the script carries the reason.
-
-Parsed with a real YAML loader, not by indentation: #866 is moving the
-existing workflow pins the same way.
-"""
-
 import re
 from pathlib import Path
 
@@ -44,15 +10,8 @@ SCRIPT = REPO_ROOT / "scripts" / "check_local.sh"
 
 _STEP_LINE_RE = re.compile(r'^(run|need|instead) "([^"]+)" (.+)$')
 
-# Actions that provision the runner the script is already standing in.
-# Any other `uses:` step would be a check the script cannot run, so it
-# fails here rather than being skipped as "not a run: step".
 _PROVISIONING_ACTIONS = ("actions/checkout@", "actions/setup-python@", "actions/setup-node@")
 
-# The only steps allowed the `instead` escape hatch, each with the CI
-# command it stands in for -- so neither a script line marked `instead`
-# to quiet a check, nor a change to what CI does in these two steps,
-# passes unnoticed.
 _INSTEAD_STEPS = {
     "Create config.toml from the tracked example": "cp config.toml.example config.toml",
     "Fetch main and tags for the version check": (
@@ -61,7 +20,6 @@ _INSTEAD_STEPS = {
     ),
 }
 
-# What a `need` step's CI command must be: an install, never a check.
 _INSTALL_PREFIXES = (
     "python -m pip install ",
     "npm install -g ",
@@ -70,12 +28,6 @@ _INSTALL_PREFIXES = (
 
 _PULL_REQUEST_ONLY = "github.event_name == 'pull_request'"
 
-# A key outside these changes what a step does (`env:`,
-# `working-directory:`, `continue-on-error:`) in a way the script's line
-# cannot show, so it has to be taught here before it can be pinned.
-# `with:` is the provisioning actions' own configuration (which Python,
-# which node), and the script runs on whatever the contributor has; an
-# `if:` or `env:` on one of them would change what the job does.
 _STEP_KEYS = {"name", "run", "if", "shell"}
 _ACTION_KEYS = {"name", "uses", "with"}
 
@@ -85,7 +37,6 @@ def _collapse(text: str) -> str:
 
 
 def _unpinnable_steps(steps: list[dict]) -> list[str]:
-    """Lint-job steps whose behaviour the script's line cannot match."""
     problems = []
     for step in steps:
         label = step.get("name") or step.get("uses")
@@ -99,9 +50,6 @@ def _unpinnable_steps(steps: list[dict]) -> list[str]:
 
 
 def _script_steps(script_text: str) -> list[tuple[str, str, str]]:
-    """(verb, step name, rest of line) for every step the script states.
-    Unstripped on purpose: a step is a line at column 0, so the helper
-    functions' own indented calls to `run` are not mistaken for steps."""
     found = []
     for line in script_text.splitlines():
         match = _STEP_LINE_RE.match(line)
@@ -111,8 +59,6 @@ def _script_steps(script_text: str) -> list[tuple[str, str, str]]:
 
 
 def _divergences(workflow_text: str, script_text: str) -> list[str]:
-    """Every way the script and CI's lint job disagree; empty when they
-    are the same list."""
     steps = yaml.safe_load(workflow_text)["jobs"]["lint"]["steps"]
     problems = _unpinnable_steps(steps)
     ci_steps = [step for step in steps if "run" in step]
@@ -127,12 +73,6 @@ def _divergences(workflow_text: str, script_text: str) -> list[str]:
 
 
 def _need_divergences(name: str, ci_run: str, rest: str) -> list[str]:
-    """A `need` stands in for an install, and checks exactly what CI
-    installs -- every target, pinned or not, in both directions, so a
-    package CI adds or a stage it swaps (`... actionlint` to `... vale`)
-    reaches the script too. Flags such as `--ignore-scripts` say how to
-    install, which a check never does, so they are not targets. `py:`
-    marks a Python package the script checks by import, not on PATH."""
     prefix = next((p for p in _INSTALL_PREFIXES if ci_run.startswith(p)), None)
     if prefix is None:
         return [f"{name!r}: `need` stands in for an install, but ci.yml runs `{ci_run}`"]
@@ -148,9 +88,6 @@ def _need_divergences(name: str, ci_run: str, rest: str) -> list[str]:
 
 
 def _guard_divergences(ci: dict, verb: str, name: str, guarded: bool) -> list[str]:
-    """CI's `if:` has one local spelling, `off_main` on a `run` step, and
-    only for the pull_request-only condition. Every other `if:` -- on a
-    `need` or `instead` step too -- is a step the script cannot mirror."""
     condition = ci.get("if")
     if condition is not None and (condition != _PULL_REQUEST_ONLY or verb != "run"):
         return [f"{name!r}: no local form for ci.yml's `if: {condition}`"]
@@ -188,14 +125,10 @@ class TestTheScriptMatchesTheLintJob:
         )
 
     def test_the_script_states_at_least_one_step_of_each_shape(self):
-        """A reworded step line would drop out of `_script_steps` silently
-        and take its pin with it; the name comparison above would catch
-        that, but only by accident of the lists being non-empty."""
         verbs = {verb for verb, _, _ in _script_steps(SCRIPT.read_text(encoding="utf-8"))}
         assert verbs == {"run", "need", "instead"}
 
     def test_the_script_is_under_shellchecks_glob(self):
-        """`scripts/*.sh` is what the lint job's own shellcheck step reaches."""
         assert SCRIPT.parent.name == "scripts" and SCRIPT.suffix == ".sh"
 
 
@@ -230,9 +163,6 @@ instead "Create config.toml from the tracked example" copy_config_if_absent
 
 
 class TestEachDriftShapeReddens:
-    """A guard that reports "clean" fails silently, so each of the ways
-    the two lists can part is fed in and must be reported."""
-
     def test_matching_lists_report_nothing(self):
         assert _divergences(_WORKFLOW, _MATCHING_SCRIPT) == []
 

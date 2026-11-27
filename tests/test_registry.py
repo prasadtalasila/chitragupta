@@ -1,13 +1,3 @@
-"""The three consistency registries, and what each of them can and
-cannot see.
-
-The behaviours worth pinning: the registries are built from **accepted**
-units only and say how many they skipped; a cross-reference is written in
-a shape the citation gate will never read as a citekey; and `check`
-reports everything and exits 0, because a machine's reading of prose is
-judgement however mechanical the arithmetic.
-"""
-
 import pytest
 
 from chitragupta import citation_gate, dossier, registry, unit
@@ -49,37 +39,24 @@ See [the data half](#ch-data) for the other half.
 """
 
 
-# conftest's `signed_book` writes and signs this as the outline.
 BOOK_SPEC = GOOD_SPEC
 
 
 @pytest.fixture
 def book(signed_book):
-    """conftest's `signed_book` under the name these tests use: every
-    registry check reads a signed outline."""
     return signed_book
 
 
-# What each chapter declares, so an accepted draft matches its outline.
-# `unit accept` refuses a chapter whose headings drifted (#472); this
-# module is about what the registries read out of accepted prose, so the
-# headings are scaffolding and `body` is the part under test.
 DECLARED = {
     "ch-model": ("What a model is", "What it leaves out"),
     "ch-data": ("The link", "Its failure modes"),
 }
 
 
-# The glossary `MODEL_UNIT`'s dossier records, for the tests that need a
-# term: since #1138 the terminology registry reads `scope.md`, not prose.
 MODEL_GLOSSARY = "- **digital twin** -- a model paired with a live data link"
 
 
 def accept(book, unit_id, body, glossary=None, math=None, symbols=()):
-    """Accept `body` as `unit_id`'s prose, under the headings its outline
-    declares so the chapter stays aligned, with `glossary` (bullets) as
-    its dossier's `## Glossary` when given, and `math` (ASCII -> LaTeX)
-    plus `symbols` (symbol, meaning cell) as its `math.md` when given."""
     headings = "".join(f"## {heading}\n\n" for heading in DECLARED.get(unit_id, ()))
     path = book / f"{unit_id}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -93,8 +70,6 @@ def accept(book, unit_id, body, glossary=None, math=None, symbols=()):
 
 
 def write_math(path, mapped, symbols=()):
-    """`mapped` as `path`'s math.md mapping table, `symbols` as its
-    `## Symbols` (#1143)."""
     math = dossier.dossier_dir(path) / "math.md"
     math.parent.mkdir(parents=True, exist_ok=True)
     lines = ["| ASCII | LaTeX |", "| --- | --- |"]
@@ -116,9 +91,6 @@ def xref_findings(book):
     return [text for kind, text in registry.findings(registry.build(book)) if kind == "xref"]
 
 
-# --- what each registry reads out of one unit ----------------------------
-
-
 def test_a_term_is_read_from_the_units_glossary(book):
     accept(book, "ch-model", MODEL_UNIT, glossary=MODEL_GLOSSARY)
     (row,) = registry.build(book)["terms"]
@@ -127,7 +99,6 @@ def test_a_term_is_read_from_the_units_glossary(book):
 
 
 def test_a_definition_bullet_in_the_prose_is_not_a_term(book):
-    """The pre-#1138 source, and the guard against it coming back."""
     accept(book, "ch-model", "- **digital twin** -- a model plus a live link\n", glossary="")
     assert registry.build(book)["terms"] == []
 
@@ -165,9 +136,6 @@ def test_a_claim_is_a_sentence_that_cites_something():
 
 
 def test_a_tex_unit_is_read_with_latex_rules(tmp_path):
-    """#957: Markdown's backtick rule read the span between two LaTeX
-    `quoted' phrases as inline code, and the citation inside it dropped
-    out of the register."""
     (tmp_path / "ch-x.tex").write_text(
         "The `digital twin' view \\citep{smith_2024} is `neat'.\n", encoding="utf-8"
     )
@@ -177,9 +145,6 @@ def test_a_tex_unit_is_read_with_latex_rules(tmp_path):
 
 
 def test_a_rendered_reference_list_is_not_a_register_of_claims():
-    """Every line of a reference list cites something. Reading them as
-    claims would fill the register with bibliography -- the same
-    exclusion chitragupta/acronyms.py measured against the real book."""
     text = (
         "A real claim [@smith_2024].\n\n## References\n\n[1] Smith, J. Something [@smith_2024].\n"
     )
@@ -195,9 +160,6 @@ def test_a_cross_reference_is_read_in_both_markdown_and_latex():
 
 
 def test_a_cross_reference_is_never_readable_as_a_citekey():
-    """The one invariant, from the other side: a reference syntax the
-    citation gate reads as a citekey would put a section id where only a
-    real bibliography entry may go."""
     text = "See [the data half](#ch-data) and \\cref{ch-model}.\n"
     assert citation_gate.extract_citekeys(text) == []
     assert registry.references(text) == ["ch-data", "ch-model"]
@@ -205,9 +167,6 @@ def test_a_cross_reference_is_never_readable_as_a_citekey():
 
 def test_a_unit_may_define_its_own_anchor_for_others_to_reference():
     assert registry.labels("A figure {#fig-one}\n\n\\label{tab-two}\n") == {"fig-one", "tab-two"}
-
-
-# --- building over accepted units ----------------------------------------
 
 
 def test_the_registries_are_built_from_accepted_units_only(book):
@@ -304,9 +263,6 @@ def test_a_cross_reference_to_a_unit_the_outline_holds_resolves(book):
 
 
 def test_a_cross_reference_to_a_chapter_resolves(book):
-    """ "See Chapter 1" is an ordinary cross-reference. Reporting it
-    unresolved because a chapter generates no prose of its own would be a
-    finding about the registry rather than about the book."""
     accept(book, "ch-model", "As \\cref{ch-data} sets out.\n")
     assert xref_findings(book) == []
 
@@ -321,9 +277,6 @@ def test_a_cross_reference_to_an_anchor_another_unit_defines_resolves(book):
     accept(book, "ch-model", "See \\cref{fig-one}.\n")
     accept(book, "ch-data", "The figure {#fig-one}\n")
     assert xref_findings(book) == []
-
-
-# --- the commands --------------------------------------------------------
 
 
 def test_build_writes_one_file_per_registry(book, capsys):
@@ -347,9 +300,6 @@ def test_building_twice_over_unchanged_units_writes_the_same_bytes(book):
 
 
 def test_check_reports_findings_and_still_exits_zero(book, capsys):
-    """The line ARCHITECTURE.md draws: a check measured against a
-    machine's reading of prose reports and never blocks, however
-    mechanical its answer."""
     accept(book, "ch-model", "See [nothing](#sec-nowhere).\n")
     capsys.readouterr()
     assert registry.main(["check", str(book)]) == 0
@@ -400,8 +350,6 @@ def test_an_excerpt_carries_the_other_units_symbols(book, capsys):
 
 
 def test_an_excerpt_leaves_out_the_units_own_definitions(book, capsys):
-    """A unit is not told to conform to itself -- it is told what the
-    rest of the book already settled."""
     accept(book, "ch-model", MODEL_UNIT, glossary=MODEL_GLOSSARY)
     capsys.readouterr()
     registry.main(["excerpt", str(book), "ch-model"])
@@ -409,12 +357,6 @@ def test_an_excerpt_leaves_out_the_units_own_definitions(book, capsys):
 
 
 def test_an_excerpt_carries_an_in_prose_label_no_xref_has_reached_yet(book, capsys):
-    """`excerpt()` reuses `build()`'s full anchor set -- outline ids plus
-    every in-prose label `_read_unit` folds in -- rather than recomputing
-    a narrower one that only counts labels some xref has already
-    resolved against. `docs/WRITE-A-BOOK.md`'s own measured example has zero
-    xrefs in the real book, so this is the common case, not an edge
-    one."""
     accept(book, "ch-model", "A figure of the model {#fig-model}\n")
     capsys.readouterr()
     assert registry.main(["excerpt", str(book), "ch-data"]) == 0

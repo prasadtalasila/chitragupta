@@ -1,22 +1,3 @@
-"""The citekey union invariant over an assembled book (C5).
-
-What is worth pinning here is the invariant itself and the honesty
-around it. A book is composed **by reference** -- `book.tex` is a
-skeleton that `\\input`s its units, whose citations stay `\\citep{key}`
-for the book's one `bibtexu` pass -- so a source goes missing at this step by
-the assembly omitting the unit that stood on it, and the finding is
-located to that unit. The other direction is about the assembly's own
-material: a citekey in a title page or an appendix entered outside any
-acceptance record. It is withheld while any unit is unassessed, and a
-unit whose record no longer describes its prose is named as unchecked
-rather than silently compared against stale text.
-
-The `assemble` helper below deliberately never inlines a citekey for a
-unit. An earlier version of this file did, and it passed against an
-implementation that was wholly wrong on the only real book in the
-repository -- see that helper's docstring.
-"""
-
 import json
 
 
@@ -24,11 +5,6 @@ from chitragupta import unit
 from chitragupta.review import citekey_union
 
 
-# Two chapters, each describing its own sections -- so each *chapter* is
-# the acceptance unit (#472: a chapter that declares section structure is
-# one authored document, and that document is the unit). Two of them, so
-# "this unit lost a citekey" and "that one did" are distinguishable,
-# which is the whole point of a located finding.
 SPEC_MD = """# Composable Digital Twins
 
 ## Part I: Foundations {#part-foundations}
@@ -51,19 +27,10 @@ The wiring half.
 """
 
 
-# conftest's `book` writes this two-unit outline, with nothing written yet.
 BOOK_SPEC = SPEC_MD
 
 
 def write_record(book, unit_id, citekeys, *, draft_text=None):
-    """An acceptance record as `unit accept` writes one.
-
-    Written directly rather than through `unit.main(["accept", ...])`
-    because that path runs the citation gate, which needs a real ledger
-    -- and what this aid reads is the record on disk, not how it got
-    there. `draft_text` defaults to text citing exactly `citekeys`, so
-    the record and the prose agree and `unit.state` reports `accepted`.
-    """
     if draft_text is None:
         draft_text = "\n".join(f"A claim [@{key}]." for key in citekeys) + "\n"
     unit.draft_path(book, unit_id).write_text(draft_text, encoding="utf-8")
@@ -75,23 +42,6 @@ def write_record(book, unit_id, citekeys, *, draft_text=None):
 
 
 def assemble(book, unit_ids, *, beside=None, unresolved=(), missing_units=()):
-    """A `book.tex` as `book-assembler` composes one: structure only.
-
-    **It never inlines a unit's citekey, because the real one does not.**
-    The shipped 15-chapter book's `book.tex` carries two `\\cite`-shaped
-    tokens in 17 `\\input`s, both of them the English word: citeproc
-    resolved every citation into the per-unit renders, so the skeleton
-    states no citekey at all. A fixture that inlined `\\citep{...}` would
-    pass against an implementation that reports every source in a
-    correctly-assembled book as lost.
-
-    `beside` is `{filename: contents}` for material the assembly includes
-    that is not a unit -- a title page, an appendix -- and `unresolved`
-    names includes with no file behind them. Every unit's own `.tex` is
-    written here too, trivially, unless its id is in `missing_units` --
-    a real book.tex names each unit's rendered file, and #496 is exactly
-    about what happens when that file is not actually there.
-    """
     names = list(unresolved) + list(beside or {}) + [f"{u}.tex" for u in unit_ids]
     for name, text in (beside or {}).items():
         (book / name).write_text(text, encoding="utf-8")
@@ -123,9 +73,6 @@ class TestTheInvariantHolds:
         assert result.omitted == []
 
     def test_a_skeleton_stating_no_citekey_is_not_read_as_a_total_loss(self, book):
-        """The regression the real book exposed: `book.tex` carries no
-        citekey of its own, and that is correct composition, not 15
-        dropped sources."""
         write_record(book, "ch-model", ["smith_2024"])
         write_record(book, "ch-data", ["jones_2023"])
         assembled = assemble(book, ["ch-model", "ch-data"])
@@ -146,10 +93,6 @@ class TestAUnitTheBookLeftOut:
         assert [entry.unit for entry in result.omitted] == ["ch-model"]
 
     def test_a_citekey_another_included_unit_shares_is_not_dropped(self, book):
-        """The reader still meets the source. Losing `ch-model`'s prose is
-        a real problem; it is not *this* finding, and reporting it here
-        would send someone looking for a missing reference that is
-        present."""
         write_record(book, "ch-model", ["smith_2024"])
         write_record(book, "ch-data", ["smith_2024"])
         assembled = assemble(book, ["ch-data"])
@@ -199,8 +142,6 @@ class TestACitekeyFromOutsideEveryUnit:
         assert result.outside_units == ["titlepage.tex"]
 
     def test_a_commented_out_citekey_in_the_front_matter_is_not_reported(self, book):
-        """#873: the `.tex` front matter was read with Markdown rules, so a
-        key after `%` appeared to have entered outside every unit."""
         write_record(book, "ch-model", ["smith_2024"])
         write_record(book, "ch-data", ["jones_2023"])
         assembled = assemble(
@@ -216,8 +157,6 @@ class TestACitekeyFromOutsideEveryUnit:
         assert citekey_union._citekeys("30% [@nobody_1999]\n", "front.md") == {"nobody_1999"}
 
     def test_withheld_while_any_unit_is_unassessed(self, book):
-        """That unit may record this very citekey, so attributing it to the
-        assembly would be a guess."""
         write_record(book, "ch-model", ["smith_2024"])
         assembled = assemble(
             book, ["ch-model"], beside={"titlepage.tex": "See \\citep{nobody_1999}.\n"}
@@ -231,8 +170,6 @@ class TestACitekeyFromOutsideEveryUnit:
 
 class TestResolvingWhatTheAssemblyNames:
     def test_a_suffixless_input_finds_the_file(self, book):
-        r"""`\input{titlepage}` and `\input{titlepage.tex}` are the same
-        file to LaTeX, and the shipped book.tex uses both forms."""
         write_record(book, "ch-model", ["smith_2024"])
         write_record(book, "ch-data", ["jones_2023"])
         (book / "titlepage.tex").write_text("See \\citep{nobody_1999}.\n", encoding="utf-8")
@@ -266,16 +203,8 @@ class TestResolvingWhatTheAssemblyNames:
 
 class TestAUnitStemWithNoFileBehindIt:
     def test_a_renamed_or_deleted_chapter_file_is_not_read_as_included(self, book):
-        """`\\input{ch-data.tex}` still names a unit id, but if the file
-        itself is gone -- renamed or deleted after the unit was accepted
-        -- resolving that unit's stem must not short-circuit into
-        "included" before the include is actually checked (#496): that
-        is exactly the silent loss this aid exists to catch."""
         write_record(book, "ch-model", ["smith_2024"])
         write_record(book, "ch-data", ["jones_2023"])
-        # book.tex names both units' rendered .tex, matching a real
-        # assembly, but ch-data's file is not actually there -- renamed
-        # or deleted after the unit was accepted.
         assembled = assemble(book, ["ch-model", "ch-data"], missing_units=["ch-data"])
 
         result = citekey_union.compute(assembled)
@@ -293,9 +222,6 @@ class TestItSaysWhatItCouldNotRead:
         assert citekey_union.compute(assembled).unresolved == ["appendix.tex"]
 
     def test_an_include_that_is_not_text_is_named_rather_than_crashing(self, book):
-        """A `book.md` may link a cover image or a PDF. Reading one raises
-        `UnicodeDecodeError` mid-run, which would take the whole report
-        out over a file that was never going to carry a citekey."""
         write_record(book, "ch-model", ["smith_2024"])
         write_record(book, "ch-data", ["jones_2023"])
         (book / "cover.pdf").write_bytes(b"%PDF-1.7\n\xff\xfe\x00 not utf-8")
@@ -344,9 +270,6 @@ class TestItSaysWhatItCouldNotRead:
     def test_a_unit_edited_since_acceptance_is_unchecked_not_dropped(self, book):
         write_record(book, "ch-model", ["smith_2024"])
         write_record(book, "ch-data", ["jones_2023"])
-        # The prose moved on and nobody re-accepted it: the record's
-        # citekeys describe text that no longer exists, so comparing
-        # against them would report a drop that is not one.
         unit.draft_path(book, "ch-data").write_text(
             "Rewritten, and no longer citing anything.\n", encoding="utf-8"
         )
@@ -369,10 +292,6 @@ class TestItSaysWhatItCouldNotRead:
         assert [(e.unit, e.state) for e in result.unchecked] == [("ch-data", "drafted")]
 
     def test_unchecked_wins_over_omitted_and_both_facts_survive(self, book):
-        """A unit can be unbelievable *and* left out. Without a usable
-        record there are no citekeys to call dropped, so it is reported as
-        unchecked -- but the report still carries that it was omitted,
-        because the two want different fixes."""
         write_record(book, "ch-model", ["smith_2024"])
         unit.draft_path(book, "ch-data").write_text("Prose.\n", encoding="utf-8")
         assembled = assemble(book, ["ch-model"])
@@ -392,8 +311,6 @@ class TestWhatItRefuses:
         assert citekey_union.main([str(stray)]) == 1
 
     def test_pointing_at_a_unit_rather_than_the_assembly_is_refused(self, book, capsys):
-        """`union ch-model.md` would report every *other* unit's citekeys
-        as dropped -- a confident, wholly wrong report."""
         write_record(book, "ch-model", ["smith_2024"])
 
         assert citekey_union.main([str(unit.draft_path(book, "ch-model"))]) == 1
@@ -449,17 +366,6 @@ class TestTheReport:
 
 
 class TestAnAssemblyUnderRendered:
-    """The book is composed into `content/rendered/<book>/`, not beside its
-    units, and that puts the two sides of the subtraction in two trees.
-
-    The fragments sit next to `book.tex` under `content/rendered/`; the
-    acceptance records are reached from `content/drafts/`, because
-    `unit.record_path` routes through `spec.spec_dir` and that requires a
-    path under `DRAFTS_DIR`. Deriving one directory from `book.tex`'s own
-    parent answered only one of the two, and answered the other by
-    raising.
-    """
-
     def test_a_rendered_book_is_checked_against_its_drafts_records(self, book, isolated_config):
         write_record(book, "ch-model", ["smith_2024"])
         write_record(book, "ch-data", ["jones_2023"])
@@ -474,9 +380,6 @@ class TestAnAssemblyUnderRendered:
         assert [entry.unit for entry in result.checked] == ["ch-model", "ch-data"]
 
     def test_a_unit_the_rendered_book_left_out_is_still_located(self, book, isolated_config):
-        """The fragments are resolved against the assembly's own directory,
-        so an omission is still found -- reading them from `content/drafts/`
-        would report both units missing and every citekey dropped."""
         write_record(book, "ch-model", ["smith_2024"])
         write_record(book, "ch-data", ["jones_2023"])
         rendered = isolated_config.RENDERED_DIR / "twins"
@@ -489,9 +392,6 @@ class TestAnAssemblyUnderRendered:
         assert result.omitted[0].unit == "ch-model"
 
     def test_a_rendered_unit_gets_the_refusal_rather_than_an_error(self, book, isolated_config):
-        """#496's refusal, for the path shape the move makes easy. Reaching
-        the ids from `content/rendered/` looked for a spec that cannot be
-        there, so this raised `spec.SpecError` instead of refusing."""
         write_record(book, "ch-model", ["smith_2024"])
         rendered = isolated_config.RENDERED_DIR / "twins"
         rendered.mkdir(parents=True, exist_ok=True)
@@ -505,9 +405,6 @@ class TestAnAssemblyUnderRendered:
     def test_the_written_report_mirrors_the_book_instead_of_landing_flat(
         self, book, isolated_config
     ):
-        """`content/review/<book>/`, not one shared `content/review/`. A
-        rendered assembly mirrored to nothing, so every book in a project
-        wrote the same `book.union.md` over the last one."""
         write_record(book, "ch-model", ["smith_2024"])
         write_record(book, "ch-data", ["jones_2023"])
         rendered = isolated_config.RENDERED_DIR / "twins"
@@ -520,8 +417,6 @@ class TestAnAssemblyUnderRendered:
         assert not (isolated_config.REVIEW_DIR / "book.union.md").exists()
 
     def test_a_path_in_no_book_is_refused_rather_than_raising(self, isolated_config, capsys):
-        """`spec.SpecError` is a sibling of `unit.UnitError`, not a subclass,
-        so it escaped `run()`'s handler and left a traceback."""
         stray = isolated_config.CONTENT_DIR / "stray.tex"
         stray.parent.mkdir(parents=True, exist_ok=True)
         stray.write_text("\\documentclass{book}\n", encoding="utf-8")
@@ -532,10 +427,6 @@ class TestAnAssemblyUnderRendered:
     def test_an_authored_preamble_is_read_as_the_assembly_s_own_material(
         self, book, isolated_config
     ):
-        """`\\input{preamble}` needs no change here, and this is what says so.
-        It resolves through `_SUFFIXES`, its stem is no unit id, so it lands
-        in `others` -- and a citekey in it entered outside every acceptance
-        record, which is exactly what `appeared` means."""
         write_record(book, "ch-model", ["smith_2024"])
         write_record(book, "ch-data", ["jones_2023"])
         rendered = isolated_config.RENDERED_DIR / "twins"
@@ -559,11 +450,6 @@ class TestAnAssemblyUnderRendered:
         assert result.appeared == {"house_2020"}
 
     def test_the_books_bib_is_not_read_as_an_include(self, book, isolated_config):
-        """`\\bibliography{bibliography}` is not `\\input`, and the union aid
-        resolves only `\\input`/`\\include`. That matters: the `.bib` beside
-        `book.tex` is the whole corpus export, so reading it as the
-        assembly's own material would report every citekey in the project
-        as having `appeared` from nowhere."""
         write_record(book, "ch-model", ["smith_2024"])
         write_record(book, "ch-data", ["jones_2023"])
         rendered = isolated_config.RENDERED_DIR / "twins"

@@ -1,14 +1,3 @@
-"""`scripts/merge_pr.py`: the squash body is written by the author, in the
-documented format, and checked -- not assembled from the description (#827).
-
-The script used to scrape every non-checkbox bullet out of the PR
-description, which landed review notes, duplicated bullets and anything
-hostile a bullet carried (a trailer, a live closing keyword, an escape
-sequence) in `main`'s history. Now the body is the one fenced block under
-`## Commit message`, accepted byte for byte or refused with the line that
-broke the format. `plans/827-commit-message-format.md` has the design.
-"""
-
 import importlib.util
 import json
 import re
@@ -32,7 +21,6 @@ def merge_pr():
 
 
 def _pr(message: str, *, before: str = "", after: str = "") -> str:
-    """A PR body whose `## Commit message` section fences `message`."""
     return (
         "## Description\n\nWhy this change.\n\n"
         f"## Commit message\n\n{before}```text\n{message}\n```\n{after}\n"
@@ -41,8 +29,6 @@ def _pr(message: str, *, before: str = "", after: str = "") -> str:
 
 
 def _documented_example() -> str:
-    """The body of DEVELOPER-AGENTS.md's commit-message example, read from
-    the file so the example cannot drift out of the format it shows."""
     text = (REPO_ROOT / "DEVELOPER-AGENTS.md").read_text(encoding="utf-8")
     section = text.split("## 💬 Commit messages", 1)[1]
     example = re.search(r"```text\n(.*?)\n```", section, re.DOTALL).group(1)
@@ -55,8 +41,6 @@ class TestCommitBodyAccepts:
         assert str(merge_pr.CommitBody(example)) == example
 
     def test_a_wrapped_bullet_keeps_its_wrapping(self, merge_pr):
-        """The old scraper joined continuation lines with a space; the
-        whole point now is that what the author previews is what lands."""
         assert str(merge_pr.CommitBody(GOOD)) == GOOD
 
     def test_a_line_of_exactly_the_limit_is_accepted(self, merge_pr):
@@ -68,10 +52,6 @@ class TestCommitBodyAccepts:
         merge_pr.CommitBody("- Fix the drift reported in #421.")
 
     def test_git_finds_no_trailer_in_anything_accepted(self, merge_pr):
-        """git's own trailer parser, not a reimplementation of it: a body
-        this class accepts can never carry a `Co-authored-by:` or
-        `Signed-off-by:` that git (and GitHub after it) would honour --
-        not even one hidden on a continuation line."""
         bodies = [
             GOOD,
             _documented_example(),
@@ -91,9 +71,6 @@ class TestCommitBodyAccepts:
 
 
 class TestCommitBodyRefuses:
-    """Each probe from issue 827, and each shape the grammar rules out, is
-    refused with the line number, the reason and the line itself."""
-
     def _refusal(self, merge_pr, text):
         with pytest.raises(merge_pr.FormatError) as caught:
             merge_pr.CommitBody(text)
@@ -146,9 +123,6 @@ class TestCommitBodyRefuses:
         ],
     )
     def test_a_closing_keyword_anywhere_is_refused(self, merge_pr, keyword):
-        """GitHub closes an issue named this way in a commit landing on the
-        default branch -- whichever issue it names, linked or not. The PR
-        description is where a PR closes its issue."""
         message = self._refusal(merge_pr, keyword)
         assert "closing keyword" in message
         assert f"line {keyword.count(chr(10)) + 1}" in message
@@ -196,9 +170,6 @@ class TestCommitBodyFromPr:
         assert str(merge_pr.commit_body(_pr(GOOD))) == GOOD
 
     def test_bullets_elsewhere_in_the_description_are_ignored(self, merge_pr):
-        """The regression pin for #910, #912 and #913, whose squash bodies
-        carry every change twice: once from `## Description` and once from
-        `## What changed`."""
         body = (
             "## Description\n\n- Fix the thing.\n\n"
             "## What changed, from the user's point of view\n\n- The thing works.\n\n"
@@ -211,9 +182,6 @@ class TestCommitBodyFromPr:
         assert str(merge_pr.commit_body(body)) == GOOD
 
     def test_crlf_line_endings_are_read_as_line_endings(self, merge_pr):
-        """A description edited in GitHub's web editor can come back from
-        the API with CRLF line endings; the CR is a line ending there, not
-        content, and the body lands with plain newlines."""
         assert str(merge_pr.commit_body(_pr(GOOD).replace("\n", "\r\n"))) == GOOD
 
     def test_a_missing_section_is_refused_with_a_skeleton_to_paste(self, merge_pr):
@@ -270,9 +238,6 @@ class TestGh:
         assert captured["kwargs"]["input"] == "body text"
 
     def test_output_is_decoded_as_utf8_not_the_host_locale(self, merge_pr):
-        """The same reasoning `check_version_bump.py::_git` documents: this
-        reads PR titles and descriptions, which are not guaranteed ASCII,
-        and CI's Windows leg decodes cp1252 by default without this."""
         import inspect
 
         source = inspect.getsource(merge_pr._gh)
@@ -285,9 +250,6 @@ class TestPrBody:
         assert merge_pr._pr_body(42) == "the body\n"
 
     def test_an_escape_in_the_text_arrives_as_text(self, merge_pr, monkeypatch):
-        """A description holding the six characters `\\u0000` reached the
-        merge as a backslash and a NUL byte, because `gh --jq` decoded the
-        escape (#1166, commit 9d3623e). The JSON is parsed here instead."""
         calls = []
 
         def fake_gh(*args, **kwargs):
@@ -311,11 +273,6 @@ class TestMerge:
     def test_a_cosmetic_worktree_error_is_swallowed_when_the_pr_actually_merged(
         self, merge_pr, monkeypatch, capsys
     ):
-        """Seen on this host: `gh pr merge` reports a worktree-cleanup error
-        even though the remote merge succeeded. Re-running it is wrong --
-        the merge already happened -- so this checks the PR's real state
-        before deciding the command failed."""
-
         def fake_gh(*args, **kwargs):
             if args[:2] == ("pr", "merge"):
                 raise subprocess.CalledProcessError(1, ["gh", *args])
@@ -338,13 +295,6 @@ class TestMerge:
 
 
 class TestInertClosingKeywords:
-    """GitHub does not parse a closing keyword inside a code span, and the
-    failure is silent: the PR merges, the issue stays open, and nothing
-    says so. Seen on #430, whose body carried `Closes #421.` in backticks
-    -- copied from `plans/f3-agenda-reviser.md`, which *quotes* the line
-    PR 1 should carry. Reported at `--dry-run`, which is when it can
-    still be fixed."""
-
     def test_a_backticked_keyword_is_reported(self, merge_pr):
         assert merge_pr.inert_closing_keywords("`Closes #421.`") == ["Closes #421"]
 
@@ -356,8 +306,6 @@ class TestInertClosingKeywords:
             assert merge_pr.inert_closing_keywords(f"`{word} #7`") == [f"{word} #7"]
 
     def test_a_keyword_in_a_fenced_block_is_reported_too(self, merge_pr):
-        """A fence is the other span GitHub does not parse, and quoting a
-        PR template in one is exactly how the mistake propagates."""
         body = "Example:\n\n```text\nCloses #9\n```\n"
         assert merge_pr.inert_closing_keywords(body) == ["Closes #9"]
 
@@ -376,19 +324,12 @@ class TestInertClosingKeywords:
 
 class TestVersionRules:
     def test_it_loads_the_real_check_by_path(self, merge_pr):
-        """The rules are reused, not restated: this has to be the same
-        module `ci.yml` runs, or the merge-time check can drift from the
-        pull-request-time one. Loaded by path because the two ways
-        `merge_pr.py` runs put different directories on `sys.path`."""
         rules = merge_pr._version_rules()
         assert callable(rules.blocks_a_merge)
         assert callable(rules.problems)
         assert rules.parse("6.10.0") > rules.parse("6.9.0")  # the real module, not a stub
 
     def test_loading_it_does_not_touch_sys_path(self, merge_pr):
-        """The reason the load is by path rather than by a `sys.path`
-        insert: a stray entry shadowing the stdlib has cost this
-        repository once already."""
         import sys
 
         before = list(sys.path)
@@ -399,10 +340,6 @@ class TestVersionRules:
 class TestMain:
     def _stub(self, merge_pr, monkeypatch, body, blocks=False):
         monkeypatch.setattr(merge_pr, "_pr_body", lambda n: body)
-        # Stubbed for every test here, not only the ones about it:
-        # unstubbed, the merge-time version check runs a real `git
-        # fetch` and reads this worktree, so a body test would depend on
-        # the state of the checkout it runs in.
         order = []
         monkeypatch.setattr(
             merge_pr,
@@ -427,8 +364,6 @@ class TestMain:
     def test_a_malformed_body_refuses_before_the_version_check(
         self, merge_pr, monkeypatch, capsys, flags
     ):
-        """Nothing to merge, so nothing to check the version of: the
-        refusal names the line and stops."""
         order = self._stub(merge_pr, monkeypatch, _pr("- Signed-off-by: Mallory <m@evil.example>"))
         assert merge_pr.main(flags) == 1
         assert order == []
@@ -453,33 +388,22 @@ class TestMain:
         assert "will not close" not in capsys.readouterr().out
 
     def test_the_warning_does_not_stop_the_merge(self, merge_pr, monkeypatch):
-        """Advisory, like every other check this project added to a
-        developer path: it reports, and a person decides. Blocking would
-        make a deliberately-quoted keyword unmergeable."""
         order = self._stub(merge_pr, monkeypatch, "`Closes #421.`\n\n" + _pr(GOOD))
         assert merge_pr.main(["42"]) == 0
         assert order == ["check", (42, GOOD)]
 
     def test_a_lost_version_bump_refuses_instead_of_merging(self, merge_pr, monkeypatch, capsys):
-        """The #560 failure, at the point it is still preventable: the
-        body is printed, and then the merge does not happen."""
         order = self._stub(merge_pr, monkeypatch, _pr(GOOD), blocks=True)
         assert merge_pr.main(["42"]) == 1
         assert order == ["check"]
         assert GOOD in capsys.readouterr().out
 
     def test_dry_run_reports_the_same_refusal(self, merge_pr, monkeypatch):
-        """`--dry-run` is where a person looks first, so it must report
-        what a real run would do rather than a body that would not have
-        been merged."""
         self._stub(merge_pr, monkeypatch, _pr(GOOD), blocks=True)
         assert merge_pr.main(["42", "--dry-run"]) == 1
 
 
 class TestCheck:
-    """`--check` is the pull-request-time half: `commit-message.yml` pipes
-    the description in on stdin. No `gh`, no version check, no merge."""
-
     def _stdin(self, monkeypatch, text):
         import io
         import sys
@@ -507,8 +431,6 @@ class TestCheck:
         assert "line 2" in capsys.readouterr().err
 
     def test_stdin_is_decoded_as_utf8(self, merge_pr, monkeypatch, capsys):
-        """A description is not guaranteed ASCII, and a runner's locale is
-        not guaranteed UTF-8 -- the same reasoning as `_gh`."""
         self._forbid_the_rest(merge_pr, monkeypatch)
         self._stdin(monkeypatch, _pr("- Fix the café's naïve résumé."))
         assert merge_pr.main(["--check"]) == 0
@@ -527,10 +449,6 @@ class TestCheck:
 
 
 class TestWorkflow:
-    """The pull-request-time check, as configured. The body is
-    attacker-controlled text, so it must reach the script through `env:`
-    and never be interpolated into the shell line."""
-
     WORKFLOW = REPO_ROOT / ".github" / "workflows" / "commit-message.yml"
 
     def test_it_runs_when_the_description_is_edited(self):
@@ -551,8 +469,6 @@ class TestWorkflow:
 
 class TestTemplate:
     def test_the_pr_template_carries_the_section_and_an_empty_fence(self, merge_pr):
-        """A PR opened from the template fails the check until its author
-        writes the body -- an empty fence, never a pre-filled one."""
         text = (REPO_ROOT / ".github" / "pull_request_template.md").read_text(encoding="utf-8")
         assert "## Commit message" in text
         with pytest.raises(merge_pr.FormatError, match="empty"):

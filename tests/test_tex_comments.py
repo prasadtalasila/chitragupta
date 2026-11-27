@@ -1,5 +1,3 @@
-"""The one TeX comment stripper every figure-source reader shares."""
-
 from chitragupta import _tex_comments
 from chitragupta.render_output import _tikz_libraries
 

@@ -1,8 +1,3 @@
-"""chitragupta/review/agenda/: the eighth review aid, merging the other
-eight aids' `.json`, `style_check`'s prose findings, and the dossier's
-drift report into one ranked, deduplicated worklist. Issue #381.
-"""
-
 import ast
 import json
 import os
@@ -35,8 +30,6 @@ from tests.conftest import content_draft
 
 
 def _sources_stub(**overrides) -> _sources.Sources:
-    """A `Sources` bundle with every input absent by default, so a test
-    overriding one aid doesn't have to spell out the other five."""
     aids = {aid: _sources.AidSource() for aid in _sources.AID_NAMES}
     aids.update(overrides.pop("aids", {}))
     style = overrides.pop("style", _sources.StyleSource())
@@ -44,11 +37,6 @@ def _sources_stub(**overrides) -> _sources.Sources:
     uncited = overrides.pop("recorded", _sources.RecordedSource())
     assert not overrides
     return _sources.Sources(aids=aids, style=style, drift=drift, recorded=uncited)
-
-
-# --------------------------------------------------------------------------
-# _identity.py
-# --------------------------------------------------------------------------
 
 
 class TestItemId:
@@ -76,63 +64,18 @@ class TestSectionAnchor:
         assert _identity.section_anchor(dossier.sections(text), 3) == "Heading"
 
 
-# --------------------------------------------------------------------------
-# _sources.py
-# --------------------------------------------------------------------------
-
-
 class TestAidNames:
     def test_support_is_read(self):
-        """#427: `support`'s findings carry no `band`, but that only ever
-        ruled out `unsupported_claim_items` re-using it as a second
-        source -- not `agenda` reading its `.json` at all."""
         assert "support" in _sources.AID_NAMES
 
     def test_excludes_exactly_agenda_and_union(self):
-        """The relationship `_sources.py`'s own comment states, asserted
-        rather than left to that comment (#573).
-
-        Every existing test in this module derives its expectations
-        *from* `AID_NAMES`, so before this one the tuple could fall
-        behind `review.AIDS` without a single test going red -- which is
-        how `union` came to be missing from it while the comment above
-        it still said `agenda` was the only exclusion. An eleventh aid
-        now has to decide whether `agenda` reads it.
-
-        `union` is excluded for what its findings are about, not for
-        where they live: it files `<stem>.union.json` beside a reviewable
-        path like the rest, but it reads an assembled book, and a
-        citekey the assembly dropped is a fact about the assembly rather
-        than a sentence anyone can repair in the draft this worklist was
-        asked about. The same book-not-draft ground
-        docs/PERFORMANCE.md leaves it out of the draft-review cost
-        figures on. `digest` is excluded for the same kind of reason:
-        its classes describe a verbatim digest and nothing else (#991).
-        """
         assert set(_sources.AID_NAMES) == set(review.AIDS) - {"agenda", "union", "digest"}
 
     def test_reads_in_the_registry_s_own_order(self):
-        """The other half of that comment: "in `review.AIDS`'s own
-        order". Not cosmetic -- `_render._SOURCE_LABELS` restates that
-        order a third time, and the assertion below pins the two
-        together."""
         read = set(_sources.AID_NAMES)
         assert _sources.AID_NAMES == tuple(aid for aid in review.AIDS if aid in read)
 
     def test_render_s_source_labels_are_the_registry_s_own(self):
-        """`_render._SOURCE_LABELS` is a third hand-maintained copy of
-        the same eight aids -- their keys *and* `review.AIDS`' own label
-        strings -- and it fails harder than `AID_NAMES` does when it
-        drifts: `_render.py`'s header builder does
-        `agenda.sources.aids[aid]` for every key in it, so a key
-        `AID_NAMES` lacks is a `KeyError` mid-report rather than a
-        missing line.
-
-        Asserted rather than deduplicated: collapsing it to a
-        comprehension over `AID_NAMES` would be a change to the
-        rendering path, which #573 is not about. This is the guard that
-        makes that refactor safe to do later, or unnecessary.
-        """
         assert _render._SOURCE_LABELS == {aid: review.AIDS[aid] for aid in _sources.AID_NAMES}
         assert tuple(_render._SOURCE_LABELS) == _sources.AID_NAMES
 
@@ -166,9 +109,6 @@ class TestReadAidJson:
         assert source.stale is True
 
     def test_truncated_json_degrades_to_unavailable_with_a_reason(self, isolated_config):
-        """One corrupted aid sidecar must not take down the whole agenda
-        (#496) -- the module docstring's "each degrading to absent"
-        covers a truncated file, not only a missing one."""
         draft = content_draft(isolated_config, "drafts/t/survey.md")
         draft.write_text("# Survey\n")
         path = review.write_json(draft, "provenance", {"findings": []})
@@ -213,9 +153,6 @@ class TestReadStyleBrokenExceptions:
     def test_a_broken_exceptions_file_degrades_to_unavailable_with_the_reason(
         self, isolated_config, monkeypatch
     ):
-        """#1187: the agenda must not crash on a malformed
-        `style_exceptions.toml`; the prose source reads as not run and
-        carries the reason, as an unreadable aid sidecar does (#496)."""
         draft = content_draft(isolated_config, "drafts/t/survey.md")
         draft.write_text("# Survey\n")
 
@@ -277,10 +214,6 @@ class TestReadDrift:
 
 
 class TestReadRecorded:
-    """The `recorded-but-uncited` source degrades to absent on the same
-    two states `_read_drift` does -- a reduced source set, never a
-    refusal (#701)."""
-
     def test_draft_outside_drafts_dir_has_no_dossier(self, isolated_config):
         draft = content_draft(isolated_config, "not-a-draft.md")
         draft.write_text("# Not a draft\n")
@@ -323,9 +256,6 @@ class TestCollect:
     def test_a_refresh_error_is_carried_onto_its_source_and_its_flags(
         self, isolated_config, monkeypatch
     ):
-        """#893: the reason an aid raised during `--baseline`'s refresh
-        rides on its `AidSource`, and from there into the filed payload's
-        `sources.aids.<aid>` -- every other aid's stays `None`."""
         draft = content_draft(isolated_config, "drafts/t/survey.md")
         draft.write_text("# Survey\n")
         monkeypatch.setattr(
@@ -338,11 +268,6 @@ class TestCollect:
         assert sources.aids["support"].refresh_error == "RuntimeError: boom"
         assert sources.aids["support"].flags()["refresh_error"] == "RuntimeError: boom"
         assert all(sources.aids[aid].refresh_error is None for aid in _sources.AID_NAMES[:-1])
-
-
-# --------------------------------------------------------------------------
-# _items.py
-# --------------------------------------------------------------------------
 
 
 class TestMissingCitekeyItems:
@@ -366,19 +291,6 @@ class TestMissingCitekeyItems:
 
 
 class TestSurfacedButNeverUsedClassesAreGone:
-    """`uncited-source` and `candidate` were removed from the agenda.
-
-    Both said "the corpus holds a paper you surfaced and did not cite",
-    which for a draft that makes no claim from it is the correct outcome
-    rather than a finding. The aids that computed them are untouched --
-    that is the point of the pair of tests below: the *inputs* that used
-    to raise each class are still constructed here, in full, and the
-    assertion is that the agenda no longer turns either into an item. A
-    test that merely dropped the old ones would pass just as well if the
-    aids had been deleted too, which is a different change from the one
-    that was made.
-    """
-
     def test_neither_class_is_in_the_class_table(self):
         assert "uncited-source" not in _items.CLASSES
         assert "candidate" not in _items.CLASSES
@@ -407,10 +319,6 @@ class TestSurfacedButNeverUsedClassesAreGone:
 
 
 class TestRecordedButUncitedItems:
-    """Issue #701's new class: the mirror image of `missing-citekey`,
-    and surfaced rather than unattended because the dossier cannot tell
-    a citation the user cut from a candidate never cited at all."""
-
     def test_no_source_gives_no_items(self):
         assert _items.recorded_but_uncited_items(_sources.RecordedSource()) == []
 
@@ -427,10 +335,6 @@ class TestRecordedButUncitedItems:
         assert item.detail == {"surfaces": ["evidence"]}
 
     def test_the_summary_names_every_surface_as_a_real_filename(self):
-        """Each surface carries its own `.md`. Joining first and
-        suffixing once reads "evidence, sections.md", which names a file
-        that does not exist -- and a test asserting only that both words
-        appear passes on it."""
         source = _sources.RecordedSource(available=True, data={"a2024": ["evidence", "sections"]})
         summary = _items.recorded_but_uncited_items(source)[0].summary
         assert "evidence.md, sections.md" in summary
@@ -484,7 +388,6 @@ class TestVerbatimRunItems:
         assert items[0].unattended is True
 
     def test_short_names_run_is_surfaced(self):
-        """#1187: a short run made mostly of copied names is a person's call."""
         source = _sources.AidSource(
             available=True,
             data={"findings": [self._finding(severity="short", matched_words=8, names=True)]},
@@ -492,7 +395,6 @@ class TestVerbatimRunItems:
         assert _items_findings.verbatim_run_items(source, [])[0].unattended is False
 
     def test_baseline_without_names_is_unchanged(self):
-        """A baseline filed before #1187 has no `names` key: stays unattended."""
         finding = self._finding(severity="short", matched_words=8)
         assert "names" not in finding
         source = _sources.AidSource(available=True, data={"findings": [finding]})
@@ -514,12 +416,6 @@ class TestVerbatimRunItems:
         assert items[0].summary == "13-word verbatim run citing `a2024`"
 
     def test_a_gapped_match_reports_its_span_and_its_matched_count(self):
-        """A skip-gram or embedding finding matches fewer words than it
-        spans, and summarising it by `matched_words` alone reads as a
-        verbatim run shorter than `--min-run` -- which cannot happen and
-        which no report claims: `_scan.py`'s `_matched_note` renders the
-        same finding as `15 words, 6 matched`. The agenda has to agree
-        with the aid it is quoting."""
         source = _sources.AidSource(
             available=True,
             data={"findings": [self._finding(span_words=15, matched_words=6)]},
@@ -528,13 +424,6 @@ class TestVerbatimRunItems:
         assert items[0].summary == "15-word verbatim run citing `a2024`, 6 matched"
 
     def test_an_embedding_finding_is_never_unattended_however_short(self):
-        """`severity` comes from `_bucket`, which thresholds on
-        `matched_words` and never looks at `tier` -- so a short embedding
-        alignment arrives here indistinguishable from a short exact run.
-        Marking it unattended authorises `agenda-reviser` to edit a
-        passage away on the evidence of a similarity score, while
-        `verbatim_check._recheck` refuses to so much as *count* that tier
-        because its own docstring calls it advisory only, permanently."""
         source = _sources.AidSource(
             available=True,
             data={"findings": [self._finding(severity="short", matched_words=8, tier="embedding")]},
@@ -543,10 +432,6 @@ class TestVerbatimRunItems:
         assert items[0].unattended is False
 
     def test_a_short_skipgram_finding_is_still_unattended(self):
-        """The gate is on the embedding tier specifically, not on
-        "anything that is not exact": skip-gram is deterministic,
-        reproducible from the corpus alone, and is counted by `recheck`
-        like tier 1."""
         source = _sources.AidSource(
             available=True,
             data={"findings": [self._finding(severity="short", matched_words=8, tier="skip-gram")]},
@@ -555,11 +440,6 @@ class TestVerbatimRunItems:
         assert items[0].unattended is True
 
     def test_the_summary_names_what_the_tier_actually_found(self):
-        """Calling every finding a "verbatim run" is true only of tier 1.
-        A skip-gram match has words substituted and an embedding
-        alignment shares no wording at all -- and the agenda must not
-        make a stronger claim than the aid it quotes."""
-
         def summary(tier):
             source = _sources.AidSource(
                 available=True, data={"findings": [self._finding(tier=tier)]}
@@ -571,10 +451,6 @@ class TestVerbatimRunItems:
         assert summary("embedding").startswith("20-word embedding-tier alignment")
 
     def test_a_report_filed_before_the_tier_field_existed_overstates_nothing(self):
-        """`tier` is absent from a payload written before it existed, and
-        the agenda reads reports off disk rather than recomputing them.
-        The fallback is the neutral "run" -- never "verbatim run", which
-        would be a claim about a tier that did not record itself."""
         finding = self._finding()
         del finding["tier"]
         source = _sources.AidSource(available=True, data={"findings": [finding]})
@@ -610,11 +486,6 @@ class TestProseItems:
         assert items[0].detail["count"] == 2
 
     def test_prose_is_unattended(self):
-        """Issue 421's decision. `style_check` already restricts itself to
-        the decidable rules, so every prose item *is* the mechanically
-        re-checkable subset the class table names -- and the repair is an
-        edit to the draft, which is R1's write-set, unlike `uncited-claim`
-        and `misquoted`."""
         source = _sources.StyleSource(
             available=True,
             data={
@@ -633,8 +504,6 @@ class TestProseItems:
         assert _items_findings.prose_items(source, [])[0].unattended is True
 
     def test_a_review_mode_finding_is_surfaced_not_unattended(self):
-        """Issue 836: a rule whose right repair may be "leave it alone"
-        says so with `repair="review"`, and the agenda honours it."""
         finding = {"rule": "r", "match": "x", "line": 3, "count": 1, "repair": "review"}
         source = _sources.StyleSource(available=True, data={"findings": [finding]})
         assert _items_findings.prose_items(source, [])[0].unattended is False
@@ -661,15 +530,6 @@ class TestProseItems:
 
 
 class TestProseRepairMode:
-    """Issue 836, through the live path the agenda reads -- `_read_style`
-    calls `style_check.check()`, so the dialect decision is exercised
-    where it is made rather than by hand-setting `repair` on a finding.
-
-    A dialect is the author's own statement only from `scope.md` or a
-    `--language` flag; one resolved from the host-wide `config.toml`
-    default may be wrong for this draft, and re-spelling a whole draft
-    on its evidence is not a repair to make unasked."""
-
     @pytest.fixture
     def draft(self, isolated_config, monkeypatch):
         path = content_draft(isolated_config, "drafts/t/survey.md")
@@ -690,8 +550,6 @@ class TestProseRepairMode:
     def test_a_config_toml_dialect_is_surfaced_not_repaired(self, draft):
         flags = self._unattended(draft)
         assert flags["chitragupta.DialectUS"] is False
-        # Only the dialect rule is demoted; every other Vale rule is
-        # still an edit whatever the language's source.
         assert flags["chitragupta.DefectMarkers"] is True
 
     def test_a_scope_md_dialect_is_unattended(self, draft):
@@ -707,9 +565,6 @@ class TestProseRepairMode:
         assert {f["rule"]: f["repair"] for f in found}["chitragupta.DialectUS"] == "edit"
 
     def test_a_wide_code_line_is_never_unattended(self, draft, monkeypatch):
-        """A tutorial's verified-to-run block may be wide on purpose (a
-        long URL or literal); rewrapping it breaks what was promised to
-        run, so the width is reported for a person to decide."""
         monkeypatch.setattr(style_check, "run_vale", lambda d, lang: [])
         draft.write_text(f"# Survey\n\n```\n{'x' * 90}\n```\n", encoding="utf-8")
         assert self._unattended(draft) == {"chitragupta.WideCodeLine": False}
@@ -783,9 +638,6 @@ class TestClaimSupportItems:
         assert _items_findings.claim_support_items(source, []) == []
 
     def test_well_supported_finding_is_still_included(self):
-        """Unfiltered by design: a high score is not excluded, since a
-        cutoff would claim a precision this corpus does not support --
-        the same argument that keeps this aid ranked, never banded."""
         source = _sources.AidSource(available=True, data={"findings": [self._finding(score=0.97)]})
         items = _items_findings.claim_support_items(source, [])
         assert len(items) == 1
@@ -820,8 +672,6 @@ class TestMisquotedItems:
         return _items_findings.misquoted_items(source)[0]
 
     def test_a_report_filed_before_several_quotes_reads_as_it_did(self):
-        """#1174: a filed `.quotation.json` with no `index`/`of` keeps
-        today's summary, since bare `agenda` does not refresh it."""
         assert self._one().summary == (
             "`[@a2024]`'s quoted span was not found in its source: a span not in the source"
         )
@@ -831,8 +681,6 @@ class TestMisquotedItems:
         assert "`[@a2024]`'s quoted span (quote 2 of 3) was not found" in item.summary
 
     def test_the_position_does_not_enter_the_identity(self):
-        """`item_id` hashes the quote text, as before: adding a second
-        quote to a block renames nothing already on the agenda."""
         assert self._one().id == self._one(index=1, of=2).id
 
     def test_one_item_per_finding_no_line_or_section(self):
@@ -897,9 +745,6 @@ class TestAllItems:
         assert [item.cls for item in items] == ["recorded-but-uncited"]
 
     def test_the_class_sorts_directly_after_missing_citekey(self):
-        """Position is visibility: appended after `candidate` the class
-        would render beneath every candidate item, which on a real
-        draft runs to three figures (#701)."""
         assert _items.CLASSES.index("recorded-but-uncited") == (
             _items.CLASSES.index("missing-citekey") + 1
         )
@@ -914,11 +759,6 @@ class TestAllItems:
             }
         )
         assert _items.all_items(sources, []) == []
-
-
-# --------------------------------------------------------------------------
-# _dedup.py
-# --------------------------------------------------------------------------
 
 
 class TestDedup:
@@ -989,12 +829,6 @@ class TestDedup:
         assert by_id["u1"].detail["also_flagged"] == [{"id": "v1", "class": "verbatim-run"}]
 
     def test_unsupported_claim_and_claim_support_cross_link_not_collapse(self):
-        """#427: `support` asks the same underlying question as
-        `provenance` but is deliberately not a second source for
-        `unsupported-claim` -- two scorers on the same claim are two
-        distinct findings, cross-linked by the same generic same-line
-        mechanism every other class pair already uses, never collapsed
-        into one item."""
         unsupported = _items.Item(
             id="u1",
             cls="unsupported-claim",
@@ -1057,11 +891,6 @@ class TestDedup:
             detail={},
         )
         assert _dedup.merge([one, two]) == [one]
-
-
-# --------------------------------------------------------------------------
-# _order.py
-# --------------------------------------------------------------------------
 
 
 class TestSeverityRank:
@@ -1136,18 +965,9 @@ class TestSort:
         assert ordered == ["unsupported-claim", "claim-support", "uncited-claim"]
 
     def test_unpositioned_items_order_by_citekey(self):
-        """`line is None` collapses to the same sort position for every
-        item in the class, so citekey is what actually separates them --
-        the property `misquoted` and `recorded-but-uncited` both rely on
-        now that `candidate`, which used to demonstrate it, is gone."""
         z = _items.Item("z-id", "misquoted", None, "z2024", None, False, "s", {})
         a = _items.Item("a-id", "misquoted", None, "a2024", None, False, "s", {})
         assert [i.citekey for i in _order.sort([z, a])] == ["a2024", "z2024"]
-
-
-# --------------------------------------------------------------------------
-# _render.py
-# --------------------------------------------------------------------------
 
 
 class TestRenderMarkdown:
@@ -1161,11 +981,6 @@ class TestRenderMarkdown:
         assert "No items" in rendered
 
     def test_support_is_named_in_the_sources_header(self):
-        """#427: `support` is one of the aids `agenda` reads
-        (`_sources.AID_NAMES`), and every aid it reads gets its own
-        Sources line -- `_render._SOURCE_LABELS` has to name it too, or
-        the header silently drops the one aid `--baseline` pays the most
-        to refresh."""
         rendered = _render.render_markdown(
             agenda.Agenda(
                 draft=Path("content/drafts/t/survey.md"), sources=_sources_stub(), items=[]
@@ -1210,8 +1025,6 @@ class TestRenderMarkdown:
         ],
     )
     def test_a_nothing_checked_quotation_run_says_why(self, universe, says):
-        """#838: an agenda showing no `misquoted` items must say whether
-        any quote was checked at all."""
         line = self._quotation_line({"universe": universe, "findings": []})
         assert "nothing checked" in line and says in line
 
@@ -1221,16 +1034,12 @@ class TestRenderMarkdown:
         )
 
     def test_a_quotation_sidecar_without_a_universe_renders_as_before(self):
-        """A `.quotation.json` written before #838 carries no key."""
         assert self._quotation_line({"findings": []}) == "- Quotation integrity: read"
 
     def test_the_notes_cover_every_nothing_checked_universe(self):
         assert set(_render._QUOTATION_UNIVERSE_NOTES) == set(quotation.UNIVERSES) - {"checked"}
 
     def test_an_unavailable_source_with_a_reason_names_it(self):
-        """A truncated aid sidecar (#496) degrades to unavailable with a
-        reason -- the header should say why it was not read rather than
-        the bare "not run" a genuinely missing file gets."""
         sources = _sources_stub(
             aids={
                 "provenance": _sources.AidSource(
@@ -1252,8 +1061,6 @@ class TestRenderMarkdown:
         )
 
     def test_a_raised_refresh_names_its_reason_beside_not_refreshed(self):
-        """#893: the earlier `.json` was read, the refresh raised -- the
-        header says both, and why."""
         rendered = self._rendered(
             _sources.AidSource(
                 available=True, data={}, refreshed=False, refresh_error="ValueError: bad page"
@@ -1265,8 +1072,6 @@ class TestRenderMarkdown:
         )
 
     def test_a_raised_refresh_with_no_earlier_report_is_not_called_not_run(self):
-        """`not run` would be false: the aid ran, and raised. With no
-        earlier `.json` there are no findings to call an earlier run's."""
         rendered = self._rendered(
             _sources.AidSource(refreshed=False, refresh_error="ValueError: bad page")
         )
@@ -1310,14 +1115,6 @@ class TestRenderMarkdown:
 
 
 class TestVerbatimPassageInTheAgenda:
-    """A `verbatim-run` item carries the overlapping text under it.
-
-    The passage is joined from the verbatim aid's *filed JSON* through
-    `agenda.sources`, never from `item.detail` -- which stays thin by a
-    documented decision, and whose whole contract is "look the id up in
-    the raising aid's own report". This does exactly that.
-    """
-
     def _rendered(self, finding, item_detail=None):
         item = _items.Item(
             "v1",
@@ -1353,8 +1150,6 @@ class TestVerbatimPassageInTheAgenda:
         return base
 
     def test_the_json_payload_carries_the_same_locators_as_the_markdown(self):
-        """Joined from the aid's filed JSON in both forms, so the two
-        cannot disagree about where a finding is."""
         finding = self._finding()
         item = _items.Item(
             "v1", "verbatim-run", "Intro", "a2024", 5, True, "s", {"verbatim_id": "abc123"}
@@ -1372,9 +1167,6 @@ class TestVerbatimPassageInTheAgenda:
         assert (published["paragraph"], published["end_paragraph"]) == (4, 4)
 
     def test_a_class_with_no_such_locator_publishes_the_keys_as_null(self):
-        """Present rather than absent, so `prose` and `verbatim-run`
-        items do not have different key sets and a consumer reading these
-        positionally sees a stable shape."""
         item = _items.Item("p1", "prose", None, None, 1, True, "s", {})
         built = agenda.Agenda(
             draft=Path("content/drafts/t/survey.md"), sources=_sources_stub(), items=[item]
@@ -1386,10 +1178,6 @@ class TestVerbatimPassageInTheAgenda:
         assert published["paragraph"] is None
 
     def test_the_locator_names_the_source_page_and_the_draft_position(self):
-        """The aid's own report has carried `p.N` since it was written and
-        the agenda never did -- an item said which paper and how many
-        words and left the reader to open the aid's report for the only
-        numbers that say where to look."""
         rendered = self._rendered(self._finding())
         assert "source p.7, draft line 35, paragraph 4" in rendered
 
@@ -1398,9 +1186,6 @@ class TestVerbatimPassageInTheAgenda:
         assert "source p.7-8, draft line 35, paragraphs 4-5" in rendered
 
     def test_a_finding_filed_before_the_locators_existed_omits_them(self):
-        """The bare agenda reads reports off disk, so a `.json` written by
-        an earlier release has no `paragraph` key. The passage still
-        prints; the locator names only what it actually knows."""
         finding = self._finding()
         del finding["paragraph"]
         del finding["end_paragraph"]
@@ -1432,11 +1217,6 @@ class TestVerbatimPassageInTheAgenda:
         assert "**source** -- The **dog** sat down" in rendered
 
     def test_the_passage_is_indented_under_its_bullet(self):
-        """A `>` placed flush left directly under a `- ...` bullet is not
-        a blockquote inside the item -- Markdown reads it as lazy
-        continuation, and it renders beside the item instead of within
-        it. This is the same failure that lost every class heading but
-        the first, and it is invisible in the `.md` source."""
         rendered = self._rendered(self._finding())
         quotes = [ln for ln in rendered.splitlines() if ln.lstrip().startswith(">")]
         passage = [ln for ln in quotes if "the draft s own wording" in ln]
@@ -1447,9 +1227,6 @@ class TestVerbatimPassageInTheAgenda:
         assert len([ln for ln in rendered.splitlines() if "**source**" in ln]) == 1
 
     def test_no_passage_when_the_aids_report_lacks_the_id(self):
-        """The bare agenda *reads* reports rather than running them, so a
-        `.json` older than the item list can genuinely lack an id. The
-        item still prints; only its passage is omitted."""
         rendered = self._rendered(self._finding(), item_detail={"verbatim_id": "not-in-report"})
         assert "`v1`" in rendered
         assert "the draft s own wording" not in rendered
@@ -1512,11 +1289,6 @@ class TestRenderMarkdownGrouping:
         assert "### misquoted" in rendered
         assert rendered.count("### missing-citekey") == 1
         assert rendered.index("### missing-citekey") < rendered.index("### misquoted")
-        # A `###` line directly under a `- ...` bullet is lazy
-        # continuation in Markdown, not a heading -- so every class
-        # heading after the first needs a blank line before it or it is
-        # swallowed into the last item of the class above, and the
-        # rendered PDF shows no heading there at all.
         lines = rendered.splitlines()
         for index, line in enumerate(lines):
             if line.startswith("### ") and index:
@@ -1567,11 +1339,6 @@ class TestAgendaPayload:
         assert set(payload["sources"]["aids"]) == set(_sources.AID_NAMES)
 
     def test_the_payload_carries_the_bound_and_the_count(self):
-        """Neither is reachable from a `SKILL.md`: `PASS_BOUND` is a Python
-        constant and `objective_class_count` a property, so a skill that
-        could not read them off the payload would hardcode `3` in prose --
-        which is what `plans/f-auto-improvement-adoption.md`'s Decision 2
-        forbids, and for the reason it gives."""
         items = [
             _items.Item("m1", "missing-citekey", None, "a2024", None, True, "s", {}),
             _items.Item("p1", "prose", None, None, 3, True, "s", {}),
@@ -1587,8 +1354,6 @@ class TestAgendaPayload:
         assert payload["objective_class_count"] == 2
 
     def test_the_serialised_count_is_the_computed_one(self):
-        """An additional serialisation, never a second computation -- the
-        rule `agenda_payload`'s own docstring states."""
         items = [
             _items.Item("p1", "prose", None, None, 3, True, "s", {}),
             _items.Item("p2", "prose", None, None, 4, True, "s", {}),
@@ -1600,15 +1365,7 @@ class TestAgendaPayload:
         assert payload["objective_class_count"] == built.objective_class_count
 
 
-# --------------------------------------------------------------------------
-# _stale.py
-# --------------------------------------------------------------------------
-
-
 class TestStalePartition:
-    """#766: an item whose draft span is gone is dropped and reported,
-    never relocated onto whatever now occupies that position."""
-
     def test_an_item_whose_span_is_still_present_is_kept(self):
         item = _items.Item(
             "v1", "verbatim-run", "Intro", "a2024", 3, True, "s", {}, span="a borrowed run"
@@ -1626,10 +1383,6 @@ class TestStalePartition:
         assert refused == [item]
 
     def test_an_item_with_no_draft_span_is_never_refused(self):
-        """`missing-citekey`, `recorded-but-uncited` and `misquoted` are
-        derived from the dossier, not the draft's text -- the second by
-        construction names a citekey the draft does *not* cite, so a
-        containment check would refuse it on every run."""
         item = _items.Item("m1", "missing-citekey", None, "a2024", None, True, "s", {})
         live, refused = _stale.partition("# Survey\n", [item])
         assert live == [item]
@@ -1651,13 +1404,6 @@ class TestStalePartition:
     def test_a_rewritten_prose_sentence_is_re_derived_not_refused(
         self, isolated_config, monkeypatch
     ):
-        """#839: `prose` is recomputed from the draft on every run, so it
-        never holds text the author has since rewritten. Rewriting the
-        sentence a finding came from moves the item to the occurrence
-        that survives, under the same id, and refuses nothing -- which
-        is right, because that occurrence is a live finding. If `prose`
-        is ever read from a filed report instead, this goes red and the
-        span has to become something a rewrite removes."""
         draft = content_draft(isolated_config, "drafts/t/survey.md")
         draft.write_text("# Survey\n\nWe simply start.\n\nIt simply ends.\n")
 
@@ -1688,26 +1434,9 @@ class TestStalePartition:
 
 
 class TestNoFuzzyRelocation:
-    """#766's fourth criterion, checked rather than asserted in prose: a
-    refusal that could be talked into a similarity score is not a
-    refusal. Nothing in this package may import a fuzzy matcher, for the
-    reason `docs/AUTO-IMPROVEMENT.md` already gives about the verbatim
-    scan's embedding tier -- an edit authorised on the evidence of a
-    score is exactly what the agenda refuses to do elsewhere."""
-
     FUZZY = ("difflib", "SequenceMatcher", "get_close_matches", "rapidfuzz", "Levenshtein")
 
     def test_the_skill_states_the_refusal(self):
-        """The aid dropping the item protects a run that happens *after*
-        the edit; the skill holds a baseline taken before it. Both halves
-        are needed, so the skill's own prose is checked here rather than
-        assumed -- #766's stated layer is "a rule in `agenda-reviser`,
-        plus the staleness report in the aid's output"."""
-        # Anchored on this test file, not on `agenda.__file__`: the
-        # convention `tests/test_skill_style_check_step.py` already
-        # follows, and the reason is that CI's test job does a real
-        # project install, so a path walked up from the imported package
-        # can land outside the checkout.
         repo_root = Path(__file__).resolve().parent.parent
         skill = (repo_root / ".claude" / "skills" / "agenda-reviser" / "SKILL.md").read_text(
             encoding="utf-8"
@@ -1727,11 +1456,6 @@ class TestNoFuzzyRelocation:
         assert offenders == {}
 
 
-# --------------------------------------------------------------------------
-# Agenda / CLI (chitragupta/review/agenda/__init__.py)
-# --------------------------------------------------------------------------
-
-
 class TestObjectiveClassCount:
     def test_counts_unattended_items_only(self):
         one = agenda.Agenda(
@@ -1745,9 +1469,6 @@ class TestObjectiveClassCount:
         assert one.objective_class_count == 1
 
     def test_prose_counts_towards_it(self):
-        """The flip in issue 421 makes `prose` the third contributor, and
-        this is the number the re-run loop terminates on -- so it is
-        asserted here rather than left to the flag's own test."""
         one = agenda.Agenda(
             draft=Path("d"),
             sources=_sources_stub(),
@@ -1760,8 +1481,6 @@ class TestObjectiveClassCount:
         assert one.objective_class_count == 2
 
     def test_a_not_refreshed_aids_items_do_not_count(self):
-        """#837: the verbatim scan's refresh failed, so its `short` run is
-        last run's evidence, not this draft's -- listed, never counted."""
         sources = _sources_stub(aids={"verbatim": _sources.AidSource(refreshed=False)})
         one = agenda.Agenda(
             draft=Path("d"),
@@ -1808,11 +1527,6 @@ class TestBuildAgendaAndCli:
     def test_a_real_support_json_produces_a_claim_support_item_end_to_end(
         self, isolated_config, monkeypatch
     ):
-        """#427, exercised through the real pipeline rather than a stubbed
-        `AidSource`: a `.support.json` an earlier `review support --write`
-        run left on disk should surface as a `claim-support` item in both
-        the rendered Markdown and the JSON payload, unfiltered and
-        carrying the not-a-verdict caveat."""
         draft = self._draft_with_no_dossier(isolated_config, monkeypatch)
         review.write_json(
             draft,
@@ -1857,8 +1571,6 @@ class TestBuildAgendaAndCli:
         payload = json.loads(out.out)
         assert payload["aid"] == "agenda"
         assert "json" in out.err  # written-files summary moved to stderr
-        # The bare command never runs an aid -- --baseline is the one mode
-        # that does.
         assert all(stub.calls == [] for stub in aid_stubs.values())
 
     def test_missing_draft_exits_one(self, isolated_config, capsys):
@@ -1879,13 +1591,6 @@ class TestBuildAgendaAndCli:
     def test_an_edit_between_the_aid_run_and_the_reviser_refuses_the_item(
         self, isolated_config, monkeypatch
     ):
-        """#766, the whole window in one test: the aid runs, the human
-        revises the very passage it found, and the next agenda drops the
-        item rather than handing a reviser a repair aimed at text that is
-        gone. The human's draft survives byte for byte -- `agenda` never
-        writes a draft, so that assertion is the floor; the load-bearing
-        ones are that the item left `items`, left the objective count, and
-        is reported with its section anchor instead."""
         draft = self._draft_with_no_dossier(isolated_config, monkeypatch)
         draft.write_text("# Survey\n\n## Intro\n\nWidely regarded as the standard.\n")
         review.write_json(
@@ -1950,14 +1655,7 @@ class TestBuildAgendaAndCli:
         assert built.items[0].cls == "uncited-claim"
 
 
-# --------------------------------------------------------------------------
-# _recheck.py -- the `--baseline` refresh mode (F3 Decision 6)
-# --------------------------------------------------------------------------
-
-
 def _item_dict(id_, cls="prose", unattended=True, summary="a finding") -> dict:
-    """One `_render._item_dict`-shaped item, which is what both sides of
-    `compare` are made of."""
     return {
         "id": id_,
         "class": cls,
@@ -1971,19 +1669,6 @@ def _item_dict(id_, cls="prose", unattended=True, summary="a finding") -> dict:
 
 
 class _AidStub:
-    """Stands in for one aid module's `main`, recording the argv it was
-    handed and optionally printing, so the stdout-capture requirement can
-    be tested against something that actually pollutes stdout.
-
-    By default it also files an empty `<stem>.<aid>.json`, which is what
-    a real aid's successful refresh leaves behind and what `refresh_aids`
-    checks for (#837): a stub that wrote nothing would read as a refresh
-    that did not happen. `returncode` and `writes` are the two ways a
-    real refresh fails -- a refusal, and `claim_support`'s exit 0 with no
-    entailer installed. `raises` is the third (#893): an aid that
-    raises, after any write, instead of returning at all.
-    """
-
     def __init__(self, aid: str = "", chatter: str = "", returncode: int = 0, writes: bool = True):
         self.calls: list[list[str]] = []
         self.aid = aid
@@ -1991,8 +1676,6 @@ class _AidStub:
         self.returncode = returncode
         self.writes = writes
         self.raises: BaseException | None = None
-        # What a successful refresh files; a test that needs the aid to
-        # re-find what an earlier run found sets it to that payload.
         self.payload: dict = {"findings": []}
 
     def __call__(self, argv):
@@ -2000,7 +1683,6 @@ class _AidStub:
         if self.chatter:
             print(self.chatter)
         if self.writes and self.aid:
-            # `verbatim` is the one aid called through a subcommand.
             draft = Path(argv[1] if argv[0] == "scan" else argv[0])
             review.write_json(draft, self.aid, self.payload)
         if self.raises is not None:
@@ -2010,12 +1692,6 @@ class _AidStub:
 
 @pytest.fixture
 def aid_stubs(monkeypatch):
-    """Every one of the eight aids' `main` replaced by a recorder.
-
-    `refresh_aids` is tested against *what it calls*, never against real
-    aid behaviour: the real eight need the enrich stack, a real corpus
-    and real dossiers, none of which a unit test should depend on.
-    """
     stubs = {}
     for name in _sources.AID_NAMES:
         module = _registry.AIDS[name][0]
@@ -2026,17 +1702,7 @@ def aid_stubs(monkeypatch):
 
 
 class TestOneRegistry:
-    """#850: the aids are named once, in `review.AIDS`, and mapped to
-    their modules once, in `review._registry.AIDS`. `_sources.AID_NAMES`,
-    `_render._SOURCE_LABELS` and `_refresh`'s module map were each a
-    hand-kept copy that adding an aid had to edit; each is now derived."""
-
     def test_no_agenda_module_restates_the_aid_list(self):
-        """A dict or tuple literal naming four or more aids is a copy of
-        the registry, whatever it is called. Three is `_sources.AID_NAMES`'s
-        own exclusion list (`agenda`, `union`, `digest` since #991), which
-        names what the agenda does *not* read and is the one place that
-        decision is taken, not a restatement of what it does."""
         names = set(review.AIDS)
         offenders = []
         for path in sorted(Path(_sources.__file__).parent.glob("*.py")):
@@ -2100,9 +1766,6 @@ class TestRefreshAids:
         }
 
     def test_every_argv_parses_against_that_aids_real_parser(self, isolated_config, aid_stubs):
-        """The stubs cannot catch an argv the real parser rejects -- the
-        `--write`-on-provenance mistake is exactly that shape -- so each
-        recorded argv is replayed through the aid's own `build_parser`."""
         draft = self._draft(isolated_config)
         dossier.log_retrieval(draft, "draft", "digital twin", 5, 3, 100)
         _refresh.refresh_aids(draft)
@@ -2185,9 +1848,6 @@ class TestRefreshAids:
         assert _refresh.refresh_aids(draft) == (dict.fromkeys(_sources.AID_NAMES, True), {})
 
     def test_a_skipped_coverage_is_none_not_a_failure(self, isolated_config, aid_stubs):
-        """No recorded query means nothing to refresh `coverage` with --
-        by design, on every draft without a dossier, so it must not read
-        as a failure every cycle."""
         draft = self._draft(isolated_config)
         refreshed, _ = _refresh.refresh_aids(draft)
         assert refreshed["coverage"] is None
@@ -2207,9 +1867,6 @@ class TestRefreshAids:
     def test_exit_zero_writing_nothing_over_an_old_sidecar_is_not_refreshed(
         self, isolated_config, aid_stubs
     ):
-        """`claim_support` with no entailer installed: exit 0, nothing
-        written, last run's `.json` left in place. The exit code alone
-        would call that a refresh."""
         draft = self._draft(isolated_config)
         old = review.write_json(draft, "support", {"findings": []})
         os.utime(old, (1_000_000, 1_000_000))
@@ -2232,9 +1889,6 @@ class TestRefreshAids:
     def test_an_aid_that_raises_is_not_refreshed_and_the_rest_still_run(
         self, isolated_config, aid_stubs
     ):
-        """#893: one aid raising must not take the recheck down with it --
-        it is recorded with its one-line reason, and every later aid in
-        `AID_NAMES` is still called."""
         draft = self._draft(isolated_config)
         aid_stubs["provenance"].raises = RuntimeError("boom\nsecond line")
         refreshed, errors = _refresh.refresh_aids(draft)
@@ -2246,7 +1900,6 @@ class TestRefreshAids:
     def test_an_aid_that_wrote_and_then_raised_is_still_not_refreshed(
         self, isolated_config, aid_stubs
     ):
-        """The mtime moved, but an aid that raised reported no result."""
         draft = self._draft(isolated_config)
         aid_stubs["support"].raises = OSError("disk went away")
         refreshed, errors = _refresh.refresh_aids(draft)
@@ -2254,11 +1907,6 @@ class TestRefreshAids:
         assert errors["support"] == "OSError: disk went away"
 
     def test_a_sidecar_written_before_a_raise_is_put_back(self, isolated_config, aid_stubs):
-        """PR #916 review: what a failed run wrote must not stand in for
-        the earlier run's findings -- the header would call it that, and
-        the next bare `agenda` would trust it. The earlier `.json` comes
-        back byte for byte, with its own mtime, so the stale-against-the-
-        draft check still sees its real age."""
         draft = self._draft(isolated_config)
         old = review.write_json(draft, "support", {"findings": ["earlier"]})
         os.utime(old, ns=(1_000_000_000, 1_000_000_000))
@@ -2272,10 +1920,6 @@ class TestRefreshAids:
     def test_a_rewrite_that_kept_the_old_mtime_is_still_put_back(
         self, isolated_config, aid_stubs, monkeypatch
     ):
-        """PR #916's second review: on a filesystem too coarse to tell two
-        writes apart, a raising aid can change the bytes and leave the
-        mtime where it was -- so the restore compares bytes, not only the
-        mtime."""
         draft = self._draft(isolated_config)
         old = review.write_json(draft, "support", {"findings": ["earlier"]})
         os.utime(old, ns=(1_000_000_000, 1_000_000_000))
@@ -2291,8 +1935,6 @@ class TestRefreshAids:
         assert old.read_bytes() == earlier
 
     def test_a_byte_identical_rewrite_gets_its_old_mtime_back(self, isolated_config, aid_stubs):
-        """Same bytes, new mtime: the file would read as newer than the
-        draft, and so not stale, when it is an earlier run's."""
         draft = self._draft(isolated_config)
         old = review.write_json(draft, "support", {"findings": []})
         os.utime(old, ns=(1_000_000_000, 1_000_000_000))
@@ -2327,9 +1969,6 @@ class TestRefreshAids:
     def test_an_argparse_exit_or_an_interrupt_still_propagates(
         self, isolated_config, aid_stubs, exc
     ):
-        """`SystemExit(2)` is what a wrong argv from `_aid_argv` looks like
-        -- this module's bug, which must stay loud -- and Ctrl-C must
-        still stop the run."""
         draft = self._draft(isolated_config)
         aid_stubs["quotation"].raises = exc
         with pytest.raises(type(exc)):
@@ -2354,10 +1993,6 @@ class TestLoadBaseline:
         assert _recheck.load_baseline(path)["items"] == [_item_dict("a")]
 
     def test_an_unreadable_file_names_the_path(self, tmp_path):
-        # `match` is a regex, and a Windows path's backslashes are not
-        # literal there -- `\U`/`\A`/etc. are escapes `re` rejects outright
-        # rather than matching literally. `re.escape` is what makes an
-        # arbitrary path safe to use as a `match` pattern on any host.
         path = tmp_path / "nope.json"
         with pytest.raises(ValueError, match=re.escape(str(path))):
             _recheck.load_baseline(path)
@@ -2404,16 +2039,11 @@ class TestCompare:
         assert (resolved, persisting, new, accepted) == ([], [], after, [])
 
     def test_an_accepted_item_is_not_reported_resolved(self):
-        """Suppression removes it from the new list, so plain set
-        difference would call a finding nobody repaired fixed."""
         before = [_item_dict("a", cls="uncited-claim", unattended=False)]
         resolved, _, _, accepted, _, _ = _recheck.compare([], before, {"a"})
         assert (resolved, accepted) == ([], before)
 
     def test_an_item_that_really_went_away_is_still_resolved(self):
-        """Only the ids this run actually suppressed are passed in, so an
-        accepted item whose span was edited -- and which therefore no
-        longer matches anything -- reports as the repair it was."""
         before = [_item_dict("a")]
         resolved, _, _, accepted, _, _ = _recheck.compare([], before, set())
         assert (resolved, accepted) == (before, [])
@@ -2437,10 +2067,6 @@ class TestCompare:
         assert (before, after) == (0, 0)
 
     def test_an_unverified_aids_items_are_in_no_group_and_no_count(self):
-        """#837: an aid that was not refreshed contributes no evidence
-        about the current draft, so its items neither persist, resolve
-        nor appear -- and are counted on neither side, or the delta would
-        fall for an aid that merely failed to run."""
         run = _item_dict("v", cls="verbatim-run")
         gone = _item_dict("w", cls="verbatim-run")
         new = _item_dict("x", cls="verbatim-run")
@@ -2471,8 +2097,6 @@ class TestNotRefreshed:
         assert _recheck.not_refreshed(payload) == ["verbatim"]
 
     def test_a_payload_without_refresh_state_names_none(self):
-        """Older baselines and hand-written ones carry no `sources` at
-        all; neither is evidence that any aid failed."""
         assert _recheck.not_refreshed({"aid": "agenda", "items": []}) == []
         assert _recheck.not_refreshed({"sources": {"aids": {"verbatim": {}}}}) == []
 
@@ -2499,9 +2123,6 @@ class TestClassAids:
         assert set(_sources.CLASS_AIDS.values()) <= set(_sources.AID_NAMES)
 
     def test_the_in_process_classes_are_never_unverified(self):
-        """`missing-citekey`, `recorded-but-uncited` and `prose` are
-        computed in-process every run, so no refresh failure can make
-        them stale."""
         assert not {"missing-citekey", "recorded-but-uncited", "prose"} & set(_sources.CLASS_AIDS)
 
     def test_unverified_classes_follows_the_map(self):
@@ -2519,11 +2140,6 @@ class TestRecheckPayloadAndText:
         )
 
     def test_command_reproduces_the_invocation(self):
-        # A plain string, not `Path(...)`: `str(Path(...))` normalises to
-        # the host's own separator, and `shlex.join` quotes a backslash --
-        # a literal string keeps this assertion identical on every host,
-        # the same convention `test_verbatim_check.py`'s own command-string
-        # tests already use.
         assert _recheck.recheck_command("content/drafts/t/s.md", "b.json") == (
             "python -m chitragupta.review agenda content/drafts/t/s.md --baseline b.json --json"
         )
@@ -2564,10 +2180,6 @@ class TestRecheckPayloadAndText:
         assert "3 -> 1 (-2)" in text
 
     def test_a_swap_is_visible_from_the_payload(self):
-        """#839: one unattended item resolved and another appeared holds
-        the total level, so `objective_delta` alone reads a swap as no
-        change. `objective_new` counts the unattended arrivals, and only
-        those -- a surfaced newcomer is the human's, not a regression."""
         groups = (
             [_item_dict("r")],
             [],
@@ -2610,8 +2222,6 @@ class TestRecheckPayloadAndText:
         assert "not refreshed" not in _recheck.format_recheck("b.json", self._groups(), (3, 1))
 
     def test_payload_carries_each_raised_aids_reason_beside_the_list(self):
-        """#893: `not_refreshed` stays a list of names -- agenda-reviser
-        branches on membership -- and the reasons ride in a parallel key."""
         payload = _recheck.recheck_payload(
             Path("content/drafts/t/s.md"),
             "b.json",
@@ -2638,10 +2248,6 @@ class TestRecheckPayloadAndText:
 
 @pytest.fixture
 def refreshable(ledger_con):
-    """A synced (if empty) ledger, which `agenda --baseline` now checks
-    for before refreshing anything (#893). Kept apart from `aid_stubs`,
-    which stands in for the aids rather than for this precondition, so
-    `TestBaselineNeedsALedger` can stub the aids with no ledger at all."""
     return ledger_con
 
 
@@ -2706,9 +2312,6 @@ class TestBaselineCli:
     def test_json_reports_a_swap_as_one_new_objective_item(
         self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
     ):
-        """#839, end to end: the baseline's unattended item is gone and a
-        different one has appeared, so the delta is 0 and only
-        `objective_new` says the edit made a new problem."""
         draft = self._draft(isolated_config, monkeypatch)
         finding = {"rule": "chitragupta.DefectMarkers", "match": "prose", "line": 3, "count": 1}
         monkeypatch.setattr(
@@ -2745,8 +2348,6 @@ class TestBaselineCli:
         assert f"baseline: {baseline}" in out.out
         assert "resolved (1)" in out.out
         assert "json" in out.out
-        # Nothing of the comparison itself moved to stderr -- the render
-        # warnings pandoc emits there are the layer's own, not this mode's.
         assert "resolved" not in out.err
 
     def test_the_agenda_report_is_still_filed_under_baseline(
@@ -2762,17 +2363,11 @@ class TestBaselineCli:
     def test_the_filed_json_records_the_bare_command_so_it_can_serve_as_a_baseline(
         self, isolated_config, monkeypatch, tmp_path, aid_stubs
     ):
-        """The filed `.json` *is* the next run's baseline, so its envelope
-        must record a command that regenerates an agenda, not one that
-        regenerates a comparison against itself."""
         draft = self._draft(isolated_config, monkeypatch)
         baseline = self._baseline_file(tmp_path, [])
         agenda.main([str(draft), "--baseline", str(baseline)])
         filed = json.loads(review.report_path(draft, "agenda", "json").read_text())
         assert "--baseline" not in filed["command"]
-        # shlex.join, not an f-string: a real tmp_path draft carries the
-        # host's own separator, and `_command` quotes it exactly the way
-        # `shlex.join` does -- a bare f-string only matches on POSIX.
         assert filed["command"] == shlex.join(
             ["python", "-m", "chitragupta.review", "agenda", str(draft)]
         )
@@ -2780,9 +2375,6 @@ class TestBaselineCli:
     def test_a_baseline_at_the_path_this_run_overwrites_is_still_compared_against(
         self, isolated_config, monkeypatch, capsys, aid_stubs
     ):
-        """The natural invocation passes `<stem>.agenda.json`, which the
-        run then overwrites -- loading before refreshing is what makes
-        that safe, and this pins it."""
         draft = self._draft(isolated_config, monkeypatch)
         own = review.write_json(draft, "agenda", {"aid": "agenda", "items": [_item_dict("gone")]})
         agenda.main([str(draft), "--baseline", str(own), "--json"])
@@ -2793,9 +2385,6 @@ class TestBaselineCli:
     def test_objective_after_equals_the_agendas_own_objective_class_count(
         self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
     ):
-        """`objective_before`/`objective_after` are only trustworthy
-        against `pass_bound` if they mean exactly what
-        `Agenda.objective_class_count` means."""
         draft = self._draft(isolated_config, monkeypatch)
         monkeypatch.setattr(
             agenda._sources.style_check,
@@ -2814,9 +2403,6 @@ class TestBaselineCli:
 
 @pytest.mark.usefixtures("refreshable")
 class TestBaselineCliNotRefreshed:
-    """#837: an aid whose refresh failed is named, and its items -- last
-    run's, still on disk -- are never counted or compared as current."""
-
     RUN = "these exact borrowed words"
 
     def _draft(self, isolated_config, monkeypatch) -> Path:
@@ -2827,20 +2413,14 @@ class TestBaselineCliNotRefreshed:
             "check",
             lambda d, override=None, propose=True: {"findings": [], "vale_error": None},
         )
-        # A logged query, so `coverage` runs too and a fully refreshed run
-        # really has every aid refreshed.
         dossier.log_retrieval(draft, "draft", "digital twin", 5, 3, 100)
         return draft
 
     def _old_sidecar(self, draft, aid, finding) -> None:
-        """Last run's `.json`, backdated so a same-tick rewrite cannot
-        read as unchanged on a coarse-timestamp filesystem."""
         path = review.write_json(draft, aid, {"findings": [finding]})
         os.utime(path, (1_000_000, 1_000_000))
 
     def _short_run(self) -> dict:
-        # `draft_text` is in the draft, so `_stale.partition` keeps the
-        # item: the test must not pass on the span check alone.
         return {
             "id": "v1",
             "citekey": "a2024",
@@ -2877,8 +2457,6 @@ class TestBaselineCliNotRefreshed:
     ):
         draft = self._draft(isolated_config, monkeypatch)
         self._old_sidecar(draft, "verbatim", self._short_run())
-        # The stale item would count if nothing marked it: pins that the
-        # assertions below are about refresh state, not the span check.
         assert agenda.build_agenda(draft).objective_class_count == 1
 
         aid_stubs["verbatim"].returncode = returncode
@@ -2892,7 +2470,6 @@ class TestBaselineCliNotRefreshed:
         filed = json.loads(review.report_path(draft, "agenda", "json").read_text())
         assert filed["objective_class_count"] == 0
         assert filed["sources"]["aids"]["verbatim"]["refreshed"] is False
-        # Still listed on the filed worklist, only not counted.
         assert [item["class"] for item in filed["items"]] == ["verbatim-run"]
         rendered = review.report_path(draft, "agenda", "md").read_text()
         assert "**not refreshed**" in rendered
@@ -2919,9 +2496,6 @@ class TestBaselineCliNotRefreshed:
     def test_a_baseline_marking_an_aid_not_refreshed_does_not_inflate_before(
         self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
     ):
-        """Excluding a failed aid from this run's side only would still
-        let the baseline's stale copy of its items count in
-        `objective_before` -- a fall reported for a repair nobody made."""
         draft = self._draft(isolated_config, monkeypatch)
         baseline = self._baseline_file(
             tmp_path,
@@ -2948,8 +2522,6 @@ class TestBaselineCliNotRefreshed:
     def test_an_aid_that_raises_is_recorded_and_the_recheck_completes(
         self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
     ):
-        """#893: before, the exception escaped `refresh_aids` and no
-        agenda was filed at all."""
         draft = self._draft(isolated_config, monkeypatch)
         self._old_sidecar(draft, "verbatim", self._short_run())
         aid_stubs["verbatim"].raises = RuntimeError("scan blew up")
@@ -2970,11 +2542,6 @@ class TestBaselineCliNotRefreshed:
 
 
 class TestBaselineNeedsALedger:
-    """#893: with no ledger, or one needing a sync, `--baseline` refuses
-    once, up front, with the sync instruction -- instead of every aid
-    that reads the ledger raising it in turn, and before anything is
-    refreshed, accepted or filed."""
-
     def _draft(self, isolated_config, monkeypatch) -> Path:
         draft = content_draft(isolated_config, "drafts/t/survey.md")
         draft.write_text("# Survey\n\nSome prose here.\n")
@@ -2991,8 +2558,6 @@ class TestBaselineNeedsALedger:
         return path
 
     def _stale_ledger(self) -> None:
-        # A file with `user_version` 0 is behind every migration, which
-        # `read_connection` refuses as `StaleLedger`.
         config.LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
         sqlite3.connect(config.LEDGER_PATH).close()
 
@@ -3015,8 +2580,6 @@ class TestBaselineNeedsALedger:
     def test_a_bad_baseline_is_still_reported_first(
         self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
     ):
-        """A usage error costs nothing to report and is the caller's to
-        fix first, so it keeps exit 2 even with no ledger."""
         draft = self._draft(isolated_config, monkeypatch)
         assert agenda.main([str(draft), "--baseline", str(tmp_path / "nope.json")]) == 2
         assert "sync" not in capsys.readouterr().err
@@ -3024,16 +2587,9 @@ class TestBaselineNeedsALedger:
     def test_the_bare_mode_still_runs_without_a_ledger(
         self, isolated_config, monkeypatch, capsys, aid_stubs
     ):
-        """It runs no aid, and degrades a missing corpus to a header note
-        -- refusing there would be a regression."""
         draft = self._draft(isolated_config, monkeypatch)
         assert agenda.main([str(draft)]) == 0
         assert review.report_path(draft, "agenda", "json").is_file()
-
-
-# --------------------------------------------------------------------------
-# _accept.py
-# --------------------------------------------------------------------------
 
 
 def _acceptable_item(item_id: str = "aaa", cls: str = "uncited-claim") -> _items.Item:
@@ -3057,9 +2613,6 @@ class TestAcceptableClasses:
         }
 
     def test_every_other_class_in_the_table_is_refused(self, isolated_config):
-        """Derived from `_items.CLASSES` rather than a copy of it, so a
-        ninth class has to decide whether it is acceptable instead of
-        inheriting an answer."""
         draft = content_draft(isolated_config, "drafts/t/survey.md")
         draft.write_text("# Survey\n")
         for cls in set(_items.CLASSES) - set(_accept.ACCEPTABLE):
@@ -3180,9 +2733,6 @@ class TestPartition:
         assert (kept, suppressed) == ([], items)
 
     def test_a_changed_span_brings_the_item_back(self):
-        """The identity is the span hash, so an edited claim raises a new
-        id, which no record matches -- the reopening mechanism, and the
-        reason there is no second one."""
         source = _accept.AcceptedSource(
             available=True,
             records=[{"id": _identity.item_id("uncited", "uncited-claim", "Intro", None, "old")}],
@@ -3195,22 +2745,7 @@ class TestPartition:
 
 
 class TestStaleAndAcceptedDoNotOverlap:
-    """R12's refusal (#766) and acceptance (#767) are two filters on one
-    list, and neither change existed when the other was written.
-
-    They cannot collide today, and this asserts *why* rather than
-    restating it: only an item carrying a `span` can be refused as stale,
-    and no class that carries one may be accepted.
-    """
-
     def _every_class_with_a_span(self) -> set[str]:
-        """The classes the real extractors file a `span` for, derived by
-        running them rather than copied from `_stale.py`'s prose.
-
-        Every aid gets one finding carrying a superset of the keys any
-        extractor reads, so a class that starts filing a span later is
-        caught here instead of silently becoming refusable.
-        """
         finding = {
             "id": "f1",
             "line": 3,
@@ -3250,14 +2785,6 @@ class TestStaleAndAcceptedDoNotOverlap:
     def test_a_stale_item_is_refused_rather_than_reported_as_suppressed(
         self, isolated_config, monkeypatch
     ):
-        """The order `build_agenda` runs the two filters in, pinned
-        through a hand-written record naming an item that is also stale.
-
-        Refusal first: the item lands in `stale`, not in `suppressed`,
-        and its record reads `suppressed: false`. The other order would
-        claim a judgement was honoured on a finding this run declined to
-        raise at all, and would drop it out of the refusal report.
-        """
         draft = content_draft(isolated_config, "drafts/t/survey.md")
         draft.write_text("# Survey\n\nThe author has since rewritten this.\n")
         monkeypatch.setattr(
@@ -3302,8 +2829,6 @@ class TestStaleAndAcceptedDoNotOverlap:
     def test_a_live_accepted_item_is_still_suppressed_when_a_stale_one_exists(
         self, isolated_config, monkeypatch
     ):
-        """The two filters compose: a refusal does not stop the
-        acceptance filter reaching the items that survived it."""
         draft = content_draft(isolated_config, "drafts/t/survey.md")
         draft.write_text("# Survey\n\nA claim with no citation at all.\n")
         monkeypatch.setattr(
@@ -3345,9 +2870,6 @@ class TestStaleAndAcceptedDoNotOverlap:
 
 
 class TestAcceptedAgendaEndToEnd:
-    """`--accept` through the real command, against a real
-    `.uncited.json` an earlier aid run would have left on disk."""
-
     SENTENCE = "Digital twins are widely deployed in industry."
 
     def _draft(self, isolated_config, monkeypatch, sentence: str | None = None) -> Path:
@@ -3363,8 +2885,6 @@ class TestAcceptedAgendaEndToEnd:
             "uncited",
             {"findings": [{"id": "u1", "line": 3, "sentence": sentence or self.SENTENCE}]},
         )
-        # Backdated so a `--baseline` stub's same-tick rewrite still reads
-        # as a refresh (`_refresh.refresh_aids` compares mtimes, #837).
         os.utime(path, (1_000_000, 1_000_000))
         return draft
 
@@ -3386,9 +2906,6 @@ class TestAcceptedAgendaEndToEnd:
         assert [item.id for item in built.suppressed] == [item_id]
 
     def test_the_agenda_still_recomputes_from_the_aids(self, isolated_config, monkeypatch, capsys):
-        """Nothing durable holds item state: delete the aid's report and
-        the item is gone from the worklist *and* from the suppressed
-        list, because it was never stored -- only its identity was."""
         draft = self._draft(isolated_config, monkeypatch)
         agenda.main([str(draft), "--accept", self._only_id(draft)])
         capsys.readouterr()
@@ -3538,9 +3055,6 @@ class TestAcceptedAgendaEndToEnd:
         assert "--accept" not in filed["command"]
 
     def test_acceptance_never_moves_the_objective_count(self, isolated_config, monkeypatch, capsys):
-        """The three acceptable classes are all surfaced, so the number
-        `agenda-reviser`'s loop terminates on cannot be lowered by
-        accepting anything."""
         draft = self._draft(isolated_config, monkeypatch)
         before = agenda.build_agenda(draft).objective_class_count
         agenda.main([str(draft), "--accept", self._only_id(draft)])
@@ -3550,14 +3064,10 @@ class TestAcceptedAgendaEndToEnd:
     def test_baseline_reports_an_accepted_item_as_accepted_not_resolved(
         self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs, refreshable
     ):
-        """The failure this guards is silent: suppression removes the
-        item from the new list, so a set difference would call a finding
-        nobody repaired resolved."""
         draft = self._draft(isolated_config, monkeypatch)
         item_id = self._only_id(draft)
         agenda.main([str(draft), "--accept", item_id])
         capsys.readouterr()
-        # The refresh re-finds the accepted sentence, as a real aid would.
         aid_stubs["uncited"].payload = json.loads(
             review.report_path(draft, "uncited", "json").read_text()
         )
@@ -3578,12 +3088,6 @@ class TestAcceptedAgendaEndToEnd:
     def test_accepting_under_baseline_records_the_id_the_caller_could_see(
         self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs, refreshable
     ):
-        """`--accept` resolves before the refresh, so an id copied off the
-        report in front of the caller is always resolvable. If the refresh
-        then moves the span, the record is left naming a finding that no
-        longer exists -- which is the reopening property firing, not a
-        bug: the acceptance was made about text the aid no longer reports,
-        so the new finding is surfaced rather than silently covered."""
         draft = self._draft(isolated_config, monkeypatch)
         item_id = self._only_id(draft)
         monkeypatch.setattr(

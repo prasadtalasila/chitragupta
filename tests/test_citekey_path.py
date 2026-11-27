@@ -1,14 +1,3 @@
-"""#975's class: a citekey used as a path component without validation.
-
-`chitragupta.citekey_safety.citekey_path` is the one place a per-citekey
-file name is built. It refuses a citekey `citekey_problem` rejects, so
-`../x` cannot name a file outside the directory it is joined to.
-
-`bench/` is out of the scan: its scripts mint synthetic citekeys or read
-them back from file stems they listed, and `repro_check.py` imports
-nothing from `chitragupta` by design.
-"""
-
 import re
 from pathlib import Path
 
@@ -18,8 +7,6 @@ from chitragupta.citekey_safety import UnsafeCitekey, citekey_path
 
 ROOT = Path(__file__).resolve().parent.parent
 HELPER = ROOT / "chitragupta" / "citekey_safety.py"
-# A citekey (or a `stem` that holds one) formatted straight into a path
-# segment: `DIR / f"{citekey}.json"`, `DIR / f"{doc.citekey}.md"`.
 PATH_JOIN = re.compile(r"""/\s*f["']\{(?:\w+\.)?citekey\}|/\s*f["']\{stem\}""")
 
 

@@ -1,15 +1,3 @@
-"""#781's migration: strip both generations of hand-rolled TikZ library
-loading from figure files, leaving the plain `\\usetikzlibrary` line.
-
-There is nothing in this repository to migrate -- a grep for either
-internal over the tree, over `content/` and over its backup snapshots
-returns no file. The 20 files the issue names live in the author's own
-`content/drafts/`, which is gitignored. So this script is developed
-against fixtures and run by whoever has the affected tree, which is also
-why `main` is dry-run by default: its target is by definition a directory
-with no undo.
-"""
-
 from scripts.strip_tikz_load_workarounds import main, strip_workarounds
 
 
@@ -38,9 +26,6 @@ class TestStripWorkarounds:
         assert strip_workarounds(source) == "\\usetikzlibrary{fit}\n\\begin{tikzpicture}\n"
 
     def test_a_makeatletter_wrapper_goes_with_it(self):
-        # Both generations were written inside one, and a `\makeatletter`
-        # left with nothing between it and its `\makeatother` is dead
-        # weight that reads as a workaround still being there.
         source = (
             "\\makeatletter\n"
             "\\expandafter\\let\\csname tikz@library@fit@loaded\\endcsname\\relax\n"
@@ -51,8 +36,6 @@ class TestStripWorkarounds:
         assert strip_workarounds(source) == "\\usetikzlibrary{fit}\n"
 
     def test_a_makeatletter_around_anything_else_stays(self):
-        # Only an emptied wrapper goes. A figure doing real `@`-internal
-        # work keeps both halves.
         source = "\\makeatletter\n\\def\\myhelper{x}\n\\makeatother\n"
 
         assert strip_workarounds(source) == source
@@ -68,10 +51,6 @@ class TestStripWorkarounds:
         assert strip_workarounds(source) == source
 
     def test_a_drawing_line_that_mentions_the_internal_is_left_alone(self):
-        # Line-oriented deliberately: a regex reaching inside a line
-        # could cut a `\draw` in half, and a figure that stops compiling
-        # is a worse outcome than a workaround left behind for a human
-        # to see.
         source = "\\draw (a) -- (b); % tikz@node@reset@hook is why this exists\n"
 
         assert strip_workarounds(source) == source

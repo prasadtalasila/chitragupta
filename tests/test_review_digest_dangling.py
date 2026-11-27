@@ -1,11 +1,3 @@
-"""chitragupta/review/_digest_dangling.py: does each run stand on its own?
-
-#1172's sample digest carried all three shapes this module reports: a
-run naming "Fig. 5.13" and "Eq. (5.1)" the digest never showed, a `[2]`
-left from the source's bibliography, and runs opening on "where" and
-"Thus" with nothing before them from the same source.
-"""
-
 import pytest
 
 from chitragupta.review._digest_dangling import dangling
@@ -53,8 +45,6 @@ class TestCrossReferences:
         assert kinds(run, frozenset({(KEY, "3.6")})) == [("cross-reference", "Eq. 3.6")]
 
     def test_own_text_may_point_into_the_digest(self):
-        """#1172 review: a framing paragraph says how the sections divide
-        the topic; "Section 2" there is the digest's own."""
         run = a_run("Section 2 covers heaters and Table 1 compares them.", own=True)
         assert kinds(run) == []
 
@@ -83,8 +73,6 @@ class TestOpeners:
         assert kinds(run) == [("opener", "Thus")]
 
     def test_after_an_own_sentence_citing_the_same_source_is_fine(self):
-        """#1172 review: the skill's own shape, a `see` sentence naming
-        both papers and then a run from one of them."""
         assert kinds(a_run("Then the box cools.", follows=(OTHER, KEY))) == []
 
     def test_continuing_the_same_source_is_fine(self):

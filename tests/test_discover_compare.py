@@ -1,11 +1,3 @@
-"""`discover --compare A B [C ...]`: set comparison across topics (#715).
-
-The property under test: the view is pure reading -- members and stored
-edges, joined and formatted, with the ledger's own entries on the
-bridge papers -- and its refusals are honest about the cap and about
-phrases that collapse onto one topic.
-"""
-
 import json
 
 from test_discover import make_ledger, place_nowhere, write_artefacts
@@ -36,12 +28,9 @@ class TestBuild:
         assert [b["citekey"] for b in data["bridges"]] == ["p2"]
         assert data["bridges"][0]["topics"] == ["digital twin", "machine learning"]
         assert "Title of p2" in data["bridges"][0]["entry"]
-        # The stored ml-fm overlap edge is among the named topics.
         assert [e["shared"] for e in data["edges"]["overlap"]] == [["p4"]]
 
     def test_mutual_edges_render_with_their_evidence(self, isolated_config):
-        """Both families' edge lines, in prose: the stored ml-fm overlap
-        edge, and a semantic edge added among the named topics."""
         prepare_three(isolated_config)
         graph = json.loads(json.dumps(WHY_GRAPH))
         graph["edges_semantic"] = [
@@ -101,10 +90,6 @@ class TestCompareCli:
         prepare_three(isolated_config)
         assert discover.main(["--compare", "a", "b", "--why", "c", "d"]) == 2
         assert discover.main(["--compare", "a", "b", "--groups", "2"]) == 2
-        # A stray positional phrase reaches compare_view's own guard --
-        # it has to come first, or argparse's greedy nargs="+" folds it
-        # into the --compare list -- since neither --why nor --groups
-        # intercepts.
         assert discover.main(["stray phrase", "--compare", "a", "b"]) == 2
         assert "--compare is its own view" in capsys.readouterr().err
 
@@ -116,11 +101,6 @@ class TestCompareCli:
 
 
 class TestAModelThatWillNotLoadIsAskedOnce:
-    """#1023: `optional_model` re-attempted the bi-encoder and the
-    cross-encoder once per phrase, so `--compare A B C` offline paid the
-    Hub timeout three times and printed three identical notes. A failure
-    is remembered for the process: one attempt per loader, one note."""
-
     def test_three_phrases_one_attempt_each_and_one_note(
         self, isolated_config, capsys, monkeypatch
     ):
@@ -145,10 +125,6 @@ class TestAModelThatWillNotLoadIsAskedOnce:
     def test_a_note_sharing_a_part_with_an_earlier_one_repeats_none_of_it(
         self, isolated_config, capsys, monkeypatch
     ):
-        """A phrase resolved on the hybrid rung carries the semantic and
-        the reranking note joined; one that resolves nowhere carries the
-        semantic note alone. Deduplicated by whole note, the semantic
-        part printed twice."""
         prepare_three(isolated_config)
         monkeypatch.setattr(config, "RERANK", True)
 

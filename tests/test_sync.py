@@ -1,6 +1,3 @@
-"""chitragupta/sync.py: the deterministic bib -> ledger -> parsed-text entrypoint
-(the corpus layer -- AGENTS.md). No LLM calls, must be idempotent."""
-
 import contextlib
 import json
 import logging
@@ -29,23 +26,11 @@ def write_bib(path, body):
 
 
 def drop_noauthor(bib):
-    """BASIC_BIB minus its one PDF-less entry -- the stale citekey the
-    removal tests below work with."""
     return bib.replace("@misc{noauthor_page_nodate,\n  title = {A Page With No Author},\n}\n\n", "")
 
 
 @pytest.fixture(autouse=True)
 def _pdftotext_present_by_default(monkeypatch):
-    # Every test in this file exercises sync's own parse-loop logic via a
-    # mocked pdf_text.extract_text, not the real pdftotext binary -- but
-    # sync.run() now probes pdf_text.is_available() before that loop
-    # (chitragupta/pdf_text.py's missing-binary handling), so without this these
-    # tests would silently depend on pdftotext actually being on PATH on
-    # whatever host runs them (true here, but os-deps -- the stage that
-    # installs poppler-utils -- is explicitly opt-in per DEVELOPER-AGENTS.md, and
-    # test_pdf_text.py already contemplates hosts where it isn't). The
-    # dedicated test_missing_pdftotext_* tests below override this back
-    # to False afterward -- monkeypatch is last-write-wins within a test.
     monkeypatch.setattr(pdf_text, "is_available", lambda: True)
 
 
@@ -122,15 +107,10 @@ class TestRun:
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
         sync.run()
         out = capsys.readouterr().out
-        # The rate itself isn't asserted -- it's real wall-clock time over
-        # a fake parse and has no fixed value -- but backend and worker
-        # count do, since a bare rate has no tuning use without them.
         assert "page(s) parsed in" in out
         assert "pages/s, 1 worker(s), pdftotext)." in out
 
     def test_summary_omits_pages_per_second_on_a_no_op_run(self, basic_corpus, monkeypatch, capsys):
-        """A run that parses nothing (the common case once a corpus is
-        caught up) must not print a meaningless '0 pages/s'."""
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
         sync.run()
         capsys.readouterr()  # clear
@@ -143,10 +123,6 @@ class TestRun:
     def test_warns_when_parsed_text_looks_like_fused_words(
         self, basic_corpus, monkeypatch, capsys, caplog
     ):
-        """The guard has to fire from sync, not just exist in pdf_text:
-        a backend losing word boundaries is invisible otherwise until it
-        shows up as bad retrieval much later."""
-
         def fused(pdf_path, citekey):
             out_path = config.PARSED_DIR / f"{citekey}.txt"
             config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
@@ -204,10 +180,6 @@ class TestRun:
     def test_warns_when_bib_reader_drops_a_malformed_entry(
         self, isolated_config, monkeypatch, capsys
     ):
-        # bib_reader.read_library() prints this warning itself (it's the
-        # only place with both the raw file text and the parsed count) --
-        # pin that it actually reaches sync's own output, not just
-        # read_library()'s own direct tests.
         write_bib(
             isolated_config.BIB_FILE_PATH,
             BASIC_BIB
@@ -238,14 +210,6 @@ class TestRun:
     def test_a_deterministic_failure_is_reported_every_run_without_re_parsing(
         self, basic_corpus, monkeypatch, capsys
     ):
-        # Was the opposite until v1.2.0, and the test that asserted it
-        # called the behaviour "perhaps surprising" -- pdf_hash is
-        # recorded on the *first* attempt regardless of outcome, so a
-        # failed document was skipped forever unless its bytes changed.
-        # Harmless while failures were per-document and permanent; not
-        # harmless once one dead pool worker can mark every in-flight
-        # document parse_failed, because an unattended run would then
-        # drop them from the corpus for good.
         monkeypatch.setattr(
             pdf_text, "extract_text", fake_extract_text_factory(fail_citekeys={"doe_broken_2023"})
         )
@@ -254,9 +218,6 @@ class TestRun:
 
         rc = sync.run()
         out = capsys.readouterr().out
-        # Narrowed in 2.0.0: the PDF is unreadable, so re-parsing it every
-        # run would waste the same minutes forever. It is not retried --
-        # but it still keeps the run nonzero and still says what to do.
         assert rc == 1
         assert "0 parsed, 2 unchanged" in out
         assert "needs attention" in out
@@ -270,8 +231,6 @@ class TestRun:
     def test_reparse_recovers_a_document_written_off_as_deterministic(
         self, basic_corpus, monkeypatch, capsys
     ):
-        """The escape hatch for a misclassification, or for a PDF that has
-        since been fixed in place."""
         monkeypatch.setattr(
             pdf_text, "extract_text", fake_extract_text_factory(fail_citekeys={"doe_broken_2023"})
         )
@@ -311,12 +270,6 @@ class TestRun:
     def test_default_mode_reports_stale_citekey_but_does_not_remove_it(
         self, basic_corpus, monkeypatch, capsys
     ):
-        # Default (no --remove-stale) must not delete anything -- a bib
-        # file coming back short a citekey is far more often a mistake
-        # (botched re-export, BIB_FILE pointing at the wrong path) than
-        # an intentional removal, so the default is to report and let a
-        # human confirm with --remove-stale rather than delete on every
-        # routine sync.
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
         sync.run()
         capsys.readouterr()
@@ -344,11 +297,6 @@ class TestRun:
         assert known == {"smith_example_2024", "noauthor_page_nodate", "doe_broken_2023"}
 
     def test_remove_stale_flag_deletes_the_stale_citekey(self, basic_corpus, monkeypatch, capsys):
-        # Without this, a citekey removed from bibliography.bib (the
-        # source of truth) stays "known" to citation_gate forever --
-        # AGENTS.md's fabricated-citekey invariant, just arriving via
-        # deletion instead of invention. Only happens when a human opts in
-        # via --remove-stale, though (see the default-mode test above).
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
         sync.run()
         capsys.readouterr()
@@ -400,10 +348,6 @@ class TestRun:
     def test_default_mode_names_the_artefacts_that_still_reference_the_citekey(
         self, basic_corpus, monkeypatch, capsys
     ):
-        # Issue #763: the default run is the moment the human is being
-        # asked to confirm, so the residue belongs between the stale
-        # names and the invitation to delete them -- not left for
-        # citation_gate to surface as a symptom weeks later.
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
         sync.run()
         capsys.readouterr()
@@ -419,16 +363,12 @@ class TestRun:
         assert rc == 0
         assert "Checking what else still references the 1 stale citekey(s)" in out
         assert "Reported, not repaired" in out
-        # Dossiers are the drafting layer's (plans/1211): sync points there,
-        # and `dossier status` names the citing dossier before the prune.
         assert "mention(s)" not in out
         assert "Drafts and dossiers citing these: chitragupta draft dossier status --all" in out
         from chitragupta.dossier import _drift
 
         report = _drift.drift(evidence.parent)
         assert "noauthor_page_nodate" in report.missing
-        # Declining -- which is what not passing --remove-stale is --
-        # leaves every artefact exactly as it was.
         assert evidence.read_bytes() == before
 
     def test_remove_stale_reports_the_residue_before_it_prunes(
@@ -448,8 +388,6 @@ class TestRun:
         out = capsys.readouterr().out
 
         assert rc == 0
-        # Before, not after: the report has to describe the corpus the
-        # person is being told about, not the one already changed.
         assert out.index("topic graph      1 edge(s)") < out.index("pruned  noauthor_page_nodate")
         assert json.loads(graph.read_text(encoding="utf-8"))["edges_overlap"][0]["shared"] == [
             "noauthor_page_nodate",
@@ -466,7 +404,6 @@ class TestRun:
         out = capsys.readouterr().out
 
         assert "noauthor_page_nodate: no other artefact references it" in out
-        # The existing prompt is untouched by the new report.
         assert "Review the 1 stale item(s) above" in out
         assert "--remove-stale to delete them" in out
 
@@ -486,9 +423,6 @@ class TestRun:
     def test_the_zero_reference_refusal_is_not_buried_under_a_residue_report(
         self, basic_corpus, monkeypatch, capsys
     ):
-        # prune_missing's guard is about to refuse on this exact shape,
-        # so scanning first would print residue for every row in the
-        # ledger ahead of the refusal it exists to make visible.
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
         sync.run()
         capsys.readouterr()
@@ -503,13 +437,6 @@ class TestRun:
     def test_bib_yielding_zero_refs_warns_instead_of_suggesting_remove_stale(
         self, basic_corpus, monkeypatch, capsys
     ):
-        # Default mode never deletes, so a bib file that comes back
-        # completely empty (truncated/corrupted re-export, BIB_FILE
-        # pointing at the wrong path) must not be reported with the
-        # ordinary "re-run with --remove-stale" hint -- following that
-        # advice would hit prune_missing's guard and raise. Must instead
-        # warn that this looks like a bad export, without ever
-        # recommending the flag for this specific shape.
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
         sync.run()
         capsys.readouterr()
@@ -518,13 +445,6 @@ class TestRun:
         rc = sync.run()
         out = capsys.readouterr().out
 
-        # Nonzero: docs/CLI.md's exit code is sync's only documented API
-        # for an unattended caller, and a bib file that yields 0 references
-        # against a non-empty ledger is exactly the SUSPICIOUS state above
-        # -- reporting it as "clean" (rc == 0) would let a broken export
-        # sit unnoticed indefinitely. EXIT_BIB_INTEGRITY rather than
-        # EXIT_PARSE_FAILURE because nothing failed to parse: the
-        # bibliography is what is wrong, and that is a different remedy.
         assert rc == sync.EXIT_BIB_INTEGRITY
         assert "SUSPICIOUS" in out
         assert "3 ledger item(s)" in out
@@ -541,13 +461,6 @@ class TestRun:
     def test_remove_stale_refuses_to_wipe_a_populated_ledger_on_zero_refs(
         self, basic_corpus, monkeypatch, capsys
     ):
-        # A bib file that exists and parses cleanly but yields 0 entries
-        # (truncated/corrupted re-export, BIB_FILE pointing at the wrong
-        # path) must not be treated the same as "every citekey was
-        # legitimately removed" -- see ledger.prune_missing's guard. Without
-        # it, --remove-stale would silently empty the ledger and
-        # citation_gate would report every citekey in every existing draft
-        # as fabricated.
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
         sync.run()
         capsys.readouterr()
@@ -566,11 +479,6 @@ class TestRun:
     def test_main_reports_the_remove_stale_refusal_instead_of_a_traceback(
         self, basic_corpus, monkeypatch, capsys
     ):
-        # main() is the unattended entrypoint (docs/CLI.md); run() raising
-        # RuntimeError on this exact shape (see the refusal test above)
-        # must not reach main()'s caller as an uncaught traceback -- an
-        # unattended --remove-stale cron run needs a refusal message and a
-        # nonzero exit, not a stack trace in its log.
         from chitragupta import logging_setup
 
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
@@ -588,12 +496,6 @@ class TestRun:
     def test_no_pdf_breakdown_distinguishes_the_failure_reasons(
         self, isolated_config, monkeypatch, capsys
     ):
-        # Regression: all of "no file field", "PDF path gone", "non-PDF
-        # attachment only", and "malformed file field" used to collapse
-        # into one opaque "N without a PDF attachment" bucket -- masking
-        # which items were silently missing a PDF the bib file still
-        # claims to have, and which were invisible to retrieval because
-        # only a non-PDF (e.g. HTML) attachment was ever saved.
         write_bib(
             isolated_config.BIB_FILE_PATH,
             """
@@ -629,9 +531,6 @@ class TestRun:
         rc = sync.run()
         out = capsys.readouterr().out
 
-        # Nonzero, not 0, since issue #556: one of these four reasons is
-        # `pdf_path_gone`, which gates the exit code. EXIT_BIB_INTEGRITY
-        # since #696: everything the run was asked to parse, it parsed.
         assert rc == sync.EXIT_BIB_INTEGRITY
         assert "4 without a PDF attachment" in out
         assert "no-pdf  no_file_field_2024: no file field in bib entry" in out
@@ -646,12 +545,6 @@ class TestRun:
         ) in out
 
     def test_only_a_gone_pdf_makes_the_run_nonzero(self, isolated_config, capsys):
-        """Issue #556 gates the exit code on `pdf_path_gone` alone, not on
-        `tally.no_pdf`. The other three reasons are ordinary states of a
-        bibliography -- an item with no attachment saved, an HTML-only
-        snapshot, a `file` field this project cannot parse -- and a corpus
-        full of them is not a corpus with a hole in it. Only the reason
-        `bib_reader` itself calls "a silent data-loss failure" is."""
         write_bib(
             isolated_config.BIB_FILE_PATH,
             """
@@ -684,13 +577,6 @@ class TestRun:
     def test_a_pdf_that_vanishes_after_the_bib_was_read_reports_as_gone(
         self, isolated_config, monkeypatch, capsys
     ):
-        """Issue #556. #553 made this race non-fatal, but the report did
-        not follow: `sync_decide` decides the no-PDF case from
-        `ref.pdf_path`, which is still set for a file that went away
-        *after* `bib_reader` looked -- so the document was filed under
-        "unchanged" and the run exited 0. It is the same condition
-        `bib_reader` already reports as `pdf_path_gone`, only detected a
-        moment later, so it now reports as that and nothing new."""
         pdf = isolated_config.BIB_FILE_PATH.parent / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4\n")
         write_bib(
@@ -705,14 +591,6 @@ class TestRun:
 """,
         )
 
-        # The race itself, made deterministic: `bib_reader` resolved the
-        # path against a file that was there, and it is gone by the time
-        # the upsert stats it.
-        # `FileNotFoundError`, spelled out, because that is what a real
-        # `os.stat` raises and because `_lost_pdf_reason` classifies on
-        # the type. `OSError(2, ...)` would work too -- CPython selects
-        # the subclass from the errno -- but relying on that makes a
-        # reader check a rule to see what is being simulated.
         def gone(path):
             raise FileNotFoundError(2, "No such file or directory", path)
 
@@ -730,12 +608,6 @@ class TestRun:
     def test_an_unreadable_pdf_is_not_reported_as_a_missing_one(
         self, isolated_config, monkeypatch, capsys
     ):
-        """The reason is classified on the exception's type, not on "any
-        `OSError` means gone". A PDF that is present but unreadable -- no
-        permission, a failing device -- reported as "no longer exists on
-        disk" sends the reader after the one remedy that cannot help,
-        since the path is fine. Both still exit 1: both are documents the
-        corpus was promised and did not get."""
         pdf = isolated_config.BIB_FILE_PATH.parent / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4\n")
         write_bib(
@@ -765,8 +637,6 @@ class TestRun:
     def test_a_path_component_that_is_not_a_directory_reads_as_gone(
         self, isolated_config, monkeypatch, capsys
     ):
-        """`ENOTDIR` rides with the missing-file case: nothing is at that
-        path either, which is what that label claims."""
         pdf = isolated_config.BIB_FILE_PATH.parent / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4\n")
         write_bib(
@@ -806,11 +676,6 @@ class TestRun:
         assert "no-PDF breakdown" not in out
 
     def test_missing_pdftotext_is_reported_not_raised(self, basic_corpus, monkeypatch, capsys):
-        # Regression: a host without poppler-utils installed used to
-        # propagate subprocess.run's bare FileNotFoundError as an
-        # uncaught traceback (only CalledProcessError was ever caught
-        # here) instead of being probed and reported honestly, the way
-        # every chitragupta/enrich/* stage already handles a missing binary.
         monkeypatch.setattr(pdf_text, "is_available", lambda: False)
         rc = sync.run()
         out = capsys.readouterr().out
@@ -823,7 +688,6 @@ class TestRun:
             rows = {r["citekey"]: r for r in ledger.all_items(con)}
         finally:
             con.close()
-        # Bibliographic metadata is still synced even though parsing was skipped.
         assert rows["smith_example_2024"]["status"] == "discovered"
         assert rows["doe_broken_2023"]["status"] == "discovered"
 
@@ -846,12 +710,6 @@ class TestRun:
     def test_missing_binary_raised_mid_run_is_reported_not_crashed(
         self, basic_corpus, monkeypatch, capsys
     ):
-        # Regression (PR #6 review): the up-front probe can pass but
-        # pdf_text.extract_text() itself still raise MissingBinary --
-        # e.g. pdftotext vanishing from PATH between the probe and this
-        # specific item -- and sync.run()'s try block only ever caught
-        # CalledProcessError, so this would crash uncaught, defeating the
-        # whole point of probing in the first place.
         def raise_missing_binary(pdf_path, citekey):
             raise pdf_text.MissingBinary("pdftotext vanished mid-run")
 
@@ -870,11 +728,6 @@ class TestRun:
 
 
 class TestLostPdfReason:
-    """`sync_decide._lost_pdf_reason`, on its own rather than through a
-    run: which no-PDF reason an unreadable `ref.pdf_path` reports as. The
-    distinction matters because the two reasons carry different remedies
-    and both gate the exit code (issue #556)."""
-
     @pytest.mark.parametrize(
         "exc, expected",
         [
@@ -889,45 +742,22 @@ class TestLostPdfReason:
         assert sync_decide._lost_pdf_reason(exc) == expected
 
     def test_an_errno_built_oserror_lands_where_its_subclass_does(self):
-        """Worth pinning because it surprised a reviewer: `OSError(2,
-        ...)` is not a plain `OSError`. CPython selects the subclass from
-        the errno, so it arrives here already a `FileNotFoundError` and
-        classifies as gone. A caller that builds its errors that way --
-        or a library that does -- gets the right reason without knowing
-        this function exists."""
         built = OSError(2, "No such file or directory", "/nope.pdf")
         assert isinstance(built, FileNotFoundError)
         assert sync_decide._lost_pdf_reason(built) == bib_reader.PDF_PATH_GONE
 
     def test_every_reason_it_can_return_has_a_label_and_gates_the_exit(self):
-        """Neither list may drift from the other: a reason with no label
-        raises `KeyError` in `sync_decide`'s own print, and one missing
-        from `PDF_LOST_REASONS` would report the hole and still exit 0 --
-        the exact defect #556 was filed for."""
         returnable = {bib_reader.PDF_PATH_GONE, bib_reader.PDF_UNREADABLE}
         assert returnable <= set(bib_reader.PDF_RESOLUTION_LABELS)
         assert returnable <= set(bib_reader.PDF_LOST_REASONS)
-        # `<=` rather than `==` since issue 821: a `file` field pointing
-        # outside the bib directory is a third hole, decided at bib-read
-        # time rather than from an exception, so it is in the gating list
-        # without being something `_lost_pdf_reason` can return. Asserted
-        # by name so the list cannot lose it silently either.
         assert bib_reader.PDF_OUTSIDE_PAPERS in bib_reader.PDF_LOST_REASONS
         assert bib_reader.PDF_OUTSIDE_PAPERS in bib_reader.PDF_RESOLUTION_LABELS
 
 
 class TestExitCodesAreDistinguishable:
-    """Issue #696: `bench/sweep_sync.py` reported `rc=1 failed=0` on all
-    four rows of a 497-of-497 clean parse, and no caller reading only the
-    exit code could tell that row from one where documents were lost."""
-
     def test_a_parse_failure_outranks_a_bibliography_problem(
         self, basic_corpus, monkeypatch, capsys
     ):
-        """Both conditions at once must report the parse failure. A run
-        that lost a document is the more actionable of the two, and
-        reporting EXIT_BIB_INTEGRITY would assert the opposite of what
-        happened -- that everything asked for was parsed."""
         write_bib(
             basic_corpus.BIB_FILE_PATH,
             """
@@ -967,13 +797,6 @@ class TestCliEntrypoint:
 
 
 class TestTheRemovedDirectInvocation:
-    """Running this module directly refuses (#153). What that spelling
-    *does* is pinned end-to-end in tests/test_corpus_entrypoint.py, which
-    runs it.
-    This is the same function called in-process, so the refusal stays
-    covered on a host whose pytest-cov does not instrument subprocesses
-    -- the pin is on the behaviour, not on a coverage side effect."""
-
     def test_it_names_the_replacement_on_stderr(self, capsys):
         assert sync.refuse_direct_invocation() == sync.EXIT_COMMAND_REMOVED
         captured = capsys.readouterr()
@@ -981,10 +804,6 @@ class TestTheRemovedDirectInvocation:
         assert "chitragupta corpus sync" in captured.err
 
     def test_its_exit_code_is_none_of_the_ones_sync_publishes(self):
-        """docs/CLI.md's exit-code table is an API an unattended caller
-        reads. `2` there means "another run holds the lock -- do
-        nothing", so a refusal wearing it would be ignored by exactly the
-        scheduler this is for."""
         assert sync.EXIT_COMMAND_REMOVED not in (
             0,
             sync.EXIT_PARSE_FAILURE,
@@ -993,8 +812,6 @@ class TestTheRemovedDirectInvocation:
         )
 
 
-# BASIC_BIB with smith_example_2024 entered a second time, as a hand-merged
-# export or two libraries with clashing key patterns produce (issue 840).
 DUPLICATED_BIB = BASIC_BIB.replace(
     "@misc{noauthor_page_nodate,",
     "@article{smith_example_2024,\n  title = {A Different Paper},\n  year = {2020},\n}\n\n"
@@ -1003,9 +820,6 @@ DUPLICATED_BIB = BASIC_BIB.replace(
 
 
 class TestDuplicatedCitekey:
-    """A key on two entries is named, upserted from neither, kept out of
-    the stale set, and makes the run exit EXIT_BIB_INTEGRITY."""
-
     def _synced_then_duplicated(self, basic_corpus, monkeypatch, capsys):
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
         sync.run()
@@ -1028,10 +842,8 @@ class TestDuplicatedCitekey:
 
         assert rc == sync.EXIT_BIB_INTEGRITY
         assert "smith_example_2024" in out and "2 entries" in out
-        # Still in the bib file, so it is not stale either.
         assert "stale   smith_example_2024" not in out
         assert "0 stale (not removed)" in out
-        # Neither entry reached the ledger: the row is the first sync's.
         assert self._row("smith_example_2024")["title"] == "An Example Paper"
 
     def test_remove_stale_does_not_prune_the_duplicated_key(
@@ -1048,9 +860,6 @@ class TestDuplicatedCitekey:
     def test_remove_stale_still_prunes_a_genuinely_removed_row(
         self, basic_corpus, monkeypatch, capsys
     ):
-        # A shared key is in seen_citekeys, so it cannot make any other
-        # row look stale: the read is not short, and pruning goes ahead
-        # (issue 841 refuses only on a dropped entry or unusable key).
         self._synced_then_duplicated(basic_corpus, monkeypatch, capsys)
         write_bib(basic_corpus.BIB_FILE_PATH, drop_noauthor(DUPLICATED_BIB))
         rc = sync.run(remove_stale=True)
@@ -1081,11 +890,6 @@ class TestDuplicatedCitekey:
 
 
 class TestLossyBibRead:
-    """Issue 841: a bib read that dropped an entry, or skipped a citekey
-    it could not use, must never drive --remove-stale, and exits
-    EXIT_BIB_INTEGRITY either way. noauthor_page_nodate is the row that
-    is genuinely gone from the bib in each case."""
-
     UNBALANCED = "@article{bad_2023,\n  title = {Unbalanced {Braces},\n  year = {2023},\n}\n"
     UNFILENAMEABLE = "@article{smith/2024,\n  title = {Slash},\n  year = {2024},\n}\n"
 
@@ -1119,11 +923,9 @@ class TestLossyBibRead:
         assert rc == sync.EXIT_BIB_INTEGRITY
         assert "noauthor_page_nodate" in self._known()
         assert "pruned  noauthor_page_nodate" not in out
-        # Still reported, so the person sees what a clean export would prune.
         assert "stale   noauthor_page_nodate" in out
         assert "Refusing to prune" in out
         assert "1 stale (not removed)" in out
-        # The summary says why the exit is nonzero.
         assert problem in out
         assert "re-run with --remove-stale to delete" not in out
 
@@ -1140,8 +942,6 @@ class TestLossyBibRead:
     def test_an_ignored_entry_type_neither_exits_3_nor_blocks_the_prune(
         self, basic_corpus, monkeypatch, capsys
     ):
-        # Issue 888: bibtexparser ignores a non-standard type by design, so
-        # the entry is not synced -- but it is not a lost entry either.
         software = "@software{tool_2024,\n  title = {A Tool},\n  year = {2024},\n}\n"
         self._synced_then(software, basic_corpus, monkeypatch, capsys)
         rc = sync.run(remove_stale=True)
@@ -1157,9 +957,6 @@ class TestLossyBibRead:
     def test_a_row_whose_entry_became_an_ignored_type_reads_as_stale(
         self, basic_corpus, monkeypatch, capsys
     ):
-        # Issue 888 keeps the pre-841 behaviour: an ignored entry is not in
-        # the read at all, so its row is stale like any removed entry's,
-        # and --remove-stale prunes it.
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
         sync.run()
         capsys.readouterr()
@@ -1202,8 +999,6 @@ MANY_BIB = "".join(
 
 @pytest.fixture
 def many_corpus(isolated_config):
-    """Six PDFs of deliberately different sizes, so submission order is
-    observable (sync submits biggest-first)."""
     write_bib(isolated_config.BIB_FILE_PATH, MANY_BIB)
     bib_dir = isolated_config.BIB_FILE_PATH.parent
     for i in range(6):
@@ -1212,16 +1007,6 @@ def many_corpus(isolated_config):
 
 
 def _recording_executor(submitted, pools):
-    """A thread executor that records each job's citekey when it is
-    *submitted*.
-
-    Recording inside the worker instead -- which is what this used to do
-    -- observes completion order, not submission order. With more than one
-    worker the two differ by whichever job happens to finish first, so an
-    assertion about submission order written that way passes or fails on a
-    race. `submit()` is called from one thread in a loop, so this is
-    deterministic.
-    """
     from concurrent.futures import ThreadPoolExecutor
 
     class RecordingExecutor(ThreadPoolExecutor):
@@ -1233,9 +1018,6 @@ def _recording_executor(submitted, pools):
 
 
 def fake_extract_one_factory(record=None, fail_citekeys=()):
-    """Stands in for pdf_text.extract_one, the picklable pool entry point.
-    Returns the (citekey, out_path, exception) triple it does."""
-
     def fake_extract_one(job):
         pdf_path, citekey, threads = job
         if record is not None:
@@ -1252,9 +1034,6 @@ def fake_extract_one_factory(record=None, fail_citekeys=()):
 
 class TestWorkerCount:
     def test_default_of_one_never_builds_a_pool(self, many_corpus, monkeypatch):
-        """The whole point of defaulting to 1: a default run must be the
-        historical serial path, with no executor, no pickling and no
-        subprocesses -- not a pool that happens to have one worker."""
         monkeypatch.setattr(config, "PARSER_WORKERS", 1)
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
 
@@ -1284,12 +1063,6 @@ class TestParallelParsing:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        # A real ProcessPoolExecutor would run pdf_text.extract_one in a
-        # *child interpreter*, where this process's monkeypatches don't
-        # exist -- the fake would silently not be used and these tests
-        # would drive the real docling. Swapping the executor (the seam
-        # TestExecutorChoice covers separately) keeps the concurrency
-        # real while leaving the patches visible.
         monkeypatch.setattr(sync_pool, "_executor_for", thread_executor)
 
     def test_every_document_is_parsed_and_recorded(self, many_corpus, monkeypatch, capsys):
@@ -1308,9 +1081,6 @@ class TestParallelParsing:
     def test_reporting_order_follows_the_bib_not_completion_order(
         self, many_corpus, monkeypatch, capsys
     ):
-        """Futures complete in whatever order they finish. If that leaked
-        into stdout, two identical runs would print different output and
-        no one could diff them."""
         monkeypatch.setattr(pdf_text, "extract_one", fake_extract_one_factory())
         sync.run()
         printed = [
@@ -1321,14 +1091,6 @@ class TestParallelParsing:
         assert printed == [f"doc_{i}_2024" for i in range(6)]
 
     def test_largest_pdf_is_submitted_first(self, many_corpus, monkeypatch, thread_executor):
-        """One 675-page document in this project's real corpus is 5% of
-        all its pages. Picked up last, it alone defines the wall clock --
-        so submission is biggest-first (by file size, which needs no PDF
-        library to measure).
-
-        Observed at the executor rather than inside the worker: see
-        _recording_executor for why the worker-side version was a race.
-        """
         submitted = []
         monkeypatch.setattr(pdf_text, "extract_one", fake_extract_one_factory())
         monkeypatch.setattr(
@@ -1357,8 +1119,6 @@ class TestParallelParsing:
         assert rows["doc_2_2024"]["status"] == "parsed"
 
     def test_each_worker_is_told_its_thread_budget(self, many_corpus, monkeypatch):
-        """workers x threads has to fit the host, so the parent works out
-        the per-worker thread count and passes it down."""
         record = []
         monkeypatch.setattr(pdf_text, "extract_one", fake_extract_one_factory(record=record))
         sync.run()
@@ -1367,19 +1127,12 @@ class TestParallelParsing:
     def test_work_finished_before_the_pool_died_is_not_thrown_away(
         self, many_corpus, monkeypatch, capsys
     ):
-        """The trap in reporting results in input order: submission is
-        largest-first, so if the pool dies while the biggest document is
-        still running, every smaller one that already finished would be
-        discarded and reported as a failure -- real work thrown away, and
-        parsed documents mislabelled. Results are recorded as they land,
-        so only what was genuinely in flight is lost."""
         from concurrent.futures.process import BrokenProcessPool
 
         done = fake_extract_one_factory()
 
         def die_on_the_biggest(job):
             _, citekey, _ = job
-            # doc_5_2024 has the largest file, so it is submitted first.
             if citekey == "doc_5_2024":
                 raise BrokenProcessPool("a worker died")
             return done(job)
@@ -1402,9 +1155,6 @@ class TestParallelParsing:
     def test_a_pool_already_broken_at_submit_time_is_handled_too(
         self, many_corpus, monkeypatch, capsys, caplog
     ):
-        """Once a ProcessPoolExecutor knows it is broken, submit() itself
-        raises rather than returning a future -- a second path to the same
-        outcome, and one as_completed never gets to see."""
         from concurrent.futures.process import BrokenProcessPool
 
         class DeadExecutor:
@@ -1425,9 +1175,6 @@ class TestParallelParsing:
     def test_a_dead_pool_fails_the_documents_not_the_run(
         self, many_corpus, monkeypatch, capsys, caplog
     ):
-        """A worker killed by the OOM killer breaks the whole pool. That
-        has to be reported against the documents that didn't get parsed,
-        not raised as an uncaught BrokenProcessPool out of sync."""
         from concurrent.futures.process import BrokenProcessPool
 
         def explode(job):
@@ -1446,10 +1193,6 @@ class TestPoolPrestart:
     def test_the_forkserver_is_started_before_the_bibliography_is_read(
         self, basic_corpus, monkeypatch
     ):
-        """Order is the whole point. Started after the bib read, the
-        forkserver's torch import is 2.5s the parent spends blocked;
-        started before it, that import runs while the bib file is being
-        parsed and the pool is ready 2.5s sooner."""
         order = []
         monkeypatch.setattr(pdf_text, "prestart_pool", lambda: order.append("prestart"))
         real_read = bib_reader.read_library
@@ -1466,8 +1209,6 @@ class TestPoolPrestart:
 
 class TestExecutorChoice:
     def test_docling_gets_processes(self, monkeypatch):
-        """docling runs in-process and holds the GIL, so threads would
-        serialise exactly the work we want overlapped."""
         from concurrent.futures import ProcessPoolExecutor
 
         monkeypatch.setattr(config, "PARSER", "docling")
@@ -1475,9 +1216,6 @@ class TestExecutorChoice:
             assert isinstance(ex, ProcessPoolExecutor)
 
     def test_pdftotext_gets_threads(self, monkeypatch):
-        """pdftotext is an external subprocess that releases the GIL
-        while it runs, so a process pool would only add pickling and
-        spawn cost to buy the same concurrency."""
         from concurrent.futures import ThreadPoolExecutor
 
         monkeypatch.setattr(config, "PARSER", "pdftotext")
@@ -1486,22 +1224,17 @@ class TestExecutorChoice:
 
 
 class TestPdfSize:
-    """Only ever used to order work biggest-first."""
-
     def test_reports_the_file_size(self, tmp_path):
         pdf = tmp_path / "a.pdf"
         pdf.write_bytes(b"x" * 321)
         assert sync_pool._pdf_size(str(pdf)) == 321
 
     def test_unreadable_file_sorts_last_instead_of_raising(self, tmp_path):
-        """A PDF that vanished between bib resolution and here must not
-        take down the ordering -- the parse will report the real error a
-        moment later, which is the better place for it."""
         assert sync_pool._pdf_size(str(tmp_path / "gone.pdf")) == 0
 
 
 def _ignore(*_result):
-    """An `on_landed` for tests that read only what is yielded."""
+    pass
 
 
 class TestParseSerial:
@@ -1528,12 +1261,6 @@ class TestParseSerial:
 class TestGpuAssignment:
     @staticmethod
     def _capture(monkeypatch):
-        """Record what ProcessPoolExecutor was constructed with.
-
-        Asserted this way rather than through the executor's private
-        _initializer/_initargs/_mp_context, which are CPython
-        implementation details that could be renamed under us.
-        """
         captured = {}
 
         def record(**kwargs):
@@ -1544,9 +1271,6 @@ class TestGpuAssignment:
         return captured
 
     def test_docling_pool_hands_each_worker_its_own_gpu(self, monkeypatch):
-        """The whole point: docling's AcceleratorDevice.AUTO resolves to
-        cuda:0 in every process, so without an explicit per-worker device
-        N workers contend for one card while the rest idle."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([0, 1, 2, 3], None))
         captured = self._capture(monkeypatch)
@@ -1557,20 +1281,9 @@ class TestGpuAssignment:
         assert captured["initializer"] is pdf_text.init_worker
         counter, _lock, devices = captured["initargs"]
         assert devices == [0, 1, 2, 3]
-        # A shared counter, not a per-process guess: a pool creates
-        # workers lazily and numbers none of them.
         assert counter.value == 0
 
     def test_the_initargs_actually_work_as_init_worker_arguments(self, monkeypatch):
-        """Calls init_worker with what the pool would have handed it.
-
-        Every other test here substitutes the executor, so the
-        initializer is never invoked and a pool builder passing the wrong
-        *shape* is invisible -- which is exactly how the enrichment layer
-        went on passing an int after init_worker started wanting a list
-        (PR #40 review). Asserting on a captured literal cannot catch
-        that; calling across the seam can.
-        """
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([2, 3], None))
         captured = self._capture(monkeypatch)
@@ -1586,8 +1299,6 @@ class TestGpuAssignment:
             pdf_text._reset_worker_device()
 
     def test_a_card_with_no_room_never_reaches_a_worker(self, monkeypatch):
-        """usable_devices decides; this asserts sync passes its answer
-        through rather than re-deriving a count of its own."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([1, 2, 3], None))
         captured = self._capture(monkeypatch)
@@ -1598,9 +1309,6 @@ class TestGpuAssignment:
         assert captured["initargs"][2] == [1, 2, 3]
 
     def test_a_skipped_card_is_reported_to_the_user(self, monkeypatch, caplog):
-        """A run quietly using five cards instead of six looks exactly
-        like one using all six, until it is 20% slower for no stated
-        reason."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(
             pdf_text._pool, "usable_devices", lambda docling: ([1], "  WARNING skipping cuda:0")
@@ -1613,19 +1321,6 @@ class TestGpuAssignment:
         assert "WARNING skipping cuda:0" in caplog.text
 
     def test_the_start_method_is_pdf_texts_to_choose(self, monkeypatch):
-        """One decision, in one place: sync and chitragupta/enrich/docling_parse
-        build the same kind of pool, and a start method hard-coded in
-        each would be two that can drift apart.
-
-        Asserted by *identity* on the context object, and built from this
-        platform's own default rather than a named method. Naming
-        "forkserver" here made the test itself unrunnable on Windows --
-        `get_context("forkserver")` raises `ValueError: cannot find
-        context for 'forkserver'` before the assertion is even reached.
-        The contract under test is that sync passes through whatever
-        pdf_text hands it, which does not require any particular method
-        to exist on the machine running the test.
-        """
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([0, 1, 2, 3], None))
         chosen = multiprocessing.get_context()
@@ -1638,9 +1333,6 @@ class TestGpuAssignment:
         assert captured["mp_context"] is chosen
 
     def test_plain_fork_is_never_used(self, monkeypatch):
-        """Not a style preference: this process holds the run lock and
-        the ledger open as live sqlite connections, and SQLite says not
-        to carry an open connection across fork()."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([0, 1, 2, 3], None))
         captured = self._capture(monkeypatch)
@@ -1651,8 +1343,6 @@ class TestGpuAssignment:
         assert captured["mp_context"].get_start_method() != "fork"
 
     def test_a_start_method_complaint_reaches_stderr(self, monkeypatch, caplog):
-        """A pool that quietly fell back to spawn looks exactly like one
-        that got what was configured, and is ~1.5s slower to start."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([], None))
         monkeypatch.setattr(
@@ -1686,15 +1376,6 @@ class TestGpuAssignment:
 
 
 class TestInterrupt:
-    """Ctrl+C during a parallel run.
-
-    Reported from real use on 501 documents: the run "took forever to
-    exit" and emitted docling teardown tracebacks. Cause: every job is
-    submitted up front, and `with executor` calls shutdown(wait=True) on
-    the way out -- so an interrupt drained the entire remaining queue
-    instead of stopping.
-    """
-
     @pytest.fixture(autouse=True)
     def _pool(self, monkeypatch, thread_executor):
         monkeypatch.setattr(config, "PARSER", "docling")
@@ -1705,14 +1386,6 @@ class TestInterrupt:
     def test_pending_work_is_cancelled_not_drained(
         self, many_corpus, monkeypatch, thread_executor, capsys
     ):
-        """The bug: `with executor` shuts down with wait=True, draining
-        every queued document before exiting.
-
-        Asserted on the shutdown call rather than on how many documents
-        happened to start: with fast workers the race is real, and the
-        contract -- cancel what has not begun, don't block on what has --
-        is the thing that actually fixes the reported symptom.
-        """
         recorded = []
 
         def recording_executor(workers):
@@ -1747,13 +1420,6 @@ class TestInterrupt:
 
 
 class TestProgressReporting:
-    """A parallel run reported nothing until every document finished.
-
-    Over a 501-PDF corpus that is half an hour of apparent silence --
-    the user-visible symptom being pages of docling's own OCR chatter and
-    no indication anything was progressing.
-    """
-
     @pytest.fixture(autouse=True)
     def _pool(self, monkeypatch, thread_executor):
         monkeypatch.setattr(config, "PARSER", "docling")
@@ -1765,13 +1431,10 @@ class TestProgressReporting:
         caplog.set_level(logging.INFO)
         monkeypatch.setattr(pdf_text, "extract_one", fake_extract_one_factory())
         sync.run()
-        # A counter, so the reader can see both rate and remaining work.
         assert "[1/6]" in caplog.text
         assert "[6/6]" in caplog.text
 
     def test_stdout_stays_in_bibliography_order(self, many_corpus, monkeypatch, capsys):
-        """Live progress goes to stderr precisely so stdout can stay
-        deterministic and diffable between runs."""
         monkeypatch.setattr(pdf_text, "extract_one", fake_extract_one_factory())
         sync.run()
         printed = [
@@ -1783,15 +1446,6 @@ class TestProgressReporting:
 
 
 class TestStallWatchdog:
-    """Bounds a parallel run's worst case.
-
-    Deliberately NOT a per-document deadline: the slowest legitimate
-    document in this corpus takes 246s, so any per-document threshold
-    generous enough to spare it is a poor hang detector. With several
-    workers, completions arrive constantly, so total silence across the
-    whole pool is the signal that separates hung from slow.
-    """
-
     @pytest.fixture(autouse=True)
     def _pool(self, monkeypatch, thread_executor):
         monkeypatch.setattr(config, "PARSER", "docling")
@@ -1818,20 +1472,9 @@ class TestStallWatchdog:
         assert rc == 1
         assert "6 failed" in captured.out
         assert "no document finished" in caplog.text.lower()
-        # The console handler's formatter is bare "%(message)s" -- no
-        # level name -- so the message text itself has to carry the
-        # label, or a scheduled run tailing stderr sees an unlabeled
-        # line. Checked on the raw message (record.getMessage()), not
-        # caplog.text: pytest's own capture format already injects the
-        # level name, which would make this assertion pass even if the
-        # actual message text lost it.
         assert any("WARNING" in r.getMessage() for r in caplog.records)
 
     def test_progress_resets_the_clock(self, many_corpus, monkeypatch, capsys):
-        """A slow-but-moving run completes end to end through the real
-        pool. The between-completions reset itself is pinned without a
-        clock by TestTheWatchdogClock; this is the smoke check that the
-        real `wait` and real threads agree with it, at a 15x margin."""
         import time
 
         monkeypatch.setattr(config, "PARSER_STALL_TIMEOUT", 3.0)
@@ -1850,10 +1493,6 @@ class TestStallWatchdog:
         assert sync.run() == 0
 
     def test_a_stall_terminates_the_workers(self, many_corpus, monkeypatch, capsys):
-        """Not merely abandoned: in-flight jobs would otherwise keep
-        running and write content/parsed/<citekey>.txt for documents this
-        run has already reported as failed -- a file on disk
-        contradicting the ledger."""
         import threading
 
         blocked = threading.Event()
@@ -1870,29 +1509,6 @@ class TestStallWatchdog:
     def test_terminate_workers_runs_before_shutdown_clears_the_processes(
         self, many_corpus, monkeypatch, thread_executor
     ):
-        """issue #698: ProcessPoolExecutor.shutdown() sets executor._processes
-        to None *unconditionally* -- even with wait=False (CPython
-        concurrent/futures/process.py, "remove references to objects that
-        use file descriptors"). `pdf_text.terminate_workers` reads that
-        same attribute to find which OS processes to signal, via
-        `getattr(executor, "_processes", None) or {}` (issue #726's own
-        fix, which made `_processes is None` a quiet no-op rather than an
-        AttributeError). Calling shutdown() *before* terminate_workers
-        therefore leaves it nothing to kill: a genuinely wedged worker
-        (blocked in docling/torch native code, or -- reproduced directly
-        -- in a blocking read with no docling involved at all) is never
-        actually signalled, so its death is never observed and the
-        executor's own manager thread blocks forever waiting for a result
-        that will never arrive -- which is what hung the interpreter's
-        atexit join of that thread in bench/bench_pool_rebuild.py's
-        --with-stall-arm.
-
-        A real ProcessPoolExecutor doesn't fail this test either way (its
-        own shutdown() nulls `_processes` regardless of who calls it
-        first), so this uses a fake that copies the one behaviour that
-        matters -- `_processes` is only readable *before* shutdown() runs
-        -- while still running real jobs on real threads.
-        """
         import threading
         from concurrent.futures import ThreadPoolExecutor
 
@@ -1913,11 +1529,6 @@ class TestStallWatchdog:
                 pass
 
         class _ProcessLikeExecutor(ThreadPoolExecutor):
-            """A thread pool that otherwise behaves like the docling
-            ProcessPoolExecutor terminate_workers actually targets: a
-            live `_processes` dict until shutdown() -- at which point,
-            like the real class, the reference is gone."""
-
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
                 self._processes = {0: _FakeProcess(), 1: _FakeProcess()}
@@ -1930,11 +1541,6 @@ class TestStallWatchdog:
 
         def factory(workers):
             executor = thread_executor.track(_ProcessLikeExecutor(max_workers=workers))
-            # Captured before shutdown() can null executor._processes, so
-            # the assertion below can still see whether terminate_workers
-            # reached these specific objects -- if it ran too late, they
-            # stay untouched even though the executor's own attribute was
-            # already cleared by the time this test looks at it.
             saved_processes["processes"] = dict(executor._processes)
             return executor
 
@@ -1955,13 +1561,6 @@ class TestStallWatchdog:
     def test_a_stall_cancels_jobs_that_never_started(
         self, many_corpus, monkeypatch, thread_executor
     ):
-        """#491: with the shipped pdftotext backend, terminate_workers is a
-        no-op (it only reaches ProcessPoolExecutor's `_processes`), so the
-        stall path's only way to stop queued-but-unstarted jobs is
-        cancelling them on the executor itself. Without that, the thread
-        pool keeps draining its queue after the run has already reported
-        those documents as failed -- writing content/parsed/<citekey>.txt
-        for citekeys the ledger says failed."""
         import threading
 
         started = []
@@ -1983,20 +1582,9 @@ class TestStallWatchdog:
         monkeypatch.setattr(pdf_text, "extract_one", fake)
         try:
             sync.run()
-            # sync.run() only returns once _as_they_land has given up, so
-            # anything appended to `started` from here on ran *after* the
-            # stall was reported -- exactly the citekeys the cancel must
-            # have dropped, whatever the worker count turns out to be.
             at_stall = list(started)
         finally:
             blocked.set()
-            # Joins every worker thread, so a job left queued rather than
-            # cancelled has run by the time this returns. Deterministic
-            # where a sleep was a race the test could lose by passing.
-            # Every executor actually built, so a sync.run() that raised
-            # before building one keeps its own exception. The
-            # thread_executor fixture joins these again at teardown, but
-            # that is too late for the assertion below.
             for executor in executors:
                 executor.shutdown(wait=True)
         assert not any(t.is_alive() for ex in executors for t in ex._threads)
@@ -2009,8 +1597,6 @@ class TestStallWatchdog:
     def test_a_stalled_document_is_not_blamed_on_a_dead_worker(
         self, many_corpus, monkeypatch, caplog
     ):
-        """The two failure modes are different and the message has to
-        say which one happened."""
         import threading
 
         blocked = threading.Event()
@@ -2026,8 +1612,6 @@ class TestStallWatchdog:
 
 class TestReparse:
     def test_reparse_re_extracts_everything(self, basic_corpus, monkeypatch, capsys):
-        """The recovery path for output that is recorded as fine but
-        isn't -- which the ledger, by definition, cannot detect itself."""
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
         sync.run()
         capsys.readouterr()
@@ -2048,9 +1632,6 @@ class TestFailureReporting:
     def test_a_backend_failure_is_deterministic_and_not_retried(
         self, basic_corpus, monkeypatch, capsys
     ):
-        """A PDF the backend cannot read is not going to become readable
-        next run. Re-parsing it every time wastes minutes and trains the
-        reader to ignore exit 1."""
         monkeypatch.setattr(
             pdf_text, "extract_text", fake_extract_text_factory(fail_citekeys={"doe_broken_2023"})
         )
@@ -2065,8 +1646,6 @@ class TestFailureReporting:
     def test_a_worker_death_is_transient_and_is_retried(
         self, many_corpus, monkeypatch, thread_executor, capsys
     ):
-        """The failure that motivated retrying at all: one dead worker
-        marks every in-flight document failed, and they must come back."""
         from concurrent.futures.process import BrokenProcessPool
 
         monkeypatch.setattr(config, "PARSER", "docling")
@@ -2090,10 +1669,6 @@ class TestFailureReporting:
     def test_one_documents_write_failure_keeps_the_rest_of_the_batch(
         self, many_corpus, monkeypatch, thread_executor, capsys, workers
     ):
-        """#842: an OSError writing one document's output used to escape
-        both parse paths and abort sync, discarding every other result.
-        The real extract_text runs here, with only the backend faked."""
-
         def extractor(pdf_path, out_path, threads=None):
             out_path.write_text(f"extracted text for {out_path.stem}")
             return []  # a reading-order backend, so the sidecar is written
@@ -2127,11 +1702,6 @@ class TestFailureReporting:
         }
 
     def test_a_torn_sidecar_is_repaired_by_the_next_sync(self, many_corpus, monkeypatch, capsys):
-        """Issue 844: a sidecar cut short by a killed write used to pass
-        `sync`'s `.exists()` check, so the document kept no passages --
-        and an indexed bibliography -- for good. The real extract_text
-        runs, with only the backend faked."""
-
         def extractor(pdf_path, out_path, threads=None):
             out_path.write_text(f"extracted text for {out_path.stem}")
             return [{"text": "A reading-ordered paragraph.", "label": "text", "page": 1}]
@@ -2159,9 +1729,6 @@ class TestFailureReporting:
 
 
 def timing_out_extract_text_factory(timeout_citekeys):
-    """A backend that runs out of time on some documents and parses the
-    rest -- the shape both real backends produce (see
-    tests/test_pdf_text.py's TestTimeoutIsRecordedAsSuch)."""
     parse = fake_extract_text_factory()
 
     def fake_extract_text(pdf_path, citekey):
@@ -2175,10 +1742,6 @@ def timing_out_extract_text_factory(timeout_citekeys):
 
 
 class TestTimeoutReporting:
-    """The summary has to name a document that ran out of time, because
-    the remediation differs from every other failure it is counted
-    alongside: raise a config value, not fix the PDF."""
-
     def test_the_summary_names_the_documents_that_timed_out(
         self, basic_corpus, monkeypatch, capsys
     ):
@@ -2198,9 +1761,6 @@ class TestTimeoutReporting:
     def test_the_summary_stops_giving_the_advice_that_does_not_apply(
         self, basic_corpus, monkeypatch, capsys
     ):
-        """Two contradictory instructions is worse than one: the PDF is
-        fine, so the deterministic line must not send its reader to fix
-        it while the line below says to raise a setting."""
         monkeypatch.setattr(config, "PARSER_DOCUMENT_TIMEOUT", 90.0)
         monkeypatch.setattr(
             pdf_text,
@@ -2225,9 +1785,6 @@ class TestTimeoutReporting:
     def test_a_corpus_wide_timeout_stays_one_readable_line(
         self, isolated_config, monkeypatch, capsys
     ):
-        """Past a handful, the count is the diagnosis and the names are
-        noise -- naming every one of them would bury the line that says
-        what to do in a list no terminal wants to scroll."""
         entries = "".join(
             f"""
 @article{{doc_{i}_2024,
@@ -2251,7 +1808,6 @@ class TestTimeoutReporting:
         sync.run()
         out = capsys.readouterr().out
 
-        # The count stays exact even though the list does not.
         assert "14 document(s) hit the 5.0s" in out
         assert "(+4 more)" in out
         line = next(ln for ln in out.splitlines() if "hit the 5.0s" in ln)
@@ -2267,9 +1823,6 @@ class TestTimeoutReporting:
     def test_a_timeout_is_still_counted_as_a_deterministic_failure(
         self, basic_corpus, monkeypatch, capsys
     ):
-        """Deliberately not transient: if the limit is genuinely too low
-        for this host, retrying every run burns the same minutes forever
-        and never converges."""
         monkeypatch.setattr(config, "PARSER_DOCUMENT_TIMEOUT", 90.0)
         monkeypatch.setattr(
             pdf_text,
@@ -2300,9 +1853,6 @@ class TestTimeoutReporting:
     def test_a_timeout_from_a_pool_worker_is_reported_too(
         self, many_corpus, monkeypatch, thread_executor, capsys
     ):
-        """The parallel path returns the exception across a process
-        boundary rather than raising it, so the mark has to arrive
-        intact for the summary to say anything."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(config, "PARSER_DOCUMENT_TIMEOUT", 30.0)
@@ -2322,16 +1872,6 @@ class TestTimeoutReporting:
 
 
 class TestStallWarning:
-    """The watchdog kills work, so it must warn before it acts.
-
-    The schedule makes this necessary rather than merely polite:
-    submission is biggest-file-first, so at pool start every worker is
-    simultaneously on the largest documents in the corpus. On a CPU-only
-    host with OCR on, a long first gap is the schedule working, not a
-    hang -- and because stall-killed documents are retried identically,
-    a kill without warning can repeat every run forever.
-    """
-
     @pytest.fixture(autouse=True)
     def _pool(self, monkeypatch, thread_executor):
         monkeypatch.setattr(config, "PARSER", "docling")
@@ -2351,11 +1891,8 @@ class TestStallWarning:
             blocked.set()
         text = caplog.text
         assert "no completions in" in text.lower()
-        # The warning has to be actionable, not just early.
         assert "stall_timeout" in text
         assert text.index("no completions in") < text.index("giving up on the")
-        # See test_a_stalled_pool_is_abandoned_and_its_documents_reported
-        # for why this checks the raw message, not caplog.text.
         assert any("WARNING" in r.getMessage() for r in caplog.records)
 
     def test_no_warning_when_nothing_stalls(self, many_corpus, monkeypatch, capsys):
@@ -2366,11 +1903,6 @@ class TestStallWarning:
 
 
 class _ScriptedWait:
-    """Stands in for `concurrent.futures.wait` inside `sync_pool`: each
-    call consumes one entry of `script`, the number of pending futures
-    that complete in that window (0 is a silent window). Deterministic,
-    so the reset logic is tested without a clock."""
-
     def __init__(self, script):
         self.script = list(script)
         self.timeouts = []
@@ -2391,11 +1923,6 @@ class _RecordingExecutor:
 
 
 class TestTheWatchdogClock:
-    """The between-completions rule, driven window by window. These
-    replace wall-clock versions that could not hold a 3x margin: a run
-    that finishes between the warning and the kill needs a job longer
-    than half the timeout and shorter than all of it (#868)."""
-
     @pytest.fixture(autouse=True)
     def _record_terminate(self, monkeypatch):
         monkeypatch.setattr(config, "PARSER_STALL_TIMEOUT", 10.0)
@@ -2426,7 +1953,6 @@ class TestTheWatchdogClock:
         assert "giving up on the 5 still outstanding" in caplog.text
 
     def test_a_run_that_finishes_between_warning_and_kill_is_not_killed(self, monkeypatch):
-        """Slow but moving must survive: the warning is a warning."""
         landed, executor, stalled, _ = self._run(monkeypatch, [0, 6])
         assert sorted(landed) == list(range(6))
         assert stalled == [] and executor.calls == []

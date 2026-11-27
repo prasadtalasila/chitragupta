@@ -1,14 +1,3 @@
-"""chitragupta/ledger.py's read side (issue #843): the one read-only
-opener every reader goes through, and the writer's migration taken under
-a write lock so two first-touches of an old ledger cannot race.
-
-A reader must never create, migrate or lock the ledger. It used to open
-it through `connect()`, the writer, so a genre skill's first `search()`
-before any sync created an empty `content/ledger.sqlite` -- after which
-`corpus ledger` said "empty" rather than "no ledger", which is the
-distinction the skills refuse on.
-"""
-
 import sqlite3
 import sys
 import threading
@@ -21,8 +10,6 @@ from chitragupta import config, ledger, ledger_paths
 
 from tests.ledger_faults import leave_hot_journal
 
-# The original, schema-version-0 table: what a ledger written before any
-# migration looks like on disk.
 _V0_TABLE = """
     CREATE TABLE items (
         citekey TEXT PRIMARY KEY, item_type TEXT, title TEXT, year TEXT,
@@ -55,8 +42,6 @@ class TestReadConnection:
             ledger.read_connection()
         assert not isolated_config.LEDGER_PATH.exists()
         assert not isolated_config.CONTENT_DIR.exists()
-        # The two lines `corpus ledger` has always printed, which the
-        # session-start hook matches on its shared instruction.
         assert str(caught.value) == (
             f"No ledger at {isolated_config.LEDGER_PATH}.\n"
             "Run `python -m chitragupta.corpus sync` to build it from your bib file."
@@ -66,7 +51,6 @@ class TestReadConnection:
         _v0_ledger(isolated_config)
         with pytest.raises(ledger.StaleLedger) as caught:
             ledger.read_connection()
-        # A subclass, so a caller refusing on NoLedger refuses on this too.
         assert isinstance(caught.value, ledger.NoLedger)
         assert "chitragupta.corpus sync" in str(caught.value)
         assert _user_version(isolated_config.LEDGER_PATH) == 0
@@ -97,27 +81,20 @@ class TestReadConnection:
 
 
 class TestUnreadableLedger:
-    """A ledger that exists but SQLite will not read (#1066): refused by
-    name, with what happened and what to do, never a raw sqlite error."""
-
     def test_a_hot_journal_is_refused_by_name_and_left_alone(self, isolated_config):
         ledger.connect().close()
         journal = leave_hot_journal(isolated_config.LEDGER_PATH)
         before = isolated_config.LEDGER_PATH.read_bytes(), journal.read_bytes()
         with pytest.raises(ledger.UnreadableLedger) as caught:
             ledger.read_connection()
-        # Refused wherever NoLedger is, which is what reaches every
-        # command's existing `[error]` line.
         assert isinstance(caught.value, ledger.NoLedger)
         what, fix = str(caught.value).split("\n")
         assert what.startswith(f"The ledger at {isolated_config.LEDGER_PATH} exists but")
         assert journal.name in what
         assert "python -m chitragupta.corpus sync" in fix
-        # Reported, not healed: rolling back is a write to the user's data.
         assert (isolated_config.LEDGER_PATH.read_bytes(), journal.read_bytes()) == before
 
     def test_the_writer_sync_opens_rolls_the_interrupted_write_back(self, isolated_config):
-        # The fix the refusal names, proven rather than promised.
         ledger.connect().close()
         journal = leave_hot_journal(isolated_config.LEDGER_PATH)
         ledger.connect().close()
@@ -136,9 +113,6 @@ class TestUnreadableLedger:
     def test_a_file_it_cannot_open_is_refused_before_any_connection(
         self, isolated_config, monkeypatch
     ):
-        # The open itself fails (a file this user cannot read), so there
-        # is no connection to close. Raised by connect() here because a
-        # chmod does not stop root or bite on Windows.
         ledger.connect().close()
 
         def refuse(*_args, **_kwargs):
@@ -160,8 +134,6 @@ class TestUnreadableLedger:
         ],
     )
     def test_each_cause_is_named(self, tmp_path, errorname, cause):
-        # Diagnosed from the error's name, not its wording; the last row
-        # is the fallback for a name with no reading of its own.
         error = sqlite3.OperationalError("disk I/O error")
         error.sqlite_errorname = errorname
         refusal = ledger.UnreadableLedger(tmp_path / "ledger.sqlite", error)
@@ -173,11 +145,6 @@ class TestUnreadableLedger:
 
 class TestMigrationIsOneTransaction:
     def test_a_second_writer_waits_for_the_first_migration(self, isolated_config):
-        # Deterministic form of the race: B is part-way through migrating a
-        # v0 ledger (write lock held, nothing committed) when A connects.
-        # Without the write lock A read user_version 0 and the pre-migration
-        # columns, then re-ran ALTER TABLE after B committed and died on
-        # "duplicate column name".
         _v0_ledger(isolated_config)
         other = sqlite3.connect(isolated_config.LEDGER_PATH, isolation_level=None)
         other.execute("BEGIN IMMEDIATE")
@@ -257,9 +224,6 @@ class TestMigrationIsOneTransaction:
     ],
 )
 def test_read_connection_opens_the_named_file_read_only(isolated_config, monkeypatch, dirname):
-    """#963: a raw `file:{path}?mode=ro` let `?` end the path early, so
-    sqlite opened -- and created -- a prefix of it, dropped `mode=ro`,
-    and reported the real ledger as stale."""
     parent = isolated_config.CONTENT_DIR.parent / dirname
     parent.mkdir()
     monkeypatch.setattr(config, "LEDGER_PATH", parent / "ledger.sqlite")
@@ -284,16 +248,11 @@ def test_read_connection_opens_the_named_file_read_only(isolated_config, monkeyp
     ],
 )
 def test_sqlite_file_uri_gives_a_unc_path_an_empty_authority(windows_path, expected):
-    """#966: sqlite refuses a `file://server/...` authority, so a UNC path
-    -- what `resolve()` makes of a mapped drive -- moves its server into
-    the path; a drive-letter URI, percent-encoding included, is unchanged."""
     uri = PureWindowsPath(windows_path).as_uri()
     assert ledger_paths._sqlite_file_uri(uri) == expected
 
 
 def test_read_only_uri_makes_a_path_absolute_without_resolving_it(tmp_path, monkeypatch):
-    """`absolute()`, not `resolve()`: the path stays as named (`..` and
-    all), which is what keeps a mapped drive's letter on Windows (#966)."""
     (tmp_path / "sub").mkdir()
     monkeypatch.chdir(tmp_path)
     assert ledger_paths.read_only_uri(Path("sub", "..", "ledger.sqlite")) == (

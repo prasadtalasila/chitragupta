@@ -1,20 +1,9 @@
-"""chitragupta/render_output/_citeproc.py: preparing a draft and the bib for --citeproc.
-
-Split from one test module to mirror `chitragupta/render_output/`'s own split,
-the way `tests/test_enrich_*.py` mirrors `chitragupta/enrich/`. Shared setup --
-the binary probes and the figure fixtures -- lives in `tests/conftest.py`
-so the eight modules do not each re-run a `kpsewhich` subprocess at
-import.
-"""
-
 import unicodedata
 
 import pytest
 from chitragupta import render_output
 from chitragupta.render_output._citeproc import _UNSAFE_CONTROL_RE
 
-# Every rewrite #948 found, plus #389's own 𝑡: printing them is
-# chitragupta-unicode.sty's job now, and the text must reach it as written.
 _WRITTEN_AS_IS = [
     "5 µm", "10 m²", "H₂O", "½", "Brand™", "Phase Ⅳ", "Step ①",
     "the 𝑡 statistic", "Planck ℎ", "R² = 0.94", "10\u00a0kg", "wait…", "ﬁle",
@@ -29,15 +18,10 @@ class TestSwapManualRefsForCiteproc:
         )
 
     def test_preserves_a_draft_s_own_numbered_heading(self):
-        # textbook-chapter-writer passes --heading "6. References" to match
-        # its other headings; citeproc emits no heading of its own, so
-        # dropping this one left the rendered bibliography untitled.
         text = "A claim [@k].\n\n## 6. References\n\n[1] A Paper, 2024. `k`\n"
         assert "## 6. References" in render_output._swap_manual_refs_for_citeproc(text)
 
     def test_swaps_a_bibliography_heading_and_keeps_its_text(self):
-        # #951: section_start knew only "References", so this draft kept
-        # its hand-built list and got citeproc's appended after it.
         text = "A claim [@k].\n\n## Bibliography\n\n[1] A Paper, 2024. `k`\n"
         assert render_output._swap_manual_refs_for_citeproc(text) == (
             "A claim [@k].\n\n## Bibliography\n\n::: {#refs}\n:::\n"
@@ -57,16 +41,10 @@ class TestSwapManualRefsForCiteproc:
         assert render_output._swap_manual_refs_for_citeproc(text) == text
 
     def test_leaves_a_latex_fragment_alone(self):
-        # thesis-chapter-writer's .tex fragment has no Markdown heading and
-        # defers to the user's own thesis-wide bibliography.
         text = "A claim \\citep{k}.\n\n\\section{References}\n"
         assert render_output._swap_manual_refs_for_citeproc(text) == text
 
     def test_content_after_references_survives_in_the_pandoc_copy(self):
-        # M-8: this used to drop everything from the heading to end of
-        # file -- an appendix or acknowledgments after References vanished
-        # from tex/pdf/docx output while the md path (references.apply)
-        # kept it, so two renders of one draft disagreed.
         text = (
             "A claim [@k].\n\n"
             "## References\n\n[1] A Paper, 2024. `k`\n\n"
@@ -89,10 +67,6 @@ class TestAliasFor:
         "citekey",
         [
             "zech_digital-twins-as--service_2024",
-            # This project's own corpus has a 3-hyphen key. A single
-            # replace("--", "-x2d-") leaves "state-x2d--art" -- still
-            # truncating, so the citation resolves to nothing and the source
-            # silently disappears from the rendered bibliography.
             "tygesen_state---art_2019",
             "a----b",
         ],
@@ -101,16 +75,10 @@ class TestAliasFor:
         assert "--" not in render_output._alias_for(citekey)
 
     def test_no_double_hyphen_unchanged_value(self):
-        # _alias_for always transforms; callers only invoke it for keys
-        # already known to contain "--" (see _safe_render_inputs).
         assert render_output._alias_for("plain_key_2024") == "plain_key_2024"
 
 
 class TestSanitizeForLatex:
-    """Control characters and decomposed accents break pdflatex, not
-    pandoc -- both reach a draft via a quoted passage straight out of
-    content/parsed/<citekey>.txt (#389). Nothing else may change (#948)."""
-
     def test_a_nul_byte_is_stripped(self):
         assert render_output._sanitize_for_latex("been outlined in ISO 23,247 \x00") == (
             "been outlined in ISO 23,247 "
@@ -132,19 +100,9 @@ class TestSanitizeForLatex:
         assert render_output._sanitize_for_latex(text) == text
 
     def test_a_decomposed_accent_is_joined(self):
-        # pdftotext can emit é as e + U+0301; pdflatex rejects the bare
-        # combining mark (exit 43) and accepts the composed letter. NFC is
-        # canonical equivalence, so this changes how é is stored, not what
-        # the text says.
         assert render_output._sanitize_for_latex("cafe\u0301") == "caf\u00e9"
 
     def test_no_other_code_point_is_changed(self):
-        # The class #948 names: a transform over a whole draft is identity
-        # outside its stated domain. The domain is the C0 controls the
-        # regex names, plus NFC; every other assigned code point must come
-        # back as itself. Exhaustive rather than sampled, because the
-        # transform is per character: ~150k assigned code points, about a
-        # second.
         changed = [
             f"U+{cp:04X}"
             for cp in range(0x110000)
@@ -169,8 +127,6 @@ class TestSafeRenderInputs:
         assert safe_bib == bib
 
     def test_a_nul_byte_in_the_draft_is_sanitized_in_the_safe_copy(self, tmp_path):
-        # The draft's own file on disk is never touched -- only the temp
-        # copy handed to pandoc, same as the other two fixups here.
         md = tmp_path / "in.md"
         md.write_text("Quoting ISO 23,247 \x00 verbatim.\n")
         bib = tmp_path / "bibliography.bib"
@@ -204,27 +160,11 @@ class TestSafeRenderInputs:
 
         bib_text = safe_bib.read_text()
         assert "@article{zech_digital-twins-as-x2d-service_2024," in bib_text
-        # The "-1" duplicate entry must be untouched, not also aliased.
         assert "@article{zech_digital-twins-as--service_2024-1," in bib_text
 
 
 class TestDeferringCitationsToTheConsumingDocument:
-    """A `--fragment` render emits `\\citep{...}` and no reference list: the
-    document that `\\input`s it resolves every citation once, so one source
-    carries one number across the whole book.
-
-    Citeproc assigns numbers in the pass that builds the list, so the
-    alternative -- resolve per unit, collect the lists at the back -- gives
-    chapter 1 and chapter 2 each their own `[2]` for different papers, in a
-    book that compiles cleanly. These pin the two text-level halves of
-    moving the resolution rather than the list.
-    """
-
     def test_the_references_section_goes_entirely_heading_and_all(self):
-        """The difference from `_swap_manual_refs_for_citeproc`, which keeps
-        the heading for citeproc's untitled bibliography to sit under. Here
-        there is no bibliography to title, so a kept heading would be an
-        empty `References` chapter in the assembled book."""
         text = "Body [@smith_2024].\n\n## References\n\n[1] Smith. `smith_2024`\n"
 
         out = render_output._citeproc.drop_manual_refs(text)
@@ -234,9 +174,6 @@ class TestDeferringCitationsToTheConsumingDocument:
         assert "Body [@smith_2024]." in out
 
     def test_a_section_after_references_survives(self):
-        """M-8, the same rule the swap obeys: an appendix introduced by its
-        own heading after References is not part of it, and dropping to the
-        end of the file would delete it from the book silently."""
         text = "Body.\n\n## References\n\n[1] Smith. `smith_2024`\n\n## Appendix\n\nKeep me.\n"
 
         out = render_output._citeproc.drop_manual_refs(text)
@@ -250,11 +187,6 @@ class TestDeferringCitationsToTheConsumingDocument:
         assert render_output._citeproc.drop_manual_refs(text) == text
 
     def test_every_double_hyphen_key_in_the_bib_is_aliased_not_just_one_drafts(self):
-        """The book's `.bib` is read by one `bibtex` pass over every
-        chapter, but each chapter is rendered separately. Aliasing only the
-        keys the draft in hand cites would let the last unit rendered decide
-        the file's contents, and every other unit's `\\citep{...-x2d-...}`
-        would resolve to nothing."""
         bib = (
             "@article{tygesen_state---art_2019, title={A}}\n"
             "@book{lim_state--art_2020, title={B}}\n"
@@ -273,10 +205,6 @@ class TestDeferringCitationsToTheConsumingDocument:
         assert render_output._citeproc.aliased_bib_text(bib) == bib
 
     def test_substituted_drops_the_references_section_for_a_fragment_only(self, tmp_path):
-        """The drop rides on the one function that answers "what does the
-        writer actually see", so there is no second place rewriting the
-        same text. A standalone render keeps the section for
-        `_swap_manual_refs_for_citeproc` to fill from citeproc."""
         draft = tmp_path / "unit.md"
         text = "Body [@a_2024].\n\n## References\n\n[1] A. `a_2024`\n"
         draft.write_text(text, encoding="utf-8")
@@ -285,10 +213,6 @@ class TestDeferringCitationsToTheConsumingDocument:
         assert "## References" not in render_output._substituted(text, draft, "tex", {}, True)
 
     def test_substituted_drops_the_references_section_for_deferred_citations(self, tmp_path):
-        """A deferred render's `\\bibliography` is the document's one
-        list, so the manual one goes, as for a fragment -- but the render
-        is a standalone article, so its chapter number stays. Pure text,
-        no pandoc, so every CI leg reaches it."""
         draft = tmp_path / "unit.md"
         text = (
             "# Chapter 1: Twins\n\nBody [@sample_dt_overview_2024].\n\n"

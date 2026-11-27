@@ -1,13 +1,3 @@
-"""Tests for chitragupta/draft_diff's redline: latexdiff's output patched
-with the house markup and margin notes, and the compile around it.
-
-`patch` is tested on a stored, trimmed latexdiff output of two deferred
-renders of the spike scenario (a moved section, a new citation, a
-changed fraction, a redrawn figure), so what it is handed is what
-latexdiff really writes. `redline`'s launches are faked at the module's
-one patch point, `_redline._run`; no TeX or latexdiff runs here.
-"""
-
 import subprocess
 from pathlib import Path
 
@@ -67,7 +57,6 @@ def test_patch_inserts_house_markup_before_document(diff_tex):
         "\\newcommand{\\cgchangenote}[1]{\\marginnote{\\footnotesize\\sffamily #1}}",
     ):
         assert line in preamble
-    # After latexdiff's own definitions, which `\RenewDocumentCommand` needs.
     assert preamble.index("\\providecommand{\\DIFadd}") < preamble.index("\\usepackage{lua-ul}")
     assert out.count("\\begin{document}") == 1
 
@@ -106,10 +95,8 @@ def test_patch_flags_redrawn_figure_moved_and_logged_sections(diff_tex):
         "\\subsection{1. Introduction}\\cgchangenote{log: 2026-11-12 tighten intro}"
         "\\label{introduction}"
     ) in out
-    # On the inserted heading, never on the struck-out one it moved from.
     assert "else}}\\cgchangenote{moved}\\label{integrating-with-everything-else}" in out
     assert out.count("\\cgchangenote{moved}") == 1
-    # Changed but unlogged: no note.
     assert "\\subsection{5a. A worked estimate}\\label" in out
 
 
@@ -124,7 +111,6 @@ def test_patch_skips_notes_without_an_anchor(diff_tex):
         sections=[
             SectionChange("9. Not here", "moved", 0),
             SectionChange("4. Integrating with everything else", "removed", 30),
-            # The second section of this title has no heading of its own.
             SectionChange("1. Introduction", "unchanged", 0),
             SectionChange("1. Introduction", "moved", 0),
         ],
@@ -151,13 +137,9 @@ def test_plain_title_drops_markup_labels_and_deleted_text():
         "3. Using the state & x"
     )
     assert _titles.plain_title("A % comment\n\\label{a}B") == "A B"
-    # An unclosed group reaches the end rather than looping.
     assert _titles.group_end("{abc", 0) == 4
 
 
-# pandoc 3's LaTeX for Markdown headings that carry markup: inline code
-# and emphasis come wrapped in `\texorpdfstring`, an `{#id}` attribute
-# becomes the label, and dashes are spelled out.
 _MARKED_UP_HEADINGS = r"""\begin{document}
 \subsection{\texorpdfstring{The \texttt{sync}
 command}{The sync command}}\label{the-sync-command}
@@ -207,20 +189,14 @@ def test_plain_title_keeps_texorpdfstrings_first_argument_and_reads_dashes():
     wrapped = "\\texorpdfstring{The \\texttt{sync}\ncommand}{The sync command}"
     assert _titles.plain_title(wrapped) == "The sync command"
     assert _titles.plain_title("A --- B -- C") == "A — B – C"
-    # A malformed one with no second argument keeps what it has.
     assert _titles.plain_title("\\texorpdfstring{Alone} here") == "Alone here"
 
 
 def test_a_tex_drafts_titles_are_read_as_latex():
-    """A `.tex` draft's report titles are LaTeX already: `\\_` is an
-    underscore there, not Markdown emphasis to strip."""
     new = VersionView(ref="current draft", label="", date="", text="", suffix=".tex", figures={})
     tex = "\\begin{document}\n\\section{The \\texttt{my\\_var} field}\\label{x}\n\\end{document}\n"
     report = _report(new=new, sections=[SectionChange("The \\texttt{my\\_var} field", "moved", 0)])
     assert "field}\\cgchangenote{moved}\\label{x}" in _redline.patch(tex, report)
-
-
-# --- redline ---------------------------------------------------------------
 
 
 @pytest.fixture
@@ -234,8 +210,6 @@ def on_path(monkeypatch):
 
 
 class _Launches:
-    """A fake `_run`: records each argv; lualatex succeeds or fails on cue."""
-
     def __init__(
         self, diff_tex, lualatex_ok=lambda attempt: True, blg="Done.\n", aux="\\citation{k}\n"
     ):
@@ -278,8 +252,6 @@ def test_redline_requires_latexdiff(on_path, tmp_path):
 
 
 def test_os_deps_installs_the_latexdiff_the_hint_names():
-    """The hint sends the reader to os-deps, so its apt line must name the
-    `latexdiff` package itself: texlive-extra-utils only Suggests it."""
     script = (REPO_ROOT / "scripts" / "install_full_pipeline.sh").read_text(encoding="utf-8")
     install = script[script.index("install_os_deps() {") :]
     apt = install[install.index("apt-get install") : install.index("libgl1")]
@@ -353,18 +325,14 @@ def test_redline_fails_on_a_bibtexu_error(monkeypatch, on_path, tmp_path, diff_t
     monkeypatch.setattr(_redline, "_run", _Launches(diff_tex, blg=blg))
     with pytest.raises(_redline.RedlineFailed, match="1 error message") as raised:
         _redline.redline(old, new, _report(), tmp_path / "out", "survey")
-    # What the spec's failure row promises: the artefacts kept, by path.
     message = str(raised.value)
     for kept in ("survey.diff.blg", "survey.diff.tex", "survey.diff.log"):
         assert str(new.parent / kept) in message
 
 
 def test_redline_skips_bibtexu_without_citations(monkeypatch, on_path, tmp_path, diff_tex):
-    """bibtexu errors on an aux with no `\\citation` ("I found no
-    \\citation commands"), so a citation-free draft must not run it."""
     on_path("latexdiff", "lualatex", "bibtexu")
     old, new = _sides(tmp_path)
-    # A leftover log from an earlier, cited run must not be read either.
     (new.parent / "survey.diff.blg").write_text("(There was 1 error message)\n")
     launches = _Launches(diff_tex, blg="(There was 1 error message)\n", aux="\\relax\n")
     monkeypatch.setattr(_redline, "_run", launches)
@@ -376,9 +344,6 @@ def test_redline_skips_bibtexu_without_citations(monkeypatch, on_path, tmp_path,
 
 
 def test_redline_reads_a_bibliography_of_any_name(monkeypatch, on_path, tmp_path, diff_tex):
-    """The render copies the project's `.bib` under its own name, which
-    bibtex cannot open when it has a space; the redline reads it as
-    `bibliography.bib`, the name `patch` writes."""
     on_path("latexdiff", "lualatex", "bibtexu")
     monkeypatch.setattr(config, "BIB_FILE_PATH", tmp_path / "papers" / "My Library.bib")
     old, new = _sides(tmp_path)
@@ -424,7 +389,6 @@ def test_redline_passes_a_blg_whose_names_say_error(monkeypatch, on_path, tmp_pa
 def test_redline_fails_when_bibtexu_leaves_no_blg(monkeypatch, on_path, tmp_path, diff_tex):
     on_path("latexdiff", "lualatex", "bibtexu")
     old, new = _sides(tmp_path)
-    # A clean log from an earlier run must not stand in for this one's.
     (new.parent / "survey.diff.blg").write_text("Done.\n")
     monkeypatch.setattr(_redline, "_run", _Launches(diff_tex, blg=None))
     with pytest.raises(_redline.RedlineFailed, match="bibtexu wrote no survey.diff.blg"):

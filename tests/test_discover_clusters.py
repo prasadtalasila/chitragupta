@@ -1,12 +1,3 @@
-"""chitragupta/discover/_clusters.py: the disagreement grid's terminal
-twin over stored partitions (#712).
-
-The property under test: the view reads the builder's partitions and
-derives the same two disagreement lists the app's grid shows -- and
-refuses (None) for an artefact from an older run rather than clustering
-anything itself.
-"""
-
 import json
 
 from chitragupta.discover import _clusters
@@ -47,10 +38,6 @@ def test_the_disagreement_lists_read_from_stored_partitions():
     data = _clusters.build_clusters(graph(), topic_set(), 2.0)
     assert data["inflation"] == 2.0
     disagreeing = {(p["a"], p["b"]) for p in data["semantic_only"] + data["overlap_only"]}
-    # At inflation 2.0 the stored partitions are overlap [0,0,1,1,2]
-    # and semantic [2,2,0,1,2] (mcl_cases.json's own row): a-b agree in
-    # both, a-e and b-e are semantic-only, and c-d -- one paper-sharing
-    # cluster, two semantic ones -- is the overlap-only reading.
     assert ("a", "e") in disagreeing
     assert ("b", "e") in disagreeing
     assert [(p["a"], p["b"]) for p in data["overlap_only"]] == [("c", "d")]
@@ -69,7 +56,6 @@ def test_shared_counts_sort_the_lists():
 
 def test_an_agreeing_inflation_says_so():
     plain = graph()
-    # One family's partitions copied over the other: agreement everywhere.
     plain["communities"]["semantic"] = json.loads(json.dumps(plain["communities"]["overlap"]))
     data = _clusters.build_clusters(plain, topic_set(), 2.0)
     assert data["semantic_only"] == [] and data["overlap_only"] == []
@@ -89,8 +75,6 @@ def test_an_older_artefact_yields_none_not_a_computation():
     del old["communities"]
     assert _clusters.build_clusters(old, topic_set(), 2.0) is None
     partial = graph()
-    # 5.0 is outside the slider's stored range, so no partition exists
-    # for it -- unlike 3.05, which would format onto a stored "3.0".
     assert _clusters.build_clusters(partial, topic_set(), 5.0) is None
 
 

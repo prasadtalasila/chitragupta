@@ -1,6 +1,3 @@
-"""The house block's region inside a figure file (#1013): what state it
-is in, and what stamping it produces. No TeX, no file walk."""
-
 import re
 import tomllib
 from pathlib import Path
@@ -13,8 +10,6 @@ from chitragupta.figure import State
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BLOCK = REPO_ROOT / "assets" / "tikz" / "cg-figstyle.tex"
 REGISTER = REPO_ROOT / "assets" / "tikz" / "cg-figstyle.versions.toml"
-# The v2 block exactly as it shipped, so the upgrade is tested against a
-# real past release rather than only against `old_block`'s stand-in.
 V2_BLOCK = REPO_ROOT / "tests" / "fixtures" / "figure" / "cg-figstyle-v2.tex"
 
 LIBS = "\\usetikzlibrary{arrows.meta,positioning}%\n"
@@ -28,26 +23,17 @@ def house():
 
 
 def old_block(house, version=0):
-    """A stand-in for a past release: the current block with one value
-    changed and its marker naming `version`."""
     marker = f" v{house.version} "
     assert marker in house.text and "0.95pt" in house.text, "old_block's edits no longer land"
     return house.text.replace(marker, f" v{version} ", 1).replace("0.95pt", "0.9pt", 1)
 
 
 def house_with_history(house):
-    """`house`, plus a released v0 that `old_block` reproduces."""
     released = {**house.released, figure.digest(old_block(house)): 0}
     return figure.House(text=house.text, version=house.version, released=released)
 
 
 class TestTheOldBlockStandIn:
-    """`old_block` is a past release only while both of its edits land.
-    A `.replace` that matches nothing returns its input unchanged, so a
-    marker or value that drifted would hand every test using it the
-    current block under another name, and those tests classify by
-    digest, so they would stay green."""
-
     def test_it_refuses_a_marker_it_cannot_renumber(self, house):
         drifted = house.text.replace(f" v{house.version} ", f" v{house.version}.0 ", 1)
 
@@ -80,10 +66,6 @@ class TestTheRegisterAndTheBlockAgree:
 
 
 class TestTheV2Release:
-    """v3 changed colours, spacing and the edge tag (#1047). Every figure
-    drawn before it carries v2, and `figure sync` must upgrade that in
-    place while still refusing one somebody edited."""
-
     @pytest.fixture
     def v2(self):
         return V2_BLOCK.read_text(encoding="utf-8")

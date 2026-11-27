@@ -1,12 +1,3 @@
-"""`discover --why A B`: the absence verdict's terminal twin (#708).
-
-The property under test: the terminal names the same shared papers, the
-same hypergeometric tail and the same drawn/withheld verdict the app's
-`assets/webapp/absence.js` computes -- from the same artefacts -- and
-does one thing the app cannot: it names the gate's own threshold, which
-the artefact stores and the app payload drops.
-"""
-
 import json
 
 from test_discover import GRAPH, TOPIC_SET, place_nowhere, prepare, write_artefacts
@@ -15,9 +6,6 @@ from test_webapp_hypergeometric import cases
 from chitragupta import discover
 from chitragupta.discover import _absence
 
-# A withheld pair: the documented worked example (one shared paper
-# between topics of size 2 and 3 in a 4-paper corpus, p = 1.0) with a
-# third topic sharing nothing, so every verdict below has a subject.
 WHY_GRAPH = {
     "model": "the-model",
     "n_docs": 4,
@@ -29,8 +17,6 @@ WHY_GRAPH = {
         {"label": "machine learning", "provenance": "emergent", "size": 3, "centroid": [-0.5, 0.5]},
         {"label": "formal methods", "provenance": "seed", "size": 1, "centroid": [0.1, 0.9]},
     ],
-    # An edge between a *different* pair, so the stored-edge scan has
-    # something to walk past for every pair the tests ask about.
     "edges_overlap": [
         {
             "a": "machine learning",
@@ -78,9 +64,6 @@ WHY_TOPIC_SET = {
 
 class TestSurvival:
     def test_every_shared_case_matches(self):
-        """The same contract absence.js honours: every row of
-        tests/webapp/hypergeometric_cases.js, to the same precision the
-        node suite demands of the browser."""
         rows = cases()
         assert len(rows) >= 10  # non-vacuity, as the scipy twin asserts
         for row in rows:
@@ -92,8 +75,6 @@ class TestSurvival:
         assert _absence.survival(4, 10, 3, 4) == 0.0
 
     def test_choosing_more_than_there_is_has_no_weight(self):
-        """The same guard absence.js's logChoose carries: k outside
-        [0, n] is log(0), not an error."""
         assert _absence._log_choose(3, 5) == float("-inf")
 
 
@@ -121,9 +102,6 @@ class TestExplain:
         assert data["p"] == 0.004  # the stored edge's own p, not a recomputation
 
     def test_a_surprising_overlap_with_no_edge_is_named_as_such(self):
-        """p below the stored threshold yet no edge: the artefact is
-        internally inconsistent (an older run, usually), and the verdict
-        must not blame the gate."""
         graph = dict(WHY_GRAPH) | {"n_docs": 497, "p_value": 0.01}
         topic_set = json.loads(json.dumps(WHY_TOPIC_SET))
         topic_set["topics"][0]["members"] = [
@@ -140,9 +118,6 @@ class TestExplain:
         assert "disagrees with itself" in prose
 
     def test_a_stored_withheld_row_is_preferred_over_recomputing(self):
-        """#710 stores the gate's refusals; a deliberately-off p proves
-        the number is read from the artefact, not recomputed -- the same
-        rule absence.js follows."""
         graph = dict(WHY_GRAPH) | {
             "edges_withheld": [
                 {
@@ -156,9 +131,6 @@ class TestExplain:
         data = _absence.explain(graph, WHY_TOPIC_SET, "digital twin", "machine learning")
         assert data["p"] == 0.42
         assert data["verdict"] == "withheld-chance"
-        # A pair the stored list does not name still recomputes: the
-        # only sharing pair here is dt/ml, so give the list a stray row
-        # to walk past and ask about the pair it does not hold.
         stray = dict(WHY_GRAPH) | {
             "edges_withheld": [
                 {"a": "formal methods", "b": "machine learning", "shared": ["p9"], "p_value": 0.9}
@@ -214,9 +186,6 @@ class TestWhyCli:
         assert "digital twin" in capsys.readouterr().out
 
     def test_a_degradation_note_reaches_the_terminal(self, isolated_config, capsys, monkeypatch):
-        """The ladder's own note (here: the semantic rung skipped without
-        the enrich extra) prints before the verdict, exactly as the
-        topic view does -- and only in prose mode."""
         from chitragupta.discover import _resolve
 
         def refuse() -> None:

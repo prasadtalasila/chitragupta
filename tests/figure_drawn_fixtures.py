@@ -1,9 +1,3 @@
-"""Builders for synthetic drawn figures, shared by the connector tests.
-
-Coordinates are pt, as the probe reports them. A node's text box, where
-a test needs one, is given explicitly.
-"""
-
 from chitragupta.review.figure_layout import Drawn, DrawnLine, DrawnNode
 
 
@@ -19,7 +13,6 @@ def node(
     stroke=None,
     runs=(),
 ):
-    """`fill` and `stroke` are `Paint`s and `runs` `TextRun`s (#1055)."""
     return DrawnNode(
         name,
         shape,

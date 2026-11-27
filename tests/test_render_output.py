@@ -1,12 +1,3 @@
-"""chitragupta/render_output/__init__.py: render() itself, end to end.
-
-Split from one test module to mirror `chitragupta/render_output/`'s own split,
-the way `tests/test_enrich_*.py` mirrors `chitragupta/enrich/`. Shared setup --
-the binary probes and the figure fixtures -- lives in `tests/conftest.py`
-so the eight modules do not each re-run a `kpsewhich` subprocess at
-import.
-"""
-
 import shutil
 import subprocess
 import sys
@@ -34,18 +25,12 @@ from tests.conftest import (
 
 @pytest.mark.usefixtures("programs_on_path")
 class TestRunPandoc:
-    """`_run_pandoc` in isolation, via a mocked `subprocess.run` -- no
-    real pandoc needed, unlike the rest of this module's tests."""
-
     def _fake_completed(self, stdout="", stderr=""):
         return subprocess.CompletedProcess(
             args=["pandoc"], returncode=0, stdout=stdout, stderr=stderr
         )
 
     def test_forwards_stderr_on_a_successful_exit(self, monkeypatch, capsys):
-        # M-7: capture_output=True was silently discarding this -- citeproc's
-        # own diagnostics ("citation not found", a missing image) land on
-        # pandoc's stderr with exit 0, not a raised CalledProcessError.
         monkeypatch.setattr(
             subprocess,
             "run",
@@ -80,10 +65,7 @@ class TestRunPandoc:
             render_output._run_pandoc(["pandoc"], {})
 
     def test_pandoc_and_its_engine_are_launched_by_absolute_path(self, monkeypatch, tmp_path):
-        """#974: pandoc starts the engine by the name `--pdf-engine`
-        gives, which on Windows is looked up in cwd before PATH."""
         launched = []
-        # The pdf a successful run leaves, which `_floats` reads (#1065).
         pdf = tmp_path / "out.pdf"
         pdf.write_bytes(b"")
 
@@ -101,9 +83,6 @@ class TestRunPandoc:
 
 
 class TestRenderMarkdown:
-    """`--format md` on a Markdown draft, which is a citation-numbering
-    job rather than a format conversion and so never calls pandoc."""
-
     def test_produces_plain_numbered_markdown(self, isolated_config, tmp_path, monkeypatch):
         con = ledger.connect()
         for key, title in [("b_2024", "B Paper"), ("a_2023", "A Paper")]:
@@ -119,15 +98,12 @@ class TestRenderMarkdown:
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text("# T\n\nOne [@b_2024]. Two [@a_2023].\n")
 
-        # Deliberately hidden: this path must not need pandoc, so a host
-        # without it still gets a readable numbered draft.
         monkeypatch.setattr(shutil, "which", lambda _: None)
         out_path = render_output.render(str(draft), output_format="md")
         text = out_path.read_text()
 
         assert out_path == isolated_config.RENDERED_DIR / "draft.md"
         assert "One [1]. Two [2]." in text
-        # None of pandoc's Markdown-writer artifacts.
         assert "\\[" not in text, "brackets must not be escaped"
         assert ":::" not in text, "no fenced-div wrappers"
         assert "csl-" not in text, "no citeproc span classes"
@@ -136,8 +112,6 @@ class TestRenderMarkdown:
     def test_a_citekey_missing_from_the_ledger_is_reported_not_raised(
         self, isolated_config, ledger_con, tmp_path, capsys, monkeypatch
     ):
-        # The gate would normally catch this first, but render_output is a
-        # standalone CLI -- it must not answer with a traceback.
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text("Body [@never_synced_2024].\n")
 
@@ -159,14 +133,10 @@ class TestRenderMarkdown:
         draft.write_text(original)
         render_output.render(str(draft), output_format="md")
 
-        # The draft is the gated source; only content/rendered/ is derived.
         assert draft.read_text() == original
 
     @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
     def test_a_latex_input_still_goes_through_pandoc(self, isolated_config, tmp_path):
-        # thesis-chapter-writer renders its .tex fragment to .md as a
-        # preview: that is a real conversion, and the fragment carries
-        # \citep{...} rather than [@key] and no reference list of its own.
         con = ledger.connect()
         add_citable(con, "a_2024", title="A Paper", year="2024")
         con.close()
@@ -196,8 +166,6 @@ class TestRenderMarkdown:
     def test_two_topics_sharing_a_stem_do_not_overwrite_each_other(
         self, isolated_config, monkeypatch
     ):
-        # Flat output made this silent: both drafts rendered to
-        # content/rendered/survey.md, last one wins, no warning.
         for topic, body in [("dt", "First topic.\n"), ("mde", "Second topic.\n")]:
             draft = isolated_config.DRAFTS_DIR / topic / "survey.md"
             draft.parent.mkdir(parents=True)
@@ -211,8 +179,6 @@ class TestRenderMarkdown:
     def test_a_local_image_is_copied_into_the_mirrored_directory(
         self, isolated_config, monkeypatch
     ):
-        # An image left behind in the flat directory would break the
-        # self-containment the .tex output depends on.
         draft = isolated_config.DRAFTS_DIR / "dt" / "survey.md"
         draft.parent.mkdir(parents=True)
         (draft.parent / "figure.png").write_bytes(b"fake png bytes")
@@ -249,11 +215,6 @@ class TestRenderReal:
     def test_a_bib_field_cannot_make_the_engine_read_outside_the_draft(
         self, isolated_config, tmp_path
     ):
-        # #823: a shared (e.g. Zotero group) .bib is collaborator text. It
-        # used to fail closed at pdflatex's `openin_any=p`; since #996 the
-        # field's raw TeX never reaches the engine as TeX at all
-        # (bib_raw_tex_as_text.lua), so the render succeeds and shows what
-        # the .bib says.
         secret = tmp_path / "outside" / "secret.txt"
         secret.parent.mkdir()
         secret.write_text("NOT-FOR-THE-PDF\n")
@@ -276,9 +237,6 @@ class TestRenderReal:
 
     @pytest.mark.slow
     def test_tex_in_the_draft_still_cannot_input_a_file_outside_it(self, isolated_config, tmp_path):
-        # #823's fence, on the engine #996 moved to and in the form #1037
-        # gave it: TeX's own `\input` of an absolute path is refused, so
-        # the render fails closed rather than typesetting the file.
         secret = tmp_path / "outside" / "secret.txt"
         secret.parent.mkdir()
         secret.write_text("NOT-FOR-THE-PDF\n")
@@ -289,14 +247,10 @@ class TestRenderReal:
         with pytest.raises(subprocess.CalledProcessError) as raised:
             render_output.render(str(draft), output_format="pdf")
 
-        # pandoc relays TeX's `!` line; the fence's own log line stays in
-        # pandoc's temp directory (tests/test_tex_engine.py reads it).
         assert f"I can't find file `{secret}" in raised.value.stderr
         assert not (isolated_config.RENDERED_DIR / "draft.pdf").exists()
 
     def test_a_dotted_tmpdir_is_reported_not_run_into(self, isolated_config, tmp_path, monkeypatch):
-        # Without the up-front check pandoc's pdflatex exits 43 on its own
-        # temp copy of the draft (#823 review).
         dotted = tmp_path / ".cache" / "tmp"
         dotted.mkdir(parents=True)
         monkeypatch.setenv("TMPDIR", str(dotted))
@@ -311,9 +265,6 @@ class TestRenderReal:
     @pytest.mark.slow
     @pytest.mark.parametrize("output_format", ["tex", "pdf"])
     def test_every_pandoc_format_lands_beside_the_draft(self, isolated_config, output_format):
-        # The `md` format is covered without pandoc above; these two are
-        # the ones that only ever ran through pandoc, and they flattened
-        # the same way.
         isolated_config.BIB_FILE_PATH.write_text("")
         draft = isolated_config.DRAFTS_DIR / "dt" / "survey.md"
         draft.parent.mkdir(parents=True)
@@ -344,18 +295,10 @@ class TestRenderReal:
         tex = out_path.read_text()
 
         assert "documentclass" in tex or "article" in tex
-        # The draft's own section is stripped and citeproc's numbered one
-        # takes its place: exactly one bibliography, with the author and
-        # journal in it, and no citekey label reaching the reader (the
-        # draft's `smith_2024` code span would come through as \texttt).
-        # Case-insensitively: IEEE style sentence-cases titles, so
-        # citeproc's own entry reads "An example paper".
         assert tex.lower().count("an example paper") == 1, "exactly one bibliography, not two"
         assert "J. Smith" in " ".join(tex.split())
         assert "J. Examples" in " ".join(tex.split())
         assert "\\texttt" not in tex
-        # The draft's own heading survives, and citeproc's bibliography
-        # lands under it rather than at the end of an untitled document.
         assert "References" in tex
         assert tex.index("References") < tex.index("CSLReferences}{")
 
@@ -378,10 +321,6 @@ class TestRenderReal:
         out_path = render_output.render(str(draft), output_format="html")
         text = " ".join(out_path.read_text().split())
 
-        # The numbered heading a genre skill chose, not a generic one
-        # pandoc invented, and the entries sit under it. Anchored on the
-        # entry's own div id rather than "csl-entry", which also appears
-        # in the standalone template's stylesheet up in <head>.
         assert "6. References" in text
         assert text.index("6. References") < text.index('id="ref-smith_2024"')
 
@@ -404,18 +343,11 @@ class TestRenderReal:
             "# Title\n\nOne [@k1_2024]. Another [@k2_2024].\n\n"
             "A run of four [@k2_2024; @k3_2024; @k4_2024; @k5_2024].\n"
         )
-        # html rather than tex/pdf so the assertions can read the markers
-        # as a reader sees them, without LaTeX's {[}1{]} escaping in the way.
         out_path = render_output.render(str(draft), output_format="html")
-        # Pandoc hard-wraps its output, so a name can arrive split across
-        # two lines ("J.\nDoe") -- collapse whitespace before matching.
         text = " ".join(out_path.read_text().split())
 
-        # Numbered by first appearance, not by citekey order.
         assert 'data-cites="k1_2024">[1]</span>' in text
         assert 'data-cites="k2_2024">[2]</span>' in text
-        # The collapsed form is the whole reason _collapsed_csl exists:
-        # upstream ieee.csl alone renders this run as "[2], [3], [4], [5]".
         assert "[2]–[5]" in text
         assert "J. Doe" in text
         assert "J. Examples" in text
@@ -465,15 +397,6 @@ class TestRenderReal:
     def test_local_image_embeds_when_input_is_a_relative_path(
         self, isolated_config, tmp_path, monkeypatch
     ):
-        # Regression test: pandoc resolves a draft's local image references
-        # (`![...](figure.png)`) relative to pandoc's own working directory,
-        # not the draft's directory -- so invoking this CLI from anywhere
-        # other than the draft's own directory silently dropped the image
-        # (pandoc's PDF writer falls back to the alt-text caption instead of
-        # erroring) unless --resource-path is passed. monkeypatch.chdir to a
-        # directory that is neither tmp_path nor its parent, matching how
-        # this CLI is actually invoked (from the repo root, not
-        # content/drafts/).
         con = ledger.connect()
         add_citable(con, "smith_2024", title="An Example Paper", year="2024")
         con.close()
@@ -484,9 +407,6 @@ class TestRenderReal:
         draft_dir = tmp_path / "content" / "drafts"
         draft_dir.mkdir(parents=True)
         draft = draft_dir / "draft.md"
-        # A real, valid 1x1 PNG (built from raw chunks, not a placeholder),
-        # so pandoc's PDF writer can actually decode and embed it, not just
-        # find the path.
         png_bytes = bytes.fromhex(
             "89504e470d0a1a0a0000000d4948445200000001000000010802000000907753de"
             "0000000c49444154789c63f8cfc0000003010100c9fe92ef0000000049454e44ae"
@@ -506,14 +426,6 @@ class TestRenderReal:
     def test_local_image_is_copied_to_rendered_dir_so_standalone_tex_compiles(
         self, isolated_config, tmp_path, monkeypatch
     ):
-        # Regression test: rendering to `tex` only asks pandoc to emit
-        # \includegraphics{figure.png} into the .tex source -- it never
-        # copies the actual image file anywhere, so the standalone .tex
-        # landing in content/rendered/ can't find it and fails to compile
-        # on its own ("File `figure.png' not found"), even though
-        # --resource-path (above) lets the *pdf* format's own pandoc-driven
-        # pdflatex pass embed it correctly. A .tex a user can't compile
-        # isn't a real deliverable.
         con = ledger.connect()
         add_citable(con, "smith_2024", title="An Example Paper", year="2024")
         con.close()
@@ -524,8 +436,6 @@ class TestRenderReal:
         draft_dir = tmp_path / "content" / "drafts"
         draft_dir.mkdir(parents=True)
         draft = draft_dir / "draft.md"
-        # A real, valid 1x1 PNG (built from raw chunks, not a placeholder),
-        # so pdflatex can actually decode and embed it, not just find it.
         png_bytes = bytes.fromhex(
             "89504e470d0a1a0a0000000d4948445200000001000000010802000000907753de"
             "0000000c49444154789c63f8cfc0000003010100c9fe92ef0000000049454e44ae"
@@ -544,8 +454,6 @@ class TestRenderReal:
         assert copied_image.exists()
         assert copied_image.read_bytes() == png_bytes
 
-        # The copied image must actually make the standalone .tex
-        # compilable on its own, not just "a file happens to be present".
         compile_result = subprocess.run(
             ["pdflatex", "-interaction=nonstopmode", out_path.name],
             cwd=out_path.parent,
@@ -557,10 +465,6 @@ class TestRenderReal:
     def test_image_reference_outside_the_draft_directory_is_not_copied(
         self, isolated_config, tmp_path
     ):
-        # A `../`-escaping or absolute image path must not let a draft
-        # write outside content/rendered/ -- skip it and let pandoc's own
-        # missing-resource handling surface the problem, same as any other
-        # image path that doesn't resolve to a real file.
         secret = tmp_path / "secret.png"
         secret.write_bytes(b"not a real png, just a marker")
 
@@ -581,12 +485,6 @@ class TestRenderReal:
         reason="pandoc/lualatex/tikz.sty not installed",
     )
     def test_a_tikz_figure_renders_to_pdf(self, isolated_config, tmp_path, monkeypatch):
-        # #222: a bare tikzpicture environment fails pandoc's default LaTeX
-        # template ("Environment tikzpicture undefined") without
-        # \usepackage{tikz}, and \input{figures/fig1.tex} doesn't resolve
-        # at all without TEXINPUTS -- render() succeeding (subprocess.run's
-        # check=True would raise otherwise) is the real assertion here, not
-        # a mocked call.
         isolated_config.BIB_FILE_PATH.write_text("")
         draft_dir = tmp_path / "content" / "drafts"
         (draft_dir / "figures").mkdir(parents=True)
@@ -611,13 +509,6 @@ class TestRenderReal:
     def test_a_tikz_figure_is_copied_so_standalone_tex_compiles(
         self, isolated_config, tmp_path, monkeypatch
     ):
-        # Mirrors test_local_image_is_copied_to_rendered_dir_so_standalone_
-        # tex_compiles: rendering to `tex` only asks pandoc to emit
-        # \input{figures/fig1.tex} into the .tex source -- without
-        # _copy_local_tex_includes the standalone .tex landing in
-        # content/rendered/ can't find the figure and fails to compile on
-        # its own, even though TEXINPUTS (above) lets the *pdf* format's
-        # own pandoc-driven pdflatex pass find it.
         isolated_config.BIB_FILE_PATH.write_text("")
         draft_dir = tmp_path / "content" / "drafts"
         (draft_dir / "figures").mkdir(parents=True)
@@ -653,8 +544,6 @@ class TestRenderReal:
 
 
 class TestInputsAreConfinedToContent:
-    """#113: reading is confined to content/ too, not just writing."""
-
     def test_a_draft_outside_the_content_directory_is_refused(self, isolated_config, tmp_path):
         loose = tmp_path / "loose.md"
         loose.write_text("# T\n\nNo citations.\n")
@@ -667,7 +556,6 @@ class TestInputsAreConfinedToContent:
             render_output.render(str(escaping), output_format="md")
 
     def test_a_symlinked_draft_is_judged_by_where_it_really_lives(self, isolated_config, tmp_path):
-        # The path says content/drafts/dt/, the file is elsewhere on disk.
         real = tmp_path / "outside" / "survey.md"
         real.parent.mkdir(parents=True)
         real.write_text("# T\n")
@@ -681,8 +569,6 @@ class TestInputsAreConfinedToContent:
     def test_a_draft_under_content_but_not_under_drafts_renders_flat(
         self, isolated_config, monkeypatch
     ):
-        # The one remaining flat case: in-content, so accepted, but with
-        # no path under content/drafts/ to mirror.
         scratch = isolated_config.CONTENT_DIR / "scratch" / "notes.md"
         scratch.parent.mkdir(parents=True)
         scratch.write_text("# T\n\nNo citations.\n")
@@ -694,9 +580,6 @@ class TestInputsAreConfinedToContent:
 
 
 class TestOutputDirOverride:
-    """`render(output_dir=...)` -- how chitragupta/review/__init__.py lands a report's
-    renders beside the report instead of in content/rendered/."""
-
     def test_the_caller_s_directory_is_used_verbatim(self, isolated_config, monkeypatch):
         report = isolated_config.REVIEW_DIR / "dt" / "survey.provenance.md"
         report.parent.mkdir(parents=True)
@@ -705,8 +588,6 @@ class TestOutputDirOverride:
         monkeypatch.setattr(shutil, "which", lambda _: None)
         out_path = render_output.render(str(report), output_format="md", output_dir=report.parent)
 
-        # Beside the report, and nothing mirrored into it: the caller has
-        # already decided the whole path.
         assert out_path == report.parent / "survey.provenance.md"
 
     def test_omitting_it_keeps_the_mirroring_behaviour(self, isolated_config, monkeypatch):
@@ -720,8 +601,6 @@ class TestOutputDirOverride:
         assert out_path == isolated_config.RENDERED_DIR / "dt" / "survey.md"
 
     def test_a_directory_outside_content_is_refused(self, isolated_config, tmp_path):
-        """Naming an output directory does not widen where the pipeline
-        may write -- the same rule the input side has had since 3.17.0."""
         draft = isolated_config.DRAFTS_DIR / "survey.md"
         draft.parent.mkdir(parents=True)
         draft.write_text("# T\n")
@@ -742,17 +621,7 @@ class TestOutputDirOverride:
             )
 
 
-# A figure is a pair of sibling files -- figures/<name>.tex holding the
-# TikZ picture and figures/<name>.txt holding the same diagram in
-# WRITING-STANDARDS.md §10's plain ASCII -- and each draft carries
-# whichever form is native to it inline, naming the other in a marker.
-
-
 class TestFigurePairRenderReal:
-    """Both directions through the real toolchain, no mocking: the whole
-    point of the pair is that each output format gets the form it can
-    actually draw, and only a real render proves that."""
-
     @pytest.mark.slow
     @pytest.mark.skipif(
         not (pandoc_available and lualatex_available and tikz_available),
@@ -812,9 +681,6 @@ class TestFigurePairRenderReal:
     def test_a_tex_fragment_renders_its_ascii_twin_to_md(
         self, isolated_config, tmp_path, monkeypatch
     ):
-        # The row this whole feature exists for: pandoc resolves the
-        # \input but drops the tikzpicture, so without the substitution
-        # the .md preview shows no figure at all.
         isolated_config.BIB_FILE_PATH.write_text("")
         draft_dir = tmp_path / "content" / "drafts" / "dt"
         draft_dir.mkdir(parents=True)
@@ -831,10 +697,6 @@ class TestFigurePairRenderReal:
         assert "| model | ------> | solver |" in rendered
 
     def test_a_markdown_draft_to_md_takes_the_ascii_form(self, isolated_config, tmp_path):
-        # No pandoc on this path at all -- render()'s early return never
-        # reaches the substitution `_safe_render_inputs` normally threads
-        # in, so this is the one place that has to inject the figure
-        # itself before writing the numbered copy.
         isolated_config.BIB_FILE_PATH.write_text("")
         draft_dir = isolated_config.DRAFTS_DIR / "dt"
         draft_dir.mkdir(parents=True)
@@ -862,13 +724,6 @@ class TestFigurePairRenderReal:
 
 
 class TestBreakableInlineCode:
-    """A real, previously-overflowing span from a rendered book: a bare
-    URL long enough to bleed past the margin on its own in a paragraph,
-    plus a shorter code span in a heading (a LaTeX moving argument,
-    where `\\url{}`/`\\path{}` would have broken the build or the ToC --
-    real headings in this project's drafts name a short identifier, not
-    a bare URL, so that is the realistic case to prove safe there)."""
-
     _LONG_CODE = "https://github.com/INTO-CPS-Association/plant-controller"
     _HEADING_CODE = "update_schedule"
     _QUOTED_CODE = "--format='json'"
@@ -892,12 +747,6 @@ class TestBreakableInlineCode:
         assert f"\\texttt{{{self._LONG_CODE}}}" not in source
         assert f"\\texttt{{{self._HEADING_CODE}}}" not in source
         assert "\\penalty0" in source
-        # The split has to go through pandoc's own per-chunk LaTeX
-        # escaping, not a reimplementation of it: a quote inside a code
-        # span is pandoc's code-context `\textquotesingle{}`, and a
-        # heading's PDF-bookmark text (stringified from the AST, not
-        # this filter's RawInlines) still has to read the real
-        # identifier rather than losing it to an opaque raw string.
         assert "\\textquotesingle{}json\\textquotesingle{}" in source
         assert "{The update\\_schedule guard}" in source
 
@@ -929,14 +778,6 @@ class TestBreakableInlineCode:
 
 
 class TestWideCodeBlockRenderReal:
-    """The `fvextra` load, end to end against a real `pdflatex`. A
-    `verbatim` line is one unbreakable box without it, so this is the
-    difference between an over-wide code block wrapping and running into
-    the margin -- the largest single class of `Overfull \\hbox` warnings
-    in this project's own book."""
-
-    # Comfortably past the limit at either geometry, with spaces to
-    # break at -- the shape every over-wide line in the real corpus has.
     _WIDE = "GET /sensing/{unit}/{parameter}   measurements, with limit and since_timestamp too"
 
     @pytest.mark.skipif(
@@ -965,26 +806,11 @@ class TestWideCodeBlockRenderReal:
             text=True,
         )
         assert compiled.returncode == 0, compiled.stdout[-2000:]
-        # The assertion the package exists for. Unlike the inline-span
-        # test above, this one is safe to make on the log: the fixture is
-        # a single wide line in an otherwise empty document, so there is
-        # nothing else that could report a box.
         assert "Overfull \\hbox" not in compiled.stdout
 
 
 @pytest.mark.slow
 class TestWideTableCaptionRenderReal:
-    """`\\LTcapwidth`, end to end against a real `pdflatex` and measured on
-    the page rather than in the `.tex`. `longtable.sty` initialises that
-    register to a hardcoded 4in, so before this fix a table caption wrapped
-    inside the middle two-thirds of the line while the prose around it ran
-    the full 6.27in `\\textwidth` -- a difference no assertion over the
-    emitted LaTeX can see, because the `\\caption{}` is identical either
-    way."""
-
-    # At 12pt, 4in holds roughly 55 characters and `\textwidth` roughly
-    # 86, so the bar below sits between the two by a wide enough margin
-    # to survive a different font metric.
     _CAPTION = (
         "A rather long caption that should really span the whole width of the "
         "text block on the page, not merely the four inches longtable defaults to."
@@ -1022,12 +848,6 @@ class TestWideTableCaptionRenderReal:
             text=True,
             check=True,
         ).stdout
-        # Only the caption's own lines, not the widest line on the page:
-        # the table body beneath it is also laid out in columns, and
-        # measuring the whole page would let a wide *row* carry this
-        # assertion and keep it green with the fix reverted. `-layout`
-        # emits the caption as the run of non-blank lines starting at the
-        # number LaTeX gave it.
         lines = [line.strip() for line in text.splitlines()]
         numbered = next(line for line in lines if line.startswith("Table 1:"))
         rest = lines[lines.index(numbered) :]
@@ -1036,10 +856,6 @@ class TestWideTableCaptionRenderReal:
 
 
 class TestCaptionedFigureRenderReal:
-    """Issue 411: a captioned figure's number, real toolchain end to end --
-    the shape unit tests on `_figures.py` alone cannot prove, because only
-    a real pdflatex run confirms the float LaTeX actually compiles."""
-
     @pytest.mark.skipif(
         not (pandoc_available and pdflatex_available and tikz_available),
         reason="pandoc/pdflatex/tikz.sty not installed",
@@ -1082,11 +898,6 @@ class TestCaptionedFigureRenderReal:
     def test_a_caption_with_ampersand_and_percent_still_compiles(
         self, isolated_config, tmp_path, monkeypatch
     ):
-        # Issue 494: an earlier revision interpolated the caption straight
-        # into a raw `\caption{...}`, so `&` failed pdflatex ("Misplaced
-        # alignment tab") and `%` silently truncated the rest of the line,
-        # including the `\label`. Both now go through pandoc's own
-        # Markdown-to-LaTeX escaping like any other prose in the draft.
         isolated_config.BIB_FILE_PATH.write_text("")
         draft_dir = tmp_path / "content" / "drafts" / "dt"
         draft_dir.mkdir(parents=True)
@@ -1102,18 +913,6 @@ class TestCaptionedFigureRenderReal:
         out_path = render_output.render(str(draft), output_format="tex")
 
         source = out_path.read_text()
-        # `\label{fig:fig1}` merely being *present* in the source does not
-        # prove the % was escaped -- an unescaped `%` earlier on the same
-        # line would only comment out everything up to the next physical
-        # line break, and `\label{...}` could still survive intact on a
-        # line pandoc happened to wrap onto. What actually discriminates
-        # is that pandoc's own LaTeX escaping ran on the caption at all:
-        # `&` becomes `\&` and `%` becomes `\%`, and neither raw character
-        # may appear unescaped anywhere in the caption's own text. Pandoc's
-        # own `--wrap=auto` can still break the caption's *own* line onto
-        # the next one at a word boundary, so the substring checks below
-        # run against a copy with pandoc's soft line breaks collapsed back
-        # to spaces rather than the raw file text.
         unwrapped = source.replace("\n", " ")
         assert "Cost \\& throughput" in unwrapped, "the & must be LaTeX-escaped by pandoc"
         assert "5\\%," in unwrapped, "the % must be LaTeX-escaped by pandoc, not left raw"
@@ -1130,11 +929,6 @@ class TestCaptionedFigureRenderReal:
 
     @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
     def test_a_caption_citing_a_real_key_resolves_through_citeproc(self, isolated_config, tmp_path):
-        # Issue 494: a caption citing `[@citekey]` used to reach the PDF as
-        # literal, unresolved text -- the table path's own docstring
-        # establishes captions legitimately cite. The caption now reaches
-        # pandoc's Markdown reader like any other prose, so citeproc
-        # resolves it the same way.
         con = ledger.connect()
         add_citable(con, "a_2024", title="A Paper", year="2024")
         con.close()
@@ -1174,11 +968,6 @@ class TestCaptionedFigureRenderReal:
     def test_a_figureref_right_after_an_uncaptioned_marker_is_not_swallowed(
         self, isolated_config, tmp_path
     ):
-        # fig2's marker has no blank line before the `figureref` sentence
-        # that follows it -- exactly the adjacency `substitute_captions`
-        # looks for. Resolving refs before captions would turn that
-        # sentence into plain prose no longer starting with `<!--`,
-        # misreading it as fig2's caption and eating it from the body.
         isolated_config.BIB_FILE_PATH.write_text("")
         draft_dir = isolated_config.DRAFTS_DIR / "dt"
         draft_dir.mkdir(parents=True)
@@ -1200,12 +989,6 @@ class TestCaptionedFigureRenderReal:
 
 
 class TestDeferredCitations:
-    """`render(defer_citations=True)`: a standalone article whose citations
-    stay `\\citep{key}` for bibtex, which is what lets latexdiff compare
-    two versions of a draft by key rather than by citeproc's numbers --
-    one added citation renumbers every later one (plans/1194-draft-diff.md,
-    spike findings)."""
-
     @staticmethod
     def _argv(fragment=False, defer_citations=False):
         cmd, _ = render_output._pandoc_command(
@@ -1232,12 +1015,8 @@ class TestDeferredCitations:
         assert "--citeproc" not in cmd and "--csl" not in cmd
         assert "biblio-style=IEEEtran" in cmd
         assert "natbiboptions=numbers,sort&compress" in cmd
-        # The article shape, not the book fragment's: no chapter division
-        # and no label prefix, which only a fragment sharing a book needs.
         assert "--top-level-division=chapter" not in cmd
         assert not any("chitragupta-label-prefix" in arg for arg in cmd)
-        # bibtex formats the list, so nothing is left for this filter to
-        # rewrite -- exactly as for a fragment.
         assert not any("bib_raw_tex_as_text.lua" in arg for arg in cmd)
 
     def test_a_plain_render_takes_none_of_it(self):
@@ -1289,7 +1068,5 @@ class TestDeferredCitations:
         assert "\\bibliographystyle{IEEEtran}" in tex
         assert "numbers,sort&compress" in tex
         assert "\\documentclass" in tex
-        # The draft's own list is dropped, so `\bibliography` gives the
-        # compiled diff its only References heading.
         assert "{References}" not in tex
         assert (out_dir / isolated_config.BIB_FILE_PATH.name).is_file()

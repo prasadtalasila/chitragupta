@@ -1,21 +1,3 @@
-"""chitragupta/style_typeset.py: the typesetting findings `draft style` reports.
-
-Beside `tests/test_style_tables.py` and its siblings, the fifth finding
-in that command computed in Python rather than by Vale.
-
-The discriminating tests are `TestExemptions` and
-`TestACodeSpanIsNotAutomaticallyProse`: the first is what
-docs/WRITING-STANDARDS.md §9's quoted-span carve-out asks for, and the
-second is the distinction the bare-URL rule turns on -- a code span that
-*is* a URL is a URL being shown to a reader, and one that merely
-contains a URL is a command whose text a link would corrupt.
-
-`MAX_CODE_COLUMNS` is read from the module rather than written as a
-literal here: it was measured from `pdflatex` at two geometries, and a
-test asserting its value in a second place would just be a copy to keep
-in step.
-"""
-
 from pathlib import Path
 
 from chitragupta import style_typeset
@@ -37,14 +19,9 @@ class TestWideCodeLine:
         assert found[0]["line"] == 4
 
     def test_a_line_exactly_at_the_limit_is_not(self, tmp_path):
-        # The boundary is the whole point of the number: this width was
-        # measured to fit, so reporting it would be a false finding on
-        # every draft that sits at the limit deliberately.
         assert style_typeset.findings(draft_with(f"# S\n\n```\n{FITS}\n```\n", tmp_path)) == []
 
     def test_the_fence_delimiters_are_not_content(self, tmp_path):
-        # An info string can be any length -- it never renders -- so a
-        # long one must not be measured as if it were a code line.
         body = f"# S\n\n```{'p' * 200}\n{FITS}\n```\n"
         assert style_typeset.findings(draft_with(body, tmp_path)) == []
 
@@ -59,8 +36,6 @@ class TestWideCodeLine:
         ]
 
     def test_a_long_prose_line_is_not_a_finding(self, tmp_path):
-        # Prose reflows; only a verbatim line cannot. Reporting prose
-        # width would fire on every draft that does not hard-wrap.
         assert style_typeset.findings(draft_with(f"# S\n\n{WIDE} and more.\n", tmp_path)) == []
 
 
@@ -79,14 +54,10 @@ class TestBareUrl:
         assert style_typeset.findings(draft_with(body, tmp_path)) == []
 
     def test_an_autolink_is_still_a_bare_url(self, tmp_path):
-        # `<url>` is clickable but still shows the reader a raw URL,
-        # which is the half of §14 this rule is about.
         found = style_typeset.findings(draft_with(f"# S\n\nSee <{URL}>.\n", tmp_path))
         assert rules(found) == ["chitragupta.BareUrl"]
 
     def test_the_reported_match_excludes_the_sentences_punctuation(self, tmp_path):
-        # A finding that misquotes the URL it is about is one an author
-        # has to read twice; `\\S+` swallowed the `>` and the full stop.
         body = f"# S\n\nSee {URL}. Then <{URL}>. Then ({URL}).\n"
         found = style_typeset.findings(draft_with(body, tmp_path))
         assert [f["match"] for f in found] == [URL, URL, URL]
@@ -100,13 +71,10 @@ class TestBareUrl:
 
 class TestACodeSpanIsNotAutomaticallyProse:
     def test_a_span_that_is_only_a_url_is_reported(self, tmp_path):
-        # The real case: chapter 1 of this project's own book showed the
-        # repo URL this way, and a link reads better than monospace.
         found = style_typeset.findings(draft_with(f"# S\n\nSpend time with `{URL}`.\n", tmp_path))
         assert rules(found) == ["chitragupta.BareUrl"]
 
     def test_a_span_holding_a_command_is_left_alone(self, tmp_path):
-        # Rewriting this as a link would corrupt the command it prints.
         body = f"# S\n\nRun `curl {URL}` first.\n"
         assert style_typeset.findings(draft_with(body, tmp_path)) == []
 
@@ -116,18 +84,10 @@ class TestACodeSpanIsNotAutomaticallyProse:
 
 
 class TestExemptions:
-    """docs/WRITING-STANDARDS.md §9: quoted spans are exempt from every
-    row, and this module has two of them to honour -- kept in step with
-    `assets/vale/vale.ini`'s `BlockIgnores`, which excludes the same
-    regions from every Vale rule."""
-
     def test_a_url_in_a_block_quotation_is_not_reported(self, tmp_path):
-        # A draft quotes its sources by construction; the source's own
-        # text is not this draft's to rewrite.
         assert style_typeset.findings(draft_with(f"# S\n\n> As they say, {URL}\n", tmp_path)) == []
 
     def test_a_url_in_the_references_section_is_not_reported(self, tmp_path):
-        # references.py splices bibliography URLs out of the ledger.
         body = f"# S\n\nProse.\n\n## References\n\n[1] A. Author, {URL}\n"
         assert style_typeset.findings(draft_with(body, tmp_path)) == []
 
@@ -136,19 +96,11 @@ class TestExemptions:
         assert style_typeset.findings(draft_with(body, tmp_path)) == []
 
     def test_a_url_after_the_references_section_ends_is_reported_again(self, tmp_path):
-        # The exemption is the section, not the rest of the file.
         body = f"# S\n\n## References\n\n[1] A. Author.\n\n## Appendix\n\nSee {URL}.\n"
         assert rules(style_typeset.findings(draft_with(body, tmp_path))) == ["chitragupta.BareUrl"]
 
 
 class TestATexFragmentGetsTheWidthCheckOnly:
-    """The asymmetry is the point. A Markdown draft's fences are wrapped
-    for the author at render time (`_pandoc.py` loads `fvextra`); a
-    `.tex` fragment is `\\input` into the user's own thesis, whose
-    preamble this pipeline may not touch -- §13's carve-out. So the
-    width check matters *more* there, and the bare-URL rule does not
-    apply at all, because `\\url{}` is LaTeX's correct idiom."""
-
     def _tex(self, body: str, tmp_path: Path) -> Path:
         path = tmp_path / "chapter.tex"
         path.write_text(body, encoding="utf-8")
@@ -176,12 +128,9 @@ class TestATexFragmentGetsTheWidthCheckOnly:
         ]
 
     def test_a_bare_url_in_tex_prose_is_not_reported(self, tmp_path):
-        # `\url{}` is the correct LaTeX idiom, and telling a raw URL from
-        # one already inside it is a different parsing problem.
         assert style_typeset.findings(self._tex(f"\\section{{S}}\n\nSee {URL}.\n", tmp_path)) == []
 
     def test_wide_prose_in_tex_is_not_a_finding(self, tmp_path):
-        # Only verbatim cannot reflow; a long prose line is fine.
         assert (
             style_typeset.findings(self._tex(f"\\section{{S}}\n\n{WIDE} more.\n", tmp_path)) == []
         )

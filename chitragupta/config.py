@@ -1,30 +1,14 @@
 """Central configuration for the research pipeline.
 
-Defaults live in config.toml (repo root); any value can be overridden
-with an environment variable of the same name (e.g.
-BIB_FILE=/path/to/other.bib python -m chitragupta.corpus sync) without editing the file.
-tomllib is stdlib since Python 3.11, so this adds no dependency.
+Defaults live in config.toml; any value can be overridden with an
+environment variable of the same name (BIB_FILE=/other.bib ...).
 """
 
-# Three pieces have moved out, each re-exported so every `config.NAME`
-# still resolves: path containment (#441, -> chitragupta/config_path.py),
-# the TOML load with the typed getters (#848, -> chitragupta/config_load.py)
-# and the [enrich]/[discover] knobs (#848, -> chitragupta/config_enrich.py).
-# What stays is project-root discovery, every path under CONTENT_DIR, and
-# the corpus, drafting and review settings -- which took this module off
-# docs/CODE-STANDARDS.md's C2 register.
-#
-# The getters moved together with `_toml`, because a getter reads `_toml`
-# from its own module's globals: `tests/test_config.py` patches
-# `config_load._toml` and then calls the getters as `config._get(...)`,
-# which works because the name below is the same function object. The
-# two [retrieval] validators (`_get_field_weight`, `_get_bm25_constant`)
-# stay here beside the settings they exist for.
-#
-# Every setting is still read as `config.NAME`: `render_output`,
-# `citation_gate`, `style_check` and `acronyms` are tier-1, stdlib-only
-# commands (docs/ARCHITECTURE.md) committed to importing only `config`
-# alongside each other, not a second settings module.
+# Every setting is read as `config.NAME`, including those re-exported from
+# config_load, config_enrich and config_path: the tier-1 stdlib-only
+# commands import `config` alone (docs/ARCHITECTURE.md). The getters are
+# config_load's own function objects, so tests patching
+# `config_load._toml` reach them.
 
 import importlib
 import math
@@ -45,39 +29,21 @@ from chitragupta.config_load import (
     _get_workers,
 )
 
-# Two roots, because `REPO_ROOT` was doing two unrelated jobs under one
-# name and they stop being the same directory the moment this code is
-# installed rather than cloned (docs/PACKAGING.md).
-#
-#   PACKAGE_ROOT  -- where the code is. Follows the code.
-#   PROJECT_ROOT  -- where the user's corpus, drafts and config are.
-#                    Follows the user.
-#
-# In a git checkout they are the same directory and nothing about this
-# module's behaviour changes; that equality is what let the split land
-# before anything was renamed.
+# Two roots, the same directory in a git checkout and different once
+# installed (docs/PACKAGING.md): PACKAGE_ROOT follows the code,
+# PROJECT_ROOT follows the user's corpus, drafts and config.
 PACKAGE_ROOT = Path(__file__).resolve().parent
 
-# The marker that identifies a project directory. Deliberately the file
-# this module already refuses to start without, so there is nothing new
-# for a user to create -- and a real file rather than a heuristic, so
-# "am I in a project?" has one answer rather than a guess.
+# The project marker is the file this module already requires, so a user
+# has nothing new to create.
 PROJECT_MARKER = "config.toml"
 
 
 def shipped(*parts: str) -> Path:
-    """A file that ships with the code, not with the user's project.
+    """A file that ships with the code (CSL style, Vale rules, acronyms,
+    Lua filters), resolved from the package, not the working directory.
 
-    The CSL style, the Vale rules, the default acronym list and the
-    pandoc Lua filters are the project's own vendored assets: a user
-    gets them by installing, never by authoring them. They therefore
-    resolve from the code's location, not the user's working directory.
-
-    One function rather than a constant because it is the single seam
-    that changes when `assets/` moves under the import package (#261) and
-    this becomes an `importlib.resources` call. Today the assets are a
-    sibling of the package, so this reaches up one level; every caller is
-    already written against the seam rather than against that fact.
+    One seam, for when `assets/` moves under the package (#261).
     """
     return PACKAGE_ROOT.parent.joinpath(*parts)
 
@@ -99,20 +65,13 @@ def discover_project_root(
        working from anywhere, exactly as deriving the root from
        `__file__` used to.
 
-    Note what is deliberately *not* here: `CONFIG_PATH`. That variable
-    has always meant "read this file", never "the project lives beside
-    this file" -- `tests/test_config.py::test_custom_config_path` pins
-    that a custom config still resolves a relative `[bib] path` against
-    the checkout. Folding it in would silently move a user's whole data
-    root as a side effect of naming a config file.
+    Not `CONFIG_PATH`: naming a config file must not move the whole data
+    root (`tests/test_config.py::test_custom_config_path`).
     """
     environ = os.environ if environ is None else environ
     explicit = environ.get("CHITRAGUPTA_PROJECT")
     if explicit:
-        # Resolved (#966): a relative value is relative to where the
-        # user stood when they set it, and leaving it unresolved made
-        # every path derived from PROJECT_ROOT depend on the cwd of
-        # whichever process read it later.
+        # Resolved (#966), or every derived path depends on a later cwd.
         return ((Path.cwd() if cwd is None else Path(cwd)) / explicit).resolve()
     start = (Path.cwd() if cwd is None else Path(cwd)).resolve()
     for candidate in (start, *start.parents):
@@ -124,83 +83,43 @@ def discover_project_root(
     return None
 
 
-# Falls back to the directory above the package when no project was
-# found, so the error below names the path a checkout would have used --
-# `cp config.toml.example config.toml` is only actionable if the message
-# points somewhere the reader recognises.
+# The fallback makes the missing-config error name a recognisable path.
 PROJECT_ROOT = discover_project_root() or PACKAGE_ROOT.parent
 CONFIG_PATH = Path(os.environ.get("CONFIG_PATH", str(PROJECT_ROOT / PROJECT_MARKER)))
-# Called here, on every import of this module, rather than at
-# config_load's own import: `importlib.reload(config)` has to re-read the
-# file, and a reload re-runs this body but not config_load's.
+# Here, not at config_load's import, so `importlib.reload(config)` re-reads.
 config_load.load(CONFIG_PATH)
 
-# PROJECT_ROOT / <absolute path> correctly collapses to the absolute path
-# (pathlib behavior), so env var overrides may be absolute or relative.
+# An absolute override survives the join (pathlib), so env vars may be either.
 BIB_FILE_PATH = PROJECT_ROOT / _get("BIB_FILE", "bib", "path", default="papers/bibliography.bib")
 
-# `[bib] collections_field` named the field a Better BibTeX export carried
-# collections in. Since 7.0.0 collections come only from
-# chitragupta-importer's `cg-collections` (chitragupta/bib_collections.py),
-# so the setting is ignored. An old config.toml still loads; this flag
-# lets sync say so once, rather than every command on every import.
+# Ignored since 7.0.0 (collections come from `cg-collections`); kept so
+# sync can say so once.
 LEGACY_COLLECTIONS_FIELD = bool(_get("BIB_COLLECTIONS_FIELD", "bib", "collections_field"))
 
 CONTENT_DIR = PROJECT_ROOT / _get("CONTENT_DIR", "content", "dir", default="content")
 PARSED_DIR = CONTENT_DIR / "parsed"
 LEDGER_PATH = CONTENT_DIR / "ledger.sqlite"
-# Every report the review layer writes, one directory per draft,
-# mirroring the draft's own path under DRAFTS_DIR: a draft at
-# content/drafts/<topic>/survey.md has its provenance, verbatim and
-# coverage reports at content/review/<topic>/survey.<aid>.md, alongside
-# the .tex/.pdf renders of each. See chitragupta/review/__init__.py and
-# docs/ARCHITECTURE.md's "Layer 4: the review layer".
-#
-# Named for the layer, not for one of its aids: every aid writes
-# here. The genre skills' own section-to-citekey JSON is not a review
-# artefact and does not -- it is drafting state, and lives in the
-# dossier directory.
+# Review-layer reports, one directory per draft mirroring its path under
+# DRAFTS_DIR. The skills' section-to-citekey JSON is drafting state and
+# lives in the dossier instead.
 REVIEW_DIR = CONTENT_DIR / "review"
-# Where a genre skill saves its draft, and where chitragupta/dossier/ keeps the
-# working state that produced it -- one dossier directory per draft,
-# mirroring the draft's own path under DRAFTS_DIR (docs/DRAFT-ITERATION.md).
-# Separate from REVIEW_DIR, which holds reports generated *from* a
-# finished draft rather than the state that produced it.
+# Drafts, and the dossier state that produced each (docs/DRAFT-ITERATION.md).
 DRAFTS_DIR = CONTENT_DIR / "drafts"
 DOSSIERS_DIR = CONTENT_DIR / "dossiers"
-# The outline a book is generated from, one directory per book, mirroring
-# the book's own directory under DRAFTS_DIR -- content/drafts/twins/ has
-# its outline and its sign-off record at content/specs/twins/. See
-# chitragupta/spec/ and docs/WRITE-A-BOOK.md.
-#
-# Mirrored one level differently from the three above, and deliberately:
-# those mirror a *draft*, so they carry the draft's parent directory; a
-# book is a directory of drafts, so its own path is what carries over.
+# A book's outline and sign-offs (docs/WRITE-A-BOOK.md). A book is a
+# directory of drafts, so its own path is mirrored, not its parent's.
 SPECS_DIR = CONTENT_DIR / "specs"
-# Per-citekey TL;DR sidecars chitragupta/tldr.py writes and reads -- one
-# JSON file per citekey, keyed to a fingerprint of that citekey's parsed
-# text (chitragupta/tldr.py's own docstring has why). Its own directory
-# rather than DOSSIERS_DIR: a summary is not part of any one draft's
-# working state, it is per-citekey, so it does not mirror a draft's path
-# the way DOSSIERS_DIR/REVIEW_DIR/RENDERED_DIR do.
+# Per-citekey TL;DR sidecars: per citekey, not per draft, so not mirrored.
 TLDR_DIR = CONTENT_DIR / "tldr"
-# Cached BM25 term-frequency index for chitragupta/retrieval.py -- keyed by a
-# cheap per-item fingerprint (parsed-file stat, not content), so a
-# search() call only re-tokenizes docs whose text actually changed since
-# the last run, mirroring chitragupta/ledger.py's own stat-before-hash skip logic.
+# BM25 index cache, keyed by a stat fingerprint so only changed docs re-tokenize.
 RETRIEVAL_INDEX_PATH = CONTENT_DIR / "retrieval_index.json"
 
 
 def _get_field_weight(field: str) -> float:
     """One `[retrieval]` field weight, validated at load.
 
-    Rejected rather than coerced, like _get_workers and
-    _get_optional_float: a negative weight makes BM25's term-frequency
-    saturation return a negative contribution, and an infinite one makes
-    every document carrying the field tie at inf. Both surface far from
-    the config line that caused them -- as a ranking nobody can explain
-    rather than as an error -- which is the failure mode this project
-    keeps choosing to move forward.
+    Rejected rather than coerced: a negative or infinite weight produces a
+    ranking nobody can explain, far from the config line that caused it.
     """
     weight = _get_float(
         f"RETRIEVAL_WEIGHT_{field.upper()}", "retrieval", f"weight_{field}", default=1.0
@@ -213,37 +132,19 @@ def _get_field_weight(field: str) -> float:
     return weight
 
 
-# Per-field BM25 weights, keyed by chitragupta/retrieval_scoring.py's
-# FIELDS -- built from that tuple so a field cannot exist without a
-# weight or a weight without a field. Every default is 1.0, which
-# reproduces the pre-#762 ranking exactly; docs/RETRIEVAL.md carries the
-# measurement that would justify any other number -- and the one that
-# declined a third field, since issue #770 asked for `caption` and
-# `table` here and neither survived it.
+# Built from the field tuple so a field cannot lack a weight. Every
+# default 1.0 reproduces the pre-#762 ranking; docs/RETRIEVAL.md has the
+# measurement, including why `caption` and `table` were declined (#770).
 RETRIEVAL_FIELD_WEIGHTS = {field: _get_field_weight(field) for field in ("title", "abstract")}
 
 
 def _get_bm25_constant(key: str, default: float, upper: float) -> float:
     """One `[retrieval]` Okapi BM25 constant, validated at load (#788).
 
-    Rejected rather than coerced, like _get_field_weight above and for
-    the same reason: neither constant fails anywhere near the config line
-    that set it.
-
-    - **`k1` below 0 inverts term-frequency saturation**, so a paper
-      saying "digital twin" nine times scores *below* one saying it once.
-      Not finite is worse: `inf` and `nan` both make every score `nan`,
-      and a sort over `nan` is arbitrary rather than wrong in a
-      direction anyone could notice.
-    - **`b` outside [0, 1] is not a stronger length normalization, it is
-      a broken one.** The normalizer is `1 - b + b * (dl / avgdl)`, which
-      goes negative for a short document once `b` passes 1 -- flipping
-      the sign of BM25's denominator, so a document containing the term
-      ranks below one that does not.
-
-    Hence two bounded ends here where the field weights have one. `upper`
-    is `math.inf` for `k1`, whose upper end is genuinely open; the
-    finiteness check is what that end still needs.
+    Rejected rather than coerced, like _get_field_weight. `k1` below 0
+    inverts saturation, and a non-finite value makes every score `nan`.
+    `b` outside [0, 1] can flip the sign of the denominator for a short
+    document, so a document without the term outranks one with it.
     """
     value = _get_float(f"RETRIEVAL_{key.upper()}", "retrieval", key, default=default)
     if not (math.isfinite(value) and 0.0 <= value <= upper):
@@ -255,229 +156,104 @@ def _get_bm25_constant(key: str, default: float, upper: float) -> float:
     return value
 
 
-# Okapi BM25's two free parameters, for chitragupta/retrieval_scoring.py
-# -- `k1` sets how fast term frequency saturates, `b` how strongly a
-# document's length is normalized. Both apply to the passage unit
-# (chitragupta/retrieval_passages.py) as well, which shares that scorer.
-#
-# The defaults are the textbook TREC values, and #788 is what turned them
-# from *inherited* into *examined*: swept one parameter at a time on this
-# project's own corpus. They did not move, and the reason is recorded
-# rather than assumed. `b` has no better value -- 0.75 is the recall peak,
-# and the one setting that beats it on nDCG loses two queries of recall.
-# `k1` does: the sweep prefers 8.0 over 1.5, by seven queries. It was not
-# adopted because only one of this repository's two BM25 ground truths
-# could be built on the measuring host, and it is the one structurally
-# unable to decide this -- its query is a paper's own author keywords and
-# its answer is that paper, so weakening term-frequency saturation is
-# favoured by construction. bench/RESULTS.md carries the table and
-# docs/RETRIEVAL.md the reading of it.
-#
-# Configurable regardless, because the next corpus is not this one: a
-# bibliography of four-page papers and one that is half books want
-# different length normalization, which is exactly what `b` is for.
+# Okapi BM25's `k1` (term-frequency saturation) and `b` (length
+# normalization), shared with the passage scorer. The TREC defaults
+# survived #788's sweep: `b` has no better value, and `k1` = 8.0 won only
+# on the ground truth that favours it by construction (docs/RETRIEVAL.md).
+# Configurable because another corpus may want different normalization.
 RETRIEVAL_K1 = _get_bm25_constant("k1", 1.5, math.inf)
 RETRIEVAL_B = _get_bm25_constant("b", 0.75, 1.0)
 
-# Whether a query's acronyms are expanded from the tier-1 acronym
-# vocabulary before it is ranked (#789) -- `DT` also searching for the
-# words "digital twin", so an abbreviation reaches the papers that spell
-# the term out.
-#
-# **A switch, not a dial, and that is a measurement.** An earlier
-# revision of this made it a weight, so an added term could score at a
-# fraction of one the caller typed; the sweep behind docs/RETRIEVAL.md
-# found full weight the best of 0.25/0.5/1.0 on every figure, which
-# leaves a dial whose only supported setting is its maximum. A user who
-# wants less than that wants a different vocabulary, not a smaller
-# number.
-#
-# On by default. What it expands is `[style].acronyms` merged over the
-# vendored floor, so on a host that has written no acronyms file it is
-# five general-computing entries and changes nothing measurable; the
-# benefit arrives with the user's own vocabulary, which is why
-# `chitragupta init` scaffolds `content/acronyms.toml`.
+# Expand a query's acronyms (`DT` -> "digital twin") before ranking (#789).
+# A switch, not a weight: full weight won every figure in the sweep. It
+# expands `[style].acronyms` over the vendored floor, so the benefit comes
+# with the user's own vocabulary.
 ACRONYM_EXPANSION = _get_bool(
     "RETRIEVAL_ACRONYM_EXPANSION", "retrieval", "acronym_expansion", default=True
 )
-# Whether a query word the corpus has never seen also searches for the
-# corpus word one typing slip away from it (#1232) -- `strucutral` also
-# searching for "structural". chitragupta/retrieval_spelling.py has the
-# rules.
-#
-# Off by default. `dossier status` re-ranks every recorded query with the
-# current settings, so switching this on moves existing drafts' rankings
-# and can show as drift. And it has little to fix in agent-written
-# queries: 964 logged queries on this project held no genuine typo.
+# Also search the corpus word one typo away from an unseen query word
+# (#1232). Off: it moves existing drafts' rankings, and 964 logged agent
+# queries held no genuine typo.
 SPELLING_CORRECTION = _get_bool(
     "RETRIEVAL_SPELLING_CORRECTION", "retrieval", "spelling_correction", default=False
 )
-# The same, for chitragupta/retrieval_passages.py's passage-level index
-# (#769). A separate file rather than a second key inside
-# RETRIEVAL_INDEX_PATH above:
-# the two are invalidated by different things -- the document index by
-# the parsed .txt, this one by the passage sidecar beside it -- and a
-# shared file would make either rebuild discard the other's work.
+# The passage-level index (#769). A separate file because it is
+# invalidated by the passage sidecar, not the parsed .txt.
 RETRIEVAL_PASSAGE_INDEX_PATH = CONTENT_DIR / "retrieval_passage_index.json"
-# Cached n-gram fingerprints for chitragupta/overlap_index.py -- content/overlap/docs/
-# holds one file per citekey, content/overlap/index.bin the merged corpus
-# index. Both are keyed by (pdf_hash, parsed-file size/mtime_ns), the same
-# stat-before-hash shape as RETRIEVAL_INDEX_PATH above.
+# N-gram fingerprints for overlap_index: one file per citekey plus a
+# merged index.bin, stat-keyed like RETRIEVAL_INDEX_PATH.
 OVERLAP_DIR = CONTENT_DIR / "overlap"
-# Boilerplate phrases (acronyms, fixed phrasing, defined terms, whole
-# paragraphs) chitragupta/review/verbatim_check/'s `scan` should never flag --
-# see docs/PLAGIARISM.md. Per-host, hand-edited data, like papers/bibliography.bib:
-# gitignored, absent on a fresh clone (scan treats that as "no
-# suppressions configured", not an error), and never what one host waved
-# through is not another host's decision to make. Fixed under CONTENT_DIR
-# rather than independently relocatable like BIB_FILE_PATH -- there's no
-# case for pointing this at a second location.
+# Per-host, hand-edited, gitignored phrases the verbatim scan must not flag
+# (docs/PLAGIARISM.md). Absent means no suppressions.
 VERBATIM_ALLOWLIST_PATH = CONTENT_DIR / "verbatim_allowlist.toml"
-# Exact terms no prose rule reports and the verbatim scan masks (#1187).
-# Project data, unlike the per-host allowlist above: an author's statement
-# about the project, meant to be versioned with it. Absent on a fresh
-# clone, which means no terms.
+# Project-wide terms no prose rule reports and the verbatim scan masks
+# (#1187). Versioned with the project, unlike the allowlist.
 STYLE_EXCEPTIONS_PATH = CONTENT_DIR / "style_exceptions.toml"
-# Mutex for anything that writes content/ -- see chitragupta/runlock.py. A
-# dedicated sqlite file rather than the ledger, so that locking a run
-# doesn't force the ledger's five commit points into one transaction.
+# Mutex for writes to content/ (runlock). Its own file, so locking does not
+# force the ledger's commit points into one transaction.
 PIPELINE_LOCK_PATH = CONTENT_DIR / "pipeline.lock.db"
 
-# Which backend chitragupta/pdf_text/ dispatches to -- see config.toml's
-# [parser] comment for the tradeoffs (speed, page-boundary loss) before
-# switching off the default. Folded to its spelling at load like the
-# other enums, because sync.py, sync_pool.py and ledger_upsert.py compare
-# it to "docling" by string: a written `Docling` used to load verbatim
-# and compare unequal in each, rather than fail at load naming the
-# alternatives as a typo in the other enums does (#847).
+# Folded to its spelling at load (#847): callers compare to "docling" by
+# string, so `Docling` must fail at load, not compare unequal.
 PARSER_BACKENDS = ("pdftotext", "docling")
 PARSER = _get_choice("PARSER", "parser", "backend", default="pdftotext", choices=PARSER_BACKENDS)
-# Whether the docling backend runs its OCR stage. Docling's own default
-# is on; this project's is off -- a speed/completeness trade-off, not a
-# free win. Measured over the full corpus, OCR costs 2.08x serially but
-# 3.91x at 12 workers and 4.79x at 24: it is CPU-bound, so it competes
-# with the parallelism. (An older 2.46x figure came from a 16-PDF serial
-# sample.) Turning it off changed the extracted text of 8 of 16 sampled
-# documents,
-# because OCR is what reads text embedded as *bitmaps*. Mostly that text
-# is publisher furniture and figure captions; on one document it was two
-# whole tables. See config.toml's [parser].ocr comment, or README's
-# "OCR: off by default" section, before changing it either way. (The full
-# write-up is bench/RESULTS.md, which is developer-only and not shipped.)
+# Docling OCR, off: it costs 2-5x (more at high worker counts) and mostly
+# recovers publisher furniture and captions, though on one sampled document
+# two whole tables. See config.toml's [parser].ocr before changing it.
 PARSER_OCR = _get_bool("PARSER_OCR", "parser", "ocr", default=False)
-# Whether the docling backend also runs its formula recognition model,
-# so a paper's equations reach content/parsed/*.txt as decoded LaTeX
-# rather than the literal marker `<!-- formula-not-decoded -->` (#651).
-#
-# The corpus layer's own toggle, deliberately separate from
-# [enrich].docling_formulas (DOCLING_FORMULAS, in config_enrich.py) even though both
-# set the same docling option: they configure two independent parses,
-# and this one is meaningful to a user who never runs the enrichment
-# layer at all. Reading the [enrich] key from here would cross the layer
-# boundary docs/ARCHITECTURE.md draws.
-#
-# Off by default for the same economics as OCR above -- an extra model
-# download and an extra pass per page. It matters more than that ratio
-# suggests, though: retrieval.py indexes only content/parsed/*.txt, so
-# with this off a formula is absent from the one artefact a drafting
-# skill can read. Measured before #651: 148 of 497 documents carried the
-# marker and none carried decoded LaTeX.
+# Docling formula recognition for the corpus parse (#651), separate from
+# [enrich].docling_formulas because the two parses are independent layers.
+# Off for cost, but with it off a formula is absent from the only text
+# retrieval indexes: 148 of 497 documents carried the undecoded marker.
 PARSER_FORMULAS = _get_bool("PARSER_FORMULAS", "parser", "formulas", default=False)
 
 
-# How many documents sync parses at once. 1 keeps the historical, strictly
-# serial behaviour -- no pool, no subprocesses -- so raising this is an
-# opt-in. See config.toml.example's [parser].workers comment for how the
-# requested value is clamped against what the host can actually sustain,
-# and chitragupta/pdf_text.resolve_workers for the arithmetic.
+# Documents parsed at once; 1 is serial, no pool. Clamped by
+# pdf_text.resolve_workers.
 PARSER_WORKERS = _get_workers("PARSER_WORKERS", "parser", "workers", default=1)
 
 
-# How the docling worker pool creates its processes. "auto" picks
-# forkserver where the platform has it and spawn everywhere else; the
-# other two force one. Only ever consulted when [parser].workers > 1 and
-# the backend is docling, since nothing else uses a process pool.
-#
-# Measured, wall clock for a pool to reach its first parsed document:
-# forkserver 9.6s against spawn 11.3s at four workers. The saving is one
-# shared import of torch+docling rather than one per worker; the model
-# load that dominates the rest is per process either way. End to end this
-# is a fixed 1.3-2.2s, which is ~10% of an eight-document run and under
-# 1% of a full-corpus one. Plain "fork" is deliberately not offered -- see
-# chitragupta/pdf_text.start_method.
+# Pool start method, used only for docling with workers > 1. forkserver
+# shares one torch+docling import (9.6s vs spawn's 11.3s to first
+# document). Plain "fork" is refused: see pdf_text.start_method.
 PARSER_START_METHODS = ("auto", "forkserver", "spawn")
 PARSER_START_METHOD = _get_choice(
     "PARSER_START_METHOD", "parser", "start_method", default="auto", choices=PARSER_START_METHODS
 )
 
-# Give up on a single document after this many seconds, or None for no
-# limit. Applies to both backends, by the mechanism each one has:
-# docling's own PdfPipelineOptions.document_timeout, and a subprocess
-# timeout for pdftotext -- sync's, and the three on-demand runs outside it
-# (passages, verbatim_check._corpus, enrich.embed_text; #824). Off by
-# default -- any value has to clear the slowest legitimate document in
-# the corpus, and this project's is a
-# 675-page book that took 246s on its own, so a number that is safe here
-# is not necessarily safe elsewhere.
+# Per-document timeout, or None. Off: a safe value must clear the slowest
+# legitimate document (here a 675-page book at 246s).
 PARSER_DOCUMENT_TIMEOUT = _get_optional_float(
     "PARSER_DOCUMENT_TIMEOUT", "parser", "document_timeout"
 )
 
-# Give up on a parallel run when *no* document at all has completed for
-# this long, or None to wait forever. Not a per-document deadline: with
-# several workers on a real corpus completions arrive constantly, so
-# total silence discriminates a hung worker from a merely slow document
-# far better than any per-document number could -- which matters because
-# the slowest legitimate document here takes 246s.
-#
-# On by default, unlike most safety valves in this file, because the
-# failure it catches is one a user actually hit: a wedged run that never
-# finishes and cannot be interrupted. The default is deliberately loose
-# (7x that slowest document), and the cost of a false positive is now
-# small -- since v1.2.0 the affected documents are marked failed and
-# retried on the next run, rather than lost.
+# Give up when *no* document completes for this long: silence separates a
+# hung worker from a slow document. On, because users hit wedged runs;
+# loose (7x the slowest document), and affected documents are retried.
 PARSER_STALL_TIMEOUT = _get_optional_float(
     "PARSER_STALL_TIMEOUT", "parser", "stall_timeout", default=1800.0
 )
 
-# Parse-quality guard (chitragupta/pdf_text.quality_warning): a PDF extractor
-# that sets its glyph-spacing tolerance too coarse fuses adjacent words
-# together, which chitragupta/retrieval.py's whitespace tokenizer then cannot
-# match against. Measured over the same 10 PDFs, pdftotext produced
-# 0.01% such tokens and a since-removed backend produced 4.19% -- three
-# orders of magnitude apart -- so 1% sits well clear of both.
+# Parse-quality guard: too many fused long words means the extractor
+# merged words. pdftotext gives 0.01% and a removed backend gave 4.19%,
+# so 1% sits clear of both.
 PARSE_LONG_WORD_CHARS = _get_int("PARSE_LONG_WORD_CHARS", "parser", "long_word_chars", default=20)
 PARSE_LONG_WORD_RATIO = _get_float(
     "PARSE_LONG_WORD_RATIO", "parser", "long_word_ratio", default=0.01
 )
-# Below this many words the ratio is too noisy to mean anything (a
-# cover page, or a scan that yielded almost no text).
+# Below this the ratio is noise.
 PARSE_MIN_TOKENS = _get_int("PARSE_MIN_TOKENS", "parser", "min_tokens", default=200)
 
 
-# How much the pipeline writes to logs/pipeline.log (see LOGS_DIR
-# below) -- one of the standard library's own level names. Deliberately
-# the only [logging] setting: rotation size/backup count are fixed in
-# logging_setup.py rather than exposed here, since nothing so far has
-# needed them to vary per host.
+# The only [logging] setting; rotation is fixed in logging_setup.
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 LOGGING_LEVEL = _get_choice("LOGGING_LEVEL", "logging", "level", default="INFO", choices=LOG_LEVELS)
-# No config.toml key, unlike the paths above -- a fixed, predictable
-# location alongside the source tree rather than another per-host
-# setting to document. Still an env-var override though, same mechanism
-# CONFIG_PATH above uses (plain os.environ.get, not _get, since there's
-# no [logging].dir to also check) -- every other path constant in this
-# file gets one, and a real subprocess CLI test needs to point this
-# somewhere other than this checkout's own logs/. Gitignored; see
-# chitragupta/logging_setup.py for what lands here and why it is one file.
+# No config.toml key; an env var only, so a subprocess test can redirect it.
 LOGS_DIR = Path(os.environ.get("LOGS_DIR", str(PROJECT_ROOT / "logs")))
 
-# chitragupta/review/citation_provenance.py band thresholds: the fraction of a citing
-# sentence's distinctive words that must appear in the best-matching
-# source passage. Round numbers on purpose -- they set reading order for
-# a human, not a pass/fail line, so precision here would be false
-# precision. Below WEAK a finding is reported as "no support found",
-# which means "go look", never "this citation is wrong".
+# citation_provenance bands: the fraction of a citing sentence's words
+# found in the best passage. Round numbers: they order reading and are
+# not a verdict. Below WEAK means "go look", never "wrong".
 PROVENANCE_WEAK_SCORE = _get_float(
     "PROVENANCE_WEAK_SCORE", "provenance", "weak_score", default=0.20
 )
@@ -487,113 +263,60 @@ PROVENANCE_GOOD_SCORE = _get_float(
 
 # Heavier optional pipeline (pyproject.toml's "enrich" extra), per chitragupta/enrich/.
 DOCLING_DIR = CONTENT_DIR / "docling"
-# Per-doc (size, mtime_ns) PDF fingerprint, so docling_parse.parse_doc()
-# only re-runs Docling's layout/OCR models -- the slowest stage in this
-# pipeline -- for a PDF that's new or has actually changed since the last
-# call, mirroring chitragupta/ledger.py's own stat-before-hash skip logic.
+# PDF stat fingerprint, so Docling's slow models re-run only on change.
 DOCLING_CACHE_PATH = CONTENT_DIR / "docling_cache.json"
 CHROMA_DIR = CONTENT_DIR / "chroma"
 
 TOPICS_PATH = CONTENT_DIR / "topics.json"
-# Per-doc whole-text embedding cache keyed by content hash, so
-# topic_model.run_topic_model() only re-encodes docs whose text actually
-# changed since the last run -- see that module's docstring.
+# Whole-text embeddings keyed by content hash.
 TOPIC_EMBED_CACHE_PATH = CONTENT_DIR / "topic_embed_cache.json"
 
-# The author's own list of topic phrases, and what matching them against
-# the corpus produced. TOML in, JSON out, which is this repository's
-# standing split rather than a choice made here: the first is hand-written
-# and wants comments, the second is written by a program and read by one.
-# Neither has to exist -- a library with no seed file gets the emergent,
-# unseeded topic model it has always had (chitragupta/seed_topics.py).
+# The author's topic phrases (TOML, hand-written) and their matches (JSON,
+# generated). Neither need exist (seed_topics).
 SEED_TOPICS_PATH = CONTENT_DIR / "seed_topics.toml"
 TOPIC_SEEDS_PATH = CONTENT_DIR / "topic_seeds.json"
-# The extract-keywords stage's output: phrases the corpus's own papers
-# declared on their Keywords:/Index Terms lines, in the same
-# `topics = [...]` shape as SEED_TOPICS_PATH so seed_topics.load() reads
-# either. A *generated* artifact, regenerated fresh on every run --
-# unlike seed_topics.toml it is never hand-edited, and a phrase worth
-# keeping permanently is promoted into seed_topics.toml instead.
-# Resolved under CONTENT_DIR unless given absolute, the same rule
-# CONTENT_DIR itself follows for PROJECT_ROOT.
+# extract-keywords output, in seed_topics.toml's shape. Regenerated each
+# run, never hand-edited: promote a keeper into seed_topics.toml.
 KEYWORDS_PATH = CONTENT_DIR / _get(
     "KEYWORDS_PATH", "enrich", "keywords_path", default="keywords.toml"
 )
-# The join of the two topic answers: the phrases the author wrote, and
-# the topics the corpus turned out to have. Written by the `converge`
-# stage from artefacts the earlier stages already produced, so it re-runs
-# no clustering and no matching of its own.
+# The join of seeded and emergent topics, written by `converge`.
 TOPIC_SET_PATH = CONTENT_DIR / "topic_set.json"
-# The topic graph: relations between the topics topic_set.json already
-# holds. Written by the `topic-graph` stage; read by `corpus discover`.
+# Relations between topic_set.json's topics; read by `corpus discover`.
 TOPIC_GRAPH_PATH = CONTENT_DIR / "topic_graph.json"
 RENDERED_DIR = CONTENT_DIR / "rendered"
 
-# The CSL style pandoc's --citeproc formats citations and the bibliography
-# with. Vendored (assets/csl/) rather than fetched, so rendering works with
-# no network and so a style change can never silently renumber a draft that
-# was already reviewed -- see assets/csl/README.md.
+# Vendored so rendering needs no network and cannot silently renumber a
+# reviewed draft (assets/csl/README.md).
 _CSL_STYLE = _get("CSL_STYLE", "render", "csl", default="")
 CSL_STYLE_PATH = (PROJECT_ROOT / _CSL_STYLE) if _CSL_STYLE else shipped("assets", "csl", "ieee.csl")
 
-# The Vale configuration `python -m chitragupta.draft style` checks a draft
-# against, vendored at assets/vale/ for the reason assets/csl/ieee.csl is:
-# a style fetched at run time is not the style that was reviewed, and a
-# check whose rules differ per clone is not a check. Overridable so a user
-# can point at their own house style without editing what ships.
+# Vendored for the same reason: a check whose rules differ per clone is
+# not a check. Overridable for a house style.
 _VALE_CONFIG = _get("VALE_CONFIG", "style", "vale_config", default="")
 VALE_CONFIG_PATH = (
     (PROJECT_ROOT / _VALE_CONFIG) if _VALE_CONFIG else shipped("assets", "vale", "vale.ini")
 )
 
-# A fallback dialect for a draft whose dossier records none -- the
-# standing preference docs/HOUSE-STYLE.md calls for under "What persists
-# across drafts", where a user who has chosen en-GB four times has a
-# default and re-choosing it is friction rather than a decision.
-#
-# It is a fallback, never an override: scope.md wins, because a thesis at
-# an Indian university and an IEEE submission legitimately differ and the
-# per-draft record is the one that knows which this is. Empty by default,
-# and `chitragupta.draft style` names which source a dialect came from, so a draft
-# checked against this is never checked against it silently.
+# Fallback dialect when the dossier records none (docs/HOUSE-STYLE.md).
+# Never an override: scope.md wins, and `draft style` names the source.
 STYLE_LANGUAGE = _get("STYLE_LANGUAGE", "style", "language", default="")
-# Whether a run of consecutive citation numbers collapses ([3]-[6] rather
-# than [3], [4], [5], [6]). IEEE's own guide shows the collapsed form, but
-# upstream ieee.csl doesn't produce it; render_output/ injects the one
-# attribute that does, into a temp copy. False renders whatever the style
-# on disk says, unmodified.
+# Collapse [3], [4], [5] to [3]-[6]: IEEE shows it, upstream ieee.csl
+# does not, so render_output patches a temp copy.
 RENDER_COLLAPSE_CITATIONS = _get_bool(
     "RENDER_COLLAPSE_CITATIONS", "render", "collapse_citations", default=True
 )
 
-# The acronym vocabulary a genre skill reads at step 0, so an author's
-# own domain expansions travel from one draft to the next instead of
-# being re-derived or re-asked in chat every time -- docs/HOUSE-STYLE.md,
-# "What persists across drafts". Same declaration shape as
-# CSL_STYLE_PATH/VALE_CONFIG_PATH: a vendored default in assets/, one
-# config.toml key. Unlike those two, resolving this is never a full
-# replacement -- chitragupta/acronyms.py always loads ACRONYMS_DEFAULT_PATH and
-# merges ACRONYMS_PATH's file over it when the two differ, because a
-# user's own vocabulary and this project's PDF/CPU/URL floor are
-# additive, not alternatives. See assets/style/README.md.
+# The author's acronym vocabulary, carried between drafts. Always merged
+# over the vendored floor, never a replacement (assets/style/README.md).
 ACRONYMS_DEFAULT_PATH = shipped("assets", "style", "acronyms.toml")
 _ACRONYMS = _get("ACRONYMS", "style", "acronyms", default="")
 ACRONYMS_PATH = (PROJECT_ROOT / _ACRONYMS) if _ACRONYMS else ACRONYMS_DEFAULT_PATH
 
 
-# ---------------------------------------------------------------------
-# [retrieval] -- the tier-1 BM25 path's own settings. Deliberately its
-# own section rather than more [enrich] keys: everything below runs under
-# bare `python` with no venv and no model, which is the distinction that
-# decides whether a setting can be honoured at all on a given host.
-# ---------------------------------------------------------------------
+# [retrieval]: tier-1 BM25 settings, runnable with bare `python`.
 
-# The most passages retrieval_passages.search() will return from a single
-# citekey (#769). The document-level retrieval.search() needs no such
-# key: it is one-result-per-citekey by construction, so a cap there would
-# be a no-op. Same default and same reasoning as
-# EMBED_MAX_PASSAGES_PER_SOURCE (config_enrich.py), and deliberately the same shape --
-# the two paths cap for one reason and should read as one idea.
+# Per-citekey passage cap (#769), matching EMBED_MAX_PASSAGES_PER_SOURCE.
 MAX_PASSAGES_PER_SOURCE = _get_positive_int(
     "MAX_PASSAGES_PER_SOURCE",
     "retrieval",
@@ -601,32 +324,13 @@ MAX_PASSAGES_PER_SOURCE = _get_positive_int(
     default=3,
 )
 
-# There is deliberately no `passage_overfetch_multiplier` beside the cap,
-# and the omission is the interesting half. EMBED_OVERFETCH_MULTIPLIER
-# exists because Chroma hands back a *pre-truncated* candidate list, so a
-# cap applied to it can only shorten the result rather than promote
-# another paper's chunk into the window -- the failure #305 existed to
-# fix. Nothing truncates here: `_bm25_scores` scores every indexed
-# passage in memory, so the cap walks the fully ranked list and takes the
-# first k that fit, which is what an infinite over-fetch would buy. A
-# multiplier would be a knob whose every setting gave the same answer.
+# No over-fetch multiplier here, unlike Chroma's: BM25 ranks every
+# passage, so the cap already walks the full list.
 #
-# Passages shorter than this many tokens (after retrieval's own
-# tokenizer, so stopwords and single-character words are already gone --
-# two-character ones rank since #790) are
-# not indexed. BM25's length normalization *rewards* a short dense
-# match, which is harmless at document scale and not at passage scale: a
-# three-word heading or a one-line bibliography entry whose words are the
-# query outscores every real paragraph in the corpus. A floor is the
-# cheap half of the answer; excluding section_header/title passages
-# outright is the other half, and that one is structural rather than
-# configurable. Default measured in bench/bench_retrieval_passage.py --
-# and measured *before* #790 lowered the tokenizer's length floor to 2,
-# which grew every passage's token count by about 7%. The number did not
-# move; what it counts did, so this floor now admits passages the sweep
-# behind it excluded. Re-sweeping it is a separate measurement, and the
-# constant is a defensible default rather than a re-derived one until
-# someone runs it.
+# Passages below this many tokens are not indexed: BM25 rewards a short
+# dense match, so a heading or bibliography line would outrank real
+# paragraphs. Measured in bench/bench_retrieval_passage.py, before #790
+# grew token counts ~7%; not re-swept since.
 MIN_PASSAGE_TOKENS = _get_positive_int(
     "MIN_PASSAGE_TOKENS",
     "retrieval",
@@ -635,19 +339,8 @@ MIN_PASSAGE_TOKENS = _get_positive_int(
 )
 
 
-# --------------------------------------------------------------------------
-# [enrich] and [discover]
-# --------------------------------------------------------------------------
-#
-# The enrichment and discovery knobs live in chitragupta/config_enrich.py
-# (#848) and are re-exported here, so each is still read as `config.NAME`.
-# The paths those stages write stay above, beside every other path under
-# CONTENT_DIR, because they are derived from it.
-#
-# Reloaded when this module is: `importlib.reload(config)` re-runs this
-# body, but a plain import of a module already in `sys.modules` would hand
-# back the values it computed the first time, from whatever config.toml
-# and environment were current then.
+# [enrich] and [discover] live in config_enrich (#848). Reloaded with this
+# module, or a re-import would return values from the first load.
 if "chitragupta.config_enrich" in sys.modules:
     importlib.reload(sys.modules["chitragupta.config_enrich"])
 
@@ -684,19 +377,8 @@ from chitragupta.config_enrich import (  # noqa: F401,E402
 # pylint: enable=unused-import,wrong-import-position
 
 
-# --------------------------------------------------------------------------
-# Path containment
-# --------------------------------------------------------------------------
-#
-# Split into chitragupta/config_path.py (#441): "is this path inside the
-# content directory" no longer needs to live in this file's own body to
-# stay reachable as config.OutsideContentDir/resolves_inside/mirrored_dir/
-# require_inside_content -- every one of this project's existing call
-# sites keeps working through the re-export below. config_path.py reads
-# CONTENT_DIR back off this module (a live `config.CONTENT_DIR` attribute
-# lookup, not a bare name snapshotted at its own import time), which is
-# what keeps `tests/conftest.py`'s `isolated_config` fixture -- which
-# patches `config.CONTENT_DIR` directly -- visible to it.
+# Path containment (config_path). It reads `config.CONTENT_DIR` live, so
+# the `isolated_config` fixture's patch reaches it.
 
 # pylint: disable=unused-import,wrong-import-position
 from chitragupta.config_path import (  # noqa: F401,E402

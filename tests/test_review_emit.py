@@ -1,12 +1,3 @@
-"""chitragupta/review/_emit.py: the one output procedure every review aid
-ran a copy of (#849).
-
-The per-aid CLI tests still pin each aid's own report; these pin the
-shared sequence -- which of the four `--json`/`--write` combinations
-prints what, where the written-files summary goes, and that nothing is
-built for a combination that does not need it.
-"""
-
 import argparse
 import json
 from pathlib import Path
@@ -26,8 +17,6 @@ def args(*, as_json=False, write=False, formats="md"):
 
 @pytest.fixture
 def filed(monkeypatch):
-    """What `review.write`/`write_json` were asked to file, without
-    touching the filesystem."""
     calls = {}
 
     def write(draft, aid, body, formats):
@@ -44,9 +33,6 @@ def filed(monkeypatch):
 
 
 def emit(arguments, built):
-    """`_emit.emit` for an aid called `demo`, recording which of its
-    lazy pieces were asked for."""
-
     def piece(name, value):
         def build(*_):
             built.append(name)
@@ -95,8 +81,6 @@ class TestEmit:
         assert filed["json"] == (DRAFT, "demo", {"aid": "demo"})
 
     def test_json_and_write_keep_stdout_valid_json(self, filed, capsys):
-        """The summary moves to stderr, so `--json --write > out.json`
-        stays a JSON file."""
         built = []
         assert emit(args(as_json=True, write=True), built) == 0
         captured = capsys.readouterr()
@@ -122,8 +106,6 @@ class TestEmit:
     def test_a_report_the_render_gate_refuses_still_files_its_json(
         self, isolated_config, ledger_con
     ):
-        """#949: the agenda reads the `.json`, so a `tex` the gate refuses
-        must not leave the previous run's payload there."""
         ledger.upsert_reference(ledger_con, make_reference(citekey="smith2024"))
         ledger_con.commit()
         draft = config.DRAFTS_DIR / "t" / "survey.md"
@@ -143,8 +125,6 @@ class TestEmit:
 
 
 class TestAnnounce:
-    """For the aids that file their report unconditionally."""
-
     def test_plain_lists_what_was_written_on_stdout(self, capsys):
         _emit.announce({"aid": "demo"}, {"md": Path("demo.md")}, as_json=False)
         captured = capsys.readouterr()

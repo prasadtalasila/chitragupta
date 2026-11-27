@@ -1,5 +1,3 @@
-"""chitragupta/ledger.py: the sqlite state that makes `sync` incremental."""
-
 import collections
 import json
 import os
@@ -21,7 +19,6 @@ class TestConnect:
         con = ledger.connect()
         try:
             assert isolated_config.LEDGER_PATH.exists()
-            # Schema present -- querying an empty table doesn't raise.
             assert ledger.all_items(con) == []
         finally:
             con.close()
@@ -37,12 +34,6 @@ class TestConnect:
 
 
 class TestRowsForCitekeys:
-    """#639: the direct-SQLite `WHERE citekey IN (...)` reads must chunk
-    under SQLITE_MAX_VARIABLE_NUMBER (32766), the same ceiling
-    `chroma_paging.py` already pages the Chroma side past -- one
-    placeholder per citekey, so a large enough corpus broke the statement
-    with "too many SQL variables"."""
-
     @staticmethod
     def _seed(con, keys):
         for key in keys:
@@ -54,8 +45,6 @@ class TestRowsForCitekeys:
         con.commit()
 
     def test_more_citekeys_than_the_variable_ceiling_still_answers(self, isolated_config):
-        # 33_000 keys is over the real 32766 ceiling: unchunked, sqlite
-        # raises OperationalError before looking at the data at all.
         con = ledger.connect()
         try:
             self._seed(con, ["a_2024", "b_2024"])
@@ -97,10 +86,6 @@ class TestSchemaMigration:
             con.close()
 
     def test_legacy_database_predating_the_migration_gets_upgraded(self, isolated_config):
-        # Simulates a ledger written before pdf_size/pdf_mtime_ns existed:
-        # the original table shape, user_version still at sqlite's default
-        # of 0. CREATE TABLE IF NOT EXISTS alone would never add the new
-        # columns to this file -- only _migrate does.
         isolated_config.CONTENT_DIR.mkdir(parents=True, exist_ok=True)
         raw = sqlite3.connect(isolated_config.LEDGER_PATH)
         raw.execute("""
@@ -148,14 +133,6 @@ class TestSchemaMigration:
             con2.close()
 
     def test_columns_already_present_at_user_version_zero_does_not_raise(self, isolated_config):
-        # Pathological but guarded-against case: user_version somehow
-        # lagging behind a table that already has the target columns
-        # (e.g. a future column added directly to _SCHEMA instead of
-        # _MIGRATIONS). "ALTER TABLE ADD COLUMN" on an existing column
-        # raises OperationalError -- _migrate must check PRAGMA
-        # table_info(items) first instead of blindly trusting
-        # user_version, or this would crash every `sync` on every host
-        # that ever hit it.
         isolated_config.CONTENT_DIR.mkdir(parents=True, exist_ok=True)
         raw = sqlite3.connect(isolated_config.LEDGER_PATH)
         raw.execute("""
@@ -188,10 +165,6 @@ class TestSchemaMigration:
 
 
 class TestBibFields:
-    """The bib_fields column (_MIGRATIONS version 3) -- what chitragupta/references.py
-    formats a full bibliography entry from, since it may not read the bib
-    file itself."""
-
     def test_kept_fields_round_trip_as_json(self, ledger_con):
         ref = make_reference(
             citekey="doe2024",
@@ -212,9 +185,6 @@ class TestBibFields:
         }
 
     def test_export_noise_is_dropped(self, ledger_con):
-        # A reference manager's export carries per-host and per-run junk
-        # that no entry formats and that would churn this column on every
-        # re-export.
         ref = make_reference(
             citekey="noisy2024",
             fields={
@@ -232,8 +202,6 @@ class TestBibFields:
         assert json.loads(stored) == {"author": "Doe, Jane"}
 
     def test_empty_values_and_no_kept_fields_store_null(self, ledger_con):
-        # NULL means the same thing to references.py as "row predates this
-        # column": fall back to title/year rather than fail.
         ledger.upsert_reference(
             ledger_con, make_reference(citekey="bare2024", fields={"author": "  "})
         )
@@ -255,8 +223,6 @@ class TestBibFields:
         assert json.loads(stored) == {"author": "Roe, Richard"}
 
     def test_re_sync_of_an_unchanged_entry_writes_an_identical_value(self, ledger_con):
-        # sort_keys, so a dict-order change in the export doesn't show up
-        # as a ledger change.
         a = make_reference(citekey="doe2024", fields={"author": "Doe, Jane", "journal": "J"})
         b = make_reference(citekey="doe2024", fields={"journal": "J", "author": "Doe, Jane"})
         assert ledger_bib_fields.bib_fields_json(a) == ledger_bib_fields.bib_fields_json(b)
@@ -300,9 +266,6 @@ class TestUpsertReference:
         assert row[0] == "parsed"  # status preserved, not reset
 
     def test_missing_parsed_text_needs_reparse(self, ledger_con, tmp_path):
-        """The row says parsed; the file it names is gone. Without this
-        the document is counted "unchanged" on every later run and stays
-        missing forever."""
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"same content")
         ref = make_reference(pdf_path=str(pdf))
@@ -317,10 +280,6 @@ class TestUpsertReference:
     def test_missing_passage_sidecar_needs_reparse_under_docling(
         self, ledger_con, monkeypatch, tmp_path
     ):
-        """What upgrades an existing corpus. A citekey parsed before this
-        project kept Docling's document model has the .txt but no
-        sidecar, and its PDF hasn't changed -- so only this check will
-        ever give it quotable passages."""
         monkeypatch.setattr(config, "PARSER", "docling")
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"same content")
@@ -333,8 +292,6 @@ class TestUpsertReference:
         assert ledger.upsert_reference(ledger_con, ref) is True
 
     def test_a_sidecar_is_not_required_of_pdftotext(self, ledger_con, monkeypatch, tmp_path):
-        """pdftotext resolves no reading order and writes no sidecar, so
-        demanding one would re-parse the whole corpus on every run."""
         monkeypatch.setattr(config, "PARSER", "pdftotext")
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"same content")
@@ -347,9 +304,6 @@ class TestUpsertReference:
         assert ledger.upsert_reference(ledger_con, ref) is False
 
     def test_a_present_sidecar_settles_it_under_docling(self, ledger_con, monkeypatch, tmp_path):
-        """The steady state after one upgrade run: nothing re-parses
-        again. An empty sidecar counts, which is why extract_text writes
-        one even for a document with no prose."""
         monkeypatch.setattr(config, "PARSER", "docling")
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"same content")
@@ -374,10 +328,6 @@ class TestUpsertReference:
     def test_an_unreadable_sidecar_needs_reparse(
         self, ledger_con, monkeypatch, tmp_path, parser, torn
     ):
-        """Issue 844: a sidecar torn by a killed write read as "no
-        passages" forever -- `.exists()` was all this checked. Under
-        either parser, since a re-parse clears the sidecar first and so
-        heals it whichever backend runs."""
         monkeypatch.setattr(config, "PARSER", parser)
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"same content")
@@ -432,10 +382,6 @@ class TestUpsertReference:
         assert len(ledger.known_citekeys(ledger_con)) == 1
 
     def test_item_gaining_a_pdf_after_being_no_pdf_needs_parse(self, ledger_con, tmp_path):
-        # Row already exists (from the earlier no-pdf sync) but its stored
-        # pdf_hash is NULL -- the stat-unchanged fast path must not treat
-        # a NULL stored hash as "nothing changed" just because there's
-        # nothing yet to compare a size/mtime against.
         ref_no_pdf = make_reference(pdf_path=None)
         ledger.upsert_reference(ledger_con, ref_no_pdf)
 
@@ -452,19 +398,11 @@ class TestUpsertReference:
 
 
 class TestUpsertReferenceRehashSkip:
-    """`sync` re-hashing the entire PDF corpus on every no-op run doesn't
-    scale (audited at 1.37GB) -- upsert_reference must compare (size,
-    mtime) against what was last recorded and only fall back to
-    sha256-hashing the file when that doesn't match."""
-
     def test_unchanged_size_and_mtime_skips_hashing(self, ledger_con, tmp_path, monkeypatch):
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"stable content")
         ref = make_reference(pdf_path=str(pdf))
         ledger.upsert_reference(ledger_con, ref)
-        # Parsed, so the second upsert is a true no-op run -- a row still
-        # at 'discovered' now correctly comes back needs_parse=True (see
-        # TestDiscoveredIsRescheduled), which is not the case under test.
         (parsed_file("out")).write_text("parsed text")
         ledger.mark_parsed(ledger_con, ref.citekey, parsed_file("out"))
 
@@ -483,9 +421,6 @@ class TestUpsertReferenceRehashSkip:
         assert calls == []  # (size, mtime) matched -- hash was never recomputed
 
     def test_changed_mtime_with_same_size_still_rehashes(self, ledger_con, tmp_path, monkeypatch):
-        # Same byte length, deliberately touched to a different mtime --
-        # size alone matching must not be treated as proof of unchanged
-        # content.
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"AAAAAAAAAA")
         ref = make_reference(pdf_path=str(pdf))
@@ -521,12 +456,6 @@ class TestUpsertReferenceRehashSkip:
 
 
 class TestAPdfThatVanishesMidSync:
-    """m-71: the reference manager moving, renaming or deleting a PDF
-    between `bib_reader`'s read of the bib file and the upsert used to
-    abort the entire run with an uncaught `OSError`, losing every
-    document the loop had not reached yet. The reference is recorded as
-    having no PDF for this run instead, and said so in the log."""
-
     def test_a_pdf_gone_before_the_stat_lands_as_no_pdf(self, ledger_con, tmp_path, caplog):
         pdf = tmp_path / "paper.pdf"
         ref = make_reference(pdf_path=str(pdf))  # never created: gone by the time sync looks
@@ -539,19 +468,12 @@ class TestAPdfThatVanishesMidSync:
             "WHERE citekey = ?",
             (ref.citekey,),
         ).fetchone()
-        # pdf_path is still recorded, which is the whole of "for this
-        # run": a file that comes back is picked up by the next sync
-        # with no --reparse and no manual repair.
         assert row == ("no_pdf", pdf.name, None, None, None)
         assert ref.citekey in caplog.text
 
     def test_a_pdf_gone_between_the_stat_and_the_hash_lands_the_same_way(
         self, ledger_con, tmp_path, monkeypatch
     ):
-        # The same disappearance one microsecond later surfaces from
-        # `_hash_pdf`'s open rather than `os.stat`. A half-filled answer
-        # -- a size with no hash -- is a state `_next_status` has no
-        # branch for, so the `try` has to span both calls.
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"here for the stat, gone for the hash")
         ref = make_reference(pdf_path=str(pdf))
@@ -569,11 +491,6 @@ class TestAPdfThatVanishesMidSync:
         assert row == ("no_pdf", None, None, None)
 
     def test_it_tells_a_caller_that_asked_and_nothing_more(self, ledger_con, tmp_path):
-        """Issue #556: `on_missing_pdf` is how `sync` learns to count and
-        report this, since `needs_parse` alone cannot distinguish it from
-        a reference that never had a PDF. It fires only for a
-        `ref.pdf_path` that could not be read -- not for a reference
-        with no `file` field, and not for one whose PDF is fine."""
         seen = []
 
         gone = make_reference(citekey="gone_2024", pdf_path=str(tmp_path / "absent.pdf"))
@@ -614,20 +531,12 @@ class TestAPdfThatVanishesMidSync:
         assert ledger.upsert_reference(ledger_con, ref) is False
         assert status() == "no_pdf"
 
-        # And the run after the file comes back re-parses it rather than
-        # leaving the document stranded -- the hash recorded for the
-        # vanished run is NULL, so any hash at all is a change. One
-        # re-parse per transient disappearance is the whole cost.
         pdf.write_bytes(b"real content")
         assert ledger.upsert_reference(ledger_con, ref) is True
         assert status() == "discovered"
 
 
 class TestUpsertReferenceParsedPathOnHashChange:
-    """#490: a PDF replaced by a new version invalidates the text
-    parsed from the old one -- upsert_reference must not leave
-    parsed_path pointing at it once the hash changes."""
-
     def test_a_changed_hash_clears_parsed_path(self, ledger_con, tmp_path):
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"v1 content")
@@ -651,8 +560,6 @@ class TestUpsertReferenceParsedPathOnHashChange:
         out = parsed_file("out")
         ledger.mark_parsed(ledger_con, ref.citekey, out)
 
-        # A forced reparse of a byte-identical PDF must not discard text
-        # that is still accurate -- only a real parse result should.
         ledger.upsert_reference(ledger_con, ref, force=True)
 
         (parsed_path,) = ledger_con.execute(
@@ -662,8 +569,6 @@ class TestUpsertReferenceParsedPathOnHashChange:
 
 
 class TestStoredPaths:
-    """#966: no column holds a host-absolute path."""
-
     def test_mark_parsed_stores_the_name_under_parsed(self, ledger_con, isolated_config):
         ledger.upsert_reference(ledger_con, make_reference(citekey="smith_example_2024"))
         out = isolated_config.PARSED_DIR / "smith_example_2024.txt"
@@ -798,10 +703,6 @@ class TestKnownCitekeysAndAllItems:
         assert rows[0]["title"] == "Title A"
 
     def test_all_items_leaves_the_callers_own_row_factory_alone(self, ledger_con):
-        """m-81 (#511): the factory was set on the *connection* and reset
-        to `None` afterwards rather than to whatever was there before, so
-        a caller that had set its own silently lost it."""
-
         def mine(cursor, row):
             return {"mine": row[0]}
 
@@ -812,8 +713,6 @@ class TestKnownCitekeysAndAllItems:
         assert ledger_con.execute("SELECT citekey FROM items").fetchone() == {"mine": "a_2024"}
 
     def test_a_raising_query_does_not_leave_the_connection_in_row_mode(self, ledger_con):
-        """The other half of m-81: there was no `finally`, so a query that
-        raised left `sqlite3.Row` set on the connection for good."""
         ledger_con.row_factory = None
         ledger_con.execute("DROP TABLE items")
         with pytest.raises(sqlite3.OperationalError):
@@ -822,8 +721,6 @@ class TestKnownCitekeysAndAllItems:
 
 
 class TestFindStale:
-    """Read-only counterpart to prune_missing -- must never delete."""
-
     def test_finds_citekey_no_longer_in_bib(self, ledger_con):
         ledger.upsert_reference(ledger_con, make_reference(citekey="kept_key"))
         ledger.upsert_reference(ledger_con, make_reference(citekey="orphaned_key"))
@@ -831,7 +728,6 @@ class TestFindStale:
         stale = ledger.find_stale(ledger_con, seen_citekeys={"kept_key"})
 
         assert [k for k, _ in stale] == ["orphaned_key"]
-        # Unlike prune_missing, nothing is actually removed.
         assert ledger.known_citekeys(ledger_con) == {"kept_key", "orphaned_key"}
 
     def test_no_stale_citekeys_is_empty(self, ledger_con):
@@ -840,8 +736,6 @@ class TestFindStale:
         assert ledger.find_stale(ledger_con, seen_citekeys={"kept_key"}) == []
 
     def test_never_raises_even_when_seen_citekeys_is_empty(self, ledger_con):
-        # prune_missing refuses (raises) on this exact shape -- find_stale
-        # is read-only, so there's nothing destructive to guard against.
         ledger.upsert_reference(ledger_con, make_reference(citekey="kept_key"))
 
         stale = ledger.find_stale(ledger_con, seen_citekeys=set())
@@ -851,11 +745,6 @@ class TestFindStale:
 
 
 class TestPruneMissing:
-    """Without this, a citekey removed from bibliography.bib stays "known"
-    to citation_gate forever -- the fabricated-citekey failure mode
-    AGENTS.md's invariant exists to prevent, just arriving via deletion
-    instead of invention."""
-
     def test_removes_citekeys_no_longer_in_bib(self, ledger_con):
         ledger.upsert_reference(ledger_con, make_reference(citekey="kept_key"))
         ledger.upsert_reference(ledger_con, make_reference(citekey="orphaned_key"))
@@ -892,14 +781,6 @@ class TestPruneMissing:
         assert removed == [("orphaned_key", parsed_path.name)]
 
     def test_refuses_to_prune_everything_when_bib_yields_nothing(self, ledger_con):
-        # A real bib file with entries should never legitimately produce a
-        # prune call with an empty seen_citekeys set while the ledger has
-        # existing items -- that shape signals a corrupted/misconfigured
-        # bib export (BIB_FILE pointing at the wrong path, a truncated
-        # re-export), not "every citekey was deleted on purpose." Refusing
-        # loudly here is what stops sync from silently wiping the ledger
-        # and making every existing draft's citations look fabricated on
-        # the very next citation_gate run.
         ledger.upsert_reference(ledger_con, make_reference(citekey="kept_key"))
 
         with pytest.raises(RuntimeError, match="Refusing to prune"):
@@ -908,32 +789,13 @@ class TestPruneMissing:
         assert ledger.known_citekeys(ledger_con) == {"kept_key"}
 
     def test_empty_ledger_with_empty_seen_citekeys_is_still_a_no_op(self, ledger_con):
-        # The guard above must not fire when there's nothing to protect --
-        # a genuinely empty ledger (fresh project, nothing synced yet)
-        # paired with a genuinely empty bib file is a normal, un-suspicious
-        # state, not a signal of corruption.
         assert ledger.prune_missing(ledger_con, seen_citekeys=set()) == []
 
 
 class TestFailedParseIsRetried:
-    """A parse that failed must be retried on the next sync.
-
-    Before this, needs_parse was true only for a new row or a changed
-    pdf_hash, so a `parse_failed` document was skipped forever unless its
-    PDF *bytes* changed. Harmless when failures were per-document and
-    permanent (a corrupt PDF); not harmless once a worker pool exists,
-    because a single dead worker marks every in-flight document
-    parse_failed. Under an unattended cron that silently removes those
-    documents from the corpus for good: every later run counts them
-    "unchanged" and exits 0.
-    """
-
     def test_a_transient_parse_failure_is_retried_while_the_pdf_is_unchanged(
         self, isolated_config, ledger_con, tmp_path
     ):
-        # Narrowed in 2.0.0: v1.2.0 retried *every* failure, which meant a
-        # corrupt PDF re-parsed forever and sync exited 1 forever. Only
-        # run-caused failures are retried now; see TestFailureKind.
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4 content")
         ref = make_reference(pdf_path=str(pdf))
@@ -941,12 +803,9 @@ class TestFailedParseIsRetried:
         assert ledger.upsert_reference(ledger_con, ref) is True
         ledger.mark_parse_failed(ledger_con, ref.citekey, "worker died", transient=True)
 
-        # Same bytes, same mtime -- and it must still come back for retry.
         assert ledger.upsert_reference(ledger_con, ref) is True
 
     def test_a_successful_parse_is_still_not_redone(self, isolated_config, ledger_con, tmp_path):
-        """The incremental skip is the whole point of the ledger; only
-        the failed state is retried."""
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4 content")
         ref = make_reference(pdf_path=str(pdf))
@@ -974,18 +833,6 @@ class TestFailedParseIsRetried:
 
 
 class TestDiscoveredIsRescheduled:
-    """A row stranded at 'discovered' must come back for parsing.
-
-    'discovered' means "needs parsing" everywhere else in the pipeline,
-    but the unchanged-hash path returned needs_parse=False for it, so any
-    run that separated upsert from parse -- backend unavailable, Ctrl+C
-    or a crash between upsert and the result landing -- stranded the
-    document permanently: the next healthy sync counted it "unchanged"
-    and exited 0, and the paper stayed invisible to retrieval for good.
-    The same silent-drop failure TestFailedParseIsRetried closed for
-    parse_failed, one state over.
-    """
-
     def test_a_discovered_row_with_an_unchanged_pdf_is_parsed_next_run(
         self, isolated_config, ledger_con, tmp_path
     ):
@@ -993,28 +840,17 @@ class TestDiscoveredIsRescheduled:
         pdf.write_bytes(b"%PDF-1.4 content")
         ref = make_reference(pdf_path=str(pdf))
 
-        # Run 1 upserts but the parse never happens (no mark_* call) --
-        # the backend was missing, or the run was interrupted.
         assert ledger.upsert_reference(ledger_con, ref) is True
 
-        # Run 2, same bytes, healthy: the document must still be parsed.
         assert ledger.upsert_reference(ledger_con, ref) is True
 
     def test_a_discovered_row_without_a_pdf_is_not_parsed(self, isolated_config, ledger_con):
-        """No PDF means nothing to parse -- rescheduling applies only to
-        rows that actually have a document waiting."""
         ref = make_reference(pdf_path=None)
         ledger.upsert_reference(ledger_con, ref)
         assert ledger.upsert_reference(ledger_con, ref) is False
 
 
 class TestFailureKind:
-    """Two failures wearing one status is what made retry-everything the
-    only option. A dead worker marks every in-flight document failed and
-    must be retried; a corrupt PDF must not be re-parsed forever, because
-    a sync that exits 1 on every run trains its reader to ignore exit 1
-    -- which is how the next real failure gets missed."""
-
     def _failed(self, con, tmp_path, *, transient):
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4 content")
@@ -1034,8 +870,6 @@ class TestFailureKind:
     def test_a_deterministic_failure_keeps_its_status_so_it_stays_reported(
         self, isolated_config, ledger_con, tmp_path
     ):
-        """Not retried is not the same as forgotten -- it must still show
-        up in the summary and still make the run exit nonzero."""
         ref = self._failed(ledger_con, tmp_path, transient=False)
         ledger.upsert_reference(ledger_con, ref)
         row = ledger_con.execute(
@@ -1046,20 +880,15 @@ class TestFailureKind:
     def test_changed_pdf_bytes_retry_a_deterministic_failure(
         self, isolated_config, ledger_con, tmp_path
     ):
-        """Editing or replacing the PDF is the documented escape hatch
-        for a misclassified failure."""
         ref = self._failed(ledger_con, tmp_path, transient=False)
         Path(ref.pdf_path).write_bytes(b"%PDF-1.4 different content entirely")
         assert ledger.upsert_reference(ledger_con, ref) is True
 
     def test_force_retries_a_deterministic_failure(self, isolated_config, ledger_con, tmp_path):
-        """--reparse, the other escape hatch."""
         ref = self._failed(ledger_con, tmp_path, transient=False)
         assert ledger.upsert_reference(ledger_con, ref, force=True) is True
 
     def test_force_reparses_an_already_parsed_document(self, isolated_config, ledger_con, tmp_path):
-        """The point of --reparse: re-extract text that is recorded as
-        fine but that you have reason to doubt."""
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4 content")
         ref = make_reference(pdf_path=str(pdf))
@@ -1086,10 +915,6 @@ class TestFailureKind:
         assert ledger.failure_counts(ledger_con) == {"transient": 2, "deterministic": 1}
 
     def test_an_old_ledger_without_the_column_is_migrated(self, isolated_config, tmp_path):
-        """A pre-2.0.0 ledger has no failure_kind. Its existing
-        parse_failed rows must not be silently reclassified as
-        deterministic and abandoned -- they predate the distinction, so
-        they are retried once, as they were before."""
         con = ledger.connect()
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4 content")
@@ -1105,12 +930,6 @@ class TestFailureKind:
 
 
 class TestUpsertBatching:
-    """m-75 (#511). `last_synced` moves on every row on every run, so a
-    *no-op* sync rewrites all of them -- 646 separate fsync'd write
-    transactions on the corpus this was measured against. That is not
-    only slow: each commit is a window in which the read-only inspector
-    can see a half-written ledger."""
-
     def test_commit_false_leaves_the_transaction_open(self, ledger_con):
         ledger.upsert_reference(ledger_con, make_reference(citekey="a_2024"), commit=False)
         assert ledger_con.in_transaction
@@ -1119,15 +938,10 @@ class TestUpsertBatching:
         assert ledger.known_citekeys(ledger_con) == {"a_2024"}
 
     def test_the_default_still_commits(self, ledger_con):
-        """Every other caller -- and every test here -- does one upsert
-        and expects it durable, so the default is unchanged."""
         ledger.upsert_reference(ledger_con, make_reference(citekey="a_2024"))
         assert not ledger_con.in_transaction
 
     def test_sync_commits_once_for_the_whole_reference_list(self, ledger_con):
-        """The whole point: one commit for the loop, not one per row.
-        Counted through a proxy rather than by patching `sqlite3` -- a
-        built-in type's method cannot be monkeypatched."""
         from chitragupta import sync_decide
 
         class CountingConnection:
@@ -1156,18 +970,6 @@ class TestUpsertBatching:
 
 
 class TestBatchingKeepsFinishedRowsOnACrash:
-    """The guarantee `docs/DESIGN.md`'s rejected-alternatives paragraph
-    turns on, and the reason m-75's batching is acceptable at all: one
-    transaction for the loop must not discard finished rows when the loop
-    raises. The commit is therefore in a `finally`; every row written is
-    a whole row, so committing on the way out is safe. The raise path
-    this used to name -- a PDF moved between the bib read and
-    `_stat_pdf` raising `OSError`, m-71 -- is closed now, so the
-    `OSError` below is a stand-in for whatever raises next (an
-    interrupt, a `sqlite3` error from the write) rather than a live
-    reproduction of that bug. `TestAPdfThatVanishesMidSync` is what
-    covers the closed one."""
-
     def test_a_raise_mid_loop_still_commits_what_finished(self, ledger_con, monkeypatch):
         from chitragupta import ledger_upsert, sync_decide
 

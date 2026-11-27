@@ -1,15 +1,3 @@
-"""Tests for chitragupta/dossier/_outline.py (#455): `outline.md`,
-the human's own per-section brief/claim/declared-queries file.
-
-Three things carry the weight here: the parser has to tell a genuine
-shape error (no brief: or claim: at all) from an ordinary editing state
-(an empty brief while the human is mid-sentence); brief and claim have
-to combine rather than being forced exclusive, since each carries its
-own label; and the declared-vs-actual diff has to answer "did this
-draft follow its outline" from retrieval.md alone, without silently
-reading a pre-outline.md dossier as compliant.
-"""
-
 import pytest
 
 from chitragupta import config, dossier
@@ -46,9 +34,6 @@ class TestParse:
         assert result.problems == []
 
     def test_brief_and_claim_combine(self):
-        """Rejected in an earlier draft of the design as mutually
-        exclusive -- but each block carries its own explicit label, so
-        there is no ambiguity left for exclusivity to resolve."""
         result = _outline.parse(
             "## Family 3: hybrid\n\n"
             "brief: Cover three distinct strategies, not one blur.\n\n"
@@ -76,10 +61,6 @@ class TestParse:
         )
 
     def test_a_section_with_no_queries_is_valid(self):
-        """Real sections.md data (04-just-enough-modeling's own) shows
-        plenty of headings with no citekeys at all -- pure framing
-        prose. A brief-only section with nothing declared to search for
-        is not a shape error."""
         result = _outline.parse("## Before you start\n\nbrief: Set expectations only.\n")
         assert result.sections["Before you start"].queries == []
         assert result.problems == []
@@ -101,9 +82,6 @@ class TestParse:
         assert any("expects a `- ` bullet" in p.problem for p in result.problems)
 
     def test_an_empty_brief_mid_edit_is_not_a_problem(self):
-        """A human who typed `brief:` and hasn't filled it in yet is not
-        a malformed file -- but it also doesn't count as declaring
-        intent, so the section-level "neither" check still fires."""
         result = _outline.parse("## Section\n\nbrief:\n")
         assert result.sections["Section"].brief == ""
         assert any("neither a brief" in p.problem for p in result.problems)
@@ -117,12 +95,6 @@ class TestParse:
         assert list(result.sections) == ["Section"]
 
     def test_a_multi_line_comment_is_ignored_entirely(self):
-        """The bug an end-to-end smoke test caught: `init --outline`'s
-        own skeleton template is a multi-line `<!-- ... -->` block with
-        a fenced example inside it -- including a `##` heading and a
-        `brief:` line. None of that may become real structure, or the
-        freshly created file fails its own --check before a human has
-        touched it."""
         result = _outline.parse(
             "<!-- Some notes.\n"
             "     ## Not a real heading\n"
@@ -134,9 +106,6 @@ class TestParse:
         assert result.problems == []
 
     def test_the_shipped_outline_template_parses_clean(self):
-        """The exact skeleton `dossier init --outline` writes must parse
-        to zero sections and zero problems -- a human hasn't touched it
-        yet, and `--check` must not fail on the pipeline's own output."""
         from chitragupta.dossier._create import _OUTLINE_TEMPLATE
 
         result = _outline.parse(_OUTLINE_TEMPLATE)
@@ -152,9 +121,6 @@ class TestParse:
         assert "still the brief." in result.sections["Section"].brief
 
     def test_an_unrecognised_line_is_a_problem(self):
-        """A line after a heading with no label yet at all -- distinct
-        from a line continuing an already-open brief/claim block, which
-        is ordinary multi-paragraph prose, not an error."""
         result = _outline.parse("## Section\n\nrandom prose with no label\n")
         assert any("unrecognised line" in p.problem for p in result.problems)
 
@@ -201,9 +167,6 @@ class TestDeclaredVsActual:
         assert drift.sections["Failure modes"].run == []
 
     def test_a_declared_query_that_returned_nothing_is_reported_run_empty(self, draft):
-        """#480: coverage is marked on evidence retrieved, never on
-        query issued. The call happened, so it stays in `run` -- what it
-        must not do is read like a query that came back with twelve."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 0, 0, origin="declared")
         outline_ = _outline.parse(
@@ -224,9 +187,6 @@ class TestDeclaredVsActual:
         assert drift.sections["Failure modes"].run_empty == []
 
     def test_a_query_answered_after_an_empty_first_call_is_not_run_empty(self, draft):
-        """The reformulation case: searched once for nothing, once for
-        four. Reporting that as uncovered would name a gap the draft's
-        own history already closed."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 0, 0, origin="declared")
         dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 4, 900, origin="declared")
@@ -238,8 +198,6 @@ class TestDeclaredVsActual:
         assert drift.sections["Failure modes"].run_empty == []
 
     def test_a_query_never_run_is_not_reported_run_empty(self, draft):
-        """`run_empty` is a subset of `run`, not a second name for
-        `not_run` -- a query nobody issued has no result to be empty."""
         dossier.init(draft, "survey")
         outline_ = _outline.parse(
             "## Failure modes\n\nbrief: text\n\nqueries:\n- timestep mismatch\n"
@@ -249,9 +207,6 @@ class TestDeclaredVsActual:
         assert drift.sections["Failure modes"].run_empty == []
 
     def test_a_regrounded_query_that_returned_nothing_is_run_empty(self, draft):
-        """A re-grounding round (E4, #456) counts in `run` like any
-        declared call, so it can come back empty like any declared
-        call."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 0, 0, origin="reground")
         outline_ = _outline.parse(
@@ -262,9 +217,6 @@ class TestDeclaredVsActual:
         assert drift.sections["Failure modes"].run_empty == ["timestep mismatch"]
 
     def test_an_extended_query_is_reported_flat_not_per_section(self, draft):
-        """retrieval.md records no section for a call, only query text
-        and origin -- an --extend addition is visible as having
-        happened, but not attributable to which section came up thin."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "surrogate model twin", 5, 5, 100, origin="extended")
         outline_ = _outline.parse("## Family 3\n\nbrief: text\n\nqueries:\n- corrected physics\n")
@@ -273,9 +225,6 @@ class TestDeclaredVsActual:
         assert drift.sections["Family 3"].not_run == ["corrected physics"]
 
     def test_an_unspecified_origin_call_is_neither_run_nor_extended(self, draft):
-        """A pre-outline.md or otherwise undeclared call must not be
-        silently read as having followed the outline -- that would
-        make the diff always report compliance."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 5, 100)
         outline_ = _outline.parse(
@@ -305,9 +254,6 @@ class TestDeclaredVsActual:
         assert drift.sections["Family 3"].not_run == ["corrected physics"]
 
     def test_an_unspecified_origin_is_still_neither_run_nor_regrounded(self, draft):
-        """Regression guard for the risk this task is named for: only
-        the literal "reground" string joins `run`. An unspecified origin
-        must still read as not-run, same as before this task."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 5, 100)
         outline_ = _outline.parse(
@@ -318,10 +264,6 @@ class TestDeclaredVsActual:
         assert drift.regrounded == []
 
     def test_a_claim_only_section_with_no_queries_still_appears_in_drift(self, draft):
-        """A claim: section with nothing declared to search for must not
-        be silently absent from the diff -- that would make `dossier
-        status` look like it had nothing to say about the sections whose
-        grounding matters most."""
         dossier.init(draft, "survey")
         outline_ = _outline.parse(
             "## Why calibration matters\n\nclaim: Calibration dominates prediction error.\n"
@@ -382,19 +324,12 @@ class TestOutlineCli:
         assert "neither a brief" in capsys.readouterr().err
 
     def test_the_freshly_created_skeleton_passes_check(self, draft, capsys):
-        """End-to-end: `init --outline`'s own output must satisfy
-        `outline --check` before a human has edited a word of it."""
         assert dossier.main(["init", str(draft), "--genre", "survey", "--outline"]) == 0
         assert dossier.main(["outline", str(draft), "--check"]) == 0
         assert "0 section(s), 0 problem(s)" in capsys.readouterr().err
 
 
 class TestTheTitleLineIsNotASection:
-    """m-64 (#506). `_HEADING` accepted `#` as well as `##`, so an
-    `outline.md` that opened with its own title got a section named after
-    that title, carrying neither a `brief:` nor a `claim:` -- which
-    `--check` then reported as a real problem with the outline."""
-
     def test_a_leading_level_one_title_is_not_a_section(self):
         result = _outline.parse(
             "# Survey outline\n\n## Failure modes\n\nbrief: Focus on timestep mismatch.\n"

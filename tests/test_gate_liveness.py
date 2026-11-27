@@ -1,5 +1,3 @@
-"""chitragupta/gate_liveness.py: notice an automatic gate that is not running (#812)."""
-
 import json
 
 import pytest
@@ -12,7 +10,6 @@ HOOK_PATH = gate_liveness.Path(__file__).resolve().parent.parent / ".claude" / "
 
 @pytest.fixture(autouse=True)
 def no_launcher_faults(monkeypatch):
-    # This checkout's own launchers are not what these tests are about.
     monkeypatch.setattr(gate_liveness.launcher_configs, "faults", lambda root: [])
     monkeypatch.delenv(gate_liveness.GATE_CALLER_ENV, raising=False)
 
@@ -48,8 +45,6 @@ def test_a_hook_call_records_the_draft(isolated_config, monkeypatch):
 
 
 def test_two_hooks_on_different_drafts_keep_both_records(isolated_config, monkeypatch, capsys):
-    # The race one shared file had: parallel subagents writing two drafts
-    # at once, each hook reading and rewriting the record, one lost.
     configure(isolated_config.CONTENT_DIR.parent)
     first = draft_in(isolated_config)
     second = content_draft(isolated_config, "drafts/b.md")
@@ -134,7 +129,6 @@ def test_a_path_outside_content_is_keyed_by_its_full_path(isolated_config, tmp_p
 
 def test_a_record_that_cannot_be_written_never_fails_the_gate(isolated_config, monkeypatch):
     draft = draft_in(isolated_config)
-    # A plain file where the record directory should be: every write fails.
     (isolated_config.CONTENT_DIR / gate_liveness.RECORD_DIR).write_text("", encoding="utf-8")
     as_hook(monkeypatch, [draft])  # raises nothing
 
@@ -148,7 +142,5 @@ def test_a_dead_launcher_is_warned_about(isolated_config, monkeypatch, capsys):
 
 
 def test_the_hook_sets_the_variable_this_reads():
-    # The hook must not import layer 1 at load time, so the name is written
-    # twice; this is what keeps the two from drifting apart.
     text = (HOOK_PATH / "citation_gate_hook.py").read_text(encoding="utf-8")
     assert f'GATE_CALLER_ENV = "{gate_liveness.GATE_CALLER_ENV}"' in text

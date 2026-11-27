@@ -1,10 +1,3 @@
-"""scripts/release.py: builds release/chitragupta-<version>.zip
-from git-tracked files, excluding developer-only material. Uses a real,
-throwaway git repo (cheap, and exercises the actual `git ls-files` call
-rather than mocking subprocess) rather than the real repo's own tracked
-files, so exclusions/inclusions are asserted against a small, controlled
-fixture instead of this project's ever-changing file list."""
-
 import subprocess
 
 import pytest
@@ -83,10 +76,6 @@ class TestGetRepository:
 
 
 class TestRenderPypiReadme:
-    """README.md, rewritten with absolute GitHub URLs for PyPI -- see
-    the module docstring for why README.md itself stays relative-link
-    friendly instead."""
-
     def test_an_image_src_becomes_an_absolute_raw_url(self, repo):
         rendered = release.render_pypi_readme("9.9.9")
         assert (
@@ -106,9 +95,6 @@ class TestRenderPypiReadme:
         assert "[already absolute](https://example.com/elsewhere)" in rendered
 
     def test_an_in_page_anchor_link_is_left_alone(self, repo):
-        """The table of contents -- rewriting these would point every
-        `#section` link at a GitHub blob page instead of the same
-        page's own heading."""
         rendered = release.render_pypi_readme("9.9.9")
         assert "[in-page anchor](#hello)" in rendered
 
@@ -125,16 +111,10 @@ class TestTrackedFiles:
         assert "chitragupta/foo.py" in paths
         assert "pyproject.toml" in paths
         assert not any(p.startswith("tests/") for p in paths)
-        # Every prose doc ships. What stays behind is this repo's own
-        # machinery -- tests/, bench/, .github/ and .gitignore.
         assert "DEVELOPER.md" in paths
-        # docker/ isn't in EXCLUDE_TOP_LEVEL -- it ships in the full zip
-        # too, alongside the standalone docker-only one.
         assert "docker/Dockerfile" in paths
 
     def test_excludes_a_developer_only_skill_but_ships_the_rest(self, repo):
-        """#1188: a skill marked `audience: developer` is this
-        repository's own tooling, like `tests/`, and its scripts go with it."""
         skill = repo / ".claude" / "skills" / "demo-recorder"
         (skill / "scripts").mkdir(parents=True)
         (skill / "SKILL.md").write_text("---\nname: x\nmetadata:\n  audience: developer\n---\n")
@@ -151,47 +131,25 @@ class TestTrackedFiles:
         assert ".gitignore" not in paths
 
     def test_excludes_sonar_project_properties(self, repo):
-        # Root-level CI config, excluded for the same reason .github/ is:
-        # it does something only in a git checkout of *this* repo, and it
-        # names this repo's Sonar project key specifically.
         paths = release.tracked_files()
         assert "sonar-project.properties" not in paths
 
     def test_excludes_codecov_yml(self, repo):
-        # Same category as the two above, and the worst of the three to
-        # ship. It is not merely inert in someone else's checkout: it says
-        # `after_n_builds: 2`, so a consumer who unzips a release into
-        # their own repo and pushes it gets a Codecov that waits for a
-        # second upload their CI never makes, and every coverage status
-        # hangs pending. That is the exact failure mode codecov.yml's own
-        # comment warns about, exported to someone who never opted into it.
         paths = release.tracked_files()
         assert "codecov.yml" not in paths
 
     def test_excludes_coveragerc_windows_toml(self, repo):
-        # Same category as the two above: config for CI's Windows leg
-        # (#291), meaningful only alongside this
-        # repository's own test suite, which a release doesn't ship.
         paths = release.tracked_files()
         assert "coveragerc-windows.toml" not in paths
 
     def test_ships_all_three_agent_guidance_files(self, repo):
-        # All three ship. .claude/ and its genre skills ship too, and they
-        # cite AGENTS.md by name, so excluding any of the three would leave
-        # a dangling reference for anyone reading from an unzipped release
-        # -- including someone who unzips it to work on the pipeline.
         paths = release.tracked_files()
         assert "SOUL.md" in paths
         assert "AGENTS.md" in paths
         assert "DEVELOPER-AGENTS.md" in paths
-        # .claude/ ships for the same reason -- the genre skills are what
-        # cite AGENTS.md, so the two have to travel together.
         assert ".claude/skills/survey-writer/SKILL.md" in paths
 
     def test_excludes_bench(self, repo):
-        # bench/ measures *this* repo's parser on *this* host's corpus --
-        # developer-only material in the same category as tests/, and it
-        # needs a bib file a release consumer doesn't have.
         paths = release.tracked_files()
         assert not any(p.startswith("bench/") for p in paths)
 
@@ -210,10 +168,6 @@ class TestBuildRelease:
         assert zip_path == repo / "release" / "chitragupta-9.9.9.zip"
         assert zip_path.exists()
         assert n_files == 12  # README.md, SOUL.md, AGENTS.md, DEVELOPER-AGENTS.md,
-        #                      DEVELOPER.md, pyproject.toml, chitragupta/foo.py,
-        #                      .claude/skills/survey-writer/SKILL.md, DOCKER.md,
-        #                      DOCKER-DEVELOPER.md, docker/Dockerfile,
-        #                      docker/.env.example
 
         with zipfile.ZipFile(zip_path) as zf:
             names = set(zf.namelist())
@@ -245,8 +199,6 @@ class TestBuildRelease:
             names = zf.namelist()
         assert "chitragupta-9.9.9/content/" in names
         assert "chitragupta-9.9.9/papers/" in names
-        # The directory placeholder is present, but none of the real,
-        # per-host tracked files that used to live under it are.
         assert not any(
             n.startswith("chitragupta-9.9.9/content/") and n != "chitragupta-9.9.9/content/"
             for n in names
@@ -256,7 +208,6 @@ class TestBuildRelease:
             for n in names
         )
 
-        # Staging directory is cleaned up; only the zip remains under release/.
         assert list((repo / "release").iterdir()) == [zip_path]
 
     def test_rerunning_overwrites_stale_archive(self, repo):
@@ -265,9 +216,6 @@ class TestBuildRelease:
         assert zip_path.exists()
 
     def test_leftover_staging_dir_from_a_crashed_run_is_cleared(self, repo):
-        """A prior run that died before its own cleanup would leave the
-        staging dir behind; build_release must clear it, not merge into it
-        or fail on FileExistsError."""
         stale_staging = repo / "release" / "chitragupta-9.9.9"
         stale_staging.mkdir(parents=True)
         (stale_staging / "leftover-from-a-crashed-run.txt").write_text("stale")
@@ -279,10 +227,6 @@ class TestBuildRelease:
 
 
 class TestBuildDockerRelease:
-    """release/chitragupta-docker-<version>.zip: docker/ and DOCKER.md
-    only, for someone who wants to run the images without downloading
-    the whole checkout."""
-
     def test_zip_contains_only_docker_and_the_docker_doc(self, repo):
         import zipfile
 
@@ -299,9 +243,6 @@ class TestBuildDockerRelease:
         assert "chitragupta-docker-9.9.9/DOCKER.md" in names
 
     def test_zip_excludes_docker_developer_md(self, repo):
-        """DOCKER-DEVELOPER.md is this repo's own build/CI verification
-        record, not something a Docker user needs -- see
-        build_docker_release's own docstring."""
         import zipfile
 
         zip_path, _ = release.build_docker_release()

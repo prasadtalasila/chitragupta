@@ -1,12 +1,3 @@
-"""chitragupta/review/_digest_repeat.py: is a passage copied twice?
-
-#1172's dogfood draft carried one source's heat-balance equations and
-their symbol definitions in three sections, every copy verified against
-the source, and no check said so. These pin the comparison: per
-sentence, per citekey, flattened the way every match is, and only above
-a length a stock phrase does not reach.
-"""
-
 from chitragupta.review._digest_model import Span
 from chitragupta.review._digest_repeat import MIN_CHARS, repeats
 
@@ -28,8 +19,6 @@ def test_a_sentence_copied_again_from_the_same_source_is_reported_on_the_later_c
 
 
 def test_typography_does_not_hide_a_repeat():
-    """The two copies were cleaned differently; the source's words are
-    the same, so the flattened stream is."""
     respaced = DEFINITION.replace("T_h", "𝑇 ℎ").replace(", measured", " , measured")
     assert len(repeats([span(10, DEFINITION), span(40, respaced)])) == 1
 

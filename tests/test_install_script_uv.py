@@ -1,10 +1,3 @@
-"""`install_full_pipeline.sh` sets up a checkout by itself: it copies the
-example config when there is none, and installs the pinned uv into the
-venv it builds, so a developer runs one script after cloning rather than
-three commands (`cp config.toml.example ...`, `pipx install uv`, the
-script). The functions run for real, in bash, against fakes.
-"""
-
 import re
 import shutil
 import subprocess
@@ -58,8 +51,6 @@ class TestTheConfigIsCopied:
         assert (tmp_path / "config.toml").read_text(encoding="utf-8") == "mine\n"
 
     def test_without_an_example_nothing_is_written(self, tmp_path):
-        """docker/Dockerfile copies pyproject.toml and the lock, not the
-        example config, so there is nothing to copy there."""
         assert self._run(tmp_path).returncode == 0
         assert not (tmp_path / "config.toml").exists()
 
@@ -70,8 +61,6 @@ class TestTheConfigIsCopied:
 
 class TestUvIsInstalledIntoTheVenv:
     def _venv(self, tmp_path, pip_exit=0):
-        """A fake venv whose python records the pip call and, like pip,
-        puts a `uv` beside itself."""
         bin_dir = tmp_path / "venv" / "bin"
         bin_dir.mkdir(parents=True)
         python = bin_dir / "python"
@@ -121,9 +110,6 @@ class TestThePinnedUv:
         assert len(re.findall(r"--hash=sha256:[0-9a-f]{64}", text)) >= 10
 
     def test_the_workflows_pin_the_same_version(self):
-        """CI, the docs build and the release install uv with pip on their
-        own; a version bumped in one place and not the others would lock
-        with one uv and build with another."""
         version = re.search(r"^uv==([\d.]+)", REQUIREMENTS.read_text(encoding="utf-8"), re.M).group(
             1
         )
@@ -134,10 +120,6 @@ class TestThePinnedUv:
 
 
 def test_the_docker_image_copies_every_file_the_install_reads():
-    """docker/Dockerfile copies only what installing needs into the build,
-    before the source is mounted, so a file the script reads that is not
-    on a COPY line fails the image build -- which is how
-    uv-requirements.txt first reached CI."""
     dockerfile = (REPO_ROOT / "docker" / "Dockerfile").read_text(encoding="utf-8")
     copied = " ".join(line for line in dockerfile.splitlines() if line.startswith("COPY "))
     read = set(re.findall(r'"\$REPO_ROOT/(scripts/[\w.-]+|[\w.-]+\.(?:lock|txt))"', SCRIPT))

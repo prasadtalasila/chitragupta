@@ -1,11 +1,3 @@
-"""chitragupta/render_output/_math_symbols.py: `math.md`'s `## Symbols`
-table, what a symbol means, and what `render` says about it (#1143).
-
-The mapping table stays the only source of a symbol's LaTeX; `## Symbols`
-only gives a mapped key a meaning. `tests/test_render_output_math.py`
-covers the mapping table itself.
-"""
-
 from pathlib import Path
 
 import pytest
@@ -35,8 +27,6 @@ SYMBOLS = """\
 
 
 def _draft(math: str, text: str = "", glossary: "str | None" = None) -> Path:
-    """A draft with `math` as its math.md and `glossary` as scope.md's
-    `## Glossary` body."""
     draft = config.DRAFTS_DIR / "dt" / "tank.md"
     draft.parent.mkdir(parents=True, exist_ok=True)
     draft.write_text(text, encoding="utf-8")
@@ -51,9 +41,6 @@ def _draft(math: str, text: str = "", glossary: "str | None" = None) -> Path:
 
 def kinds(found) -> "list[str]":
     return [finding.kind for finding in found]
-
-
-# --- the table and its rows -------------------------------------------------
 
 
 class TestReadingTheTable:
@@ -125,9 +112,6 @@ class TestTheMappingIgnoresTheSymbolsTable:
 )
 def test_which_keys_are_bare_symbols(key, bare):
     assert _math.is_bare_symbol(key) is bare
-
-
-# --- what render says -------------------------------------------------------
 
 
 class TestSymbolFindings:

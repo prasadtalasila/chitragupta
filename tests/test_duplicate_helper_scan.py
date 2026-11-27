@@ -1,26 +1,3 @@
-"""No module-level helper or fixture body appears in two test modules (#867).
-
-docs/CODE-STANDARDS.md names duplication the highest-value thing to catch,
-and the rule covers tests. Before #867 the suite carried seven copies of
-`book`, four of `_sidecar` and of `_add_item`, three of `_has_tikz` and a
-dozen more pairs -- each one a place for a fix to land in one copy and
-not the others, which is how `test_tldr.py`'s came to say it "mirrors"
-another module's.
-
-The comparison is on the AST of the body with its docstring dropped, so
-a copy that only reworded its docstring is still a copy, and a one-line
-body is not counted: `return book_dir` in two modules is a name, not a
-duplicated procedure. A shared helper lives in tests/conftest.py, or
-beside the helpers it builds on (`tests/test_review_units.py`'s
-`a_draft`).
-
-What it does not see, so a clean run is read for what it is: methods
-and nested functions (only module-level `def`s are compared), a copy
-that renamed a local variable (the comparison is exact), and one-line
-bodies. A one-line launcher wrapper, the old `_run`, is
-`tests/test_subprocess_launch_scan.py`'s to catch.
-"""
-
 import ast
 from pathlib import Path
 
@@ -37,7 +14,6 @@ def _body_key(node: ast.FunctionDef) -> "str | None":
 
 
 def duplicates(sources: "dict[str, str]") -> "list[list[str]]":
-    """Groups of `module::function` sharing one body across modules."""
     seen: "dict[str, list[str]]" = {}
     for module, source in sources.items():
         for node in ast.parse(source).body:
@@ -55,8 +31,6 @@ def test_no_helper_body_is_defined_in_two_test_modules():
 
 
 def test_the_detector_sees_a_pre_867_copy():
-    """`_sidecar` as it stood in three modules, two of them verbatim and
-    one with a docstring the others lacked."""
     body = (
         "def _sidecar(citekey, records):\n"
         "    config.DOCLING_DIR.mkdir(parents=True, exist_ok=True)\n"

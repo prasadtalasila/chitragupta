@@ -1,11 +1,3 @@
-"""`chitragupta/help_format.py` and `chitragupta/command_help.py`: the
-click-style `--help` the dispatchers print (#1230).
-
-What is pinned here is the truncation rule and the layout, because the
-spec fixed both: a command list shows one cut line per command, and the
-full text lives one level down in that command's own `--help`.
-"""
-
 import ast
 import sys
 from pathlib import Path
@@ -19,8 +11,6 @@ from tests.conftest import run_python
 
 class TestTruncate:
     def test_text_that_fits_whole_is_kept_whole(self):
-        """A clause break is a place to cut, not a reason to: the line
-        keeps everything that fits."""
         text = "retrieval surfaced it -- did the draft cite it?"
         assert truncate(text, 60) == "Retrieval surfaced it -- did the draft cite it?"
 
@@ -29,7 +19,6 @@ class TestTruncate:
         assert truncate(text, 45) == "Read-only view of what that run recorded"
 
     def test_an_abbreviation_is_not_a_sentence_end(self):
-        """`vs. the` is mid-sentence; cutting there printed "torch vs"."""
         text = "probe and report: OS binaries, torch vs. the GPU driver, and a great deal more"
         assert truncate(text, 50) == "Probe and report: OS binaries, torch vs. the..."
 
@@ -46,7 +35,6 @@ class TestTruncate:
         assert truncate("x" * 100, 45) == "X" + "x" * 41 + "..."
 
     def test_an_abbreviation_with_a_capital_after_it_is_not_a_cut(self):
-        """No sentence cuts at all: `e.g. Foo` once printed as "E.g"."""
         text = "e.g. Foo is a long example that will not fit in the limit we give"
         assert truncate(text, 45) == "E.g. Foo is a long example that will not..."
 
@@ -68,8 +56,6 @@ class TestCommandsBlock:
 
 
 def test_help_index_is_import_light():
-    """The top-level tree reads these two modules, and must never pay for
-    a layer's imports -- `enrich`'s may not even be installed."""
     result = run_python(
         "-c",
         "import sys, chitragupta.command_help, chitragupta.help_format\n"
@@ -86,8 +72,6 @@ def test_help_index_is_import_light():
 
 class TestDispatcherParser:
     def test_parser_kwargs_suggests_only_on_314(self, monkeypatch):
-        """`suggest_on_error` raises TypeError on 3.12 and 3.13, which
-        pyproject.toml still supports."""
         monkeypatch.setattr(sys, "version_info", (3, 14, 0))
         assert help_format.parser_kwargs() == {"suggest_on_error": True}
         monkeypatch.setattr(sys, "version_info", (3, 13, 5))
@@ -143,9 +127,6 @@ class TestDispatcherParser:
 
 
 class TestClickParser:
-    """PR 2 of #1230: every parser in chitragupta/ prints the click look,
-    not only the three dispatchers."""
-
     @staticmethod
     def _help(parser, monkeypatch, capsys) -> str:
         monkeypatch.setenv("COLUMNS", "80")
@@ -246,14 +227,11 @@ _PACKAGE = Path(__file__).resolve().parent.parent / "chitragupta"
 
 def _sources() -> list[Path]:
     files = sorted(_PACKAGE.rglob("*.py"))
-    # Non-vacuous: a glob that matched nothing would pass every check below.
     assert len(files) > 100
     return files
 
 
 def test_every_parser_is_a_click_parser():
-    """A parser built from plain argparse prints the old look, so a new
-    command would silently be the one --help that differs (#1230)."""
     plain = [
         str(path.relative_to(_PACKAGE.parent))
         for path in _sources()
@@ -264,8 +242,6 @@ def test_every_parser_is_a_click_parser():
 
 
 def test_no_parser_hardcodes_the_module_form():
-    """`prog="python -m ..."` names the module form even when the reader
-    typed `chitragupta`; progname.prog_for chooses the one they used."""
     hardcoded = [
         str(path.relative_to(_PACKAGE.parent))
         for path in _sources()
@@ -275,17 +251,11 @@ def test_no_parser_hardcodes_the_module_form():
 
 
 def test_every_click_parser_gets_the_version_dependent_keywords(monkeypatch):
-    """On 3.14 that is suggest_on_error; a keyword 3.13 accepts stands in
-    for it here, so the path that applies them runs on every CI leg."""
     monkeypatch.setattr(help_format, "parser_kwargs", lambda: {"allow_abbrev": False})
     assert help_format.ClickParser(prog="x").allow_abbrev is False
 
 
 class TestCapitalisingNeverChangesAValue:
-    """Help that opens with a literal the reader would type -- a choice,
-    or `enrich/gpu-torch/os-deps` -- keeps its case; capitalising it
-    printed "Md" and "Enrich/gpu-torch" (#1230 review)."""
-
     def test_a_help_line_that_opens_with_a_choice_keeps_its_case(self, monkeypatch, capsys):
         parser = help_format.ClickParser(prog="x")
         parser.add_argument("--format", choices=["md", "html"], help="md writes markdown")

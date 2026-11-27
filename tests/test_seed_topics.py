@@ -1,11 +1,3 @@
-"""chitragupta/seed_topics.py: the hand-authored seed list and the reader
-for what it matched.
-
-Stdlib-only on both sides, so these tests need no venv, no model and no
-corpus -- which is the property the module was split out for and is
-worth keeping true.
-"""
-
 import json
 
 import pytest
@@ -21,14 +13,10 @@ def write_seed_file(cfg, body: str):
 
 class TestLoad:
     def test_missing_file_is_not_an_error(self, isolated_config):
-        """The common case, and the one #206 required stay unchanged: a
-        library with no seed file gets no seeding, not a failure."""
         assert not isolated_config.SEED_TOPICS_PATH.exists()
         assert seed_topics.load() == ()
 
     def test_phrases_survive_whole(self, isolated_config):
-        """The invariant the whole feature rests on. A three-word topic
-        stays one topic; nothing splits it on whitespace."""
         write_seed_file(isolated_config, 'topics = ["structural health monitoring"]')
         assert seed_topics.load() == ("structural health monitoring",)
 
@@ -50,8 +38,6 @@ class TestLoad:
         assert seed_topics.load(elsewhere) == ("from elsewhere",)
 
     def test_absent_topics_key_is_empty_not_an_error(self, isolated_config):
-        """A file holding only comments is a seed list the author has not
-        filled in yet, not a malformed one."""
         write_seed_file(isolated_config, "# nothing here yet\n")
         assert seed_topics.load() == ()
 
@@ -61,8 +47,6 @@ class TestLoad:
             seed_topics.load()
 
     def test_unreadable_file_raises(self, isolated_config, monkeypatch):
-        """OSError takes the same path as a parse error: both mean the
-        author wrote something that is in force and cannot be applied."""
         write_seed_file(isolated_config, 'topics = ["ok"]')
 
         def boom(*args, **kwargs):
@@ -103,9 +87,6 @@ class TestLoadReport:
         assert seed_topics.load_report(elsewhere)["n_docs"] == 9
 
     def test_truncated_json_raises_the_module_s_typed_error(self, isolated_config):
-        """#504, m-32: a killed mid-write process used to surface here as
-        a raw json.JSONDecodeError instead of the clean refusal every
-        other malformed-file path in this module gets."""
         isolated_config.TOPIC_SEEDS_PATH.parent.mkdir(parents=True, exist_ok=True)
         isolated_config.TOPIC_SEEDS_PATH.write_text('{"n_docs": 3, "assig', encoding="utf-8")
 
@@ -139,9 +120,6 @@ class TestReport:
         assert "seed-topics" in seed_topics.report({})
 
     def test_a_paper_appears_under_every_phrase_it_matched(self, isolated_config):
-        """The many-to-many property, asserted rather than assumed:
-        alpha_2020 is under both phrases, which is exactly what a
-        one-topic-per-document artefact could not represent."""
         text = seed_topics.report(SAMPLE)
         assert text.count("alpha_2020") == 2
 
@@ -161,7 +139,6 @@ class TestReport:
         text = seed_topics.report(SAMPLE, "digital twin")
         assert "beta_2021" in text
         assert "structural health monitoring" not in text
-        # The corpus-wide summary belongs to the whole-corpus view only.
         assert "seed topics," not in text
 
     def test_single_topic_view_matches_case_and_spacing_insensitively(self, isolated_config):
@@ -206,8 +183,6 @@ class TestMain:
 
 class TestDispatch:
     def test_corpus_layer_routes_topics_here(self):
-        """The verb is reachable from the corpus layer, which is what
-        makes it readable without the venv."""
         from chitragupta import corpus
 
         assert corpus.VERBS["topics"][0] == "chitragupta.seed_topics"
@@ -218,10 +193,6 @@ class TestDispatch:
 
 
 class TestTruncationIsVisible:
-    """A list cut by the limit and a topic that genuinely has that many
-    papers must not read identically -- only the first is a reason to
-    raise [enrich].seed_topic_max_papers."""
-
     def test_a_truncated_topic_says_how_many_were_considered(self, isolated_config):
         data = {
             "n_docs": 300,
@@ -253,8 +224,6 @@ class TestTruncationIsVisible:
         assert " of " not in text
 
     def test_a_report_without_considered_still_renders(self, isolated_config):
-        """`considered` arrived after the first artefacts were written;
-        a report from before it must not crash the reader."""
         data = {
             "n_docs": 3,
             "topics": [

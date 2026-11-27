@@ -1,12 +1,3 @@
-"""The `@comment` tab tables chitragupta-importer writes at the top of a bib.
-
-Two blocks use this shape, `cg-collections` (slug path, name) and
-`cg-renames` (old citekey, new citekey). The reading rule is the owner's
-(plans/1211-cg-collections-and-renames.md, D5): fields 1 and 2 of each
-row whatever the version, further fields ignored, a row whose key is not
-valid skipped, and the version reported so a caller can flag it.
-"""
-
 from chitragupta import bib_collections
 from chitragupta.bib_comments import KNOWN_VERSION, comment_blocks, read_tables
 
@@ -15,8 +6,6 @@ TABLE = "cg-collections"
 
 class TestCommentBlocks:
     def test_tabs_survive(self):
-        """bibtexparser 1.x expands tabs in comments, which is why this
-        module reads the raw text at all."""
         raw = "@comment{cg-collections v1\na\tA\n}\n@article{k, title={T}}\n"
         assert comment_blocks(raw) == ["cg-collections v1\na\tA\n"]
 

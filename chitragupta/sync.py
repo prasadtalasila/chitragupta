@@ -3,32 +3,13 @@
 Safe to run unattended / on a schedule (idempotent, incremental):
     python -m chitragupta.corpus sync
 
-A citekey that drops out of the bib file is only *reported* by default --
-pass --remove-stale to actually delete its content/ledger.sqlite row (see
-"Removing a paper" in README.md and chitragupta/ledger.py's find_stale/prune_missing).
+A citekey that drops out of the bib file is only *reported* unless
+--remove-stale is passed. No generation and no LLM calls: the bib file is
+the source of truth for citekeys. Needs `bibtexparser` (.venv-full).
 
-This is the corpus layer: no generation, no LLM calls, just
-bringing the shared corpus layer up to date with the bibliography (see
-chitragupta/bib_reader.py -- the BibTeX-exported .bib file is the source of
-truth for citekeys, not something this pipeline generates). Genre-specific
-drafting (the drafting layer) is invoked separately, on demand, via the
-Claude Code
-skills in .claude/skills/.
-
-Needs `bibtexparser` installed -- run scripts/install_full_pipeline.sh
-first (creates .venv-full/ on a bare host), then run this via that
-venv's python. python -m chitragupta.draft gate does not need it and still
-runs with the bare system interpreter.
-
-Split (#441) into four modules, and a fifth since: this one keeps the
-top-level orchestration (`run`/`main`) and the per-document
-ledger-write/tally step, `chitragupta/sync_pool.py` holds the
-parse-dispatch engine, `chitragupta/sync_decide.py` the two
-ledger-vs-bib-file decisions, `chitragupta/sync_report.py` the printed
-summary/warnings, and `chitragupta/sync_residue.py` (#763) the read-only
-scan for artefacts that still name a citekey about to be dropped. Each
-is a one-way dependency of this module; none imports back, and only
-`sync_decide` reaches `sync_residue`.
+This module keeps `run`/`main` and the per-document ledger write; the
+parse pool, the ledger-vs-bib decisions, the report and the residue scan
+live in `sync_pool`, `sync_decide`, `sync_report` and `sync_residue`.
 """
 
 import logging
@@ -52,49 +33,24 @@ from chitragupta import (
 from chitragupta.help_format import ClickParser
 from chitragupta.progname import prog_for
 
-# A fixed name, not __name__. Until 5.2.0 this module was itself the CLI
-# entrypoint (python -m chitragupta.sync), and Python sets __name__ to
-# "__main__" for whichever module is run that way -- not "chitragupta.sync". A
-# logger named "__main__" would sit outside the "src" tree entirely, so
-# logging_setup.configure()'s logging.getLogger("src").setLevel(...)
-# would silently never apply to it. Confirmed against a real run, not
-# assumed: every test in this suite imports sync as a plain submodule,
-# where __name__ is already "chitragupta.sync" and the distinction is invisible.
-# chitragupta/corpus.py is the entrypoint now, so __name__ here is always
-# "chitragupta.sync" -- but the name stays pinned rather than tracking whatever
-# imports it, because it is also the string that appears in every
-# logs/pipeline.log line and in the grep docs/CLI.md tells a scheduler
-# to use.
+# A fixed name, not __name__: it is the string in every logs/pipeline.log
+# line and in the grep docs/CLI.md gives schedulers.
 logger = logging.getLogger("chitragupta.sync")
 
-# What running this module directly exits with. `EX_USAGE` from BSD's
-# sysexits -- chosen for what it is *not*: none of the four codes
-# docs/CLI.md publishes as `sync`'s API. See refuse_direct_invocation.
+# `EX_USAGE` from sysexits, chosen because it is none of the codes
+# docs/CLI.md publishes. See refuse_direct_invocation.
 EXIT_COMMAND_REMOVED = 64
 
-# The two nonzero codes a completed run can report, split by *remedy* --
-# the same axis docs/CLI.md's no-PDF table already splits on, now carried
-# by the exit code rather than only by the prose beside it.
-#
-# The split exists because the collapsed code could not answer the one
-# question an unattended caller has (issue #696): `bench/sweep_sync.py`
-# reported `rc=1 failed=0` on all four rows of a 497-of-497 clean parse,
-# and no caller reading only the code could tell that row from one where
-# documents were actually lost. Both remain nonzero, so a caller testing
-# `!= 0` is unaffected; only one testing `== 1` on a bibliography problem
-# sees a change, and for that caller the old answer was wrong anyway.
-#
-# 3 rather than 2: `runlock.EXIT_ALREADY_RUNNING` is 2, and 64 is
-# EXIT_COMMAND_REMOVED above.
+# A completed run's two nonzero codes, split by remedy (#696): with one
+# code, a caller could not tell a clean parse with a bibliography problem
+# from lost documents. 3, because 2 is EXIT_ALREADY_RUNNING.
 EXIT_PARSE_FAILURE = 1
 EXIT_BIB_INTEGRITY = 3
 
 
 @dataclass
 class _Tally:
-    """One sync run's counters, threaded through the helpers below so
-    each phase mutates one object instead of `run` juggling a dozen
-    locals. Plain fields, no behaviour -- the summary reads them out."""
+    """One sync run's counters, mutated by each phase and read by the summary."""
 
     parsed: int = 0
     failed: int = 0
@@ -114,14 +70,7 @@ class _Tally:
 def _dispatch_and_apply(con, to_parse, tally) -> None:
     """The parse half: fan the documents out, then apply every result.
 
-    Timing brackets dispatch plus the result loop, not just the pool
-    itself: the ledger writes and prints in that loop are
-    microseconds against a parse that is (for docling) minutes, so
-    including them costs nothing and avoids pushing timing into
-    _parse_serial/_parse_parallel for a difference that's noise.
-    `tally.workers` keeps the resolved count for the summary's pages/s
-    figure (see pdf_text.resolve_workers on why that -- not the
-    requested value -- is the number worth reporting).
+    `tally.workers` keeps the *resolved* count for the pages/s figure.
     """
     workers, complaint = pdf_text.resolve_workers(
         len(to_parse), docling=(config.PARSER == "docling")
@@ -141,11 +90,8 @@ def _dispatch_and_apply(con, to_parse, tally) -> None:
     else:
         results = sync_pool._parse_serial(to_parse, commit)
 
-    # Reported in bib order, not completion order: futures finish in
-    # whatever order they finish, and letting that reach stdout would
-    # make two identical runs print differently and stop anyone
-    # diffing them. The ledger is not waiting for this loop: `commit`
-    # wrote each row as its result landed (#961).
+    # Reported in bib order, so two identical runs print identically. The
+    # ledger already has each row: `commit` wrote it on arrival (#961).
     for _ref, (citekey, out_path, exc) in zip(to_parse, results):
         _report_result(citekey, out_path, exc, tally)
     tally.parse_elapsed = time.monotonic() - parse_started
@@ -156,9 +102,7 @@ def _commit_result(con, citekey, out_path, exc) -> None:
     if exc is None:
         ledger.mark_parsed(con, citekey, Path(out_path))
     elif not isinstance(exc, pdf_text.BackendUnavailable):
-        # getattr, not isinstance: the marker rides on the
-        # exception instance because it is set by whoever knows
-        # the *cause*, which is the pool, not the raiser.
+        # getattr: the pool, which knows the cause, sets the marker.
         ledger.mark_parse_failed(con, citekey, str(exc), transient=getattr(exc, "transient", False))
 
 
@@ -168,41 +112,23 @@ def _report_result(citekey, out_path, exc, tally) -> None:
         out_path = Path(out_path)
         tally.parsed += 1
         print(f"  parsed  {citekey}")
-        # Read once, used twice: the quality guard below and the
-        # page count feeding the summary's pages/s figure both
-        # want this document's full text, and it's already being
-        # read off disk regardless -- no reason to do it twice.
         text = out_path.read_text(encoding="utf-8", errors="replace")
         tally.total_pages += pdf_text.page_count(text)
-        # Reported per document rather than only in the summary:
-        # the fix is usually per document (a scan, an unusual
-        # font) or global (the wrong backend), and seeing which
-        # citekeys trip it is what tells the two apart.
+        # Per document: which citekeys trip it tells a bad scan from the
+        # wrong backend.
         warning = pdf_text.quality_warning(text)
         if warning:
             tally.low_quality.append(citekey)
             logger.warning("WARNING %s: %s", citekey, warning)
     elif isinstance(exc, pdf_text.BackendUnavailable):
-        # The up-front probe passed, but the backend vanished
-        # (pdftotext dropped from PATH, or the docling
-        # package became uninstallable) between then and this
-        # specific item -- count and report it the same as the
-        # up-front case instead of letting it crash sync
-        # uncaught, which is exactly the failure mode probing
-        # exists to prevent. str(exc) carries the same actionable
-        # install hint as the up-front WARNING (both come from
-        # pdf_text.unavailable_reason()), not just "unavailable".
+        # The backend vanished after the up-front probe passed: count it
+        # like the up-front case rather than crash.
         tally.backend_unavailable += 1
         logger.warning("no-%s  %s: %s", config.PARSER, citekey, exc)
     else:
         tally.failed += 1
-        # Collected rather than marked transient by _commit_result: what
-        # expired is a *setting*, so a document that ran out of
-        # time will run out of it again next run, and retrying
-        # automatically would spend the same minutes every run
-        # without ever converging. Naming it in the summary with
-        # the fix that applies is the useful thing to do
-        # instead -- see the report after the summary.
+        # Not marked transient: a timeout is a setting and would recur on
+        # every retry. The summary names the fix instead.
         if getattr(exc, "timed_out", False):
             tally.timed_out.append(citekey)
         logger.error("FAILED  %s: %s", citekey, exc)
@@ -221,11 +147,7 @@ def _parser_available() -> bool:
 
 
 def run(remove_stale: bool = False, reparse: bool = False) -> int:
-    # Before the bibliography, not after: on a docling run with a worker
-    # pool this starts the forkserver importing torch and docling in the
-    # background, and reading a 646-entry bib file is the ~2.5s that
-    # would otherwise be spent doing nothing else. A no-op for every
-    # other configuration, including the default one.
+    # Before the bib read, so a docling pool warms up during it.
     pdf_text.prestart_pool()
 
     print(f"Reading bibliography from {config.BIB_FILE_PATH} ...")
@@ -240,8 +162,6 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
         had, to_parse = sync_decide._plan(con, references, reparse, parser_available, tally)
         _dispatch_and_apply(con, to_parse, tally)
         pruned, stale, suspicious = sync_decide._record_and_report(con, library, remove_stale, had)
-        # Read while the connection is still open -- the summary below
-        # runs after it is closed.
         kinds = ledger.failure_counts(con)
 
     # A lossy bib read turns --remove-stale into a report (issue 841).
@@ -250,19 +170,8 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
     stale_label = "pruned" if pruning else "stale (not removed)"
     summary = sync_report._summary_line(tally, kinds, stale_count, stale_label)
     print(summary)
-    # Also emitted through the logger -- landing in logs/pipeline.log even
-    # though it's already on stdout -- so a rotated log file is a
-    # self-contained run history without needing stdout alongside it.
-    # Built from the same counters the return code below uses, not a
-    # second independent tally, so the log and the exit status can never
-    # disagree about whether this run had trouble.
-    #
-    # extra={"file_only": True} keeps this out of logging_setup.configure()'s
-    # console handler specifically -- without it, a real `python -m
-    # chitragupta.sync` run prints this line twice (once from the print() above,
-    # once from the console handler catching this same record), which is
-    # exactly the double-printing "stdout stays untouched" was meant to
-    # avoid. Confirmed against a real run, not assumed.
+    # Also logged (file only, as stdout already has it) so a rotated log is a
+    # self-contained run history; the level uses the exit code's counters.
     logger.log(
         logging.WARNING
         if (tally.failed or tally.backend_unavailable or kinds["deterministic"])
@@ -282,49 +191,16 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
     return _exit_code(tally, kinds, suspicious)
 
 
-# Split out of `run` rather than left inline: the two-branch decision took
-# `run` to 27 statements against the 25-statement limit, and this is the
-# boundary the change is about anyway -- "what did this run conclude",
-# separate from "what did it do". The rationale below sits in comments
-# rather than in the docstring because docstrings count toward the
-# 250-code-line ceiling and comments do not, which is the standard's own
-# sanction (DEVELOPER-AGENTS.md, "Measure the headroom") and the only
-# reason this module still fits.
-#
-# A deterministic failure keeps the run nonzero on *every* run until it is
-# resolved, not just the run that produced it. It is not retried, so
-# `failed` (which counts this run's attempts) is zero for it -- and a
-# corpus with a hole in it must never report success.
-#
-# `suspicious` (the bib file yielding 0 references against a non-empty
-# ledger) is nonzero for the same reason: sync's exit code is an
-# unattended caller's only documented API (docs/CLI.md), so a broken
-# export must not read as "clean" indefinitely.
-#
-# `bib_reader.PDF_LOST_REASONS` joins it (issue #556): a PDF this export
-# claims and this host cannot produce -- gone, or present and unreadable
-# -- is a document silently missing from the corpus, and reporting it in
-# the summary while exiting 0 made it silent to exactly the caller that
-# cannot read a summary. Gated on those reasons rather than on
-# `tally.no_pdf`, because the other three describe an item that never had
-# a PDF here: an ordinary state of a bibliography, not a hole. That list
-# lives in `bib_reader` beside the reasons themselves, so adding a reason
-# cannot silently miss this gate.
-#
-# A citekey two bib entries share joins it too (issue 840): none of its
-# entries was synced, because picking one would be guessing which paper
-# the key means, so the bibliography promises a document the corpus did
-# not take in. The remedy is in the bib file, which is what this code says.
-# So does an entry bibtexparser dropped, or a citekey that cannot be a
-# filename (issue 841): both are papers the bib file holds and this run
-# did not read, and `tally.bib_problems` carries all three counts.
-#
-# Which of the two nonzero codes, and why in this order: a parse failure
-# is the more actionable of the two and the one that means *this host*
-# could not do its job, so it wins when both hold. A run reporting
-# EXIT_BIB_INTEGRITY is therefore also asserting that every document it
-# was asked to parse, it parsed -- which is the whole point of splitting
-# them.
+# Nonzero until resolved, on every run:
+# - a deterministic failure: never retried, so `failed` is zero for it.
+# - `suspicious` (0 references against a non-empty ledger): a broken export
+#   must not read as clean.
+# - a PDF in `bib_reader.PDF_LOST_REASONS` (#556): a hole in the corpus.
+#   The other no-PDF reasons are an ordinary bibliography, not a hole.
+# - `tally.bib_problems` (840, 841): a duplicated citekey, a dropped entry
+#   or an unusable filename; papers the bib holds and this run did not read.
+# A parse failure wins when both apply: it is the more actionable one, so
+# EXIT_BIB_INTEGRITY also asserts that every requested parse succeeded.
 def _exit_code(tally, kinds, suspicious) -> int:
     """What a completed run reports, split by remedy (issue #696)."""
     if tally.failed or tally.backend_unavailable or kinds["deterministic"]:
@@ -336,8 +212,7 @@ def _exit_code(tally, kinds, suspicious) -> int:
 
 
 def main(argv: "list[str] | None" = None) -> int:
-    """`python -m chitragupta.corpus sync`. Reached only through chitragupta/corpus.py,
-    which is why this file has no `__main__` block of its own."""
+    """`python -m chitragupta.corpus sync`, reached through chitragupta/corpus.py."""
     parser = ClickParser(
         prog=f"{prog_for('corpus')} sync",
         description="Sync content/ledger.sqlite from the bib file "
@@ -356,43 +231,18 @@ def main(argv: "list[str] | None" = None) -> int:
         "(default: report only, don't delete)",
     )
     args = parser.parse_args(argv)
-    # Held for the whole run, and only at the entrypoint: run() itself
-    # stays callable in-process (the tests do that) without fighting a
-    # lock, and only an actual invocation contends for it.
+    # Held only at the entrypoint, so run() stays callable in-process.
     try:
         with runlock.pipeline_lock():
-            # Inside the lock, not before it: two overlapping scheduled
-            # invocations would otherwise both attach a
-            # RotatingFileHandler to the same logs/pipeline.log before
-            # either acquires the lock -- and RotatingFileHandler isn't
-            # safe for two processes to hold open on the same file at
-            # once (a rotation from one can land mid-write from the
-            # other). The lock already serializes actual sync work; this
-            # makes it serialize handler creation too, so at most one
-            # process ever has a live handler on the file. The same
-            # constraint is why chitragupta/enrich/__main__.py -- which shares both
-            # this lock and this log file -- configures in the same
-            # place; see chitragupta/logging_setup.py's own docstring.
+            # Inside the lock: see logging_setup's module docstring.
             logging_setup.configure()
             return run(remove_stale=args.remove_stale, reparse=args.reparse)
     except runlock.AlreadyRunning as exc:
-        # Deliberately still a bare print, not the logger: this is the
-        # losing side of the race above and must not touch
-        # logs/pipeline.log itself, which the winner may already be
-        # writing to. Losing the lock is an expected, harmless outcome
-        # under any real schedule (see docs/CLI.md's "Running sync on a
-        # schedule"), not a failure worth persisting.
+        # A bare print: the loser must not write to the winner's log file.
         print(f"  {exc}", file=sys.stderr)
         return runlock.EXIT_ALREADY_RUNNING
     except ledger.PruneRefused as exc:
-        # ledger.prune_missing's guard (--remove-stale against a bib file
-        # that yielded 0 references) raises rather than silently wiping
-        # the ledger. main() is the unattended entrypoint (docs/CLI.md),
-        # so that refusal must reach the caller as a message and a
-        # nonzero exit, not an uncaught traceback. A distinct exception
-        # type, not bare RuntimeError, so an unrelated internal bug
-        # elsewhere in run() doesn't get misread as this well-understood
-        # refusal.
+        # A typed refusal, so an unrelated bug in run() still raises.
         print(f"  {exc}", file=sys.stderr)
         return 1
 
@@ -400,42 +250,14 @@ def main(argv: "list[str] | None" = None) -> int:
 def refuse_direct_invocation() -> int:
     """`python -m chitragupta.sync` is not a command any more -- say so.
 
-    It was one until 5.2.0, which moved it behind `python -m chitragupta.corpus
-    sync` and dropped this module's `__main__` block. Dropping it did not
-    make the old spelling an error: `python -m chitragupta.sync` still imported
-    the module and exited 0, having done nothing. Everywhere else in this
-    project that trap is silent and harmless (docs/ARCHITECTURE.md
-    accepts it as the price of one `--help` per layer), and here it was
-    not: this is the one command in this project that plausibly runs
-    unattended, from a crontab or a systemd unit, where "exited 0" is the
-    only thing anyone ever reads.
+    Removed in 5.2.0, after which it silently exited 0. That mattered here
+    alone, since sync runs from crontabs where the exit code is all anyone
+    reads (#151: two bench harnesses timed a sync that never ran). Parses
+    nothing, takes no lock, syncs nothing.
 
-    #151 measured the cost. `bench/repro_check.py` and
-    `bench/sweep_sync.py` kept invoking the old spelling for a whole
-    release: both timed a sync that never ran, parsed no progress lines
-    out of its empty stdout, and recorded that as a result. A measurement
-    harness that succeeds having done nothing produces *wrong* data, not
-    missing data.
-
-    This is not a second entry point and does not reopen the invariant.
-    It parses no arguments, offers no `--help`, takes no lock and syncs
-    nothing -- there is still exactly one way into this layer.
-
-    **The exit code is 64, and the number is the point.** docs/CLI.md
-    publishes `sync`'s three codes as an API an unattended caller reads:
-    `0` clean, `1` a document failed, `2` another run holds the lock. The
-    obvious choice here -- `2`, argparse's usage error -- is the one
-    number that must not be used, because a scheduler that consults that
-    table reads `2` as "expected, do nothing" and goes on ignoring a
-    crontab line that has not synced anything since 5.2.0. That is the
-    failure this whole change exists to end, reintroduced by its own fix.
-    64 is `EX_USAGE` from BSD's sysexits, and matters here only for what
-    it is not: none of the three, and non-zero, so every wrapper that
-    checks at all sees a failure.
-
-    stderr rather than stdout for a related reason -- `sync`'s stdout is
-    a documented, diffable contract, and a reader parsing it should find
-    it empty rather than find a line that reads like a result.
+    **Exit 64, not 2.** docs/CLI.md publishes `2` as "another run holds
+    the lock", which a scheduler treats as harmless. stderr, so the
+    documented stdout stays empty.
     """
     print(
         "python -m chitragupta.sync was removed in 5.2.0 and does nothing. "

@@ -1,6 +1,3 @@
-"""chitragupta/render_output/_figure_anchor.py: the mark at each figure
-in a pdf render, and reading its page back (#1052)."""
-
 import shutil
 import subprocess
 
@@ -81,9 +78,6 @@ def _labelled_figure(directory, name: str) -> None:
 
 
 def _draft(isolated_config, names: list[str], paragraphs_between: int):
-    """A draft with each figure `paragraphs_between` paragraphs after the
-    last, uncaptioned and captioned alternately, so some land at a page
-    boundary and some float."""
     isolated_config.BIB_FILE_PATH.write_text("")
     draft = content_draft(isolated_config, "rag/survey.md")
     body = "---\ntitle: Anchors\n---\n\n"
@@ -101,8 +95,6 @@ def _page_text(pdf, page: int) -> str:
 
 
 def _words(pdf) -> str:
-    """Every word and its box, page by page. From `<body>` on, since the
-    head carries the PDF's creation time."""
     args = ["pdftotext", "-bbox", str(pdf), "-"]
     html = subprocess.run(args, capture_output=True, text=True, check=True).stdout
     return html[html.index("<body>") :]

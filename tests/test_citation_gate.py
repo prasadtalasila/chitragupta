@@ -1,7 +1,3 @@
-"""chitragupta/citation_gate.py: the hard invariant (AGENTS.md) -- a citekey may
-only be used if it's actually in the ledger. This is the single most
-important module in the repo to test thoroughly."""
-
 import sqlite3
 import time
 
@@ -25,14 +21,6 @@ class TestExtractLatexCitations:
             "autocite",
             "citeauthor",
             "citeyear",
-            # These were silently missed by an earlier, enumerated version of
-            # the regex: ordered alternation tried "cite" first, matched as a
-            # prefix of e.g. "citealp", then failed to find the "{" that must
-            # immediately follow and never backed off to try the longer
-            # alternatives -- a false negative on the invariant this gate
-            # exists to enforce (a fabricated key in one of these read as "0
-            # citations" instead of "unresolved"). Regression coverage for
-            # that fix, not just the already-working subset above.
             "citealp",
             "citealt",
             "footcite",
@@ -48,8 +36,6 @@ class TestExtractLatexCitations:
 
     @pytest.mark.parametrize("cmd", ["Citep", "Citet", "Textcite", "Parencite"])
     def test_capitalized_biblatex_forms(self, cmd):
-        """biblatex's sentence-start capitalized commands (\\Citep, \\Textcite,
-        ...) -- same false-negative class as test_all_recognized_commands."""
         assert citation_gate.extract_citekeys_from_line(f"\\{cmd}{{smith2024}}") == ["smith2024"]
 
     def test_starred_variant(self):
@@ -70,10 +56,6 @@ class TestExtractLatexCitations:
         ]
 
     def test_biblatex_multicite_second_group_is_caught(self):
-        # \cites{a}{b} takes one {key} group per citation. Capturing only
-        # the first group let a fabricated second key read as "0 citations"
-        # instead of unresolved -- the false-negative class this regex
-        # exists to close.
         assert citation_gate.extract_citekeys_from_line("\\cites{a2024}{b2024}") == [
             "a2024",
             "b2024",
@@ -89,19 +71,12 @@ class TestExtractLatexCitations:
         assert citation_gate.extract_citekeys(text) == [(2, "a2024"), (2, "b2024")]
 
     def test_braces_inside_a_between_group_bracket_note_are_not_keys(self):
-        # A note between two multicite groups may itself contain braces
-        # (\emph{cf}); reading them as a {key} group would invent a
-        # citekey and block a sound draft.
         assert citation_gate.extract_citekeys_from_line("\\cites{a2024}[\\emph{cf}]{b2024}") == [
             "a2024",
             "b2024",
         ]
 
     def test_a_prose_brace_group_after_whitespace_is_not_a_second_key(self):
-        # Trailing groups are consumed only when directly adjacent --
-        # biblatex multicites are written adjacent, while `\citep{a} {x}`
-        # is a citation followed by an ordinary prose brace group, and
-        # swallowing that would invent a citekey and block a sound draft.
         assert citation_gate.extract_citekeys_from_line("\\citep{a2024} {emphasised}") == ["a2024"]
 
     def test_unrelated_command_not_matched(self):
@@ -113,15 +88,6 @@ class TestExtractLatexCitations:
     @pytest.mark.parametrize(
         "text",
         [
-            # TeX itself skips whitespace between a control word and its
-            # arguments -- \citep {key} is valid and equivalent to
-            # \citep{key}. Without \s* in the regex, any of these silently
-            # missed a real (or fabricated) citekey -- same false-negative
-            # class as test_all_recognized_commands above. Cases where the
-            # whitespace itself contains a newline (\citep\n{key}) are covered
-            # separately in TestExtractCitekeysWholeDocument, since a per-line
-            # caller like citation_coverage.py never hands this wrapper a
-            # string spanning two real lines in the first place.
             "\\citep {smith2024}",
             "\\citep [see]{smith2024}",
             "\\citep *{smith2024}",
@@ -132,32 +98,13 @@ class TestExtractLatexCitations:
 
 
 class TestLatexCiteRegexBacktracking:
-    """The gate must survive attacker-shaped input in linear time (#635).
-
-    The pre-fix _WS (`[ \\t]*\\n?[ \\t]*`) was internally ambiguous -- a
-    space run could split between its two `[ \\t]*` atoms every possible
-    way -- and _LATEX_CITE_RE chained it around the star and each option
-    group, so a `\\cite` followed by whitespace-separated `[...]` groups
-    and *no* `{...}` made the engine explore ~2^N partitions before
-    failing. ~160 bytes hung the gate past the hook's 30 s timeout, and a
-    timed-out PostToolUse hook does not block -- the one way a fabricated
-    citekey could land ungated."""
-
     def test_bracket_run_without_a_key_group_completes_fast(self):
-        # 64 units took effectively forever pre-fix (22 already took ~5 s);
-        # linear matching clears it in well under a second even on a slow
-        # host, so the bound is a regression tripwire, not a benchmark.
         text = "\\cite" + " [a]" * 64 + " x"
         start = time.perf_counter()
         assert citation_gate.extract_citekeys(text) == []
         assert time.perf_counter() - start < 2.0
 
     def test_paragraph_break_between_command_and_key_is_not_a_citation(self):
-        # The module comment promises at most a single newline between a
-        # command and its argument (a blank line is a TeX paragraph break,
-        # which ends the command). The ambiguous _WS chain accidentally
-        # accepted up to three; the unambiguous form makes the documented
-        # boundary real, so pin it.
         assert citation_gate.extract_citekeys("\\citep\n\n{smith2024}\n") == []
 
 
@@ -177,9 +124,6 @@ class TestExtractPandocCitations:
         ]
 
     def test_digit_start_key_is_caught(self):
-        # Pandoc's own grammar allows a key to begin with a digit or an
-        # underscore; requiring a letter made such a citation invisible to
-        # the gate (read as 0 citations) while pandoc still rendered it.
         assert citation_gate.extract_citekeys_from_line("[@3dprinting_2020]") == ["3dprinting_2020"]
 
     def test_underscore_start_key_is_caught(self):
@@ -198,23 +142,15 @@ class TestExtractPandocCitations:
         ) == ["zech_digital-twins-as--service_2024"]
 
     def test_internal_colon_is_part_of_the_key(self):
-        # Pandoc's grammar allows ":.#$%&-+?<>~/" *between* alphanumerics,
-        # so this key resolves as `smith:2020`. Stopping at the colon made
-        # the gate verify `smith` -- a prefix pandoc never looks up.
         assert citation_gate.extract_citekeys_from_line("see [@smith:2020]") == ["smith:2020"]
 
     def test_internal_dot_is_part_of_the_key(self):
-        # The Better BibTeX default key style; refused as unknown when the
-        # gate truncated it to `doe`.
         assert citation_gate.extract_citekeys_from_line("as @doe.2020 showed") == ["doe.2020"]
 
     def test_internal_plus_is_part_of_the_key(self):
         assert citation_gate.extract_citekeys_from_line("as @a+b showed") == ["a+b"]
 
     def test_sentence_final_punctuation_is_not_part_of_the_key(self):
-        # Pandoc's rule is *internal* punctuation only: a trailing "." is
-        # the sentence's, not the key's, and eating it would refuse a key
-        # that is in the ledger.
         assert citation_gate.extract_citekeys_from_line("shown by @key.") == ["key"]
 
     def test_group_mixes_plain_and_punctuated_keys(self):
@@ -235,33 +171,18 @@ class TestExtractPandocCitations:
         assert citation_gate.extract_citekeys_from_line(line) == ["a2024", "b2024"]
 
     def test_latex_internal_at_macro_not_mistaken_for_citation(self):
-        # LaTeX's \makeatletter ... \@ifundefined{...}{}{} ... \makeatother
-        # idiom (pandoc's own rendered .tex templates use this) would
-        # otherwise misread \@ifundefined as a citation -- found via a
-        # retro-sweep of pandoc-rendered output, and load-bearing now that
-        # thesis-chapter-writer's .tex drafts are hook-gated (see
-        # .claude/hooks/citation_gate_hook.py).
         assert citation_gate.extract_citekeys_from_line(r"\@ifundefined{foo}{}{}") == []
         line = r"\makeatletter\@ifundefined{xetex}{}{}\makeatother"
         assert citation_gate.extract_citekeys_from_line(line) == []
 
 
 class TestExtractCitekeysWholeDocument:
-    """extract_citekeys(text) -- the whole-document scan that
-    extract_citekeys_from_line() (tested above) delegates to for a single
-    line. Covers what a per-line scan structurally cannot: a citation
-    argument wrapped across multiple lines."""
-
     def test_wrapped_citep_is_caught(self):
         text = "See \\citep{real_key,\n       fabricated_key} for details.\n"
         keys = [key for _, key in citation_gate.extract_citekeys(text)]
         assert sorted(keys) == ["fabricated_key", "real_key"]
 
     def test_document_where_every_citation_is_wrapped_and_fabricated(self):
-        # Regression for the exact bug found in review: a per-line scan
-        # matches on neither line of a wrapped \citep{...}, so a document
-        # citing nothing but fabricated, wrapped keys used to report "0
-        # citations, all verified" (exit 0).
         text = "\\citealp{totally_made_up_key,\n          another_fake} shown here.\n"
         keys = [key for _, key in citation_gate.extract_citekeys(text)]
         assert sorted(keys) == ["another_fake", "totally_made_up_key"]
@@ -271,23 +192,10 @@ class TestExtractCitekeysWholeDocument:
         assert citation_gate.extract_citekeys(text) == [(2, "smith2024")]
 
     def test_whitespace_including_newline_between_command_and_brace(self):
-        # TeX skips whitespace -- including a newline -- between a control
-        # word and its argument, so \citep on one line and {key} on the
-        # next is valid source and equivalent to \citep{key}. Only the
-        # whole-document scan can catch this: citation_coverage.py's
-        # per-line caller (extract_citekeys_from_line) would see "\citep"
-        # and "{key}" as two separate, independently-unmatchable strings,
-        # since splitlines() has already severed them before either one
-        # reaches the wrapper.
         text = "See \\citep\n{smith2024} for details.\n"
         assert citation_gate.extract_citekeys(text) == [(1, "smith2024")]
 
     def test_results_are_in_document_order_not_regex_pass_order(self):
-        # LaTeX and Pandoc citations are matched in two separate passes;
-        # results must still come out in the order they actually appear in
-        # the document (not "every LaTeX match, then every Pandoc match"),
-        # or a FAIL report lists an out-of-order citekey, making it harder
-        # to locate by reading top-to-bottom.
         text = "[@later_pandoc]\nprose\n\\citep{earlier_latex}\nmore\n[@even_later]\n"
         assert citation_gate.extract_citekeys(text) == [
             (1, "later_pandoc"),
@@ -297,13 +205,6 @@ class TestExtractCitekeysWholeDocument:
 
 
 class TestCodeAndVerbatimExclusion:
-    """The teaching genres' whole job is worked code examples, and code
-    routinely contains @-tokens (Python's @dataclass, @property) or
-    cite-shaped strings that aren't citations. With the PostToolUse hook
-    (.claude/hooks/citation_gate_hook.py) treating a FAIL as blocking, a
-    false positive here would push the agent to delete valid teaching
-    code instead of a real fabricated citation."""
-
     def test_python_decorator_in_fenced_code_is_not_a_citation(self):
         text = "```python\n@dataclass\nclass Foo:\n    pass\n```\n"
         assert citation_gate.extract_citekeys(text) == []
@@ -313,15 +214,6 @@ class TestCodeAndVerbatimExclusion:
         assert citation_gate.extract_citekeys("run `npm install @scoped/pkg`") == []
 
     def test_whitespace_tolerance_does_not_bridge_a_blanked_verbatim_block(self):
-        # _blank_code blanks a verbatim block's contents to spaces but keeps
-        # its newlines, and a verbatim block is always >=2 lines. If the
-        # cite regex's whitespace tolerance (added for \citep\n{key}, see
-        # TestExtractCitekeysWholeDocument) were unbounded (\s*) instead of
-        # capped at one newline, it could bridge straight across the
-        # blanked-out block and read an unrelated \nocite ... {group} on
-        # either side of it as one fake citation -- a false positive that
-        # would push the blocking PostToolUse hook to reject a draft on
-        # invented grounds.
         text = (
             "Refer to \\nocite\n\\begin{verbatim}\nanything\n\\end{verbatim}\n{\\bfseries note}\n"
         )
@@ -336,17 +228,10 @@ class TestCodeAndVerbatimExclusion:
         assert citation_gate.extract_citekeys(text) == [(5, "smith2024")]
 
     def test_tilde_fenced_code_is_not_a_citation(self):
-        # ~~~ is the other CommonMark fence dialect; leaving it unblanked
-        # made an in-code @dataclass read as a citation, a FAIL that
-        # pushes the blocking hook to mangle valid teaching code.
         text = "~~~python\n@dataclass\nclass Foo:\n    pass\n~~~\n"
         assert citation_gate.extract_citekeys(text) == []
 
     def test_stray_fence_marker_in_prose_does_not_shift_pairing(self):
-        # A fence opener is a line-start construct. Pairing every ```
-        # token in document order let one prose mention of ``` shift the
-        # pairing: the prose after it (citations included) was blanked and
-        # the next real code block's interior was exposed.
         text = (
             "A fence opens with three backticks (```) on its own line.\n"
             "Grounded claim [@smith2024].\n"
@@ -358,41 +243,24 @@ class TestCodeAndVerbatimExclusion:
         assert citation_gate.extract_citekeys(text) == [(2, "smith2024")]
 
     def test_inline_triple_backtick_span_is_not_a_fence_opener(self):
-        # CommonMark: a backtick fence's info string may not contain a
-        # backtick, so a line-start ``` code ``` span is a paragraph, not
-        # an opener. Treating it as one would blank the whole rest of the
-        # document -- every later citation reading as 0 citations.
         text = "``` bash -c ``` runs a command.\nGrounded claim [@smith2024].\n"
         assert citation_gate.extract_citekeys(text) == [(2, "smith2024")]
 
     def test_tab_indented_marker_is_not_a_fence(self):
-        # A tab indents by four columns in CommonMark, so a tab-indented
-        # ``` line is indented code, not a fence opener.
         text = "\t```\nGrounded claim [@smith2024].\n"
         assert citation_gate.extract_citekeys(text) == [(2, "smith2024")]
 
     def test_indented_marker_is_not_a_fence(self):
-        # Four or more spaces of indent is indented code, not a fence
-        # opener (CommonMark); treating it as one would blank the prose
-        # that follows.
         text = "    ```\nGrounded claim [@smith2024].\n"
         assert citation_gate.extract_citekeys(text) == [(2, "smith2024")]
 
     def test_an_unclosed_fence_is_prose_as_pandoc_reads_it(self):
-        # Pandoc's markdown reads an unclosed fence as a paragraph, so
-        # `@dataclass` there renders as a citation (#945). Blanking to the
-        # end of the document, as CommonMark would, hid every later
-        # citation -- a fabricated one included -- from the gate.
         text = "```python\n@dataclass\nclass Foo: pass\n\nSee [@fabricated_2026].\n"
         assert citation_gate.extract_citekeys(text) == [(2, "dataclass"), (5, "fabricated_2026")]
 
 
 class TestFragments:
-    """A caller holding part of a document has lost its containers."""
-
     def test_a_fragment_indented_under_its_lost_list_item_still_cites(self):
-        # Whole-document, this line is a paragraph inside a list item;
-        # alone, its indent would read as indented code.
         assert citation_gate.extract_citekeys_from_line("    continued [@smith2024]") == [
             "smith2024"
         ]
@@ -403,14 +271,6 @@ class TestFragments:
 
 
 class TestLatexBlanking:
-    """In LaTeX a backtick is an open-quote character, not code markup.
-
-    Applying Markdown's inline-code and fence blanking to `.tex` input
-    let the span between two quoted phrases on one line read as "inline
-    code" -- blanking a real `\\citep{...}` between them, so a fabricated
-    citekey passed the gate as 0 citations. LaTeX mode must blank only
-    LaTeX's own verbatim environments."""
-
     def test_double_backtick_quotes_do_not_eat_a_citation(self):
         text = "The ``digital twin'' approach \\citep{fabricated2024} extends the ``model'' view.\n"
         assert citation_gate.extract_citekeys(text, latex=True) == [(1, "fabricated2024")]
@@ -420,8 +280,6 @@ class TestLatexBlanking:
         assert citation_gate.extract_citekeys(text, latex=True) == [(1, "smith2024")]
 
     def test_fence_blanking_is_off_in_latex_mode(self):
-        # Three backticks in LaTeX are quotes (`` then `), not a fence;
-        # fence blanking across two such runs would eat the prose between.
         text = "He said ```why''' twice.\nStill cited \\citep{smith2024}.\nAnd ```again'''.\n"
         assert citation_gate.extract_citekeys(text, latex=True) == [(2, "smith2024")]
 
@@ -450,15 +308,6 @@ class TestLatexBlanking:
 
 
 class TestLatexCommentsAndVerb:
-    """A `%` comment and `\\verb` are inert, in the gate and in the record.
-
-    The gate alone could tolerate reading a commented-out citation as
-    live -- an extra FAIL is the safe direction. `unit accept` cannot:
-    it extracts with the same call and writes the result into the
-    permanent acceptance record, so a `% \\citep{...}` became a source
-    the unit was recorded as standing on, and synthesis and provenance
-    counted it (#834)."""
-
     def test_a_commented_out_citation_is_not_a_citation(self):
         assert citation_gate.extract_citekeys("% \\cite{commented}\n", latex=True) == []
 
@@ -471,11 +320,9 @@ class TestLatexCommentsAndVerb:
         assert citation_gate.extract_citekeys(text, latex=True) == [(2, "real2024")]
 
     def test_a_commented_pandoc_key_is_inert_too(self):
-        # The Pandoc regex runs on .tex input as well.
         assert citation_gate.extract_citekeys("% see @commented2024\n", latex=True) == []
 
     def test_an_escaped_percent_does_not_start_a_comment(self):
-        # `\%` is a literal percent sign, so the citation after it stands.
         text = "\\citep[see 5\\% of]{real2024} and \\citep{second2024}\n"
         assert citation_gate.extract_citekeys(text, latex=True) == [
             (1, "real2024"),
@@ -483,10 +330,6 @@ class TestLatexCommentsAndVerb:
         ]
 
     def test_a_percent_after_a_line_break_is_a_comment(self):
-        # Backslash *parity*, not "is the previous character a backslash":
-        # `\\` is a line break, so the `%` after it is a comment start and
-        # the key behind it is not a citation. A one-character lookbehind
-        # reads this as an escaped percent and lets the key through.
         assert citation_gate.extract_citekeys("Row \\\\% \\cite{dead}\n", latex=True) == []
 
     def test_a_literal_percent_after_a_line_break_still_escapes(self):
@@ -500,23 +343,16 @@ class TestLatexCommentsAndVerb:
         assert citation_gate.extract_citekeys("\\verb+\\cite{x}+\n", latex=True) == []
 
     def test_the_starred_verb_is_recognized(self):
-        # `\verb*` exists; reading its `*` as the delimiter leaves the
-        # rest of the line live, which is the false-negative direction.
         assert citation_gate.extract_citekeys("\\verb*|\\cite{x}|\n", latex=True) == []
 
     def test_verb_with_a_star_delimiter(self):
         assert citation_gate.extract_citekeys("\\verb**\\cite{x}*\n", latex=True) == []
 
     def test_a_delimiter_is_never_a_letter(self):
-        # `\verbatiminput{f.tex} \citep{fab}`: a `\S` delimiter reads the
-        # `a` of "atiminput" as the delimiter and blanks up to the next
-        # `a`, swallowing a citation the gate must still see.
         text = "\\verbatiminput{sample.tex} \\citep{fabricated2024}\n"
         assert citation_gate.extract_citekeys(text, latex=True) == [(1, "fabricated2024")]
 
     def test_a_percent_inside_verb_does_not_comment_out_the_rest(self):
-        # Whichever comes first wins, as in TeX: inside `\verb` the `%`
-        # is an ordinary character, so the citation after it is live.
         text = "\\verb|50%| then \\citep{real2024}\n"
         assert citation_gate.extract_citekeys(text, latex=True) == [(1, "real2024")]
 
@@ -524,33 +360,19 @@ class TestLatexCommentsAndVerb:
         assert citation_gate.extract_citekeys("% \\verb|x| \\cite{dead}\n", latex=True) == []
 
     def test_an_unclosed_verb_leaves_the_line_alone(self):
-        # Not valid LaTeX; blank nothing rather than guess, which keeps
-        # the error on the FAIL side.
         text = "\\verb|unclosed \\citep{fabricated2024}\n"
         assert citation_gate.extract_citekeys(text, latex=True) == [(1, "fabricated2024")]
 
     def test_markdown_mode_gains_no_comment_rule(self):
-        # `%` is an ordinary character in Markdown.
         assert citation_gate.extract_citekeys("50% done, see [@real2024]\n") == [(1, "real2024")]
 
     def test_a_run_of_unclosed_verbs_completes_fast(self):
-        # Same tripwire as _LATEX_CITE_RE's (#635): a hook that times out
-        # does not block, and a fabricated citekey then lands ungated.
-        # Every delimiter has to be *distinct*, or the run closes itself
-        # pairwise (`\verb|\verb|`) and never exercises the failing
-        # scan at all -- so a distinct CJK character each time, none of
-        # which `\s` matches. Cost is (number of `\verb`) x (line
-        # length): 2000 on one line is ~0.1 s here and far past anything
-        # a draft contains, so the bound is a regression tripwire.
         text = "".join(f"\\verb{chr(0x4E00 + i)}" for i in range(2000)) + " \\citep{real2024}"
         start = time.perf_counter()
         assert citation_gate.extract_citekeys(text, latex=True) == [(1, "real2024")]
         assert time.perf_counter() - start < 2.0
 
     def test_a_percent_inside_url_is_not_a_comment(self):
-        # `%` is an ordinary character inside `\url`, so a citation after
-        # one is live -- blanking it would be the one direction this gate
-        # must never fail in (0 citations on a fabricated key).
         text = "See \\url{http://x/a%20b} and \\citep{fabricated2024}\n"
         assert citation_gate.extract_citekeys(text, latex=True) == [(1, "fabricated2024")]
 
@@ -581,10 +403,6 @@ class TestCheckDocument:
         assert result.total_citations == 2
 
     def test_a_ledger_key_that_is_only_a_prefix_fails(self, tmp_path):
-        # The one thing the gate exists to catch: the ledger holds `smith`,
-        # the draft cites `[@smith:2020]`, and pandoc resolves `smith:2020`
-        # -- nothing -- and renders `[?]`. Truncating at the colon printed
-        # OK on exactly this document.
         path = tmp_path / "draft.md"
         path.write_text("Claim [@smith:2020].\n")
         result = citation_gate.check_document(path, citable={"smith"})
@@ -646,10 +464,6 @@ class TestRun:
 
 
 class TestUnparsedRowsAreNotCitable:
-    """#1118: a key must be in the `.bib` *and* parsed from a real PDF. A
-    row that never parsed is a real bib entry with nothing behind it, and
-    fails exactly as an absent key does -- but says which it is."""
-
     @pytest.mark.parametrize("status", ["no_pdf", "discovered", "parse_failed"])
     def test_an_unparsed_key_fails_naming_its_status(
         self, isolated_config, tmp_path, capsys, status
@@ -705,9 +519,6 @@ class TestUnparsedRowsAreNotCitable:
 
 
 class TestLedgerItCannotRead:
-    """#1066: "I could not check" is exit 3, never the verdict's exit 1,
-    and checks no draft at all -- not even a citation-free one."""
-
     @staticmethod
     def _gate(cfg, text, capsys):
         path = content_draft(cfg, "drafts/draft.md")
@@ -747,7 +558,6 @@ class TestLedgerItCannotRead:
         assert "predates this version's schema" in captured.err
 
     def test_a_ledger_damaged_past_its_header_exits_3(self, isolated_config, capsys):
-        # The schema version reads; the citekey query is what fails.
         con = ledger.connect()
         add_citable(con, "smith2024")
         con.close()
@@ -762,20 +572,8 @@ class TestLedgerItCannotRead:
 
 
 class TestDeadLauncherWarning:
-    """The gate is the one caller in the chain that can report a hook
-    launcher which cannot start.
-
-    Neither hook can: the gate hook cannot report its own failure to spawn,
-    and `session_start_hook.py` -- written to report it -- is launched by
-    the same interpreter name, so it is missing on exactly the host where
-    the gate is (#197). This command runs on an interpreter that has
-    demonstrably started, and every genre skill runs it.
-    """
-
     @staticmethod
     def draft(cfg) -> str:
-        """A draft that passes, against a ledger with something in it -- so
-        the only thing that can reach stderr is the launcher warning."""
         con = ledger.connect()
         add_citable(con, "smith2024")
         con.close()
@@ -816,20 +614,12 @@ class TestCliEntrypoint:
 
     @pytest.mark.parametrize("flag", ["-h", "--help"])
     def test_help_prints_usage_and_exits_0(self, isolated_config, flag):
-        """This took a filename before, so `--help` died with a
-        FileNotFoundError traceback -- on the one tool every genre skill
-        and the write hook invoke, i.e. the first one anyone tries it on.
-        Help goes to stdout and exits 0; the no-args *error* keeps
-        stderr and exit 2."""
         result = run_python("-m", "chitragupta.draft", "gate", flag)
         assert result.returncode == 0
         assert "Usage:" in result.stdout
         assert "Traceback" not in result.stderr
 
     def test_no_args_in_process_is_the_same_usage_error(self, isolated_config, capsys):
-        """The subprocess tests above prove the `-m` wiring; these two
-        hold `main()`'s own branches to the coverage bar, since
-        pytest-cov 7 does not measure a child process."""
         assert citation_gate.main([]) == 2
         assert "Usage:" in capsys.readouterr().err
 
@@ -839,8 +629,6 @@ class TestCliEntrypoint:
         assert "Usage:" in capsys.readouterr().out
 
     def test_gate_help_reads_like_click(self, isolated_config):
-        """Hand-written, because the gate is not argparse, but laid out
-        the way every other command's --help is (#1230)."""
         out = run_python("-m", "chitragupta.draft", "gate", "--help").stdout
         assert out.startswith(
             "Usage: python -m chitragupta.draft gate [OPTIONS] FILE...\n\n  Fail if"
@@ -850,8 +638,6 @@ class TestCliEntrypoint:
     def test_runs_with_bare_system_python3_no_bibtexparser(
         self, system_python, isolated_config, tmp_path
     ):
-        """AGENTS.md's hard requirement: citation_gate must run with the
-        bare system interpreter, no bibtexparser/venv needed."""
         con = ledger.connect()
         add_citable(con, "smith2024")
         con.close()
@@ -873,10 +659,6 @@ class TestCliEntrypoint:
 
 
 class TestInputsAreConfinedToContent:
-    """Every tier-1 tool reads only under content/, so that one directory
-    is the whole record of the work -- see chitragupta/config.py's
-    require_inside_content."""
-
     def test_a_draft_outside_the_content_directory_is_refused(
         self, isolated_config, tmp_path, capsys
     ):
@@ -893,8 +675,6 @@ class TestInputsAreConfinedToContent:
     def test_one_bad_path_does_not_stop_the_others_being_checked(
         self, isolated_config, tmp_path, capsys
     ):
-        # run() reports on every path it is given; a refusal is one more
-        # per-document result, not an abort.
         con = ledger.connect()
         add_citable(con, "a_2024")
         con.close()
@@ -912,9 +692,6 @@ class TestInputsAreConfinedToContent:
         assert f"OK    {good}" in out
 
     def test_a_draft_anywhere_under_content_is_accepted(self, isolated_config, capsys):
-        # content/drafts/ is where the genre skills save one, but the rule
-        # is "under content/" -- a scratch note or a content/review/ report
-        # is checked the same way.
         con = ledger.connect()
         add_citable(con, "a_2024")
         con.close()

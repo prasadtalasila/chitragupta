@@ -1,13 +1,3 @@
-"""Units in the front matter, the appendices and the back matter (#1137).
-
-Three behaviours a book with a preface depends on. A chapter with no
-`####` sections is a unit of its own: before #1137 it was silently no
-unit at all, so a preface could never be accepted. The four generated
-pages are never units, because nobody writes them. And a unit taken out
-of the outline after it was accepted is listed, never deleted -- the
-prose is the author's, and the record is the evidence it was approved.
-"""
-
 import json
 
 import pytest

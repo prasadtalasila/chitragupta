@@ -1,53 +1,15 @@
-# This IS a publishable package. docs/PACKAGING.md records the decision,
-# the objections it had to answer, and which of them survive; the short
-# version is that the import package could not be called `src` -- a
-# top-level `src` in site-packages claims the most generic name on the
-# index -- so it is `chitragupta`, while the *distribution* is
-# `chitragupta-cli` because `chitragupta` is taken on PyPI by an
-# unrelated project.
-#
-# Three names that look like one, and only the first is registered
-# anywhere:
-#
-#   name         = "chitragupta-cli"   the PyPI project    (globally unique)
-#   packages     = chitragupta         the import package  (unregistered)
-#   scripts      = chitragupta, cg     the executables     (unregistered)
-#
-# uv manages the dependencies and the lock (`uv.lock`), and
-# scripts/install_full_pipeline.sh runs `uv sync` -- still the one install
-# path for a checkout, Docker and CI. poetry-core stays as the *build
-# backend* only (see [build-system] at the end): it is what decides which
-# files a wheel and an sdist carry, through the `[tool.poetry]` lists
-# below, and keeping it kept the published file set byte-identical when
-# Poetry stopped managing the dependencies. docs/UV-MIGRATION.md has why
-# the move happened.
+# The distribution is `chitragupta-cli` (`chitragupta` is taken on PyPI);
+# the import package and executables are `chitragupta`. uv manages the lock;
+# poetry-core is the build backend only (docs/PACKAGING.md).
 [project]
 name = "chitragupta-cli"
-version = "7.2.0"
+version = "7.2.1"
 description = "Bib-sync, citation-gate, and genre-writing pipeline for a research corpus."
 authors = [{ name = "Prasad Talasila" }]
 license = { text = "MIT" }
-# Without one of these, PyPI's project page shows only `description`
-# above (one line) and nothing else -- confirmed against the real,
-# already-published chitragupta-cli 6.7.0, whose page had an empty long
-# description *and* no "Project links" sidebar, because neither `readme`
-# nor `homepage`/`repository` was declared when that release was built.
-#
-# This has to stay README.md, not a generated rewrite of it, even though
-# PyPI's renderer breaks on README.md's relative links and images (see
-# release.yml's "Rewrite README.md for the PyPI-bound build" step for
-# that fix). `readme` is read by `uv sync` too, not just `uv build` --
-# every `install_full_pipeline.sh python-deps`/`os-deps` install, on
-# every host and in CI's own test job, does a real project install and
-# needs this file to exist. Pointing it at a generated,
-# gitignored file broke `test (windows-latest)` and `test
-# (ubuntu-latest)` both, the first time this was tried (#286) -- the
-# "Build release archive" step that would have generated it runs only in
-# release.yml, never in ci.yml.
+# Must stay README.md: `uv sync` reads it on every install (#286).
 readme = "README.md"
 requires-python = ">=3.12"
-# Spelled out: Poetry generated these from `license` and the Python
-# range, and a wheel that lost them would change what PyPI shows.
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -56,130 +18,31 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    # The one dependency the otherwise-stdlib core pipeline needs
-    # (chitragupta/bib_reader.py, used by `python -m chitragupta.corpus sync`): hand-rolling a
-    # correct BibTeX parser (nested braces, LaTeX escapes, multi-line
-    # values) isn't worth it. `python -m chitragupta.draft gate` needs none of
-    # this and still runs with the bare system interpreter, no venv at all.
+    # 2.x only splits blocks; bib_parse/bib_latex restate 1.x's output.
+    # Before lifting the cap, rerun tests/test_bib_parse.py and test_bib_latex.py.
     "bibtexparser>=2.1,<3.0",
-    # 2.x only splits the file into blocks (chitragupta/bib_parse.py); what
-    # 1.x did after that -- string interpolation, its whitespace rules, the
-    # standard-type filter, and the LaTeX decoding, vendored as
-    # chitragupta/bib_latex.py -- is restated there, so the entries
-    # bib_reader returns are 1.x's byte for byte (checked on 2,365 real
-    # references). 2.x brings pylatexenc as a dependency, which this project
-    # does not call: its decoding disagreed with 1.x on 1,242 field values.
-    # A 3.x will need the same check: rerun tests/test_bib_parse.py and
-    # tests/test_bib_latex.py, which pin 1.x's output, before lifting this.
 ]
 
-# Each extra is declared once. Under Poetry every one of these packages
-# was declared twice -- as an optional dependency for the extra, and
-# again in a Poetry group for `poetry install --with` -- because a group
-# never reached a built wheel's metadata; tests/test_pyproject_extras.py
-# existed only to keep the two copies equal, and went with them.
 [project.optional-dependencies]
-# The `enrich` extra (the install script's `python-deps` stage): everything chitragupta/enrich/*
-# (the Docling/embeddings/Pandoc pipeline, chitragupta/enrich/__main__.py)
-# needs. All of the below were installed and import-verified in a host
-# venv on 2026-07-28 (docker/requirements-full.txt, since replaced by this
-# group); sentence-transformers/chromadb/bertopic/docling were also
-# functionally verified against this repo's real corpus (bib parsing,
-# embeddings+search, topic modeling, PDF parsing all produced correct
-# output). Re-verified against this exact poetry.lock on 2026-07-30 --
-# note the resolved versions aren't necessarily the same ones checked on
-# 2026-07-28 (e.g. torch resolved to 2.7.1+cu126 this time, not the
-# 2.6.0+cu124 verified when this lock was first generated); re-verify
-# after any re-lock rather than assuming this note
-# still describes what's actually pinned.
-#
-# 2026-08-16: adding `adapters` below re-resolved this lock and pulled
-# transformers down from 5.x (5.8.1/5.14.1, split by platform marker) to
-# a single 4.57.6 everywhere, and huggingface-hub from 1.26.0 to 0.36.2
-# to match -- adapters 1.3.0 pins `transformers = ">=4.57.6,<4.58.0"`, a
-# single-patch-version window, so any future adapters bump will likely
-# drag transformers with it again. The 2026-07-30 functional
-# verification above predates this and was against transformers 5.x;
-# `tests/` (docling/chromadb/bertopic/sentence-transformers modules, 211
-# tests) was re-run against 4.57.6 the same day and passed. The
-# corpus-level functional check the paragraph above describes was also
-# re-run, separately from the unit suite: sentence-transformers (real
-# encode), chromadb (real embed+search), bertopic (real fit) and docling
-# (real parse of a real corpus PDF) were each exercised for real against
-# transformers 4.57.6 on 2026-08-16 and all four passed.
-#
-# torch is listed for its version floor (see below), but
-# scripts/install_full_pipeline.sh's ensure_gpu_torch deliberately
-# reinstalls it from a CUDA-version-matched wheel index *after* this
-# extra installs, diverging from whatever plain version this lockfile
-# resolved (which is whatever CUDA major version is current upstream --
-# see that function's own comment for why a driver-aware post-install
-# step is unavoidable here; nothing in the lock can say "pick a different
-# index based on the host's GPU driver").
+# torch is reinstalled from a driver-matched CUDA index by
+# install_full_pipeline.sh's ensure_gpu_torch after this extra installs.
 enrich = [
-    # torch and torchvision carry their own floors rather than arriving
-    # unconstrained through sentence-transformers/docling: without them a
-    # resolver is free to pick a version with no wheels for the running
-    # Python -- which is the failure this pair was pinned to fix.
-    #
-    # **<2.15 is load-bearing, not staleness.** PyTorch published 2.15.0
-    # for CUDA 13.2 and CPU only (checked 2026-11-23); 2.14.1 also has
-    # cu126 and cu130 builds. scripts/install_full_pipeline.sh's
-    # ensure_gpu_torch keeps the locked version and looks for a build
-    # matching the host's driver, so on a host whose driver predates
-    # CUDA 13.2 torch 2.15 finds none and runs CPU-only, silently. Lift
-    # the cap once download.pytorch.org/whl/cu130 (or older) carries the
-    # new version.
+    # <2.15 is load-bearing: 2.15 has CUDA 13.2 builds only, so older
+    # drivers would silently run CPU-only.
     "torch>=2.14,<2.15",
     "torchvision>=0.29,<1.0",
     "sentence-transformers>=5.7,<6.0",
     "chromadb>=1.5,<2.0",
     "bertopic>=0.17,<0.18",
     "docling>=2.125,<3.0",
-    # adapters is SPECTER2-only -- allenai/specter2_base loads its
-    # task-specific adapter weights (proximity/classification/etc.) through
-    # this library, not through sentence-transformers/transformers alone.
-    # Added for issue #194's Arm B (retrieval/reranking benchmark); not
-    # imported by anything else in chitragupta/enrich, so if SPECTER2 is ever
-    # dropped from that arm this is the line to remove with it. Resolved to
-    # 1.3.0 and import-verified (`from adapters import AutoAdapterModel`) in
-    # .venv-full on 2026-08-16 -- see the note above this dependency block
-    # about the transformers downgrade this pin forces.
+    # SPECTER2-only (#194); forces transformers 4.57.x.
     "adapters>=1.3,<2.0",
-    # scipy was always installed transitively (bertopic -> hdbscan/umap);
-    # chitragupta/enrich/topic_graph.py imports it directly (hypergeom,
-    # linkage), and a direct import deserves a declared version.
     "scipy>=1.18,<2.0",
-    # Same story as scipy: always present transitively under the enrich
-    # resolution, and chitragupta/enrich/topic_graph.py now imports it
-    # directly for the stored layout coordinates (#711) -- a direct import
-    # deserves a declared version.
     "networkx>=3.6,<4.0",
-    # Same story as scipy: it arrived transitively with docling (which uses
-    # it as one of its own PDF backends), and chitragupta/enrich/_docling_crops.py
-    # now imports it directly to render one figure crop at a time instead of
-    # letting docling hold every bitmap to the end of the parse (#600).
-    # Pillow is *not* declared alongside it despite `bitmap.to_pil()`: docling
-    # depends on Pillow directly, so it cannot be absent wherever this is.
     "pypdfium2>=5.13,<6.0",
 ]
-# The `dev` extra (the install script's `dev-deps` stage): pytest/pytest-cov are
-# dev-time tooling, not needed to run the pipeline itself -- but the test
-# suite they run is NOT correspondingly light: tests/ exercises
-# bibtexparser (bib_reader) and the whole enrich group
-# (docling/chromadb/bertopic/sentence-transformers via
-# their own test modules), so the full suite needs `--extra enrich` and
-# `--extra dev` together.
-# The `images` extra: what the ai-images skill's gen.py needs to run a
-# diffusers text-to-image model, FLUX.2 klein 4B by default. The model's
-# weights are not here: diffusers fetches them into the Hugging Face
-# default cache (~/.cache/huggingface) on the first run. Resolved and
-# run for real (a 1024x1024 image from klein 4B) against this lock on
-# 2026-11-26; re-verify after a re-lock rather than assuming it still holds.
 images = [
-    # The same window as `enrich`, for the same reason (see its comment):
-    # without it this extra, installed alone, would take torch 2.15, which
-    # has no build for a driver older than CUDA 13.2.
+    # Same torch window as `enrich`.
     "torch>=2.14,<2.15",
     "diffusers>=0.37,<0.44",
     "transformers>=4.57.6,<6.0",
@@ -187,41 +50,11 @@ images = [
 ]
 dev = [
     "pytest>=9.0,<10.0",
-    # pytest-cov 7 no longer measures child processes: 6.x shipped a
-    # `pytest-cov.pth` that did, and 7.0 removed it. The cap at <7 held until
-    # every `main()` branch that only a subprocess test reached (30
-    # statements and 7 branches, in citation_gate, corpus, draft,
-    # review/__main__, review/verbatim_check and scripts/code_standards.py)
-    # had an in-process test as well. Those tests carry the coverage now; the subprocess tests
-    # beside them still prove the `-m` wiring.
-    #
-    # coverage's own `patch = ["subprocess"]` was tried first and did not
-    # restore those statements, so do not reach for it if a new `main()`
-    # branch shows up uncovered: add the in-process test.
+    # 7.x does not measure subprocesses: cover `main()` with an in-process test.
     "pytest-cov>=7.1,<8.0",
-    # `pytest -n auto` spreads the suite over every core. The TeX compiles
-    # are independent subprocesses, so they are what it wins on: 15 minutes
-    # serial became 5 on a 32-core host, with the same tests and coverage.
     "pytest-xdist>=3.8,<4.0",
-    # tests/test_check_local.py reads ci.yml's lint job with a real YAML
-    # loader rather than by indentation (#865, and #866 for the existing
-    # workflow pins). Already in the lock through the enrich and docs groups;
-    # declared here so the dev group does not depend on either being present.
     "pyyaml>=6.0,<7.0",
 ]
-# The `docs` extra: builds the documentation
-# site at https://prasad.talasila.in/chitragupta/ from mkdocs.yml. Nothing
-# else needs it -- no module imports mkdocs, no test runs it, and
-# scripts/install_full_pipeline.sh deliberately does not install it, since
-# a docs build is not part of getting the pipeline running.
-# .github/workflows/docs.yml is the only consumer, and it syncs only this
-# extra, so a docs build never installs the enrich stack it has no use for.
-#
-# mkdocs-same-dir is what makes mkdocs.yml's `docs_dir: .` legal, and that
-# is what lets the site be this repository as it stands -- no staging
-# step, no link rewriting. It is a 0.x pin because upstream has never
-# released a 1.0, and it is on neither tier of Zensical's supported-plugin
-# list: if this site ever moves to Zensical, this is the line to check.
 docs = [
     "mkdocs-material>=9.7,<10.0",
     "mkdocs-same-dir==0.1.5",
@@ -232,38 +65,16 @@ Homepage = "https://prasad.talasila.in/chitragupta/"
 Repository = "https://github.com/prasadtalasila/chitragupta"
 Documentation = "https://prasad.talasila.in/chitragupta/"
 
-# Two executables, one entry point, one distribution. `cg` is *not* a
-# second PyPI project -- a console script name is not a PyPI name, and
-# docs/NAME.md floats `cg` as the alias for a command that is accurate
-# but long. docs/PACKAGING.md has the three-namespaces table.
 [project.scripts]
 chitragupta = "chitragupta.__main__:main"
 cg = "chitragupta.__main__:main"
 
-# The build backend's file lists, and nothing else: `[project]` above is
-# the metadata.
 [tool.poetry]
 packages = [{ include = "chitragupta" }]
-# Everything below is not Python, so `packages` above doesn't reach it --
-# the build backend (poetry-core) includes only what `packages`/`include` name. Each entry
-# ships to both sdist and wheel (an unadorned string here defaults to
-# sdist only) and lands as a *sibling* of `chitragupta/` at the top of
-# the installed environment, e.g. `site-packages/assets/csl/ieee.csl` --
-# exactly where `chitragupta/config.py`'s `shipped()` already looks
-# (`PACKAGE_ROOT.parent`), so that function needs no change once these
-# ship (#263). `chitragupta init` (#263) reads `.claude/`, `docs/` and
-# the five root `.md` files from the same sibling location.
 include = [
     { path = "assets", format = ["sdist", "wheel"] },
-    # `.claude/`, `.agents/` and `.opencode/` are listed entry by entry,
-    # never as whole folders: a developer-only skill (#1188, e.g.
-    # `demo-recorder`) sits in each, and Poetry's `exclude` cannot take a
-    # path back out of an `include`d folder -- measured, poetry-core 2.3.1.
-    # A new user-facing skill therefore needs one line per harness here;
-    # tests/test_developer_skills.py fails, naming the files, until it has
-    # them. Listing entries also keeps a local build from shipping
-    # `.claude/worktrees/`, which the whole-folder entry did (an explicit
-    # include beats .gitignore).
+    # Listed entry by entry so developer-only skills (#1188) stay out;
+    # tests/test_developer_skills.py names any missing entry.
     { path = ".claude/agents", format = ["sdist", "wheel"] },
     { path = ".claude/hooks", format = ["sdist", "wheel"] },
     { path = ".claude/settings.json", format = ["sdist", "wheel"] },
@@ -280,7 +91,6 @@ include = [
     { path = ".claude/skills/textbook-chapter-writer", format = ["sdist", "wheel"] },
     { path = ".claude/skills/thesis-chapter-writer", format = ["sdist", "wheel"] },
     { path = ".claude/skills/tutorial-writer", format = ["sdist", "wheel"] },
-    # The Codex and OpenCode launchers (#812, #900), for `init --agent`.
     { path = ".codex", format = ["sdist", "wheel"] },
     { path = ".agents/skills/agenda-reviser", format = ["sdist", "wheel"] },
     { path = ".agents/skills/ai-images", format = ["sdist", "wheel"] },
@@ -316,53 +126,14 @@ include = [
     { path = "README.md", format = ["sdist", "wheel"] },
     { path = "DOCKER.md", format = ["sdist", "wheel"] },
     { path = "config.toml.example", format = ["sdist", "wheel"] },
-    # `chitragupta install` (#265) reads this one file, always invoked as
-    # `bash <path> <stage>` rather than executed directly -- so the
-    # executable bit surviving the packaging route (it does not, on
-    # every route -- #265's own trap) is not load-bearing here.
     { path = "scripts/install_full_pipeline.sh", format = ["sdist", "wheel"] },
 ]
 
 [tool.uv]
-# The Python range uv locks for. It is the thing that keeps every FUTURE re-lock installable on
-# the container this project ships, and it matters more than any
-# particular poetry.lock does. The lock churns; docker/Dockerfile's
-# ubuntu:26.04 and the Python 3.14 it ships do not.
-#
-# Was `^3.12` -- i.e. >=3.12,<4.0 -- and that upper bound is what broke
-# 26.04. A resolver has to satisfy the *whole* declared range, `triton`
-# (torch's Linux dependency) declares `requires_python = "<3.15,>=3.10"`,
-# and nothing can cover 3.15-3.99. So Poetry, which locked this then, fell back to the newest
-# triton with no upper bound at all -- 3.3.1, from 2025 -- which pinned
-# torch to 2.7.1, which publishes no cp314 wheels. The result was a lock
-# that resolved cleanly, passed CI on 3.12, and could not be installed on
-# 26.04 at all. Left as `^3.12`, every re-lock reproduces that silently.
-#
-# The `!= 3.14.1` hole is not ours either: torchvision 0.29.0 declares
-# `requires_python = "!=3.14.1,>=3.10"`, and without the hole Poetry
-# split the resolution by marker and hands Python 3.14 *torchvision
-# 0.12.0* (2022, no cp314 wheels) while giving <3.14 the good one --
-# measured, and worth knowing because the lock looks fine until you read
-# the markers. Poetry itself suggested that hole. Both bounds can be
-# widened again when the upstream metadata allows; neither is a
-# preference.
-#
-# What guards it: `ci.yml`'s `docker-build` job builds docker/Dockerfile
-# on every push, and that image now installs this lock under Python 3.14.
-# A re-lock that drifts back below the cp314 line fails there rather than
-# on someone's machine. See issue #607.
-#
-# It is a *lock* range, not the published one. Poetry built the wheel
-# with `Requires-Python: >=3.12` and nothing above it (it dropped both
-# bounds from the metadata), so `pip install chitragupta-cli` works on a
-# newer Python for the core, which needs only bibtexparser. `[project]
-# requires-python` keeps exactly that, and `environments` here narrows
-# only what uv resolves and locks.
-#
-# The three platforms are spelled out because uv locks for every
-# platform by default, WebAssembly (`emscripten`) included, where
-# onnxruntime -- chromadb's dependency -- has no wheels, so the whole
-# resolve fails. Poetry's lock never had to cover it.
+# A lock range, not the published one. The <3.15 bound and the 3.14.1 hole
+# come from triton and torchvision metadata; without them the lock resolves
+# to wheels with no cp314 build (#607). The three platforms exclude
+# emscripten, where onnxruntime has no wheels.
 environments = [
     "sys_platform == 'linux' and python_full_version >= '3.12' and python_full_version != '3.14.1' and python_full_version < '3.15'",
     "sys_platform == 'darwin' and python_full_version >= '3.12' and python_full_version != '3.14.1' and python_full_version < '3.15'",
@@ -378,14 +149,6 @@ markers = [
 ]
 
 [tool.coverage.run]
-# .claude/hooks is in scope because those two files enforce the citekey
-# invariant and report when that enforcement has stopped -- code the bar
-# should apply to at least as much as anything under chitragupta/. It only became
-# measurable once tests/test_hook_modules.py started importing them:
-# spawning a hook, which is how the harness runs it and what the other two
-# hook test files do, contributes no coverage at all. The demo-recorder
-# skill's scripts (#1188) are in scope for the same reason any code is,
-# though no distribution ships them.
 source = ["chitragupta", "scripts", ".claude/hooks", ".claude/skills/demo-recorder/scripts", ".claude/skills/ai-images/scripts"]
 branch = true
 omit = [
@@ -393,26 +156,8 @@ omit = [
 ]
 
 [tool.coverage.report]
-# The 100% bar DEVELOPER-AGENTS.md states, enforced rather than asserted.
-# It holds on a host with the full toolchain (pandoc, TeX Live, poppler)
-# installed -- without those binaries the render/pdf tests self-skip and
-# take chitragupta/render_output.py down to ~76%, which is a missing dependency
-# rather than a missing test. Pass --cov-fail-under=0 on such a host.
-#
-# CI's Windows leg holds this same 100, not a lower floor: it uses
-# `coveragerc-windows.toml` instead of this section, which excludes
-# exactly the lines that are genuinely untestable there -- the
-# pandoc/pdflatex/pdftotext call sites `os-deps` never installs, and the
-# multiprocessing-forkserver/shebang-script branches that platform lacks
-# outright -- rather than budgeting for the gap under a lower number.
-# See #291 for why a floor was the wrong shape, and
-# tests/test_coverage_configs_agree.py for what pins the two configs
-# together.
+# Coverage is held at 100%; Windows uses coveragerc-windows.toml (#291).
 fail_under = 100
-# Two decimal places, because a rounded total is not a number you can set a
-# threshold from -- 99.97% would display as "100%" and pass a bare integer
-# floor. It also makes the strictness of `fail_under = 100` visible: 99.97
-# is reported as 99.97 and fails, rather than rounding away the gap.
 precision = 2
 exclude_lines = [
     "if __name__ == .__main__.:",
@@ -420,42 +165,18 @@ exclude_lines = [
 ]
 
 
-# The per-site suppression check pylint's category-wide
-# `broad-exception-caught` disable can't be (docs/TECHNICAL-DEBT.md's
-# ruff subsection). `select` is deliberately narrower than ruff's own
-# (much broader) default: BLE is the rule this was adopted for, E/F are
-# pyflakes/pycodestyle's core correctness checks plus the "keep lines
-# short" review rule CODE-STANDARDS.md's build order already named for
-# ruff, and RUF100 is what makes a `# noqa: BLE001` a checked claim
-# instead of a comment nothing reads -- it fails a noqa that no longer
-# suppresses anything. ruff's version is pinned exactly in ci.yml for
-# this reason as much as for Sonar S8544: RUF100's verdict on a given
-# except block depends on ruff's own (undocumented, narrower-than-BLE001
-# looks) carve-outs, e.g. a block that ends in `raise`, and a version
-# bump can move that verdict without this project changing a line.
+# RUF100 makes every `# noqa: BLE001` a checked claim; ruff is pinned in
+# ci.yml because its verdicts move between versions.
 [tool.ruff]
 line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "BLE", "RUF100"]
 
-# An `__init__.py` re-exporting a submodule's public name so `from
-# chitragupta import x` reaches it (registry/, spec/, unit/, dossier/,
-# render_output/, review/figure_layout/) is F401 by construction, and
-# four of those do it via a deliberately late import (E402) to dodge a
-# circular import at definition time -- both already explained inline
-# where DEVELOPER-AGENTS.md's comment rules require it. A blanket
-# ignore here, not a per-line noqa on each of the 52 sites, because
-# per-file-ignores is ruff's own register for exactly this shape.
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "E402"]
 
 
-# Required now that this is a real distribution: without it `pip install`
-# and `uv build` have no backend to call. poetry-core rather than
-# poetry itself is the documented choice -- it is the build backend
-# alone, with none of the CLI's own dependency tree. 2.0 is the first
-# release that reads `[project]`.
 [build-system]
 requires = ["poetry-core>=2.0,<3.0"]
 build-backend = "poetry.core.masonry.api"

@@ -1,15 +1,3 @@
-"""`scope.md`'s `## Glossary`, read as entries, and the bullets that are
-not in the shape (#1138); since #1143 a symbol in a bullet is one of
-them, since symbols live in `math.md`.
-
-Every off-format fixture below is a bullet the real digital-twins book's
-dossiers hold, quoted from them rather than invented: the colon form, a
-qualifier after the bold, a qualifier inside it, a symbol outside the
-bold, several terms in one bullet, a symbol with no brackets, and an
-"as before" definition. A guard is tested against the exact shape it was
-blind to.
-"""
-
 import pytest
 
 from chitragupta import config, dossier
@@ -32,9 +20,6 @@ def write_glossary(draft, body: str) -> None:
     scope.write_text(f"{head}## Glossary\n\n{body}\n", encoding="utf-8")
 
 
-# --- the shapes that are read -------------------------------------------
-
-
 def test_a_term(draft):
     write_glossary(draft, "- **Sensor** -- a component that turns a quantity into a number.")
     (entry,) = _glossary.glossary_entries(draft)
@@ -46,9 +31,6 @@ def test_an_abbreviation_in_brackets_is_part_of_the_name(draft):
     write_glossary(draft, "- **Digital shadow (DS)** -- an automated flow from PT to DO.")
     (entry,) = _glossary.glossary_entries(draft)
     assert entry.term == "Digital shadow (DS)"
-
-
-# --- the retired symbol spellings (#1143) ---------------------------------
 
 
 @pytest.mark.parametrize(
@@ -90,9 +72,6 @@ def test_a_definition_wraps_onto_indented_lines(draft):
 
 
 def test_a_definition_ends_at_a_line_at_the_margin(draft):
-    """The old reading ran to the next *matching* bullet, so an
-    off-format bullet after a good one was printed inside its
-    definition."""
     write_glossary(
         draft,
         "- **Model** -- a description of how something behaves.\n"
@@ -122,13 +101,9 @@ def test_the_line_is_the_scope_files_own(draft):
 
 
 def test_the_dict_view_keys_a_bold_symbol_by_its_name(draft):
-    """`glossary_terms()` keyed ``Baseline (`M_0`)`` before the split;
-    the acronym checks print the key, so the change is pinned."""
     write_glossary(draft, "- **Baseline (`M_0`)** -- the measured value.")
     assert dossier.glossary_terms(draft) == {"Baseline": "the measured value."}
 
-
-# --- what is a problem ---------------------------------------------------
 
 OFF_FORMAT = [
     "- **Residual**: the difference between what the sensor reports and the model.",
@@ -184,9 +159,6 @@ def test_a_well_formed_glossary_has_no_problems(draft):
     assert _glossary.glossary_problems(draft) == []
 
 
-# --- a glossary that is not there ---------------------------------------
-
-
 def test_no_dossier_means_no_glossary(isolated_config):
     draft = config.DRAFTS_DIR / "book" / "nowhere.md"
     assert _glossary.has_glossary(draft) is False
@@ -201,7 +173,6 @@ def test_a_scope_without_the_heading_has_no_glossary(draft):
 
 
 def test_the_shipped_template_has_a_glossary_and_no_entries_or_problems(draft):
-    """The worked example lives in an HTML comment, which is not read."""
     assert _glossary.has_glossary(draft) is True
     assert _glossary.glossary_entries(draft) == []
     assert _glossary.glossary_problems(draft) == []
@@ -215,9 +186,6 @@ def test_the_template_shows_the_shape_it_asks_for(draft):
 
 
 def test_the_digest_line_stamp_appends_is_not_a_glossary_bullet(draft):
-    """`dossier stamp` appends `- draft digest:` at the end of a scope.md
-    that lacks one, which puts it under `## Glossary`, the last section.
-    Two of the real book's eight dossiers hold exactly this."""
     write_glossary(draft, "- **Sensor** -- a component.")
     scope = dossier.dossier_dir(draft) / "scope.md"
     scope.write_text(
@@ -238,8 +206,6 @@ def test_the_digest_line_stamp_appends_is_not_a_glossary_bullet(draft):
     ],
 )
 def test_a_second_term_inside_a_definition_is_a_problem(draft, bullet):
-    """What row e becomes once only its first colon is rewritten: the
-    shape matches, and one bullet still defines two terms."""
     write_glossary(draft, bullet)
     (problem,) = _glossary.glossary_problems(draft)
     assert "one term per bullet" in problem.reason
@@ -251,8 +217,6 @@ def test_bold_inside_a_definition_that_defines_nothing_is_fine(draft):
 
 
 def test_a_definition_continued_at_the_margin_is_a_problem(draft):
-    """Lazy continuation is valid Markdown, and would otherwise print a
-    definition cut off at its first line with no finding."""
     write_glossary(draft, "- **Term** -- a long definition that\ncontinues at the margin.")
     (problem,) = _glossary.glossary_problems(draft)
     assert "indent" in problem.reason
@@ -272,7 +236,5 @@ def test_a_bullet_not_written_with_a_hyphen_says_so(draft, marker):
 
 
 def test_a_draft_outside_content_drafts_still_raises_for_the_acronym_checks(tmp_path):
-    """`dossier acronyms suggest` on a stray path says why, as it did
-    before the parser moved; only the registry treats it as no glossary."""
     with pytest.raises(dossier.DossierError):
         dossier.glossary_terms(tmp_path / "stray.md")

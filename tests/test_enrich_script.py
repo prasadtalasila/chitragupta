@@ -1,16 +1,3 @@
-"""chitragupta/enrich/__main__.py: the orchestrator -- Docling -> embed -> BERTopic.
-Each stage_* wrapper's ok/partial/skipped/error shaping is
-tested directly against mocked underlying module calls; main()'s
-stage-selection and per-stage exception isolation are tested against a
-fully mocked STAGE_FUNCS/corpus.
-
-4.0.0 removed the `provenance` and `render` stages -- both were
-three-line wrappers around a tier-1 command, and hosting them here made
-the enrichment layer import the review and drafting layers and made two
-per-draft commands wait on sync's write lock. Their tests went with
-them; the commands themselves are covered by
-tests/test_citation_provenance.py and tests/test_render_output.py."""
-
 import logging
 import re
 import sys
@@ -77,9 +64,6 @@ class TestStageBertopic:
         assert "topic_info" not in result["detail"]
 
     def test_the_seed_list_never_reaches_the_clustering(self, isolated_config, monkeypatch):
-        """Seeds are the seed-topics stage's business. Routing them here
-        would trade emergent topics away for named ones -- 81 down to 53,
-        measured -- which is the whole reason the zero-shot path is gone."""
         isolated_config.SEED_TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
         isolated_config.SEED_TOPICS_PATH.write_text('topics = ["digital twin"]', encoding="utf-8")
         seen = {}
@@ -96,8 +80,6 @@ class TestStageBertopic:
 
 class TestStageExtractKeywords:
     def test_delegates_to_keyword_extract(self, monkeypatch):
-        """The wrapper is one line by design -- the status shaping lives
-        in keyword_extract.run_stage(), like topic_seeding's does."""
         monkeypatch.setattr(
             keyword_extract, "run_stage", lambda docs: {"status": "ok", "detail": {"phrases": 3}}
         )
@@ -105,30 +87,21 @@ class TestStageExtractKeywords:
         assert result == {"status": "ok", "detail": {"phrases": 3}}
 
     def test_runs_after_bertopic_and_before_seed_topics(self):
-        """The issue's contract (#604): extraction feeds the seeding
-        union (#605), so it must already have run when seed-topics does."""
         order = enrich_script.STAGE_ORDER
         assert order.index("bertopic") < order.index("extract-keywords")
         assert order.index("extract-keywords") < order.index("seed-topics")
 
     def test_refused_with_a_draft_scope(self):
-        """Whole-corpus artifact with no partial form, same bucket as
-        bertopic: a keywords.toml extracted from one draft's papers would
-        silently replace the corpus-wide one."""
         assert "extract-keywords" in enrich_script.SCOPE_REFUSED
 
 
 class TestStageSeedTopics:
     def test_skipped_when_the_author_wrote_no_seed_file(self, isolated_config):
-        """The ordinary state of this stage, not a failure: most libraries
-        have no seed file, the same way most have no Zotero collections."""
         result = enrich_script.stage_seed_topics([], make_args())
         assert result["status"] == "skipped"
         assert "no seed topics" in result["detail"]["reason"]
 
     def test_ok_shapes_detail_as_counts(self, isolated_config, monkeypatch):
-        """Per-phrase counts, not the matches themselves: the run report
-        is a summary and the artefact holds the papers."""
         isolated_config.SEED_TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
         isolated_config.SEED_TOPICS_PATH.write_text('topics = ["digital twin"]', encoding="utf-8")
         monkeypatch.setattr(
@@ -151,11 +124,6 @@ class TestStageSeedTopics:
 
 
 class TestSeedPhraseUnion:
-    """#605: the phrases reaching seed-topics and converge are the
-    author's own list unioned with the extracted keywords -- both loaded
-    through seed_topics.load(), deduplicated case-insensitively with the
-    author's spelling winning, order preserved."""
-
     def _capture(self, monkeypatch, module, func_name):
         seen = {}
         monkeypatch.setattr(
@@ -178,13 +146,9 @@ class TestSeedPhraseUnion:
         seen = self._capture(monkeypatch, topic_seeding, "run_topic_seeding")
         result = enrich_script.stage_seed_topics([], make_args())
         assert result["status"] == "ok"
-        # "Digital Twin" survives in the author's spelling; the extracted
-        # duplicate is dropped, the extracted novelty is appended.
         assert seen["phrases"] == ("Digital Twin", "IoT", "edge computing")
 
     def test_extracted_keywords_alone_run_the_stage(self, isolated_config, monkeypatch):
-        """A corpus with no hand-written seed file but a populated
-        keywords.toml still seeds -- that is the whole point of #605."""
         isolated_config.KEYWORDS_PATH.parent.mkdir(parents=True, exist_ok=True)
         isolated_config.KEYWORDS_PATH.write_text(
             'topics = ["federated learning"]', encoding="utf-8"
@@ -208,8 +172,6 @@ class TestSeedPhraseUnion:
         assert seen["phrases"] == ("Digital Twin", "edge computing")
 
     def test_skip_message_names_both_sources(self, isolated_config):
-        """Neither file exists: the reason must not claim the author's
-        seed file is the only place phrases could have come from."""
         result = enrich_script.stage_seed_topics([], make_args())
         assert result["status"] == "skipped"
         reason = result["detail"]["reason"]
@@ -219,10 +181,6 @@ class TestSeedPhraseUnion:
 
 class TestParseArgs:
     def test_defaults(self, monkeypatch):
-        """`--stages` parses as None rather than the joined list, so
-        main() can tell "every stage, because you said so" apart from
-        "every stage, because you said nothing" -- --for-draft narrows
-        the second and is refused against the first."""
         monkeypatch.setattr(sys, "argv", ["enrich.py"])
         args = enrich_script.parse_args()
         assert args.target == "host"
@@ -238,15 +196,9 @@ class TestParseArgs:
         assert args.target == "docker"
 
     def test_help_states_both_halves_of_the_stages_default(self, monkeypatch, capsys):
-        """argparse prints no "(default: ...)" of its own for --stages,
-        so this help string is the only place the default is written
-        down -- and it now depends on whether --for-draft was given."""
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--help"])
         with pytest.raises(SystemExit):
             enrich_script.parse_args()
-        # Whitespace-collapsed: argparse rewraps help text to the
-        # terminal width, so the sentence is split across lines at a
-        # column this test has no business predicting.
         out = re.sub(r"\s+", " ", capsys.readouterr().out)
         assert "default: all seven, or docling alone with --for-" in out
 
@@ -254,10 +206,7 @@ class TestParseArgs:
 class TestMain:
     @pytest.fixture(autouse=True)
     def _isolated(self, isolated_config):
-        """main() takes the pipeline lock at config.PIPELINE_LOCK_PATH,
-        which without this is the checkout's real one (#862): the suite
-        left a lock and a holder record in content/, and on a host with
-        a real `enrich` running it would raise AlreadyRunning instead."""
+        pass
 
     def test_runs_only_selected_stages_and_prints_summary(self, monkeypatch, capsys):
         docs = [CorpusDoc(citekey="a", title="t", pdf_path=None)]
@@ -292,10 +241,6 @@ class TestMain:
         assert "WARNING: unknown stage" not in out  # every selected name is real
 
     def test_no_stages_argument_runs_every_stage(self, monkeypatch):
-        """The documented default, and the one an unattended run gets.
-        Worth pinning separately from `--stages docling,embed` because
-        the default is no longer the literal argparse default -- main()
-        resolves it, and --for-draft resolves it differently."""
         docs = [CorpusDoc(citekey="a", title="t", pdf_path=None)]
         monkeypatch.setattr(enrich_script.corpus, "build_corpus", lambda: docs)
         monkeypatch.setattr(sys, "argv", ["enrich.py"])
@@ -312,8 +257,6 @@ class TestMain:
         assert called == enrich_script.STAGE_ORDER
 
     def test_reports_the_corpus_size_before_any_stage_runs(self, monkeypatch, capsys):
-        """What went into the corpus decides what every stage indexes, so
-        the count has to be visible while the run is still cheap to stop."""
         docs = [CorpusDoc(citekey="a", title="t", pdf_path=None)]
         monkeypatch.setattr(enrich_script.corpus, "build_corpus", lambda: docs)
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--stages", "embed"])
@@ -331,9 +274,6 @@ class TestMain:
         assert out.index("Corpus: 1 doc(s)") < out.index("=== embed ===")
 
     def test_warns_on_unknown_stage(self, monkeypatch, capsys):
-        """Naming a stage this pipeline no longer has would otherwise be
-        a silent no-op -- main() iterates STAGE_ORDER and skips anything
-        unselected, so an unused name never surfaces."""
         docs = [CorpusDoc(citekey="a", title="t", pdf_path=None)]
         monkeypatch.setattr(enrich_script.corpus, "build_corpus", lambda: docs)
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--stages", "retired-stage,embed"])
@@ -349,9 +289,6 @@ class TestMain:
         assert "embed" in out  # the valid stage alongside it still ran
 
     def test_whitespace_and_empty_stage_segments_are_tolerated(self, monkeypatch, capsys):
-        """`--stages "docling, embed,"` is natural to type. Without
-        normalisation the space makes a real stage look unknown and the
-        trailing comma puts a blank name in the warning."""
         docs = [CorpusDoc(citekey="a", title="t", pdf_path=None)]
         monkeypatch.setattr(enrich_script.corpus, "build_corpus", lambda: docs)
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--stages", "docling, embed,"])
@@ -391,12 +328,6 @@ class TestMain:
         rc = enrich_script.main()
         out = capsys.readouterr().out
 
-        # Nonzero, and the second stage still ran (#509/m-39). The two are
-        # not in tension: a stage failing must not abort the run, because
-        # a later stage may still be worth attempting -- but returning 0
-        # afterwards made "everything worked" and "everything errored"
-        # indistinguishable to the only consumer that cannot read the
-        # summary, which is cron, which is how this is actually run.
         assert rc == 1
         assert "error" in out
         assert "stage exploded" in out
@@ -414,32 +345,13 @@ class TestMain:
             enrich_script.STAGE_FUNCS, "embed", lambda d, a: {"status": "ok", "detail": "e"}
         )
         assert enrich_script.main() == 0
-        # The summary line's own wording: a bare "errored" also matches
-        # the tmp_path this test's name puts in the printed bib path.
         assert "stage(s) errored" not in capsys.readouterr().out
 
 
 class TestForDraftScope:
-    """`--for-draft content/drafts/<slug>.md` (issue #52).
-
-    The enrichment layer's unit of work is the corpus, which is right
-    for `embed` and `bertopic` and expensive for nothing in particular
-    when what you want is quotable passages for the eleven papers a
-    chapter cites. The flag narrows the document list to those papers.
-
-    Two properties are what make it safe to offer, and both are pinned
-    here: the narrowing never reaches the two stages whose artefact has
-    no partial form (`embed`'s Chroma collection records no completeness
-    marker; `bertopic` overwrites content/topics.json outright), and a
-    scope that selects nothing says so rather than running a stage over
-    an empty corpus.
-    """
-
     @pytest.fixture(autouse=True)
     def _isolated(self, isolated_config):
-        """A scope that resolves runs main() into the real pipeline lock,
-        as TestMain's does (#862); the refusals stop before it, but which
-        side of the lock a case lands on is the code under test."""
+        pass
 
     @pytest.fixture
     def corpus_of_three(self, monkeypatch):
@@ -453,9 +365,6 @@ class TestForDraftScope:
 
     @pytest.fixture
     def recorded_stages(self, monkeypatch):
-        """Every stage replaced by a recorder of the corpus it was
-        handed, so a test can assert both which stages ran and what
-        reached them without any of the real work happening."""
         calls = {}
 
         def recorder(name):
@@ -486,9 +395,6 @@ class TestForDraftScope:
     def test_the_count_says_what_was_left_out_not_only_what_was_kept(
         self, corpus_of_three, recorded_stages, draft, monkeypatch, capsys
     ):
-        """ "Corpus: 2 doc(s)" would read as a two-paper corpus. The
-        denominator is what tells a reader the run was narrowed, and the
-        draft path is what tells them by what."""
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--for-draft", str(draft)])
 
         enrich_script.main()
@@ -500,10 +406,6 @@ class TestForDraftScope:
     def test_a_bare_for_draft_runs_docling_alone(
         self, corpus_of_three, recorded_stages, draft, monkeypatch
     ):
-        """Passages for the cited papers are what the flag is for, and
-        embed/bertopic must not run at all -- a scoped invocation that
-        quietly rebuilt the whole corpus would be an hour of work nobody
-        asked for."""
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--for-draft", str(draft)])
 
         assert enrich_script.main() == 0
@@ -513,11 +415,6 @@ class TestForDraftScope:
     def test_scoping_a_whole_corpus_stage_is_refused(
         self, recorded_stages, draft, monkeypatch, capsys, stage
     ):
-        """A tier, not a ladder: it stops and names what it cannot give
-        you. Running the stage corpus-wide instead would be an hour of
-        work the flag exists to avoid, and running it scoped would leave
-        an artefact that answers as though it covered the corpus."""
-
         def never(*_a, **_k):
             raise AssertionError("the corpus must not be built for a refused run")
 
@@ -535,8 +432,6 @@ class TestForDraftScope:
         assert recorded_stages == {}
 
     def test_refusing_names_every_offending_stage_at_once(self, draft, monkeypatch, capsys):
-        """Reporting one at a time would make the user re-run to
-        discover the second."""
         monkeypatch.setattr(
             sys,
             "argv",
@@ -552,10 +447,6 @@ class TestForDraftScope:
     def test_a_cited_citekey_the_ledger_lacks_is_named(
         self, corpus_of_three, recorded_stages, monkeypatch, tmp_path, capsys
     ):
-        """The hard gate normally keeps these out of a passing draft,
-        but a draft written before a re-export has them. Enriching the
-        remainder silently would report a smaller number with nothing to
-        explain it."""
         draft = tmp_path / "stale.md"
         draft.write_text("Cited [@a2024] and [@gone2019].\n")
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--for-draft", str(draft)])
@@ -570,8 +461,6 @@ class TestForDraftScope:
     def test_a_scope_matching_nothing_stops_before_the_stage(
         self, corpus_of_three, recorded_stages, monkeypatch, tmp_path, capsys
     ):
-        """parse_corpus([]) would report `ok` over zero documents, which
-        reads like a successful run."""
         draft = tmp_path / "stale.md"
         draft.write_text("Nothing here is in the ledger [@gone2019].\n")
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--for-draft", str(draft)])
@@ -587,10 +476,6 @@ class TestForDraftScope:
     def test_every_stage_now_reads_the_corpus_so_an_empty_scope_always_stops(
         self, corpus_of_three, recorded_stages, monkeypatch, tmp_path, capsys
     ):
-        """CORPUS_STAGES == STAGE_ORDER since 4.0.0 removed the two
-        per-draft passthroughs, so there is no longer a selection that an
-        empty scope could leave work for. The carve-out that used to
-        exist for `render`/`provenance` went with them."""
         assert set(enrich_script.CORPUS_STAGES) == set(enrich_script.STAGE_ORDER)
 
         draft = tmp_path / "stale.md"
@@ -624,17 +509,6 @@ class TestForDraftScope:
     def test_a_draft_that_is_not_utf8_stops_instead_of_raising(
         self, recorded_stages, monkeypatch, tmp_path, capsys
     ):
-        """UnicodeDecodeError is a ValueError, not an OSError, so it
-        slips past the unreadable-file branch and would reach the user
-        as a traceback -- from a script whose whole argument-validation
-        style is a one-line message and an exit code.
-
-        Read strictly rather than with errors="replace" on purpose: a
-        replacement character lands inside whatever citekey the bad byte
-        belonged to, so the tolerant read would scope the run to a
-        quietly wrong set of papers instead of stopping.
-        """
-
         def never(*_a, **_k):
             raise AssertionError("the corpus must not be built for an undecodable draft")
 
@@ -653,10 +527,6 @@ class TestForDraftScope:
     def test_a_draft_with_no_citations_stops_and_says_how_to_proceed(
         self, recorded_stages, monkeypatch, tmp_path, capsys
     ):
-        """An empty scope from an uncited draft is not "enrich nothing"
-        and not "enrich everything" -- neither is obviously what was
-        meant, so the run stops and names the flag to drop."""
-
         def never(*_a, **_k):
             raise AssertionError("the corpus must not be built for an uncited draft")
 
@@ -680,33 +550,17 @@ class TestDraftCitekeys:
         assert enrich_script.draft_citekeys(draft) == {"a2024", "b2025"}
 
     def test_a_citation_wrapped_across_lines_contributes_every_key(self, tmp_path):
-        """The reason this calls extract_citekeys() and not the
-        per-line wrapper: a `\\citep{...}` argument spanning two lines is
-        common once a claim rests on more than a couple of papers, and a
-        per-line scan matches neither line, so both papers would be left
-        out of the scope with nothing said."""
         draft = tmp_path / "d.md"
         draft.write_text("A well-supported claim \\citep{a2024,\n    b2025}.\n")
         assert enrich_script.draft_citekeys(draft) == {"a2024", "b2025"}
 
     def test_a_citation_inside_a_code_fence_is_not_one(self, tmp_path):
-        """Inherited from the gate rather than re-decided here: a
-        teaching draft's `@dataclass` is not a paper, and scoping a run
-        to it would look for a citekey no ledger has."""
         draft = tmp_path / "d.md"
         draft.write_text("Real [@a2024].\n\n```python\n@dataclass\nclass X: ...\n```\n")
         assert enrich_script.draft_citekeys(draft) == {"a2024"}
 
 
 class TestLogging:
-    """The `configure_logging` flag exists because this script takes its
-    lock *inside* main() rather than at the entrypoint, so
-    logging_setup.configure() -- which must run inside the lock -- can't
-    simply sit beside the SystemExit in `__main__`. Both sides of the
-    flag are load-bearing: on, or a scheduled run leaves no transcript;
-    off by default, or every test calling main() directly attaches
-    handlers and makes a logs/ directory appear."""
-
     @pytest.fixture
     def _cleanup_root_handlers(self):
         root = logging.getLogger()
@@ -732,10 +586,6 @@ class TestLogging:
     def test_the_run_is_logged_when_the_entrypoint_asks_for_it(
         self, isolated_config, monkeypatch, _cleanup_root_handlers
     ):
-        """What `python -m chitragupta.enrich` actually does: the stage table
-        it prints also lands in logs/pipeline.log, tagged with this
-        script's logger name so it can be told apart from sync's lines in
-        the shared file."""
         assert self._run_one_stage(monkeypatch, configure_logging=True) == 0
 
         log_text = (config.LOGS_DIR / "pipeline.log").read_text()
@@ -746,12 +596,6 @@ class TestLogging:
     def test_a_dict_stage_detail_is_one_record_not_one_per_json_line(
         self, isolated_config, monkeypatch, _cleanup_root_handlers
     ):
-        """Every stage but `render` returns a dict here, and the terminal
-        renders it with json.dumps(indent=2). Mirrored verbatim that
-        wrote a log record per JSON line, only the first timestamped --
-        one event reading as six, with `grep '\\[ok\\]'` finding a header
-        and none of its content. The terminal keeps the indented form;
-        the file gets the same object on one line."""
         docs = [CorpusDoc(citekey="a", title="t", pdf_path=None)]
         monkeypatch.setattr(enrich_script.corpus, "build_corpus", lambda: docs)
         monkeypatch.setattr(sys, "argv", ["enrich.py", "--stages", "embed"])
@@ -772,10 +616,6 @@ class TestLogging:
     def test_calling_main_directly_leaves_no_handler_or_logs_directory(
         self, isolated_config, monkeypatch, _cleanup_root_handlers
     ):
-        """The default, and why it is the default: every other test in
-        this file calls main() directly. If that configured logging, they
-        would each attach a handler to the root logger and create a
-        logs/ directory as a side effect of asserting on stdout."""
         handlers_before = list(logging.getLogger().handlers)
         assert self._run_one_stage(monkeypatch) == 0
 
@@ -785,10 +625,6 @@ class TestLogging:
 
 class TestPipelineLock:
     def test_a_concurrent_run_is_refused_with_its_own_exit_code(self, monkeypatch, capsys):
-        """The enrichment stage writes content/ too, and a sync re-parsing
-        a document mid-run would hand an overlapping enrichment run two
-        versions of its .txt. Exit code 2, distinct from 1, so an
-        unattended caller can tell "skipped" from "failed"."""
         from chitragupta import runlock
 
         def refuse():
@@ -802,11 +638,6 @@ class TestPipelineLock:
 
 
 class TestStageConverge:
-    """The join stage's wrapper. It computes nothing itself -- the
-    skip/ok decision and the counts belong to topic_converge -- so what
-    this pins is that the wrapper hands the seed list over and returns
-    what it is given."""
-
     def test_it_passes_the_seed_list_through(self, isolated_config, monkeypatch):
         isolated_config.SEED_TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
         isolated_config.SEED_TOPICS_PATH.write_text('topics = ["digital twin"]', encoding="utf-8")
@@ -821,10 +652,6 @@ class TestStageConverge:
 
 
 class TestStageTopicGraph:
-    """The graph stage's wrapper. Like converge's, it decides nothing --
-    the skip/ok vocabulary belongs to topic_graph.run_stage -- so what
-    this pins is that the wrapper hands the docs through unchanged."""
-
     def test_it_passes_the_docs_through(self, monkeypatch):
         seen = {}
         monkeypatch.setattr(

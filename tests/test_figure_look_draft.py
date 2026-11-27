@@ -1,7 +1,3 @@
-"""chitragupta/figure/_look_draft.py: every figure of a draft just
-rendered to pdf, its look and its page (#1052), and `draft render`'s
-`[figure-look]` notes."""
-
 import dataclasses
 import subprocess
 from pathlib import Path
@@ -57,9 +53,6 @@ def fake_look(figure: Path, out_dir: Path | None = None) -> Look:
 
 
 class Poppler:
-    """`_look_draft._run` without poppler: `pdfinfo -dests` answers
-    `dests`, `pdftoppm` writes an A4 page at 300 dpi."""
-
     def __init__(self, dests=DESTS, info_code=0, raster_code=0):
         self.dests, self.info_code, self.raster_code = dests, info_code, raster_code
         self.calls: list[list[str]] = []
@@ -78,7 +71,6 @@ class Poppler:
 
 @pytest.fixture
 def tools(monkeypatch):
-    """Every tool present, and `look` itself faked."""
     present = {"pdftoppm", "pdfinfo"}
     monkeypatch.setattr(
         _look_draft.programs, "resolve_program", lambda n: n if n in present else None
@@ -111,8 +103,6 @@ class TestLookDir:
         assert _look_draft.look_dir(draft, flow, None) is None
 
     def test_the_figure_s_spelling_does_not_move_it(self, draft, monkeypatch):
-        # `figure look figures/flow.tex --draft /abs/survey.md` from the
-        # draft's own directory: the same place the render's refresh uses.
         monkeypatch.chdir(draft.parent)
         out = config.CONTENT_DIR / "scratch-out"
         assert _look_draft.look_dir(draft, Path("figures/flow.tex"), out) == out / "figures"
@@ -142,8 +132,6 @@ class TestRefresh:
         assert not stale.exists()
 
     def test_a_named_output_directory_takes_the_looks_and_pages(self, draft, tools, monkeypatch):
-        # #1114: a render into --output-dir wrote its looks over the
-        # canonical ones in content/rendered/.
         asked = []
         monkeypatch.setattr(
             _look_draft,
@@ -300,7 +288,6 @@ def test_a_real_pdf_render_leaves_every_figure_looked_at(isolated_config, capsys
     assert _cli.main([str(draft), "--format", "pdf"]) == 0
     assert "[figure-look] 1 wrote; 1 page PNGs" in capsys.readouterr().err
     out = rendered("rag", "figures")
-    # flow.tex is the render's own copy of the source, as it always was.
     assert {p.name for p in out.iterdir()} == {
         "flow.tex",
         "flow.look.pdf",
@@ -308,7 +295,6 @@ def test_a_real_pdf_render_leaves_every_figure_looked_at(isolated_config, capsys
         "flow.look.json",
         "flow.page.png",
     }
-    # A4 at 300 dpi, rounded up as pdftoppm rounds: 595.28pt is 2480.3 px.
     assert _look_draft._png_size(out / "flow.page.png") == (2481, 3508)
 
 
@@ -319,7 +305,6 @@ def test_a_real_pdf_render_leaves_every_figure_looked_at(isolated_config, capsys
     reason="needs pandoc and lualatex with tikz.sty",
 )
 def test_a_real_render_into_output_dir_leaves_rendered_alone(isolated_config, capsys):
-    # #1114's reproduction: the looks follow --output-dir.
     isolated_config.BIB_FILE_PATH.write_text("")
     draft = content_draft(isolated_config, "drafts/scratch/s.md")
     (draft.parent / "figures").mkdir()
@@ -340,9 +325,6 @@ def test_a_real_render_into_output_dir_leaves_rendered_alone(isolated_config, ca
 
 
 class TestLookDraftCli:
-    """`figure look <figure> --draft <draft>`, with the render and the
-    refresh faked at the CLI's own names."""
-
     @pytest.fixture
     def figure_cli(self, draft, monkeypatch):
         from chitragupta.figure import __main__ as cli
@@ -384,8 +366,6 @@ class TestLookDraftCli:
     def test_output_dir_reaches_the_render_and_the_look(
         self, figure_cli, draft, monkeypatch, capsys
     ):
-        # #1123: `--draft` passes `--output-dir` on to the render, and a
-        # look written without one lands where the render's would.
         flow = draft.parent / "figures" / "flow.tex"
         out = config.CONTENT_DIR / "scratch-out"
         seen = []

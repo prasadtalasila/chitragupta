@@ -1,15 +1,3 @@
-"""`tests/conftest.py::thread_executor` must not let a worker outlive its test.
-
-The pool code under test shuts its executor down with `wait=False` on
-purpose: on Ctrl+C the run must not drain the whole backlog first (#501).
-A real process pool then has its workers killed by `terminate_workers`;
-the thread pool the tests swap in has nothing equivalent, so a job that
-had already started kept running after the test returned. Once
-`monkeypatch` had restored `config`, that job wrote into the real
-`content/`, and `tests/content_guard.py` failed a CI run in which every
-test passed (#1226).
-"""
-
 import threading
 import types
 
@@ -17,13 +5,10 @@ import pytest
 
 from tests.conftest import ThreadPools
 
-# Stands in for `config`: the test patches it, and the late job reports
-# which value it saw.
 _PROBE = types.SimpleNamespace(value="original")
 
 
 def _late_job(release: threading.Event, seen: list) -> None:
-    """Block until `release`, then record what `_PROBE` says by then."""
     release.wait(5)
     seen.append(_PROBE.value)
 
@@ -34,8 +19,6 @@ def test_join_all_waits_for_a_job_still_running_after_shutdown_wait_false():
     release = threading.Event()
     seen: list = []
     pool.submit(_late_job, release, seen)
-    # What `_drain` does on an interrupt: queued work is cancelled, the
-    # running job is not waited for.
     pool.shutdown(wait=False, cancel_futures=True)
     threading.Timer(0.2, release.set).start()
 
@@ -46,9 +29,6 @@ def test_join_all_waits_for_a_job_still_running_after_shutdown_wait_false():
 
 @pytest.fixture
 def seen_after_teardown():
-    """Requested before `thread_executor`, so pytest tears it down after
-    `thread_executor` has joined. Its assertion is about what the late
-    job recorded by then, and which value of the patch it saw."""
     seen: list = []
     yield seen
     assert seen == ["patched"], (
@@ -64,15 +44,10 @@ def test_the_fixture_joins_before_monkeypatch_restores_the_patch(
     release = threading.Event()
     pool.submit(_late_job, release, seen_after_teardown)
     pool.shutdown(wait=False, cancel_futures=True)
-    # Released after the test body has returned, so only a teardown
-    # that waits for the job lets it record anything in time.
     threading.Timer(0.2, release.set).start()
 
 
 def test_track_registers_a_pool_built_outside_the_factory():
-    """A test that needs its own executor class (a subclass that records
-    submissions, say) builds it itself; `track` is how it still gets
-    joined."""
     from concurrent.futures import ThreadPoolExecutor
 
     pools = ThreadPools()
@@ -90,9 +65,6 @@ def test_track_registers_a_pool_built_outside_the_factory():
 
 
 def test_join_all_still_joins_the_other_pools_when_one_shutdown_raises():
-    """One broken `shutdown` (a test can replace it on the instance)
-    must not leave the remaining pools running past the test. The
-    first error is still raised, after every pool has been joined."""
     pools = ThreadPools()
     broken = pools(1)
 

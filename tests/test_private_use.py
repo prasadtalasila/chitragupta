@@ -1,6 +1,3 @@
-"""chitragupta/_private_use.py: a private-use character from a source's
-text layer, written as a marker a report can render (#1125)."""
-
 import pytest
 
 from chitragupta import _private_use

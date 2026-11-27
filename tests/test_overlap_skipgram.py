@@ -1,8 +1,3 @@
-"""chitragupta/overlap_skipgram.py: tier 2's stemmed skip-gram index -- the
-disk-cached, family-split analogue of chitragupta/overlap_index.py's exact
-8-gram index, built for chitragupta/review/verbatim_check.py's `_skipgram_tier_findings`.
-"""
-
 import json
 
 import pytest
@@ -60,11 +55,6 @@ class TestSkipgramPostings:
         assert {h for h, _s, _e in a}.isdisjoint({h for h, _s, _e in b})
 
     def test_a_single_word_substitution_only_breaks_its_own_family(self):
-        # The property the whole module docstring is built on: an edit
-        # at original index i can only ever cost the family whose
-        # parity i belongs to. Substituting the word at an EVEN index
-        # (4, "digital" -> "physical") must leave every hash the ODD
-        # family produced completely unchanged.
         source = (
             "the validation of a digital twin requires continuous comparison "
             "against measurements taken from the physical asset"
@@ -79,12 +69,6 @@ class TestSkipgramPostings:
         assert source_odd == edited_odd
 
     def test_a_stopword_for_content_word_swap_at_a_fixed_position_still_matches(self):
-        # Regression for the bug this module's docstring documents:
-        # splitting into families on the *filtered* stream (stopword
-        # removal before the even/odd split) let a stopword<->content
-        # change desynchronize every later position between two texts.
-        # Splitting on the *original* stream first (what this module
-        # does) must not.
         source = (
             "the validation of a digital twin requires continuous "
             "comparison against measurements taken from the physical asset"
@@ -106,8 +90,6 @@ class TestSkipgramPostings:
             assert 0 <= start < end <= len(words)
 
     def test_too_few_family_members_yields_no_postings(self):
-        # DEFAULT_N content words are needed in *one* family; four
-        # distinct content words split roughly 2/2 is not enough.
         assert (
             overlap_skipgram.skipgram_postings(
                 "alpha beta gamma delta".split(), overlap_skipgram.DEFAULT_N
@@ -117,17 +99,7 @@ class TestSkipgramPostings:
 
 
 class TestNumericWindowsAreNotEvidence:
-    """#180: bare numbers are an effective ~10-token vocabulary, so two
-    long enough numeric tables share a skip-gram by chance alone --
-    measured as 97 of 125 unique findings on the first real-corpus run.
-    A window is evidence only if fewer than `MAX_NUMERIC_SHARE` of its
-    stems are bare numbers.
-    """
-
     def test_an_all_numeric_table_row_yields_no_postings(self):
-        # A page-number run, or a scoring grid's row: nothing here is a
-        # word, so nothing here distinguishes this document from any
-        # other document with a table in it.
         assert (
             overlap_skipgram.skipgram_postings(
                 "1 4 2 7 3 9 0 6 5 8 2 3 8 1".split(), overlap_skipgram.DEFAULT_N
@@ -136,11 +108,6 @@ class TestNumericWindowsAreNotEvidence:
         )
 
     def test_a_figure_among_content_words_still_yields_postings(self):
-        # The case #180 explicitly asks to keep: "48.2 billion" quoted by
-        # two papers is genuine shared wording, and a token-level "drop
-        # every digit" rule would have lost it. The even family here
-        # reduces to `annual reach 2 dollar fiscal across region` -- one
-        # number among six words -- so every window it makes survives.
         words = (
             "annual revenue reached 48 2 billion dollars during the "
             "2021 fiscal year across every regional market"
@@ -149,10 +116,6 @@ class TestNumericWindowsAreNotEvidence:
         assert 0 in starts, "a window holding a figure among content words was dropped"
 
     def test_the_bar_is_fewer_than_half_the_window(self):
-        # Exactly at the boundary, from both sides. Stopwords on every
-        # even index leave that family empty, so each list makes exactly
-        # one window, on the odd family: three numbers of five is out,
-        # two is in.
         three = "the 1 the alpha the 2 the beta the 3".split()
         two = "the 1 the alpha the 2 the beta the delta".split()
         assert overlap_skipgram.skipgram_postings(three, 5) == []
@@ -160,12 +123,6 @@ class TestNumericWindowsAreNotEvidence:
 
 
 class TestGradedParaphraseDetection:
-    """The property #133's benchmark and its own graded fixtures pin:
-    a synonym swapped at a fixed *even* stride (so every substitution
-    lands on the same original-index parity) is always caught by
-    whichever family that stride never touches -- however wide the
-    stride gets, as long as it stays even."""
-
     SOURCE = (
         "the validation of a digital twin requires continuous comparison "
         "against measurements taken from the physical asset every single "
@@ -190,11 +147,6 @@ class TestGradedParaphraseDetection:
         )
 
     def test_a_full_clean_restatement_is_not_caught(self):
-        # The tier's honest boundary: genuine restatement in new
-        # structure -- not a word-for-word substitution -- shares no
-        # skip-gram, the same way it shares no exact 8-gram. #133 does
-        # not claim to catch this; docs/PLAGIARISM-DESIGN.md's caveat still
-        # applies to tier 2.
         restated = (
             "engineers routinely check that a simulated model still tracks "
             "its physical counterpart by repeatedly measuring the gap "
@@ -301,10 +253,6 @@ class TestFingerprintDocument:
         assert fp.n == 4
 
     def test_own_cache_file_is_independent_of_the_exact_tiers(self, isolated_config, tmp_path):
-        # The whole point of a separate namespace (module docstring): a
-        # stemmer/stopword-list change must never invalidate tier 1's
-        # cache, and vice versa -- verified here by confirming the two
-        # tiers write to two entirely different files for the same doc.
         from chitragupta import overlap_index
 
         parsed = tmp_path / "smith_2024.txt"
@@ -402,10 +350,6 @@ class TestBuildCorpusIndex:
         assert (config.OVERLAP_DIR / "skipgram_index.bin").exists()
 
     def test_truncated_index_bin_triggers_rebuild(self, ledger_con, tmp_path):
-        # Needs an actually non-empty index.bin: five distinct content
-        # words split into two families of 2-3 each never reaches
-        # DEFAULT_N=5 in either family, so a *shorter* text than this
-        # produces zero postings and an empty (un-truncatable) file.
         add_parsed_item(
             ledger_con,
             tmp_path,

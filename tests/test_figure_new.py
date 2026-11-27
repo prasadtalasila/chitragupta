@@ -1,5 +1,3 @@
-"""`chitragupta figure new`: a figure started from a scaffold (#1052)."""
-
 import pytest
 
 from chitragupta import config, figure
@@ -17,7 +15,6 @@ def house():
 
 @pytest.fixture
 def with_twin(tmp_path, monkeypatch):
-    """A scaffold directory where one layout ships a twin of its own."""
     directory = tmp_path / "scaffolds"
     directory.mkdir()
     (directory / "pipeline.tex").write_bytes((SHIPPED / "pipeline.tex").read_bytes())
@@ -28,9 +25,6 @@ def with_twin(tmp_path, monkeypatch):
 
 @pytest.fixture
 def without_twin(tmp_path, monkeypatch):
-    """A scaffold directory where a layout ships no twin. Every shipped
-    layout has had one since #1056, so only a directory like this one
-    still reaches the "no twin" path."""
     directory = tmp_path / "scaffolds"
     directory.mkdir()
     (directory / "zoned-spine.tex").write_bytes((SHIPPED / "zoned-spine.tex").read_bytes())
@@ -61,7 +55,6 @@ class TestNew:
         assert declared_layout(text) == layout
         assert created.sync.action in {"current", "refreshed"}
         assert figure.classify(text, house).state is figure.State.CURRENT
-        # #1056: every shipped layout ships its twin, and it is copied.
         assert created.twin.read_bytes() == (SHIPPED / f"{layout}.txt").read_bytes()
 
     def test_no_twin_is_written_when_the_layout_ships_none(self, figures, house, without_twin):
@@ -157,10 +150,6 @@ class TestCli:
 
 
 class TestABrokenInstall:
-    """#1052 review: the scaffolds are read when `figure new` runs, never
-    while the parser is built, so a broken one cannot take `sync` and
-    `check` down with it."""
-
     @pytest.fixture
     def broken(self, tmp_path, monkeypatch):
         (tmp_path / "pipeline.tex").write_bytes(b"% cg-layout: pipeline\n\xff\xfe")

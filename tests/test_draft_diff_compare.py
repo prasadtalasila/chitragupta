@@ -1,11 +1,3 @@
-"""Tests for chitragupta/draft_diff's comparison core: views, sections, compare.
-
-`compare()` is pure, so most tests build two `VersionView`s from short
-inline texts and read the report. The weight is on the three places a
-diff can misreport without anyone noticing: text above the first
-heading, two sections sharing a title, and a figure named but not drawn.
-"""
-
 from pathlib import Path
 
 from chitragupta.dossier._versions import Snapshot
@@ -121,7 +113,6 @@ def test_text_before_first_heading_is_a_section():
     new = _swap(_BASE, "Opening words.", "Different opening words.")
     kinds = _kinds(compare(_view(_BASE), _view(new), _status))
     assert kinds["(before the first heading)"] == "changed"
-    # The `#` title line is part of that leading section, not a heading.
     split = _sections.split(_BASE, ".md")
     assert split[0].title == "(before the first heading)"
     assert "# A survey" in split[0].body
@@ -309,8 +300,6 @@ def test_from_snapshot_takes_label_date_and_figures_from_the_version(tmp_path):
 
 
 def test_citekeys_are_placed_by_the_gates_line_count():
-    # U+2028 and a form feed are line breaks to `str.splitlines()` but not
-    # to the gate, which counts "\n" alone; both must number lines alike.
     new = "Intro\u2028x\x0cy\n## A\nCited [@sample_dt_sync_2023].\n## B\nz\n"
     report = compare(_view("## A\n\nText.\n"), _view(new), _status)
     assert report.citekeys_added == [("sample_dt_sync_2023", "A")]
@@ -332,8 +321,6 @@ def test_a_figure_undrawn_on_both_sides_is_no_change():
     assert not report.has_changes
 
 
-# `draft references` rewrites this section on every pass; its entries are
-# generated, not prose a reviser wrote.
 _REFS = '\n## {heading}\n\n[@sample_dt_overview_2024] A. Author, "Twins," 2024.\n\n{extra}'
 
 
@@ -374,8 +361,6 @@ def test_an_unchanged_references_section_stays_unchanged():
 
 
 def test_only_the_bibliography_heading_is_generated():
-    """The heading rule render() drops the section by, anchored: a
-    section that only starts with the word is prose."""
     old = _with_refs(_BASE, "References and notes")
     new = _with_refs(_BASE, "References and notes", extra="A note.\n")
     report = compare(_view(old), _view(new), _status)

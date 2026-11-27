@@ -1,18 +1,3 @@
-"""chitragupta/render_output/_tables.py: captions, numbers and the per-format swap.
-
-Split per module the way `tests/test_render_output_figures.py` and
-`tests/test_render_output_math.py` are, mirroring
-`chitragupta/render_output/`'s own split.
-
-The discriminating tests here are `TestSubstituteLatexBound` and
-`TestSubstituteMarkdown`: the same draft has to reach pandoc carrying a
-`\\label` it will number itself, and reach the Markdown path -- which
-never goes near pandoc -- carrying a number this module counted. Those
-are two different answers to one question, and getting either wrong
-produces a rendered table with no number at all, which is the defect
-issue 395 is about.
-"""
-
 from pathlib import Path
 
 from chitragupta import config, render_output
@@ -53,8 +38,6 @@ class TestTables:
         assert _tables.tables("Just prose, and a `: colon` span.\n") == []
 
     def test_a_caption_line_without_a_marker_declares_nothing(self):
-        # The caption alone cannot be referred to, so it is not a table
-        # this module knows about -- `warnings` is what says so.
         assert _tables.tables("| A |\n|---|\n| 1 |\n\n: Uncaptured.\n") == []
 
 
@@ -65,14 +48,6 @@ class TestSubstituteLatexBound:
         assert "<!-- table:" not in out
 
     def test_a_reference_becomes_a_latex_ref_not_a_number(self):
-        # The number is LaTeX's to assign: the same unit numbers "3" in an
-        # article and "1.3" inside an assembled book, so writing one here
-        # would be wrong in one of the two.
-        #
-        # Raw-attribute span, not a bare command: pandoc's Markdown reader
-        # escapes `~` to `\textasciitilde{}`, which sets a literal tilde
-        # between the word and the number. Caught by rendering a real
-        # draft, not by reading the code.
         out = _tables.substitute(DRAFT, "tex")
         assert "The platforms in `Table~\\ref{tab:start-here}`{=latex} differ" in out
         assert "<!-- tableref:" not in out
@@ -83,10 +58,6 @@ class TestSubstituteLatexBound:
 
 class TestSubstituteMarkdown:
     def test_the_caption_becomes_a_numbered_paragraph(self):
-        # `--format md` never reaches pandoc (docs/RENDERING-FLOW.md), so a
-        # pandoc caption line would land verbatim in content/rendered/ as
-        # a stray colon. A bold paragraph is what reads as a caption
-        # everywhere Markdown is read.
         out = _tables.substitute(DRAFT, "md")
         assert "**Table 1:** Where to start when building a first twin." in out
         assert "**Table 2:** What each retention tier costs." in out
@@ -100,13 +71,6 @@ class TestSubstituteMarkdown:
 
 
 class TestADraftThatReusesAnId:
-    """A collision `warnings` reports and `substitute` still has to render.
-
-    Numbering by id rather than by position would give the *first* table
-    the second one's number, so a draft with a duplicate id would carry
-    two "Table 2"s and no "Table 1".
-    """
-
     def test_captions_are_still_numbered_by_position(self):
         out = _tables.substitute(DRAFT + DRAFT, "md")
         assert out.count("**Table 1:**") == 1
@@ -119,9 +83,6 @@ class TestADraftThatReusesAnId:
 
 class TestSubstituteOtherPandocFormats:
     def test_docx_keeps_a_caption_and_gets_a_literal_number(self):
-        # Verified against pandoc 3.1.11.1: the docx writer emits the
-        # caption text and numbers nothing, so the number has to be in the
-        # text handed to it.
         out = _tables.substitute(DRAFT, "docx")
         assert ": Table 1: Where to start when building a first twin." in out
         assert "The platforms in Table 1 differ" in out
@@ -132,8 +93,6 @@ class TestSubstituteOtherPandocFormats:
 
 class TestSubstituteLeavesAlone:
     def test_a_latex_fragment_is_untouched(self):
-        # thesis-chapter-writer writes a real \\begin{table} with its own
-        # \\caption and \\label -- WRITING-STANDARDS.md §13's carve-out.
         fragment = (
             "See Table~\\ref{tab:start}.\n\n"
             "\\begin{table}\n\\caption{Where to start.}\\label{tab:start}\n"
@@ -142,9 +101,6 @@ class TestSubstituteLeavesAlone:
         assert _tables.substitute(fragment, "pdf") == fragment
 
     def test_an_unknown_reference_is_left_in_place(self):
-        # Substituting nothing for it would delete a noun phrase from the
-        # sentence; leaving the marker keeps the defect visible, and
-        # `warnings` reports it.
         text = "As <!-- tableref: nowhere --> shows.\n"
         assert _tables.substitute(text, "md") == text
 
@@ -171,14 +127,6 @@ class TestWarnings:
 
 
 class TestRenderIntegration:
-    """Through `render` itself, on the one path that never reaches pandoc.
-
-    `isolated_config` rather than three `monkeypatch.setattr` calls: the
-    fixture already points every derived path at a throwaway tree, and a
-    hand-patched subset is how a test starts depending on the real
-    content directory the moment `render` reads a fourth path.
-    """
-
     def _draft(self, text: str) -> Path:
         draft = config.DRAFTS_DIR / "survey.md"
         draft.parent.mkdir(parents=True, exist_ok=True)
@@ -186,8 +134,6 @@ class TestRenderIntegration:
         return draft
 
     def test_the_markdown_path_numbers_the_caption(self, isolated_config):
-        # The one path that never reaches pandoc still has to produce a
-        # numbered table, which is half of what issue 395 asks for.
         out = render_output.render(str(self._draft(DRAFT)), output_format="md")
 
         rendered = out.read_text(encoding="utf-8")

@@ -1,22 +1,3 @@
-"""chitragupta/review/__main__.py: the review layer's single entry point.
-
-What each aid *computes* is covered in its own test module
-(tests/test_citation_provenance.py, tests/test_verbatim_check.py, ...). This
-file pins only the dispatch, and the invariant the dispatch exists to
-serve: **one entry point per layer, one level deep**, the same shape
-`python -m chitragupta.corpus sync` gives the corpus layer.
-
-That invariant went untested for a long time, and the review layer was
-one design review away from shipping `python -m chitragupta.review.verbatim_check`
-as this repo's first working nested command. The two-level form had been
-tried once already, as `chitragupta.heavy.render_output`, and was reverted with
-the directory that held it. Nothing noticed either time except a reader
-comparing files by eye.
-
-The docs half is tests/test_command_depth_scan.py, which fails when a
-doc or a skill introduces a `python -m chitragupta.a.b` invocation in prose.
-"""
-
 import importlib
 import re
 from pathlib import Path
@@ -30,8 +11,6 @@ from tests.conftest import run_python
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# Every module under chitragupta/review/ that is an aid rather than the entry
-# point or the shared helper.
 AID_MODULES = [
     "citation_provenance",
     "citation_coverage",
@@ -41,73 +20,31 @@ AID_MODULES = [
     "agenda",
 ]
 
-# A real top-level entry-point block, anchored at column 0 -- not the
-# string wherever it appears. chitragupta/enrich/docling_parse.py discusses
-# `if __name__ == "__main__":` at length in a comment about forkserver
-# workers, and a substring check would read that prose as a second entry
-# point.
 _MAIN_BLOCK = re.compile(r'^if __name__ == ["\']__main__["\']:', re.MULTILINE)
-
-# Every read below passes encoding="utf-8" explicitly. Without it
-# read_text() uses the locale codec, which is cp1252 on the Windows CI
-# leg, and these sources contain non-ASCII punctuation -- so the check
-# died with a UnicodeDecodeError there while passing on Linux. Same
-# reason tests/test_skill_verbatim_scan_step.py pins it.
 
 
 def _aid_sources(module: str) -> list[Path]:
-    """Every source file making up one aid, whichever shape it takes.
-
-    An aid is usually one `.py`; `figure_layout` is a package, because
-    its three parts need different things (source parsing, arithmetic,
-    and the one that shells out to pdflatex) and the whole would cross
-    the 250-code-line limit. Both shapes are one subcommand, which is
-    what the invariant is actually about.
-    """
     base = REPO_ROOT / "chitragupta" / "review" / module
     return sorted(base.glob("*.py")) if base.is_dir() else [base.with_suffix(".py")]
 
 
 class TestTheSubcommandsAreTheAids:
-    # No "the sets are equal" test here, deliberately. `_registry.py`,
-    # which the entry point imports its subcommands from (#850), raises
-    # on drift at import time, so the import at the top of this
-    # file would fail during collection and such an assertion could
-    # never be the thing that reports it. What follows tests the guard
-    # instead, which is the only falsifiable form of that claim.
-
     def test_a_drifted_subcommand_set_is_refused_at_import(self, monkeypatch):
-        """`review.AIDS` owns the report suffixes, so a subcommand that
-        drifted out of it would write a report under a name the rest of
-        the layer cannot find -- `dossier` checks `stem.suffix in
-        review.AIDS`.
-
-        The guard is a raise rather than an assert because `python -O`
-        strips assertions, which would leave the invariant stated but
-        unenforced exactly when someone had optimised the interpreter
-        and stopped watching.
-        """
         monkeypatch.setitem(review.AIDS, "invented", "Not a real aid")
         try:
             with pytest.raises(RuntimeError, match="drifted apart"):
                 importlib.reload(_registry)
         finally:
-            # Undo before the final reload, so the module is left importable
-            # for every test after this one.
             monkeypatch.undo()
             importlib.reload(_registry)
 
     @pytest.mark.parametrize("aid", ["provenance", "verbatim", "coverage"])
     def test_every_aid_is_reachable_and_declares_its_own_flags(self, aid):
-        """--help rather than a run: this pins that the aid's parser was
-        wired in, without needing a corpus."""
         result = run_python("-m", "chitragupta.review", aid, "--help")
         assert result.returncode == 0
         assert f"Usage: python -m chitragupta.review {aid}" in result.stdout
 
     def test_no_aid_prints_the_layers_usage_and_exits_zero(self):
-        """ "Tell me how to use this" is not an error -- the same rule
-        each aid already applies to a missing mode."""
         result = run_python("-m", "chitragupta.review")
         assert result.returncode == 0
         assert "provenance" in result.stdout
@@ -115,9 +52,6 @@ class TestTheSubcommandsAreTheAids:
         assert "coverage" in result.stdout
 
     def test_no_aid_in_process_prints_the_usage_too(self, capsys):
-        """The subprocess test above proves the `-m` wiring; this one is
-        what holds `main()`'s no-aid branch to the coverage bar, since
-        pytest-cov 7 does not measure a child process."""
         assert entrypoint.main([]) == 0
         out = capsys.readouterr().out
         for aid in ("provenance", "verbatim", "coverage"):
@@ -130,37 +64,13 @@ class TestTheSubcommandsAreTheAids:
 
 
 class TestTheCommandSurfaceStaysOneLevelDeep:
-    """The invariant this file exists for. See docs/ARCHITECTURE.md."""
-
     @pytest.mark.parametrize("module", AID_MODULES)
     def test_an_aid_module_has_no_main_block(self, module):
-        """`python -m chitragupta.review.<aid>` must not become a second,
-        undocumented way in. Without a __main__ block it imports the
-        module and exits 0 having done nothing -- which is a trap, but a
-        silent and harmless one, and the same one `chitragupta/enrich/`'s stage
-        modules carry by design (docs/ARCHITECTURE.md). With one, the
-        layer would have five entry points and no single --help.
-
-        An aid may be a module or a package -- `figure_layout` is a
-        package, split by what each part needs -- so every source file
-        under it is checked, not just its `__init__.py`. A `__main__.py`
-        inside the package would be the same defect wearing a different
-        filename.
-        """
         for source in _aid_sources(module):
             assert not _MAIN_BLOCK.search(source.read_text(encoding="utf-8")), source
 
     @pytest.mark.parametrize("module", AID_MODULES)
     def test_running_an_aid_module_directly_does_nothing(self, module):
-        """The observable half of the assertion above.
-
-        The two shapes fail differently and both are correct. A module
-        imports and exits 0 in silence. A *package* cannot be run with
-        `-m` at all -- Python refuses it outright, exit 1, because there
-        is no `__main__.py` -- which serves this invariant more strongly
-        than the silent version does: the trap the docstring above calls
-        "silent and harmless" is not even reachable.
-        """
         result = run_python("-m", f"chitragupta.review.{module}")
 
         assert result.stdout == ""
@@ -171,9 +81,6 @@ class TestTheCommandSurfaceStaysOneLevelDeep:
             assert result.returncode == 0
 
     def test_the_enrichment_layer_keeps_the_same_shape(self):
-        """Not this layer, but the same invariant, and the precedent this
-        layer's design was taken from: `--stages` is the only way to run
-        an enrichment stage."""
         for module in ["docling_parse", "embed_index", "topic_model"]:
             source = (REPO_ROOT / "chitragupta" / "enrich" / f"{module}.py").read_text(
                 encoding="utf-8"
@@ -182,11 +89,6 @@ class TestTheCommandSurfaceStaysOneLevelDeep:
 
 
 class TestTheExitCodeContractSurvivesTheDispatch:
-    """The aids' own contract, unchanged by being dispatched to: `0` on
-    every successful run, findings or not; `1` for a draft the layer will
-    not read; `2` for a malformed invocation. A dispatcher that swallowed
-    or remapped argparse's exit 2 would show up here."""
-
     def test_a_draft_outside_content_exits_one(self, tmp_path):
         outside = tmp_path / "not-in-content.md"
         outside.write_text("# draft\n")
@@ -198,8 +100,6 @@ class TestTheExitCodeContractSurvivesTheDispatch:
         assert result.returncode == 1
 
     def test_a_missing_required_flag_exits_two(self):
-        """`coverage` without --query: argparse's own error, reached
-        through the subparser rather than a top-level parser."""
         result = run_python("-m", "chitragupta.review", "coverage", "content/drafts/x.md")
         assert result.returncode == 2
         assert "--query" in result.stderr
@@ -211,9 +111,6 @@ class TestTheExitCodeContractSurvivesTheDispatch:
         assert result.returncode == 2
 
     def test_recheck_without_a_baseline_exits_two(self):
-        """`--baseline` is required: there is nothing to compare against
-        without one, and defaulting to the report's usual path would
-        silently compare against whatever happened to be lying there."""
         result = run_python(
             "-m", "chitragupta.review", "verbatim", "recheck", "content/drafts/x.md"
         )

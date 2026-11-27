@@ -1,12 +1,3 @@
-"""chitragupta/tldr.py: per-citekey TL;DR, cached beside a fingerprint of
-the citekey's parsed text.
-
-The invariants that matter most: a re-parse marks a summary stale
-without rewriting it (`write` is never called on `show`'s behalf), a
-missing summary is not an error, an unknown citekey is refused rather
-than minting one, and nothing here ever touches `content/ledger.sqlite`.
-"""
-
 import io
 import json
 import subprocess
@@ -47,8 +38,6 @@ class TestStaleness:
         tldr.write(ledger_con, "smith2024", "A summary.")
         before = tldr.sidecar_path("smith2024").read_bytes()
 
-        # Simulate `corpus sync --reparse` changing the extracted text
-        # without touching the sidecar at all.
         config.PARSED_DIR.joinpath("smith2024.txt").write_text(
             "Completely different parsed text.", encoding="utf-8"
         )
@@ -56,8 +45,6 @@ class TestStaleness:
         result = tldr.read(ledger_con, "smith2024")
         assert result["stale"] is True
         assert result["summary"] == "A summary."
-        # The read must not have rewritten the sidecar -- only `write`
-        # may touch it, and `read` recomputes staleness fresh every call.
         assert tldr.sidecar_path("smith2024").read_bytes() == before
 
     def test_a_reparse_producing_identical_text_stays_fresh(self, ledger_con):
@@ -75,9 +62,6 @@ class TestStaleness:
         assert tldr.sidecar_path("smith2024").read_bytes() == before
 
     def test_a_citekey_pruned_from_the_ledger_reads_as_stale(self, ledger_con):
-        """The fingerprint can no longer be recomputed at all, which
-        counts as stale too -- a summary that cannot be verified is not
-        reported as trustworthy."""
         add_item("smith2024", "Original parsed text.")
         tldr.write(ledger_con, "smith2024", "A summary.")
         ledger_con.execute("DELETE FROM items WHERE citekey = ?", ("smith2024",))
@@ -85,14 +69,6 @@ class TestStaleness:
         assert tldr.read(ledger_con, "smith2024")["stale"] is True
 
     def test_a_sidecar_whose_fingerprint_is_null_also_reads_as_stale(self, ledger_con):
-        """m-41 (#509), and the case the test above cannot reach. There
-        the *stored* fingerprint is a real string, so `None != "abc"` was
-        already True. When the sidecar itself carries a null fingerprint
-        -- written at a moment the parse could not be read either -- the
-        comparison was `None != None`, which is False, and `read` reported
-        `stale: False`: "this summary is of the current parse", about a
-        parse it cannot see at all. That is the exact opposite of what the
-        docstring above promises."""
         add_item("smith2024", "Original parsed text.")
         tldr.write(ledger_con, "smith2024", "A summary.")
         path = tldr.sidecar_path("smith2024")
@@ -123,9 +99,6 @@ class TestMissingSummaryIsNotAnError:
 
 
 def _passage_sidecar(citekey, records):
-    """A structural passage sidecar on rung 2, so `_abstract` has reading
-    order to work with -- tests/test_abstract.py owns the detector's own
-    cases; these are about which of the four answers `resolve` gives."""
     config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
     config.PARSED_DIR.joinpath(f"{citekey}.passages.json").write_text(
         json.dumps([{"text": t, "label": lbl, "page": 1} for t, lbl in records]),
@@ -138,7 +111,6 @@ ABSTRACT_BODY = " ".join(f"word{i}" for i in range(60))
 
 class TestResolveFallsBackToTheAuthorsAbstract:
     def test_a_hand_written_summary_wins_over_an_abstract(self, ledger_con):
-        """The stated precedence: somebody who wrote a TL;DR chose to."""
         add_item("smith2024", "Original parsed text.")
         _passage_sidecar("smith2024", [("Abstract", "section_header"), (ABSTRACT_BODY, "text")])
         tldr.write(ledger_con, "smith2024", "A hand-written summary.")
@@ -156,9 +128,6 @@ class TestResolveFallsBackToTheAuthorsAbstract:
         assert result["summary"] == ABSTRACT_BODY
 
     def test_an_extracted_abstract_is_never_stale(self, ledger_con):
-        """It is re-derived on every read, so there is no earlier text for
-        it to have been written against. A re-parse changes what it says
-        without ever making it wrong."""
         add_item("smith2024", "Original parsed text.")
         _passage_sidecar("smith2024", [("Abstract", "section_header"), (ABSTRACT_BODY, "text")])
         config.PARSED_DIR.joinpath("smith2024.txt").write_text("Re-parsed.", encoding="utf-8")
@@ -166,8 +135,6 @@ class TestResolveFallsBackToTheAuthorsAbstract:
         assert tldr.resolve(ledger_con, "smith2024")["stale"] is False
 
     def test_it_writes_no_sidecar(self, ledger_con):
-        """A derived abstract is deliberately not persisted -- caching it
-        would create the staleness the derive-on-read design removes."""
         add_item("smith2024", "Original parsed text.")
         _passage_sidecar("smith2024", [("Abstract", "section_header"), (ABSTRACT_BODY, "text")])
         tldr.resolve(ledger_con, "smith2024")
@@ -184,8 +151,6 @@ class TestResolveFallsBackToTheAuthorsAbstract:
         assert result["summary"] is None
 
     def test_no_structural_sidecar_is_a_separate_answer(self, ledger_con):
-        """Not "this paper has no abstract" -- a claim about a document
-        this cannot read. A `pdftotext` parse leaves no sidecar at all."""
         add_item("smith2024", "Original parsed text.")
 
         result = tldr.resolve(ledger_con, "smith2024")
@@ -193,9 +158,6 @@ class TestResolveFallsBackToTheAuthorsAbstract:
         assert result["summary"] is None
 
     def test_a_corrupted_tldr_sidecar_falls_through_to_the_abstract(self, ledger_con):
-        """`read`'s forgiving parse already treats a damaged sidecar as
-        missing; the fallback then applies, rather than the damage
-        withholding an abstract that is sitting right there."""
         add_item("smith2024", "Original parsed text.")
         _passage_sidecar("smith2024", [("Abstract", "section_header"), (ABSTRACT_BODY, "text")])
         config.TLDR_DIR.mkdir(parents=True, exist_ok=True)
@@ -258,8 +220,6 @@ class TestNothingIsWrittenToTheLedger:
 
 class TestCLI:
     def test_show_refuses_a_citekey_that_climbs_out_of_the_tldr_directory(self, ledger_con, capsys):
-        # #975: `show` read `TLDR_DIR / "../outside.json"` before any
-        # ledger lookup and printed its `summary` field.
         outside = config.TLDR_DIR.parent / "outside.json"
         outside.write_text(json.dumps({"summary": "SECRET"}), encoding="utf-8")
         assert tldr.main(["show", "../outside"]) == 1
@@ -335,11 +295,6 @@ class TestCLI:
 
 
 class TestRunsWithBareSystemPython3:
-    """docs/ARCHITECTURE.md's tier-1 row claims `chitragupta.draft`'s
-    commands are stdlib-only -- chitragupta/tldr.py only ever imports
-    config and ledger, both stdlib, so it belongs in that tier alongside
-    citation_gate.py and references.py rather than needing the venv."""
-
     def test_write_and_show(self, system_python, isolated_config):
         add_item("smith2024", "Original parsed text.")
         env = {"PATH": "/usr/bin:/bin", "CONTENT_DIR": str(isolated_config.CONTENT_DIR)}
@@ -364,17 +319,7 @@ class TestRunsWithBareSystemPython3:
 
 
 class TestTheSidecarIsGitignored:
-    """Not because it carries copyrighted wording -- evidence_appendix.py
-    is the module for that -- but content/* is per-host data unconditionally
-    (.gitignore's own header), and a summary is generated content someone
-    else authored, not something to publish by accident.
-    """
-
     def test_git_ignores_the_path_the_module_actually_chooses(self):
-        # Deliberately not run under isolated_config, so config.TLDR_DIR
-        # is this checkout's real path -- the same reason
-        # test_evidence_appendix.py's equivalent test resolves against
-        # the real repo rather than a tmp_path fixture.
         repo = Path(__file__).resolve().parent.parent
         candidate = tldr.sidecar_path("some-citekey-2024")
 

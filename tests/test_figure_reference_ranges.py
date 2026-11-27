@@ -1,7 +1,3 @@
-"""A figure's layout and its reference ranges (#1057): the
-`% cg-layout:` line and the layout file's `## Reference ranges` table,
-as `figure check` reads them."""
-
 from pathlib import Path
 
 import pytest
@@ -32,8 +28,6 @@ class TestDeclaredLayout:
         assert _layout.declared_layout("\\begin{tikzpicture}\\end{tikzpicture}\n") == ""
 
     def test_a_trailing_comment_on_a_drawing_line_does_not_count(self):
-        """The same stance as `% cg-allow:`: a line of its own, so it is
-        not deleted along with the drawing line it trails."""
         assert _layout.declared_layout("\\node (a) {A}; % cg-layout: pipeline\n") == ""
 
     def test_the_first_line_wins(self):

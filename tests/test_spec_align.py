@@ -1,13 +1,3 @@
-"""`spec align`: does the authored chapter still match the approved outline?
-
-What is worth pinning is the scoping rule, not the string comparison.
-A spec that describes a book only at chapter granularity -- every book
-retrofitted from prose written before this track -- must report nothing
-and refuse nothing, because every heading its author wrote would
-otherwise be an "extra" section. The check exists for a book drafted
-through the real track, and has to stay silent on one that was not.
-"""
-
 from pathlib import Path
 
 import pytest
@@ -16,10 +6,6 @@ from chitragupta import spec
 from chitragupta.spec._align import chapter_draft
 
 
-# Chapter 1 is described at section level: three sections, none of them
-# titled like the chapter. Chapter 2 is the retrofitted shape -- one
-# section carrying the chapter's own title, which is what a book drafted
-# before this track looks like after `spec init`.
 SPEC = """# Composable Digital Twins
 
 ## Part I: Foundations {#part-1}
@@ -61,7 +47,6 @@ Prose.
 """
 
 
-# conftest's `book` writes this as the outline.
 BOOK_SPEC = SPEC
 
 
@@ -71,13 +56,7 @@ def write_chapter(book: Path, chapter_id: str, text: str, suffix: str = ".md") -
     return path
 
 
-# --- the scoping rule ----------------------------------------------------
-
-
 def test_a_chapter_described_only_at_chapter_level_is_not_aligned(book, capsys):
-    """The retrofitted shape. Its author wrote ~40 headings under one
-    declared section; reporting each as an extra would make the check the
-    first thing anyone turns off."""
     write_chapter(book, "ch-cost", "# What a twin costs\n\n## Anything at all\n\nProse.\n")
     write_chapter(book, "ch-what", ALIGNED)
     assert spec.main(["align", str(book)]) == 0
@@ -92,9 +71,6 @@ def test_a_chapter_whose_sections_match_is_aligned(book, capsys):
     write_chapter(book, "ch-cost", "# What a twin costs\n")
     assert spec.main(["align", str(book)]) == 0
     assert "aligned" in capsys.readouterr().out
-
-
-# --- the four findings ---------------------------------------------------
 
 
 def test_a_section_in_the_spec_that_nobody_wrote_is_reported(book, capsys):
@@ -129,12 +105,7 @@ def test_the_same_sections_in_the_wrong_order_are_reported(book, capsys):
     assert "out of order" in capsys.readouterr().out
 
 
-# --- what it tolerates ---------------------------------------------------
-
-
 def test_numbering_a_heading_is_not_a_misalignment(book, capsys):
-    """`3.1 The model half` is the same section as `The model half`. A
-    genre skill numbers headings; the spec does not."""
     numbered = ALIGNED.replace("## The model half", "## 3.1 The model half").replace(
         "## The data half", "## 3.2. The data half"
     )
@@ -145,8 +116,6 @@ def test_numbering_a_heading_is_not_a_misalignment(book, capsys):
 
 
 def test_a_latex_chapter_is_read_the_same_way(book, capsys):
-    """thesis-chapter-writer emits `.tex`; `sections()` already reads
-    both, so alignment must not be Markdown-only."""
     tex = (
         "\\chapter{What a twin is}\n\\section{The model half}\nP.\n"
         "\\section{The data half}\nP.\n\\section{Where the two meet}\nP.\n"
@@ -161,9 +130,6 @@ def test_a_chapter_nobody_has_written_yet_is_reported_but_is_not_a_misalignment(
     write_chapter(book, "ch-cost", "# What a twin costs\n")
     assert spec.main(["align", str(book)]) == 1
     assert "not written yet" in capsys.readouterr().out
-
-
-# --- refusals and the machine-readable form ------------------------------
 
 
 def test_align_refuses_a_spec_that_does_not_parse(book, capsys):
@@ -186,35 +152,23 @@ def test_align_as_json_is_what_a_skill_reads(book, capsys):
     assert retrofit["section_described"] is False
 
 
-# --- the join itself (issue 875) -----------------------------------------
-
-
 @pytest.mark.parametrize("escaping", ["../../x", "a/../../b"])
 def test_chapter_draft_refuses_an_id_that_leaves_the_book(book, escaping):
-    """`spec.parse` refuses such an id before it gets here, so this pins
-    the join on its own: a later id source -- a machine-written outline,
-    a caller handing in an id -- cannot reopen the hole one layer up."""
     with pytest.raises(spec.SpecError, match="does not resolve inside"):
         chapter_draft(book, escaping)
 
 
 def test_chapter_draft_refuses_an_absolute_id(book, tmp_path):
-    """`Path(book) / "/abs"` is `/abs`: the book is dropped without a word."""
     with pytest.raises(spec.SpecError, match="does not resolve inside"):
         chapter_draft(book, str(tmp_path / "evil"))
 
 
 def test_chapter_draft_refuses_an_id_the_platform_cannot_resolve(book):
-    """A NUL byte raises `ValueError` out of resolving rather than
-    answering, and must come back as the same named refusal."""
     with pytest.raises(spec.SpecError, match="does not resolve inside"):
         chapter_draft(book, "ch\x00what")
 
 
 def test_a_chapter_symlinked_out_of_the_book_is_refused_by_name(book, tmp_path, capsys):
-    """The one shape that reaches the join through `spec align` itself,
-    since the id is clean and only the file it names is not. Refused on
-    stderr rather than read, the same answer `unit.draft_path` gives."""
     outside = tmp_path / "elsewhere.md"
     outside.write_text(ALIGNED, encoding="utf-8")
     (book / "ch-what.md").symlink_to(outside)
@@ -225,9 +179,6 @@ def test_a_chapter_symlinked_out_of_the_book_is_refused_by_name(book, tmp_path, 
 
 
 def test_a_chapter_file_in_a_symlink_loop_is_refused_rather_than_crashing(book, capsys):
-    """Python 3.12 and 3.13 raise `RuntimeError` resolving a loop and 3.14
-    resolves it silently to the link; either way it must be a named
-    refusal, not a traceback or an accepted chapter out of `spec align`."""
     (book / "ch-what.md").symlink_to(book / "loop")
     (book / "loop").symlink_to(book / "ch-what.md")
     assert spec.main(["align", str(book)]) == 1

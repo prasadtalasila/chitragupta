@@ -1,15 +1,3 @@
-"""docs/PACKAGING.md's command-surface table, walked against the live
-argparse trees rather than trusted by eye (#267).
-
-Modelled on tests/test_cli_help_is_short.py: a hand-maintained structure
-here, cross-checked against the real `--help` output via subprocess (not
-a private argparse attribute, so what's checked is exactly what a reader
-typing the command sees) *and* against docs/PACKAGING.md's own text. A
-verb or subcommand added to the code without updating both sides fails
-one of the two checks; a doc row naming one that doesn't exist fails the
-live-parser check.
-"""
-
 import re
 from pathlib import Path
 from tests.conftest import run_python
@@ -19,18 +7,11 @@ PACKAGING_TEXT = (REPO_ROOT / "docs" / "PACKAGING.md").read_text(encoding="utf-8
 
 CHOICES_RE = re.compile(r"\{([a-z0-9,_-]+)\}")
 
-# The top-level layers and package-level commands docs/PACKAGING.md's
-# tables document -- checked against `python -m chitragupta --help`'s own
-# `{...}` choices list below, not restated as a magic number.
 TOP_LEVEL = {"corpus", "draft", "review", "enrich", "init", "doctor", "install", "figure"}
 
-# The package-level commands among them. Three are one atomic command
-# each; `figure` is a command with verbs of its own (#1013).
 PACKAGE_COMMANDS = {"init", "doctor", "install", "figure"}
 FIGURE_VERBS = {"sync", "check", "new", "look"}
 
-# Every drafting-layer verb that has its own subcommands, and what
-# docs/PACKAGING.md's "draft" table row lists for it.
 DRAFT_SUBCOMMANDS = {
     "retrieve": {"search", "evidence"},
     "dossier": {
@@ -76,24 +57,11 @@ REVIEW_FLAT_AIDS = {
 CORPUS_VERBS = {"sync", "ledger", "topics", "discover"}
 
 
-# The two arithmetic breakdowns docs/PACKAGING.md states alongside its
-# totals. Parsed rather than retyped: #348 found that the totals were
-# pinned and the breakdowns were not, so the document could state
-# per-layer numbers contradicting both its own tables and its own total
-# and stay green. Deliberately anchored on the surrounding prose rather
-# than on "the first parenthesis", so a reworded sentence fails loudly
-# here instead of silently matching something else.
 _VERB_BREAKDOWN_RE = re.compile(r"verbs and aids \(([\d\s+]+)\)")
 _LEAF_BREAKDOWN_RE = re.compile(r"invocable leaf commands\*{0,2}:\s*([\d\s+()]+?)\.")
 
 
 def _stated_terms(pattern: re.Pattern) -> tuple[int, ...]:
-    """The integers docs/PACKAGING.md's breakdown lists, left to right.
-
-    Parentheses inside the leaf breakdown (`(5 + 23)`) group terms for a
-    reader; they carry no arithmetic this needs, so they are stripped and
-    the terms compared in order against the per-layer counts below.
-    """
     match = pattern.search(PACKAGING_TEXT)
     assert match, (
         f"docs/PACKAGING.md no longer states a breakdown matching {pattern.pattern!r}. "
@@ -104,7 +72,6 @@ def _stated_terms(pattern: re.Pattern) -> tuple[int, ...]:
 
 
 def _verb_terms() -> tuple[int, ...]:
-    """Verbs and aids per layer: corpus, draft, review, enrich."""
     return (
         len(CORPUS_VERBS),
         len(DRAFT_FLAT_VERBS) + len(DRAFT_SUBCOMMANDS),
@@ -114,12 +81,7 @@ def _verb_terms() -> tuple[int, ...]:
 
 
 def _leaf_terms() -> tuple[int, ...]:
-    """Invocable leaves in the order the prose lists them: package-level,
-    corpus, draft flat, draft subcommand leaves, review flat, review
-    subcommand leaves, enrich.
-    """
     return (
-        # init, doctor, install, and figure's own verbs (sync, check, new, look)
         len(PACKAGE_COMMANDS) - 1 + len(FIGURE_VERBS),
         len(CORPUS_VERBS),
         len(DRAFT_FLAT_VERBS),
@@ -137,13 +99,6 @@ def _help(*module_args) -> str:
 
 
 def _choices(help_text: str) -> set:
-    """What the reader is offered to type next.
-
-    A dispatcher (#1230) prints a click-style `Commands:` list, one
-    command per row at a two-space indent; a row indented further is a
-    layer's verb shown in the front door's tree, not a choice there.
-    Every other parser still prints argparse's `{a,b,c}` in its usage
-    line, for a subparsers action or a choices-constrained positional."""
     _, found, rest = help_text.partition("\nCommands:\n")
     if found:
         rows = rest.split("\n\n", 1)[0].splitlines()
@@ -153,13 +108,6 @@ def _choices(help_text: str) -> set:
 
 
 def _documented(*names: str) -> None:
-    """Every name appears somewhere in the doc's text -- some as their
-    own backtick-quoted word (`gate`, `search`), some embedded in a
-    larger command string (`chitragupta review coverage <draft>`), so a
-    bare substring check is what both shapes have in common. The cheap
-    half of the cross-check: code and doc agree on content, this half
-    only confirms neither side invented an undocumented one silently by
-    omission."""
     for name in names:
         assert name in PACKAGING_TEXT, f"{name!r} is not documented in PACKAGING.md"
 
@@ -209,13 +157,6 @@ class TestReview:
 
 
 class TestInstall:
-    """`install`'s own doc row lists only the two stages that actually
-    run (`os-deps`, `gpu-torch`); `python-deps`/`dev-deps`/`all` are
-    valid argparse choices that immediately refuse (chitragupta/install.py's
-    REFUSED), so the live choices are a superset of what's documented
-    rather than an exact match -- checked against install.REFUSED
-    directly, not restated as a second literal set here."""
-
     def test_the_two_working_stages_are_documented(self):
         _documented("os-deps", "gpu-torch")
 
@@ -239,18 +180,6 @@ class TestFigure:
 
 
 class TestStatedCounts:
-    """The formula docs/PACKAGING.md states in prose -- both the totals
-    and the arithmetic behind them -- checked against the same structures
-    the tests above already verified against the live parsers.
-
-    No total is written down here. It used to be, and every command added
-    then had to change three things: the sets, a literal, and the test's
-    own name (`test_forty_three_leaf_commands`). Deriving instead means a
-    new aid edits docs/PACKAGING.md and nothing in this file -- which is
-    the point, since #348 exists because that sentence is a merge-conflict
-    magnet.
-    """
-
     def test_the_stated_verb_total_matches_the_live_structures(self):
         assert f"{sum(_verb_terms())} verbs and aids" in PACKAGING_TEXT
 
@@ -258,23 +187,11 @@ class TestStatedCounts:
         assert f"{sum(_leaf_terms())} invocable leaf commands" in PACKAGING_TEXT
 
     def test_the_stated_verb_breakdown_matches_it_term_by_term(self):
-        """`(3 + 10 + 6 + 1)`, not just the 20 it sums to.
-
-        The breakdown is the half a human recomputes by hand while
-        resolving a merge conflict -- #346 hit exactly that, with two
-        branches adding a command in different layers -- and until #348
-        it was the half nothing checked. A breakdown reading
-        `(99 + 99 + 99 + 99)` under a correct total was green.
-        """
         assert _stated_terms(_VERB_BREAKDOWN_RE) == _verb_terms()
 
     def test_the_stated_leaf_breakdown_matches_it_term_by_term(self):
         assert _stated_terms(_LEAF_BREAKDOWN_RE) == _leaf_terms()
 
     def test_each_stated_breakdown_sums_to_the_total_beside_it(self):
-        """Term-by-term agreement already implies this, but a reader
-        checks the sum by eye, and a future refactor of the term lists
-        should not be able to drop that property silently.
-        """
         assert sum(_stated_terms(_VERB_BREAKDOWN_RE)) == sum(_verb_terms())
         assert sum(_stated_terms(_LEAF_BREAKDOWN_RE)) == sum(_leaf_terms())

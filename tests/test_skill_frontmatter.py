@@ -1,14 +1,3 @@
-"""Every skill copy loads on its harness (#812, #900).
-
-Claude Code, Codex and OpenCode all read the Agent Skills format: a
-`SKILL.md` whose frontmatter holds a `name` matching its folder and a
-`description`. Codex cuts a description at 1,024 characters in what the
-model sees (measured, docs/HARNESS.md), so an over-long one loses its end
--- often the "use X instead" routing -- which is why four were shortened.
-`tags:` is outside the Agent Skills field list, but all three harnesses
-load a skill that carries it (measured), so it stays.
-"""
-
 import re
 from pathlib import Path
 
@@ -28,7 +17,6 @@ MAX_DESCRIPTION = 1024
 
 
 def frontmatter(path: Path) -> dict[str, str]:
-    """The top-level `key: value` lines between the opening `---` pair."""
     block = path.read_text(encoding="utf-8").split("---", 2)[1]
     fields = {}
     for line in block.strip().splitlines():
@@ -39,7 +27,6 @@ def frontmatter(path: Path) -> dict[str, str]:
 
 
 def test_every_copy_of_every_skill_is_found():
-    # eleven user skills, demo-recorder, skill-bench and ai-images, three harnesses
     assert len(SKILL_FILES) == 42
 
 
@@ -62,10 +49,6 @@ def test_frontmatter_loads_on_every_harness(path):
     "path", SKILL_FILES, ids=lambda p: f"{p.parent.parent.parent.name}/{p.parent.name}"
 )
 def test_frontmatter_is_valid_yaml(path):
-    """The harnesses read a `description:` with `: ` inside it, but YAML
-    does not: GitHub refuses to render the file ("mapping values are not
-    allowed in this context"), and any strict loader would too (#1027).
-    The parsed value must also be the whole line the harnesses see."""
     block = path.read_text(encoding="utf-8").split("---", 2)[1]
     parsed = yaml.safe_load(block)
     assert parsed["name"] == path.parent.name
@@ -77,8 +60,6 @@ AGENT_FILES = sorted((REPO_ROOT / ".claude" / "agents").glob("*.md"))
 
 @pytest.mark.parametrize("path", AGENT_FILES, ids=lambda p: p.name)
 def test_agent_frontmatter_is_valid_yaml(path):
-    """The subagent definitions carry the same frontmatter shape, and the
-    same `: ` trap."""
     block = path.read_text(encoding="utf-8").split("---", 2)[1]
     parsed = yaml.safe_load(block)
     assert parsed["name"] == path.stem

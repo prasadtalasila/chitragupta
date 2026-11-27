@@ -1,43 +1,3 @@
-"""Function and module size, enforced as a ratchet over this repo's own tree.
-
-[docs/CODE-STANDARDS.md](../docs/CODE-STANDARDS.md) states the two rules
-this file enforces -- C1, at most 25 statements per function, and C2, at
-most 250 lines of code per module -- and owns the reasoning. Two parts of
-that reasoning are load-bearing here and are repeated rather than linked,
-because someone reading a failure will be reading this file:
-
-**Statements, not physical lines.** This repository requires *why*-comments
-(CODE-STANDARDS.md's Override 1: rationale, rejected alternatives, the bug
-that produced the current shape). Counting physical lines would put that
-requirement in direct conflict with a size limit and would reward deleting
-the rationale -- the one edit this project least wants. Counting statements
-measures how much a function *does* and is blind to how well it is
-explained. The difference is not cosmetic: at 5.7.1, 128 functions in
-`chitragupta/` exceeded 25 physical lines and 26 exceeded 25 statements.
-
-**A ratchet, not a wall.** Both rules are violated by code that exists
-today, and a rule that fails on the day it lands is a rule that gets
-switched off. Today's offenders are frozen in the register. Anything *not*
-in it that crosses a threshold fails; anything in it that comes back
-*under* its threshold also fails, saying to delete the entry. So the
-register can only shrink, and every shrink is a visible diff. It is a debt
-list, not an allowance.
-
-What the ratchet deliberately does not do is cap the growth of a module
-already on the C2 register. Pinning each to today's exact size would fail
-on every ordinary edit and would be turned off within a week; growth in a
-registered module is caught by C1 on its functions, and by review.
-
-**Two things moved out of this file in issue 431, and neither changed.**
-The scan itself is now `scripts/code_standards.py`, because the
-edit-time hook needs a hand-runnable command and `tests/` does not ship
-(see that module's docstring). The register is now
-`code-standards-register.toml`, for the same reason and with its trailing
-counts promoted to real values, since `tomllib` discards comments. **This
-file is still the authority**: it is what fails a build, and every
-assertion below is the one it made before the move.
-"""
-
 import importlib.util
 import sys
 from pathlib import Path
@@ -46,13 +6,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def _load_scanner():
-    """`scripts/code_standards.py`, by path.
-
-    Loaded rather than imported because `scripts/` is not a package and
-    is not on `sys.path` -- the same `importlib.util.spec_from_file_location`
-    dance `tests/test_check_version_bump.py` and `tests/test_release.py`
-    already do for their own `scripts/` module.
-    """
     spec = importlib.util.spec_from_file_location(
         "code_standards", REPO_ROOT / "scripts" / "code_standards.py"
     )
@@ -77,10 +30,6 @@ long_files = scan.long_files
 _python_files = scan._python_files
 _relative = scan._relative
 
-# The register, as this file has always spelled it. Two names rather than
-# the scanner's two dicts, because that is what every assertion below and
-# `tests/test_technical_debt_scan.py`'s import already read -- the move
-# changed where the data lives, not what the ratchet is written against.
 _C1_COUNTS, _C2_COUNTS = scan.register()
 LEGACY_LONG_FUNCTIONS = set(_C1_COUNTS)
 LEGACY_LONG_FILES = set(_C2_COUNTS)
@@ -124,12 +73,6 @@ def test_no_new_module_exceeds_the_code_line_limit():
 
 
 def test_the_function_register_holds_no_entry_that_is_already_fixed():
-    """The ratchet's other half, and the reason this is not an amnesty.
-
-    Without it the register is a list that only ever grows stale: a
-    function refactored back under the limit would keep its licence to go
-    over again, silently, forever.
-    """
     fixed = _fixed_offenders(long_functions(STATEMENT_ROOTS), LEGACY_LONG_FUNCTIONS)
     assert not fixed, (
         "These are now within the limit -- delete them from "
@@ -146,54 +89,26 @@ def test_the_file_register_holds_no_entry_that_is_already_fixed():
 
 
 def test_the_scan_reaches_the_source_tree():
-    """Non-vacuity: a glob that silently matched nothing would make every
-    assertion above pass for the wrong reason, forever."""
     scanned = {_relative(path) for path in _python_files(STATEMENT_ROOTS)}
-    # One per root, so a root silently dropped from STATEMENT_ROOTS fails
-    # here rather than quietly halving what the ratchet covers.
     assert "chitragupta/sync.py" in scanned
     assert "scripts/release.py" in scanned
     assert "tests/test_code_standards_scan.py" in scanned
-    # Two *nested* modules, which is the specific thing the glob has to get
-    # right: `**/*.py` degraded to `*.py` still finds all three paths above
-    # -- they sit directly in their roots -- while silently dropping every
-    # module in chitragupta/enrich/ and chitragupta/review/, half of which are on the
-    # register. A count alone would only imply this; these name it.
     assert "chitragupta/enrich/docling_parse.py" in scanned
     assert "chitragupta/review/citation_provenance.py" in scanned
     assert not any(name.startswith("bench/") for name in scanned)
 
 
 def test_the_registers_name_only_paths_that_still_exist():
-    """A renamed module leaves an entry behind that can never be delisted,
-    so the register would quietly stop covering it."""
     paths = {name.split("::")[0] for name in LEGACY_LONG_FUNCTIONS} | LEGACY_LONG_FILES
     missing = sorted(name for name in paths if not (REPO_ROOT / name).exists())
     assert not missing, f"register entries for files that no longer exist: {missing}"
 
 
 def _recorded_counts():
-    """`{register entry: the count recorded beside it}`.
-
-    Read from `code-standards-register.toml`'s own values. It was a
-    regex over this file's trailing `# 32` comments until issue 431 --
-    the comment was what a reader saw when deciding which debt to take
-    first, so the comment had to be true. `tomllib` discards comments, so
-    the move promoted the number to a key; it is still the thing a reader
-    sees, and this test is still what keeps it honest.
-    """
     return {**_C1_COUNTS, **_C2_COUNTS}
 
 
 def test_every_registered_offender_records_its_current_count():
-    """The registers cannot drift; the numbers written beside them can.
-
-    They already did. A merge that changed `verbatim_check.py` left three
-    of these comments describing the previous release's code, and nothing
-    noticed -- the entries were still offenders, so both ratchet tests
-    stayed green. Since the whole point of the trailing count is to show
-    how large each debt is, a stale one is worse than none.
-    """
     counts = long_functions(STATEMENT_ROOTS) | long_files(CODE_LINE_ROOTS)
     recorded = _recorded_counts()
     assert set(recorded) == set(counts), (
@@ -209,14 +124,6 @@ def test_every_registered_offender_records_its_current_count():
 
 
 def test_the_registers_are_the_size_this_document_says():
-    """CODE-STANDARDS.md quotes both register sizes in prose.
-
-    The registers are checked on every run and cannot drift; the sentence
-    describing them can, and did -- it said 27 functions against a
-    register of 28. Pinning the two numbers to the two registers is the
-    narrow form of the doc-drift detector that document's build order
-    asks for.
-    """
     text = (REPO_ROOT / "docs" / "CODE-STANDARDS.md").read_text(encoding="utf-8")
     files = len(LEGACY_LONG_FILES)
     expected = (
@@ -231,21 +138,12 @@ def test_the_registers_are_the_size_this_document_says():
 
 
 def test_this_scanner_obeys_its_own_statement_limit():
-    """The check that would be embarrassing to fail.
-
-    Both files, since issue 431 split them: the scanner in `scripts/`,
-    which is also covered by the whole-tree scan above, and this one,
-    which is not -- `STATEMENT_ROOTS` includes `tests`, so it is, but
-    asserting it here keeps the embarrassment check readable as one.
-    """
     for path in (REPO_ROOT / "scripts" / "code_standards.py", Path(__file__)):
         source = path.read_text(encoding="utf-8")
         assert all(count <= MAX_STATEMENTS for _, count in functions(source)), path
 
 
 def test_a_statement_is_counted_per_statement_not_per_line():
-    """The whole basis of C1, on a synthetic case: same statements, very
-    different physical length."""
     terse = "def f():\n    a = 1\n    b = 2\n    return a + b\n"
     explained = (
         "def f():\n"
@@ -270,19 +168,10 @@ def test_a_nested_function_is_charged_to_itself_not_to_its_parent():
         "        return a + b\n"
         "    return inner\n"
     )
-    # `outer` does two things: define `inner`, and return it.
     assert dict(functions(source)) == {"outer": 2, "outer.inner": 3}
 
 
 def test_the_methods_of_a_nested_class_are_not_charged_to_the_enclosing_function():
-    """The bug the set-subtraction version of `statement_count` had.
-
-    A method of a nested class is itself a nested definition, so it
-    survived a skip set built by subtracting nested nodes from the walk --
-    and `outer` below counted 4 rather than 2. The count of a function
-    that merely declares a class must not move when a method is added to
-    that class.
-    """
     source = (
         "def outer():\n"
         "    class C:\n"
@@ -292,7 +181,6 @@ def test_the_methods_of_a_nested_class_are_not_charged_to_the_enclosing_function
         "            pass\n"
         "    return C\n"
     )
-    # `outer` does two things: define `C`, and return it.
     assert dict(functions(source)) == {"outer": 2, "outer.C.m": 1, "outer.C.n": 1}
 
 
@@ -302,15 +190,6 @@ def test_a_method_is_counted_and_not_charged_to_its_class_body():
 
 
 def test_two_same_named_methods_in_one_module_stay_distinct():
-    """The collision `long_functions()`'s dict would otherwise hide.
-
-    Keyed on the bare name, the second of these would overwrite the first
-    -- so a colliding pair would report as one offender, and a register
-    entry for one would license a different function of the same name
-    added to that module later. `chitragupta/pdf_text.py` was the live
-    case before #361 split it into a package: it defined `__init__` on
-    both `interrupt_guard` and `_AnnotatedStream`.
-    """
     source = (
         "class A:\n"
         "    def __init__(self):\n"
@@ -324,9 +203,6 @@ def test_two_same_named_methods_in_one_module_stay_distinct():
 
 
 def test_a_function_defined_inside_a_conditional_keeps_its_enclosing_scope():
-    """`if`/`try`/`with` are not scopes, so they must not extend the name --
-    but they must still be descended into, or the function inside is
-    invisible to the scan."""
     source = (
         "class A:\n    if True:\n        def m(self):\n            a = 1\n            return a\n"
     )
@@ -343,8 +219,6 @@ def test_code_lines_ignores_blanks_and_whole_line_comments():
 
 
 def test_code_lines_counts_a_trailing_comment_on_a_real_line():
-    """Only a *whole-line* comment is free. A line with code on it counts,
-    however much explanation follows it."""
     assert code_lines("x = 1  # why x is 1\n") == 1
 
 

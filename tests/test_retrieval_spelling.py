@@ -1,13 +1,3 @@
-"""chitragupta/retrieval_spelling.py: opt-in spelling correction (#1232).
-
-The rules are pinned against a fixed vocabulary, so each test names the
-word counts it depends on; only the `vocabulary` tests build one from a
-real ledger. Two properties carry the file. **Off means off**: nothing is
-corrected and no vocabulary is built. And **a word the corpus has seen is
-never touched**, however rare: a correction exists for words that would
-otherwise score zero everywhere.
-"""
-
 import pytest
 
 from chitragupta import config, ledger, retrieval, retrieval_cache, retrieval_spelling
@@ -39,9 +29,6 @@ def on(monkeypatch):
 
 class TestOffIsStructural:
     def test_the_shipped_default_is_off(self):
-        """Off until a bench shows it helps, and until existing dossiers'
-        drift baselines have a plan: `dossier status` re-ranks every
-        recorded query, so turning this on moves rankings."""
         assert config.SPELLING_CORRECTION is False
 
     def test_off_never_builds_a_vocabulary(self, monkeypatch):
@@ -60,8 +47,6 @@ class TestWhatIsCorrected:
         assert correct(["strucutral", "health"], None, NONE) == [("strucutral", "structural")]
 
     def test_a_word_in_one_paper_is_never_corrected(self, on):
-        """`simulaton` is one slip from `simulation` (30 papers), so only
-        the rule that a word the corpus has is left alone stops it."""
         assert correct(["simulaton"], None, NONE) == []
 
     def test_a_word_in_one_paper_is_never_a_target(self, on):
@@ -77,22 +62,14 @@ class TestWhatIsCorrected:
         assert correct(["iso23247", "simul4tion"], None, NONE) == []
 
     def test_an_interrogative_is_never_a_target(self, on):
-        """`_query_terms` drops these on purpose; a correction must not
-        add one back."""
         assert correct(["wherre"], None, frozenset({"where"})) == []
 
     def test_a_non_ascii_fragment_is_treated_as_a_word(self, on):
-        """`Schrödinger` tokenizes to `schr` and `dinger`. The fragment is
-        indistinguishable from a typed word, so it is corrected like one:
-        accepted, and announced like any other correction."""
         assert correct(["dinger"], None, NONE) == [("dinger", "ginger")]
 
 
 class TestWhichCorrection:
     def test_the_word_in_most_papers_wins(self, on):
-        """`aeing` is one slip from both `ageing` and `being`; nothing but
-        context could tell them apart, and the commoner word is the
-        better guess."""
         assert correct(["aeing"], None, NONE) == [("aeing", "being")]
 
     def test_a_tie_goes_to_the_alphabetically_first(self, on):

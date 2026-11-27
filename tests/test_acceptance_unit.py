@@ -1,22 +1,3 @@
-"""The acceptance unit, now that it is not the structural one.
-
-`spec.md` declares *structure* -- sections a human approves before any
-prose exists, and what `spec align` checks a draft against. `unit accept`
-records an *artifact* -- a file the citation gate can run on and whose
-prose can be digested. Before #472 those coincided, because a book was
-one file per section. A chapter is now one authored document with its
-sections as headings inside it, so they no longer can.
-
-The asymmetry is load-bearing rather than untidy: alignment only has
-content while the outline is finer than the file. Collapsing the two in
-either direction makes "did you write what you said you would?" a
-question with no possible answer.
-
-What is pinned here is that the acceptance unit follows the outline's own
-granularity, so a book retrofitted from earlier prose -- one section per
-chapter, carrying the chapter's title -- keeps working unchanged.
-"""
-
 import pytest
 
 from chitragupta import spec, unit
@@ -78,28 +59,18 @@ def retrofit(isolated_config):
     return make_book(isolated_config, RETROFIT)
 
 
-# --- which unit gets accepted --------------------------------------------
-
-
 def test_a_section_described_chapter_is_the_acceptance_unit(fresh):
     ids = [entry["id"] for entry in unit.acceptance_units(fresh)]
     assert ids == ["ch-what"]
 
 
 def test_a_retrofitted_chapter_leaves_its_section_as_the_unit(retrofit):
-    """The section id is the filename there, so it is still what is
-    accepted -- every book drafted before this track keeps working."""
     ids = [entry["id"] for entry in unit.acceptance_units(retrofit)]
     assert ids == ["01-why-anyone-pays"]
 
 
 def test_the_structural_units_are_unchanged_by_any_of_this(fresh):
-    """`sections()` still answers "what does the outline declare", which
-    is a different question from "what gets accepted"."""
     assert [entry["id"] for entry in unit.sections(fresh)] == ["sec-model", "sec-data"]
-
-
-# --- the contract ---------------------------------------------------------
 
 
 def test_a_contract_can_be_built_for_a_chapter(fresh):
@@ -119,13 +90,7 @@ def test_a_part_is_still_refused(fresh):
         unit.contract(fresh, "part-1", [])
 
 
-# --- sign-off resolves the unit's own chapter -----------------------------
-
-
 def test_a_chapter_reads_its_own_sign_off_not_its_parts(fresh):
-    """Resolved from the unit's kind. Reading "the last ancestor" would
-    give the *part*, which is never a key in the approved set, so every
-    chapter would report unsigned forever."""
     spec.main(["sign", str(fresh)])
     assert unit.contract(fresh, "ch-what", [])["signed_off"] is True
 
@@ -151,9 +116,6 @@ def test_editing_one_chapter_does_not_unsign_another(isolated_config):
     )
     assert unit.contract(book, "ch-cost", [])["signed_off"] is False
     assert unit.contract(book, "ch-what", [])["signed_off"] is True
-
-
-# --- accepting a chapter --------------------------------------------------
 
 
 def test_a_chapter_is_accepted_as_one_document(fresh, example_ledger, capsys):

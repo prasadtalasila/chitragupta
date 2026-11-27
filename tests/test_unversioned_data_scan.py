@@ -1,41 +1,3 @@
-"""Tests that assert against un-versioned, per-host data -- the general
-rule 4.1 fixed twice by hand and never taught to a detector, until #358.
-
-`config.toml` and `papers/bibliography.bib` are gitignored and differ on
-every machine; CI's `config.toml` is always `config.toml.example`, copied
-fresh (`test_ci_creates_config_toml_from_the_tracked_example` pins that
-step). A test whose truth depends on either file passes or fails on
-whose checkout it is, invisibly to CI -- what
-`tests/test_config.py::test_parser_ocr_defaults_off` and
-`TestRealBibliographySmoke` (`tests/test_feature_workflows.py`) hit
-before being fixed by hand (see their git history).
-
-`tests/unversioned_data_scan.py` (split out to keep both files under 250
-lines) implements two distinct risky reads, treated differently:
-
-**Ambient config-selection reads** (`config.CONFIG_PATH`,
-`importlib.reload(config)`) are risky only while nothing pins *which*
-file the reload consults. Pinning `CONFIG_PATH` to a `tmp_path`-rooted
-file -- directly, or via a same-module `@pytest.fixture` -- makes the
-read deterministic and exempt, no register entry needed. An env-var
-override on top of the TOML is also safe regardless of the pin; that
-reasoning lives in `TestModuleReloadWithEnvOverrides._empty_config_toml`.
-
-**Reads no CONFIG_PATH pin makes safe** get no exemption: a hardcoded
-`config.PROJECT_ROOT / "papers" / "bibliography.bib"` join (never goes
-through `_get()`) and `Path.home()` (a different per-host root) are
-*always* flagged. `tests/conftest.py::real_bibliography_path()` lets
-`TestRealBibliographySmoke`, which genuinely wants the real file, call a
-named helper instead -- keeping it off the register below.
-
-**The register** (`unversioned_data_scan.REGISTER`) is a ratchet, same
-idiom as `test_code_standards_scan.py`'s: deliberate exceptions, each
-with a stated reason, that only shrinks. One entry, `TestRealConfigToml`,
-keyed at class granularity (no `.method`) because its docstring's claim
--- "constants as actually computed ... at real import time" -- is about
-the whole class, not the one method that constructs the bib path.
-"""
-
 import ast
 from pathlib import Path
 
@@ -57,9 +19,6 @@ def test_no_new_test_reads_unversioned_data_outside_the_register():
 
 
 def test_the_register_names_only_classes_and_paths_that_still_exist():
-    """A register key is `Class` (the whole class), `Class.method`, or a
-    bare `function` -- the three shapes the module docstring and
-    `unversioned_reads()`'s lookup both promise."""
     for key in scan.REGISTER:
         path, qualified = key.split("::")
         assert (scan.REPO_ROOT / path).exists(), (
@@ -85,8 +44,6 @@ def test_the_register_names_only_classes_and_paths_that_still_exist():
 
 
 def test_the_register_holds_no_entry_that_is_already_fixed():
-    """The ratchet's other half: a class kept in the register after it
-    stops tripping the scan would silently relicense the pattern."""
     still_offends = set()
     for path in scan.python_test_files():
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -102,10 +59,6 @@ def test_the_register_holds_no_entry_that_is_already_fixed():
 
 
 def test_ci_creates_config_toml_from_the_tracked_example():
-    """The reason 4.1's first bug (config.toml read unpinned) never showed
-    up in CI: CI's config.toml is always the tracked example, copied
-    fresh, never a developer's own edited file. If this step is ever
-    removed, every "CI can't see this" claim above stops being true."""
     ci_yml = (scan.REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert "cp config.toml.example config.toml" in ci_yml
 
@@ -119,9 +72,6 @@ def test_the_scan_reaches_the_source_tree():
 
 
 def test_this_scanner_obeys_its_own_statement_limit():
-    """The check that would be embarrassing to fail -- see
-    test_code_standards_scan.py's twin of this test. Covers both halves
-    of the split: this file and the library it imports."""
     import tests.test_code_standards_scan as code_standards_scan
 
     over = []
@@ -136,10 +86,6 @@ def test_this_scanner_obeys_its_own_statement_limit():
 
 
 class _Snippets:
-    """Synthetic test-function source used by the unit tests below --
-    reconstructions of the two fixed bugs (git history, pre-#161), plus
-    the shapes that must NOT be flagged."""
-
     ORIGINAL_PARSER_OCR_BUG = """
 def test_parser_ocr_defaults_off(self, monkeypatch):
     monkeypatch.delenv("PARSER_OCR", raising=False)
@@ -244,14 +190,8 @@ def test_a_read_with_no_assert_is_not_flagged():
 
 
 def test_the_bib_literal_join_is_flagged_even_when_pinned():
-    """The discriminator from the ambient-config triggers: pinning
-    CONFIG_PATH does not make constructing the real bib path by hand
-    safe, because that construction never goes through CONFIG_PATH at
-    all."""
     assert _snippet_offense(_Snippets.BIB_LITERAL_EVEN_IF_PINNED)
 
 
 def test_a_home_call_is_flagged_even_when_config_path_is_pinned():
-    """Same discriminator as the bib literal: `Path.home()` is a
-    different per-host root that pinning CONFIG_PATH does nothing to."""
     assert _snippet_offense(_Snippets.HOME_CALL_EVEN_IF_CONFIG_PATH_PINNED)

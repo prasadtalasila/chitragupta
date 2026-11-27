@@ -1,7 +1,3 @@
-"""`discover --path A B --family F`: the path buttons' terminal twin
-(#714), walked from the stored matrices.
-"""
-
 import json
 
 from test_discover import place_nowhere, write_artefacts

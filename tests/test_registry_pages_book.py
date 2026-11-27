@@ -1,20 +1,3 @@
-"""The back matter's running heads, compiled (#1182): an appendix with a
-section, then every page `{#back}` can hold, each long enough to turn
-a page, so each has pages that print a running head.
-
-The Glossary and List of Symbols open with `\\chapter*`, which sets no
-mark, so without their own `\\markboth` every page of both carried the
-last appendix's chapter and section titles. The lists, bibliography
-and index set their marks in LaTeX itself; they are here so a skeleton
-or preamble change that loses one fails too.
-
-Slow (it compiles), so CI's Linux leg skips it and the local run is the
-one that holds it (DEVELOPER-AGENTS.md, "This local run is the only one
-that compiles TeX"). Pages go through an identity converter, as in
-tests/test_registry_pages.py, so it needs `lualatex` and `pdftotext`
-but not pandoc.
-"""
-
 import subprocess
 
 import pytest
@@ -23,7 +6,6 @@ from chitragupta import registry
 from chitragupta.registry import _pages
 from tests.conftest import lualatex_available, lualatex_book, pdftotext_available
 
-# conftest's `signed_book` reads this module's BOOK_SPEC as the outline.
 from tests.test_registry import BOOK_SPEC, accept  # noqa: F401
 
 pytestmark = [
@@ -61,8 +43,6 @@ BOOK = r"""\documentclass{book}
 \end{document}
 """
 
-# Each page's own marker, printed on every entry, and the running head
-# a page holding it must carry.
 HEADS = {
     "Glossaryterm": "GLOSSARY",
     "Symbolmeaning": "LIST OF SYMBOLS",
@@ -72,7 +52,6 @@ HEADS = {
     "Indexentry": "INDEX",
 }
 
-# The first page of each prints its title instead of a running head.
 TITLES = (
     "Glossary",
     "List of Symbols",
@@ -97,15 +76,12 @@ def write_book(directory, glossary, notation):
     bibliography = [f"\\bibitem{{b{n}}} Bibentry {n:03}." for n in ENTRIES]
     text = BOOK % {"captions": "\n".join(captions), "bibliography": "\n".join(bibliography)}
     (directory / "book.tex").write_text(text, encoding="utf-8")
-    # `noautomatic`: `\printindex` reads the .ind as `registry index`
-    # would leave it, so no indexer is needed.
     items = [f"\\item Indexentry {n:03}, {n}" for n in range(1, 2 * len(ENTRIES) + 1)]
     index = ["\\begin{theindex}", *items, "\\end{theindex}"]
     (directory / "book.ind").write_text("\n".join(index) + "\n", encoding="utf-8")
 
 
 def pages_of(pdf):
-    """Each page's first printed line and the rest of its text."""
     text = subprocess.run(
         ["pdftotext", "-layout", str(pdf), "-"], capture_output=True, text=True, check=True
     ).stdout
@@ -141,5 +117,4 @@ def test_every_back_matter_page_carries_its_own_running_head(book, tmp_path):
                 assert head in first, f"a page of {marker} entries is headed {first!r}"
                 assert "APPENDIX" not in first and "FURTHER READING" not in first
                 seen[marker] += 1
-    # Every page turned at least once, so each head was really checked.
     assert all(seen.values()), seen

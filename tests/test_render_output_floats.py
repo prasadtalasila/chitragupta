@@ -1,7 +1,3 @@
-"""chitragupta/render_output/_floats.py and assets/latex/chitragupta-floats.tex:
-where a rendered figure may float, and the report of one that still
-lands on a float-only page (#1065)."""
-
 import re
 import shutil
 import subprocess
@@ -17,12 +13,10 @@ from tests.conftest import (
     pdftotext_available,
 )
 
-# Six paragraphs of body text, so a figure has a page of text to sit in.
 _TEXT = ("word " * 120 + "\n\n") * 6
 
 
 def _figure(height: str, caption: str) -> str:
-    """A figure `height` of the text height tall, plus its caption."""
     rule = f"\\rule{{1pt}}{{{height}\\textheight}}"
     return f"\\begin{{figure}}{rule}\\caption{{{caption}}}\\end{{figure}}\n"
 
@@ -39,7 +33,6 @@ class TestPreambleArgs:
 
     def test_a_fragment_with_a_figure_gets_the_file_beside_it_and_a_notice(self, tmp_path, capsys):
         out = tmp_path / "out"
-        # A fragment has no preamble: pandoc's -H would make it standalone.
         assert _floats.preamble_args("tex", True, ["figures/a.tex"], out) == []
         assert (out / "chitragupta-floats.tex").read_bytes() == _floats.path().read_bytes()
         err = capsys.readouterr().err
@@ -71,7 +64,6 @@ class TestThePandocCommand:
 
 
 def _info(lines: str) -> bytes:
-    """A pdf's Info dictionary as LuaTeX writes the key, around `lines`."""
     return (
         b"<< /Title (T) /ChitraguptaFloatPages <" + lines.encode().hex().upper().encode() + b"> >>"
     )
@@ -91,7 +83,6 @@ class TestPrintReport:
         assert all("0.85" in line for line in lines), "says what may share a page"
 
     def test_an_uncaptioned_figure_is_not_given_another_figure_s_number(self, tmp_path, capsys):
-        """No `\\caption` steps no counter, so the number field is empty."""
         pdf = tmp_path / "out.pdf"
         pdf.write_bytes(_info("6\t\n7\t3\n7\t\n7\t\n"))
         _floats.print_report(pdf)
@@ -102,7 +93,6 @@ class TestPrintReport:
         ]
 
     def test_a_pdf_without_the_key_is_silent(self, tmp_path, capsys):
-        # LuaLaTeX writes the key only when a figure lands on a float page.
         pdf = tmp_path / "out.pdf"
         pdf.write_bytes(b"<< /Title (T) >>")
         _floats.print_report(pdf)
@@ -121,16 +111,12 @@ def test_a_pdf_render_prints_the_report_once_pandoc_returns(monkeypatch, tmp_pat
 
 
 def test_a_float_page_must_be_fuller_than_a_text_page_may_be():
-    """A figure taller than \\floatpagefraction but shorter than
-    \\topfraction can go either way; the other order strands one that
-    fits neither until the next \\clearpage."""
     text = _floats.path().read_text(encoding="utf-8")
     values = dict(re.findall(r"\\renewcommand\{\\(\w+)\}\{([\d.]+)\}", text))
     assert float(values["floatpagefraction"]) < float(values["topfraction"])
     assert float(values["textfraction"]) + float(values["topfraction"]) <= 1
 
 
-# The class defaults this file replaces, put back after it.
 _CLASS_DEFAULTS = (
     "\\renewcommand{\\floatpagefraction}{0.5}\\renewcommand{\\topfraction}{0.7}"
     "\\makeatletter\\def\\fps@figure{tbp}\\makeatother"
@@ -165,8 +151,6 @@ class TestUnderLuaLaTeX:
         assert capsys.readouterr().err == ""
 
     def test_the_class_defaults_are_what_put_it_on_a_page_of_its_own(self, tmp_path):
-        """The same figure with the defaults put back: the guard has to
-        see the shape it exists for."""
         body = _TEXT + _figure("0.7", "Fits") + _TEXT
         assert re.search(_FLOAT_PAGE_RE, self._compile(tmp_path, body, after=_CLASS_DEFAULTS))
 
@@ -179,8 +163,6 @@ class TestUnderLuaLaTeX:
         assert capsys.readouterr().err.startswith(f"[float-page] p. {page} holds Figure 1 ")
 
     def test_an_uncaptioned_figure_is_reported_as_one(self, tmp_path):
-        """Reproduced in review: it was logged under the last captioned
-        figure's number, which sat in the text pages earlier."""
         bare = "\\begin{figure}\\rule{1pt}{0.9\\textheight}\\end{figure}\n"
         body = _figure("0.2", "Small") + _TEXT + bare + _TEXT
         log = self._compile(tmp_path, body)
@@ -201,6 +183,5 @@ def test_a_pdf_render_reports_a_figure_alone_on_a_float_page(isolated_config, ca
     out = render_output.render(str(draft), output_format="pdf")
     err = capsys.readouterr().err
     assert re.search(r"^\[float-page\] p\. \d+ holds Figure 1 and no text", err, re.MULTILINE)
-    # The template's own Info entries survive the one this adds.
     info = subprocess.run(["pdfinfo", str(out)], capture_output=True, text=True, check=True)
     assert re.search(r"^Title:\s+Kept$", info.stdout, re.MULTILINE)

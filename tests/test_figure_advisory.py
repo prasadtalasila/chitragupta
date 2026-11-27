@@ -1,10 +1,3 @@
-"""`figure check`'s advisory size reports (#1057): height, slack and the
-two counts beside the layout's reference range, and an arrow too short
-to read. All five are read, never resolved, allowed or capped.
-
-Evaluated over hand-built `FigureResult`s, so this runs on every host.
-"""
-
 from pathlib import Path
 
 import pytest
@@ -23,8 +16,6 @@ ADVISORY = ["size-height", "size-slack", "size-squash", "budget-nodes", "budget-
 
 
 def _figure(boxes=None, edges=(), declared=None, picture=(0.0, 0.0, 200.0, 70.0)):
-    """Two 20x20 nodes 60pt apart on a 200x70pt picture, unless told
-    otherwise."""
     boxes = dict(
         boxes if boxes is not None else {"a": (0.0, 0.0, 20.0, 20.0), "b": (80.0, 0.0, 100.0, 20.0)}
     )
@@ -91,8 +82,6 @@ class TestBesideTheReference:
         assert reports["budget-edges"].measurement == "0 edges; pipeline reference 3"
 
     def test_a_figure_far_outside_the_range_is_described_not_judged(self):
-        """VI.3: a forty-cell DP trace is not over budget. No word of
-        the report says over, under, too or exceeds."""
         figure = _figure(declared=[f"n{i}" for i in range(40)])
 
         text = " ".join(report.measurement for report in _advise(figure)[0])
@@ -183,7 +172,6 @@ class TestSquash:
         assert self._squash(boxes, [("a", "b")])[0] == []
 
     def test_close_nodes_with_no_edge_between_them_do_not(self):
-        """A dense grid of cells is a layout, not a short arrow."""
         boxes = {"a": (0.0, 0.0, 20.0, 20.0), "b": (21.0, 0.0, 41.0, 20.0)}
 
         assert self._squash(boxes, [])[0] == []
@@ -234,8 +222,6 @@ class TestSquash:
 
     @pytest.mark.parametrize("token", ["b.north |- a", "a -| b.west", "$(a)!0.5!(b)$"])
     def test_a_point_built_from_two_nodes_is_not_one_of_them(self, token):
-        """`(b.north |- a)` is at `a`'s height under `b`: it is neither
-        node, so measuring it as `b` would be a guess (#1057 review)."""
         boxes = {"a": (0.0, 0.0, 20.0, 20.0), "b": (25.0, 0.0, 45.0, 20.0)}
 
         found, not_measured = self._squash(boxes, [("a", token)])
@@ -244,9 +230,6 @@ class TestSquash:
         assert [rule for rule, _ in not_measured] == ["size-squash"]
 
     def test_a_named_label_on_a_path_is_not_an_end_of_it(self):
-        """`edge_list` pairs consecutive tokens, so a named mid-path label
-        reads as two edges, `a -> l` and `l -> b`. Neither is an arrow;
-        the path is listed, not guessed at (#1057 review)."""
         boxes = {
             "a": (0.0, 0.0, 20.0, 20.0),
             "l": (22.0, 22.0, 30.0, 30.0),
@@ -292,8 +275,6 @@ class TestSquash:
 
 class TestWhatCannotBeMeasured:
     def test_an_empty_pictures_placeholder_extent_is_no_area(self):
-        """TikZ reports an empty picture as (16000,16000,-16000,-16000):
-        both sides negative, so their product is positive (#1057 review)."""
         figure = _figure(boxes={}, declared=[], picture=(16000.0, 16000.0, -16000.0, -16000.0))
 
         reports, not_measured = _advise(figure)

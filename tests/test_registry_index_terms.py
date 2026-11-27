@@ -1,11 +1,3 @@
-"""The index's term table and `index.toml` (#1168): what `registry build
---index` writes into `index-terms.json`, and every `index.toml` it refuses.
-
-Pure inputs throughout -- glossary rows, linked symbols, accepted units
-and a parsed `index.toml` -- so none of these needs a book on disk;
-`tests/test_registry_index_cli.py` runs the command over a real one.
-"""
-
 import json
 
 import pytest
@@ -27,9 +19,6 @@ def build(rows, doc=None, linked=None):
 
 def entry(data, key):
     return data["terms"][term_id(key)]
-
-
-# --- the term table ------------------------------------------------------
 
 
 def test_a_glossary_term_is_an_entry_with_its_defining_chapters_in_order():
@@ -127,9 +116,6 @@ def test_dumps_is_sorted_and_stable():
     assert text.endswith("\n")
 
 
-# --- refusals: what names nothing ---------------------------------------
-
-
 @pytest.mark.parametrize(
     "doc, expected",
     [
@@ -156,9 +142,6 @@ def test_dumps_is_sorted_and_stable():
 def test_a_reference_to_nothing_refuses(doc, expected):
     _, problems = build([row("Model")], doc)
     assert any(expected in problem for problem in problems), problems
-
-
-# --- index.toml's shape ------------------------------------------------
 
 
 def write(tmp_path, text):
@@ -233,13 +216,7 @@ def test_a_term_defined_twice_in_one_chapter_lists_the_chapter_once():
     ],
 )
 def test_a_spelling_is_tokenised_as_the_filter_tokenises_prose(text, expected):
-    """assets/pandoc/index_terms.lua drops a possessive and edge
-    punctuation and splits on dashes; a spelling that kept them could
-    never match (found on the digital-twins book: "Euler's step")."""
     assert _index_terms.spelling(text) == expected
-
-
-# --- found by review (#1168) ------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -259,8 +236,6 @@ def test_a_spelling_is_tokenised_as_the_filter_tokenises_prose(text, expected):
     ],
 )
 def test_a_target_or_spelling_the_index_cannot_hold_refuses(doc, expected):
-    """A dropped or maths-only cross-reference target crashed `registry
-    index`, and a spelling of punctuation alone crashed the filter."""
     _, problems = build([row("Model"), row("Shadow"), row("`x` vector")], doc)
     assert any(expected in problem for problem in problems), problems
 

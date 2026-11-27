@@ -1,27 +1,3 @@
-"""chitragupta/review/quotation.py: does each quoted span actually appear
-in the source it is attributed to?
-
-The seventh review aid, and the first whose answer is binary. A
-quotation attributed to a paper that does not contain it is the same
-failure class as a fabricated citekey -- a plausible artefact with
-nothing real behind it -- and the one part of that class
-`chitragupta/citation_gate.py` cannot see, because the citekey is real.
-
-These tests hold the matcher to what was *measured* on real quoted spans
--- `plans/c3-quotation-integrity.md` on 189 of them and
-`plans/775-quotation-residual-absents.md` on 206 -- not to what issue
-#383 guessed. The issue names hyphenation, ligatures, whitespace and
-quotation marks; measured, those are the small effect. Three
-normalisations carried the weight instead, and each has its own class
-here for that reason: an inline reference marker in the source
-(`TestNormalisation`), an elided quotation (`TestElision`), and an
-elision at either *end* of the quote, which leaves one fragment rather
-than two (`TestElisionAtAnEnd`).
-
-Advisory like the other six -- exit 0 whatever it finds, no lock, and no
-draft blocked by any of it.
-"""
-
 import json
 from pathlib import Path
 
@@ -40,15 +16,10 @@ SPAN = "four interconnected layers of domains"
 
 @pytest.fixture(autouse=True)
 def _a_synced_ledger(isolated_config):
-    """An empty, current ledger, as a first sync leaves one. The aid reads
-    it read-only (#843), and a missing one is refused rather than created,
-    so a test that never synced has to say so rather than lean on the
-    reader to make one."""
     ledger.connect().close()
 
 
 def a_dossier(draft: Path, blocks: str) -> Path:
-    """Write `blocks` as this draft's evidence.md, verbatim."""
     where = dossier.dossier_dir(draft)
     where.mkdir(parents=True, exist_ok=True)
     (where / dossier.EVIDENCE_MD).write_text(blocks, encoding="utf-8")
@@ -56,9 +27,6 @@ def a_dossier(draft: Path, blocks: str) -> Path:
 
 
 def a_source(citekey: str, *records: tuple[int, str]) -> Path:
-    """A rung-2 passage sidecar: reading-ordered text with a page each,
-    for a key whose ledger row is `parsed`, the only status whose files
-    the passage ladder reads (#1153)."""
     add_item(citekey)
     path = config.PARSED_DIR / f"{citekey}.passages.json"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -70,8 +38,6 @@ def a_source(citekey: str, *records: tuple[int, str]) -> Path:
 
 
 def a_page_level_source(citekey: str, *pages: str) -> Path:
-    """A rung-3 source: form-feed-delimited text, no reading order, so
-    `passages.py` refuses to give it quotable text at all."""
     path = config.PARSED_DIR / f"{citekey}.txt"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\f".join(pages), encoding="utf-8")
@@ -102,9 +68,6 @@ def verdict_of(draft: Path) -> str:
 
 class TestRegistration:
     def test_the_aid_is_in_both_tables(self):
-        """R10's machine-checked half -- review.AIDS owns the report
-        suffix, review._registry.AIDS owns the subcommand, and the entry point
-        raises at import if they disagree."""
         assert "quotation" in review.AIDS
         assert "quotation" in review_main.AIDS
 
@@ -117,8 +80,6 @@ class TestRegistration:
 
 class TestTheUniverse:
     def test_a_pre_a2_dossier_checks_nothing(self, isolated_config):
-        """No `quote:` anywhere -- which is every dossier this project
-        actually has. Empty universe, no findings, exit 0."""
         draft = a_draft()
         a_dossier(draft, "# Kept evidence\n\n## `%s`\n\nSome prose.\n" % KEY)
         assert checked(draft) == []
@@ -126,21 +87,12 @@ class TestTheUniverse:
         assert quotation.main([str(draft)]) == 0
 
     def test_a_legacy_support_block_is_not_a_quote(self, isolated_config):
-        """It holds a raw 600-character retrieval window nobody chose as
-        a quotation. `evidence_appendix` reads it as nothing at all, and
-        this aid inherits that rather than checking it as though someone
-        had."""
         draft = a_draft()
         a_dossier(draft, f"## `{KEY}`\n\nrelevance: x\nsupport: {SPAN}\n")
         a_source(KEY, (4, f"It has {SPAN} in it."))
         assert checked(draft) == []
 
     def test_a_draft_outside_drafts_dir_checks_nothing(self, isolated_config):
-        """Under content/ but not content/drafts/ -- report_dir's
-        documented flat fallback for this layer. `dossier_dir` refuses
-        such a path with `DossierError`; every sibling aid degrades to
-        an empty report here rather than raising, and this one must too
-        (#496)."""
         draft = config.CONTENT_DIR / "elsewhere.md"
         draft.parent.mkdir(parents=True, exist_ok=True)
         draft.write_text(f"Layered twins are the norm [@{KEY}].\n", encoding="utf-8")
@@ -149,8 +101,6 @@ class TestTheUniverse:
         assert quotation.main([str(draft)]) == 0
 
     def test_a_quote_for_a_commented_out_tex_citation_is_not_checked(self, isolated_config):
-        """#873: `quoted_spans` read `.tex` with Markdown rules, so a key
-        after `%` still had its quote checked."""
         draft = draft_at("survey.tex")
         draft.write_text(f"Layered twins.\n% Dropped: \\citep{{{KEY}}}\n", encoding="utf-8")
         a_dossier(draft, block(KEY, SPAN))
@@ -168,9 +118,6 @@ class TestTheUniverse:
         assert quotation.UNIVERSES == ("no-dossier", "no-quotes", "checked")
 
     def test_a_draft_with_no_dossier_directory_is_no_dossier(self, isolated_config):
-        """#838: under content/drafts/, so `dossier_dir` names a
-        directory without raising -- but nothing was ever written there.
-        Reporting `no-quotes` would claim a dossier exists."""
         draft = a_draft()
         assert not dossier.dossier_dir(draft).exists()
         assert universe_of(draft) == "no-dossier"
@@ -214,9 +161,6 @@ class TestFoundAndAbsent:
         ]
 
     def test_an_absent_finding_carries_a_near_miss_page(self, isolated_config):
-        """A bare "not found" cannot tell a fabricated quotation from a
-        lightly-edited one, and alarm fatigue is the stated risk for this
-        whole class of aid."""
         draft = a_draft()
         a_dossier(draft, block(KEY, "interconnected layers of governance domains here"))
         a_source(KEY, (2, "Nothing relevant."), (9, "The interconnected governance layers."))
@@ -229,9 +173,6 @@ class TestFoundAndAbsent:
 
 class TestNormalisation:
     def test_a_line_wrapped_and_hyphenated_span_is_still_found(self, isolated_config):
-        """`environ-\\nment` must not split into two words. This is why
-        the matcher is a character stream and not the word list
-        `verbatim_check._corpus.norm` produces."""
         draft = a_draft()
         a_dossier(draft, block(KEY, "the operating environment of the twin"))
         a_source(KEY, (5, "We model the operating environ-\nment of the twin closely."))
@@ -244,18 +185,12 @@ class TestNormalisation:
         assert checked(draft)[0].verdict == "found"
 
     def test_an_inline_reference_marker_does_not_break_a_span(self, isolated_config):
-        """The single biggest cause of a false finding in the 189-span
-        measurement, and one issue #383 does not mention: the source
-        carries `[30]` mid-sentence and a correct quotation drops it."""
         draft = a_draft()
         a_dossier(draft, block(KEY, "in different circumstances and hypotheses."))
         a_source(KEY, (2, "Used in different circumstances and hypotheses [30]. Should it fail,"))
         assert checked(draft)[0].verdict == "found"
 
     def test_a_bare_bracketed_word_in_the_source_is_not_stripped(self, isolated_config):
-        """Only numeric bracket groups are reference markers. Stripping
-        `[sic]` or `(Smith 2020)` would need parsing and could eat
-        content the quote legitimately contains."""
         assert match.strip_markers("layers [30], [1, 2] and [1-3] here") == (
             "layers  ,   and   here"
         )
@@ -278,9 +213,6 @@ class TestElision:
         assert (one.verdict, one.tier) == ("found", "elided")
 
     def test_fragments_out_of_order_are_absent(self, isolated_config):
-        """What keeps the elision tier exact rather than fuzzy. Without
-        it a later reader could loosen this into a word-overlap score,
-        which R3 bars from being the thing optimised."""
         draft = a_draft()
         a_dossier(draft, block(KEY, "CN is the connection ... PE refers to the physical entity"))
         a_source(
@@ -301,21 +233,7 @@ class TestElision:
 
 
 class TestElisionAtAnEnd:
-    """An elision at the *start* or *end* of a quote leaves one fragment,
-    not two, and issue #775 measured that one-sided case as a false
-    `absent` on a real corpus: 2 of the 40 residual absents over 206
-    extracted spans are a correct quotation ending in an editorial
-    substitution. The rest of that module's posture is unchanged --
-    the surviving fragment must still appear exactly.
-    """
-
     def test_a_trailing_editorial_substitution_is_found(self, isolated_config):
-        """The measured case, in miniature. A drafter quotes a sentence
-        and replaces its tail with their own word in brackets: *"the
-        topic is [unresolved]"* against a source reading *"the topic is
-        still being debated"*. Everything before the bracket is verbatim,
-        and that is what the elision contract already promises to match.
-        """
         draft = a_draft()
         a_dossier(draft, block(KEY, "For data-driven models the topic is [unresolved]."))
         a_source(KEY, (5, "For data-driven models the topic is still being debated today."))
@@ -323,8 +241,6 @@ class TestElisionAtAnEnd:
         assert (one.verdict, one.tier) == ("found", "elided")
 
     def test_a_leading_ellipsis_is_found(self, isolated_config):
-        """The same shape from the other end, which is the commoner way
-        to write it by hand."""
         draft = a_draft()
         a_dossier(draft, block(KEY, "... CN is the connection that ties them"))
         a_source(
@@ -333,39 +249,24 @@ class TestElisionAtAnEnd:
         assert checked(draft)[0].verdict == "found"
 
     def test_a_quote_with_no_elision_at_all_is_still_absent(self, isolated_config):
-        """The guard this widening must not swallow. One fragment and no
-        elision marker is an ordinary quotation that simply is not in the
-        source, and it stays `absent` -- the one-fragment path is reached
-        only because the quote said the source differs somewhere.
-        """
         draft = a_draft()
         a_dossier(draft, block(KEY, "the four interconnected layers of no such paper"))
         a_source(KEY, (2, "ISO 23247 defines four interconnected layers of domains."))
         assert checked(draft)[0].verdict == "absent"
 
     def test_the_surviving_fragment_must_still_appear_exactly(self, isolated_config):
-        """A fabricated quotation does not become findable by ending in
-        a bracket. What is matched is still an exact character run."""
         draft = a_draft()
         a_dossier(draft, block(KEY, "the twin predicted failure eight hours ahead [emphasis mine]"))
         a_source(KEY, (2, "ISO 23247 defines four interconnected layers of domains."))
         assert checked(draft)[0].verdict == "absent"
 
     def test_fragments_drops_slivers_but_keeps_a_lone_survivor(self, isolated_config):
-        """`fragments` is unchanged: it still returns what survived, and
-        an empty tail is still dropped. It is `locate` that stopped
-        requiring two of them."""
         assert match.fragments("the topic is [unresolved]") == ["thetopicis"]
         assert match.fragments("no elision here at all") == ["noelisionhereatall"]
 
 
 class TestPassageSeams:
     def test_a_span_straddling_a_seam_is_not_reported_found_on_one_page(self, isolated_config):
-        """The false-`found` guard. Flattening strips every separator, so
-        concatenating the document would fuse `...end of para` and
-        `Beginning of...` into one stream and report a contiguous hit on
-        a page the span is not on. A false `found` is worse here than a
-        false `absent`: it is the outcome nobody re-reads."""
         draft = a_draft()
         a_dossier(draft, block(KEY, "the layers are fixedThe user domain sits above"))
         a_source(KEY, (4, "In ISO 23247 the layers are fixed"), (5, "The user domain sits above."))
@@ -385,10 +286,6 @@ class TestPassageSeams:
 
 class TestUnverifiable:
     def test_a_page_level_source_is_unverifiable_never_absent(self, isolated_config):
-        """`pdftotext -layout` preserves a page's visual arrangement, not
-        its reading order, so on a two-column paper a perfectly correct
-        quotation simply is not contiguous. Reporting it `absent` would
-        assert a fabrication that is not there."""
         draft = a_draft()
         a_dossier(draft, block(KEY, "a span this page-level text cannot confirm"))
         a_page_level_source(KEY, "column spliced text one", "column spliced text two")
@@ -410,9 +307,6 @@ class TestIdentity:
         assert _quotation_render.finding_id(KEY, SPAN) == _quotation_render.finding_id(KEY, SPAN)
 
     def test_editing_the_quote_or_reattributing_it_renames_the_finding(self, isolated_config):
-        """Both halves are wanted. A repaired quote is a different
-        assertion about the source and has not been checked, so it must
-        not inherit its predecessor's identity."""
         assert _quotation_render.finding_id(KEY, SPAN) != _quotation_render.finding_id(
             KEY, SPAN + " here"
         )
@@ -423,8 +317,6 @@ class TestIdentity:
 
 class TestOutput:
     def test_two_runs_over_an_unchanged_draft_are_byte_identical(self, isolated_config):
-        """No wall-clock line anywhere -- the reason to write a report is
-        that it diffs against the next revision's."""
         draft = a_draft()
         a_dossier(draft, block(KEY, SPAN))
         a_source(KEY, (7, f"ISO 23247 defines {SPAN}."))
@@ -455,8 +347,6 @@ class TestOutput:
     def test_each_universe_is_named_in_json_and_markdown(
         self, isolated_config, setup, universe, says
     ):
-        """#838: three reports that all have no findings must be told
-        apart from either form, by a machine and by a reader."""
         draft = a_draft()
         if setup == "bare":
             a_dossier(draft, f"## `{KEY}`\n\nSome prose.\n")
@@ -472,9 +362,6 @@ class TestOutput:
         assert f"- Universe: `{universe}`" in quotation.run_text(draft)
 
     def test_all_unverifiable_does_not_claim_every_quote_was_found(self, isolated_config):
-        """Zero absent and zero found is not "every checked quote was
-        found" -- the sample's staleness-chapter report said exactly that
-        over two unverifiable quotes."""
         draft = a_draft()
         a_dossier(draft, block(KEY, SPAN))
         a_page_level_source(KEY, f"It has {SPAN} in it.")
@@ -501,7 +388,6 @@ class TestRefusals:
         assert quotation.main([str(outside)]) == 1
 
     def test_it_exits_0_even_when_every_quote_is_absent(self, isolated_config):
-        """Advisory, not a gate. A non-zero exit is how a gate speaks."""
         draft = a_draft()
         a_dossier(draft, block(KEY, "a claim this paper never makes"))
         a_source(KEY, (3, "Wholly different subject matter."))
@@ -509,10 +395,6 @@ class TestRefusals:
 
 
 class TestDegenerateInput:
-    """The shapes a hand-written dossier can produce that a machine-written
-    one never would. `evidence.md` is a supported hand-edited input
-    everywhere else here, so none of these may raise."""
-
     def test_a_quote_that_flattens_to_nothing_is_absent_not_a_crash(self, isolated_config):
         draft = a_draft()
         a_dossier(draft, block(KEY, "### ---"))
@@ -521,9 +403,6 @@ class TestDegenerateInput:
         assert (one.verdict, one.near_miss_page) == ("absent", None)
 
     def test_a_quote_of_only_stopwords_reports_no_near_miss_page(self, isolated_config):
-        """`passages.distinctive` drops short words and stopwords, so
-        there is nothing to score against -- and 0% on p.1 would be a
-        worse answer than saying so."""
         draft = a_draft()
         a_dossier(draft, block(KEY, "of the and to be as by it"))
         a_source(KEY, (3, "Real prose about layered architectures."))
@@ -532,9 +411,6 @@ class TestDegenerateInput:
         assert "appear on no page" in quotation.run_text(draft)
 
     def test_a_passage_with_no_page_number_still_matches(self, isolated_config):
-        """A hand-edited sidecar can omit `page`, and `passages.py`
-        already turns anything that is not a page a reader could turn to
-        into None. A span is still found; it simply reports no page."""
         draft = a_draft()
         add_item(KEY)
         path = config.PARSED_DIR / f"{KEY}.passages.json"
@@ -548,8 +424,6 @@ class TestDegenerateInput:
         assert "page unknown" in quotation.run_text(draft)
 
     def test_a_pair_on_one_page_reports_that_page_once(self, isolated_config):
-        """Two consecutive passages can share a page. `[4, 4]` would read
-        as a span crossing a page boundary when it does not."""
         draft = a_draft()
         a_dossier(draft, block(KEY, "the layers are fixed. The user domain sits above"))
         a_source(KEY, (4, "In ISO 23247 the layers are fixed."), (4, "The user domain sits above."))
@@ -559,15 +433,11 @@ class TestDegenerateInput:
 
 class TestCommandSurface:
     def test_the_recorded_command_carries_the_flags_it_was_given(self, isolated_config):
-        """An empty finding list means something different depending on
-        how the aid was invoked, so the header records the invocation."""
         draft = a_draft()
         assert quotation._command(draft, as_json=True, write=True).endswith("--json --write")
         assert "--json" not in quotation._command(draft, as_json=False, write=False)
 
     def test_the_entry_point_hangs_this_aids_flags_off_its_own_subparser(self):
-        """How chitragupta/review/__main__.py reaches it: the subparser
-        already exists, and the flags are declared once, here."""
         import argparse
 
         sub = argparse.ArgumentParser().add_subparsers().add_parser("quotation")
@@ -584,13 +454,6 @@ class TestCommandSurface:
 
 class TestTierPrecedence:
     def test_a_contiguous_pair_match_beats_an_elided_single_one(self, isolated_config):
-        """Exact is a stronger claim than elided, so every exact tier is
-        tried before any elided one -- not exact-then-elided within each
-        window size. A span that is genuinely contiguous across two
-        passages must not be reported as an alignment around an ellipsis
-        merely because one passage also happens to contain its fragments
-        in order.
-        """
         draft = a_draft()
         a_dossier(draft, block(KEY, "alpha beta ... gamma delta"))
         a_source(KEY, (4, "alpha beta xx gamma delta yy alpha beta"), (5, "gamma delta zz"))
@@ -606,10 +469,6 @@ def two_quotes(citekey: str, first: str, second: str) -> str:
 
 
 class TestSeveralQuotesPerBlock:
-    """#1174: a block may carry several `quote:` lines, and each one is
-    checked on its own. Before, `fields()` kept the first and dropped the
-    rest without a word."""
-
     def test_every_quote_in_a_block_is_checked_with_its_position(self, isolated_config):
         draft = a_draft()
         a_dossier(draft, two_quotes(KEY, SPAN, SECOND))
@@ -625,7 +484,6 @@ class TestSeveralQuotesPerBlock:
         assert (finding["index"], finding["of"]) == (2, 2)
 
     def test_the_first_quotes_id_is_what_it_was_with_one_quote(self, isolated_config):
-        """Adding a second quote renames nothing already checked."""
         draft = a_draft()
         a_dossier(draft, two_quotes(KEY, SPAN, SECOND))
         a_source(KEY, (7, f"ISO 23247 defines {SPAN}."))
@@ -675,10 +533,6 @@ class TestSeveralQuotesPerBlock:
 
 
 class TestAWrappedQuote:
-    """#1174: `"..." (p. N)` read as `absent`. The marks were harmless
-    (the matcher drops punctuation); the locator left `p24` behind. The
-    parser now strips both before anything reads the quote."""
-
     @pytest.mark.parametrize(
         "written",
         [
@@ -697,17 +551,12 @@ class TestAWrappedQuote:
         assert (one.verdict, one.tier) == ("found", "exact")
 
     def test_a_trailing_bracketed_page_is_now_exact_not_elided(self, isolated_config):
-        """It used to match as an end-elision, `[p. 7]` read as an
-        editorial substitution; stripped, the rest matches exactly."""
         draft = a_draft()
         a_dossier(draft, block(KEY, f"{SPAN} [p. 7]"))
         a_source(KEY, (7, f"ISO 23247 defines {SPAN}."))
         assert checked(draft)[0].tier == "exact"
 
     def test_it_is_re_keyed_once_under_its_normalised_text(self, isolated_config):
-        """The one id change this brings: a quote written wrapped is now
-        named by what is checked, so the next agenda baseline reads its
-        old item as resolved and this one as new."""
         draft = a_draft()
         a_dossier(draft, block(KEY, f'"{SPAN}" (p. 7)'))
         a_source(KEY, (7, "Something else entirely."))

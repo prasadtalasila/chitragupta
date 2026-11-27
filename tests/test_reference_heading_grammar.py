@@ -1,14 +1,3 @@
-"""#951: three readers, one answer to "is this the bibliography?".
-
-`references_section` (citeproc swap, verbatim masking, `draft references`),
-`review/_claims` (uncited-prose report) and `style_typeset` (bare-URL
-check) each used to restate which headings open a draft's reference
-list, and disagreed: `## Bibliography` was the bibliography for two of
-them and prose for the third. Each reader is asked through its public
-behaviour, not its regex, so the test still holds if one of them stops
-using a regex at all.
-"""
-
 import pytest
 
 from chitragupta import references_section, style_typeset
@@ -59,15 +48,11 @@ def test_all_three_readers_agree(heading, is_bibliography, tmp_path):
 
 
 def test_the_two_composing_readers_use_the_shared_title():
-    # Composed from the one string, not merely agreeing with it today: a
-    # copy that agrees now is the duplication #951 removed, waiting to drift.
     assert references_section.REFERENCE_TITLE in _claims.REFERENCE_TITLE.pattern
     assert references_section.REFERENCE_TITLE in style_typeset._REFERENCES_RE.pattern
 
 
 def test_further_reading_is_the_typeset_check_s_exemption_alone(tmp_path):
-    # A reading list is links by nature, so its URLs are not findings, but
-    # it is not the reference list: the citeproc swap must not replace it.
     assert typeset_reader("## Further reading", tmp_path)
     assert not section_reader("## Further reading")
     assert not claims_reader("## Further reading")

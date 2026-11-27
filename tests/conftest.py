@@ -14,15 +14,6 @@ from tests import content_guard
 
 
 def pytest_sessionstart(session):
-    """Keep spawned children importable for the whole session.
-
-    A dependency imported by one test can leave a sys.path entry that
-    shadows the standard library for every `spawn` child created
-    afterwards -- see pdf_text.drop_stdlib_shadowing_path_entries. The
-    production path sanitises before building a pool; the cross-process
-    tests in tests/test_runlock.py spawn directly, so the session does it
-    once here as well.
-    """
     from chitragupta import pdf_text
 
     pdf_text.drop_stdlib_shadowing_path_entries()
@@ -30,44 +21,19 @@ def pytest_sessionstart(session):
 
 
 def pytest_sessionfinish(session):
-    """Fail a session that wrote into the real content/ -- see
-    tests/content_guard.py for why the effect is checked, not the code."""
     content_guard.verify(session)
 
 
 @pytest.fixture(autouse=True)
 def _pin_parser_settings(monkeypatch):
-    """Pin the parser settings the suite assumes, instead of inheriting
-    whatever this developer happens to have in config.toml.
-
-    Since v1.0.0 config.toml is gitignored per-host data, so every
-    developer's differs -- and `chitragupta.config` reads it at import time.
-    Without this, a checkout with `backend = "docling"` fails nine tests
-    that assert on pdftotext's messages, for no reason connected to the
-    code under test. That is a confusing failure to hand someone, and it
-    is CI-invisible: CI copies the unedited example, so it never sees it.
-
-    Tests that care about a different backend monkeypatch these
-    afterwards -- monkeypatch is last-write-wins within a test.
-    """
     monkeypatch.setattr(config, "PARSER", "pdftotext")
     monkeypatch.setattr(config, "PARSER_OCR", False)
-    # Pinned for the same reason as PARSER_OCR above, and it was missed
-    # when [parser].formulas arrived in #651: without it, a test that
-    # asserts the *default* is off passes or fails according to whether
-    # the host running it happens to have turned the key on in its own
-    # config.toml. CI copies config.toml.example and so never saw it.
     monkeypatch.setattr(config, "PARSER_FORMULAS", False)
     monkeypatch.setattr(config, "PARSER_WORKERS", 1)
 
 
 @pytest.fixture(autouse=True)
 def _fresh_retrieval_memos():
-    """Start every test with spelling correction's two in-memory caches
-    empty (#1232): `retrieval_cache.read_only_index`'s last index and
-    `retrieval_spelling.vocabulary`'s. Both check their own staleness, so
-    this is isolation rather than correctness -- one test's corpus can
-    never be served to the next."""
     from chitragupta import retrieval_cache, retrieval_spelling
 
     retrieval_cache._READ_ONLY_MEMO.clear()
@@ -76,26 +42,6 @@ def _fresh_retrieval_memos():
 
 @pytest.fixture(autouse=True)
 def _no_real_forkserver(monkeypatch):
-    """Keep the suite from launching an actual forkserver process.
-
-    `sync.run()` calls `pdf_text.prestart_pool()` before reading the
-    bibliography, and any test that drives `run()` with the docling
-    backend and more than one worker reaches it for real -- measured, 22
-    times in tests/test_sync.py alone. Each one spawns a process whose
-    whole job is to import torch and docling: hundreds of megabytes and
-    seconds of CPU, in a unit-test suite that mocks docling precisely so
-    it never has to pay that.
-
-    Neutralised at `ensure_running` rather than at `prestart_pool`, so
-    the decision logic under test still runs -- only the process launch
-    is stubbed. The tests that assert *on* that launch patch this same
-    name afterwards and read their own recorder; monkeypatch is
-    last-write-wins within a test.
-
-    Guarded because Windows has no forkserver module path worth
-    importing -- there, `start_method()` resolves to spawn and
-    `prestart_pool` returns before it would ever be reached.
-    """
     if "forkserver" not in multiprocessing.get_all_start_methods():
         return
     from multiprocessing import forkserver
@@ -105,25 +51,6 @@ def _no_real_forkserver(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _no_real_resolver_models(request, monkeypatch):
-    """Fail a test that reaches the resolution ladder's real models.
-
-    `discover`'s ladder loads a sentence-transformers model on its
-    semantic rung and a cross-encoder in `_rescored`. Any phrase that
-    misses the exact and fuzzy rungs reaches them, so a test that forgot
-    to fake them loaded the real thing: ~2.5 s from a warm Hugging Face
-    cache here, a ~420 MB download on CI, and a red build whenever
-    Hugging Face is down (#861). Seven tests did, silently.
-
-    A failure rather than a quiet stand-in, so the test says which
-    geometry it is asserting on instead of inheriting one from here.
-    `pytest.fail` rather than raising `ImportError`, the stand-in the
-    "enrich extra absent" tests use: the ladder catches that and
-    degrades to lexical-only matching, so a refusal test asserting exit
-    code 1 would pass on it. A test patching the loaders afterwards wins
-    (monkeypatch is last-write-wins); one testing the loaders
-    themselves opts out with `@pytest.mark.real_resolver_loaders`.
-    """
-    # A load failure is remembered for the process (#1023); not across tests.
     monkeypatch.setattr("chitragupta.discover._resolve._FAILED", {})
     if request.node.get_closest_marker("real_resolver_loaders"):
         return
@@ -141,25 +68,8 @@ def _no_real_resolver_models(request, monkeypatch):
 
 @pytest.fixture
 def isolated_config(tmp_path, monkeypatch):
-    """Point every chitragupta.config path constant at a throwaway tmp_path tree.
-
-    chitragupta.config computes these once at import time as plain Path objects,
-    not functions, and every consumer module does `from chitragupta import
-    config` then reads `config.SOME_PATH` at call time -- so patching
-    attributes on this one shared module object is visible everywhere,
-    no importlib.reload needed. Each derived path (e.g. PARSED_DIR from
-    CONTENT_DIR) is set independently here, since config.py itself only
-    derives them once at import time -- patching just the parent
-    wouldn't move an already-computed child.
-    """
     content_dir = tmp_path / "content"
 
-    # A table rather than a run of setattr calls, so that adding a path
-    # to config.py costs one line here instead of pushing this fixture
-    # past docs/CODE-STANDARDS.md's 25-statement limit -- which is what
-    # happened when the seed-topic paths arrived. The relative names are
-    # exactly what config.py derives from CONTENT_DIR, kept in the same
-    # spelling so the two are diffable by eye.
     under_content = {
         "CONTENT_DIR": "",
         "PARSED_DIR": "parsed",
@@ -192,40 +102,17 @@ def isolated_config(tmp_path, monkeypatch):
 
     monkeypatch.setattr(config, "BIB_FILE_PATH", tmp_path / "bibliography.bib")
     monkeypatch.setattr(config, "LOGS_DIR", tmp_path / "logs")
-    # Pinned rather than inherited from config.toml: DOCLING_IMAGES
-    # participates in the Docling cache key, so a test asserting a
-    # cache hit would otherwise pass or fail based on the repo's
-    # current setting. Tests that care set it explicitly.
-    # A table for the same statement-budget reason as `under_content`
-    # above: all three participate in the Docling cache key, so a
-    # cache-hit assertion must not depend on the repo's current setting.
     for name, value in {
         "DOCLING_IMAGES": False,
         "DOCLING_IMAGE_SCALE": 2.0,
         "DOCLING_FORMULAS": False,
     }.items():
         monkeypatch.setattr(config, name, value)
-    # Pinned for the same reason: these decide which documents land under
-    # a seed phrase and under a discovered topic, so a test asserting a
-    # match would otherwise pass or fail on the developer's own
-    # config.toml. The 0.5 floor is deliberately higher than the shipped
-    # 0.15 so a test can place a vector below it without needing a
-    # near-orthogonal pair to do it.
     monkeypatch.setattr(config, "SEED_TOPIC_MIN_SIMILARITY", 0.5)
     monkeypatch.setattr(config, "SEED_TOPIC_MAX_PAPERS", 25)
-    # Pinned for the same reason as the two above: these decide which
-    # extracted phrases reach content/keywords.toml, so a test asserting
-    # the min-df or top-n arithmetic must not inherit a developer's own
-    # config.toml tuning.
     monkeypatch.setattr(config, "KEYWORD_TOP_N", 40)
     monkeypatch.setattr(config, "KEYWORD_MIN_DF", 2)
-    # Pinned so a developer's own config.toml can't change how many
-    # chunks embed_index.search() admits per citekey out from under a
-    # test that is asserting the cap's arithmetic, not its default.
     monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 3)
-    # Pinned to the values the scaling-arithmetic tests assert against,
-    # so a developer tuning topic depth in their own config.toml does not
-    # fail a suite that is checking the clamps rather than the defaults.
     monkeypatch.setattr(config, "TOPIC_MIN_CLUSTER_SIZE", 3)
     monkeypatch.setattr(config, "TOPIC_MIN_SAMPLES", 2)
     monkeypatch.setattr(config, "TOPIC_NEIGHBORS", 5)
@@ -234,10 +121,6 @@ def isolated_config(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "TOPIC_MEMBERSHIP_MAX", 8)
     monkeypatch.setattr(config, "TOPIC_EXCLUDE_AUTHOR_NAMES", True)
     monkeypatch.setattr(config, "TOPIC_CONVERGE_SIMILARITY", 0.45)
-    # Pinned to the shipped defaults so a developer's own config.toml
-    # can't change whether a fixed input text's score clears the "good"
-    # band -- these two are read as incidental pass/fail scaffolding by
-    # tests that are asserting claim-splitting logic, not the threshold.
     monkeypatch.setattr(config, "PROVENANCE_WEAK_SCORE", 0.20)
     monkeypatch.setattr(config, "PROVENANCE_GOOD_SCORE", 0.50)
     return config
@@ -251,59 +134,27 @@ def ledger_con(isolated_config):
 
 
 def content_draft(cfg, name: str) -> Path:
-    """A draft path a tier-1 tool will accept: under `cfg.CONTENT_DIR`.
-
-    Since 3.17.0 `citation_gate`, `references` and `render_output` all
-    refuse a path that resolves outside the content directory, so a test
-    draft has to live under one. Creates the parent, which
-    `isolated_config` names but does not make.
-    """
     path = cfg.CONTENT_DIR / name
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
 
 
 def parsed_text(citekey: str, text: str) -> Path:
-    """Parsed text where a real parse puts it: `content/parsed/<citekey>.txt`.
-
-    Since issue 821 every consumer refuses a ledger `parsed_path` that
-    lands outside `config.PARSED_DIR`, so a fixture dropping the text
-    in a bare `tmp_path` and pointing the row at it is no longer
-    testing the shape a row actually has -- it is testing the one the
-    pipeline now declines to read. Creates the directory, which
-    `isolated_config` names but does not make.
-    """
     path = parsed_file(citekey)
     path.write_text(text, encoding="utf-8")
     return path
 
 
 def parsed_file(citekey: str) -> Path:
-    """`content/parsed/<citekey>.txt`, with the directory made.
-
-    The location half of `parsed_text` above, for a fixture that writes
-    the file itself (or writes it twice, to prove a re-index).
-    """
     config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
     return config.PARSED_DIR / f"{citekey}.txt"
 
 
 def real_bibliography_path() -> Path:
-    """This repo's actual, gitignored `papers/bibliography.bib` -- real
-    per-host data, for the one test class that deliberately smoke-tests
-    against a maintainer's real export rather than a synthetic fixture
-    (`TestRealBibliographySmoke`). Centralised here, rather than as a
-    literal in each test, so `tests/test_unversioned_data_scan.py`'s scan
-    for un-versioned-data reads can tell a named, documented accessor from
-    a bare inline one -- the difference the scan actually cares about,
-    per its own module docstring.
-    """
     return config.PROJECT_ROOT / "papers" / "bibliography.bib"
 
 
 def make_reference(citekey="smith_example_2024", **overrides):
-    """A minimal chitragupta.bib_reader.Reference, for tests that don't need a
-    real .bib file on disk."""
     from chitragupta.bib_reader import Reference
 
     fields = dict(
@@ -327,11 +178,6 @@ def make_ref():
 
 
 def add_item(citekey, parsed_text=None, pdf_path=None, title="T"):
-    """A `parsed` ledger row, optionally with its text on disk where a
-    real parse puts it. One helper rather than the four module copies it
-    replaced (#867), which differed only in whether they accepted a
-    `pdf_path`; taking it always and storing NULL by default covers all
-    four."""
     parsed_path = None
     if parsed_text is not None:
         path = parsed_file(citekey)
@@ -351,24 +197,11 @@ def add_item(citekey, parsed_text=None, pdf_path=None, title="T"):
 
 
 def add_citable(con, citekey, **overrides):
-    """A ledger row the gate accepts: `upsert_reference`, then `parsed`.
-
-    Since #1118 a row whose PDF never parsed is not citable, so a test that
-    needs a key to *pass* the gate seeds it with this rather than with
-    `upsert_reference` alone, which leaves the row `no_pdf`. The parsed
-    text need not exist: only the status is read."""
     ledger.upsert_reference(con, make_reference(citekey=citekey, **overrides))
     ledger.mark_parsed(con, citekey, parsed_file(citekey))
 
 
 def plant_sidecar(citekey, records, *, docling=True) -> Path:
-    """A structural passage sidecar, `<citekey>.passages.json`, holding
-    `records` as written.
-
-    Rung 1 of chitragupta/passages.py's ladder (the Docling directory)
-    by default, which is where three of the four copies this replaced
-    wrote; `docling=False` is rung 2, beside the parsed text.
-    """
     directory = config.DOCLING_DIR if docling else config.PARSED_DIR
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"{citekey}.passages.json"
@@ -377,9 +210,6 @@ def plant_sidecar(citekey, records, *, docling=True) -> Path:
 
 
 def add_parsed_item(ledger_con, tmp_path, citekey, text, pdf_bytes=b"%PDF-1.4 dummy"):
-    """A ledger row with status='parsed', a real pdf_hash (from a
-    throwaway PDF file, so upsert_reference actually computes one), and
-    parsed_path pointing at real text on disk."""
     pdf = tmp_path / f"{citekey}.pdf"
     pdf.write_bytes(pdf_bytes)
     parsed = parsed_text(citekey, text)
@@ -389,8 +219,6 @@ def add_parsed_item(ledger_con, tmp_path, citekey, text, pdf_bytes=b"%PDF-1.4 du
 
 
 def make_docs(tmp_path, texts: dict):
-    """One CorpusDoc per `citekey -> text`, each text on disk under
-    tmp_path: the enrichment corpus with no ledger behind it."""
     from chitragupta.enrich.corpus import CorpusDoc
 
     docs = []
@@ -402,24 +230,12 @@ def make_docs(tmp_path, texts: dict):
 
 
 def draft_with(body: str, tmp_path: Path) -> Path:
-    """`body` as `tmp_path/survey.md`, for the style checks, which read a
-    draft from anywhere."""
     path = tmp_path / "survey.md"
     path.write_text(body, encoding="utf-8")
     return path
 
 
 def retrieval_cost(target):
-    """(calls, chars) over a whole `retrieval.md`, as the sum of its
-    per-revision segments.
-
-    `dossier.retrieval_cost` used to answer this directly and was deleted
-    in #515: `_status` computes the lifetime figures this same way, and a
-    second whole-file reader was surface nothing production called. These
-    cases are about `log_retrieval`'s row format -- pipe escaping, a
-    hand-edited row, a file created before `init` -- so they need *a*
-    reader, and using the one production uses is the point.
-    """
     from chitragupta.dossier import _retrieval
 
     segments = _retrieval.retrieval_cost_by_revision(target)
@@ -427,28 +243,6 @@ def retrieval_cost(target):
 
 
 class ThreadPools:
-    """Builds thread pools in place of the code's process pools, and
-    remembers every one so a test's teardown can wait for them.
-
-    A real ProcessPoolExecutor would run parse_one in a child
-    interpreter, where this process's sys.modules fakes don't exist -- the
-    fake docling would silently not be used. Swapping the executor keeps
-    the concurrency real while leaving the fakes visible.
-
-    The swap loses one thing: on an interrupt or a stall the pool code
-    calls `shutdown(wait=False)` and relies on `terminate_workers` to
-    kill what is still running, which has no thread equivalent. A
-    started job then outlives its test, and once `monkeypatch` has
-    restored `config` it writes into the real `content/` (#1226).
-    `join_all` is what the `thread_executor` fixture runs at teardown to
-    stop that.
-
-    So every thread pool a test hands to the code goes through here: by
-    calling the factory, or, for a test that needs its own executor
-    class, by passing the pool it built to `track`. A pool built any
-    other way is not joined and can reintroduce #1226.
-    """
-
     def __init__(self) -> None:
         self._pools: list = []
 
@@ -458,17 +252,10 @@ class ThreadPools:
         return self.track(ThreadPoolExecutor(max_workers=workers))
 
     def track(self, pool):
-        """Join `pool` at teardown too, and hand it back."""
         self._pools.append(pool)
         return pool
 
     def join_all(self) -> None:
-        """Wait for every job already running in every pool built.
-        Queued jobs are cancelled rather than run: the test is over.
-
-        A `shutdown` that raises (a test can replace it on the instance)
-        does not stop the remaining pools being joined; the first such
-        error is raised once they all have been."""
         first_error = None
         for pool in self._pools:
             try:
@@ -481,18 +268,6 @@ class ThreadPools:
 
 @pytest.fixture
 def thread_executor(monkeypatch):
-    """A `workers -> ThreadPoolExecutor` factory to monkeypatch over an
-    `_executor_for`. Every pool it builds is joined at teardown.
-
-    It takes `monkeypatch` for the ordering, not to use it: pytest tears
-    fixtures down in reverse order of setup, so depending on
-    `monkeypatch` guarantees the join finishes before `monkeypatch`
-    undoes `isolated_config`'s paths. Joining after that would let a
-    late job write into the real `content/`, the failure this exists
-    to prevent. The autouse fixtures above already request `monkeypatch`,
-    so today it is set up first whatever this asks for; naming it here
-    keeps the guarantee from resting on them.
-    """
     pools = ThreadPools()
     yield pools
     pools.join_all()
@@ -502,15 +277,6 @@ HOOKS = Path(__file__).resolve().parent.parent / ".claude" / "hooks"
 
 
 def load_hook(name: str):
-    """A fresh module object for `.claude/hooks/<name>.py`, so one test's
-    monkeypatching cannot leak.
-
-    `.claude/hooks` goes on `sys.path` first because a hook is run by
-    absolute path in production, which puts its own directory there --
-    that is what makes `import draft_target` resolve with no path
-    manipulation inside the hook. Loading by spec does not reproduce it,
-    so the test harness has to.
-    """
     import importlib.util
 
     if str(HOOKS) not in sys.path:
@@ -521,16 +287,7 @@ def load_hook(name: str):
     return module
 
 
-# --- Books: the three shapes the book-track tests start from --------------
-# A bare path, a path with its outline written, and that outline signed.
-# The outline text is each module's own -- the chapters under test differ
-# -- so `book` reads it from the requesting module's BOOK_SPEC rather than
-# taking it as an argument a fixture cannot be given.
-
-
 def _book_spec_of(request) -> str:
-    """The requesting module's BOOK_SPEC, or a refusal that says so
-    rather than an AttributeError on a module object."""
     text = getattr(request.module, "BOOK_SPEC", None)
     if text is None:
         pytest.fail(f"{request.module.__name__} requests a book but defines no BOOK_SPEC outline")
@@ -539,13 +296,10 @@ def _book_spec_of(request) -> str:
 
 @pytest.fixture
 def book_dir(isolated_config):
-    """content/drafts/twins, not created: an outline is written before
-    any prose, so a test of the outline starts from nothing."""
     return isolated_config.DRAFTS_DIR / "twins"
 
 
 def write_book_spec(book_path: Path, text: str) -> Path:
-    """`text` as `book_path`'s outline, with the book directory made."""
     from chitragupta import spec
 
     spec_file = spec.spec_path(book_path)
@@ -557,27 +311,17 @@ def write_book_spec(book_path: Path, text: str) -> Path:
 
 @pytest.fixture
 def book(book_dir, request):
-    """`book_dir` with the module's BOOK_SPEC written as its outline."""
     return write_book_spec(book_dir, _book_spec_of(request))
 
 
 @pytest.fixture
 def example_ledger(ledger_con):
-    """A ledger holding the one reference the book tests' outlines and
-    drafts cite, so a unit citing it can be accepted."""
     add_citable(ledger_con, "smith_example_2024")
     return ledger_con
 
 
 @pytest.fixture
 def signed_book(book_dir, example_ledger, request):
-    """The module's BOOK_SPEC outline, signed, over `example_ledger`, so a
-    unit can be accepted against it.
-
-    Built from `book_dir` rather than from `book`: a module that renames
-    this fixture to `book` for its own tests would otherwise make it
-    request itself.
-    """
     from chitragupta import spec
 
     write_book_spec(book_dir, _book_spec_of(request))
@@ -589,28 +333,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def _IS_COVERAGE_BOOTSTRAP(name: str) -> bool:
-    """Whether an env var would make a child process start its own coverage.
-
-    `run_python` strips these from any child it starts outside the
-    repository root, and the hook tests strip them from the hook's
-    environment, for the same reason. The hook runs
-    `python -m chitragupta.draft gate` with `cwd` set to *its* repo root --
-    a temporary one in those tests. Coverage started there finds no
-    config file, so it records statement-only data while the parent
-    records branch data, and the run dies at combine time with
-    "Can't combine statement coverage data with branch data" *after*
-    every test has passed.
-
-    Whether it happens at all depends on the pytest-cov version and on
-    what `python` resolves to: pytest-cov 6.x ships a `.pth` that
-    instruments every subprocess, 7.x does not, and the hook spawns a
-    literal `python` rather than `sys.executable`, so a venv on PATH
-    (what `uv run --active` gives CI) is instrumented while a bare system
-    interpreter is not. Stripping these makes every combination behave
-    the same. Nothing is lost: the in-process tests already cover
-    `chitragupta/citation_gate.py` fully, which is why the total is 100% on a
-    host where these children were never measured.
-    """
     return name.startswith("COV_CORE") or name in (
         "COVERAGE_PROCESS_START",
         "COVERAGE_FILE",
@@ -619,29 +341,6 @@ def _IS_COVERAGE_BOOTSTRAP(name: str) -> bool:
 
 
 def run_python(*argv, python=None, cwd=None, env=None, **kwargs):
-    """`python *argv` in a child process, with this checkout's
-    chitragupta importable whatever the child's cwd (#867).
-
-    Every launch of the package under test goes through here, which
-    `tests/test_subprocess_launch_scan.py` holds to. Before, each launch
-    imported whichever chitragupta the child found first: a `-m` child
-    finds this one only because its cwd is the repository root and `-m`
-    puts the cwd on sys.path, which stops being true the moment a test
-    passes `cwd=tmp_path`.
-
-    The checkout is *appended* to the caller's PYTHONPATH, never
-    prepended, so a test that deliberately imports another copy of the
-    package (tests/test_tokens.py edits one under tmp_path) still gets
-    it. `env`, when given, is the child's whole environment, exactly as
-    the caller wrote it: the `system_python` tests pass a minimal one on
-    purpose. cwd stays the repository root by default because that is
-    where the child finds this checkout's config.toml.
-
-    Anywhere else, coverage's bootstrap variables are dropped: a child
-    started from a cwd with no pyproject.toml measures statement-only and
-    the session dies at combine time, after every test has passed (see
-    `_IS_COVERAGE_BOOTSTRAP`). From the root the child is still measured.
-    """
     child_env = dict(os.environ if env is None else env)
     if Path(cwd or REPO_ROOT).resolve() != REPO_ROOT:
         child_env = {k: v for k, v in child_env.items() if not _IS_COVERAGE_BOOTSTRAP(k)}
@@ -659,16 +358,6 @@ def run_python(*argv, python=None, cwd=None, env=None, **kwargs):
 
 @pytest.fixture
 def system_python():
-    """A python3 that can't import bibtexparser, to verify the documented
-    invariant (AGENTS.md) that citation_gate.py/references.py/
-    render_output.py run with the bare system interpreter, no venv
-    required. A venv's python is typically just a symlink to the same
-    system binary (`file` on it resolves identically to /usr/bin/python3),
-    so comparing resolved paths can't tell them apart -- what actually
-    differs is which pyvenv.cfg (if any) gets picked up based on the
-    *invoked* path, which in turn determines whether bibtexparser is on
-    sys.path. So check that directly instead.
-    """
     import subprocess
 
     candidates = []
@@ -693,64 +382,31 @@ def system_python():
 
 @pytest.fixture
 def programs_on_path(monkeypatch):
-    """Every program the package resolves is found, at a stand-in path.
-
-    For a test that fakes the launch itself: since #974 the package
-    resolves a program before launching it, so a faked `subprocess.run`
-    is never reached on a host without that program, which CI's Windows
-    leg is for the whole toolchain. Nothing exists at the path; the
-    launch must still be faked.
-    """
     monkeypatch.setattr(programs, "resolve_program", lambda name: f"/usr/bin/{name}")
 
 
-# --- Rendering: binary probes and figure fixtures -------------------------
-# Shared by the eight tests/test_render_output*.py modules. Here rather
-# than in each of them so the kpsewhich subprocess below runs once per
-# session instead of eight times at import.
 pandoc_available = shutil.which("pandoc") is not None
-# pdflatex is what a thesis fragment's own pdflatex document is tested
-# against (#948), the opt-in path for a template that forces it. The pdf
-# render (#996) and the figure-layout probe (#1037) are LuaLaTeX: see
-# lualatex_available below.
 pdflatex_available = shutil.which("pdflatex") is not None
-# The `lualatex` binary alone is not enough: it ships in texlive-binaries
-# and its format in texlive-latex-base, while its font loader is
-# texlive-luatex, and without that every render fails on its first font
-# (plans/996-unicode-pdf-engine.md, Q0). Same shape as tikz_available.
 lualatex_available = (
     shutil.which("lualatex") is not None
     and shutil.which("kpsewhich") is not None
     and subprocess.run(["kpsewhich", "luaotfload.sty"], capture_output=True, check=False).returncode
     == 0
 )
-# tikz.sty is texlive-pictures (#222), a separate package from the ones
-# scripts/install_full_pipeline.sh already installed for lmodern etc. --
-# pdflatex being on PATH doesn't guarantee it, so this is its own probe
-# rather than folded into pdflatex_available.
 tikz_available = (
     shutil.which("kpsewhich") is not None
     and subprocess.run(["kpsewhich", "tikz.sty"], capture_output=True, check=False).returncode == 0
 )
-# poppler-utils, which `scripts/install_full_pipeline.sh os-deps` installs
-# beside TeX Live but which is a different package from it. Its own probe
-# for that reason, like tikz above: the one test that reads it measures
-# where a caption actually wrapped on the page, which is a question no
-# assertion over the `.tex` can answer.
 pdftotext_available = shutil.which("pdftotext") is not None
 
 
 def pdf_text(pdf) -> str:
-    """`pdftotext`'s reading of `pdf`, for a test that asserts on what a
-    render printed rather than on the `.tex` it came from."""
     return subprocess.run(
         ["pdftotext", str(pdf), "-"], capture_output=True, text=True, check=True
     ).stdout
 
 
 def lualatex_book(directory) -> None:
-    """One `lualatex` pass over `directory/book.tex`, failing the test
-    with the log's tail when it does not compile."""
     run = subprocess.run(
         ["lualatex", "-interaction=nonstopmode", "book.tex"],
         cwd=directory,
@@ -760,19 +416,10 @@ def lualatex_book(directory) -> None:
     assert run.returncode == 0, run.stdout[-3000:]
 
 
-# Whether this host can compile a TikZ figure at all: the two facts
-# `render_output/_figures.py::_require_tikz()` checks. A skip, not a
-# failure, because CI's Windows leg installs no `os-deps`. One marker for
-# the three geometry modules that each used to probe for it themselves.
 needs_tikz = pytest.mark.skipif(
     not (lualatex_available and tikz_available), reason="needs lualatex with tikz.sty"
 )
 
-# A figure is two forms -- a TikZ picture and the same diagram in
-# WRITING-STANDARDS.md §10's plain ASCII -- and both are always files.
-# A Markdown draft carries only the marker; a `.tex` draft keeps its TikZ
-# inline (the fragment a real thesis `\input`s) and names its ASCII twin
-# in a marker of its own. These are the two shapes that produces.
 ASCII_FIGURE = (
     "  +-------+  read   +--------+\n"
     "  | model | ------> | solver |\n"
@@ -782,64 +429,27 @@ TIKZ_FIGURE = "\\begin{tikzpicture}\\draw[blue] (0,0) circle (1);\\end{tikzpictu
 MARKED_MD = "Before.\n\n<!-- figure: figures/fig1 -->\n\nAfter.\n"
 MARKED_INPUT = "Before.\n\n\\input{figures/fig1.tex}\n%figure: figures/fig1\n\nAfter.\n"
 
-# Issue 411: a figure marker with its caption directly below it, no blank
-# line between -- the adjacency that makes it a *captioned* figure, with a
-# number and a `\ref`-able id, rather than the uncaptioned case above.
 CAPTIONED_MD = "Before.\n\n<!-- figure: figures/fig1 -->\nOne reading path.\n\nAfter.\n"
 
 
 @pytest.fixture
 def figures(tmp_path):
-    """An empty `figures/` directory under a draft, for the figure commands."""
     directory = tmp_path / "drafts" / "topic" / "figures"
     directory.mkdir(parents=True)
     return directory
 
 
 def figure_pair(draft_dir, name="fig1"):
-    """Both halves of a figure on disk, returning the draft's directory."""
     (draft_dir / "figures").mkdir(parents=True, exist_ok=True)
     (draft_dir / "figures" / f"{name}.tex").write_text(TIKZ_FIGURE)
     (draft_dir / "figures" / f"{name}.txt").write_text(ASCII_FIGURE)
     return draft_dir
 
 
-# How long `read_under_a_held_write_lock` holds the ledger's EXCLUSIVE
-# lock. Comfortably inside sqlite's 5s default busy timeout, so a reader
-# that waits recovers with room to spare, and long enough that half of it
-# is an unambiguous "this call blocked" on a loaded CI runner.
 WRITE_LOCK_HOLD = 0.5
 
 
 def read_under_a_held_write_lock(read, hold=WRITE_LOCK_HOLD):
-    """Run `read` while another connection holds the ledger's EXCLUSIVE
-    lock, release it after `hold` seconds, and return `(result, waited)`.
-
-    Shared by every read-only ledger path that has to survive a writer's
-    commit window -- `ledger_cli.main` (m-72), `dossier._corpus_rows` and
-    `overlap_index_ledger._ledger_connect_ro` (issue #552). One helper
-    rather than a copy of this thread dance in each of the three test
-    modules, which is the duplication `docs/CODE-STANDARDS.md` calls the
-    highest-value thing to catch.
-
-    A real held lock rather than an assertion about the `timeout`
-    argument, because the argument is not the claim; surviving the window
-    is. The ledger has no `journal_mode = WAL`, so under the default
-    rollback journal a reader really is locked out for the length of a
-    commit.
-
-    `waited` is what makes the returned result mean anything. A reader
-    that did not reach its query until after the rollback would succeed
-    without ever meeting a lock, and so would pass against the very
-    `timeout=0` these tests exist to reject; it cannot have returned
-    before the lock was released, so a call that took an appreciable
-    fraction of `hold` is one that blocked and recovered. The reader
-    signals just before it starts for the same reason.
-
-    Anything `read` raises is re-raised here rather than swallowed, so
-    the `timeout=0` case fails as the `sqlite3.OperationalError: database
-    is locked` it actually is instead of as a missing dict key.
-    """
     import sqlite3
     import threading
     import time
@@ -854,11 +464,6 @@ def read_under_a_held_write_lock(read, hold=WRITE_LOCK_HOLD):
         start = time.monotonic()
         try:
             outcome["result"] = read()
-        # `BaseException`, not `Exception`, and not swallowed either way:
-        # anything that escapes here would kill the thread with `outcome`
-        # half-filled, and the caller would then fail on a missing dict
-        # key rather than on the real cause. `read()` is a CLI `main()`
-        # in one of the three callers, so `SystemExit` is not far-fetched.
         except BaseException as exc:  # noqa: BLE001 -- re-raised by the caller
             outcome["error"] = exc
         outcome["waited"] = time.monotonic() - start
@@ -879,9 +484,6 @@ def read_under_a_held_write_lock(read, hold=WRITE_LOCK_HOLD):
 
 
 class FakePdfiumImage:
-    """The PIL view `to_pil()` hands back, plus the `close()` that
-    releases pdfium's buffer behind it."""
-
     def __init__(self, size, log):
         self.size = size
         self._log = log
@@ -947,22 +549,6 @@ class FakePdfiumDocument:
 
 @pytest.fixture
 def fake_pdfium(monkeypatch):
-    """A recording pypdfium2 in `sys.modules`, yielding its call log.
-
-    Faked rather than real for the same reason docling is: `_docling_crops`
-    imports it lazily so the enrich extra stays optional, and a unit test
-    must not need a real PDF on disk to render from.
-
-    The log is the point. What `_docling_crops` has to get right is *when
-    things are released* -- a version that produced every crop correctly
-    and freed none of them would satisfy any output-only assertion while
-    reproducing the bug it exists to fix (#600). Ordering is only
-    checkable against a record of the calls.
-
-    `test_enrich_real_libraries.py` pins the same surface against the
-    pypdfium2 CI installs, so this cannot drift from the library
-    unnoticed.
-    """
     import importlib.machinery
     import sys
     import types
@@ -976,9 +562,6 @@ def fake_pdfium(monkeypatch):
 
 
 def fake(directory: Path, name: str, body: str) -> Path:
-    """An executable `/bin/sh` script `name` in `directory` running `body`:
-    a stand-in for a real tool on a test PATH, as the install-tools tests
-    of the developer skills use."""
     path = directory / name
     path.write_text(f"#!/bin/sh\n{body}\n", encoding="utf-8")
     path.chmod(0o755)

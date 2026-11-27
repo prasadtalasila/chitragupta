@@ -1,12 +1,3 @@
-"""chitragupta/overlap_segments.py: what a segment is on each side of tier 3's
-alignment, and where in the original it sits.
-
-Stdlib-only like the module, so the draft side is exercised through
-`verbatim_check._tokenize_draft` (which is where the word stream a
-segment's offsets index actually comes from -- restating it here would
-be testing a copy) and the source side through a written passage
-sidecar."""
-
 import json
 import re
 
@@ -33,9 +24,6 @@ class TestDraftSections:
         assert section.citekeys == ["smith_2024"]
 
     def test_a_section_with_no_recorded_citekeys_is_dropped(self):
-        # Never scanned against the whole corpus instead:
-        # docs/PLAGIARISM-DESIGN.md argues at length that a whole-corpus search
-        # is the wrong shape here, and a silent fallback would be it.
         text = "# Kept\n\nProse.\n\n# Dropped\n\nMore prose.\n"
         titles = [s.title for s in segments(text, {"Kept": ["smith_2024"]})]
         assert titles == ["Kept"]
@@ -45,8 +33,6 @@ class TestDraftSections:
         assert segments(text, {"Old Name": ["smith_2024"]}) == []
 
     def test_word_offsets_index_the_scans_own_word_stream(self):
-        # The contract that makes a tier-3 finding land in the same
-        # coordinate system tiers 1 and 2 use (#131).
         text = "# Title\n\nAlpha beta gamma delta epsilon.\n"
         [section] = segments(text, {"Title": ["k_2024"]})
         words, _ = vc._tokenize_draft(text)
@@ -61,9 +47,6 @@ class TestDraftSections:
         ]
 
     def test_prose_and_the_bullets_under_it_are_separate_segments(self):
-        # Measured on the real book: without this, a paragraph welded to
-        # the list beneath it embedded as neither, and the one
-        # hand-verified organic paraphrase in chapter 1 was invisible.
         text = (
             "# Title\n\nA claim about the thing that follows below.\n\n"
             "- **Decision:** run, adjust, or stop\n"
@@ -80,9 +63,6 @@ class TestDraftSections:
         assert "A claim" in section.sentences[0].text
 
     def test_the_references_section_contributes_no_segments(self):
-        # `_tokenize_draft` blanks it, so its "sentences" cover no words
-        # of the stream -- which is how this module keeps masked regions
-        # out without knowing how they were masked.
         text = (
             "# Title\n\nReal prose in the body.\n\n"
             "## References\n\n[1] A. Author, *A Title*, 2024.\n"
@@ -99,9 +79,6 @@ class TestDraftSections:
         assert widths == {overlap_segments.WINDOW_WORDS}
 
     def test_the_windows_cover_the_whole_sentence_including_its_tail(self):
-        # The stride rarely divides the range exactly; without a final
-        # window ending at the end, the tail is covered only by whatever
-        # the last full window happened to reach.
         body = " ".join(f"word{i}" for i in range(45))
         text = f"# Title\n\n{body}.\n"
         [section] = segments(text, {"Title": ["k_2024"]})
@@ -114,10 +91,6 @@ class TestDraftSections:
         assert len(section.sentences) == 1
 
     def test_a_block_whose_words_are_all_masked_contributes_no_segment(self):
-        # A fenced code block is blanked by `_tokenize_draft`, so the
-        # "sentence" inside it covers no word of the stream. Reaching
-        # here rather than being filtered earlier is the point: this
-        # module never has to know how the masking was done.
         text = "# Title\n\nReal prose here.\n\n```python\nprint('Not prose at all.')\n```\n"
         [section] = segments(text, {"Title": ["k_2024"]})
         assert all("print" not in s.text for s in section.sentences)
@@ -128,11 +101,6 @@ class TestDraftSections:
 
 
 class TestUnmatchedSections:
-    """#499 (M-15): a recorded section title with no matching draft
-    heading used to be indistinguishable from one the dossier legitimately
-    recorded no citekeys for -- both simply produced no `DraftSection`.
-    """
-
     def _unmatched(self, text, mapping):
         words, _ = vc._tokenize_draft(text)
         _found, unmatched = overlap_segments.draft_sections(
@@ -149,32 +117,21 @@ class TestUnmatchedSections:
         assert self._unmatched(text, {"Title": ["smith_2024"]}) == 0
 
     def test_only_the_unmatched_recorded_titles_are_counted(self):
-        # 9 of 10 headings renamed is the shape #499 names -- one matched
-        # title must not inflate the count the other nine contribute.
         text = "# Kept\n\nProse.\n"
         mapping = {"Kept": ["k_2024"], **{f"Old {i}": ["k_2024"] for i in range(9)}}
         assert self._unmatched(text, mapping) == 9
 
     def test_a_section_with_no_recorded_citekeys_is_not_unmatched(self):
-        # Distinct from a renamed heading: the dossier does name this
-        # section, it simply recorded no citekeys for it -- a choice, not
-        # a heading that moved out from under the mapping.
         text = "# Title\n\nProse.\n"
         assert self._unmatched(text, {"Title": []}) == 0
 
     def test_an_empty_recorded_title_with_no_matching_heading_is_still_not_unmatched(self):
-        # The gap an empty-citekey title can hide in: it also fails the
-        # title-match check, but it is still "legitimately thin", not a
-        # renamed heading -- the loop below would drop it via `if not
-        # citekeys` regardless of whether its title matched anything.
         text = "# Current Heading\n\nProse.\n"
         assert self._unmatched(text, {"Old Empty Name": []}) == 0
 
 
 class TestMatchedWords:
     def test_it_counts_distinct_words_not_the_sum_of_overlapping_windows(self):
-        # Reported 60 matched words inside a 39-word span on the first
-        # real run, because consecutive windows share half their words.
         section = overlap_segments.DraftSection(
             "T",
             ["k_2024"],
@@ -213,8 +170,6 @@ class TestSourceSentences:
         assert {s.page for s in found} == {4}
 
     def test_a_passage_with_no_page_is_skipped(self, ledger_con, sidecar):
-        # A finding reports a page a reviewer turns to; a passage that
-        # cannot say which page it is on cannot support one.
         sidecar(
             "smith_2024",
             [
@@ -228,10 +183,6 @@ class TestSourceSentences:
     def test_a_source_with_no_sidecar_yields_nothing_rather_than_page_text(
         self, ledger_con, tmp_path
     ):
-        # Rungs 3 and 4 of chitragupta/passages.py's ladder hand back whole pages
-        # of `pdftotext -layout` output with `text=None`: on a two-column
-        # paper every line of that splices two columns together, so a
-        # sentence cut from one is a collage of two arguments.
         from chitragupta import ledger
 
         parsed = config.PARSED_DIR / "smith_2024.txt"
@@ -245,9 +196,6 @@ class TestSourceSentences:
         assert overlap_segments.source_sentences(ledger_con, "smith_2024") == []
 
     def test_a_long_source_sentence_is_windowed_too(self, ledger_con, sidecar):
-        # Both sides need it: a 40-word source sentence whose second half
-        # is the restated claim has the same framing problem in the same
-        # direction.
         body = " ".join(f"word{i}" for i in range(50))
         sidecar("smith_2024", [{"text": f"{body}.", "label": "text", "page": 1}])
         found = overlap_segments.source_sentences(ledger_con, "smith_2024")
@@ -257,9 +205,6 @@ class TestSourceSentences:
     def test_a_source_sentence_gets_a_tail_window_when_the_stride_does_not_divide_it(
         self, ledger_con, sidecar
     ):
-        # Without it the tail is covered only by whatever the last full
-        # window happened to reach, which is the same gap the draft side
-        # closes for the same reason.
         body = " ".join(f"word{i}" for i in range(45))
         sidecar("smith_2024", [{"text": f"{body}.", "label": "text", "page": 1}])
         found = overlap_segments.source_sentences(ledger_con, "smith_2024")
@@ -270,20 +215,12 @@ class TestSourceSentences:
 
 
 class TestTheWordIndexIsNotRebuiltPerSentence:
-    """m-76 (#511). `_one_sentence` rebuilt a list of every word's first
-    character from `word_spans` on every call -- once per sentence, and
-    the same list every time -- making the word-index lookup
-    O(words x sentences) before a single embedding had been computed.
-    `_word_range` now bisects `word_spans` directly through `key=`."""
-
     def test_word_range_reads_the_spans_directly(self):
         spans = [(0, 3), (5, 9), (11, 14), (20, 25)]
         assert overlap_segments._word_range(spans, 0, 20) == (0, 3)
         assert overlap_segments._word_range(spans, 5, 11) == (1, 2)
 
     def test_an_offset_between_two_words_lands_on_the_later_one(self):
-        """The half-open contract `_one_sentence` relies on: an offset
-        inside the gap belongs to the next word, not the previous."""
         spans = [(0, 3), (10, 13)]
         assert overlap_segments._word_range(spans, 4, 14) == (1, 2)
 
@@ -293,12 +230,6 @@ class TestTheWordIndexIsNotRebuiltPerSentence:
 
 
 class TestAHeadingOnTheFinalLine:
-    """m-55 (#516). `_line_starts` records a start per newline, so a
-    heading on the draft's last line with no trailing newline has
-    `section.start == len(line_starts)` -- and `line_starts[section.start]`
-    raised `IndexError`, taking down the whole scan. `end` was already
-    guarded; `start` was not."""
-
     def test_a_final_heading_without_a_trailing_newline_does_not_raise(self):
         text = "# Title\n\nSome prose about twins.\n\n## Final heading"
         found, unmatched = overlap_segments.draft_sections(
@@ -308,9 +239,6 @@ class TestAHeadingOnTheFinalLine:
         assert unmatched == 0
 
     def test_a_final_heading_with_a_trailing_newline_is_unchanged(self):
-        """The guard must not change the ordinary case: with the newline
-        there, the heading's span is empty for the same reason -- there is
-        no body under it -- and it was already dropped without raising."""
         text = "# Title\n\nSome prose about twins.\n\n## Final heading\n"
         found, _unmatched = overlap_segments.draft_sections(
             text, [(0, 4)], {"Final heading": ["a_2024"]}

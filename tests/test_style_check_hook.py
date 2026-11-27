@@ -1,19 +1,3 @@
-""".claude/hooks/style_check_hook.py, spawned the way the harness spawns it.
-
-`tests/test_hook_modules.py` covers this hook's branches by importing it,
-which is the only way it contributes coverage. This file does the thing
-that import cannot: it runs the real script as a real process, reading a
-real payload off stdin, and checks the envelope the harness actually
-consumes. A refactor that broke `import draft_target`, or the
-`__main__` tail, or the shape of stdout would pass every module test and
-fail here.
-
-That is not hypothetical. The first version of this hook was written
-without a `__main__` block: every function was correct, the module tests
-would have passed, and the installed hook silently did nothing on every
-write. It was caught by running it, which is what this file automates.
-"""
-
 import json
 import os
 import shutil
@@ -30,14 +14,6 @@ HOOKS = REPO_ROOT / ".claude" / "hooks"
 
 
 class StyleHookRepo:
-    """A throwaway repo root holding a real copy of the hook and its helper.
-
-    Both are copied rather than symlinked, for the reason
-    `tests/test_citation_gate_hook.py` records: `Path(__file__).resolve()`
-    follows a symlink straight back to the real checkout, and the point of
-    the temporary root is that it is not that.
-    """
-
     def __init__(self, root: Path, cfg):
         self.root = root
         hooks = root / ".claude" / "hooks"
@@ -76,20 +52,12 @@ def style_hook(isolated_config, tmp_path):
 
 
 class TestTheProcessContract:
-    """What only a spawned process can prove."""
-
     def test_the_script_has_an_entry_point_and_reaches_it(self, style_hook):
-        """The regression this file was written for: a hook whose functions
-        are all correct and whose `__main__` tail is missing runs, exits 0,
-        and does nothing at all -- indistinguishable from a clean draft."""
         assert "__main__" in (HOOKS / "style_check_hook.py").read_text(encoding="utf-8")
         draft = style_hook.draft("a.md", "Plain prose.\n")
         assert style_hook.run(draft).returncode == 0
 
     def test_the_helper_imports_from_the_hooks_own_directory(self, style_hook):
-        """`import draft_target` works because a hook is run by absolute
-        path, which puts its directory first on sys.path. No test that
-        imports the module by spec can show that."""
         draft = style_hook.draft("b.md", "Plain prose.\n")
         result = style_hook.run(draft)
         assert "ModuleNotFoundError" not in result.stderr
@@ -125,16 +93,12 @@ class TestTheProcessContract:
         assert result.stdout == ""
 
     def test_stdout_is_one_json_document_or_nothing(self, style_hook):
-        """The rule whose breach is invisible: a stray print() ahead of the
-        JSON makes stdout unparseable, after which the whole payload is
-        discarded in silence and the hook still looks installed."""
         draft = style_hook.draft("c.md", "Plain prose with no markers.\n")
         out = style_hook.run(draft).stdout
         if out.strip():
             json.loads(out)  # raises if anything else reached stdout
 
     def test_it_never_blocks_whatever_the_draft_says(self, style_hook):
-        """An advisory hook has one output shape it may never emit."""
         draft = style_hook.draft("d.md", "This is obviously simple and clearly easy.\n")
         result = style_hook.run(draft)
         assert result.returncode == 0
@@ -143,7 +107,6 @@ class TestTheProcessContract:
     def test_a_planted_package_in_a_scaffolded_project_is_never_imported(
         self, style_hook, tmp_path
     ):
-        """#822, for the advisory launch as well as the gate's."""
         sentinel = tmp_path / "planted-ran"
         plant_package(style_hook.root, sentinel)
         draft = style_hook.draft("e.md", "Plain prose.\n")

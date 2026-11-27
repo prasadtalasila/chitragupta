@@ -1,17 +1,7 @@
-"""#988's class: a hardcoded home directory in a shipped Docker file.
-
-`scripts/release.py`'s docker-only zip ships `docker/` and the two
-`DOCKER*.md` guides, so a literal `/home/<name>` there is a path that is
-wrong for every user but one. Spell it `/home/${CHITRAGUPTA_USER}`, the
-path `docker-compose.yml` actually mounts, or `/home/<user>` in prose.
-"""
-
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# A literal name straight after `/home/`. `$`, `${` and `<` are the
-# three spellings of "whichever user", so they never match.
 LITERAL_HOME = re.compile(r"/home/[A-Za-z0-9_]")
 
 

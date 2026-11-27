@@ -1,11 +1,3 @@
-"""How the index prints a term (#1168): its casing, article, symbols, sort
-key, `upmendex` quoting, sub-entries and cross-references.
-
-Pure functions over the term table and the chapters' casing counts, with
-an identity converter standing in for pandoc, so none of this needs a
-toolchain; `tests/test_registry_index_finish.py` runs the real one.
-"""
-
 import pytest
 
 from chitragupta.registry import _index_entries as entries
@@ -18,9 +10,6 @@ def identity(texts):
 
 def term(glossary, **extra):
     return {"glossary": glossary, "symbols": [], "print": None, "parents": [], **extra}
-
-
-# --- casing ---------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -41,10 +30,6 @@ def term(glossary, **extra):
     ],
 )
 def test_casing_follows_the_books_own_prose(glossary, midsentence, expected):
-    """With no mid-sentence evidence, or a tie, a plainly capitalised first
-    word is the glossary line's sentence capital and is lowercased
-    (Chicago's default); found on the digital-twins book, where 48 of 289
-    entries kept it, most because a hyphen made the counts disagree."""
     assert entries.cased(glossary, midsentence) == expected
 
 
@@ -60,9 +45,6 @@ def test_casing_follows_the_books_own_prose(glossary, midsentence, expected):
 )
 def test_a_guessed_casing_is_known(glossary, midsentence, expected):
     assert entries.guessed(glossary, midsentence) is expected
-
-
-# --- printed form and sort key -----------------------------------------
 
 
 def test_a_leading_article_is_inverted_and_left_out_of_the_sort():
@@ -94,9 +76,6 @@ def test_the_sort_key_is_plain_lowercase_text(text, expected):
 
 def test_quoting_escapes_upmendex_specials():
     assert entries.quote('a!b@c|d"e') == 'a"!b"@c"|d""e'
-
-
-# --- the entries ----------------------------------------------------------
 
 
 def table(*terms, **extra):
@@ -153,9 +132,6 @@ def test_printed_forms_are_converted_once_each():
     assert len(seen) == 1 and sorted(seen[0]) == ["a!b", "model"]
 
 
-# --- cross-references ---------------------------------------------------
-
-
 def test_see_and_see_also_point_at_terms_that_have_pages():
     data = table(
         {**term("Digital twin"), "key": "digital twin"},
@@ -188,8 +164,6 @@ def test_see_also_with_no_target_left_prints_nothing():
 
 
 def test_a_parent_that_is_a_term_shares_its_printed_key():
-    """Otherwise upmendex sees two parents: "digital twin" from the term's
-    own line and "Digital twin" from the raw `[parent]` name."""
     data = table(
         {**term("Digital twin"), "key": "digital twin"},
         {**term("Lean digital twin", parents=["Digital twin"]), "key": "lean digital twin"},

@@ -1,12 +1,3 @@
-"""Tests for chitragupta/draft_diff/_sides.py: the two sides a redline compares.
-
-The old side is rewritten in one way only: a citation whose key is not
-citable now becomes `(citation withdrawn)`, so the unchanged gate passes
-it. The weight is on the rewrite removing exactly that -- a key still
-citable beside a withdrawn one stays cited (Review Focus 5), and text
-with nothing withdrawn comes back byte for byte.
-"""
-
 import pytest
 
 from chitragupta import citation_gate, ledger
@@ -74,8 +65,6 @@ def test_withdraw_narrative_citation_in_link_text_keeps_the_link():
 
 
 def test_withdraw_reads_a_blank_line_as_closing_a_bracket():
-    # pandoc closes an open bracket at a paragraph break, so the `]` after
-    # it closes nothing and the citation before it is narrative.
     text = "A [stray\n\nB @sample_std_interop_2021].\n"
 
     assert withdraw(text, ".md", _citable) == f"A [stray\n\nB {WITHDRAWN}].\n"
@@ -90,8 +79,6 @@ def test_withdraw_an_item_citing_a_kept_and_a_withdrawn_key():
 
 
 def test_withdraw_reaches_a_citation_nested_in_another_edit():
-    # The raw `\citep` and the group around it are two overlapping edits;
-    # the second waits for the next pass.
     text = "X [\\citep{sample_std_interop_2021} @sample_std_interop_2021].\n"
 
     assert withdraw(text, ".md", _citable) == f"X {WITHDRAWN}.\n"
@@ -105,8 +92,6 @@ def test_withdraw_reaches_a_citation_nested_in_another_edit():
     ],
 )
 def test_withdraw_keeps_a_citable_raw_latex_citation_inside_a_group(text):
-    # The item's only kept key is a raw `\citep{}`: it is not
-    # citation-free, so neither the item nor the group may go.
     out = withdraw(text, ".md", _citable)
 
     assert "sample_dt_sync_2023" in _keys(out)
@@ -142,8 +127,6 @@ def test_withdraw_a_multicite_drops_only_the_withdrawn_group():
 
 
 def test_withdraw_raw_latex_in_markdown_too():
-    # The gate reads a raw `\citep{}` in a Markdown draft, so the rewrite
-    # must too, or the old side is refused.
     text = "Raw \\citep{sample_std_interop_2021} and [@sample_dt_sync_2023].\n"
 
     assert withdraw(text, ".md", _citable) == f"Raw {WITHDRAWN} and [@sample_dt_sync_2023].\n"
@@ -214,8 +197,6 @@ def test_prepare_writes_both_sides_with_figures(isolated_config):
 
 
 def test_prepare_starts_each_side_afresh(isolated_config):
-    # A figure an earlier run wrote must not survive into a side that no
-    # longer has it, or the redline would show a figure that is gone.
     work = isolated_config.REVIEW_DIR / "survey.diff"
     stale = work / "old" / "figures" / "stale.tex"
     stale.parent.mkdir(parents=True)
@@ -243,8 +224,6 @@ def test_prepare_applies_withdraw_to_old_side_only(isolated_config):
     old_path, new_path = prepare(_view(text), _view(text), work, _citable, "survey")
 
     assert old_path.read_text() == f"Claim {WITHDRAWN}.\n"
-    # The new side is the draft as it stands: if it cites a withdrawn
-    # key, the gate refuses it, as it would refuse the draft itself.
     assert new_path.read_text() == text
 
 

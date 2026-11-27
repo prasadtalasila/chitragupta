@@ -1,7 +1,3 @@
-"""chitragupta/review/claim_support.py: does the cited source actually
-entail the claim citing it, per a real NLI model (stubbed here --
-the module's own logic is what is under test, not the model)."""
-
 import argparse
 import json
 
@@ -16,16 +12,10 @@ from tests.conftest import add_item, plant_sidecar
 
 @pytest.fixture(autouse=True)
 def _a_synced_ledger(isolated_config):
-    """An empty, current ledger, as a first sync leaves one. The aid reads
-    it read-only (#843), and a missing one is refused rather than created,
-    so a test that never synced has to say so rather than lean on the
-    reader to make one."""
     ledger.connect().close()
 
 
 class FakeEntailer:
-    """Scores by exact-pair table lookup -- no model anywhere."""
-
     def __init__(self, scores):
         self.scores = scores
         self.calls = []
@@ -43,15 +33,7 @@ def _draft(config_dir, text):
 
 
 class TestSectionHeadingsAreNotPremises:
-    """Issue #719. `_score_claim` returns `max()` over everything it is
-    given, so a heading that scores well is *reported* as the claim's
-    best supporting passage -- a wrong answer, not a weak one."""
-
     def test_a_heading_never_reaches_the_entailer(self, isolated_config):
-        """Asserted on the entailer's own call log rather than on the
-        winner: a test that only checked which passage won would still
-        pass if the heading were scored and merely lost, which is not
-        what this change claims."""
         add_item("heading_2024")
         plant_sidecar(
             "heading_2024",
@@ -71,9 +53,6 @@ class TestSectionHeadingsAreNotPremises:
         assert report.findings[0].passage.text == "Twins close the control loop."
 
     def test_a_heading_that_would_have_won_does_not(self, isolated_config):
-        """The heading is deliberately the higher-scoring pair, so a
-        filter that is not actually applied fails this by reporting the
-        heading as the claim's support."""
         add_item("winner_2024")
         plant_sidecar(
             "winner_2024",
@@ -95,10 +74,6 @@ class TestSectionHeadingsAreNotPremises:
         assert report.findings[0].score == pytest.approx(0.05)
 
     def test_an_unlabelled_passage_is_still_a_premise(self, isolated_config):
-        """`passages._from_sidecar` leaves `label` None for any record
-        without one -- every sidecar written before labelling. Dropping
-        those would empty the premise set for those sources and move
-        their citations from `scored` to `unscoreable`."""
         add_item("unlabelled_2024")
         plant_sidecar("unlabelled_2024", [{"text": "Twins close the control loop.", "page": 1}])
         draft = _draft(config, "Digital twins close the loop [@unlabelled_2024].\n")
@@ -111,10 +86,6 @@ class TestSectionHeadingsAreNotPremises:
         assert report.findings[0].score == pytest.approx(0.91)
 
     def test_list_items_tables_and_formulae_stay(self, isolated_config):
-        """Only `section_header` is filtered. A bulleted line carries a
-        real assertion, and a table cell can support a numeric claim --
-        dropping either would lose genuine support with no measurement
-        saying it does not."""
         add_item("kept_2024")
         plant_sidecar(
             "kept_2024",
@@ -133,8 +104,6 @@ class TestSectionHeadingsAreNotPremises:
         assert report.unscoreable == {}
 
     def test_a_source_that_is_all_headings_says_so(self, isolated_config):
-        """The pre-existing "page-level only" reason would be false here:
-        the source has readable text, it just has no premise in it."""
         add_item("allheadings_2024")
         plant_sidecar(
             "allheadings_2024",
@@ -150,15 +119,7 @@ class TestSectionHeadingsAreNotPremises:
 
 
 class TestPremiseCap:
-    """Issue #693. `_score_claim` scores one entailment pair per quotable
-    passage of the cited source, measured at 725-887 pairs per citation
-    (docs/PERFORMANCE.md), so the cap is what makes the pass affordable.
-    Uncapped stays the default -- see the module comment for the gate."""
-
     def test_uncapped_by_default_every_premise_reaches_the_entailer(self, isolated_config):
-        """The default is the pre-#693 behaviour exactly. Asserted so a
-        cap that leaked into the default fails here rather than silently
-        changing every recorded score."""
         add_item("uncapped_2024")
         plant_sidecar(
             "uncapped_2024",
@@ -171,9 +132,6 @@ class TestPremiseCap:
         assert len(fake.calls[0]) == 6
 
     def test_a_cap_sends_only_the_best_lexical_overlap(self, isolated_config):
-        """The kept premise is the one sharing the claim's distinctive
-        words, not the first on the page -- the ranking is what makes a
-        cap survivable, so document order winning would be the bug."""
         add_item("ranked_2024")
         plant_sidecar(
             "ranked_2024",
@@ -204,11 +162,6 @@ class TestPremiseCap:
         assert report.findings[0].score == pytest.approx(0.91)
 
     def test_a_heading_does_not_consume_a_slot(self, isolated_config):
-        """The cap ranks what `_quotable` already kept, so a filtered
-        heading cannot crowd out a real premise. Capped at 1 with the
-        heading ranking highest on overlap, a cap applied *before* the
-        filter would send nothing at all and report the source
-        unscoreable."""
         add_item("order_2024")
         plant_sidecar(
             "order_2024",
@@ -228,9 +181,6 @@ class TestPremiseCap:
         assert report.findings[0].score == pytest.approx(0.77)
 
     def test_equal_overlap_breaks_the_tie_on_document_order(self, isolated_config):
-        """Two premises with identical overlap must resolve the same way
-        on every run, or a capped re-run reports a different best passage
-        for an unchanged draft and corpus (R2's stable-identity rule)."""
         add_item("tied_2024")
         plant_sidecar(
             "tied_2024",
@@ -247,10 +197,6 @@ class TestPremiseCap:
         assert premises == ["Twins close the loop."]
 
     def test_a_claim_with_no_distinctive_words_still_sends_a_premise(self, isolated_config):
-        """`distinctive` returns nothing for an all-stopword claim, so
-        every premise ties at zero overlap. The cap must still send `k`
-        of them rather than an empty batch, which `_score_claim`'s
-        documented no-empty-result invariant depends on."""
         add_item("stopwords_2024")
         plant_sidecar(
             "stopwords_2024",
@@ -283,13 +229,6 @@ class TestBuildReport:
         assert finding.passage.text == "Twins close the control loop."
 
     def test_picks_the_higher_scoring_of_two_quotable_passages(self, isolated_config):
-        """`_score_claim`'s whole reason to exist over a bare `quotable[0]`:
-        given a real choice between candidates, it must pick the one the
-        entailer actually scores higher -- not whichever sidecar record
-        happens to sit first. The winning passage is deliberately placed
-        *second* in the sidecar list, so a `scores[0]`-shaped bug (or a
-        stray `min` in place of `max`) would fail this by returning the
-        loser instead."""
         add_item("twopassage_2024")
         plant_sidecar(
             "twopassage_2024",
@@ -316,10 +255,6 @@ class TestBuildReport:
         finding = report.findings[0]
         assert finding.passage.text == "Twins close the control loop precisely."
         assert finding.score == pytest.approx(0.88)
-        # Both candidates must actually have been sent to the entailer --
-        # an implementation that scored only the first passage (or only
-        # the winner, decided some other way) would still pass the two
-        # assertions above by accident if it happened to guess right.
         assert fake.calls == [
             [
                 (
@@ -336,9 +271,6 @@ class TestBuildReport:
     def test_a_citekey_cited_twice_fetches_its_passages_only_once(
         self, isolated_config, monkeypatch
     ):
-        """The per-citekey passage cache: a draft citing the same source
-        twice must not re-fetch (and, once a real Entailer is in the
-        loop, re-embed) its passages a second time."""
         add_item("shared_2024")
         plant_sidecar("shared_2024", [{"text": "Twins close the control loop.", "page": 1}])
         calls = []
@@ -367,8 +299,6 @@ class TestBuildReport:
 
 class TestLatexComments:
     def test_a_commented_out_citation_in_a_tex_draft_is_not_scored(self, isolated_config):
-        """#873: `claims()` read `.tex` with Markdown rules, so a key after
-        `%` reached the entailer as though the prose cited it."""
         draft = config.DRAFTS_DIR / "topic" / "draft.tex"
         draft.parent.mkdir(parents=True, exist_ok=True)
         draft.write_text(
@@ -466,12 +396,6 @@ class TestRenderMarkdown:
         text = render.render_markdown(report, "cmd", found)
         assert "missing_2024" in text
         assert "not found in the corpus" in text
-        # Real bug found while implementing this task (see task-3-report.md):
-        # the brief's own `_finding_lines` printed `finding["score"]:.0%`
-        # unconditionally, so an unscoreable citekey -- score 0.0 by
-        # `build_report`'s own design -- rendered as "(0%)" in Findings,
-        # exactly the "checked and found wanting" standing this aid's
-        # module docstring says an unscoreable citekey must not carry.
         assert "(0%)" not in text
 
     def test_a_bare_citation_with_no_surrounding_prose_notes_missing_claim_text(
@@ -508,12 +432,6 @@ class TestFormatReport:
         text = render.format_report(report, render.findings(report))
         assert "missing_2024" in text
         assert "0%" not in text
-        # `format_report` is a flat list with no summary/detail split like
-        # `render_markdown`'s Markdown sections have -- a citekey's reason
-        # must appear exactly once, not once per `_format_finding` line and
-        # then again from a second, redundant pass over
-        # `report.unscoreable` (a real duplication bug found while
-        # implementing this task, see task-3-report.md).
         assert text.count("not found in the corpus") == 1
 
 
@@ -548,9 +466,6 @@ class TestCli:
         assert (config.REVIEW_DIR / "topic" / "draft.support.json").exists()
 
     def test_run_json_only_prints_but_does_not_write(self, isolated_config, capsys, monkeypatch):
-        """`--json` with no `--write`: still builds the command/payload
-        (unlike the plain-text default path), but must not touch disk --
-        the `if args.write:` branch below it must come out False."""
         monkeypatch.setattr(entailment, "open_entailer", lambda: (FakeEntailer({}), None))
         draft = _draft(config, "No citations here.\n")
         args = claim_support.build_parser().parse_args([str(draft), "--json"])
@@ -567,9 +482,6 @@ class TestCli:
         assert "not installed" in capsys.readouterr().err
 
     def test_run_obeys_the_configured_premise_cap(self, isolated_config, capsys, monkeypatch):
-        """The CLI is the one caller that reads `SUPPORT_PREMISE_TOPK`;
-        `build_report`'s own default stays uncapped so a bench arm can
-        pin k per call instead of mutating this constant mid-run."""
         add_item("clipath_2024")
         plant_sidecar(
             "clipath_2024",
@@ -589,9 +501,6 @@ class TestCli:
         assert claim_support.run(args) == 1
 
     def test_command_records_json_and_write_flags(self, isolated_config, capsys, monkeypatch):
-        """`_command`'s own reason to exist: the header/envelope must
-        record a re-runnable invocation, flags included -- not just the
-        bare draft path."""
         monkeypatch.setattr(entailment, "open_entailer", lambda: (FakeEntailer({}), None))
         draft = _draft(config, "No citations here.\n")
         args = claim_support.build_parser().parse_args([str(draft), "--json", "--write"])
@@ -603,16 +512,6 @@ class TestCli:
     def test_scored_count_matches_the_rendered_report_when_a_bad_citekey_repeats(
         self, isolated_config
     ):
-        """`report.unscoreable` is keyed by citekey, so it gains one
-        entry no matter how many findings cite that same unscoreable
-        citekey -- `support_payload`'s "scored" must not overcount by
-        the naive `len(findings) - len(unscoreable)` in that case (it
-        would read 1 here: 2 findings minus 1 unscoreable citekey).
-        Built directly from a `Report`, not through the CLI, so this can
-        assert the actual invariant the fix is for: the JSON's "scored"
-        and the plain-text report's "N citations scored" agree, both
-        derived from the same report rather than one merely plausible
-        number."""
         draft = _draft(
             config,
             "A claim citing nothing on record [@missing_2024].\n\n"
@@ -636,9 +535,6 @@ class TestCli:
     def test_write_only_records_no_json_flag_and_still_writes(
         self, isolated_config, capsys, monkeypatch
     ):
-        """`--write` with no `--json`: `_command`'s `as_json` branch must
-        come out False here, unlike every other CLI test above, which
-        always pairs `--write` with `--json`."""
         monkeypatch.setattr(entailment, "open_entailer", lambda: (FakeEntailer({}), None))
         draft = _draft(config, "No citations here.\n")
         args = claim_support.build_parser().parse_args([str(draft), "--write"])
@@ -649,10 +545,6 @@ class TestCli:
         assert "--write" in payload["command"]
 
     def test_build_parser_accepts_a_parser_passed_in(self):
-        """`review/__main__.py` calls `module.build_parser(sub.add_parser(...))`
-        -- always with a parser already built -- so the `parser is None`
-        branch (this module's own standalone `main()`) is a second path,
-        not the only one."""
         parser = argparse.ArgumentParser()
         returned = claim_support.build_parser(parser)
         assert returned is parser

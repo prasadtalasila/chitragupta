@@ -1,5 +1,3 @@
-""".claude/hooks/patch_paths.py: the files an apply_patch envelope writes (#812, #900)."""
-
 import json
 from pathlib import Path
 
@@ -56,14 +54,11 @@ def test_an_envelope_with_no_file_operation_is_unreadable():
 
 
 def test_a_header_quoted_in_a_body_line_is_not_read():
-    # A `+` line that happens to quote a header is content, not an operation.
     text = "*** Begin Patch\n*** Add File: a.md\n+*** Add File: b.md\n*** End Patch\n"
     assert patch_paths.written_paths(text) == ["a.md"]
 
 
 def test_the_recorded_codex_payload_parses():
-    """Recorded from Codex 0.159.0, started in `content/`: the patch path is
-    relative to the session's `cwd`, not to the project root."""
     payload = json.loads((FIXTURES / "codex_apply_patch.json").read_text(encoding="utf-8"))
     assert patch_paths.written_paths(payload["tool_input"]["command"]) == ["drafts/sub.md"]
 
@@ -77,8 +72,6 @@ def test_the_recorded_two_draft_codex_payload_parses():
 
 
 def test_the_recorded_opencode_patch_parses():
-    """Recorded from OpenCode 1.18.33's `apply_patch`, whose envelope has no
-    newline after `*** End Patch`."""
     args = json.loads((FIXTURES / "opencode_apply_patch_args.json").read_text(encoding="utf-8"))
     assert patch_paths.written_paths(args["patchText"]) == [
         "content/drafts/clean.md",

@@ -1,8 +1,3 @@
-"""Renamed citekeys in the drafting layer: `dossier status` lists them,
-`dossier apply-renames` swaps them (plans/1211-cg-collections-and-renames.md,
-D9). The swap only ever puts in a key the ledger recorded as the
-replacement and still holds -- never one it guessed."""
-
 import json
 
 import pytest
@@ -34,8 +29,6 @@ def draft(isolated_config):
 
 
 def _seed(parsed, renames, stale=()):
-    """Parsed ledger rows for `parsed`, `renames` rows (old, new, same), and
-    the keys sync last found stale."""
     config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
     con = ledger.connect()
     try:
@@ -112,10 +105,6 @@ class TestStatus:
 
 
 class TestStaleBeforeThePrune:
-    """The pre-prune warning sync's residue report used to give for dossiers,
-    now from the drafting layer: a key sync found stale is `missing` while
-    its ledger row still waits for `--remove-stale`."""
-
     def test_a_stale_key_the_dossier_declares_is_missing(self, draft):
         _seed(["old_2023"], [], stale=["old_2023"])
         report = _drift.drift(dossier.dossier_dir(draft))
@@ -212,9 +201,6 @@ class TestApply:
 
 
 class TestAllOrNothingWrites:
-    """A write that fails partway leaves every file as it was, no temporary
-    file behind and no `revisions.md` entry."""
-
     def test_a_failed_write_changes_nothing(self, draft, monkeypatch):
         _seed(["new_2023"], [("old_2023", "new_2023", True)])
         target = dossier.dossier_dir(draft)
@@ -267,9 +253,6 @@ class TestCli:
 
 
 class TestCitekeyBoundary:
-    """A swap must never touch part of a longer key: citekey_problem allows
-    `.`, `+`, `-` and non-ASCII letters inside a key (final review, #1)."""
-
     @pytest.mark.parametrize(
         "text",
         [
@@ -310,8 +293,6 @@ class TestCitekeyBoundary:
 
 
 class TestPartialApply:
-    """One refused rename does not block the others (final review, #4)."""
-
     def test_good_swaps_apply_and_the_refused_one_is_reported(self, draft):
         draft.write_text("[@old_2023] and [@other_2020].\n", encoding="utf-8")
         _seed(["fine_2020"], [("old_2023", "gone_2023", True), ("other_2020", "fine_2020", True)])
@@ -330,7 +311,6 @@ class TestPartialApply:
         assert "old_2023" in captured.err and "handle it as missing" in captured.err
 
     def test_a_target_that_is_not_parsed_is_refused(self, draft):
-        """The gate cites only `parsed` rows; so does the swap (final review, #3)."""
         _seed([], [("old_2023", "new_2023", True)])
         con = ledger.connect()
         try:

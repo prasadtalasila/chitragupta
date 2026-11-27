@@ -1,25 +1,3 @@
-"""The house block's colours clear WCAG 2 contrast (#1047).
-
-The eight `\\definecolor` hex values are fills. Every stroke draws in a
-`cg<Hue>Line` shade and every coloured label in a `cg<Hue>Text` shade,
-each mixed towards `cgInk`. This file recomputes those shades from the
-hex values instead of trusting the shares written in the block, and
-checks them over every ground a figure puts them on: white, `cgPaper`,
-and every tint the block fills with, of every hue, since a light edge
-can cross another hue's zone.
-
-The thresholds are WCAG 2's: 3:1 for a line (non-text contrast) and
-4.5:1 for text. A share must also be the *largest* multiple of 5 that
-clears, so a shade cannot drift darker than it needs to be and lose its
-hue.
-
-Without a toolchain the mixing is assumed to be xcolor's: `A!p!B` is
-`p` percent of A plus the rest of B, channel by channel in RGB. The one
-TeX test at the bottom checks that assumption against xcolor itself.
-The calculator is `chitragupta/figure/_colour.py`'s, which `figure
-check`'s k1 and k2 hold every figure to (#1055).
-"""
-
 import re
 import shutil
 import subprocess
@@ -39,8 +17,6 @@ _REGION_END = "% >>> end chitragupta figure style <<<\n"
 _DEFINE_RE = re.compile(r"\\definecolor\{(\w+)\}\{HTML\}\{([0-9A-Fa-f]{6})\}")
 _SHADE_RE = re.compile(r"\\colorlet\{(cg\w+?)(Line|Text)\}\{(cg\w+)!(\d+)!cgInk\}")
 _TINT_RE = re.compile(r"fill=(#1|cg\w+)!(\d+)")
-# A colour key's value, up to the next `,` `]` or `}`. `\textcolor`'s
-# first argument is the same thing spelled differently.
 _USE_RE = re.compile(r"\b(draw|text)=([^,\]}]+)|\\textcolor\{([^}]+)\}")
 _INK_TINT_RE = re.compile(r"cgInk!(\d+)")
 
@@ -57,18 +33,14 @@ def _palette(text: str) -> dict[str, tuple[float, float, float]]:
 
 
 def _shades(text: str) -> dict[tuple[str, str], tuple[str, int]]:
-    """`(hue, "Line" | "Text") -> (base colour, share)`, as the block writes them."""
     return {(hue, kind): (base, int(share)) for hue, kind, base, share in _SHADE_RE.findall(text)}
 
 
 def _hues(text: str) -> list[str]:
-    """Every palette name that has derived shades."""
     return sorted({hue for hue, _ in _shades(text)})
 
 
 def _grounds(text: str) -> list[tuple[float, float, float]]:
-    """White, cgPaper, and every tint the block fills with, of every hue.
-    A `#1!n` tint is whatever hue a caller passes, so it is every hue."""
     palette = _palette(text)
     shares = {int(share) for _, share in _TINT_RE.findall(text)}
     tints = [_mix(palette[hue], WHITE, share / 100) for hue in _hues(text) for share in shares]
@@ -94,21 +66,15 @@ def _carriers() -> list[Path]:
 
 
 def _uses(text: str) -> list[str]:
-    """Every colour a stroke or a label is drawn in, as written."""
     return [(match.group(2) or match.group(3)).strip() for match in _USE_RE.finditer(text)]
 
 
 def _fill_only(value: str, hues: list[str]) -> bool:
-    """`value` names a palette hue, or the bare argument standing for one,
-    with no Line or Text suffix: a fill colour used to draw."""
     bare = value.split("!", 1)[0].strip()
     return bare in hues or bare in ("#1", "\\cgPicColour")
 
 
 class TestTheCalculator:
-    """The two numbers WCAG 2 itself states, so a wrong luminance
-    formula cannot pass everything below by being uniformly wrong."""
-
     def test_black_on_white_is_21(self):
         assert round(contrast((0, 0, 0), WHITE), 2) == 21.0
 
@@ -116,15 +82,11 @@ class TestTheCalculator:
         assert contrast((0.3, 0.5, 0.7), (0.3, 0.5, 0.7)) == pytest.approx(1.0)
 
     def test_the_v2_aux_border_failed(self):
-        """The defect v3 exists for: cgAux drawn on its own tint."""
         aux = _palette(_block())["cgAux"]
         assert contrast(aux, _mix(aux, WHITE, 0.10)) < LINE
 
 
 class TestTheBlockWasRead:
-    """Non-vacuous guards: a regex that stops matching would make every
-    check below pass over an empty list."""
-
     def test_every_hue_and_mute_has_both_shades(self):
         hues = {name for name in _palette(_block()) if name not in ("cgInk", "cgPaper")}
         assert set(_hues(_block())) == hues
@@ -150,12 +112,8 @@ class TestTheDerivedShades:
 
 
 class TestEveryStrokeAndLabel:
-    """A palette name fills; a Line or Text name draws."""
-
     @pytest.mark.parametrize("path", [BLOCK, *_carriers()], ids=lambda p: p.stem)
     def test_nothing_draws_in_a_fill_colour(self, path):
-        """Except a `pic`'s inner texture strokes, which the block says
-        stay tints: the outline is the shape, and it draws in Line."""
         hues = _hues(_block())
         drawn = _uses(path.read_text(encoding="utf-8"))
         assert [
@@ -169,8 +127,6 @@ class TestEveryStrokeAndLabel:
         assert not _fill_only("#1Text", _hues(_block()))
 
     def test_every_ink_tint_clears_its_threshold(self):
-        """Neutral strokes and labels are `cgInk` tints rather than
-        shades, and are held to the same numbers."""
         text = _block()
         palette, grounds = _palette(text), _grounds(text)
         failing = []
@@ -188,7 +144,6 @@ class TestEveryStrokeAndLabel:
 
 @needs_tikz
 def test_xcolor_mixes_the_way_this_file_assumes(tmp_path):
-    """Every shade, as xcolor computes it, against this file's `_mix`."""
     text = _block()
     palette, shades = _palette(text), _shades(text)
     names = [f"{hue}{kind}" for hue, kind in shades]

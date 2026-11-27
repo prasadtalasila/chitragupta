@@ -1,6 +1,3 @@
-"""chitragupta/enrich/corpus.py: the enrichment layer's corpus is the ledger, so
-every document it yields is citable, keyed by its citekey and nothing else."""
-
 from chitragupta import bib_reader, ledger
 from chitragupta.enrich import corpus
 
@@ -39,11 +36,6 @@ class TestBuildCorpus:
         assert doc.text_path.endswith("smith2024.txt")
 
     def test_every_citekey_is_usable_as_a_filename(self, isolated_config):
-        """The citekey is the stem every on-disk artefact is written under
-        -- Docling's <citekey>.md, Chroma's <citekey>::<n> chunk ids -- so
-        one that cannot be a filename must never reach this layer.
-        `chitragupta/bib_reader.py` is what keeps it out; this pins the contract
-        from the consuming end, where the breakage would actually happen."""
         con = ledger.connect()
         ledger.upsert_reference(con, make_reference(citekey="smith2024"))
         con.close()
@@ -67,8 +59,6 @@ class TestBuildCorpus:
         assert corpus.build_corpus()[0].title == "Untitled"
 
     def test_a_bib_item_with_no_pdf_is_still_a_document(self, isolated_config):
-        """It has metadata worth indexing even with nothing to parse --
-        the stages downstream each decide what to do with pdf_path=None."""
         con = ledger.connect()
         ledger.upsert_reference(con, make_reference(citekey="nopdf2024"))
         con.close()

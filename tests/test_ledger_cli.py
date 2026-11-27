@@ -1,17 +1,3 @@
-"""`python -m chitragupta.corpus ledger`: read-only status for the corpus layer.
-
-Deliberately its own entrypoint rather than a `sync --inspect` flag, for
-two reasons that are both about what a *reader* needs:
-
-  - `sync` takes the pipeline write lock, so an inspect flag on it would
-    exit 2 exactly when you most want to look -- while a sync is running.
-    This takes no lock at all, which is the property the separate lock
-    file was built to preserve.
-  - `sync` needs bibtexparser. Reading the ledger needs sqlite3, so this
-    runs under the bare system interpreter like citation_gate and
-    references do.
-"""
-
 import pytest
 
 from chitragupta import config, ledger, ledger_cli
@@ -53,8 +39,6 @@ class TestSummary:
         out = capsys.readouterr().out
         assert "2  parsed" in out
         assert "1  no PDF attachment" in out
-        # The whole point: the old snippet printed a ~200-char dict per
-        # item, which is unreadable for a real corpus.
         assert "citekey" not in out.lower() or "key_0" not in out
 
     def test_a_deterministic_failure_is_called_out_with_what_to_do(self, corpus, capsys):
@@ -102,15 +86,11 @@ class TestFilters:
 
 class TestStdlibOnly:
     def test_it_runs_under_the_bare_system_interpreter(self):
-        """It joins citation_gate and references in README's stdlib-only
-        list -- reading the ledger needs sqlite3, not bibtexparser."""
         result = _run(["--help"])
         assert result.returncode == 0, result.stderr
         assert "--status" in result.stdout
 
     def test_it_takes_no_lock_so_it_works_during_a_sync(self, isolated_config, tmp_path):
-        """The reason this is not `sync --inspect`: an inspect flag on
-        sync would exit 2 exactly when you most want to look."""
         from chitragupta import runlock
 
         with runlock.pipeline_lock(isolated_config.PIPELINE_LOCK_PATH):
@@ -125,8 +105,6 @@ class TestEdges:
     def test_an_existing_but_empty_ledger_says_to_run_sync(
         self, isolated_config, ledger_con, capsys
     ):
-        """Distinct from "no ledger file": the file exists because
-        something connected, but sync has never populated it."""
         assert ledger_cli.main([]) == 0
         out = capsys.readouterr().out
         assert "empty" in out.lower()
@@ -135,8 +113,6 @@ class TestEdges:
     def test_transient_failures_are_reported_as_self_healing(
         self, isolated_config, ledger_con, tmp_path, capsys
     ):
-        """A user seeing failures needs to know which ones they must act
-        on -- these are not those."""
         pdf = tmp_path / "a.pdf"
         pdf.write_bytes(b"%PDF")
         ref = make_reference(pdf_path=str(pdf))
@@ -151,23 +127,11 @@ class TestEdges:
 
 class TestReadOnly:
     def test_it_does_not_write_to_the_ledger(self, corpus):
-        """connect() runs migrations and commits; this must not. Checked
-        by mtime rather than by inspection, because the failure mode is a
-        write nobody notices."""
         before = config.LEDGER_PATH.stat().st_mtime_ns
         assert ledger_cli.main([]) == 0
         assert config.LEDGER_PATH.stat().st_mtime_ns == before
 
     def test_it_waits_out_a_writers_commit_window(self, corpus):
-        """m-72: nothing here sets `journal_mode = WAL`, so the default
-        rollback journal *does* lock a reader out for the length of a
-        writer's commit -- and `timeout=0` turned that short, certain
-        window into an immediate `SQLITE_BUSY`, i.e. this command failing
-        exactly when its own docstring says it is most worth running.
-
-        `read_under_a_held_write_lock` holds a real lock and reports how
-        long the read took; see its docstring for why both halves matter.
-        """
         code, waited = read_under_a_held_write_lock(lambda: ledger_cli.main([]))
 
         assert code == 0
@@ -176,8 +140,6 @@ class TestReadOnly:
     def test_a_pre_failure_kind_ledger_still_summarises(
         self, isolated_config, ledger_con, tmp_path, capsys
     ):
-        """Read-only means it cannot migrate, so a ledger older than the
-        failure_kind column must degrade rather than crash."""
         pdf = tmp_path / "a.pdf"
         pdf.write_bytes(b"%PDF")
         ledger.upsert_reference(ledger_con, make_reference(pdf_path=str(pdf)))

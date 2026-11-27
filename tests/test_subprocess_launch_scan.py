@@ -1,25 +1,3 @@
-"""Every launch of the package under test goes through `run_python` (#867).
-
-A test that runs `python -m chitragupta...` in a child imports whichever
-chitragupta that child finds first. With the repository root as cwd that
-is this checkout, because `-m` puts the cwd on sys.path; with any other
-cwd it is whatever is installed, or nothing. One helper in conftest sets
-PYTHONPATH explicitly instead, and this scan is what keeps a new test
-from going back to launching the interpreter itself -- a launch that
-happens to work from the repository root gives no sign it depends on it.
-
-What counts as a launch of the package: a `subprocess` call (however
-`subprocess` or its `run` was imported) whose argv -- a list or tuple
-literal, or a name bound to one in the same scope -- begins with an
-interpreter (`sys.executable`, a name or attribute with `python` in it,
-`shutil.which("python3")`) and carries `-m chitragupta...`, a `-c`
-program, or a `*argv` that could be either. Module- and class-level
-launches count as well as those in functions. Hook scripts and
-`scripts/*.py` launched by path are not the package and are not matched;
-nor are git, node or kpsewhich. An argv assembled any other way -- by
-concatenation, or in another function -- is not seen.
-"""
-
 import ast
 import os
 from pathlib import Path
@@ -33,22 +11,12 @@ _WHERE = "import chitragupta, os; print(os.path.dirname(os.path.dirname(chitragu
 
 class TestRunPython:
     def test_a_child_outside_the_repository_imports_this_checkout(self, system_python, tmp_path):
-        """The seam #867 names. A bare interpreter, a minimal environment
-        and a cwd that is not the repository root: nothing but the
-        helper's PYTHONPATH can find chitragupta, and it must find this
-        one rather than none."""
         env = {"PATH": os.environ.get("PATH", "")}
         result = run_python("-c", _WHERE, python=system_python, cwd=tmp_path, env=env)
         assert result.returncode == 0, result.stderr
         assert Path(result.stdout.strip()) == REPO_ROOT
 
     def test_a_callers_own_pythonpath_stays_ahead_of_the_checkout(self, tmp_path):
-        """tests/test_tokens.py imports an edited copy of the package from
-        tmp_path; prepending the checkout would test the original.
-
-        The copy sits in `lib/`, not in the cwd: `-c` puts the cwd first
-        on sys.path, ahead of PYTHONPATH, so a copy there would win
-        whatever order the helper chose and the test could not fail."""
         lib = tmp_path / "lib"
         (lib / "chitragupta").mkdir(parents=True)
         (lib / "chitragupta" / "__init__.py").write_text("", encoding="utf-8")
@@ -58,13 +26,7 @@ class TestRunPython:
         assert Path(result.stdout.strip()) == lib
 
     def test_coverage_follows_the_child_only_from_the_root(self, tmp_path):
-        """From any other cwd a child's coverage finds no config, records
-        statement-only data, and kills the session at combine time after
-        every test passed -- which is what this helper's first version
-        did to a full run."""
         probe = "import os; print(sorted(k for k in os.environ if k.startswith('COV_CORE')))"
-        # A datafile of its own, so the root-side child's data never
-        # reaches the parent's combine.
         datafile = str(tmp_path / ".coverage")
         env = {**os.environ, "COV_CORE_SOURCE": ":", "COV_CORE_DATAFILE": datafile}
         elsewhere = run_python("-c", probe, cwd=tmp_path, env=env)
@@ -73,8 +35,6 @@ class TestRunPython:
         assert "COV_CORE_SOURCE" in at_root.stdout
 
 
-# `path::function` -> why that launch must control the child's import
-# path itself, which is the one thing run_python exists to take away.
 EXEMPT = {
     "test_citation_gate_hook.py::test_interpreter_that_cannot_import_chitragupta_is_named_as_the_fault": (
         "Probes whether a bare interpreter can import chitragupta *without* "
@@ -95,9 +55,6 @@ _LAUNCHERS = {"run", "Popen", "call", "check_call", "check_output"}
 
 
 def _is_interpreter(node) -> bool:
-    """`sys.executable`, `python or sys.executable`, a name or attribute
-    with `python` in it (`system_python`, `self.python`), or
-    `shutil.which("python3")`."""
     if isinstance(node, ast.BoolOp):
         return any(_is_interpreter(value) for value in node.values)
     if isinstance(node, ast.Call):
@@ -111,9 +68,6 @@ def _is_interpreter(node) -> bool:
 def _launches_the_package(elements: list) -> bool:
     if not elements or not _is_interpreter(elements[0]):
         return False
-    # `[python, *argv]` is a launcher that takes its flags from the caller;
-    # `[python, str(script), *args]` runs a script by path, which is not
-    # the package, so only a splat in the first argument position counts.
     if len(elements) > 1 and isinstance(elements[1], ast.Starred):
         return True
     for i, element in enumerate(elements[1:], start=1):
@@ -122,8 +76,6 @@ def _launches_the_package(elements: list) -> bool:
             return True
         if value == "-m" and i + 1 < len(elements):
             target = elements[i + 1]
-            # A module named by a variable or an f-string could be the
-            # package, so only a literal naming something else is let go.
             if not isinstance(target, ast.Constant):
                 return True
             return str(target.value).startswith("chitragupta")
@@ -131,8 +83,6 @@ def _launches_the_package(elements: list) -> bool:
 
 
 def _subprocess_names(tree) -> "tuple[set, set]":
-    """The names `subprocess` is reachable under in this module, and the
-    launch functions imported from it bare (`from subprocess import run`)."""
     modules, functions = {"subprocess"}, set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -156,8 +106,6 @@ def _is_launch_call(node, modules, functions) -> bool:
 
 
 def _argv_elements(arg, scope) -> "list | None":
-    """The argv's elements: a list or tuple literal, or a name bound to
-    one by an assignment in the same scope (`cmd = [...]; run(cmd)`)."""
     if isinstance(arg, (ast.List, ast.Tuple)):
         return arg.elts
     if isinstance(arg, ast.Name):
@@ -171,8 +119,6 @@ def _argv_elements(arg, scope) -> "list | None":
 
 
 def _scopes(tree):
-    """(name, node) for the module and every function and class, each
-    scope yielding only the statements directly its own."""
     yield "<module>", tree
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
@@ -180,8 +126,6 @@ def _scopes(tree):
 
 
 def direct_launches(source: str) -> "list[tuple[str, int]]":
-    """(innermost enclosing function or class, line) of each package
-    launch not made through run_python; `<module>` at module level."""
     tree = ast.parse(source)
     modules, functions = _subprocess_names(tree)
     found = {}
@@ -210,8 +154,6 @@ def test_every_package_launch_goes_through_run_python():
 
 
 def test_every_exemption_still_names_a_direct_launch():
-    """A register entry whose launch has gone is a hole a new one could
-    reuse without anyone deciding it should."""
     for key in EXEMPT:
         filename, function = key.split("::")
         launches = direct_launches((TESTS / filename).read_text(encoding="utf-8"))
@@ -219,9 +161,6 @@ def test_every_exemption_still_names_a_direct_launch():
 
 
 class TestTheDetectorSeesTheShapesItWasWrittenFor:
-    """Fed the real pre-#867 launches, verbatim, so a detector that
-    reports clean is shown not to be blind."""
-
     def test_the_entrypoint_modules_run_helper(self):
         old = (
             "def _run(*argv):\n"
@@ -257,14 +196,11 @@ class TestTheDetectorSeesTheShapesItWasWrittenFor:
             '    subprocess.run(["kpsewhich", "tikz.sty"])\n'
             '    subprocess.run([sys.executable, "-m", "pip", "--version"])\n'
             '    run_python("-m", "chitragupta.corpus", "sync", "--help")\n'
-            # tests/test_code_standards.py: a script by path, then its args.
             '    subprocess.run([sys.executable, str(REPO_ROOT / "scripts" / "x.py"), *args])\n'
         )
         assert direct_launches(source) == []
 
     def test_a_module_named_by_a_variable(self):
-        """tests/test_cli_help_is_short.py's shape: the target is only
-        known at run time, so it has to be assumed to be the package."""
         old = (
             "def _help(module_path):\n"
             '    return subprocess.run([sys.executable, "-m", module_path, "--help"])\n'

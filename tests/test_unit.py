@@ -1,12 +1,3 @@
-"""Generation units: the contract, its input digest, and acceptance.
-
-What is worth pinning here is what makes a unit independently
-regenerable: the input digest covers the spec slice *and* the sources, so
-an edit to either says so; acceptance records what was accepted rather
-than asserting it; and `status` can tell "never written" from "written
-but not accepted" from "accepted and since changed".
-"""
-
 import json
 
 import pytest
@@ -45,12 +36,9 @@ The unreliable half.
 """
 
 
-# conftest's `book` writes this as the outline.
 BOOK_SPEC = GOOD_SPEC
 
 
-# A second chapter, so "one chapter moved" and "the book moved" are
-# distinguishable -- which is the whole of #465.
 TWO_CHAPTER_SPEC = (
     GOOD_SPEC
     + """
@@ -76,10 +64,6 @@ def sign_off(book):
     spec.main(["sign", str(book)])
 
 
-# What each chapter declares, so a written draft matches its outline.
-# `unit accept` refuses a chapter whose headings drifted (#472), and this
-# module is about contracts and digests rather than alignment -- a draft
-# that does not match would fail every test here for the wrong reason.
 DECLARED = {
     "ch-model": ("What a model is", "What it leaves out"),
     "ch-data": ("The link", "Its failure modes"),
@@ -88,12 +72,6 @@ DECLARED = {
 
 
 def write_unit_draft(book, unit_id, body=None):
-    """A chapter carrying the sections its outline declares.
-
-    `body`, when given, replaces the prose under every heading rather than
-    the whole file -- the headings have to stay for the draft to remain
-    aligned with the outline it is accepted against.
-    """
     prose = body or "A paragraph citing @smith_example_2024.\n"
     text = f"# {unit_id}\n\n" + "".join(
         f"## {heading}\n\n{prose}\n" for heading in DECLARED.get(unit_id, ())
@@ -102,9 +80,6 @@ def write_unit_draft(book, unit_id, body=None):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     return path
-
-
-# --- the contract --------------------------------------------------------
 
 
 def test_a_contract_carries_the_spec_slice_and_the_sources(book):
@@ -117,8 +92,6 @@ def test_a_contract_carries_the_spec_slice_and_the_sources(book):
 
 
 def test_only_a_section_is_a_generation_unit(book):
-    """A part is not an acceptance unit -- asking for its contract is a
-    mistake worth reporting, not an empty contract."""
     with pytest.raises(unit.UnitError, match="not a unit"):
         unit.contract(book, "part-foundations", [])
 
@@ -140,8 +113,6 @@ def test_a_book_with_no_outline_at_all_is_refused_by_name(isolated_config):
 
 
 def test_a_book_outside_content_drafts_is_refused_by_the_cli(isolated_config, tmp_path, capsys):
-    """`spec`'s own refusal, surfaced through this command rather than
-    escaping as a traceback."""
     assert unit.main(["status", str(tmp_path / "elsewhere")]) == 1
     assert "not under" in capsys.readouterr().err
 
@@ -168,8 +139,6 @@ def test_the_input_digest_ignores_the_order_sources_were_given_in(book):
 
 
 def test_a_units_own_prose_is_not_part_of_its_input_digest(book):
-    """Inputs only. A digest that moved when the output did could never
-    answer "does this unit need regenerating?"."""
     before = unit.input_digest(unit.contract(book, "ch-model", []))
     write_unit_draft(book, "ch-model")
     assert unit.input_digest(unit.contract(book, "ch-model", [])) == before
@@ -179,9 +148,6 @@ def test_a_tex_unit_is_found_where_a_md_one_would_be(book):
     (book).mkdir(parents=True, exist_ok=True)
     (book / "ch-model.tex").write_text("A fragment.\n", encoding="utf-8")
     assert unit.contract(book, "ch-model", [])["draft"].endswith(".tex")
-
-
-# --- the contract command ------------------------------------------------
 
 
 def test_contract_prints_the_slice_and_the_digest(book, capsys):
@@ -210,9 +176,6 @@ def test_contract_refuses_a_unit_the_outline_does_not_hold(book, capsys):
     assert "sec-nope" in capsys.readouterr().err
 
 
-# --- accept --------------------------------------------------------------
-
-
 def test_accept_records_the_unit_and_what_it_cites(book, example_ledger, capsys):
     sign_off(book)
     write_unit_draft(book, "ch-model")
@@ -228,14 +191,6 @@ def test_accept_records_the_unit_and_what_it_cites(book, example_ledger, capsys)
 
 
 def test_accept_does_not_record_a_commented_out_citation(book, example_ledger, capsys):
-    """The permanent record says what the unit stands on (#834).
-
-    A `% \\citep{...}` is not a citation, so recording it would have the
-    provenance claim support the prose does not actually make -- the
-    inverse of the fabricated-citekey failure this gate exists for. The
-    gate itself only over-reports (an extra FAIL), which is why this was
-    invisible until `accept` wrote the same extraction to disk.
-    """
     sign_off(book)
     draft = book / "ch-model.tex"
     draft.parent.mkdir(parents=True, exist_ok=True)
@@ -261,9 +216,6 @@ def test_accept_refuses_an_outline_nobody_signed_off(book, example_ledger, capsy
 
 
 def test_accept_still_works_on_a_chapter_nobody_edited(two_chapter_book, example_ledger, capsys):
-    """Issue #465. Revising one chapter's brief used to flip `signed_off`
-    for every unit in the book, so a 15-chapter book froze acceptance
-    everywhere while one chapter sat half-revised."""
     book = two_chapter_book
     sign_off(book)
     write_unit_draft(book, "ch-cost")
@@ -300,9 +252,6 @@ def test_accept_refuses_a_unit_in_the_chapter_that_was_edited(
 def test_a_book_signed_before_chapter_digests_existed_still_accepts(
     two_chapter_book, example_ledger, capsys
 ):
-    """The retrofitted books on disk carry a whole-book digest and no
-    chapter lines. They must keep working, and keep refusing once the
-    outline moves at all -- there is nothing finer to fall back on."""
     book = two_chapter_book
     write_unit_draft(book, "ch-model")
     text = spec.spec_path(book).read_text(encoding="utf-8")
@@ -322,8 +271,6 @@ def test_accept_refuses_a_unit_that_has_no_draft(book, capsys):
 
 
 def test_accept_refuses_a_draft_the_citation_gate_rejects(book, example_ledger, capsys):
-    """The gate is invoked, not re-implemented: an unaccepted unit is one
-    the project's one gate already refuses."""
     sign_off(book)
     write_unit_draft(book, "ch-model", "Citing @not_in_the_ledger_2030.\n")
     capsys.readouterr()
@@ -339,9 +286,6 @@ def test_accepting_the_same_unit_twice_writes_the_same_bytes(book, example_ledge
     first = unit.record_path(book, "ch-model").read_text(encoding="utf-8")
     unit.main(["accept", str(book), "ch-model"])
     assert unit.record_path(book, "ch-model").read_text(encoding="utf-8") == first
-
-
-# --- status --------------------------------------------------------------
 
 
 def test_status_reports_every_section_and_refuses_while_any_is_unwritten(book, capsys):
@@ -369,7 +313,6 @@ def test_a_book_whose_units_are_all_accepted_passes(book, example_ledger, capsys
     capsys.readouterr()
     assert unit.main(["status", str(book)]) == 0
     out = capsys.readouterr().out
-    # The state is the second column; a `dossier:` one follows it (#472).
     assert [line.split()[1] for line in out.splitlines() if line.startswith("  ch-")] == [
         "accepted",
         "accepted",
@@ -411,8 +354,6 @@ def test_a_deleted_draft_makes_an_accepted_unit_unwritten_again(book, example_le
 
 
 def test_a_record_that_is_not_readable_json_reads_as_drafted(book, example_ledger, capsys):
-    """Hand-edited or half-written: a record nothing can read is not
-    evidence that anybody accepted anything."""
     sign_off(book)
     write_unit_draft(book, "ch-model")
     unit.main(["accept", str(book), "ch-model"])
@@ -428,44 +369,24 @@ def test_status_refuses_a_spec_that_does_not_parse(book, capsys):
     assert "does not parse" in capsys.readouterr().err
 
 
-# --- Issue 820: a unit id is a path component ----------------------------
-
-
-# Three `..` segments: the record they aim at lands in `content/` and the
-# draft beside it, both still inside the test's own tmp_path, so the
-# escape is real and nothing is written outside what pytest cleans up.
 ESCAPE_ID = "../../../pwned"
 ESCAPING_SPEC = GOOD_SPEC.replace("{#ch-model}", "{#" + ESCAPE_ID + "}")
 
-# Ids that leave their directory on POSIX *and* on Windows, so a direct
-# call can be asserted on either leg. `a\\b` and `C:\\x` are deliberately
-# not here: they are one filename component on POSIX and escape only on
-# Windows, and the parse-level rule in test_spec.py is what covers them.
 ESCAPING_IDS = ["../../x", "a/../../b"]
 
 
 def test_a_spec_whose_id_escapes_its_directory_does_not_parse(book, capsys):
-    """The reproducer from issue 820, refused at the outline: signing is
-    where a person approves the ids, so an id that cannot be a filename
-    is named there rather than at the write it would have corrupted."""
     spec.spec_path(book).write_text(ESCAPING_SPEC, encoding="utf-8")
     assert spec.main(["sign", str(book)]) == 1
     assert ESCAPE_ID in capsys.readouterr().err
 
 
 def test_accept_refuses_a_unit_whose_id_escapes_and_writes_nothing(book, example_ledger, capsys):
-    """The reproducer end to end, with every other refusal `accept`
-    makes taken out of the way first -- the outline is signed by hand
-    (`spec sign` now refuses it) and the draft is written where the
-    escaping id points, so this fails on `main` by writing the record."""
     spec.spec_path(book).write_text(ESCAPING_SPEC, encoding="utf-8")
     spec.signoff_path(book).write_text(
         f"# Sign-off\n\n- spec digest: `{spec.digest(ESCAPING_SPEC)}`\n",
         encoding="utf-8",
     )
-    # The book directory itself has to exist, or the `..` segments walk
-    # through nothing and `accept` refuses for the ordinary reason that
-    # there is no draft, never reaching the write this pins.
     book.mkdir(parents=True, exist_ok=True)
     draft = (book / f"{ESCAPE_ID}.md").resolve()
     draft.parent.mkdir(parents=True, exist_ok=True)
@@ -482,9 +403,6 @@ def test_accept_refuses_a_unit_whose_id_escapes_and_writes_nothing(book, example
 
 @pytest.mark.parametrize("escaping", ESCAPING_IDS)
 def test_record_path_refuses_an_id_that_leaves_the_units_directory(book, escaping):
-    """Belt and braces below the parse: the join itself refuses, so a
-    future id source -- a machine-written outline, a `--unit` typed by
-    hand -- cannot reintroduce the hole one layer up."""
     with pytest.raises(unit.UnitError, match="outside"):
         unit.record_path(book, escaping)
 
@@ -496,8 +414,6 @@ def test_draft_path_refuses_an_id_that_leaves_the_book(book, escaping):
 
 
 def test_an_absolute_id_discards_the_book_entirely_and_is_refused(book, tmp_path):
-    """`Path(book) / "/abs"` is `/abs`: the book directory is dropped
-    without a word, which is the quietest form of this defect."""
     absolute = str(tmp_path / "evil")
     with pytest.raises(unit.UnitError, match="outside"):
         unit.record_path(book, absolute)
@@ -506,9 +422,6 @@ def test_an_absolute_id_discards_the_book_entirely_and_is_refused(book, tmp_path
 
 
 def test_a_units_directory_symlinked_out_of_the_spec_tree_is_refused(book, tmp_path):
-    """The same check answers for a symlink, because `resolves_inside`
-    resolves both sides: `units/` pointing anywhere else is not somewhere
-    an acceptance record may be written."""
     outside = tmp_path / "outside"
     outside.mkdir()
     units = spec.spec_dir(book) / unit.UNITS_DIRNAME
@@ -516,9 +429,6 @@ def test_a_units_directory_symlinked_out_of_the_spec_tree_is_refused(book, tmp_p
     units.symlink_to(outside, target_is_directory=True)
     with pytest.raises(unit.UnitError, match="outside"):
         unit.record_path(book, "ch-model")
-
-
-# --- the entry point -----------------------------------------------------
 
 
 def test_the_verb_is_reachable_through_the_drafting_layers_front_door(book, capsys):
@@ -534,14 +444,7 @@ def test_no_subcommand_is_a_malformed_invocation():
     assert exit_info.value.code == 2
 
 
-# --- #506/m-69: what accept may record, and what it gated ----------------
-
-
 def test_accept_refuses_a_source_that_is_not_in_the_ledger(book, example_ledger, capsys):
-    """The permanent acceptance record names the papers a unit is
-    grounded in, and `--source` went into it unchecked -- a record
-    asserting grounding in a citekey no real parse ever produced, which
-    is precisely what CLAUDE.md's one rule forbids."""
     sign_off(book)
     write_unit_draft(book, "ch-model")
     capsys.readouterr()
@@ -551,8 +454,6 @@ def test_accept_refuses_a_source_that_is_not_in_the_ledger(book, example_ledger,
 
 
 def test_accept_refuses_a_source_whose_pdf_never_parsed(book, example_ledger, capsys):
-    """#1118: a `no_pdf` row is a real bib entry nothing in the corpus can
-    ground, so it may not be recorded as a source either."""
     ledger.upsert_reference(example_ledger, make_reference(citekey="web_page_2024"))
     sign_off(book)
     write_unit_draft(book, "ch-model")
@@ -599,13 +500,6 @@ def test_accept_names_every_unknown_source_not_just_the_first(book, example_ledg
 
 
 def test_accept_gates_the_very_text_it_records(book, example_ledger, monkeypatch, capsys):
-    """The draft is read once. `accept` used to gate the *path* (the gate
-    opened the file itself) and then re-read it to hash and record, so a
-    write landing between the two calls produced a permanent record --
-    output digest and citekeys both -- for prose the gate had never seen.
-    Pinned by capturing the string the gate was actually handed and
-    checking the record was computed from that same string.
-    """
     from chitragupta import citation_gate
 
     sign_off(book)
@@ -626,9 +520,6 @@ def test_accept_gates_the_very_text_it_records(book, example_ledger, monkeypatch
 
 
 def test_accept_prints_the_gates_own_verdict(book, example_ledger, capsys):
-    """The gate is still invoked rather than re-implemented, and still
-    reports in its own shape -- `report()` is the one printer, so a
-    document gated in memory reads identically to `draft gate <file>`."""
     sign_off(book)
     write_unit_draft(book, "ch-model", "Citing @smith_example_2024.\n")
     capsys.readouterr()

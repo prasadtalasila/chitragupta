@@ -1,7 +1,3 @@
-"""The index report (#1168): `registries/index.md` and `index.json`, each
-finding with the `index.toml` line that answers it. Advisory: nothing
-here refuses anything."""
-
 import json
 
 from chitragupta.registry import _index_report as report
@@ -151,8 +147,6 @@ def test_summary_line():
 
 
 def test_a_capital_lowercased_on_no_evidence_is_named_with_its_fix():
-    """Right for "Ecological twin", wrong for a proper noun the prose
-    never uses mid-sentence: the report names each guess."""
     kalman = term_id("kalman filter")
     side = sidecars(**{"ch-1": {kalman: mention(2, True)}})
     found = report.findings(data(term("kalman filter", "Kalman filter")), side, {}, UNITS, [])

@@ -1,12 +1,3 @@
-"""chitragupta/render_output/_figures.py: the ASCII/TikZ pair and the per-format swap.
-
-Split from one test module to mirror `chitragupta/render_output/`'s own split,
-the way `tests/test_enrich_*.py` mirrors `chitragupta/enrich/`. Shared setup --
-the binary probes and the figure fixtures -- lives in `tests/conftest.py`
-so the eight modules do not each re-run a `kpsewhich` subprocess at
-import.
-"""
-
 import shutil
 import subprocess
 import pytest
@@ -30,9 +21,6 @@ class TestLocalTexIncludeRefs:
         ]
 
     def test_matches_inside_a_raw_latex_fenced_block_too(self):
-        # #222: a bare \input line and a ```{=latex} fence around the same
-        # line reach pandoc's LaTeX writer identically, so this doesn't
-        # special-case the fence.
         text = "```{=latex}\n\\input{figures/fig1.tex}\n```\n"
         assert render_output._local_tex_include_refs(text) == ["figures/fig1.tex"]
 
@@ -42,9 +30,6 @@ class TestLocalTexIncludeRefs:
 
 class TestFigureRefs:
     def test_a_markdown_marker_is_a_figure_reference(self):
-        # The marker is what makes the figure file visible to the copy
-        # step and the \usepackage{tikz} gate, both of which read the
-        # draft on disk rather than the substituted temp copy.
         assert render_output._figure_refs(MARKED_MD) == ["figures/fig1.tex"]
 
     def test_a_latex_input_is_a_figure_reference(self):
@@ -97,14 +82,12 @@ class TestResolveSibling:
         assert render_output._resolve_sibling(draft_dir, "figures/x.tex") is None
 
     def test_keeps_a_symlink_that_stays_inside_the_draft(self, tmp_path):
-        # `current.tex -> fig1.tex` is ordinary versioning, not an escape.
         figure_pair(tmp_path)
         link = tmp_path / "figures" / "current.tex"
         link.symlink_to(tmp_path / "figures" / "fig1.tex")
         assert render_output._resolve_sibling(tmp_path, "figures/current.tex") == link
 
     def test_a_draft_directory_that_is_itself_a_symlink_still_resolves(self, tmp_path):
-        # Both sides are resolved, so the link cancels out.
         real = tmp_path / "real"
         real.mkdir()
         figure_pair(real)
@@ -159,8 +142,6 @@ class TestWithFiguresFor:
         assert "\\input{figures/fig1.tex}" in out
 
     def test_markdown_draft_to_docx_takes_the_ascii_form(self, tmp_path):
-        # pandoc cannot turn a tikzpicture into a Word drawing -- it drops
-        # the environment, so the ASCII fence is what has to go in instead.
         figure_pair(tmp_path)
         draft = tmp_path / "draft.md"
         out = render_output._with_figures_for(MARKED_MD, draft, "docx")
@@ -229,8 +210,6 @@ class TestFigureWarnings:
         (tmp_path / "figures" / "fig1.tex").write_text("\\citep{smith_thing_2020}\n")
         draft = tmp_path / "draft.md"
         warnings = render_output._figure_warnings(MARKED_MD, draft)
-        # The gate does not follow \input, so a citekey here is ungated --
-        # forbidden by convention, warned about, deliberately not gated.
         assert any("ungated" in w for w in warnings)
 
     def test_an_input_with_no_ascii_twin_is_flagged(self, tmp_path):
@@ -263,8 +242,6 @@ class TestFigureWarningsExtended:
 
 class TestRequireTikz:
     def test_says_nothing_when_kpsewhich_is_absent(self, monkeypatch):
-        # Cannot be probed, so it is not guessed: a TeX installation that
-        # ships its own tooling would otherwise be refused a render.
         monkeypatch.setattr(shutil, "which", lambda name: None)
         render_output._require_tikz()
 

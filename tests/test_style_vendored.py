@@ -1,21 +1,3 @@
-"""The third-party Vale rules `draft style` runs (#1183, #1186).
-
-Four tables have to agree: the rule files under `assets/vale/styles/`,
-the lines in `vale.ini` that switch each one on, the manifest that pins
-each file's bytes to an upstream release, and `style_vendored.SECTIONS`,
-which says what each rule implements. The first group of tests pins that
-agreement without the binary.
-
-The second group runs the real binary, as `TestAgainstRealVale` in
-tests/test_style_check.py does, and is skipped where Vale is absent. It
-is where "no rule is replicated across the files" is checked: every
-token of every rule file is fed to Vale at once, and any two rules
-that report the same words must be either a pair one of which shadows
-the other (`style_vendored.SHADOWED_BY`), or a pair this file lists as
-two different checks. A new overlap, as a pin bump can bring, fails here
-until someone decides which it is.
-"""
-
 import hashlib
 import json
 import re
@@ -39,7 +21,6 @@ HOUSE = "chitragupta"
 
 
 def enabled_in_ini() -> set[str]:
-    """Every `Style.Rule = level` line of vale.ini."""
     text = INI.read_text(encoding="utf-8")
     return set(re.findall(r"^([A-Za-z-]+\.[A-Za-z-]+) = suggestion$", text, re.M))
 
@@ -54,8 +35,6 @@ def vendored_files() -> set[str]:
 
 class TestTheTablesAgree:
     def test_every_vendored_file_is_switched_on_and_nothing_else_is(self):
-        """A file with no line runs nowhere; a line with no file stops
-        Vale from starting. Non-empty first, or two empty sets agree."""
         assert vendored_files(), "the glob found no vendored rule files"
         assert enabled_in_ini() == vendored_files()
 
@@ -72,10 +51,6 @@ class TestTheTablesAgree:
             assert (STYLES / package / "LICENSE").is_file(), package
 
     def test_every_vendored_file_is_byte_identical_to_its_pinned_release(self):
-        """The manifest records each file's sha256 as copied from the
-        release named in its header; an edit in place fails here, which
-        is what keeps a word-list fix from going in silently instead of
-        through a pin bump."""
         pinned = {}
         for line in MANIFEST.read_text(encoding="utf-8").splitlines():
             if line and not line.startswith("#"):
@@ -103,8 +78,6 @@ class TestRepair:
         return style_rules.with_repair([found], "scope.md")[0]["repair"]
 
     def test_a_vendored_rule_is_left_for_a_person(self):
-        """#1186: without this, every vendored finding was an `edit`, and
-        agenda-reviser would have rewritten clichés unattended."""
         assert self._repair("proselint.Cliches") == "review"
         assert self._repair("Journals.Prove") == "review"
 
@@ -117,8 +90,6 @@ class TestRepair:
         ],
     )
     def test_even_the_narrowest_lists_are_left_for_a_person(self, rule):
-        """Each once looked safe to repair unattended, and each matches
-        prose that is right as written (the example beside it)."""
         assert self._repair(rule) == "review"
 
     @pytest.mark.parametrize(
@@ -182,7 +153,6 @@ class TestReconcile:
         assert len(style_vendored.reconcile(found)) == 2
 
     def test_two_different_checks_on_the_same_words_both_stay(self):
-        """`ATM machine`: unexpanded, and redundant. Two things to fix."""
         found = [alert("chitragupta.Acronyms", 2, 1, 3), alert("proselint.RASSyndrome", 2, 1, 11)]
         assert len(style_vendored.reconcile(found)) == 2
 
@@ -205,9 +175,6 @@ class TestReconcile:
 
 
 def tokens_of(rule: Path) -> list[str]:
-    """Every literal phrase a rule file lists, and every example its own
-    `tests:` block carries. A regex token cannot be fed back as text, so
-    it is reached through those examples or not at all."""
     data = yaml.safe_load(rule.read_text(encoding="utf-8"))
     phrases = [str(t) for t in (data.get("tokens") or [])]
     phrases += [str(t) for t in (data.get("swap") or {})]
@@ -221,10 +188,7 @@ def tokens_of(rule: Path) -> list[str]:
     return [f"The {p} here." for p in literal] + examples
 
 
-# One sentence for each rule whose patterns are all regular expressions
-# and whose file carries no examples, so `tokens_of` cannot reach it.
 SAMPLES = (
-    # ai-tells.ContrastiveFormulas, one sentence per family in its file
     "It's not just a cache; it's a coordination layer.",
     "It's not about speed; it's about trust.",
     "It's not about speed. It's about trust.",
@@ -250,19 +214,16 @@ SAMPLES = (
     "A cache isn't a feature. It's a layer.",
     "Our cache isn't a feature. It's a layer.",
     "WCAG 2.1 AA isn't a checkbox. It's a constraint.",
-    # ai-tells.NegatedPair
     "It runs with no database and no network.",
     "It runs without a database or a round-trip.",
     "It needs neither the database nor a round-trip.",
     "It doesn't need credentials and doesn't call the network.",
     "Neither the database nor the network is required.",
-    # ai-tells.PseudoCleft
     "What you get is one row per blob.",
     "What changed is the direction.",
     "All you need is the offset.",
     "The only thing that changes is the direction.",
     "Where this pays off is the read path.",
-    # proselint.Uncomparables, proselint.Hyperbole, Microsoft.Plurals, Microsoft.Uppercase
     "This result is very unique.",
     "It works!!",
     "Check the file(s) first.",
@@ -270,9 +231,6 @@ SAMPLES = (
 )
 
 
-# Two rules that report overlapping words but check different things, so
-# both findings are kept. Anything else that overlaps must be in
-# style_vendored.SHADOWED_BY.
 DIFFERENT_CHECKS = {
     ("chitragupta.Acronyms", "proselint.RASSyndrome"),  # unexpanded / redundant
     ("chitragupta.Acronyms", "Microsoft.Uppercase"),  # unexpanded / shouting
@@ -281,7 +239,6 @@ DIFFERENT_CHECKS = {
     ("Journals.PValueCase", "PLOS.PValues"),  # case / precision
     ("Journals.PValueCase", "Journals.PValueZero"),  # case / zero
     ("ai-tells.ContrastiveFormulas", "chitragupta.Just"),  # "just" inside "not just X; it's Y"
-    # A word another rule flags, inside a whole-sentence formula match.
     ("ai-tells.ContrastiveFormulas", "chitragupta.Acronyms"),
     ("ai-tells.ContrastiveFormulas", "chitragupta.DefectMarkers"),
     ("ai-tells.ContrastiveFormulas", "Journals.Hype"),
@@ -295,8 +252,6 @@ DIFFERENT_CHECKS = {
 class TestAgainstRealVale:
     @staticmethod
     def _raw(path: Path) -> list[dict]:
-        """Vale's own alerts, before `reconcile`, with no dialect rule:
-        dialect findings overlap everything and are another axis."""
         result = subprocess.run(
             [
                 "vale",
@@ -336,8 +291,6 @@ class TestAgainstRealVale:
         return path
 
     def test_every_vendored_rule_runs_at_suggestion(self, probe):
-        """Fed its own tokens, every switched-on rule reports, and at the
-        level vale.ini sets rather than the package's own."""
         alerts = [a for a in self._raw(probe) if a["Check"] in style_vendored.SECTIONS]
         assert {a["Check"] for a in alerts} == set(style_vendored.SECTIONS)
         assert {a["Severity"] for a in alerts} == {"suggestion"}
@@ -364,8 +317,6 @@ class TestAgainstRealVale:
         assert not left & shadowed
 
     def test_a_finding_inside_a_quote_or_a_citation_is_not_reported(self, tmp_path):
-        """The vendored rules obey vale.ini's exemptions like the house
-        ones: tests/fixtures/style/ carries their triggers too."""
         draft = tmp_path / "q.md"
         draft.write_text(
             "> In order to proceed, we very carefully wrote a groundbreaking cliche.\n",

@@ -1,12 +1,3 @@
-"""The HTML graph page (G9): one self-contained file over the same
-artefacts the terminal views read.
-
-The properties under test: the page is a pure renderer of derived data
-(never computing an edge), references nothing on the network, and
-cannot be broken out of by a hostile label -- the embedded JSON escapes
-`<` so no title closes the script tag early.
-"""
-
 import json
 import re
 
@@ -30,9 +21,6 @@ class TestPayload:
         assert payload["hierarchy"] == GRAPH["hierarchy"]
 
     def test_a_graph_node_the_topic_set_does_not_know_refuses(self, isolated_config):
-        """One stage re-run without the other is drift; the page must
-        refuse like the terminal views, not render empty member lists
-        that disagree with --json."""
         prepare(isolated_config)
         topic_set = json.loads(json.dumps(TOPIC_SET))
         topic_set["topics"] = [t for t in topic_set["topics"] if t["label"] != "digital twin"]
@@ -40,16 +28,12 @@ class TestPayload:
             _page.build_payload(GRAPH, topic_set, {})
 
     def test_ids_in_the_page_are_index_based(self, isolated_config):
-        """A topic label is free text and HTML forbids whitespace in an
-        id, so the circles must be addressed by index, never by label."""
         prepare(isolated_config)
         html = _page.build_html(_page.build_payload(GRAPH, TOPIC_SET, {}))
         assert '"dot-" + index' in html
         assert '"dot-" + label' not in html
 
     def test_an_empty_topic_set_needs_no_ledger(self, isolated_config):
-        """No members, no titles to look up -- and therefore no refusal
-        for the ledger a fresh project does not have yet."""
         empty = {"n_docs": 0, "topics": []}
         graph = {
             "n_docs": 0,
@@ -62,9 +46,6 @@ class TestPayload:
         assert payload["topics"] == []
 
     def test_uncovered_seeds_travel_to_the_exported_views(self, isolated_config):
-        """The terminal list view has always reported the seed phrases
-        no topic covers; the payload carries the same list so the app
-        and the static page can show it too (#717)."""
         prepare(isolated_config)
         topic_set = json.loads(json.dumps(TOPIC_SET))
         topic_set["uncovered"] = ["swarm robotics"]
@@ -77,8 +58,6 @@ class TestPayload:
         assert _page.build_payload(GRAPH, topic_set, {})["uncovered"] == []
 
     def test_stored_analysis_travels_per_topic(self, isolated_config):
-        """#713: the brokerage block rides on each topic, and an older
-        artefact simply has none."""
         prepare(isolated_config)
         graph = json.loads(json.dumps(GRAPH))
         block = {
@@ -92,8 +71,6 @@ class TestPayload:
         assert all("analysis" not in t for t in older["topics"])
 
     def test_stored_analysis_travels_per_topic(self, isolated_config):
-        """#713: the brokerage block rides on each topic, and an older
-        artefact simply has none."""
         prepare(isolated_config)
         graph = json.loads(json.dumps(GRAPH))
         block = {
@@ -107,9 +84,6 @@ class TestPayload:
         assert all("analysis" not in t for t in older["topics"])
 
     def test_withheld_edges_travel_to_the_exported_views(self, isolated_config):
-        """#710: the gate's refusals ride beside the edges it drew, and
-        an artefact from an older run defaults to none rather than
-        refusing."""
         prepare(isolated_config)
         graph = json.loads(json.dumps(GRAPH))
         graph["edges_withheld"] = [
@@ -121,13 +95,6 @@ class TestPayload:
 
 
 class TestCircleOrder:
-    """The circle's angular position is the page's strongest channel and
-    used to encode nothing: topics sat in whatever order the artefact
-    listed them. Ordering by the stored merge tree's leaf order makes
-    adjacent positions hold similar topics, which is what shortens the
-    chords -- and it is free, since the tree is already in the payload.
-    """
-
     TREE = [
         {"id": "node-0", "a": "b", "b": "c", "distance": 0.1},
         {"id": "node-1", "a": "node-0", "b": "a", "distance": 0.4},
@@ -138,32 +105,16 @@ class TestCircleOrder:
         assert order == ["b", "c", "a"]
 
     def test_a_topic_the_tree_never_merged_is_kept(self):
-        """`topic_graph.hierarchy` covers only the topics that had a
-        centroid, so a topic can be missing from the tree entirely. It
-        still has to be drawn, once, rather than silently dropped."""
         assert _page.dendrogram_order(self.TREE, ["a", "b", "c", "d"]) == ["b", "c", "a", "d"]
 
     def test_no_tree_leaves_the_payload_order_alone(self):
-        """A corpus with fewer than two topics with vectors stores an
-        empty hierarchy; the page degrades to the arbitrary-but-complete
-        circle it drew before, not to an empty one."""
         assert _page.dendrogram_order([], ["a", "b"]) == ["a", "b"]
 
     def test_a_topic_labelled_like_a_merge_id_stays_a_leaf(self):
-        """Merge ids are `node-N` and topic labels are free text, so a
-        label can collide with one -- the same hazard as #636's
-        `__proto__`. A known label is a leaf whatever the tree calls its
-        internal nodes, or the collision would swallow the real topic."""
         tree = [{"id": "node-0", "a": "node-0", "b": "z", "distance": 0.2}]
         assert _page.dendrogram_order(tree, ["node-0", "z"]) == ["node-0", "z"]
 
     def test_a_tree_naming_one_topic_twice_still_draws_it_once(self):
-        """The tree and the topic list are separate artefacts, and
-        `build_payload` already refuses one kind of disagreement between
-        two of them (a graph node the topic set does not know). Average
-        linkage never names a leaf twice, so this is drift rather than
-        arithmetic -- and a topic drawn on the circle twice would be a
-        page that disagrees with `--json` about how many topics exist."""
         tree = [
             {"id": "node-0", "a": "a", "b": "b", "distance": 0.1},
             {"id": "node-1", "a": "a", "b": "c", "distance": 0.2},
@@ -171,17 +122,10 @@ class TestCircleOrder:
         assert _page.dendrogram_order(tree, ["a", "b", "c"]) == ["a", "b", "c"]
 
     def test_a_merge_naming_nothing_that_exists_is_skipped(self):
-        """The other direction of the same drift: a merge referring to an
-        id that is neither a topic nor another merge. Walking into it
-        would raise, and the ordering is a rendering nicety -- losing the
-        page over it would be the wrong trade."""
         tree = [{"id": "node-1", "a": "node-0", "b": "a", "distance": 0.3}]
         assert _page.dendrogram_order(tree, ["a", "b"]) == ["a", "b"]
 
     def test_the_page_embeds_the_topics_in_that_order(self, isolated_config):
-        """The template needs no change to benefit: `dot-N` ids, the
-        label placement and the panel all index the embedded list, so
-        ordering the list is what orders the circle."""
         prepare(isolated_config)
         graph = json.loads(json.dumps(GRAPH))
         graph["hierarchy"] = [
@@ -197,11 +141,6 @@ class TestCircleOrder:
         ]
 
     def test_the_payload_the_app_shares_is_not_reordered(self, isolated_config):
-        """Ordering is the page's rendering decision, taken at the page
-        boundary. `_app.build_app_payload` is `build_payload` plus
-        `origin`, and the app has its own layouts -- so reordering in the
-        join would have changed the app's payload too, which #670's
-        decision puts out of scope."""
         prepare(isolated_config)
         graph = json.loads(json.dumps(GRAPH))
         graph["hierarchy"] = [
@@ -219,8 +158,6 @@ class TestHtml:
 
     def test_the_page_is_self_contained(self, isolated_config):
         html = _page.build_html(self.payload(isolated_config))
-        # No external fetch of any kind: script/link/img sources, CSS
-        # imports, or webfonts would all rot and violate file:// use.
         assert not re.search(r'src\s*=\s*"http', html)
         assert not re.search(r'href\s*=\s*"http', html)
         assert "@import" not in html
@@ -251,23 +188,6 @@ class TestHtml:
 
 
 class TestPanelFurniture:
-    """What a topic click may overwrite (#807).
-
-    The hierarchy disclosure is built once, at load, by a one-shot IIFE;
-    the per-topic detail is rebuilt on every click. So the click has to
-    write into a container of its own -- when it wrote the whole of
-    `#panel` instead, the first click deleted the tree for the rest of
-    the page's life, and re-adding the element would not have brought it
-    back populated.
-
-    Checked against the emitted page's source rather than by driving a
-    browser: the check has to run in CI, where there is no Chrome and no
-    DOM (the `tests/webapp/` node suite exercises modules written to run
-    without one -- this page's script is inline and cannot be imported).
-    A structural check is what is available, and it pins the property
-    that actually broke: what the click writes, and what it does not.
-    """
-
     def page(self, cfg) -> str:
         prepare(cfg)
         return _page.build_html(_page.build_payload(GRAPH, TOPIC_SET, {"digital twin": ["twin"]}))
@@ -282,15 +202,11 @@ class TestPanelFurniture:
         assert "detail.innerHTML" in body
 
     def test_a_click_never_writes_over_the_panel_itself(self, isolated_config):
-        """The regression itself: `panel.innerHTML = ...` took the
-        hierarchy, the invitation to click, and the heading with it."""
         body = self.show_body(self.page(isolated_config))
         assert "panel.innerHTML" not in body
         assert 'getElementById("panel")' not in body
 
     def test_the_hierarchy_sits_outside_the_rewritten_container(self, isolated_config):
-        """Being a sibling is the whole fix -- a `#treebox` nested in
-        `#detail` would be destroyed by the same assignment."""
         html = self.page(isolated_config)
         panel = re.search(r'<div id="panel">.*?</div>\s*<script id="data"', html, re.S).group(0)
         assert '<details id="treebox">' in panel
@@ -298,11 +214,6 @@ class TestPanelFurniture:
         assert "treebox" not in detail
 
     def test_the_empty_tree_branch_still_names_the_disclosure(self, isolated_config):
-        """A page whose corpus grew no tree hides `#treebox` once, at
-        load -- and now stays hidden, because a click no longer rebuilds
-        the panel. Source-level, like the rest of this class: the branch
-        it pins runs at load, where no assertion on the emitted string
-        can distinguish it from the populated case."""
         html = self.page(isolated_config)
         assert 'getElementById("treebox").style.display = "none"' in html
 
@@ -319,10 +230,6 @@ class TestCli:
     def test_html_under_json_emits_a_payload_rather_than_a_sentence(
         self, isolated_config, tmp_path, capsys
     ):
-        """`--json` means "stdout is a JSON document" on every other
-        discover invocation, and `--html` is one more view of the same
-        artefacts -- so the write is reported as a payload here too,
-        not as the prose line a caller cannot parse."""
         prepare(isolated_config)
         target = tmp_path / "topics.html"
         assert discover.main(["--html", str(target), "--json"]) == 0
@@ -339,21 +246,12 @@ class TestCli:
         target = tmp_path / "no-dir" / "t.html"
         assert discover.main(["--html", str(target)]) == 1
         streams = capsys.readouterr()
-        # The stream is pinned, not just the text, and unconditionally:
-        # a failure line is diagnostics in either mode, which is the rule
-        # _topic_view's --out write failure already follows. Reporting it
-        # on stdout in one mode and stderr in the other would be two
-        # rules for one module.
         assert str(target) in streams.err
         assert str(target) not in streams.out
 
     def test_an_unwritable_target_under_json_keeps_prose_off_stdout(
         self, isolated_config, tmp_path, capsys
     ):
-        """The `--json` half of the rule above: nothing has reached stdout
-        by the time the write fails, so an empty stdout and a nonzero exit
-        is what the caller reads -- never a sentence in the stream they
-        opened expecting a document."""
         prepare(isolated_config)
         target = tmp_path / "no-dir" / "t.html"
         assert discover.main(["--html", str(target), "--json"]) == 1

@@ -1,15 +1,3 @@
-"""The demo-recorder skill's `retime_cast.py` (#1188).
-
-It replaces the September recording's two one-off scripts, which each
-rewrote an asciinema v2 `.cast`'s timestamps: one compressed a dull
-span (the `pip install` scroll) and shifted the rest back, the other
-also stretched everything after that span. One span, one speed-up, one
-tail factor covers both.
-
-Loaded by path: the skill folder's name has a hyphen, and the skill is
-developer-only, so it is not part of the package.
-"""
-
 import importlib.util
 import json
 from pathlib import Path
@@ -91,10 +79,6 @@ class TestMain:
         assert "7.00s -> 4.00s" in capsys.readouterr().out
 
     def test_tail_scales_the_recorded_idle_limit(self, tmp_path, capsys):
-        """`asciinema rec --idle-time-limit 2` stores the limit in the
-        header, and a player or agg caps every gap at it, which would cut
-        a stretched gap back to 2s. Scaled with the tail, it keeps the
-        stretch and still caps a gap as long as the original limit did."""
         src, dst = tmp_path / "in.cast", tmp_path / "out.cast"
         write_cast(src, {**HEADER, "idle_time_limit": 2})
         argv = [str(src), str(dst), "--start", "# 1.", "--end", "# 2.", "--tail", "1.5"]

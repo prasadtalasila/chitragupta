@@ -1,17 +1,9 @@
-"""`chitragupta figure check`'s rule registry, `% cg-allow:` parser
-(#1053) and the sorting of allows against what fired (#1058).
-
-Pure string work, so every test here runs on a host with no TeX.
-"""
-
 import pytest
 
 from chitragupta.figure._allow import Allow, parse_allows, settle
 from chitragupta.figure._rules import RULES, Finding
 
 
-# The connector rules (#1054), `c1-` to `c7-`, each about one edge, pair,
-# side, tag or point.
 _CONNECTOR_NAMES = (
     "orthogonal",
     "tag-clearance",
@@ -30,8 +22,6 @@ class TestRules:
             assert RULES[rule_id].cls == "objective"
 
     def test_the_existing_findings_keep_their_shipped_json_kinds(self):
-        """The ids are the `kind` strings `review figure --json` already
-        emits, so one finding has one name across both commands."""
         shipped = {
             "does-not-compile",
             "nothing-measurable",
@@ -70,9 +60,6 @@ class TestRules:
         )
 
     def test_a_compile_failure_a_missing_twin_and_the_advisory_reports_cannot_be_allowed(self):
-        """An advisory report is read, so there is nothing for an allow
-        to set aside (#1057). A missing twin is written, never excused
-        (#1056)."""
         refused = [rule.id for rule in RULES.values() if not rule.allowable]
         advisory = [rule.id for rule in RULES.values() if rule.cls == "advisory"]
 
@@ -151,8 +138,6 @@ class TestParseAllows:
         assert [allow.rule for allow in wellformed] == ["focal-count"]
 
     def test_an_allow_after_code_on_the_same_line_is_not_one(self):
-        """Only a full-line comment: a trailing comment on a drawing
-        line is too easy to delete along with the line it explains."""
         assert _one("\\node (a) {A}; % cg-allow: size-width -- wide\n") == ([], [])
 
     def test_a_figure_with_no_allow_has_none(self):
@@ -169,8 +154,6 @@ def _settle(allows, fired, not_measured=(), layout="", names=None):
 
 class TestSettle:
     def test_an_element_allow_sets_aside_only_its_own_target(self):
-        """The point of #1058: excusing one overlap leaves the next one
-        found."""
         fired = [Finding("node-overlap", "a+b", "boxes intersect")] + [
             Finding("node-overlap", "a+c", "boxes intersect")
         ]
@@ -226,8 +209,6 @@ class TestSettle:
         assert [measured for _, measured in settled.allowed] == ["475.0pt wide"] * 2
 
     def test_a_quoted_finding_target_matches_its_unquoted_allow(self):
-        """w4 prints an unnamed label in quotes; the allow's quotes are
-        gone once parsed, so the two must meet without them."""
         fired = [Finding("w4-pictograph", '"Raw PDF"', "1 pictograph")]
 
         settled = _settle([_allow("w4-pictograph", "Raw PDF")], fired)
@@ -254,7 +235,6 @@ class TestSettle:
         ("rule", "target"),
         [
             ("c7-dangling-tip", "(3.0,4.0)"),
-            # A node TikZ named itself is shown by its centre (#1101).
             ("c4-attach", "(3.0,4.0).south"),
             ("c1-orthogonal", "(3.0,4.0)->(9.0,4.0)"),
             ("k2-text", "tag on a->b"),
@@ -262,15 +242,11 @@ class TestSettle:
         ],
     )
     def test_points_spaced_targets_and_label_text_are_not_looked_up(self, rule, target):
-        """A point is not a name, and t1, t2 and w4 name an unnamed
-        node by its label text, which is never among the drawn names."""
         settled = _settle([_allow(rule, target)], [], names=set())
 
         assert [why for _, why in settled.stale] == [f"no longer fires on {target}"]
 
     def test_a_point_half_of_a_pair_is_not_looked_up(self):
-        """An unnamed node overlapping a named one prints as its centre,
-        on either side of the `+`."""
         settled = _settle([_allow("node-overlap", "pot+(3.0,2.0)")], [], names={"pot"})
 
         assert [why for _, why in settled.stale] == ["no longer fires on pot+(3.0,2.0)"]

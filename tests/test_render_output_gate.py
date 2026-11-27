@@ -1,11 +1,3 @@
-"""chitragupta/render_output/_gate.py: `draft render` gates the draft before any format (#812).
-
-`--format md` used to be the only format that refused a key missing from
-the ledger; docx, pdf and tex went to pandoc, which warned and wrote the
-document anyway. These pin the gate that now runs first, for every
-format, and the no-ledger property the gate itself has.
-"""
-
 import pytest
 
 from chitragupta import ledger
@@ -36,7 +28,6 @@ class TestGatedWarnings:
         assert _gate.gated_warnings("Fine [@smith2024].\n", draft) == []
 
     def test_a_key_whose_pdf_never_parsed_is_refused_naming_its_status(self, isolated_config):
-        # #1118: in the .bib is not enough; render refuses what the gate does.
         con = ledger.connect()
         ledger.upsert_reference(con, make_reference(citekey="web_page_2024"))
         con.close()
@@ -65,9 +56,6 @@ class TestGatedWarnings:
             _gate.gated_warnings("\\citep{not_a_real_citekey_2026}\n", draft)
 
     def test_the_refusal_suggests_no_other_key(self, isolated_config):
-        # A near-miss real key is exactly what a "did you mean" would
-        # offer, and swapping it in would pass the gate for a paper the
-        # model never read. The refusal names the bad key and nothing else.
         _known("not_a_real_citekey_2025")
         draft = content_draft(isolated_config, "drafts/x.md")
         with pytest.raises(_gate.UngatedDraft) as exc:

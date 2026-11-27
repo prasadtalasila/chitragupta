@@ -1,14 +1,3 @@
-"""chitragupta/review/_units.py: what a "unit" is, per genre, and how a
-drafter declares that a single-source one was deliberate.
-
-The unit is the scale the multi-source rule binds at, and it differs by
-genre -- see plans/b2-multi-source-synthesis.md. These tests pin the
-three things that get it wrong in practice: reading the genre out of a
-dossier that may not exist, splitting a draft into units without
-mistaking a declaration marker for prose, and counting a run of
-consecutive paragraphs that all rest on the same single source.
-"""
-
 from pathlib import Path
 
 import pytest
@@ -18,7 +7,6 @@ from chitragupta.review import _units
 
 
 def write_scope(draft: Path, genre: str) -> None:
-    """Put one `- genre:` line into this draft's dossier scope.md."""
     scope_dir = dossier.dossier_dir(draft)
     scope_dir.mkdir(parents=True, exist_ok=True)
     (scope_dir / dossier.SCOPE_MD).write_text(
@@ -59,15 +47,10 @@ class TestGenreOf:
         assert _units.genre_of(draft) is None
 
     def test_a_draft_outside_content_has_no_genre(self, isolated_config, tmp_path):
-        """dossier_dir raises for a path it cannot mirror; that is a
-        missing genre, not a crash in a report that judges nothing."""
         assert _units.genre_of(tmp_path / "loose.md") is None
 
 
 class TestResolveUnit:
-    """Three sources, most specific first -- style_language.resolve_language's
-    policy, because the report has to name where the unit came from."""
-
     def test_every_genre_resolves_its_own_unit(self, isolated_config):
         expected = {
             "survey": "paragraph",
@@ -82,9 +65,6 @@ class TestResolveUnit:
             assert _units.resolve_unit(draft) == (kind, "scope.md"), genre
 
     def test_the_table_covers_every_genre_dossier_init_accepts(self):
-        """A genre `dossier init --genre` names but this table omits would
-        silently fall back to the paragraph, which is wrong for two of
-        the five."""
         assert set(_units.UNITS) == set(dossier.GENRES)
 
     def test_an_override_wins_over_the_dossier(self, isolated_config):
@@ -96,7 +76,6 @@ class TestResolveUnit:
         assert _units.resolve_unit(draft_at()) == ("paragraph", "nothing")
 
     def test_an_unrecognised_genre_falls_back_and_says_so(self, isolated_config):
-        """A hand-edited scope.md is not a reason to refuse to report."""
         draft = draft_at()
         write_scope(draft, "libretto")
         assert _units.resolve_unit(draft) == ("paragraph", "nothing")
@@ -119,8 +98,6 @@ class TestMarkers:
         assert unit.declared == "only Foo covers X"
 
     def test_a_marker_split_off_by_a_blank_line_declares_nothing(self, isolated_config):
-        """It becomes its own block, which is why the standard requires it
-        to touch the unit it explains."""
         text = "<!-- single-source: only Foo covers X -->\n\nBody text [@Foo2019].\n"
         units = _units.units(text, "paragraph")
         assert [u.declared for u in units] == [None]
@@ -141,8 +118,6 @@ class TestMarkers:
         assert unit.declared is None
 
     def test_the_marker_is_stripped_from_the_units_text(self, isolated_config):
-        """Otherwise declaring a unit changes the text that names it, and
-        every finding id churns the moment someone explains one."""
         plain = "Body text [@Foo2019].\n"
         declared = "Body text [@Foo2019].\n<!-- single-source: because -->\n"
         assert (
@@ -184,8 +159,6 @@ class TestParagraphUnits:
         assert [u.line for u in _units.units(text, "paragraph")] == [1, 3]
 
     def test_a_paragraph_unit_has_no_run(self, isolated_config):
-        """The run is a property of a section's internal shape; a
-        paragraph has no inside to be block-structured."""
         (unit,) = _units.units("One [@A].\n", "paragraph")
         assert unit.longest_run == 0
 
@@ -203,9 +176,6 @@ class TestDocumentUnits:
 
 
 class TestLatexComments:
-    """#873. A unit's lines are joined with spaces, so a `%` comment
-    blanked *after* the join would swallow every line below it."""
-
     TEXT = "Text \\citep{A}.\n% Dropped in review: \\citep{B}\nMore \\citep{Foo2019}.\n"
 
     @pytest.mark.parametrize("kind", ["paragraph", "section", "document"])
@@ -214,15 +184,11 @@ class TestLatexComments:
         assert unit.citekeys == ("A", "Foo2019")
 
     def test_a_latex_marker_still_declares_its_unit(self, isolated_config):
-        """The marker is itself a `%` comment; blanking comments must not
-        erase the declaration."""
         text = "Body text \\citep{Foo2019}.\n% single-source: only Foo covers X\n"
         (unit,) = _units.units(text, "paragraph", latex=True)
         assert (unit.citekeys, unit.declared) == (("Foo2019",), "only Foo covers X")
 
     def test_a_citation_between_latex_quotes_is_counted(self, isolated_config):
-        """A backtick opens a quote in LaTeX, so Markdown's inline-code rule
-        must not blank the span between two quoted phrases (#834)."""
         text = "As ``twins'' show \\citep{A}, the ``link'' matters.\n"
         (unit,) = _units.units(text, "paragraph", latex=True)
         assert unit.citekeys == ("A",)
@@ -246,8 +212,6 @@ class TestSectionUnits:
         assert [u.citekeys for u in _units.units(text, "section")] == [("A",), ("B",)]
 
     def test_blank_lines_before_the_first_heading_open_no_section(self, isolated_config):
-        """Otherwise a draft that happens to start with a blank line
-        reports one more unit than it has, and that unit cites nothing."""
         assert [u.line for u in _units.units("\n\n## One\n\nText [@A].\n", "section")] == [3]
 
     def test_a_draft_with_no_headings_is_one_section(self, isolated_config):
@@ -256,10 +220,6 @@ class TestSectionUnits:
 
 
 class TestTheLongestSingleKeyRun:
-    """A section spanning two sources by running one paper out before
-    starting the next satisfies spread and fuses nothing. The run is what
-    tells the two apart."""
-
     def test_a_block_structured_section_reports_its_run(self, isolated_config):
         text = (
             "## S\n\nOne [@A].\n\nTwo [@A].\n\nThree [@A].\n\n"
@@ -298,9 +258,6 @@ class TestTheLongestSingleKeyRun:
 
 
 class TestAnEmptyDraft:
-    """Not a hypothetical: a draft file that exists but has not been
-    written to yet is what a genre skill leaves behind between steps."""
-
     def test_has_no_paragraph_units(self, isolated_config):
         assert _units.units("", "paragraph") == []
 
@@ -326,9 +283,6 @@ def a_draft(text: str, genre: str = "survey", name: str = "survey.md") -> Path:
 
 
 def test_an_image_line_is_not_a_paragraph():
-    """#1172: a digest's source figure ends its caption with one cite
-    string, so counted as a paragraph it rests on one source by
-    construction."""
     text = (
         "Two papers agree. [@k1; @k2]\n\n"
         "![A model's parts, Figure 3 of [@k1], p. 7](figures/a.png)\n\n"
