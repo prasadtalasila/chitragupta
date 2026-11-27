@@ -245,7 +245,8 @@ PARSE_LONG_WORD_RATIO = _get_float(
 PARSE_MIN_TOKENS = _get_int("PARSE_MIN_TOKENS", "parser", "min_tokens", default=200)
 
 
-# The only [logging] setting; rotation is fixed in logging_setup.
+# The only [logging] setting: rotation is fixed in logging_setup, as nothing
+# has needed it to vary per host.
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 LOGGING_LEVEL = _get_choice("LOGGING_LEVEL", "logging", "level", default="INFO", choices=LOG_LEVELS)
 # No config.toml key; an env var only, so a subprocess test can redirect it.

@@ -118,9 +118,8 @@ def _run_enrich() -> int:
         )
         return 1
     # Square brackets are a glob in zsh, so the echo is shlex-quoted and the
-    # bare bracketed spelling appears nowhere in this file
-    # (tests/test_pyproject_extras.py). argv stays unquoted: pip gets it
-    # directly.
+    # bare bracketed spelling appears nowhere in this file. argv stays
+    # unquoted: pip gets it directly.
     requirement = f"chitragupta-cli[{EXTRA}]=={version}"
     command = [sys.executable, "-m", "pip", "install", requirement]
     print(f"About to run: {shlex.join(command)}")

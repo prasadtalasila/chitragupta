@@ -13,6 +13,8 @@ from chitragupta import config, ledger, programs
 from tests import content_guard
 
 
+# A dependency's sys.path entry can shadow stdlib for every later spawn child;
+# test_runlock spawns directly, so sanitise once here.
 def pytest_sessionstart(session):
     from chitragupta import pdf_text
 
@@ -24,6 +26,8 @@ def pytest_sessionfinish(session):
     content_guard.verify(session)
 
 
+# Pinned: config.toml is per-host and read at import, so a developer's own
+# values would fail tests that CI never sees fail.
 @pytest.fixture(autouse=True)
 def _pin_parser_settings(monkeypatch):
     monkeypatch.setattr(config, "PARSER", "pdftotext")
@@ -40,6 +44,8 @@ def _fresh_retrieval_memos():
     retrieval_spelling._MEMO.clear()
 
 
+# Stubbed at ensure_running, not prestart_pool, so the decision logic still
+# runs; guarded because Windows resolves to spawn and never reaches it.
 @pytest.fixture(autouse=True)
 def _no_real_forkserver(monkeypatch):
     if "forkserver" not in multiprocessing.get_all_start_methods():
@@ -49,6 +55,9 @@ def _no_real_forkserver(monkeypatch):
     monkeypatch.setattr(forkserver, "ensure_running", lambda: None)
 
 
+# pytest.fail, not ImportError: the ladder catches ImportError and degrades to
+# lexical, so a refusal test would pass on it. Real models are a ~420 MB
+# download on CI (#861); opt out with @pytest.mark.real_resolver_loaders.
 @pytest.fixture(autouse=True)
 def _no_real_resolver_models(request, monkeypatch):
     monkeypatch.setattr("chitragupta.discover._resolve._FAILED", {})
@@ -108,6 +117,7 @@ def isolated_config(tmp_path, monkeypatch):
         "DOCLING_FORMULAS": False,
     }.items():
         monkeypatch.setattr(config, name, value)
+    # 0.5, above the shipped 0.15, so a test can place a vector below the floor.
     monkeypatch.setattr(config, "SEED_TOPIC_MIN_SIMILARITY", 0.5)
     monkeypatch.setattr(config, "SEED_TOPIC_MAX_PAPERS", 25)
     monkeypatch.setattr(config, "KEYWORD_TOP_N", 40)
@@ -242,6 +252,9 @@ def retrieval_cost(target):
     return sum(s.calls for s in segments), sum(s.chars for s in segments)
 
 
+# Every thread pool a test hands the code must come from here or go through
+# track(): shutdown(wait=False) cannot kill a thread, so an unjoined job
+# outlives the test and writes into the real content/ (#1226).
 class ThreadPools:
     def __init__(self) -> None:
         self._pools: list = []

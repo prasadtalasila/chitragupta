@@ -1021,6 +1021,8 @@ class TestRetrievalLog:
         (dossier.dossier_dir(draft) / "retrieval.md").unlink()
         dossier.log_retrieval(draft, "search", "first", 15, 15, 100)
 
+        # A nested context, not monkeypatch.undo(): undo() would also revert
+        # isolated_config's patches.
         with monkeypatch.context() as stale:
             stale.setattr(Path, "exists", lambda self: False)
             dossier.log_retrieval(draft, "search", "second", 15, 15, 200)

@@ -1585,6 +1585,8 @@ class TestStallWatchdog:
             at_stall = list(started)
         finally:
             blocked.set()
+            # shutdown(wait=True) joins every worker deterministically; a sleep
+            # was a race. The fixture's teardown join is too late for this assert.
             for executor in executors:
                 executor.shutdown(wait=True)
         assert not any(t.is_alive() for ex in executors for t in ex._threads)

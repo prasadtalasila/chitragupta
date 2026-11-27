@@ -11,7 +11,8 @@ from chitragupta._braced_keys import braced_keys
 
 # Pandoc's citekey grammar: `:.#$%&-+?<>~/` only *between* key characters,
 # so a sentence-final `.` is not eaten. A narrower body made the gate check
-# a prefix (`[@smith:2020]` passed on `smith`, pandoc rendered `[?]`) and
+# a prefix (a key with a `:` passed on the part before it, and pandoc
+# rendered `[?]`) and
 # refused real Better-BibTeX keys.
 # Letters and digits are Unicode's, as pandoc's (#1021). `*` may start a
 # key: `@*` cites everything, so it is reported as key `*` and fails. A

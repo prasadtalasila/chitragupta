@@ -7,7 +7,7 @@ to `[a-z0-9]` after NFKD, compared with `str.find`, so every caveat of
 vanishes by construction. NFKD, not NFKC: NFKC leaves `é` precomposed
 and the filter deletes it (`café` -> `caf`), false-absenting European
 names. Word lists (`verbatim_check/_corpus.py`, `overlap_index.py`) split
-`environ-\\nment` and cost 9 of 124 exact hits on the 189 spans of
+`environ-\nment` and cost 9 of 124 exact hits on the 189 spans of
 `plans/c3-quotation-integrity.md`. The stated cost: `"the rapist"` and
 `"therapist"` flatten alike, which never occurred and can only turn
 absent into found.

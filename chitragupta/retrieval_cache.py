@@ -18,6 +18,8 @@ from chitragupta._json_cache import MemoisedJson
 # token floor 3 -> 2), 5 (issue 844, `errors="replace"`). Since issue 845
 # `_tokens.index_version` joins a digest of the tokenizer settings, so
 # those edits move it automatically.
+# The passage sidecar is deliberately not in `_fingerprint`: clear_sidecar runs
+# before every re-parse, so it cannot move without the .txt's mtime moving.
 _INDEX_SCHEMA_VERSION = _tokens.index_version(5)
 
 # Rows marked `parsed` whose file is missing, indexed on title alone.

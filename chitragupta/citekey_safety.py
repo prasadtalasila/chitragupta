@@ -71,9 +71,9 @@ _KEY_CHAR = r"[^\s\[\](){},;@'\"`|<>:/\\*?]"
 
 def citekey_pattern(citekey: str) -> "re.Pattern[str]":
     """The literal citekey, bounded by every character a citekey may
-    contain, so `smith2020` matches neither inside `smith2020b`,
-    `smith2020.v2` nor `smith+smith2020`. Dots straight after it are
-    sentence punctuation (`see @smith2020.`), since no citekey ends in one.
+    contain, so a key never matches inside a longer key that extends it
+    with a letter, a `.v2` suffix or a `+` prefix. Dots straight after it
+    are sentence punctuation, since no citekey ends in one.
 
     Shared by `sync_residue` and `dossier/_renames.py`, so a key one
     reports is exactly a key the other replaces.

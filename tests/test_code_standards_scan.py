@@ -1,3 +1,8 @@
+# Enforces C1 (25 statements per function) and C2 (250 code lines per module)
+# from docs/CODE-STANDARDS.md. Statements, not physical lines, so a size limit
+# never rewards deleting a why-comment. A ratchet, not a wall: today's
+# offenders are frozen in the register, and an entry that comes back under
+# its threshold fails until it is deleted, so the register can only shrink.
 import importlib.util
 import sys
 from pathlib import Path
