@@ -28,7 +28,7 @@ layer owns what ([ARCHITECTURE.md](ARCHITECTURE.md), and `DEVELOPER-AGENTS.md`'s
 
 - [Where these rules come from](#-where-these-rules-come-from)
 - [The rule that decides everything](#-the-rule-that-decides-everything)
-- [The comment rules, and the misreading to avoid](#-the-comment-rules-and-the-misreading-to-avoid)
+- [The comment rules: record only what binds](#-the-comment-rules-record-only-what-binds)
 - [Why statements, not lines](#-why-statements-not-lines)
 - [The Boy Scout Rule, and surgical changes](#-the-boy-scout-rule-and-surgical-changes)
 - [The binary rules](#-the-binary-rules)
@@ -93,7 +93,7 @@ shape, not its automation. Nothing here proposes a code-fixing loop;
 person asking") is the reason, and it applies with more force to code
 than to prose.
 
-## 💬 The comment rules, and the misreading to avoid
+## 💬 The comment rules: record only what binds
 
 The clean-code comment rules are eight, and they split cleanly in two:
 
@@ -108,37 +108,37 @@ Rule 1, "always try to explain yourself in code", governs both: reach
 for a better name or an explanatory variable before reaching for a
 comment.
 
-**The misreading** is to compress all eight into "comment only where the
-code is non-obvious", and then apply that to this repository. That reading
-inverts rules 6 through 8. This project's comments are overwhelmingly
-*intent*, *clarification* and *warning*: which alternative was tried, what
-broke, why the obvious thing is wrong. `.github/workflows/ci.yml` is
-roughly half prose by line count, and every paragraph of it answers a
-question a future reader would otherwise re-litigate. An agent that
-"cleans up" those comments has destroyed the most valuable thing in the
-file, while believing it applied a clean-code rule.
+Stated for this repository, the required side is narrow. **A comment or
+docstring records only a critical detail: what a code fragment, method or
+class must keep doing, and why a later change would break it.** That
+means a constraint, a security property, an ordering, or a version pin
+that is load-bearing, written in a line or two. Rule 8, the warning of
+consequences, is the core of it.
 
-The canon does not say that. It says don't be **redundant**, and a
-comment recording why a version pin is load-bearing is the opposite of
-redundant, because that information exists nowhere in the code.
+- **Banned: the *what*-comment** (`# increment the counter`) and
+  commented-out code, as the canon says.
+- **Also banned: everything that is not a binding constraint.** That
+  covers history, rejected alternatives, design essays, issue narratives,
+  and rationale that no longer constrains the code. Git keeps the
+  history, `plans/<issue>-*.md` keeps the design, and the PR description
+  keeps the reasoning.
+- **Tests carry no docstrings and no full-line comments**, in Python and
+  JavaScript. Inline comments and lint directives may stay. A test's name
+  says what it checks.
+- **Kept regardless:** a docstring that argparse renders as a noun or
+  verb command's help.
 
-So, stated for this repository:
+Write new code at this density from the start. Long comments already in
+the repository are trimmed when a change touches them or in a dedicated
+PR, as #1259 did for `tests/`, `pyproject.toml` and three modules, never
+as a drive-by in an unrelated diff.
+[DEVELOPER-AGENTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/DEVELOPER-AGENTS.md#-comments-and-docstrings)
+carries the same rule as a working checklist.
 
-- **Banned: the *what*-comment.** A comment restating the line below it
-  (`# increment the counter`) is noise. So is a commented-out block:
-  delete it, git remembers.
-- **Required: the *why*-comment**, wherever a reader could reasonably ask
-  "why this way?": a non-obvious constraint, a rejected alternative, a
-  bug that produced the current shape, a version pin that is
-  load-bearing. Absence of one on a surprising decision is a review
-  finding.
-
-This is [SOUL.md](../SOUL.md)'s "**Judgment is logged, not just made**" in
-executable form, and SOUL.md is the tie-break if the two ever seem to
-conflict.
-
-This is also why the size rules count statements: a physical-line
-limit taxes exactly the thing this section requires.
+This is still [SOUL.md](../SOUL.md)'s "**Judgment is logged, not just
+made**": the judgment that still binds is logged beside the code, and the
+rest is logged in git and `plans/`, where it does not have to be read
+again on every edit.
 
 ## 💡 Why statements, not lines
 
@@ -158,12 +158,11 @@ conclusion it supports is an order-of-magnitude gap, which is stable; the
 exact figures are an illustration and are re-measured when someone has
 reason to.
 
-The gap is the section above. A function carrying twelve lines of
-rationale about why a partial Docling parse must raise before anything is
-written is not a long function; it is a short function with its reasoning
-attached. Counting physical lines puts the size rule and the comment rules
-in direct conflict and rewards deleting the rationale, which is the one
-edit this project least wants.
+The gap is comments. A function that carries the constraint it must
+keep, such as why a partial Docling parse must raise before anything is
+written, is not made longer by stating it. Counting physical lines would
+put the size rule and the comment rules in conflict, and would push even
+the comments that must stay onto the same line as code.
 
 Counting **statements** measures what "do one thing" is about, how much
 a function *does*, and is blind to how well it is explained. On that

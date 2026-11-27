@@ -151,10 +151,9 @@ Write each one in a line or two.
   Before committing, read every `"""`, `#`, `/*` and `//` your diff
   adds and cut whatever is not a binding constraint.
 
-This narrows [docs/CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid)'s
-comment rules: its required *why*-comment survives only when it records a
-constraint that still binds. #1259 applied this rule to `tests/`,
-`pyproject.toml` and three modules.
+[docs/CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md#-the-comment-rules-record-only-what-binds)
+states the rule and how it maps onto the clean-code comment rules.
+PR #1259 applied it to `tests/`, `pyproject.toml` and three modules.
 
 **Measure the headroom before you choose the fix's shape, not after.**
 The 250-line ceiling is a ratchet, so a module already at 244, 248, 249
