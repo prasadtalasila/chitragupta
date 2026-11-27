@@ -59,8 +59,8 @@ dev = [
     "pytest-cov>=7.1,<8.0",
     "pytest-xdist>=3.8,<4.0",
     "pyyaml>=6.0,<7.0",
-    # TestClient for the webapp's FastAPI app.
-    "httpx>=0.29,<0.30",
+    # TestClient for the webapp's FastAPI app; starlette deprecates plain httpx for it.
+    "httpx2>=2.16,<3.0",
 ]
 docs = [
     "mkdocs-material>=9.7,<10.0",
