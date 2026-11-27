@@ -62,8 +62,16 @@ def test_static_traversal_refused(client, path):
 
 
 @pytest.mark.parametrize(
-    "path", ["/api", "//api/status", "/API/status", "/x/../api/status", "/%2e%2e/api/status",
-             "/api/status/", "/api%2fstatus"]
+    "path",
+    [
+        "/api",
+        "//api/status",
+        "/API/status",
+        "/x/../api/status",
+        "/%2e%2e/api/status",
+        "/api/status/",
+        "/api%2fstatus",
+    ],
 )
 def test_api_path_spellings_never_leak_without_the_token(client, path):
     response = client.get(path)

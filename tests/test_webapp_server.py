@@ -103,7 +103,11 @@ def test_sigterm_stops_cleanly_and_removes_the_runtime_files(tmp_path):
     env = {**os.environ, "PYTHONPATH": str(REPO_ROOT), "CHITRAGUPTA_PROJECT": str(tmp_path)}
     child = subprocess.Popen(
         [sys.executable, "-m", "chitragupta", "webapp", "--no-browser"],
-        cwd=tmp_path, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        cwd=tmp_path,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
     )
     try:
         assert "#token=" in child.stdout.readline()

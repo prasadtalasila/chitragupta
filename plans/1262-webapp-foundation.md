@@ -146,7 +146,9 @@ Starlette's `TrustedHostMiddleware` is not used: it compares the host
 name without the port, looser than check 1.
 
 Every response, refusals included, carries:
-`Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+`Content-Security-Policy: default-src 'self'; script-src 'self'; style-src
+'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri
+'none'; form-action 'none'; frame-ancestors 'none'`,
 `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, and
 on `/api/` `Cache-Control: no-store`. No response carries an
 `Access-Control-*` header. Relaxing a directive needs a recorded reason

@@ -14,8 +14,15 @@ def test_header_map_lowercases_decodes_and_keeps_duplicates():
 
 @pytest.mark.parametrize(
     "path, expected",
-    [("/api", True), ("/api/", True), ("/api/status", True), ("/apix", False), ("/", False),
-     ("/index.html", False), ("//api/status", False)],
+    [
+        ("/api", True),
+        ("/api/", True),
+        ("/api/status", True),
+        ("/apix", False),
+        ("/", False),
+        ("/index.html", False),
+        ("//api/status", False),
+    ],
 )
 def test_is_api(path, expected):
     assert g.is_api(path) is expected
@@ -58,8 +65,13 @@ def test_origin_allowed(method, origin):
 
 @pytest.mark.parametrize(
     "method, origin",
-    [("POST", None), ("GET", ["http://evil.example"]), ("POST", ["null"]),
-     ("GET", ["http://127.0.0.1:9999"]), ("GET", ["https://127.0.0.1:8123"])],
+    [
+        ("POST", None),
+        ("GET", ["http://evil.example"]),
+        ("POST", ["null"]),
+        ("GET", ["http://127.0.0.1:9999"]),
+        ("GET", ["https://127.0.0.1:8123"]),
+    ],
 )
 def test_origin_refused(method, origin):
     headers = {} if origin is None else {"origin": origin}
@@ -77,8 +89,16 @@ def test_token_allowed():
 
 @pytest.mark.parametrize(
     "values",
-    [None, ["Bearer"], ["Bearer wrong"], [f"bearer {TOKEN}"], [f"Basic {TOKEN}"],
-     [f"Bearer {TOKEN} "], ["Bearer \xe9"], [f"Bearer {TOKEN}\xe9"]],
+    [
+        None,
+        ["Bearer"],
+        ["Bearer wrong"],
+        [f"bearer {TOKEN}"],
+        [f"Basic {TOKEN}"],
+        [f"Bearer {TOKEN} "],
+        ["Bearer \xe9"],
+        [f"Bearer {TOKEN}\xe9"],
+    ],
 )
 def test_token_refused(values):
     headers = {} if values is None else {"authorization": values}
@@ -92,9 +112,17 @@ def test_duplicate_authorization_is_a_bad_request():
 
 @pytest.mark.parametrize(
     "method, length, expected",
-    [("GET", None, None), ("POST", ["10"], None), ("POST", [str(g.MAX_BODY)], None),
-     ("POST", [str(g.MAX_BODY + 1)], 413), ("POST", None, 411), ("POST", ["abc"], 400),
-     ("POST", ["-1"], 400), ("POST", ["1", "1"], 400), ("POST", ["\xb2"], 400)],
+    [
+        ("GET", None, None),
+        ("POST", ["10"], None),
+        ("POST", [str(g.MAX_BODY)], None),
+        ("POST", [str(g.MAX_BODY + 1)], 413),
+        ("POST", None, 411),
+        ("POST", ["abc"], 400),
+        ("POST", ["-1"], 400),
+        ("POST", ["1", "1"], 400),
+        ("POST", ["\xb2"], 400),
+    ],
 )
 def test_body_size(method, length, expected):
     headers = {} if length is None else {"content-length": length}

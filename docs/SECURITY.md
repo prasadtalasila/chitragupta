@@ -312,8 +312,8 @@ itself.
 ### Local web workbench
 
 `chitragupta webapp` (#1262, from the optional `webapp` extra) serves a
-browser workbench that will later run the project's coding agent (WA-1,
-#1261). Anyone who can send it an authenticated request could prompt
+browser workbench that will later run the project's coding agent
+(WA-1, #1261). Anyone who can send it an authenticated request could prompt
 that agent, so the server is built to be reachable only from the
 author's own browser, on the author's own machine, with a secret it
 printed for them:

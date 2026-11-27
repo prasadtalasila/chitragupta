@@ -51,7 +51,6 @@ def test_the_command_and_the_cli_never_import_the_web_stack():
     assert result.stdout.strip() == "[]"
 
 
-
 @pytest.fixture
 def served(isolated_config, monkeypatch):
     """`main` with `serve` replaced: records the app and the socket's port."""
