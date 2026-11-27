@@ -1,31 +1,12 @@
 """Citation-coverage report: how much of what retrieval surfaced actually
 made it into a draft's citations.
 
-`chitragupta.retrieval.search()` (and its embedding-based upgrade,
-`chitragupta.enrich.embed_index.search()`) return candidate sources for a query --
-but nothing today reports whether a genre skill actually used them.
-A citekey that scored well but never got cited is either a sign the
-draft skipped a relevant source, or a sign the query was too broad; a
-citekey cited but never surfaced by any of the given queries is not a
-problem (it's likely explained by a different query the skill also ran)
-but worth showing so the report isn't misread as a gap-finder.
-
-One of the aids in the **review layer**, named by the entry point
-rather than by a sibling list this module has no line budget to grow --
-read over a finished draft, by a person or by a driver, never a gate,
-and never holding the write lock. Purely informational, unlike citation_gate.py.
-chitragupta/review/__init__.py owns where a written report goes
-(`content/review/<topic>/<stem>.coverage.md`, mirroring the draft's
-path) and what its header looks like.
-
-Printing to stdout is the default, because the usual use is a question
-asked and answered in one sitting; `--write` is for when the answer
-should still be there next month, and diffable against the next
-revision's.
-
-Stdlib-only (reuses chitragupta.retrieval and chitragupta.citation_gate.extract_citekeys_from_line,
-both already stdlib-only) -- runs with bare `python`, no venv, same as
-citation_gate.py/references.py.
+A citekey retrieval scored well but the draft never cites means a skipped
+source or a too-broad query; one cited but not surfaced is usually another
+query's, shown so the report is not misread as a gap-finder. A review aid:
+informational, never a gate, no write lock. Stdout by default; `--write`
+files `content/review/<topic>/<stem>.coverage.md` for diffing later.
+Stdlib-only.
 
 Usage:
     python -m chitragupta.review coverage <draft.md> --query "topic one" --query "topic two" [--k 5]
@@ -51,8 +32,7 @@ from chitragupta.help_format import ClickParser
 class CoverageResult:
     candidates: dict[str, str] = field(default_factory=dict)  # citekey -> title
     cited: set[str] = field(default_factory=set)  # every citekey actually cited in the draft
-    # query -> the spelling corrections it was ranked with (#1232), only
-    # for queries that received one
+    # query -> the spelling corrections it was ranked with (#1232)
     corrections: dict[str, str] = field(default_factory=dict)
 
     @property
@@ -65,8 +45,8 @@ class CoverageResult:
 
     @property
     def cited_outside_candidates(self) -> set[str]:
-        """Cited, but not surfaced by any of the given queries -- not a
-        problem by itself, just outside what this report's queries cover."""
+        """Cited, but outside what this report's queries cover; not a
+        problem by itself."""
         return self.cited - set(self.candidates)
 
     @property
@@ -98,9 +78,8 @@ def compute_coverage(draft_path: Path, queries: list[str], k: int = 5) -> Covera
 
 
 def _command(draft_path: Path, queries: list[str], k: int, as_json: bool, write: bool) -> str:
-    """The invocation recorded in both the Markdown header and the JSON
-    envelope. Queries in full -- "62% covered" means nothing without
-    knowing 62% *of what*.
+    """The invocation recorded in the header and envelope, queries in full:
+    "62% covered" means nothing without knowing of what.
     """
     parts = ["python", "-m", "chitragupta.review", "coverage", str(draft_path)]
     for query in queries:
@@ -114,18 +93,14 @@ def _command(draft_path: Path, queries: list[str], k: int, as_json: bool, write:
 
 
 def finding_id(citekey: str, status: str) -> str:
-    """A finding's name, stable across runs and position-free -- the same
-    convention `verbatim_check.finding_id` and
-    `citation_provenance/_citation_provenance_render.finding_id` use.
-    """
+    """A finding's name, stable across runs and position-free."""
     digest = hashlib.sha256(f"{citekey}\x00{status}".encode())
     return digest.hexdigest()[:12]
 
 
 def _findings(result: CoverageResult) -> list[dict]:
-    """One object per citekey the printed report itemises. Unconditional,
-    unlike `format_report`'s "retrieved but not cited" section: an empty
-    candidate set still leaves a cited-outside finding to report."""
+    """One object per itemised citekey; unconditional, since an empty
+    candidate set still leaves cited-outside findings."""
     findings = [
         {
             "id": finding_id(key, "uncited_candidates"),
@@ -150,9 +125,7 @@ def _findings(result: CoverageResult) -> list[dict]:
 def coverage_payload(
     draft_path: Path, queries: list[str], k: int, result: CoverageResult, command: str
 ) -> dict:
-    """The same findings `format_report` prints, as data. An additional
-    serialisation of `result`, never a second computation.
-    """
+    """The same findings `format_report` prints, as data."""
     payload = review.envelope(draft_path, "coverage", command)
     payload.update(
         {
@@ -170,16 +143,9 @@ def coverage_payload(
 
 
 def build_parser(parser=None) -> argparse.ArgumentParser:
-    """This aid's flags.
-
-    `parser` is passed by chitragupta/review/__main__.py, which has already
-    created the `coverage` subparser and needs the flags hung off *that*
-    -- so they are declared once, here, and the entry point never
-    restates them.
-    """
+    """This aid's flags, hung off the subparser `__main__` created."""
     if parser is None:
-        # A one-line description rather than this module's docstring, for
-        # the reason chitragupta/corpus.py's DESCRIPTION gives (#152).
+        # Not this module's docstring (#152; see chitragupta/corpus.py).
         parser = ClickParser(
             description="Report whether a draft cites the sources retrieval surfaces for a query.",
         )
@@ -213,13 +179,8 @@ def main(argv: list[str]) -> int:
 
 
 def run(args: argparse.Namespace) -> int:
-    """Dispatch already-parsed arguments, split from main() so
-    chitragupta/review/__main__.py can hand over args parsed with this
-    module's own build_parser() rather than re-slicing argv.
-
-    Mirrors `verbatim scan`'s own `--json`/`--write` contract: printing
-    stays the default and cheap path; `--json` prints the payload instead
-    of text; `--write` files it beside the Markdown either way, with the
+    """Dispatch already-parsed arguments, as `verbatim scan` does: print by
+    default, `--json` prints the payload, `--write` files it too, with the
     written-files summary on stderr under `--json`.
     """
     try:

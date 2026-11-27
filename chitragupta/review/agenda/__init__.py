@@ -3,43 +3,21 @@ aids, `style_check.py`'s prose findings, the dossier's drift report, and
 its recorded-but-uncited citekeys.
 
     python -m chitragupta.review agenda <draft>
-        merge everything else in the layer already knows about this
-        draft into one ordered list of items.
 
-The eighth aid in `review.AIDS` (`chitragupta/review/__init__.py`) and in
-`chitragupta/review/__main__.py`'s own `AIDS` -- see that file for the
-`RuntimeError`-at-import-time check tying the two together.
-Deterministic, stdlib-only, no LLM, takes no lock, exits 0 whatever it
-finds, exactly like the other eight.
+Deterministic, stdlib-only, no LLM, no lock, exits 0 whatever it finds.
+The bare mode reads, never invokes: the aids' optional `.json` files
+(`_sources.py`) from earlier runs, plus `style_check.check()`,
+`dossier.drift()` and `recorded_but_uncited()` called in-process, since
+they leave no artefact. No dossier still yields an agenda, with the
+absence named. It writes its own report, and `--accept` its record
+(`_accept.py`); neither touches the draft.
 
-**Reads, never invokes -- in the bare mode, which is the one every
-caller but `--baseline` uses.** The eight review aids' `.json` files
-(`_sources.py`), each optional and read from wherever an earlier
-`--json`/`--write` run left them -- `review agenda <draft>` never runs an
-aid live, and stays the free, read-only command docs/CLI.md and
-docs/AUTO-IMPROVEMENT.md describe. `style_check.check()`,
-`dossier.drift()` and `recorded_but_uncited()` have no on-disk artefact,
-so those three are called in-process instead. A draft with no dossier
-still produces an agenda, with no
-`missing-citekey`/`recorded-but-uncited`/`candidate` items and the
-absence named in the header -- the same "optional input, missing"
-pattern every aid already uses, not a refusal.
-
-"Reads" there means "runs no other aid"; the bare mode does write its
-own report unconditionally, and `--accept` additionally files the
-acceptance record (`_accept.py`). Neither touches the draft.
-
-**`--baseline` is the one exception, and it is scoped to that flag.**
-`review agenda <draft> --baseline <a previous agenda .json>` re-runs the
-eight aids at `--formats md` first, then rebuilds and reports
-`resolved`/`persisting`/`new` against the baseline -- `_refresh.py` and
-`_recheck.py`, and Decision 6 of `plans/f3-agenda-reviser.md` for why the R4 cycle became
-one deterministic command rather than prose in seven skills. Refreshing
-is what makes the comparison mean anything: reading pre-edit `.json`
-reports a finding resolved that is not, and it does so silently. That
-mode also owns the `--query` source `coverage` needs, which is
-`f-auto-improvement-adoption.md`'s Q5 answer -- the draft's own
-`retrieval.md` rows, skipping mode `revision`.
+`--baseline <previous .json>` is the one exception: it re-runs the aids
+at `--formats md`, then reports `resolved`/`persisting`/`new`
+(`_refresh.py`, `_recheck.py`; Decision 6 of `plans/f3-agenda-reviser.md`).
+Refreshing is what makes the comparison honest: pre-edit `.json` reports
+a finding resolved that is not, silently. Coverage's `--query` comes from
+the draft's own `retrieval.md` rows, skipping mode `revision`.
 """
 
 import argparse
@@ -64,12 +42,9 @@ from chitragupta.review.agenda import (
 )
 from chitragupta.help_format import ClickParser
 
-# plans/f-auto-improvement-adoption.md's Decision 2: a backstop against a
-# miscounting bug in the future agenda-reviser re-run loop, not a cost
-# control -- naming it wrong is how it later gets mistaken for a budget.
-# Defined here because this is where the thing it bounds (an invocation's
-# objective-class item count, `Agenda.objective_class_count`) is computed;
-# nothing in this module loops on it yet.
+# A backstop against a miscounting bug in the agenda-reviser loop, not a
+# cost control (plans/f-auto-improvement-adoption.md, Decision 2); naming
+# it wrong is how it gets mistaken for a budget.
 PASS_BOUND = 3
 
 
@@ -78,31 +53,22 @@ class Agenda:
     draft: Path
     sources: _sources.Sources
     items: list = field(default_factory=list)
-    # Items dropped from `items` because the draft text they were derived
-    # from is gone -- reported, never repaired (R12, `_stale.py`). Kept
-    # off `items` deliberately: a stale item on the worklist is one a
-    # reviser could act on, which is the whole hazard.
+    # Stale items, reported and never repaired (R12, `_stale.py`); off
+    # `items`, since a reviser could act on one there.
     stale: list = field(default_factory=list)
-    # The items this run computed and then left off the worklist because
-    # the acceptance record names them (`_accept.py`). Kept rather than
-    # dropped for two reasons: the report lists them, so the record is
-    # auditable beside the findings it silences, and `--accept` resolves
-    # an id against `items + suppressed`, so accepting an already-accepted
-    # id says so instead of reporting an unknown id.
+    # Accepted items (`_accept.py`), kept so the report lists them beside
+    # what they silence and `--accept` of an accepted id says so.
     suppressed: list = field(default_factory=list)
 
     @property
     def objective_class_count(self) -> int:
         """The count a future re-run loop watches: unattended items only.
 
-        Three classes contribute -- `missing-citekey`, verbatim-run's
-        `"short"` bucket, and `prose`, which joined them in issue 421
-        (less any finding carrying `repair="review"`, issue 836).
-        The list is spelled out rather than left as "whatever is
-        flagged" because this is the number the loop terminates on: a
-        description of it that has gone stale is the most expensive
-        comment in this module. An aid `--baseline` failed to refresh
-        contributes nothing (#837): its items are an earlier run's.
+        Three classes: `missing-citekey`, verbatim-run's `"short"` bucket,
+        and `prose` (issue 421) less `repair="review"` findings (issue 836).
+        Spelled out because the loop terminates on it, so a stale
+        description is the costliest comment here. An aid `--baseline`
+        failed to refresh contributes nothing (#837).
         """
         skipped = _sources.unverified_classes(self.sources.not_refreshed())
         return sum(1 for item in self.items if item.unattended and item.cls not in skipped)
@@ -113,34 +79,17 @@ def build_agenda(
     refreshed: "dict[str, bool | None] | None" = None,
     errors: "dict[str, str] | None" = None,
 ) -> Agenda:
-    """Everything this aid does, as data: collect the eight sources,
-    extract one item per finding, merge, order, refuse whatever the draft
-    no longer says, then set aside the ones a person has already
-    accepted.
+    """Collect the sources, extract one item per finding, merge, order,
+    refuse what the draft no longer says, then set aside accepted items.
 
-    Both filters run last, after the merge and the sort, and for the same
-    reason: each is a property of something outside any one aid's report
-    -- the draft as it now stands, and the acceptance record -- so each
-    applies once to the whole ordered list instead of being
-    re-implemented in every extractor. `_dedup.merge` still sees every
-    item, so neither signal can silently change which of two merged items
-    survives, and `_order.sort` has already run, so neither re-orders
-    what it did not remove.
+    Both filters run last, once over the ordered list: `_dedup.merge` sees
+    every item, and nothing is re-ordered.
     """
-    # **Refusal first, acceptance second**, and the order is decided
-    # rather than arbitrary: staleness asks whether the item is still
-    # *about* anything, acceptance asks what a person decided about one
-    # that is. The other way round would mark a stored record
-    # `suppressed: true` for a finding this run refused on other grounds
-    # and drop it from the refusal report -- claiming a judgement was
-    # honoured where the item was never raised. docs/AUTO-IMPROVEMENT.md
-    # section 5 carries the argument in full.
-    #
-    # The two are disjoint today besides: `_stale.partition` only refuses
-    # an item carrying a `span`, which is `verbatim-run` and `prose`
-    # alone, and `_accept.ACCEPTABLE` holds neither.
-    # `TestStaleAndAcceptedDoNotOverlap` pins that, so a later class
-    # carrying both has to decide rather than inherit this.
+    # Refusal before acceptance: otherwise a refused finding's record would
+    # read `suppressed: true`, claiming a judgement honoured for an item
+    # never raised (docs/AUTO-IMPROVEMENT.md section 5). Disjoint today
+    # (`_stale` refuses only span-bearing classes, none `ACCEPTABLE`);
+    # `TestStaleAndAcceptedDoNotOverlap` pins that.
     sources = _sources.collect(draft, refreshed, errors)
     text = draft.read_text(encoding="utf-8")
     sections = dossier.sections(text)
@@ -158,13 +107,7 @@ def _command(draft_path: Path, as_json: bool) -> str:
 
 
 def build_parser(parser=None) -> argparse.ArgumentParser:
-    """This aid's flags.
-
-    `parser` is passed by `chitragupta/review/__main__.py`, which has
-    already created the `agenda` subparser and needs the flags hung off
-    *that* -- declared once, here, the same convention every other aid
-    follows.
-    """
+    """This aid's flags, hung off the subparser `__main__` created."""
     if parser is None:
         parser = ClickParser(
             description="One ranked, deduplicated worklist merged across every other aid.",
@@ -205,12 +148,8 @@ def main(argv: list[str] | None = None) -> int:
 
 def _file_report(draft_path: Path, args, refreshed=None, errors=None) -> tuple[dict, dict]:
     """Build the agenda for `draft_path` and file its `.md` (plus any
-    renders) and `.json`, returning `(payload, written)`.
-
-    Runs identically in both modes -- `--baseline` refreshes the inputs
-    in front of this and compares behind it, but the report filed for the
-    draft's *current* state is the same artefact either way, and is what
-    the next run reads as a baseline.
+    renders) and `.json`, returning `(payload, written)`. Identical in both
+    modes; it is what the next run reads as a baseline.
     """
     agenda = build_agenda(draft_path, refreshed, errors)
     command = _command(draft_path, args.json)
@@ -222,22 +161,12 @@ def _file_report(draft_path: Path, args, refreshed=None, errors=None) -> tuple[d
 
 
 def _print_recheck(draft_path: Path, args, payload: dict, baseline: dict, written: dict) -> None:
-    """`--baseline`'s stdout, in place of the plain worklist.
-
-    The comparison is what the caller asked for, so it is what gets
-    printed; the agenda itself is still on disk either way. The
-    stdout/stderr split is the bare path's, unchanged -- under `--json`
-    the payload is the only thing on stdout, so `agenda --baseline ...
-    --json > report.json` stays a valid JSON file.
+    """`--baseline`'s stdout, in place of the plain worklist; under
+    `--json` the payload alone is on stdout.
     """
-    # The suppressed ids are read off the report this run just filed,
-    # not re-derived: an accepted item is missing from `payload["items"]`
-    # because it was suppressed, and without them the comparison would
-    # report it resolved -- a finding called fixed that nobody fixed,
-    # which is the failure `_recheck.py` exists to prevent.
-    # A failed refresh on either side unverifies that aid's items (#837),
-    # but only this run's failures are reported: the baseline's were
-    # reported by the run that filed it.
+    # Suppressed ids come off the report just filed: without them an
+    # accepted item would read as resolved. A failed refresh unverifies that
+    # aid's items on either side (#837); only this run's failures print.
     suppressed_ids = {row["id"] for row in payload["accepted"] if row["suppressed"]}
     failed, errors = _recheck.not_refreshed(payload), _recheck.refresh_errors(payload)
     unverified = {*failed, *_recheck.not_refreshed(baseline)}
@@ -259,40 +188,21 @@ def _print_recheck(draft_path: Path, args, payload: dict, baseline: dict, writte
 def run(args: argparse.Namespace) -> int:
     """Dispatch already-parsed arguments.
 
-    The `.md`+`.json` are filed unconditionally -- there is no `--write`
-    flag, matching AUTO-IMPROVEMENT.md's unconditional "Writes:" line and
-    R9's need for a baseline artefact before a reviser pass runs.
-    `--json` only decides what prints to stdout; the written-files
-    summary moves to stderr under it, the same discipline `provenance
-    --json` and `verbatim scan --json` already follow.
+    The `.md`+`.json` are filed unconditionally (no `--write`): R9 needs a
+    baseline artefact. `--json` only decides stdout. Under `--baseline`,
+    three orderings are load-bearing:
 
-    `--baseline` adds a refresh in front and a comparison behind, and
-    changes nothing between them. Three orderings in it are load-bearing:
+    - The baseline loads first: a bad one is a usage error not worth ~21 s
+      of aid runs, and it is usually `<stem>.agenda.json`, the very file
+      this run overwrites.
+    - The ledger is checked next, before any refresh or filing (#893).
+    - The filed report records the bare command, since it is the next
+      run's baseline; the `--baseline` spelling goes in the stdout payload.
 
-    - **The baseline is loaded before anything is refreshed.** A bad one
-      is a usage error, and paying ~21 s of aid runs before saying so
-      would be gratuitous. It is also what makes the natural invocation
-      safe -- the baseline a caller reaches for is usually
-      `<stem>.agenda.json`, which is the very file this run overwrites.
-    - **The ledger is checked next**, still before anything is
-      refreshed, accepted or filed (`_refresh.ledger_refusal`, #893).
-    - **The filed report still records `_command`'s bare invocation**,
-      not the `--baseline` one. That `.json` is the *next* run's
-      baseline, so its envelope has to name a command that regenerates
-      an agenda rather than a comparison against itself; the
-      `--baseline` spelling belongs to the payload printed to stdout,
-      which is where `_recheck.recheck_command` puts it.
-
-    A `ValueError` from the load prints to stderr and returns 2, the
-    usage-error code `verbatim_check.run` uses for its own refusals, and
-    so does a `--accept` this command will not record.
+    A bad baseline or a refused `--accept` prints to stderr and returns 2.
     """
-    # `--accept` is applied before any refresh and before the report is
-    # filed. The ids a caller passes were read off the report in front of
-    # them, which is the pre-refresh one, so resolving them against
-    # freshly re-run aids would refuse an id that was valid when it was
-    # copied; filing afterwards is what makes the report this run leaves
-    # behind agree with the acceptance it just recorded.
+    # `--accept` applies before any refresh: the ids were read off the
+    # pre-refresh report, and filing after makes the report agree with it.
     try:
         draft_path = review.require_reviewable(Path(args.draft))
     except (FileNotFoundError, config.OutsideContentDir) as exc:
@@ -306,10 +216,8 @@ def run(args: argparse.Namespace) -> int:
         except ValueError as exc:
             print(exc, file=sys.stderr)
             return 2
-        # A bad baseline keeps its exit 2 even with no ledger: it is the
-        # caller's mistake and costs nothing to report. The bare mode is
-        # not checked at all -- it runs no aid, and degrades a missing
-        # corpus to a header note.
+        # A bad baseline keeps exit 2 even with no ledger. The bare mode
+        # runs no aid, so a missing corpus is only a header note.
         refusal = _refresh.ledger_refusal()
         if refusal is not None:
             return refusal

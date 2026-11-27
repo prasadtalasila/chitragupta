@@ -1,19 +1,11 @@
 """`review digest --baseline`: this run against a recorded one (#991).
 
 "Minimise unsupported text" is a number a person watches fall, never a
-threshold. This is the arithmetic: items matched by their stable `id`
-into `resolved`/`persisting`/`new`, the per-class counts before and
-after, the unsupported and copied fractions before and after, and one
-boolean, `fell`, true when no class rose, at least one fell, nothing
-new appeared, and the unsupported fraction did not rise -- the
-conditions the skill keeps a repair under. The fraction is checked as
-well as the counts because deleting a flagged sentence and half the
-copied text with it resolves an item and makes the digest worse.
-Nothing is refreshed here: the aid recomputed everything before
-comparing, so there is no stale report to guard against.
-
-Mirrors `agenda/_recheck.py`'s payload keys where the two say the same
-thing, because the skill reading this already reads that one.
+threshold. Items match by stable `id` into `resolved`/`persisting`/`new`;
+`fell` is true when no class rose, one fell, nothing new appeared and the
+unsupported fraction did not rise. The fraction is checked too, because
+deleting a flagged sentence with half the copied text resolves an item and
+worsens the digest. Payload keys mirror `agenda/_recheck.py`'s.
 """
 
 from pathlib import Path
@@ -25,11 +17,9 @@ from chitragupta.review._digest_match import CLASSES
 
 def load_baseline(path: str | Path) -> dict:
     """A previously filed `digest` payload, refused if it cannot serve.
-
-    `_emit.read_baseline` owns the two refusals shared with `agenda`;
-    the three keys `compare` reads are checked here, so a truncated or
-    hand-edited file is a usage error rather than a comparison against
-    zeros that reads as a regression.
+    Beyond `_emit.read_baseline`'s refusals, the three keys `compare` reads
+    are checked, so a truncated file is a usage error, not a false
+    regression.
     """
     payload = _emit.read_baseline(path, "digest", "a digest payload")
     for key in ("counts", "unsupported_fraction", "copied_fraction"):

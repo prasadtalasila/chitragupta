@@ -1,7 +1,5 @@
-"""Markdown and JSON rendering for one `Agenda` -- both read off the same
-computed item list `_render.py` never itself computes, so the printed
-and published forms cannot disagree about what was found (the same
-discipline every other review aid's `*_payload` function documents).
+"""Markdown and JSON rendering for one `Agenda`, both read off the same
+computed item list, so the two forms cannot disagree.
 """
 
 from chitragupta import review
@@ -13,29 +11,22 @@ from chitragupta.review.agenda._passages import (
 )
 from chitragupta.review.agenda._stale import stale_dicts, stale_lines
 
-# Each aid agenda reads, labelled as `review.AIDS` labels it.
-# `_source_notes` below indexes `agenda.sources.aids` by every key here,
-# so a key `AID_NAMES` lacked would be a `KeyError` mid-report; deriving
-# it from `AID_NAMES` (#850) is what makes that impossible, where the
-# hand-kept copy this replaced could only be asserted against it.
+# Each aid agenda reads, labelled as `review.AIDS` labels it. Derived from
+# `AID_NAMES` (#850), so `_source_notes` can never hit a missing key.
 _SOURCE_LABELS = {aid: review.AIDS[aid] for aid in AID_NAMES}
 
-# Read for header completeness, but neither carries an item class --
-# see `_items.py`'s module docstring for why the two reasons differ.
+# Read for the header, but neither yields items (see `_items_findings.py`).
 _NO_CLASS_AIDS = ("synthesis", "figure")
 
-# The quotation aid's two nothing-checked universes (#838), so a header
-# above zero `misquoted` items says whether any quote was looked at.
-# `checked`, and a sidecar older than the field, add nothing; no other
-# aid's `.json` carries a `universe`, so the lookup needs no aid guard.
-# Pinned against `quotation.UNIVERSES` by TestRenderMarkdown.
+# Quotation's two nothing-checked universes (#838), so a header over zero
+# `misquoted` items says whether any quote was looked at. Pinned against
+# `quotation.UNIVERSES` by TestRenderMarkdown.
 _QUOTATION_UNIVERSE_NOTES = {"no-dossier": "no dossier", "no-quotes": "no quote the draft cites"}
 
 
 def _aid_note(aid: str, label: str, source) -> str:
-    # An aid that raised during `--baseline`'s refresh (#893) did run, so
-    # with no readable earlier `.json` it is not "not run" -- and there
-    # are no earlier findings to call stale either.
+    # An aid that raised during the refresh (#893) did run: not "not run",
+    # and with no earlier findings to call stale.
     if not source.available and source.refresh_error:
         note = f"- {label}: **not refreshed** -- raised: {source.refresh_error}"
         if source.reason:
@@ -75,9 +66,8 @@ def _source_notes(agenda) -> list[str]:
     else:
         notes.append("- Dossier drift: read")
 
-    # Named even when absent, like every source above: the header's job
-    # is to say what this run could and could not see, and a source
-    # silently missing from it reads as one that found nothing.
+    # Named even when absent: a source missing from the header reads as one
+    # that found nothing.
     recorded = agenda.sources.recorded
     notes.append(
         "- Recorded-but-uncited citekeys: read"
@@ -89,12 +79,9 @@ def _source_notes(agenda) -> list[str]:
 
 
 def _accepted_note(accepted) -> str:
-    """The acceptance record's line in the header.
-
-    An unreadable record is named rather than passed over, and the note
-    says what that costs: nothing was hidden, so the worklist below is
-    the full one. A reader who does not know a suppression input exists
-    cannot ask why an item they accepted is back.
+    """The acceptance record's line in the header. An unreadable record is
+    named, saying the worklist below is the full one, so a reader can ask
+    why an accepted item is back.
     """
     if accepted.reason:
         return (
@@ -108,12 +95,8 @@ def _accepted_note(accepted) -> str:
 
 def _accepted_lines(agenda) -> list[str]:
     """The audit trail: every accepted item, and whether this run's
-    worklist is actually shorter for it.
-
-    A record that matched nothing is shown too, and is the ordinary
-    outcome of the repair working: the span changed, the id changed with
-    it, and the acceptance no longer applies to anything. Dropping those
-    rows would make an acceptance look permanent when it is not.
+    worklist is shorter for it. Rows matching nothing (the span changed)
+    are shown, or an acceptance would look permanent.
     """
     records = agenda.sources.accepted.records
     if not records:
@@ -152,14 +135,9 @@ def _summary_lines(agenda) -> list[str]:
 def _findings_lines(agenda) -> list[str]:
     """One `### <class>` heading per class, then a bullet per item.
 
-    The blank line before each heading after the first is load-bearing,
-    not cosmetic. A `###` line placed directly under a `- ...` bullet is
-    lazy continuation in Markdown, not a heading: it is parsed as more
-    text of that bullet, so every class heading but the first vanished
-    into the last item of the class above it. Rendered to PDF the second
-    section had no heading at all, and its items read as a continuation
-    of the previous class -- which, on a worklist whose whole structure
-    is "grouped by class", is the one thing it must not do.
+    The blank line before each later heading is load-bearing: directly
+    under a `- ...` bullet, `###` is lazy continuation, so every heading
+    but the first vanished into the item above it.
     """
     lines = ["## Findings", ""]
     current = None
@@ -193,14 +171,10 @@ def render_markdown(agenda, command: str) -> str:
     ]
     lines += _source_notes(agenda)
     lines.append("")
-    # Above the worklist, beside the Sources header rather than below the
-    # findings: a refusal is a statement about what this run could not
-    # act on, and a run whose every item was refused still has to say so
-    # -- the empty-worklist return below is exactly that case.
+    # Refusals sit above the worklist: a run whose every item was refused
+    # must still say so.
     lines += stale_lines(agenda.stale)
-    # Then the acceptances, in the order the two partitions run
-    # (`build_agenda`): what the draft no longer says, then what a person
-    # decided about what it still says.
+    # Then acceptances, in `build_agenda`'s partition order.
     lines += _accepted_lines(agenda)
 
     if not agenda.items:
@@ -216,17 +190,9 @@ def _item_dict(agenda, item) -> dict:
     """One item as the payload publishes it.
 
     `page`/`end_page`/`paragraph`/`end_paragraph` are joined from the
-    raising aid's own filed JSON, exactly as `_passage_lines` joins the
-    passage, and are `None` on every class that has no such locator --
-    present rather than absent, so a consumer reading these positionally
-    sees a stable shape and `prose` and `verbatim-run` items do not have
-    different key sets.
-
-    Joined rather than carried on `Item` or stuffed into `detail`: the
-    agenda's own `detail` is thin by a documented decision, and widening
-    `Item` with four fields only one class can fill would push the same
-    locator into every other extractor. The rendered Markdown reads its
-    locator from the same join, so the two forms cannot disagree.
+    raising aid's filed JSON, as `_passage_lines` does, and `None` where a
+    class has no locator, so every item has one key set. Joined rather
+    than carried on `Item`, whose `detail` is thin by decision.
     """
     finding = (
         _verbatim_finding(agenda, item.detail.get("verbatim_id"))
@@ -239,8 +205,7 @@ def _item_dict(agenda, item) -> dict:
         "section": item.section,
         "citekey": item.citekey,
         "line": item.line,
-        # Appended after `line` rather than slotted beside it: a consumer
-        # written against the previous shape sees an unchanged prefix.
+        # Appended after `line`, so the previous shape is an unchanged prefix.
         "page": finding.get("page"),
         "end_page": finding.get("end_page"),
         "paragraph": finding.get("paragraph"),
@@ -270,11 +235,8 @@ def _sources_dict(agenda) -> dict:
 
 
 def _accepted_dicts(agenda) -> list[dict]:
-    """The acceptance record as the payload publishes it -- each stored
-    row, plus whether this run's worklist is shorter for it.
-
-    `suppressed` is computed here rather than stored in the record: it is
-    a fact about *this* run, and a stored copy of it would be the mutable
+    """The acceptance record as the payload publishes it. `suppressed` is
+    computed per run, never stored: a stored copy would be the mutable
     per-item state #767 rejected.
     """
     suppressed = {item.id for item in agenda.suppressed}
@@ -285,23 +247,16 @@ def _accepted_dicts(agenda) -> list[dict]:
 
 
 def agenda_payload(agenda, command: str) -> dict:
-    """The same items `render_markdown` prints, as data -- an additional
-    serialisation, never a second computation.
+    """The same items `render_markdown` prints, as data.
 
-    `pass_bound` and `objective_class_count` are carried because neither
-    is reachable any other way: `PASS_BOUND` lives only as a module
-    constant and the count only as a property, and a `SKILL.md` can
-    import neither. Without them a skill re-running this loop would
-    write `3` into its own prose, which is the literal
-    `plans/f-auto-improvement-adoption.md`'s Decision 2 forbids -- it is
-    how a backstop against a miscounting bug later gets mistaken for a
-    budget.
+    Carries `pass_bound` and `objective_class_count` because a `SKILL.md`
+    can import neither; otherwise a skill would write `3` into its prose,
+    the literal Decision 2 of `plans/f-auto-improvement-adoption.md`
+    forbids.
     """
-    # Imported here rather than at module scope, and not moved to a leaf
-    # module to avoid it: `PASS_BOUND` belongs beside the property it
-    # bounds (see the package `__init__.py`'s own comment), and that
-    # package imports this module, so a top-level import would be a
-    # cycle. The parameter shadows the package name, hence the alias.
+    # Imported here: the package defines `PASS_BOUND` beside the property it
+    # bounds and imports this module, so a top-level import is a cycle.
+    # The parameter shadows the package name, hence the alias.
     from chitragupta.review import agenda as agenda_module
 
     payload = review.envelope(agenda.draft, "agenda", command)
@@ -311,18 +266,11 @@ def agenda_payload(agenda, command: str) -> dict:
             "pass_bound": agenda_module.PASS_BOUND,
             "objective_class_count": agenda.objective_class_count,
             "items": [_item_dict(agenda, item) for item in agenda.items],
-            # Named `stale_spans`, not `stale`: this payload already uses
-            # `stale` for an aid report older than the draft
-            # (`sources.aids.<aid>.stale`, an mtime comparison), and one
-            # document cannot carry two meanings of the word.
+            # `stale_spans`: `stale` already means an aid report older than
+            # the draft (`sources.aids.<aid>.stale`).
             "stale_spans": stale_dicts(agenda.stale),
-            # `accepted`, unqualified, for the opposite reason: nothing
-            # else in this payload uses the word, and the key names the
-            # records rather than a bucket of items -- each row is one
-            # stored acceptance plus whether this run was shorter for it.
-            # Both are appended after `items`, like `_item_dict`'s own
-            # locators, so a consumer written against an earlier shape
-            # reads an unchanged prefix.
+            # `accepted` names the stored records. Both keys follow `items`,
+            # so an earlier shape is an unchanged prefix.
             "accepted": _accepted_dicts(agenda),
         }
     )

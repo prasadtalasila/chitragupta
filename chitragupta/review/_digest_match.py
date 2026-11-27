@@ -1,56 +1,30 @@
 """Is each run of a verbatim digest really in the source it cites, and
 what is every sentence that is not? (#991)
 
-**The run is the unit; the sentence is the diagnosis.** A run that
-`_quotation_match.locate` finds whole is one copied span and raises
-nothing. Only a run that is not found whole is split into sentences,
-and only to show where it breaks: a sentence found on its own is still
-copied; one whose distinctive words are mostly on one page is a
-`copy-mismatch` naming the words that are not; anything else is the
-drafter's own, `unquoted-text`, and additionally `unsupported-text`
-when no citation covers it or the cited source does not support it
-lexically -- the provenance aid's own `score_claim` under the same
-`PROVENANCE_WEAK_SCORE` it bands on.
+**The run is the unit; the sentence is the diagnosis.** A run
+`_quotation_match.locate` finds whole raises nothing. Otherwise it splits
+into sentences: one found alone is copied; one mostly on one page is a
+`copy-mismatch`; anything else is `unquoted-text`, plus `unsupported-text`
+when uncited or below `PROVENANCE_WEAK_SCORE` by provenance's
+`score_claim`.
 
-**A run of the drafter's own words is checked for support, not for
-copying (#1172).** `Run.own` marks one: closed by `[see @key]`, under an
-`<!-- own: why -->` line, or a table row. Each sentence is scored with
-`score_claim` against its cited sources' passages, page-level ones
-included; a weak one is `unsupported-text` and any other is own text,
-raising nothing. An uncited sentence in a declared-own block is own
-text too: the drafter said so. Own text never raises `unquoted-text`,
-which is for words the drafter did not declare.
+A run of the drafter's own words (`Run.own`: `[see @key]`, an `own:`
+marker, a table row) is checked for support, not copying (#1172), and
+never raises `unquoted-text`.
 
-**The headline is the unsupported fraction**: the words of every
-sentence carrying a finding of the three source classes
-(`FRACTION_CLASSES`), a sentence counted once however many it carries,
-over all words. It is the number a repair pass drives down. The copied
-fraction, the own-words share and the not-checkable share are kept
-beside it so the four partition the digest: `words_copied + words_own +
-words_flagged + words_unverifiable == words_total`, because `check_run`,
-the one writer, routes every sentence to exactly one of the four lists.
-`dangling-reference` (`_digest_dangling.py`) and `repeated-text`
-(`_digest_repeat.py`) are listed beside them and counted in none: they
-fault where a copied run stops and whether it was copied already, not
-whether a source says it.
+The headline is the unsupported fraction, words of sentences carrying a
+`FRACTION_CLASSES` finding over all words. `words_copied + words_own +
+words_flagged + words_unverifiable == words_total`, because `check_run`
+routes every sentence to exactly one list. `dangling-reference` and
+`repeated-text` count in none: they fault where a copy stops, not support.
 
-`MISMATCH_SHARE` is the one number here and it is not tuned: it is the
-share `near_miss` already reports, read as "most of the sentence is on
-that page". docs/CODE-STANDARDS.md's R3 bars optimising it, and the
-honest statement is that no corpus has been measured against it yet.
+`MISMATCH_SHARE` is not tuned (R3): it is `near_miss`'s share, and no
+corpus has been measured against it.
 
-A source with no reading-ordered passages cannot be checked. A run
-citing one -- any one, where the bracket names several -- is
-`unverifiable`, counted in the total and the not-checkable share and
-nowhere else: never `absent` after a failed comparison, the same
-refusal `quotation.py` makes, and never matched against the other
-sources alone, which would report text copied from the unreadable one
-as the drafter's own.
-
-The records it writes live in `_digest_model.py` and are re-exported
-here, where every caller has always found them.
-
-Stdlib only, interpreter tier 1.
+A run citing any source without reading-ordered passages is
+`unverifiable`: never `absent` (as `quotation.py`), and never matched
+against the other sources alone, which would call copied text own words.
+Records live in `_digest_model.py` and are re-exported here.
 """
 
 from collections.abc import Callable
@@ -71,9 +45,8 @@ from chitragupta.review._digest_model import (
 from chitragupta.review._digest_runs import Run
 from chitragupta.review.citation_provenance import score_claim
 
-# A sentence `locate` cannot find, at least this share of whose
-# distinctive words sit on one page, is a copy that drifted rather than
-# the drafter's own words.
+# At least this share of an unfound sentence's distinctive words on one
+# page makes it a drifted copy rather than own words.
 MISMATCH_SHARE = 0.8
 
 _NO_READING_ORDER = (
@@ -110,7 +83,6 @@ def page_note(cited: tuple[int, int] | None, pages: list[int] | tuple[int, ...])
 
 
 def _span(run: Run, line: int, text: str, tier: str, pages, extra: str | None = None) -> Span:
-    """The one `Span` builder, so every copied span carries the page note."""
     notes = [note for note in (page_note(run.cited, pages), extra) if note]
     return Span(line, run.citekeys, text, tier, tuple(pages), run.cited, "; ".join(notes) or None)
 
@@ -126,7 +98,6 @@ def _unsupported(run: Run, at: tuple[int, int], sentence: str, passages) -> Find
 
 
 def _own(run: Run, at: tuple[int, int], sentence: str, passages: list[Passage]) -> list[Finding]:
-    """`unquoted-text`, plus `unsupported-text` where `_unsupported` says."""
     unsupported = _unsupported(run, at, sentence, passages)
     unquoted = Finding("unquoted-text", at[0], sentence, run.citekeys, {}, at[1])
     return [unquoted] + ([unsupported] if unsupported else [])
@@ -173,7 +144,6 @@ def _sentences(run: Run, checked: Checked) -> list[tuple[tuple[int, int], str]]:
 def _sentence_level(
     run: Run, quotable: list[Passage], passages: list[Passage], checked: Checked
 ) -> None:
-    """The diagnosis for a run not found whole."""
     spans, findings = [], []
     for at, sentence in _sentences(run, checked):
         located = _quotation_match.locate(sentence, quotable)
@@ -203,7 +173,6 @@ def _sources(run: Run, lookup: Lookup) -> tuple[list[Passage], list[Passage], li
 
 
 def _check_own(run: Run, lookup: Lookup, checked: Checked) -> None:
-    """A run in the drafter's own words: supported, or `unsupported-text`."""
     if not run.citekeys:
         checked.own += [Own(line, (), s) for line, s in zip(run.lines, run.sentences, strict=True)]
         return

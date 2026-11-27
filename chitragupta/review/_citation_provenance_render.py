@@ -1,21 +1,10 @@
 """How a citation-provenance report reads and publishes: the Markdown
 document, and the JSON payload the same findings serialise to.
 
-Split from `chitragupta/review/citation_provenance.py` (#441), which owns
-`Report`/`Finding` and how a report is built, and passes one in. Nothing
-here imports it back, deliberately -- the same one-way shape
-`chitragupta/review/_uncited_render.py` and `_synthesis_render.py` use
-for their own splits: taking the report as an argument rather than
-recomputing it, and leaving it (and `Finding`) unannotated below rather
-than importing the dataclass just to name its type, is what keeps the
-dependency one-way instead of a cycle.
-
-`_band` lives here rather than in `citation_provenance.py`, even though
-`published()` below is the JSON twin of a decision `render_markdown`
-also makes: both need the same band for the same score, and this way
-`citation_provenance.py` reaches it through the one import it already
-has for `render_markdown`, instead of the two modules keeping separate
-copies of the same three-way split.
+Takes the report as an argument from `citation_provenance.py` (#441),
+leaving `Finding` unannotated rather than importing it, so the dependency
+stays one-way. `_band` lives here so both modules share one copy of the
+three-way split through the import they already have.
 """
 
 import hashlib
@@ -39,10 +28,7 @@ def render_markdown(report) -> str:
     lines = review.header(
         report.draft,
         "provenance",
-        # shlex.join, not an f-string: a draft path with a space in it
-        # would otherwise be recorded as two arguments, so the header
-        # would name an invocation that doesn't reproduce the report.
-        # The other two review aids already quote theirs.
+        # shlex.join, so a draft path with a space reproduces as one argument.
         shlex.join(["python", "-m", "chitragupta.review", "provenance", str(report.draft)]),
     ) + [
         "## How to read this",
@@ -90,8 +76,7 @@ def render_markdown(report) -> str:
 
 
 def _summary_lines(report) -> list[str]:
-    """The Summary band counts, and the unreadable-sources section when
-    there is one."""
+    """The Summary band counts, plus unreadable sources if any."""
     counts: dict[str, int] = {}
     for finding in report.findings:
         counts[_band(finding.score)] = counts.get(_band(finding.score), 0) + 1
@@ -116,8 +101,6 @@ def _summary_lines(report) -> list[str]:
 
 
 def _finding_lines(finding) -> list[str]:
-    """One finding's body: the claim, then the best-match passage or the
-    stated reason there is none."""
     lines = [
         f"#### Line {finding.line} -- `[@{finding.citekey}]` ({finding.score:.0%} match)",
         "",
@@ -144,15 +127,9 @@ def _finding_lines(finding) -> list[str]:
 
 
 def finding_id(citekey: str, claim: str) -> str:
-    """A finding's name, stable across runs. Position-free (no `line`),
-    the same convention `verbatim_check.finding_id` uses and for the same
-    reason: an identity built on `line` would rename every remaining
-    finding the moment an edit above it shifted line numbers, and nothing
-    could then decide whether a given finding had survived a revision.
-
-    Two identical citekey/claim pairs therefore share an id -- a draft
-    citing the same source with the same sentence twice is the one case
-    that collides, and that is the correct read rather than a bug.
+    """A finding's name, stable across runs. Position-free, as
+    `verbatim_check.finding_id`, so an edit above does not rename every
+    later finding. An identical citekey/claim pair sharing an id is correct.
     """
     digest = hashlib.sha256(f"{citekey}\x00{claim}".encode())
     return digest.hexdigest()[:12]
@@ -168,11 +145,9 @@ def _passage_payload(passage: Passage | None) -> dict | None:
     }
 
 
-# The finding fields the JSON payload publishes, spelled out rather than
-# serialising the Finding dataclass's own `__dict__` -- see
-# `verbatim_check._PAYLOAD_FIELDS` for why: `Finding` is this module's
-# working representation, and a field added there for internal use should
-# not silently become part of a published contract.
+# Fields spelled out rather than `__dict__`, so an internal Finding field
+# never silently joins the published contract (see
+# `verbatim_check._PAYLOAD_FIELDS`).
 def published(finding) -> dict:
     return {
         "id": finding_id(finding.citekey, finding.claim),
@@ -187,12 +162,9 @@ def published(finding) -> dict:
 
 
 def provenance_payload(report, command: str) -> dict:
-    """The same findings `render_markdown` prints, as data: `review.envelope`'s
-    provenance plus one object per finding, worst-first like the report.
-
-    An additional serialisation of `report.findings`, never a second
-    computation, so the printed and published forms cannot disagree about
-    what was found.
+    """The same findings `render_markdown` prints, as data: the envelope
+    plus one object per finding, worst-first. A serialisation, never a
+    second computation.
     """
     payload = review.envelope(report.draft, "provenance", command)
     payload.update(

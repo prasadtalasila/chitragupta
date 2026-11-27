@@ -1,35 +1,17 @@
 """How a multi-source synthesis report reads: the Markdown document,
 the plain-text stdout form, and the same findings as a JSON payload.
 
-Split from `chitragupta/review/synthesis.py`, which owns what the numbers
-*are* and passes its `findings()` list in. The two are genuinely
-separate questions -- one is arithmetic over units, the other is the
-prose that stops the arithmetic being misread -- and keeping them apart
-is also what holds both under docs/CODE-STANDARDS.md's C2.
-
-Nothing here imports `synthesis`, deliberately: `synthesis` imports this
-module, and taking `found` as an argument rather than recomputing it is
-what keeps that a one-way dependency instead of a cycle papered over
-with a deferred import.
-
-The prose here does real work rather than decorating the counts. Two
-sentences in particular are load-bearing and should not be trimmed as
-boilerplate:
-
-- **which unit was measured, and why that one.** Without it a tutorial's
-  report -- measured at the whole document -- reads as a draft with no
-  multi-source paragraphs, which is true, meaningless, and looks like a
-  failure.
-- **that a thin corpus legitimately produces single-source units.** The
-  report counts; it does not judge, and R3 keeps the proportion out of
-  any unattended loop.
+Takes `findings()` as an argument, so `synthesis` imports this one-way.
+Two sentences of the report are load-bearing, not boilerplate: which unit
+was measured and why (a tutorial measured whole otherwise reads as a
+failure), and that a thin corpus legitimately yields single-source units
+(the report counts; R3 keeps it out of any unattended loop).
 """
 
 from chitragupta import review
 
 
 def _how_to_read(report) -> list[str]:
-    """The paragraph that stops the numbers below being misread."""
     recorded = {
         "scope.md": f"recorded as `{report.genre}` in this draft's dossier",
         "--unit": "given on the command line",
@@ -90,12 +72,8 @@ def _finding_lines(report, found: list[dict]) -> list[str]:
 
 
 def render_markdown(report, command: str, found: list[dict]) -> str:
-    """The report as a Markdown document, for `--write`.
-
-    `found` is passed in rather than recomputed here. That is what keeps
-    this module from importing `synthesis` -- which imports this one --
-    and it also means `findings()` runs once per invocation instead of
-    once per output format.
+    """The report as a Markdown document, for `--write`; `found` is passed
+    in so `findings()` runs once per invocation.
     """
     lines = review.header(report.draft, "synthesis", command)
     lines += _how_to_read(report)
@@ -105,13 +83,7 @@ def render_markdown(report, command: str, found: list[dict]) -> str:
 
 
 def format_report(report, found: list[dict]) -> str:
-    """The same report as plain text, for stdout.
-
-    Kept beside the Markdown for the reason `citation_coverage` keeps
-    both: stdout is read in a terminal mid-review and wants no syntax,
-    while a file kept for months sits beside the draft's other review
-    reports and should look like them.
-    """
+    """The same report as plain text, for stdout, which wants no syntax."""
     lines = [
         f"Multi-source synthesis for {report.draft}",
         f"Unit: {report.kind} (from {report.source})",
@@ -132,8 +104,7 @@ def format_report(report, found: list[dict]) -> str:
 
 
 def synthesis_payload(report, command: str, found: list[dict]) -> dict:
-    """The same findings the report prints, as data -- an additional
-    serialisation, never a second computation."""
+    """The same findings the report prints, as data."""
     payload = review.envelope(report.draft, "synthesis", command)
     payload.update(
         {

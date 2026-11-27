@@ -1,18 +1,10 @@
 """How a citekey-union report reads: the Markdown document, the
 plain-text stdout form, and the same findings as a JSON payload.
 
-Split from `chitragupta/review/citekey_union.py`, which reads the book off
-disk, and `_citekey_union_result.py`, which owns the arithmetic and is
-passed in. Nothing here imports either back -- the same one-way shape
-`chitragupta/review/_citation_coverage_render.py` and `_uncited_render.py`
-use, and for the same reason: taking the result as an argument rather
-than recomputing it keeps the dependency one-way instead of a cycle
-papered over with a deferred import.
-
-**Every form says what it could not look at.** A book whose units are all
-unaccepted compares nothing, and a report that printed "none lost" for it
-would be a clean bill of health for work it never opened -- which is the
-one way an advisory aid does real damage.
+Takes the result as an argument (one-way dependency, as the other
+`_*_render.py` modules). Every form says what it could not look at: "none
+lost" for a book whose units are all unaccepted would be a clean bill of
+health for work never opened.
 """
 
 import hashlib
@@ -23,9 +15,8 @@ _WITHHELD = "not determinable -- an unchecked unit below may record it, so this 
 
 
 def _unchecked_lines(result, bullet: str) -> list[str]:
-    """The unassessed units, each with the state that disqualified it and
-    whether the assembly included it anyway -- both facts, because a unit
-    can be omitted *and* unbelievable and the two want different fixes."""
+    """The unassessed units, with the disqualifying state and whether the
+    assembly included it: omitted and unbelievable want different fixes."""
     return [
         f"{bullet}{entry.unit} -- {entry.state}"
         + ("" if entry.included else "; also not included in the assembly")
@@ -137,12 +128,8 @@ def _coverage_section(result) -> list[str]:
 
 
 def render_markdown(result, command: str) -> str:
-    """The same report as `format_report`, as a Markdown document.
-
-    Kept beside the plain-text version rather than replacing it: stdout
-    is read in a terminal mid-review and wants no syntax, while a file
-    kept for months is read next to the draft's other review reports and
-    should look like them.
+    """The same report as `format_report`, as Markdown: stdout wants no
+    syntax, while a kept file should look like the other review reports.
     """
     lines = review.header(result.assembled, "union", command)
     lines += [
@@ -173,16 +160,14 @@ def render_markdown(result, command: str) -> str:
 
 
 def finding_id(citekey: str, status: str) -> str:
-    """A finding's name, stable across runs and position-free -- the same
-    convention `citation_coverage.finding_id` and
-    `verbatim_check.finding_id` use."""
+    """A finding's name, stable across runs and position-free, as
+    `verbatim_check.finding_id`."""
     return hashlib.sha256(f"{citekey}\x00{status}".encode()).hexdigest()[:12]
 
 
 def _findings(result) -> list[dict]:
-    """One object per citekey the report itemises, dropped first: it is
-    the direction that is always answerable, and the one a reader acts
-    on."""
+    """One object per itemised citekey, dropped first: the direction that
+    is always answerable, and the one a reader acts on."""
     findings = [
         {
             "id": finding_id(key, "dropped"),
@@ -200,13 +185,8 @@ def _findings(result) -> list[dict]:
 
 
 def union_payload(result, command: str) -> dict:
-    """The same findings the report prints, as data -- an additional
-    serialisation, never a second computation.
-
-    `appeared_determinable` is carried explicitly rather than left for a
-    consumer to infer from a null: "no citekey appeared from nowhere" and
-    "this run could not tell" are different answers, and a caller acting
-    on the payload has to be able to distinguish them.
+    """The same findings the report prints, as data. `appeared_determinable`
+    is explicit, since "none appeared" and "could not tell" differ.
     """
     payload = review.envelope(result.assembled, "union", command)
     payload.update(
@@ -219,10 +199,7 @@ def union_payload(result, command: str) -> dict:
                 for entry in result.unchecked
             ],
             "units_omitted": [entry.unit for entry in result.omitted],
-            # What the assembly pulled in besides its units, and what it
-            # named but could not be found. Both reported rather than
-            # dropped: a run that quietly skipped an include would be
-            # claiming coverage of prose it never opened.
+            # Reported, not dropped: a skipped include would claim coverage.
             "includes_outside_units": result.outside_units,
             "includes_unresolved": result.unresolved,
             "citekeys_outside_units": len(result.own),

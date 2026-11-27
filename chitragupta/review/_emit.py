@@ -1,17 +1,9 @@
 """How a review aid prints and files its report (#849).
 
-`review/__init__.py` fixes the output *contract* -- report paths, the
-banner, `write`/`write_json`/`print_written` -- and names fragility as the
-reason there is one. The *procedure* around it was the part every aid
-copied: decide from `--json`/`--write` what to print, build the command
-line and payload only when something needs them, file the Markdown and
-its `.json` sibling, and move the written-files summary to stderr when
-stdout has become a payload. Ten aids carried that sequence, three of
-them at or one under docs/CODE-STANDARDS.md's 25-statement limit, so a
-change to it had ten places to land.
-
-A submodule rather than more of `review/__init__.py`, which sits at the
-250-code-line limit.
+`review/__init__.py` fixes the output contract; this is the procedure
+every aid copied around it (decide what to print from `--json`/`--write`,
+build command and payload only when needed, file `.md` and `.json`, move
+the summary to stderr when stdout is a payload), so a change lands once.
 """
 
 import argparse
@@ -23,9 +15,8 @@ from pathlib import Path
 
 from chitragupta import install, review
 
-# Every aid's --formats help (#1022): written once, because ten copies
-# went on naming pdflatex after #996 moved a pdf render to LuaLaTeX.
-# The wording matches docs/CLI.md's per-aid rows.
+# Every aid's --formats help, written once: ten copies went on naming
+# pdflatex after #996 moved pdf to LuaLaTeX (#1022). Matches docs/CLI.md.
 FORMATS_HELP = (
     "Additional formats to render beside the Markdown report (default: "
     "md,tex,pdf). The .md is always written -- it is the report; tex and "
@@ -35,13 +26,12 @@ FORMATS_HELP = (
 
 
 def add_formats(parser: argparse.ArgumentParser) -> None:
-    """The `--formats` option every aid takes, with its one help text."""
     parser.add_argument("--formats", default="md,tex,pdf", help=FORMATS_HELP)
 
 
 def formats(args: argparse.Namespace) -> list[str]:
-    """`--formats md,pdf` as `["md", "pdf"]`: split on commas, stripped,
-    empties dropped, so `"md, pdf,"` means what its author meant."""
+    """`--formats md,pdf` as `["md", "pdf"]`; `"md, pdf,"` means what its
+    author meant."""
     return [fmt.strip() for fmt in args.formats.split(",") if fmt.strip()]
 
 
@@ -58,12 +48,9 @@ def emit(
     """Print, and under `--write` file, one aid's report. Returns 0: an
     aid is advisory whatever it found.
 
-    Every piece is a callable, built only for the combination that needs
-    it -- the human text is never rendered under `--json`, and the command
-    line, payload and Markdown are never built for a bare run. That is the
-    evaluation order each aid had inline, kept. `command()` is called at
-    most once and handed to both `payload` and `markdown`, so the report
-    and its `.json` name the same invocation.
+    Each piece is a callable built only when needed (no human text under
+    `--json`, nothing extra for a bare run). `command()` is called once and
+    shared, so the report and its `.json` name the same invocation.
     """
     if not (args.json or args.write):
         print(text())
@@ -79,26 +66,18 @@ def emit(
 
 
 def recheck_command(aid: str, draft: str | Path, baseline: str | Path) -> str:
-    """`python -m chitragupta.review <aid> <draft> --baseline <file> --json`:
-    the invocation a `--baseline` comparison records in its envelope so a
-    reader holding it can regenerate it. Always `--json`, since only the
-    JSON form has an envelope; one shape for every aid that compares
-    against its own earlier report."""
+    """The `--baseline ... --json` invocation a comparison records in its
+    envelope so it can be regenerated; `--json` since only JSON has one."""
     parts = ["python", "-m", "chitragupta.review", aid, str(draft)]
     return shlex.join([*parts, "--baseline", str(baseline), "--json"])
 
 
 def read_baseline(path: str | Path, aid: str, label: str) -> dict:
-    """A filed `<stem>.<aid>.json`, read back as a comparison basis for
-    `--baseline` and refused if it cannot serve as one.
+    """A filed `<stem>.<aid>.json`, read back as a `--baseline` basis.
 
-    One loader for every aid that compares against its own earlier
-    report (`agenda`, `digest`), so the two refusals worth naming are
-    named once: a file that is not readable JSON, and JSON that is some
-    other aid's payload -- every aid's `.json` carries `envelope()`'s
-    `command`, so another aid's file is a dict too, and comparing against
-    one would report every item as new. `label` is the noun phrase the
-    refusal uses ("an agenda payload"), since the article differs.
+    Refuses unreadable JSON and another aid's payload (also a dict, which
+    would report every item as new). `label` is the refusal's noun phrase
+    ("an agenda payload").
     """
     try:
         payload = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -119,10 +98,8 @@ def read_baseline(path: str | Path, aid: str, label: str) -> dict:
 
 
 def announce(data: dict, written: dict[str, Path], *, as_json: bool) -> None:
-    """What an aid that files its report unconditionally prints once it
-    has: the payload under `--json`, with the written-files summary moved
-    to stderr so stdout stays a valid JSON file, and otherwise the
-    summary alone."""
+    """After filing: the payload under `--json`, summary moved to stderr so
+    stdout stays valid JSON; otherwise the summary alone."""
     if as_json:
         print(json.dumps(data, indent=2))
         review.print_written(written, stream=sys.stderr)

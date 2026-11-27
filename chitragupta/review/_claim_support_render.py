@@ -1,25 +1,12 @@
 """How a claim-support report reads: the Markdown document, the
 plain-text stdout form, and the same findings as a JSON payload.
 
-Split from `claim_support.py` the same way `_uncited_render.py` is split
-from `uncited_prose.py` -- nothing here imports it back, keeping the
-dependency one-way.
-
-One paragraph here is load-bearing and must not be trimmed: the caveat
-that a low score is not a fact-check and a high score is not proof,
-because retrieval already selected these passages by similarity.
-Dropping it is exactly the failure mode docs/REVIEW.md's "Three limits"
-section warns against -- a score read as a verdict.
-
-A finding whose citekey could not be scored (`finding["note"]` is set)
-is never printed with a percentage here, in either form. `findings()`
-(Task 2) still gives every unscoreable citekey a `Finding` with
-`score=0.0` so it sorts and lists like any other citation, but a
-"(0%)" beside `[@missing_2024]` would read as "checked and scored
-zero" -- exactly the "checked and found wanting" standing
-`claim_support.py`'s own module docstring says an unscoreable citekey
-must not carry. Telling the two apart at render time is this module's
-job; the upstream report has no generic way to do it.
+One paragraph of the report is load-bearing and must not be trimmed: a
+low score is not a fact-check and a high one is not proof, since retrieval
+already selected these passages by similarity (docs/REVIEW.md's "Three
+limits"). An unscoreable finding (`note` set) is never printed with a
+percentage: its `score=0.0` is for sorting, and "0%" would read as
+"checked and scored zero".
 """
 
 import hashlib
@@ -53,9 +40,8 @@ _HOW_TO_READ = [
 
 
 def _scored(found: list[dict]) -> list[dict]:
-    """The findings an entailment model actually scored -- every other
-    citation `findings()` lists is still one line in Findings below,
-    just not counted as "scored" here or given a percentage."""
+    """The findings an entailment model actually scored; others still list
+    under Findings, without a percentage."""
     return [f for f in found if f["note"] is None]
 
 
@@ -78,9 +64,8 @@ def _summary(report, found: list[dict]) -> list[str]:
 
 
 def _status(finding: dict) -> str:
-    """What to print in place of a percentage -- a real score for a
-    scored finding, or the reason for one that could not be, never a
-    "0%" standing in for "checked and found wanting"."""
+    """A real score, or the reason there is none; never a "0%" standing in
+    for "checked and found wanting"."""
     if finding["note"]:
         return f"not scored -- {finding['note']}"
     return f"{finding['score']:.0%}"
@@ -116,14 +101,9 @@ def _format_finding(finding: dict) -> str:
 
 
 def format_report(report, found: list[dict]) -> str:
-    """No sections here, unlike `render_markdown` -- a flat list, one line
-    per citation. So this does not also walk `report.unscoreable` the way
-    `_summary` does: `build_report` (Task 2) never sets
-    `unscoreable[citekey]` without appending a `Finding` carrying the same
-    reason in the same pass, so every unscoreable citekey is already one
-    of `_format_finding`'s `n/a` lines above -- a second pass over
-    `report.unscoreable` here would repeat the same reason on an adjacent
-    line rather than add anything a flat, section-less report can use."""
+    """A flat list, one line per citation. Unlike `_summary` it does not
+    walk `report.unscoreable`: every unscoreable citekey already has an
+    `n/a` finding line, so a second pass would repeat the reason."""
     scored = _scored(found)
     lines = [
         f"Claim support in {report.draft}",
@@ -135,18 +115,15 @@ def format_report(report, found: list[dict]) -> str:
 
 
 def finding_id(citekey: str, claim: str) -> str:
-    """A finding's identity, stable across runs (R2) -- keyed on the
-    same (citekey, claim) pair _citation_provenance_render.finding_id uses,
-    because this is the same underlying question asked by a different
-    scorer. Defined locally rather than imported: every aid in this
-    layer owns its own finding_id, even when the formula matches."""
+    """A finding's identity, stable across runs (R2), on the same
+    (citekey, claim) pair as provenance's; defined locally because every
+    aid owns its own finding_id."""
     digest = hashlib.sha256(f"{citekey}\x00{claim}".encode())
     return digest.hexdigest()[:12]
 
 
 def findings(report) -> list[dict]:
-    """One object per citation, worst-scoring first -- already the
-    Report's own sort order, so this only shapes the dicts."""
+    """One object per citation, worst-scoring first (the Report's order)."""
     return [
         {
             "id": finding_id(f.citekey, f.claim),
@@ -161,29 +138,12 @@ def findings(report) -> list[dict]:
 
 
 def support_payload(report, command: str) -> dict:
-    """The same findings the report prints, as data -- an additional
-    serialisation, never a second computation.
+    """The same findings the report prints, as data.
 
-    `"scored"` counts findings the entailer actually scored (`note is
-    None`), not `len(report.findings) - len(report.unscoreable)`. The
-    two differ when a single unscoreable citekey is cited more than
-    once: `report.unscoreable` is keyed by citekey, so it gains one
-    entry no matter how many findings that citekey produces, while
-    `build_report` still gives every one of those findings its own
-    `note`. Counting the naive way would let "scored" overcount by the
-    number of repeat citations of an already-unscoreable citekey --
-    inconsistent with `_claim_support_render._scored`, which every
-    rendered report already uses for the same number. Matching that
-    keeps the JSON and the text report agreeing on what "scored"
-    means.
-
-    Deliberately different units, not a second inconsistency:
-    `"scored"` counts findings (one per citation), `"unscoreable"`
-    counts citekeys (one per source), the same split
-    `_claim_support_render._summary` already prints -- a repeated
-    citation of one bad citekey is one line under "Not scored" but two
-    lines under Findings, in the JSON exactly as in the rendered
-    report."""
+    `"scored"` counts findings with `note is None`, as `_scored` does, not
+    findings minus `report.unscoreable`: that is keyed by citekey, so a
+    repeated unscoreable citation would overcount. `"unscoreable"` counts
+    citekeys, deliberately, matching `_summary`."""
     payload = review.envelope(report.draft, "support", command)
     payload.update(
         {

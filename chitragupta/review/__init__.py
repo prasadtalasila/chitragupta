@@ -1,70 +1,21 @@
 """The review layer's shared spine: where a report goes, and what it looks like.
 
-Eleven commands make up the review layer -- `chitragupta/review/citation_provenance.py`,
-`chitragupta/review/citation_coverage.py`, `chitragupta/review/verbatim_check/`,
-`chitragupta/review/synthesis.py`, `chitragupta/review/figure_layout/`,
-`chitragupta/review/uncited_prose.py`, `chitragupta/review/quotation.py`,
-`chitragupta/review/agenda/`, `chitragupta/review/claim_support.py`,
-`chitragupta/review/citekey_union.py` and
-`chitragupta/review/verbatim_digest.py`. Each reads a draft -- plus
-the corpus, or in `figure_layout`'s case the figures the draft references, in
-`uncited_prose`'s case nothing else at all, in `citekey_union`'s case the
-acceptance records the book's units were accepted under, or in `agenda`'s
-case the other eight aids' own reports -- and produces evidence for a human
-judgement. None gates, none blocks a draft, none takes the write lock,
-and all eleven are interpreter tier 1. docs/ARCHITECTURE.md's "Layer 4:
-the review layer" is the definition; this module is what makes the
-eleven obey one output contract instead of eleven.
+Eleven review aids (citation_provenance, citation_coverage, verbatim_check,
+synthesis, figure_layout, uncited_prose, quotation, agenda, claim_support,
+citekey_union, verbatim_digest) each read a draft and produce evidence for
+a human judgement. None gates, blocks or takes the write lock, and all are
+interpreter tier 1. docs/ARCHITECTURE.md's "Layer 4: the review layer" is
+the definition; this module gives the eleven one output contract.
 
-**One directory, mirroring the draft's path**, the same rule
-`content/rendered/` and `content/dossiers/` already follow:
+Reports mirror the draft's path, `content/drafts/<topic>/survey.md` ->
+`content/review/<topic>/survey.<aid>.md`, with `.tex`/`.pdf` beside the
+`.md` rather than in `content/rendered/`, the drafting layer's publish
+output. A `.json` sibling serialises the same findings, never a second
+computation, so callers need not regex the Markdown (#127).
 
-    content/drafts/<topic>/survey.md
-      -> content/review/<topic>/survey.provenance.md   (+ .tex/.pdf)
-         content/review/<topic>/survey.verbatim.md     (+ .tex/.pdf)
-         content/review/<topic>/survey.coverage.md     (+ .tex/.pdf)
-         content/review/<topic>/survey.synthesis.md    (+ .tex/.pdf)
-         content/review/<topic>/survey.figure.md       (+ .tex/.pdf)
-         content/review/<topic>/survey.uncited.md      (+ .tex/.pdf)
-         content/review/<topic>/survey.quotation.md    (+ .tex/.pdf)
-         content/review/<topic>/survey.agenda.md       (+ .tex/.pdf)
-         content/review/<topic>/survey.support.md      (+ .tex/.pdf)
-         content/review/<book>/book.union.md           (+ .tex/.pdf)
-         content/review/<topic>/survey.digest.md       (+ .tex/.pdf)
-
-so a draft, its dossier, its renders and its review artefacts are all
-findable from the draft's own path. The `.tex`/`.pdf` land *beside* the
-`.md` rather than in `content/rendered/`, which is the drafting layer's
-publish output and not somewhere a review artefact belongs; `write()`
-gets that by passing `output_dir` to `render_output.render`.
-
-**A machine-readable sibling beside the Markdown.** `write_json()` files
-`<stem>.<aid>.json` in that same directory, and `envelope()` gives it the
-provenance `header()` gives the Markdown. It is an additional
-serialisation of the findings the report already prints -- never a second
-computation -- so that a caller consuming them programmatically does not
-have to regex the printed form back into data (issue #127). A *sibling*,
-not one of `write()`'s formats: `tex` and `pdf` are renders of the
-Markdown through `chitragupta/render_output/`, and this is not a render of
-anything. All eleven aids emit one now -- `verbatim scan` since #127,
-`provenance` and `coverage` since #309, and `synthesis`, `figure`,
-`uncited`, `quotation`, `agenda`, `support`, `union` and `digest` from the
-day each landed -- which is why `agenda` itself can read each of the other
-eight aids' JSON as optional rather than required.
-
-**No timestamp in a report.** The reason to write one at all is that it
-becomes reviewable later and diffable across revisions, and a wall-clock
-line in the header defeats the diff -- two runs over an unchanged draft
-and corpus produce byte-identical Markdown. What the header does carry
-is the draft, the exact command including its flags (a coverage report
-means nothing without its `--query` values), and the version.
-
-**Every report opens with a banner saying it is not a verdict.** The
-docs say so too, but a file found on disk months later is exactly the
-case the docs cannot reach.
-
-Stdlib-only, and imports `render_output` lazily so the md-only path
-doesn't pay for it -- same tier as the eleven commands it serves.
+No timestamp in a report, so two runs over an unchanged draft diff
+byte-identical. Every report opens with a not-a-verdict banner, because a
+file found on disk months later is the case the docs cannot reach.
 """
 
 import json
@@ -76,9 +27,8 @@ from typing import TextIO
 from chitragupta import _private_use, config
 from chitragupta.review._paths import report_dir, require_reviewable
 
-# One place per aid, so a caller cannot invent a report kind by
-# typo. The value is the suffix that goes between the draft's stem and
-# the extension: content/review/<topic>/survey.provenance.md.
+# Value is the suffix between the draft's stem and the extension
+# (survey.provenance.md); one table, so no report kind is invented by typo.
 AIDS = {
     "provenance": "Citation provenance",
     "verbatim": "Verbatim scan",
@@ -93,10 +43,8 @@ AIDS = {
     "digest": "Verbatim digest",
 }
 
-# Deliberately names its sources rather than linking to them: this text
-# is copied into a file whose depth under content/review/ varies with the
-# draft's topic path, so any relative link would be right for one report
-# and broken for the next.
+# Names its sources rather than linking them: report depth under
+# content/review/ varies, so a relative link would break.
 BANNER = (
     "> **Review aid, not a gate.** This report is evidence for a human "
     "judgement, never a verdict. A driver may read it back; no draft is "
@@ -106,11 +54,8 @@ BANNER = (
 
 
 def version() -> str:
-    """The project version, for a report's header.
-
-    Falls back to `"unknown"` rather than raising: a report that cannot
-    name its version is still a useful report, and this is the only
-    reason the review layer would ever read `pyproject.toml`.
+    """The project version, for a report's header; `"unknown"` rather than
+    raising, since a report that cannot name its version is still useful.
     """
     try:
         with open(config.shipped("pyproject.toml"), "rb") as handle:
@@ -127,10 +72,8 @@ def report_path(draft: Path, aid: str, suffix: str = "md") -> Path:
 
 
 def header(draft: Path, aid: str, command: str) -> list[str]:
-    """The Markdown lines every report opens with: title, banner, and the
-    provenance of the report itself -- draft, command, version.
-
-    Deliberately no date; see the module docstring.
+    """The Markdown lines every report opens with: title, banner, draft,
+    command, version. Deliberately no date (see the module docstring).
     """
     return [
         f"# {AIDS[aid]}: {draft}",
@@ -145,32 +88,15 @@ def header(draft: Path, aid: str, command: str) -> list[str]:
 
 
 def notice() -> str:
-    """`BANNER` without its Markdown, for a payload that is read as data.
-
-    Derived rather than restated, so the two cannot drift into saying
-    different things about the same report.
-    """
+    """`BANNER` without its Markdown, derived so the two cannot drift."""
     return BANNER.removeprefix("> ").replace("**", "")
 
 
 def envelope(draft: Path, aid: str, command: str) -> dict:
-    """The provenance fields every aid's JSON payload opens with -- the
-    data counterpart of `header()`, carrying the same facts: that this is
-    not a verdict, which aid, which draft, the exact command including
-    its flags, and the version.
-
-    The notice leads, for the reason the module docstring gives about the
-    Markdown banner: a file found on disk months later is exactly the
-    case the docs cannot reach, and that is no less true of a file whose
-    likeliest reader is an agent acting on it.
-
-    Deliberately no date, for the reason the module docstring gives about
-    the Markdown: two runs over an unchanged draft and corpus produce
-    byte-identical JSON, so a payload kept beside a draft diffs cleanly
-    across revisions instead of differing on every run.
-
-    Returns a fresh dict each call, which the caller adds its own
-    findings to -- the envelope names the run, not what the run found.
+    """The provenance fields every aid's JSON payload opens with, the data
+    counterpart of `header()`. The notice leads and there is no date, for
+    the module docstring's reasons. Returns a fresh dict for the caller's
+    findings.
     """
     return {
         "notice": notice(),
@@ -184,15 +110,9 @@ def envelope(draft: Path, aid: str, command: str) -> dict:
 def write_json(draft: Path, aid: str, payload: dict) -> Path:
     """Writes `payload` as `<stem>.<aid>.json` beside the Markdown report.
 
-    Separate from `write()` rather than a fourth entry in its `formats`:
-    everything in that list goes through `render_output.render`, which
-    renders the Markdown into another *document* format. This is not a
-    render of the report -- it is the findings the report was built from,
-    serialised (see the module docstring).
-
-    `indent=2` and a trailing newline: this file is read by a program but
-    also diffed by a person and committed beside the draft it describes,
-    the same way `dossier status --json` is formatted.
+    Not one of `write()`'s formats: those are renders through
+    `render_output`, and this is the findings themselves. `indent=2` and a
+    trailing newline because it is also diffed and committed by a person.
     """
     path = report_path(draft, aid, "json")
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -204,41 +124,27 @@ def write(draft: Path, aid: str, body: str, formats: list[str]) -> dict[str, Pat
     """Writes `body` as `<stem>.<aid>.md` and renders the other `formats`
     beside it. Returns `{format: path}` for what succeeded.
 
-    `md` is produced directly. `tex`/`pdf` go through
-    `chitragupta/render_output/`, the same path every genre draft uses -- it
-    needs pandoc, and LuaLaTeX for pdf, so a missing binary is reported and
-    skipped rather than failing the whole run, matching how every other
-    stage in this project treats an absent optional tool. So is every
-    other failure in `render_output._failures.RENDER_FAILURES`, the
-    render gate's refusal among them.
+    A missing pandoc/LuaLaTeX, or any other failure in
+    `render_output._failures.RENDER_FAILURES`, skips that format rather
+    than failing the run.
     """
     md_path = report_path(draft, aid)
     md_path.parent.mkdir(parents=True, exist_ok=True)
-    # Before the .md, so the .tex/.pdf rendered from it can set every
-    # character (#1125); the .json, written separately, keeps the original.
-    # Mostly they are quoted from a source's text layer, but the draft
-    # lines a report echoes are marked too: the draft's own render still
-    # stops on one, which is where an author fixes it.
+    # Before the .md, so the .tex/.pdf can set every character (#1125); the
+    # .json, written separately, keeps the original.
     body, markers = _private_use.mark(body)
     if markers:
         print(_private_use.note(markers), file=sys.stderr)
     md_path.write_text(body, encoding="utf-8")
     written = {"md": md_path}
 
-    # `json` is dropped alongside `md`, not passed on to `render_output`:
-    # it names the same path `write_json` files the payload at, and pandoc
-    # accepts `json` as a real output format (its own document AST) -- so
-    # routing it through would spend a subprocess writing something else
-    # entirely over the payload, or under it, depending on which ran last.
-    # Dropped rather than refused, because `--write` already files the
-    # payload: a caller who names it here gets it either way.
+    # `json` is dropped, not passed to `render_output`: pandoc accepts `json`
+    # as its own AST format and would overwrite the payload `write_json` files.
     remaining = [fmt for fmt in formats if fmt not in ("md", "json")]
     if not remaining:
         return written
 
-    # Imported here rather than at module top only to keep the import
-    # cost off the md-only path; render_output is itself stdlib-only, so
-    # there is no optional dependency to guard against.
+    # Lazy, only to keep the import cost off the md-only path.
     import subprocess
 
     from chitragupta import render_output
@@ -248,40 +154,24 @@ def write(draft: Path, aid: str, body: str, formats: list[str]) -> dict[str, Pat
         try:
             written[fmt] = render_output.render(str(md_path), fmt, output_dir=md_path.parent)
         except subprocess.CalledProcessError as exc:
-            # A quoted excerpt can carry characters straight from the
-            # source PDF (e.g. circled digits) that no font in the
-            # render's chain can set -- a real rendering failure, not a bug in
-            # this report. Its own branch only for pandoc's stderr.
+            # Source characters (e.g. circled digits) no font can set: a
+            # real render failure, not a bug in this report.
             print(
                 f"  WARNING: skipped {fmt} -- pandoc failed: {exc.stderr or exc}", file=sys.stderr
             )
         except RENDER_FAILURES as exc:
-            # Every other way render() refuses: a missing binary, an
-            # output dir outside content/, or the render gate refusing a
-            # verbatim excerpt that quotes a `[@key]` the ledger lacks
-            # (#949). The md report above is already written and
-            # unaffected, and the caller files the `.json` the agenda reads
-            # next, so one format is skipped rather than the run taken out
-            # -- how render_output/'s own CLI reports each of these too.
-            # The shared tuple rather than classes listed here, so a
-            # failure render() gains later is caught without this
-            # needing to know.
+            # Every other render() refusal (missing binary, output dir
+            # outside content/, render gate refusing an unknown `[@key]`,
+            # #949): skip one format, since the .md and the agenda's .json
+            # are already filed. The shared tuple catches future failures.
             print(f"  WARNING: skipped {fmt} -- {exc}", file=sys.stderr)
     return written
 
 
 def print_written(written: dict[str, Path], stream: TextIO | None = None) -> None:
-    """The one-line-per-format summary all three commands print.
-
-    `json` is listed here too, so an aid that files the machine-readable
-    sibling reports it the same way it reports the report itself -- a
-    written file the caller isn't told about is one they will not know to
-    look for.
-
-    `stream` is how a caller whose stdout is itself machine-readable
-    (`verbatim scan --json --write`) keeps this summary out of it: this
-    is a note to a person, and it belongs on stderr whenever stdout has
-    become a payload. Defaults to stdout, which is every other caller.
+    """The one-line-per-format summary all three commands print, `json`
+    included. `stream` lets a caller whose stdout is a payload
+    (`verbatim scan --json --write`) send this note to stderr.
     """
     for fmt in ("md", "tex", "pdf", "json"):
         if fmt in written:

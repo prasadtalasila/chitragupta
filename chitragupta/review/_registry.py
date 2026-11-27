@@ -1,14 +1,9 @@
 """Which module implements each review aid: the one name->module map (#850).
 
-`review.AIDS` (`review/__init__.py`) names the aids and owns their report
-suffixes, and stays import-light so `dossier` can read it without loading
-eleven aids. This is the other half: the module that runs each one, and the
-one-line description its subcommand shows in `--help`. It used to live
-in `review/__main__.py`, which made it unreachable from
-`agenda/_refresh.py` without a cycle -- `__main__` imports `agenda`,
-which imports `_refresh` -- so `_refresh` kept a hand-copied map of its
-own. Here, `_refresh` imports it at call time, after every aid module has
-finished loading, and the entry point imports it at the top.
+`review.AIDS` owns the names and suffixes and stays import-light for
+`dossier`; this maps each aid to its module and `--help` line. Kept out of
+`__main__` so `agenda/_refresh.py` can import it at call time without a
+cycle.
 """
 
 from chitragupta import review
@@ -27,10 +22,9 @@ from chitragupta.review import (
     verbatim_digest,
 )
 
-# Keyed by review.AIDS, so a new aid cannot appear here without also
-# appearing in the dict that owns the report suffixes.
-# The help strings live in chitragupta/command_help.py, so `chitragupta
-# --help`'s tree can print them without importing a single aid.
+# Keyed by review.AIDS, so no aid appears without its report suffix. Help
+# strings live in chitragupta/command_help.py, so `chitragupta --help`
+# imports no aid.
 AIDS = {
     aid: (module, verbs("review")[aid])
     for aid, module in {
@@ -48,10 +42,8 @@ AIDS = {
     }.items()
 }
 
-# A raise rather than an assert: `python -O` strips assertions, and this
-# is the one check standing between a mistyped subcommand and a report
-# filed under a name the rest of the layer cannot find. An invariant
-# worth stating is worth stating in every interpreter mode.
+# A raise, not an assert, which `python -O` strips: this alone stops a
+# report being filed under a name the layer cannot find.
 if set(AIDS) != set(review.AIDS):
     raise RuntimeError(
         "the entry point's subcommands and review.AIDS have drifted apart: "
