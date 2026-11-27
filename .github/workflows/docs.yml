@@ -6,7 +6,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    # improve-figures is deliberately PR-only, so it is never published.
     branches: [main, improve-figures]
   workflow_dispatch:
 
@@ -16,7 +15,6 @@ concurrency:
 
 jobs:
   build:
-    # Job-level permissions (Sonar S8264), so no future job inherits a grant.
     permissions:
       contents: read
     runs-on: ubuntu-26.04
@@ -27,8 +25,6 @@ jobs:
         with:
           python-version: '3.12'
 
-      # uv is pinned and wheels-only (Sonar S8544/S8541); bump with ci.yml, release.yml and
-      # scripts/uv-requirements.txt together. Not install_full_pipeline.sh: that is the pipeline's install path.
       - name: Install the docs toolchain
         run: |
           pip install --only-binary ':all:' uv==0.13.9
@@ -37,7 +33,6 @@ jobs:
       - name: Build the site
         run: uv run --no-sync mkdocs build --strict
 
-      # --strict passed on a site with no theme CSS/JS (an over-broad exclude_docs), so check the built output.
       - name: Check every reference in the built site resolves
         run: |
           python3 - <<'PY'
@@ -74,8 +69,6 @@ jobs:
                   path = urllib.parse.unquote(ref.split("#")[0].split("?")[0])
                   if not path:
                       continue
-                  # Absolute refs are rooted at the served base path (the
-                  # 404 page uses them, since it can be served from any depth).
                   target = site / path[len(base):] if path.startswith(base) else html.parent / path
                   if not target.resolve().exists():
                       missing.setdefault(ref, set()).add(str(html.relative_to(site)))
@@ -83,8 +76,6 @@ jobs:
           for ref, pages in sorted(missing.items()):
               print(f"::error::broken reference {ref} in {sorted(pages)[:4]}")
 
-          # A belt-and-braces floor, in case a future theme stops being
-          # reachable by reference-walking alone.
           for pattern in ("assets/stylesheets/*.css", "assets/javascripts/*.js"):
               if not list(site.glob(pattern)):
                   print(f"::error::no {pattern} in the built site")

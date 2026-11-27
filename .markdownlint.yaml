@@ -1,7 +1,6 @@
 # Locally also exclude "!.claude/worktrees", or worktree copies flood the run.
 default: true
 
-# README's dark-mode <picture> block has no Markdown spelling.
 MD033: false
 
 MD013:

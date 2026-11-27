@@ -1,10 +1,8 @@
 name: CI
 
-# `branches`, never `tags-ignore`: a push trigger with only tag filters stops running on branches
-# altogether, and main then gets no runs (and Codecov no base report).
+# `branches`, never `tags-ignore`: tag-only filters stop branch runs entirely.
 on:
   push:
-    # improve-figures: integration branch for #1044, checked like main.
     branches: [main, improve-figures]
   pull_request:
     branches: [main, improve-figures]
@@ -25,17 +23,14 @@ jobs:
       matrix:
         os: [ubuntu-26.04, windows-latest]
     runs-on: ${{ matrix.os }}
-    # Windows blocks like Linux and holds 100% via coveragerc-windows.toml (#291); ~30 render/pdf tests self-skip.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # config.py reads config.toml at import time; without it the whole suite dies on collection.
       - name: Create config.toml from the tracked example
         shell: bash
         run: cp config.toml.example config.toml
 
-      # Keyed on the runner image and uv.lock. No `restore-keys` (#512/m-87): `uv sync --inexact` never
-      # uninstalls, so a prefix hit carries removed packages forward. ImageOS needs a step (env. can't read it).
+      # No `restore-keys` (#512): `uv sync --inexact` never uninstalls, so a prefix hit keeps removed packages.
       - name: Name the runner image for the venv cache key
         id: image
         shell: bash
@@ -53,18 +48,15 @@ jobs:
         if: runner.os == 'Linux'
         run: bash scripts/install_full_pipeline.sh all
 
-      # Linux only: drops the unused CUDA wheels. Not part of `all`, which cannot know a host has no GPU.
       - name: Swap torch for the cpu-only build (no GPU on a hosted runner)
         if: runner.os == 'Linux'
         run: bash scripts/install_full_pipeline.sh cpu-torch
 
-      # Pinned, wheels-only (Sonar S8544/S8541). Bump with docs.yml, release.yml and
-      # scripts/uv-requirements.txt (tests/test_install_script_uv.py checks).
+      # Pinned, wheels-only (S8544); bump with docs.yml, release.yml and scripts/uv-requirements.txt.
       - name: Install uv
         shell: bash
         run: pip install --only-binary ':all:' uv==0.13.9
 
-      # os-deps is apt-only; toolchain-dependent tests self-skip on Windows.
       - name: Install Python dependencies (python-deps only -- os-deps is Linux/apt-only)
         if: runner.os != 'Linux'
         shell: bash
@@ -74,7 +66,6 @@ jobs:
         shell: bash
         run: bash scripts/install_full_pipeline.sh dev-deps
 
-      # Cache eviction past 10GB is silent, so log hit or miss.
       - name: Report whether the venv cache was a hit
         shell: bash
         run: |
@@ -84,7 +75,6 @@ jobs:
             echo "venv cache: MISS for ${{ steps.venv-cache.outputs.cache-primary-key }} (installing from an empty .venv-full)"
           fi
 
-      # Saved only from main, on a miss: PR-branch writes would thrash the 10GB cache limit (#275).
       - name: Save the .venv-full cache (main only, on a miss)
         if: github.ref == 'refs/heads/main' && steps.venv-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -92,9 +82,7 @@ jobs:
           path: .venv-full
           key: ${{ steps.venv-cache.outputs.cache-primary-key }}
 
-      # `uv run --active` resolves bin/ vs Scripts/ via VIRTUAL_ENV; `--no-sync` keeps the cpu-torch swap.
-      # HF_HUB_OFFLINE: no test may fetch a model (#861). `not slow` skips TeX tests; their lines are already
-      # excluded by coveragerc-windows.toml, so marking anything else `slow` fails the 100% floor.
+      # `--no-sync` keeps the cpu-torch swap; marking more tests `slow` fails the 100% floor.
       - name: Run test suite with coverage
         shell: bash
         env:
@@ -119,7 +107,6 @@ jobs:
             echo "::error::${{ matrix.os }}: ${line}"
           done
 
-      # Linux only: Sonar's importer wants exactly one report.
       - name: Upload coverage.xml for the SonarQube job
         if: ${{ !cancelled() && runner.os == 'Linux' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -128,12 +115,9 @@ jobs:
           path: coverage.xml
           retention-days: 1
 
-      # Both legs upload, under their own flags; codecov.yml's after_n_builds waits for both.
-      # `!cancelled()`: a red coverage run is the one worth reporting. `fail_ci_if_error: false` stays:
-      # coverage pass/fail is decided locally, and an upload error is not a fact about the code.
+      # `fail_ci_if_error: false`: coverage is decided locally; an upload error is not about the code.
       - name: Upload coverage to Codecov
         if: ${{ !cancelled() }}
-        # SHA-pinned (Sonar S7637): third-party action that receives a token.
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: ./coverage.xml
@@ -147,8 +131,6 @@ jobs:
         shell: bash
         run: uv lock --check
 
-  # Guards the citation gate hook, which fails silently if its launcher cannot start (docs/HOOKS.md).
-  # No install on purpose (hook_launchers.py is stdlib-only); both OSes, since the faults are platform-split.
   launchers:
     strategy:
       fail-fast: false
@@ -164,27 +146,13 @@ jobs:
         run: |
           py=python3
           command -v "$py" >/dev/null 2>&1 || py=python
-          # One logical line, and it has to be. A readable indented
-          # block is not available here: a `run: |` scalar ends the
-          # moment a line's indentation drops below the block's, so
-          # flush-left Python breaks the *YAML*, while Python indented to
-          # match the YAML reaches the interpreter with a leading indent
-          # and dies on IndentationError. Hence statements separated by
-          # `;` and no compound block -- `.claude/hooks/` is where
-          # readable versions of this kind of code live.
-          #
-          # `-c` puts the current directory on sys.path, and the checkout
-          # is the current directory, so `chitragupta` imports with
-          # nothing installed.
           "$py" -c "import sys; from pathlib import Path; from chitragupta import hook_launchers; faults = hook_launchers.faults(Path('.claude/settings.json')); print('\n'.join('::error::' + f for f in faults)); sys.exit(1 if faults else 0)"
 
-  # Zero-messages bar, never a score (AUTO-IMPROVEMENT.md R3). Ubuntu only: source checks, not platform.
   lint:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # pylint imports what it lints, and config.py needs config.toml at import time.
       - name: Create config.toml from the tracked example
         shell: bash
         run: cp config.toml.example config.toml
@@ -193,7 +161,6 @@ jobs:
         with:
           python-version: "3.13"
 
-      # Pins are Sonar S8544; bibtexparser matches uv.lock. Keep in step with scripts/check_local.sh.
       - name: Install pylint and the runtime dependency
         run: python -m pip install pylint==4.0.7 bibtexparser==2.1.0
 
@@ -201,7 +168,6 @@ jobs:
       - name: Install ruff
         run: python -m pip install ruff==0.16.4
 
-      # Needs main and the tags, which the shallow checkout lacks.
       - name: Fetch main and tags for the version check
         run: git fetch --quiet --depth=1 origin "+refs/heads/main:refs/remotes/origin/main" "+refs/tags/*:refs/tags/*"
 
@@ -216,11 +182,9 @@ jobs:
       - name: ruff
         run: ruff check chitragupta scripts .claude/hooks
 
-      # Wider roots than lint on purpose. `--check` only: a CI job that rewrites what it checks cannot fail.
       - name: ruff format --check
         run: ruff format --check chitragupta scripts tests bench .claude/hooks
 
-      # Also git-hooks/pre-commit and docker/*.sh: nothing else in CI checks entrypoint.sh (PID 1).
       - name: shellcheck
         run: shellcheck scripts/*.sh git-hooks/pre-commit docker/*.sh
 
@@ -246,8 +210,6 @@ jobs:
       - name: Install webapp dev dependencies (acorn)
         run: npm ci --ignore-scripts
 
-      # browser_load.test.js loads every DOM-free module so the 100% bar measures it (#858).
-      # browser_smoke.test.js skips in Actions (headless Chrome timeouts); check_local.sh runs it.
       - name: Test the webapp modules
         run: >-
           node --test --experimental-test-coverage
@@ -255,19 +217,16 @@ jobs:
           --test-coverage-lines=100
           tests/webapp/*.test.js
 
-      # Makes the plugin helpers' tests unskippable (tests/test_opencode_plugin.py skips without node).
       - name: Test the OpenCode plugin helpers
         run: node --test tests/opencode/*.test.mjs
 
       - name: Install Vale
         run: bash scripts/install_full_pipeline.sh vale
 
-      # A script, not inline, so scripts/check_local.sh runs the same text (#865).
       - name: Vale config parses and the exemptions hold
         run: bash scripts/check_style_exemptions.sh
 
-  # Proves docker/Dockerfile still builds (#237), nothing more. No path filter: narrowing filters fail
-  # invisibly. TORCH_VARIANT=cpu: the GPU image is ~11.6GB and nothing here can use it.
+  # No path filter: narrowing filters fail invisibly. TORCH_VARIANT=cpu keeps the image small.
   docker-build:
     name: Docker build
     runs-on: ubuntu-26.04
@@ -279,25 +238,20 @@ jobs:
 
   sonarqube:
     name: SonarQube
-    # Ubuntu only, one job: a second scan of the same projectKey overwrites the first.
-    # `needs: test` so the coverage artifact exists; a red suite skips the scan, accepted.
+    # One job only: a second scan of the same projectKey overwrites the first.
     needs: test
     runs-on: ubuntu-26.04
     steps:
-      # fetch-depth: 0: Sonar needs history for new-code detection and blame.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      # continue-on-error is defense in depth: a missing artifact only loses new_coverage.
       - name: Download coverage.xml from the test job
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         continue-on-error: true
         with:
           name: coverage-xml
 
-      # The PR comment comes from the SonarQube Cloud GitHub App, not this workflow; no extra permissions
-      # help. SHA-pinned (Sonar S7637): third-party action handling a credential.
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@59202af334b4ba7b5db01b701b8e79f8b3bef0f4 # v8.5.0
         env:

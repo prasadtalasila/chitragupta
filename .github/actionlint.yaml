@@ -1,5 +1,4 @@
-# actionlint 1.7.12 (install_full_pipeline.sh's pin) predates the ubuntu-26.04 label.
-# Remove once an actionlint release knows it.
+# Remove once an actionlint release knows the ubuntu-26.04 label.
 self-hosted-runner:
   labels:
     - ubuntu-26.04

@@ -1,5 +1,4 @@
-# Wait for every matrix leg's upload before scoring, or the first one to land can
-# read as a regression. Must equal ci.yml's `os:` matrix size (test-pinned).
+# Must equal ci.yml's `os:` matrix size (test-pinned), or one upload reads as a regression.
 codecov:
   notify:
     after_n_builds: 2

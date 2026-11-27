@@ -1,8 +1,6 @@
-# Long-lived `claude remote-control` host. Copy .env.example to .env; every variable is documented there.
 # Pick a profile (cpu or gpu): a `deploy` nvidia reservation makes `up` fail outright without the toolkit.
 name: ${CHITRAGUPTA_PROJECT_NAME:-chitragupta}
 
-# Shared by both services, which differ only by `deploy:`; they share a container name, one runs at a time.
 x-claude: &claude
   build:
     context: .
@@ -17,13 +15,10 @@ x-claude: &claude
   # Required, not defaulted: a wrong default uid silently writes files owned by someone else.
   user: ${CHITRAGUPTA_USER:?set CHITRAGUPTA_USER in docker/.env -- see .env.example}
 
-  # Without hostname/CLAUDE_AGENT_NAME the agent registers under the container's short id.
   hostname: ${CHITRAGUPTA_CONTAINER_NAME:-chitragupta-claude}
-  # The image's WORKDIR is empty when CHITRAGUPTA_WORKSPACE_DIR moves the mount.
   working_dir: ${CHITRAGUPTA_WORKSPACE_DIR:-/workspace}
   environment:
     CLAUDE_AGENT_NAME: ${CHITRAGUPTA_CONTAINER_NAME:-chitragupta-claude}
-    # Must equal the mount target below. Unset RC_* vars arrive empty, which rc-daemon.env treats as unset.
     RC_DIR: ${CHITRAGUPTA_WORKSPACE_DIR:-/workspace}
     RC_NAME: ${RC_NAME:-}
     RC_PREFIX: ${RC_PREFIX:-}
@@ -32,11 +27,9 @@ x-claude: &claude
     RC_VENV: ${RC_VENV:-}
 
   volumes:
-    # `:?`, not a default. Containers sharing CHITRAGUPTA_CLAUDE_HOME need distinct workspace targets,
-    # or the second one takes over the first one's remote-control session.
+    # `:?`, not a default: containers sharing CHITRAGUPTA_CLAUDE_HOME need distinct targets.
     - ${CHITRAGUPTA_WORKSPACE:?set CHITRAGUPTA_WORKSPACE to the host directory to mount in the container}:${CHITRAGUPTA_WORKSPACE_DIR:-/workspace}
     - ${CHITRAGUPTA_CLAUDE_HOME:-./claude}:/home/${CHITRAGUPTA_USER}/.claude
-    # Carries ~/.claude.json's oauthAccount (needed by remote-control); the agent can read the whole file.
     # Long syntax for create_host_path: false, so a mistyped path fails `up` instead of creating a root dir.
     - type: bind
       source: ${CHITRAGUPTA_CLAUDE_JSON:-/dev/null}
@@ -49,7 +42,6 @@ x-claude: &claude
 
   restart: unless-stopped
 
-  # Catches tmux/supervisor death only; a missing login still reports healthy (see `docker logs`).
   healthcheck:
     test: ["CMD", "rc-daemon.sh", "status"]
     interval: 60s
@@ -62,7 +54,6 @@ services:
     <<: *claude
     profiles: ["cpu"]
 
-  # Needs the NVIDIA Container Toolkit on the host.
   claude-gpu:
     <<: *claude
     profiles: ["gpu"]

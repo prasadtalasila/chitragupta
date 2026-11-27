@@ -29,8 +29,6 @@ dependencies = [
 enrich = [
     # <2.15 is load-bearing: 2.15 has CUDA 13.2 builds only, so older
     # drivers would silently run CPU-only.
-    # Floors so a resolver cannot pick a torch with no wheels for this Python.
-    # Lift the cap once download.pytorch.org/whl/cu130 (or older) carries 2.15.
     "torch>=2.14,<2.15",
     "torchvision>=0.29,<1.0",
     "sentence-transformers>=5.7,<6.0",
@@ -53,7 +51,6 @@ images = [
 dev = [
     "pytest>=9.0,<10.0",
     # 7.x does not measure subprocesses: cover `main()` with an in-process test.
-    # coverage's patch = ["subprocess"] was tried and did not help.
     "pytest-cov>=7.1,<8.0",
     "pytest-xdist>=3.8,<4.0",
     "pyyaml>=6.0,<7.0",
@@ -77,9 +74,7 @@ packages = [{ include = "chitragupta" }]
 include = [
     { path = "assets", format = ["sdist", "wheel"] },
     # Listed entry by entry so developer-only skills (#1188) stay out;
-    # tests/test_developer_skills.py names any missing entry. Poetry's exclude
-    # cannot remove a path from an included folder, and a whole-folder entry
-    # shipped .claude/worktrees/. A bare string here is sdist-only.
+    # tests/test_developer_skills.py names any missing entry.
     { path = ".claude/agents", format = ["sdist", "wheel"] },
     { path = ".claude/hooks", format = ["sdist", "wheel"] },
     { path = ".claude/settings.json", format = ["sdist", "wheel"] },
@@ -139,8 +134,6 @@ include = [
 # come from triton and torchvision metadata; without them the lock resolves
 # to wheels with no cp314 build (#607). The three platforms exclude
 # emscripten, where onnxruntime has no wheels.
-# Widen when that metadata allows; ci.yml's docker-build job fails a re-lock
-# that drifts below cp314.
 environments = [
     "sys_platform == 'linux' and python_full_version >= '3.12' and python_full_version != '3.14.1' and python_full_version < '3.15'",
     "sys_platform == 'darwin' and python_full_version >= '3.12' and python_full_version != '3.14.1' and python_full_version < '3.15'",
@@ -164,7 +157,6 @@ omit = [
 
 [tool.coverage.report]
 # Coverage is held at 100%; Windows uses coveragerc-windows.toml (#291).
-# On a host without pandoc/TeX/poppler, pass --cov-fail-under=0.
 fail_under = 100
 precision = 2
 exclude_lines = [
@@ -181,8 +173,6 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "BLE", "RUF100"]
 
-# Re-exporting __init__.py files are F401 by design, some with deliberately
-# late imports (E402) to avoid circular imports.
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "E402"]
 

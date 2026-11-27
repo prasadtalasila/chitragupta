@@ -1,6 +1,4 @@
-# Every `uses:` in .github/workflows/ is pinned to a full commit SHA with a
-# `# vX.Y.Z` comment; Dependabot bumps both together, as one weekly grouped PR.
-# The `uv==` pins live in `run:` lines no ecosystem reads; bump those by hand.
+# Dependabot cannot see the `uv==` pins in `run:` lines; bump those by hand.
 version: 2
 updates:
   - package-ecosystem: github-actions

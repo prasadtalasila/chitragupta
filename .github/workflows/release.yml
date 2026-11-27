@@ -21,7 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # release.py names the archive from pyproject.toml alone, so a mismatch would ship a misnamed zip.
       - name: Verify tag matches pyproject.toml version
         run: |
           tag_version="${GITHUB_REF_NAME#v}"
@@ -34,12 +33,9 @@ jobs:
       - name: Build release archives
         run: python3 scripts/release.py
 
-      # Pinned and wheels-only (Sonar S8544/S8541): this uv builds what reaches PyPI. Bump every uv==
-      # site together, scripts/uv-requirements.txt included.
       - name: Install uv
         run: pipx install --pip-args='--only-binary=:all:' uv==0.13.9
 
-      # pyproject's `readme` must stay README.md (uv sync reads it, #286); overwrite it in this checkout only.
       - name: Rewrite README.md for the PyPI-bound build
         run: cp README.pypi.md README.md
 
@@ -50,7 +46,6 @@ jobs:
       - name: Show what will be attached
         run: ls -l release/chitragupta-*.zip dist/chitragupta_cli-*
 
-      # Handed over rather than rebuilt, so PyPI gets bytes identical to the release's.
       - name: Keep the built distributions for the publish job
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -58,7 +53,6 @@ jobs:
           path: dist/
           if-no-files-found: error
 
-      # SHA-pinned (S7637): this action runs with `contents: write`.
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
@@ -68,8 +62,7 @@ jobs:
             dist/chitragupta_cli-*.tar.gz
           generate_release_notes: true
 
-  # Separate job so only this one holds the OIDC token. `needs: release` publishes to PyPI only after
-  # the GitHub Release exists, and skips it whenever release (and its patch guard) skips.
+  # Separate job so only it holds the OIDC token; runs only after the release job succeeds.
   publish-pypi:
     needs: release
     runs-on: ubuntu-26.04
@@ -83,7 +76,6 @@ jobs:
           name: dist
           path: dist/
 
-      # Trusted Publishing: no API token or secret. The publisher is registered against this filename and the
-      # `pypi` environment. The project is `chitragupta-cli`; `chitragupta` on PyPI is someone else's.
+      # Trusted Publishing (no secret); the PyPI project is `chitragupta-cli`.
       - name: Publish to PyPI (Trusted Publishing)
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3

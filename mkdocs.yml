@@ -24,7 +24,6 @@ theme:
   locale: en
   logo: docs/logo.svg
   favicon: docs/logo.svg
-  # Matched by hand to prasad.talasila.in's palette; nothing enforces it.
   palette:
     primary: teal
     accent: orange
@@ -41,7 +40,6 @@ theme:
 extra_css:
   - docs/stylesheets/mermaid.css
 
-# Matched to the parent site's URL style (/software.html).
 use_directory_urls: false
 
 plugins:
@@ -95,8 +93,6 @@ exclude_docs: |
   /config.toml.example
   /uv.lock
   /pyproject.toml
-  # Kept in git for readers on GitHub, left out of the site to keep it
-  # shorter; pages that link to them use GitHub URLs.
   /docs/DIAGRAMS.md
   /docs/SECURITY.md
   /docs/TOPIC-MODELLING.md
@@ -114,15 +110,7 @@ exclude_docs: |
   /docs/RAG.md
   /docs/INSPIRATION.md
   /docs/MODEL-COMPLIANCE.md
-  # Plans are development records, not documentation: nothing in the nav
-  # links to one, and a page that cites a plan uses a GitHub URL.
   /plans/
-  # The patterns above are anchored to the repository root (gitignore
-  # syntax) so they stop matching the sample project's own content/ and
-  # papers/ under docs/examples/, which the documentation links to. What
-  # stays out of the site there is only the regenerable machine state a
-  # local `regenerate.sh` run leaves on disk -- the same set the sample's
-  # own .gitignore keeps out of git.
   docs/examples/sample-project/content/ledger.sqlite
   docs/examples/sample-project/content/parsed/
   docs/examples/sample-project/content/chroma/

@@ -1,6 +1,5 @@
 name: Commit message
 
-# Its own workflow so `edited` re-runs only this check, not ci.yml's whole suite.
 on:
   pull_request:
     branches: [main, improve-figures]
