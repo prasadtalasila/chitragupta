@@ -1,30 +1,16 @@
 r"""The house figure-style block as a region inside a figure file (#1013).
 
-A figure file has to compile on its own under `\usepackage{tikz}` --
-inside a user's thesis, inside the one-figure probe document -- so it
-cannot `\input` the block from an install path that will not exist on
-the machine that typesets it. It carries a copy instead, between two
-marker lines, and this module is what lets that copy be kept current
-without a person hand-applying every block change to every figure
-(docs/TIKZ-STYLE.md, "The house figure style").
+A figure must compile alone (in a thesis, in the probe document), so it
+carries a copy of the block between marker lines instead of `\input`ing an
+install path; this keeps the copy current (docs/TIKZ-STYLE.md).
 
-A file's region is in one of five states. `CURRENT`: its bytes are the
-installed block. `STALE`: its bytes are a block this project once
-released (`assets/tikz/cg-figstyle.versions.toml`), so it can be
-replaced wholesale. `MODIFIED`: the markers pair up but the bytes match
-no released block -- someone edited inside them, or a newer chitragupta
-stamped it. `MISSING`: no markers at all. `MALFORMED`: markers that do
-not pair up once.
+States: `CURRENT` (installed bytes), `STALE` (a released block in
+`assets/tikz/cg-figstyle.versions.toml`, replaceable), `MODIFIED` (paired
+markers, unknown bytes), `MISSING`, `MALFORMED` (markers not pairing once).
+A modified region is never overwritten: it is someone's work, reported with
+a diff for a person to decide.
 
-A modified region is never overwritten. The edit inside it is somebody's
-work, and the only way to tell an edit from an old release is the
-register of released digests; anything not in it is reported with a
-diff and left for a person to decide. A modified region is a
-conversation, not a merge.
-
-Everything here is pure except `load_house`, so the classifier can be
-shared by the writer (`figure sync`) and by the renderer, which only
-reports.
+Pure except `load_house`, so the writer and the renderer share the classifier.
 """
 
 import hashlib
@@ -37,9 +23,8 @@ from pathlib import Path
 from chitragupta import config
 from chitragupta._tex_comments import strip_comments
 
-# Leading whitespace is tolerated when *finding* a marker so that a
-# re-indented region reads as modified rather than missing -- missing
-# would stamp a second copy beside it.
+# Leading whitespace is tolerated when finding a marker, so a re-indented region
+# reads as modified, not missing (which would stamp a second copy).
 _START_RE = re.compile(r"^[ \t]*% >>> chitragupta figure style v(\d+)\b[^\n]*$", re.M)
 _END_RE = re.compile(r"^[ \t]*% >>> end chitragupta figure style <<<[ \t]*\r?$", re.M)
 # Where a missing block goes: above the first line that loads a library
@@ -49,8 +34,6 @@ _COMMAND = "python -m chitragupta figure sync"
 
 
 class State(Enum):
-    """What a figure file's house-block region is, relative to this install."""
-
     CURRENT = "current"
     STALE = "stale"
     MODIFIED = "modified"
@@ -70,9 +53,9 @@ class House:
 
 @dataclass(frozen=True)
 class Region:
-    """One file's region: its state, the version its start marker names,
-    and its character offsets -- `end` is past the end marker's line
-    break. Offsets are `None` when there is no single region."""
+    """One file's region: state, the version its start marker names, and
+    character offsets (`end` past the end marker's line break; `None`
+    without a single region)."""
 
     state: State
     marker_version: int | None = None
@@ -104,15 +87,11 @@ def load_house(block: Path | None = None, register: Path | None = None) -> House
 
 
 def _line_end(text: str, offset: int) -> int:
-    """`offset` moved past the line break that ends its line, if any.
-
-    `_END_RE` takes a CRLF's `\r` into its match, so only `\n` is left.
-    """
+    """`offset` moved past its line's break; `_END_RE` already took a CRLF's `\r`."""
     return offset + 1 if text.startswith("\n", offset) else offset
 
 
 def classify(text: str, house: House) -> Region:
-    """Which of the five states `text`'s region is in, and where it is."""
     starts = list(_START_RE.finditer(text))
     ends = list(_END_RE.finditer(text))
     if not starts and not ends:
@@ -130,8 +109,6 @@ def classify(text: str, house: House) -> Region:
 
 
 def _anchor(text: str) -> int | None:
-    """Offset of the first line whose uncommented part loads a library
-    or opens a picture."""
     offset = 0
     for line in text.splitlines(keepends=True):
         if _ANCHOR_RE.search(strip_comments(line)):
@@ -183,7 +160,6 @@ def finding(text: str, house: House) -> str | None:
 
 
 def newer_than_install(region: Region, house: House) -> str:
-    """The sentence for a region a newer chitragupta stamped."""
     return (
         f"house figure-style block is v{region.marker_version}, newer than this "
         f"install's v{house.version}; upgrade chitragupta rather than edit it"

@@ -20,15 +20,9 @@ from chitragupta.progname import prog_for
 def _format_arg(value: str) -> str:
     """argparse `type=` for `--format`: one format, not a list.
 
-    `--format md,tex,pdf` used to reach render() unexamined, which built
-    the output path as `f"{stem}.{output_format}"` -- so it wrote a file
-    literally named `<stem>.md,tex,pdf`, printed a success path and
-    exited 0, and the real `.pdf` was never touched (#389). Rejected here
-    rather than validated against a fixed list of formats: render() hands
-    this straight to pandoc's `-o`, which infers its writer from the
-    extension and accepts many (docx, html, odt, ...) this project has no
-    reason to enumerate. A comma is never part of one of those, so it is
-    the one shape this can check without inventing an allowlist.
+    A comma list once wrote `<stem>.md,tex,pdf` and exited 0 (#389). Not an
+    allowlist: pandoc's `-o` infers many writers from the extension, and a
+    comma is never part of one.
     """
     if "," in value:
         raise argparse.ArgumentTypeError(
@@ -43,16 +37,10 @@ def _format_arg(value: str) -> str:
 def _figure_repair_hint(input_arg: str) -> str:
     r"""The `draft-reviser` pointer to append to a failed render, or "".
 
-    A malformed TikZ figure fails the *whole* pdf, not just the figure,
-    and the TeX engine's own error names a file rather than saying what to do
-    about it. Only added for a draft that actually has a figure, so an
-    unrelated pandoc failure is not sent chasing one.
-
-    Repairing it is deliberately not attempted here. Redrawing a figure
-    is a drafting judgement -- it may be the TikZ that is wrong, or the
-    claim the figure makes -- and `draft-reviser` is the skill that owns
-    changing a draft. Falling back to the ASCII form silently would also
-    hide the breakage in exactly the artifact a thesis `\input`s.
+    A bad TikZ figure fails the whole pdf, and TeX names a file, not a fix.
+    Only for a draft with a figure. No repair here: redrawing is a drafting
+    judgement, and a silent ASCII fallback would hide the breakage in the
+    artifact a thesis `\input`s.
     """
     try:
         refs = _figure_refs(Path(input_arg).read_text(encoding="utf-8"))
@@ -69,28 +57,18 @@ def _figure_repair_hint(input_arg: str) -> str:
     )
 
 
-# The message assets/latex/chitragupta-lualatex.tex raises when no font in
-# the fallback chain has a character. Its wording copies TeX's own
-# "Missing character: There is no X (U+XXXX)", so a LuaTeX that ever
-# reports through its own message instead still matches.
+# The message assets/latex/chitragupta-lualatex.tex raises for a character no
+# fallback font has, worded like TeX's own so either source matches.
 _UNICODE_ERROR_RE = re.compile(r"Missing character: There is no (.) \(U\+([0-9A-F]{4,6})\)")
 
 
 def _unicode_repair_hint(stderr: str | None) -> str:
     r"""The fix for a character no font in the render's chain has, or "".
 
-    A pdf render runs LuaLaTeX with STIX Two and a fallback chain that
-    covers Greek, math, Telugu, Devanagari, CJK and every character
-    #948's table knew (#996). A character outside all of them still
-    fails the build, which is deliberate: the alternative is a silent
-    gap in the PDF. The build stops at the first such character, so the
-    hint names that one; a draft may hold more.
-
-    Both fixes work under LuaLaTeX. `content/unicode-extra.tex` is
-    included behind a shim that defines `\DeclareUnicodeCharacter` on
-    top of `newunicodechar` where the kernel lacks it
-    (`_unicode._overlay_header`), so the line pdflatex users already
-    know also prints here.
+    Failing the build is deliberate: the alternative is a silent gap in the PDF
+    (#996). The build stops at the first such character, so the hint names that
+    one. `content/unicode-extra.tex` works under LuaLaTeX too, via the
+    `_unicode._overlay_header` shim.
     """
     match = _UNICODE_ERROR_RE.search(stderr or "")
     if match is None:
@@ -107,14 +85,7 @@ def _unicode_repair_hint(stderr: str | None) -> str:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    """This command's flags, and nothing else.
-
-    Split from `main` when `--fragment` and `--output-dir` took it over
-    the 25-statement limit -- the same seam `chitragupta/draft.py` already draws
-    between `build_parser` and `main`, and the same one docs/CODE-
-    STANDARDS.md names as the usual shape of a C1 offender: a `main` that
-    parses arguments, does the work, and formats the output.
-    """
+    """This command's flags, and nothing else."""
 
     parser = ClickParser(
         prog=f"{prog_for('draft')} render",
@@ -191,14 +162,10 @@ def _rendered(args: argparse.Namespace) -> Path | None:
     """`render()` for `args`, every refusal printed as the `[error]` or
     `[missing-binary]` line a skill reacts to; `None` when it refused.
 
-    Split from `main` so `figure look --draft` (#1052) renders a draft
-    through exactly this, refusals and all, rather than a copy of it.
+    Shared by `figure look --draft` (#1052), refusals and all.
     """
-    # Deferred, and it has to be: the package root imports this module at
-    # its top, before `render` is defined, so a module-scope import here
-    # would be a genuine circular-import failure rather than a style
-    # choice. `.pylintrc` disables import-outside-toplevel for this
-    # pattern, and chitragupta/review/__init__.py reaches this package the same way.
+    # Deferred: the package root imports this module before `render` exists, so a
+    # module-scope import would be circular (.pylintrc allows this pattern).
     from chitragupta.render_output import render
     from chitragupta.render_output._gate import UngatedDraft
 
@@ -220,23 +187,14 @@ def _rendered(args: argparse.Namespace) -> Path | None:
         print(f"[missing-binary] {exc}")
         return None
     except MathMappingError as exc:
-        # Non-zero, and deliberately so. A `<!-- math -->` marker is the
-        # author stating a displayed equation is here; rendering it as
-        # verbatim text instead is the exact defect
-        # docs/WRITING-STANDARDS.md §12 exists to prevent, and a warning
-        # a skill may carry on past is not enough to stop it shipping.
-        # The heuristic gaps stay warnings -- only this is certain.
+        # Non-zero, deliberately: rendering a marked equation as verbatim is the
+        # defect §12 exists to prevent, and a warning can be carried past. The
+        # heuristic gaps stay warnings -- only this is certain.
         print(f"[error] {exc}")
         return None
     except (OutsideContentDir, ConversionError) as exc:
-        # Reported like any other render failure rather than as a
-        # traceback, same as the KeyError below: a genre skill's
-        # documented reaction to `[error]` is to warn and carry on
-        # presenting the draft, which is right here too -- the draft is
-        # fine, and it is the place this copy would have gone that is
-        # wrong. `ConversionError` comes from `markdown_to_latex`, which
-        # `render()` does not call; it is caught here because every
-        # member of RENDER_FAILURES is.
+        # `[error]`, not a traceback: skills warn and carry on, as the draft is fine.
+        # `ConversionError` is caught because every RENDER_FAILURES member is.
         print(f"[error] {exc}")
         return None
     except subprocess.CalledProcessError as exc:  # pragma: no cover-windows
@@ -252,37 +210,23 @@ def _rendered(args: argparse.Namespace) -> Path | None:
         print(f"[error] {exc}")
         return None
     except UngatedDraft as exc:
-        # The gate refused the draft before any format was produced
-        # (#812): reported like every other render failure, `[error]` and
-        # the gate's own report naming each key and line, so a skill
-        # reacts to it exactly as it does to a failed `draft gate`.
+        # The gate refused the draft before any format was produced (#812),
+        # with its own report naming each key and line.
         print(f"[error] {exc}")
         return None
     except reference_entries.MissingCitekey as exc:
-        # `--format md` builds its reference list from the ledger, so a
-        # cited key that isn't there stops it (references.build_section's
-        # own error names the keys and what to run). The gate above now
-        # refuses such a draft first (#812), so this is reached only when
-        # the ledger changes between the two reads -- a sync committing
-        # mid-render -- and is kept for that case. Reported the same way
-        # as any other render failure rather than as a traceback: a genre
-        # skill's documented reaction to `[error]` is to warn and carry on
-        # presenting the draft, which is right here too -- the draft is
-        # fine, only this one derived copy could not be built. Caught by
-        # this specific exception, not a bare `except KeyError`, so a
-        # genuine bug elsewhere in the pipeline surfaces as itself instead
-        # of being reported as though it were this refusal (m-60).
+        # Reached only if the ledger changes between the gate and the reference
+        # list (a sync mid-render). The specific exception, not a bare KeyError,
+        # so real bugs surface as themselves (m-60).
         print(f"[error] {exc.args[0] if exc.args else exc}")
         return None
 
 
 def _report_looks(draft: Path, pdf: Path, output_dir: str | None) -> None:
     """Refresh the looks and page pictures of `draft`'s figures (#1052),
-    as `[figure-look]` notes, under `output_dir` when the render had one
-    (#1114). After the render succeeded, and never a reason it fails:
-    see `figure/_look_draft.py`."""
-    # Deferred for the reason `_rendered`'s imports are: `figure` imports
-    # from this package, so a module-scope import back would be a cycle.
+    as `[figure-look]` notes, under `output_dir` when given (#1114). Never
+    a reason the render fails: see `figure/_look_draft.py`."""
+    # Deferred: `figure` imports from this package, so a module-scope import is a cycle.
     from chitragupta.figure._look_draft import notes, refresh
 
     target = None if output_dir is None else Path(output_dir)
@@ -293,12 +237,7 @@ def _report_looks(draft: Path, pdf: Path, output_dir: str | None) -> None:
 def main(argv: list[str] | None = None) -> int:
     """CLI entry point -- deliberately independent of chitragupta/enrich/__main__.py.
 
-    That script imports docling/embed/topic_model at module load and
-    builds the whole corpus before any stage runs, which drags in the
-    multi-GB `.venv-full` for a stage that itself only needs stdlib +
-    `chitragupta.config` + `chitragupta.citation_gate`. Genre skills that just want a
-    tex/pdf rendering of a draft should be able to run this with bare
-    `python`, no enrich group required.
+    That one drags in the multi-GB `.venv-full`; this must run under bare `python`.
     """
     parser = _build_parser()
     args = parser.parse_args(argv)

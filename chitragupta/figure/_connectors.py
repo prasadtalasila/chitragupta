@@ -1,13 +1,8 @@
 """Connectors: the drawn lines that run between two nodes (#1054).
 
-The connector rules measure lines TikZ drew (`review/figure_layout/
-_drawn.py`), and a line is a connector when its two ends touch two
-different nodes. Everything else that was stroked (an axis, a plotted
-curve, a bus line, a self-loop) is returned beside them, so the report can
-say how many lines the rules did not check rather than pass them
-silently.
-
-All coordinates are pt, as the probe reports them.
+A line TikZ drew is a connector when its ends touch two different nodes.
+Other strokes (axes, curves, self-loops) are returned too, so the report
+counts what went unchecked. Coordinates are pt, as the probe reports them.
 """
 
 import math
@@ -24,24 +19,20 @@ from chitragupta.review.figure_layout import (
 
 MM = 72.27 / 25.4
 
-# How close an end must be to a node's box to attach to it. A line TikZ
-# ends at a node's border lands on it to rounding; 1.5pt also takes in the
-# half line width a border anchor sits outside the frame.
+# How close an end must be to a node's box to attach: TikZ ends lines on the
+# border to rounding, and 1.5pt covers the half line width a border anchor sits out.
 ATTACH_PT = 1.5
 
 # Below this, in either dimension, a box is a point or a hairline: a
 # `coordinate`, or a node with no text and no minimum size.
 _DEGENERATE_PT = 0.5
 
-# TikZ's unnamed nodes, named by the probe. They are labels and stray
-# text, never something a line connects.
+# TikZ's unnamed nodes, named by the probe: labels and stray text, never connected.
 LABEL_PREFIX = "cgu-"
 
 
 @dataclass(frozen=True)
 class Connector:
-    """`name` is how a finding shows it: its ends `shown_as`."""
-
     line: DrawnLine
     start: str
     end: str
@@ -49,8 +40,7 @@ class Connector:
 
 
 def solid(drawn: Drawn) -> dict[str, DrawnNode]:
-    """The nodes a line can connect: named, not a coordinate, not
-    degenerate."""
+    """The nodes a line can connect: named, not a coordinate, not degenerate."""
     return {
         name: node
         for name, node in drawn.nodes.items()
@@ -62,9 +52,8 @@ def solid(drawn: Drawn) -> dict[str, DrawnNode]:
 
 
 def attach(point: Point, nodes: dict[str, DrawnNode]) -> str | None:
-    """The node `point` ends on: the smallest box within `ATTACH_PT`, so
-    an end inside a zone card attaches to the member it touches, not the
-    card around it."""
+    """The node `point` ends on: the smallest box within `ATTACH_PT`, so an
+    end inside a zone card attaches to the member, not the card."""
     hits = [node for node in nodes.values() if _within(point, node.box, ATTACH_PT)]
     if not hits:
         return None
@@ -86,10 +75,8 @@ def connectors(drawn: Drawn) -> tuple[list[Connector], list[DrawnLine]]:
 
 
 def shown_as(name: str, node: DrawnNode) -> str:
-    """A node's name in a finding: its own, or its centre where no source
-    says it. That is an unnamed node, and one TikZ named itself,
-    `tikz@f@<n>`: a pin, an `alias`, an unnamed node before `edge` or
-    `child`, an unnamed `fit` (#1087)."""
+    """A node's name in a finding: its own, or its centre for an unnamed or
+    TikZ-named (`tikz@f@<n>`) node (#1087)."""
     if not name.startswith(LABEL_PREFIX) and "@" not in name:
         return name
     x = (node.box[0] + node.box[2]) / 2
@@ -99,9 +86,7 @@ def shown_as(name: str, node: DrawnNode) -> str:
 
 def zones(nodes: dict[str, DrawnNode]) -> set[str]:
     """The nodes that contain another: zone cards and `fit` groups. A
-    `coordinate` is never a member: a point inside a box does not make
-    it a group, and a title that covered one was skipped by
-    `node-overlap` as if it were a card (#1064)."""
+    `coordinate` never counts as a member (#1064)."""
     return {
         name
         for name, node in nodes.items()
@@ -124,8 +109,6 @@ def shrink(box: Box, by: float) -> Box:
 
 
 def segment_box_gap(p: Point, q: Point, box: Box) -> float:
-    """The shortest distance between segment `pq` and `box`; 0 where
-    they meet."""
     if _clips(p, q, box):
         return 0.0
     corners = [(box[0], box[1]), (box[0], box[3]), (box[2], box[1]), (box[2], box[3])]
@@ -133,7 +116,6 @@ def segment_box_gap(p: Point, q: Point, box: Box) -> float:
 
 
 def point_segment(c: Point, p: Point, q: Point) -> float:
-    """The distance from `c` to segment `pq`."""
     dx, dy = q[0] - p[0], q[1] - p[1]
     length = dx * dx + dy * dy
     t = (

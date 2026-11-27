@@ -11,8 +11,7 @@ from pathlib import Path
 from chitragupta import _pandoc_cites, references_section
 
 # C0 controls other than the whitespace pdflatex accepts (\t \n \r), plus
-# DEL. Never legitimate content in a rendered document, wherever they came
-# from -- see _sanitize_for_latex.
+# DEL: never legitimate in a rendered document.
 _UNSAFE_CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 
@@ -20,35 +19,20 @@ def _sanitize_for_latex(text: str) -> str:
     r"""`text` with control characters stripped and accents stored as one
     code point -- the two things no output format wants, and nothing else.
 
-    A NUL byte reaches a draft through a quoted passage from
-    `content/parsed/<citekey>.txt`, which is `pdftotext` output (#389);
-    pdflatex rejects it outright, and no rendered document wants one.
-    `pdftotext` can also store `é` as `e` plus U+0301; pdflatex rejects
-    the bare combining mark, and NFC joins it back. NFC is canonical
-    equivalence, so it changes how a letter is stored, never what it is.
-
-    It used to be NFKC, for #389's math-italic 𝑡, and NFKC rewrote far
-    more than that across the whole draft: `m²` to `m2`, `H₂O` to `H2O`,
-    and `µm` to a `μ` pdflatex cannot print (#948). Printing those
-    characters is now `assets/latex/chitragupta-unicode.sty`'s job (see
-    `_unicode.py`), so the text reaches pandoc as the author wrote it.
+    NULs arrive via quotes from `pdftotext` output (#389); decomposed accents
+    too, and pdflatex rejects both. NFC changes storage, never the letter.
+    Not NFKC: that rewrote `m²`, `H₂O` and `µm` (#948); printing those is
+    `assets/latex/chitragupta-unicode.sty`'s job.
     """
     return _UNSAFE_CONTROL_RE.sub("", unicodedata.normalize("NFC", text))
 
 
 def _alias_for(citekey: str) -> str:
-    # "--" is the one substring pandoc's own citation tokenizer can't
-    # carry through a citekey (see module docstring) -- collapsing it to
-    # a single hyphen plus a marker keeps the alias readable and, checked
-    # against every citekey currently in the ledger, collision-free.
-    #
-    # Every hyphen in a run has to be separated, not just the first pair:
-    # a plain .replace("--", "-x2d-") turns the 3-hyphen run in this
-    # corpus's own `tygesen_state---art_2019` into `state-x2d--art`, which
-    # still contains "--" and so still truncates -- the citation resolves
-    # to nothing and the source silently drops out of the bibliography.
-    # A run of n hyphens becomes "-" + "x2d-" * (n-1), which reduces to
-    # the original "-x2d-" for the 2-hyphen case.
+    # pandoc's citation tokenizer truncates a citekey at "--", so each run is
+    # aliased to a single hyphen plus markers (collision-free against the ledger).
+    # Every hyphen in a run is separated: replacing only "--" leaves a 3-hyphen
+    # run still holding "--", and the source silently drops out. A run of n
+    # hyphens becomes "-" + "x2d-" * (n-1).
     return re.sub(r"-{2,}", lambda m: "-" + "x2d-" * (len(m.group()) - 1), citekey)
 
 
@@ -60,40 +44,22 @@ def _safe_render_inputs(
 ) -> tuple[Path, Path]:
     """Returns (markdown_path, bib_path) safe to hand to `pandoc --citeproc`.
 
-    `text` overrides what is read from `input_path`, so a caller that has
-    already rewritten the draft -- `render()`, swapping each figure to the
-    form the output format can draw -- passes the rewritten text rather
-    than having it re-read from disk and its substitutions lost. The
-    filename is still `input_path`'s, because that is what pandoc reports
-    in an error message. Defaults to reading the file, which is every
-    other caller.
+    `text` overrides the file's contents, so `render()`'s figure substitutions
+    are not lost; the filename stays `input_path`'s for pandoc's errors.
 
-    Three independent fixups, all applied only to temp copies -- the draft
-    and the real bibliography.bib are never modified:
-      - a `python -m chitragupta.draft references` References section has its entries
-        replaced by citeproc's own placement anchor, keeping the draft's
-        heading (see _swap_manual_refs_for_citeproc);
-      - a citekey containing "--" is aliased in both files, in the input
-        and the bib together, because pandoc's citation tokenizer would
-        otherwise truncate it mid-key and silently drop the citation;
-      - a control character -- never legitimate content, most often
-        reached by a quoted passage straight from `content/parsed/` -- is
-        stripped, and a decomposed accent joined, so pdflatex doesn't
-        reject the whole render over it (see _sanitize_for_latex).
-
-    Returns the original paths untouched when none applies.
+    Three fixups, on temp copies only (draft and bibliography.bib are never
+    modified): a manual References section's entries become citeproc's anchor
+    (`_swap_manual_refs_for_citeproc`); `--` citekeys are aliased in both
+    files; control characters are stripped (`_sanitize_for_latex`). Returns
+    the original paths when none applies.
     """
     on_disk = input_path.read_text(encoding="utf-8")
     original = on_disk if text is None else text
     text = _sanitize_for_latex(_swap_manual_refs_for_citeproc(original))
     bad_keys = {key for _, _, key in _pandoc_cites.citations(text) if "--" in key}
     if not bad_keys:
-        # Against what is *on disk*, not against `original`. Comparing
-        # with `original` returns `input_path` whenever this function
-        # changed nothing -- which silently discards a caller's figure
-        # substitutions, because those already differed from the file
-        # before this function ever saw them, and pandoc then reads the
-        # unsubstituted draft.
+        # Against the disk, not `original`: a caller's figure substitutions
+        # already differ from the file, and returning `input_path` would drop them.
         if text == on_disk:
             return input_path, bib_path
         safe_md = tmp_dir / input_path.name  # pragma: no cover-windows
@@ -108,9 +74,8 @@ def _safe_render_inputs(
             r"\1" + alias,
             text,
         )
-        # Anchored on the entry header's trailing "," so e.g. aliasing
-        # `zech_digital-twins-as--service_2024` doesn't also touch the
-        # separate `zech_digital-twins-as--service_2024-1` entry.
+        # Anchored on the entry header's trailing "," so aliasing a key does not
+        # also touch a separate entry whose key extends it (e.g. a `-1` suffix).
         bib_text = re.sub(
             r"(@\w+\{)" + re.escape(key) + r"(,)",
             r"\1" + alias + r"\2",
@@ -128,29 +93,11 @@ def _safe_render_inputs(
 def drop_manual_refs(text: str) -> str:
     """`text` without its References section at all -- heading and entries.
 
-    The sibling of `_swap_manual_refs_for_citeproc`, for the render that
-    has no bibliography of its own to put there. A fragment `\\input` into
-    a book defers its citations to the book's single `\\bibliography`
-    pass, so the per-chapter list the draft carries would be a second,
-    differently numbered answer to the same question -- and the heading
-    left behind would be an empty `References` chapter in the assembled
-    book.
-
-    The **heading goes too**, which is the difference from the swap. There
-    the heading is kept because citeproc emits none of its own and the
-    bibliography would render untitled; here there is no bibliography to
-    title, and the book supplies one heading for the whole document.
-
-    Applied only to the temp copy handed to pandoc, exactly like the swap.
-    The draft on disk keeps its citekey-labelled entries -- which matters
-    more here than anywhere: a unit's `output_digest` is a hash of its
-    authored `.md`, so editing that file to assemble it would report every
-    unit in the book as `stale:`.
-
-    `section_end` is respected for the same reason the swap respects it
-    (M-8): an appendix or acknowledgments section introduced by its own
-    heading *after* References is not part of it, and dropping to the end
-    of the file would silently delete it from the book.
+    For a fragment, whose citations go to the book's one `\\bibliography`: a
+    per-chapter list would be a second, differently numbered answer, and its
+    heading an empty chapter. Temp copy only: editing the draft would mark
+    every unit `stale:` via `output_digest`. `section_end` keeps a later
+    appendix or acknowledgments section (M-8).
     """
     lines = text.splitlines(keepends=True)
     idx = references_section.section_start(lines)
@@ -167,18 +114,9 @@ def aliased_bib_text(bib_text: str) -> str:
     """`bib_text` with **every** `--`-bearing citekey aliased, not just one
     draft's.
 
-    `_safe_render_inputs` aliases only the keys the draft in hand cites,
-    which is right for a temp bibliography consumed by one pandoc run. A
-    book's `.bib` is consumed by one `bibtex` pass over *every* chapter,
-    and each chapter is rendered separately -- so a per-draft aliasing
-    would have the last unit rendered decide which keys are aliased, and
-    every other unit's `\\citep{...-x2d-...}` would resolve to nothing.
-    Aliasing the whole file makes the result independent of render order.
-
-    Unconditional rather than conditional on any key being bad: a file
-    with no `--` key is returned unchanged by the substitution itself, and
-    a second code path that decides whether to run it is a place for the
-    two to disagree.
+    A book's `.bib` serves one `bibtex` pass over every separately rendered
+    chapter, so per-draft aliasing would let the last unit decide. Unconditional:
+    a file with no `--` key comes back unchanged anyway.
     """
     return re.sub(
         r"(@\w+\{)([^,\s]*--[^,\s]*)(,)",
@@ -187,43 +125,26 @@ def aliased_bib_text(bib_text: str) -> str:
     )
 
 
-# Pandoc's own idiom for "put the bibliography exactly here" -- citeproc
-# fills this div in place instead of appending its bibliography to the end
-# of the document. `fenced_divs` is on by default in pandoc's markdown.
+# Pandoc's idiom for "put the bibliography here"; `fenced_divs` is on by default.
 _REFS_ANCHOR = "::: {#refs}\n:::\n"
 
 
 def _swap_manual_refs_for_citeproc(text: str) -> str:
-    """Replaces a `python -m chitragupta.draft references` section's *entries* with an
-    anchor citeproc fills in, keeping the draft's own heading.
+    """Replaces a `draft references` section's *entries* with an anchor citeproc
+    fills in, keeping the draft's own heading.
 
-    Only ever applied to the temp copy handed to pandoc, never to the
-    draft itself. The draft keeps its citekey-labelled entries: a reader
-    (or `citation_gate`) can trace one back to a literal key, which is the
-    project's whole citation invariant. What that hand-built list cannot
-    be is *numbered consistently with the rendered output* -- pandoc
-    assigns citation numbers itself -- so the rendered artifact takes
-    citeproc's bibliography instead, drawn straight from bibliography.bib
-    with authors and venues in it. That is what
-    `--metadata suppress-bibliography=true` used to prevent here, back
-    when the manual section was the only one with real entries in it.
-
-    The heading stays because it is the draft's own: a genre skill may
-    have numbered it to match its other headings (`## 6. References`, via
-    `chitragupta.draft references --heading`), and citeproc emits no heading of its own,
-    so dropping the whole section left the rendered bibliography
-    untitled.
+    Temp copy only: the draft keeps its citekey-labelled entries, which the gate
+    traces back to literal keys (the project's citation invariant). The rendered
+    artifact takes citeproc's numbered bibliography instead. The heading stays
+    because citeproc emits none and a skill may have numbered it.
     """
     lines = text.splitlines(keepends=True)
     idx = references_section.section_start(lines)
     if idx is None:
         return text
     heading = lines[idx] if lines[idx].endswith("\n") else lines[idx] + "\n"
-    # M-8: only the manual entries are swapped for the anchor -- an
-    # appendix or acknowledgments section introduced by its own heading
-    # after References is not part of it and must reach pandoc too,
-    # or it silently vanishes from tex/pdf/docx output while the md path
-    # (references.apply) keeps it.
+    # M-8: only the manual entries are swapped -- a later appendix or
+    # acknowledgments section must reach pandoc too, as it does on the md path.
     tail = "".join(lines[references_section.section_end(lines, idx) :])
     out = "".join(lines[:idx]).rstrip() + f"\n\n{heading}\n{_REFS_ANCHOR}"
     if tail.strip():

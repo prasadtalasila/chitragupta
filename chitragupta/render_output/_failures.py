@@ -1,22 +1,9 @@
 """Every way `render()` refuses or fails on a well-formed call, as one tuple.
 
-A caller that degrades on a failed render catches `RENDER_FAILURES`, so it
-catches what `render()` raises now rather than what it raised when the
-caller was written: `review.write` listed three classes and missed the
-four added since (`MathMappingError`, `MissingCitekey`, `NoLedger`,
-`UngatedDraft`), so a review report quoting an unknown `[@key]` crashed
-the aid (#949). `review.write` catches exactly this tuple; `_cli.main`
-reports each member by name.
-
-`tests/test_render_output_errors.py` walks every raise site in this
-package and fails on a class that is not in here. The members raised from
-outside it (`ledger.NoLedger` from the gate's ledger read,
-`reference_entries.MissingCitekey` from `--format md`'s numbering,
-pandoc's `CalledProcessError`) are kept by hand, so a new raise in one of
-those callees still has to be added here.
-
-Its own module rather than beside `render()` in the package root only
-because that file is at the code-line limit (docs/CODE-STANDARDS.md).
+Callers that degrade on a failed render catch `RENDER_FAILURES`, so they track
+what `render()` raises now (#949). `tests/test_render_output_errors.py` checks
+every raise site in this package; members raised by callees outside it
+(`NoLedger`, `MissingCitekey`, `CalledProcessError`) are kept by hand.
 """
 
 import subprocess

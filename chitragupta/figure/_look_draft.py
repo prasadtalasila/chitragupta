@@ -1,24 +1,12 @@
 """Every figure of a draft just rendered to pdf: its look, and a picture
 of the page it printed on (#1052).
 
-`draft render` calls `refresh` after a pdf render succeeds, and so does
-`figure look --draft`, so a draft's looks are as current as its last
-render. A look is rebuilt only where its figure changed (`_look`'s
-digest); a page picture is rebuilt every time, because any edit to the
-text can move a figure to another page or reflow the text around it.
-
-**Nothing here can fail the render.** The render has already written
-its PDF; what this adds is for looking at, so every outcome, a missing
-tool included, comes back as data for a note and never as an exception.
-
-The page comes from the mark `render_output._figure_anchor` put after
-each figure. A figure with no mark in the PDF -- one whose marker did
-not resolve, or one in a `.tex` draft, which carries none -- gets no
-page picture, and an old one is deleted so it cannot pass for current.
-
-Both go where the PDF went: the figure's mirrored rendered directory by
-default, or the same place below a render's `--output-dir` (#1114), so a
-scratch render never writes over the default render's looks.
+Called after a successful pdf render. Looks are rebuilt only when the figure
+changed; page pictures every time, since any text edit can move a figure.
+**Nothing here can fail the render**: every outcome is data for a note.
+Pages come from `render_output._figure_anchor`'s marks; a figure without one
+gets no page picture and its old one is deleted so it cannot pass as current.
+Output follows the PDF, below any `--output-dir` (#1114).
 """
 
 import tempfile
@@ -42,8 +30,6 @@ NO_MARK = "no page PNG: the PDF does not mark where it printed"
 
 @dataclass(frozen=True)
 class Page:
-    """A figure's page in the rendered PDF, as a PNG."""
-
     png: Path
     number: int
     pixels: tuple[int, int]
@@ -68,8 +54,8 @@ class Refresh:
 
 
 def draft_figures(draft: Path) -> dict[str, Path]:
-    """`{marker base: figure file}` for every TikZ figure `draft` names
-    that resolves to a file inside the draft's own directory."""
+    """`{marker base: figure file}` for every TikZ figure `draft` names that
+    resolves inside the draft's own directory."""
     found = {}
     for ref in _figure_refs(draft.read_text(encoding="utf-8")):
         base = ref.removesuffix(".tex")
@@ -80,7 +66,6 @@ def draft_figures(draft: Path) -> dict[str, Path]:
 
 
 def _marks(pdf: Path) -> dict[str, int] | None:
-    """`{base: page}` from the PDF, or `None` with no `pdfinfo` to ask."""
     pdfinfo = programs.resolve_program("pdfinfo")
     if pdfinfo is None:
         return None
@@ -89,7 +74,6 @@ def _marks(pdf: Path) -> dict[str, int] | None:
 
 
 def _page(pdf: Path, number: int, png: Path) -> Page | str:
-    """Page `number` of `pdf` at `DPI`, written to `png`; or why not."""
     pdftoppm = programs.require_program("pdftoppm")
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp) / "page"
@@ -106,14 +90,11 @@ def _page(pdf: Path, number: int, png: Path) -> Page | str:
 
 
 def _dir(figure: Path, look_dir: Path | None) -> Path:
-    """Where `figure`'s look and page go: `look_dir`, or by default its
-    mirrored rendered directory."""
     return _output_dir(figure) if look_dir is None else look_dir
 
 
 def _drop_page(figure: Path, look_dir: Path | None) -> None:
-    """Delete `figure`'s old page picture, which no longer matches the
-    PDF just rendered; a cleanup, so a failure to is no failure."""
+    """Delete `figure`'s stale page picture; failing to is no failure."""
     try:
         (_dir(figure, look_dir) / f"{figure.stem}.page.png").unlink(missing_ok=True)
     except (OSError, OutsideContentDir):
@@ -123,7 +104,6 @@ def _drop_page(figure: Path, look_dir: Path | None) -> None:
 def _page_of(
     base: str, figure: Path, pdf: Path, marks: dict[str, int], look_dir: Path | None
 ) -> Page | str:
-    """`figure`'s page picture, or why there is none."""
     png = _dir(figure, look_dir) / f"{figure.stem}.page.png"
     if base not in marks:
         png.unlink(missing_ok=True)
@@ -158,14 +138,12 @@ def _one(
 
 
 def look_dir(draft: Path, figure: Path, output_dir: Path | None) -> Path | None:
-    """Where `figure`'s look and page go for a render of `draft` into
-    `output_dir`: its place below the draft's directory, mirrored there
-    as the render copies it, or `output_dir` itself for a figure outside
-    that directory. `None`, the mirrored default, without one.
+    """Where `figure`'s look and page go for a render into `output_dir`: its
+    mirrored place below the draft's directory, or `output_dir` itself for a
+    figure outside it; `None` (the default) without one.
 
-    Both are made absolute, not resolved, so `figures/flow.tex` given
-    from the draft's own directory lands where the render's refresh puts
-    it, and a symlink's spelling is kept as the render keeps it."""
+    Absolute, not resolved, so paths match the render's and symlink spellings
+    are kept."""
     if output_dir is None:
         return None
     try:
@@ -176,9 +154,7 @@ def look_dir(draft: Path, figure: Path, output_dir: Path | None) -> Path | None:
 
 def refresh(draft: Path, pdf: Path, output_dir: Path | None = None) -> Refresh:
     """Every figure `draft` names: its look refreshed, its page pictured.
-
-    `output_dir` is the render's own `--output-dir`, already confined to
-    `content/` by `render`; see `look_dir` for where below it."""
+    `output_dir` is already confined to `content/` by `render`."""
     try:
         found = draft_figures(draft)
     except (OSError, UnicodeDecodeError):
@@ -218,6 +194,5 @@ def notes(refreshed: Refresh) -> list[str]:
 
 
 def page_line(page: Page, pdf: Path) -> str:
-    """What `figure look --draft` prints for a figure's page."""
     columns, rows = page.pixels
     return f"wrote    {page.png}   (page {page.number} of {pdf.name}; {columns} x {rows} px)"

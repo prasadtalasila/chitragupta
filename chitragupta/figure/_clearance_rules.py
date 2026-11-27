@@ -1,19 +1,11 @@
 """Clearance rules over a figure's connectors (#1054): `c2-tag-clearance`,
 `c5-transit` and `c6-tag-covered`.
 
-A tag is an unnamed node TikZ made on a connector's path: a named one is
-a node in its own right (a `child`, or `\\draw ... node (m) {}`), which a
-line touches by design. A tag is measured by its text box, where the
-reader sees it, because its node box touches its line by construction:
-`above`, `left` and the rest anchor the box edge on the line, and 141 of
-the 160 tags in this repository's figures sat at 0.0mm by that measure
-(`plans/fig-xii-figure-drawer-v3.md`, "What the 2c spike found").
-
-The gap is measured to the ink (#1113): the stroke's edge, half its
-width off the centreline, and the outline of any arrowhead on the line.
-From the centreline, a house tag 1mm off it passed while its glyphs
-touched a 0.85pt stroke, and a tag beside a head was measured as if
-the head were not there.
+A tag is an unnamed node on a connector's path (a named one is a node in its
+own right). It is measured by its text box: its node box touches the line by
+construction (141 of 160 tags measured 0.0mm, plans/fig-xii-figure-drawer-v3.md).
+The gap is to the ink (#1113): the stroke's edge and any arrowhead outline,
+not the centreline, which passed tags whose glyphs touched the stroke.
 """
 
 import math
@@ -41,19 +33,17 @@ from chitragupta.review.figure_layout import (
     intersects,
 )
 
-# c2: a tag's text this close to its line's ink reads as on it, and
-# this far from it reads as belonging to nothing. The house `cgtag` sets
-# its text 1.5mm off the centreline, about 1.35mm off a 0.85pt stroke.
+# c2: closer than this to its line's ink reads as on it, farther as belonging to
+# nothing. The house `cgtag` sits ~1.35mm off a 0.85pt stroke.
 _ON_LINE_MM = 1.0
 _FLOATING_MM = 3.0
 
-# c5: how far into a box a line may reach before it crosses it, so a line
-# that grazes a frame is not a transit. c6 uses `review figure`'s own
-# overlap test, `intersects`, and its 1pt tolerance.
+# c5: how far a line may reach into a box before it crosses it (grazing is not a
+# transit). c6 uses `review figure`'s `intersects` and its 1pt tolerance.
 _TRANSIT_PT = 1.0
 
-# c5: a node under this in both dimensions is a marker set on the line
-# (a dot on a number line, `gain-as-fraction.tex`), not a box it crosses.
+# c5: a node under this in both dimensions is a marker on the line (a dot on a
+# number line), not a box it crosses.
 _MARKER_MM = 2.0
 
 
@@ -74,9 +64,8 @@ def tag_clearance(cons: list[Connector], drawn: Drawn) -> list[Finding]:
 
 
 def transit(cons: list[Connector], drawn: Drawn, layout: str | None = None) -> list[Finding]:
-    """`c5-transit`: a connector crossing a node that is neither of its
-    ends. A zone containing either end is not counted, nor is a tag. A
-    layout the rule exempts is not evaluated."""
+    """`c5-transit`: a connector crossing a node that is neither of its ends,
+    excluding zones containing an end, tags, and exempt layouts."""
     if layout in RULES["c5-transit"].exempt:
         return []
     nodes = solid(drawn)
@@ -99,10 +88,8 @@ def transit(cons: list[Connector], drawn: Drawn, layout: str | None = None) -> l
 
 
 def tag_covered(cons: list[Connector], drawn: Drawn) -> list[Finding]:
-    """`c6-tag-covered`: a connector's tag overlapping a node. A zone (a
-    card or `fit` group holding another node) containing the tag is not
-    counted; a card containing it is, since it hides the tag whole
-    (#1163). An unframed zone is never counted."""
+    """`c6-tag-covered`: a connector's tag overlapping a node. A zone holding the
+    tag is not counted, but a card is, since it hides the tag (#1163)."""
     nodes = solid(drawn)
     groups = zones(nodes)
     hidden = _unframed_zones(nodes)
@@ -118,12 +105,9 @@ def tag_covered(cons: list[Connector], drawn: Drawn) -> list[Finding]:
 
 
 def _ink_gap(line: DrawnLine, box: Box) -> float:
-    """From `box` to the nearest ink of `line`: its stroke, half its
-    width either side of the centreline, or an arrowhead the tag sits
-    beside. Beside, not merely near: a head counts only where the tag's
-    text and the head share a stretch of the line, so a midway tag on a
-    short edge whose corner comes close to a head's barb is not a tag
-    on the head (#1113's review)."""
+    """From `box` to `line`'s nearest ink: the stroke's edge or an arrowhead the
+    tag sits *beside* (sharing a stretch of line), so a corner near a barb on a
+    short edge does not count (#1113)."""
     pieces = segments(line.points)
     stroke = min(segment_box_gap(p, q, box) for p, q in pieces)
     gaps = [max(0.0, stroke - line.width / 2)]
@@ -149,9 +133,8 @@ def _beside(box: Box, outline: list[Point], pieces: list[tuple[Point, Point]]) -
 
 
 def _hull(points: tuple[Point, ...]) -> list[Point]:
-    """The convex hull of `points`, closed (first point repeated), by
-    Andrew's monotone chain: pgf logs a tip's hull points in no promised
-    order, and joining them as logged could cut across the head."""
+    """The closed convex hull of `points` (Andrew's monotone chain): pgf logs a
+    tip's hull points in no promised order."""
     ordered = sorted(set(points))
     if len(ordered) < 3:
         return ordered + ordered[:1]
@@ -173,11 +156,9 @@ def _turn(o: Point, a: Point, b: Point) -> float:
 
 
 def _tags(con: Connector, drawn: Drawn) -> list[tuple[Box, str]]:
-    """`(box, note)` per tag on the connector: its text box, or its node
-    box, noted, where its shape has no `text` anchor. A tag turned
-    other than a quarter (`sloped` on a slanted line) is skipped: its
-    boxes, read square to the page, are not where it was set. One on an
-    upright line is turned a quarter and measured (#1064)."""
+    """`(box, note)` per tag: its text box, or its node box (noted) without a
+    `text` anchor. Tags turned other than a quarter are skipped, as their boxes
+    read square to the page are wrong (#1064)."""
     tags = []
     for name in con.line.labels:
         node = drawn.nodes.get(name)
@@ -188,8 +169,7 @@ def _tags(con: Connector, drawn: Drawn) -> list[tuple[Box, str]]:
 
 
 def _unframed_zones(nodes: dict[str, DrawnNode]) -> set[str]:
-    """Groups with no frame (an undrawn `fit`), which nothing is hidden
-    behind or covered by (`data-flow-test.tex`)."""
+    """Unframed groups (an undrawn `fit`), which nothing is hidden behind."""
     return {name for name in zones(nodes) if not nodes[name].framed}
 
 

@@ -1,21 +1,13 @@
 """Walk figure files and bring each one's house block up to date (#1013).
 
-A walk, with no paths or through a directory named on the command line,
-takes every `*.tex` directly inside a directory named `figures`: docs/WRITING-STANDARDS.md §10
-puts every figure file at `content/drafts/<topic>/figures/<name>.tex`,
-and a book's units nest one level deeper. A draft's own `.tex` is not a
-figure, and a `tikzpicture` in its `verbatim` listing must not become a
-place to stamp the block. A file named on the command line is taken as
-given, which is how `assets/tikz/*.tex` is reached.
+A walk takes every `*.tex` directly inside a `figures` directory (§10): a
+draft's own `.tex` is not a figure, and its `verbatim` listings must not be
+stamped. A file named on the command line is taken as given
+(`assets/tikz/*.tex`).
 
-A read-only file is reported rather than replaced: `os.replace` would
-swap it out on POSIX, mode and all, which is not what read-only asked.
-
-A symlink is reported and skipped rather than followed: a write through
-it would land outside the tree the user named. A file that cannot be
-read or written is reported and the walk carries on to the next, the way
-every aid in the review layer reports and carries on -- one unreadable
-figure is never the reason the other twenty stay stale.
+Read-only files are reported, not replaced (`os.replace` would swap them).
+Symlinks are skipped, since writes would land outside the named tree.
+Unreadable files are reported and the walk carries on.
 """
 
 import difflib
@@ -45,9 +37,8 @@ class Outcome:
 def figure_files(paths: list[Path]) -> list[Path]:
     """The figure files to sync, sorted and deduplicated.
 
-    No paths means every `figures/*.tex` under the drafts directory. A
-    directory contributes every `figures/*.tex` beneath it; a file is
-    taken as given.
+    No paths means every `figures/*.tex` under the drafts directory; a
+    directory contributes those beneath it; a file is taken as given.
     """
     found: set[Path] = set()
     for path in paths or [config.DRAFTS_DIR]:
@@ -59,7 +50,6 @@ def figure_files(paths: list[Path]) -> list[Path]:
 
 
 def _diff(region: str, house: House, name: str) -> str:
-    """The edit inside a modified region, as a diff from the house block."""
     lines = difflib.unified_diff(
         house.text.splitlines(keepends=True),
         region.replace("\r\n", "\n").splitlines(keepends=True),
@@ -94,10 +84,8 @@ def _refusal(path: Path, text: str, region: Region, house: House) -> Outcome | N
 
 
 def sync_file(path: Path, house: House, *, check: bool) -> Outcome:
-    """Stamp or refresh one file's block, or report why not.
-
-    In check mode nothing is written, and a file that would be changed
-    reports `missing` or `stale` instead.
+    """Stamp or refresh one file's block, or report why not; in check mode,
+    nothing is written and a change reports `missing` or `stale`.
     """
     text = _read(path)
     if isinstance(text, Outcome):
@@ -123,5 +111,4 @@ def sync_file(path: Path, house: House, *, check: bool) -> Outcome:
 
 
 def run(paths: list[Path], house: House, *, check: bool) -> list[Outcome]:
-    """`sync_file` over every file `figure_files(paths)` names."""
     return [sync_file(path, house, check=check) for path in figure_files(paths)]

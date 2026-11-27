@@ -1,19 +1,9 @@
 """Start a figure from a scaffold: `chitragupta figure new` (#1052).
 
-It replaces the figure-drawer skill's `cp` plus `figure sync` with one
-command that knows where the scaffolds are and never overwrites a
-figure. The drawing stays the agent's: this only gets it a known-good
-starting file, its `% cg-layout:` line intact.
-
-A layout id is a scaffold's file stem, and only a scaffold whose own
-`% cg-layout:` line names that stem counts. The id is then what the
-figure declares, what `figure check` reads its reference range by, and
-what this command was asked for, with nothing to translate between
-them; and `cg-figstyle.tex`, which declares no layout, is not one.
-
-The twin is copied where the layout ships one, as every shipped scaffold
-has since #1056. A twin always has to be redrawn to match the relabelled
-figure, so a missing one costs a starting point, not a figure.
+Copies a known-good scaffold (never overwriting a figure); the drawing stays
+the agent's. A layout id is a scaffold stem whose own `% cg-layout:` line
+names it, so the id needs no translation (and `cg-figstyle.tex` is not one).
+The twin is copied where shipped; a missing one costs only a starting point.
 """
 
 import re
@@ -27,9 +17,8 @@ from chitragupta.figure._sync import Outcome, sync_file
 
 SCAFFOLD_DIR: Path = config.shipped("assets", "tikz")
 
-# A bare file stem. No separator, so the figure cannot land outside the
-# directory named, and no dot, so `flow.tex` is not taken as the stem of
-# `flow.tex.tex`.
+# A bare file stem: no separator, so the figure cannot land outside the
+# directory, and no dot, so `flow.tex` is not taken as a stem.
 _NAME_RE = re.compile(r"[\w-]+")
 
 
@@ -48,7 +37,6 @@ class Created:
 
 
 def layouts() -> dict[str, Path]:
-    """`{id: scaffold}` for every scaffold that declares its own stem."""
     return {
         path.stem: path
         for path in sorted(SCAFFOLD_DIR.glob("*.tex"))
@@ -60,8 +48,8 @@ def _check(figures_dir: Path, name: str, layout: str, available: dict[str, Path]
     """Raise `Refused` for anything that would write somewhere unasked."""
     if not _NAME_RE.fullmatch(name):
         raise Refused(f"{name!r} is not a bare file name: no path, no suffix, no spaces")
-    # `figure sync`'s walk and the render's markers both find figures in
-    # a directory of exactly this name (WRITING-STANDARDS §10).
+    # `figure sync` and the render's markers find figures only in a directory
+    # of exactly this name (WRITING-STANDARDS §10).
     if figures_dir.name != "figures":
         raise Refused(f"{figures_dir} is not a directory named `figures`")
     if not figures_dir.parent.is_dir():
@@ -79,9 +67,8 @@ def _check(figures_dir: Path, name: str, layout: str, available: dict[str, Path]
 def _copy(source: Path, target: Path) -> None:
     """`source`'s bytes to a `target` that must not exist yet.
 
-    Exclusive creation, so a file or symlink that appears between the
-    check and the write is refused rather than replaced or written
-    through.
+    Exclusive creation, so a file or symlink appearing between check and
+    write is refused rather than replaced or written through.
     """
     data = source.read_bytes()
     try:
@@ -92,8 +79,8 @@ def _copy(source: Path, target: Path) -> None:
 
 
 def new_figure(figures_dir: Path, name: str, layout: str, house: House) -> Created:
-    """Copy `layout`'s scaffold (and its twin, if it ships one) to
-    `figures_dir/name`, then bring its house block up to date."""
+    """Copy `layout`'s scaffold (and twin) to `figures_dir/name`, then bring
+    its house block up to date."""
     available = layouts()
     _check(figures_dir, name, layout, available)
     figures_dir.mkdir(exist_ok=True)

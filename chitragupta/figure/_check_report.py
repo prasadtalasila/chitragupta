@@ -1,19 +1,11 @@
-"""`figure check`'s two outputs: the text report and the `--json`
-payload. Nothing here checks anything; `_check.py` does, and this
-serialises what it found, so the JSON is never a second computation.
+"""`figure check`'s text report and `--json` payload, serialised from what
+`_check.py` found so the JSON is never a second computation.
 
-The text is one line per finding, `<rule-id> <target> <measurement>`,
-because that is what a drafting agent quotes back in a `% cg-allow:`
-line or to its caller. A target with a space in it is printed in double
-quotes, as an allow must write it (#1058). Everything that is not a
-finding -- an allow, a rule that could not run, the edge list, the
-emptiness proportion -- sits under its own heading, so nothing is read
-as a finding that is not one. The advisory size reports (#1057) are the
-same one-line shape under theirs, and never change the "No findings"
-line. The emptiness
-proportion keeps `review figure`'s label for the reason that module
-gives: R3 keeps a continuous score out of anything something could
-drive to zero.
+One line per finding, `<rule-id> <target> <measurement>`, as an agent quotes it
+in a `% cg-allow:` line; a target with a space is double-quoted (#1058).
+Non-findings sit under their own headings and never change "No findings". The
+emptiness proportion keeps `review figure`'s label: R3 keeps a continuous score
+out of anything something could drive to zero.
 """
 
 from chitragupta.figure._allow import Allow
@@ -69,13 +61,12 @@ def _allow_rows(pairs: list[tuple[Allow, str]]) -> list[str]:
 
 
 def _quoted(target: str) -> str:
-    """`target` as an allow must write it: in double quotes when it has a
-    space, unless its rule already quoted it (w4's label text)."""
+    """`target` double-quoted when it has a space, unless its rule already
+    quoted it (w4's label text)."""
     return f'"{target}"' if " " in target and not target.startswith('"') else target
 
 
 def _section(heading: str, rows: list[str]) -> list[str]:
-    """`rows` under `heading`, or nothing: an empty section says nothing."""
     return [heading, *rows] if rows else []
 
 
@@ -148,6 +139,5 @@ def page_entry(on: Page, why: str) -> dict:
 
 
 def page_row(entry: dict) -> str:
-    """`page_entry`'s one line in the text report, under the path."""
     size = f"{entry['text_width_pt']:.1f}pt x {entry['text_height_pt']:.1f}pt"
     return f"page     {entry['name']} ({size}), {entry['why']}"

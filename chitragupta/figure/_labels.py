@@ -1,20 +1,11 @@
-"""Where a figure's labels are in its source (#1056): every node it
-declares, with its name, its label and whether it sits on a path, and
-the house macros that set text of their own.
+"""Where a figure's labels are in its source (#1056): every node with its
+name, label and whether it sits on a path, and the house macros that set text.
 
-Read from source, so it holds whether or not the figure compiles. A
-scanner rather than one regex, because a label nests (`\\cglab{a}{b}`)
-and a node's options do (`label={[red]above:x}`), and a `;` or the word
-`node` inside a label must not end or start anything. What counts as a
-node keyword is `review/figure_layout/_source.py`'s, widened only for a
-node after a path operator its lookbehind cannot see (`to node`). The
-scanners themselves live in `review/figure_layout/_scan.py`, which
-`_source.py` reads through too (#1112).
-
-`_twin.py` compares what this finds against a figure's ASCII twin. The
-wording rules (#1055, `_wording.py`) landed first with a reader of
-their own, over `_focal.declaration`; folding the two into one is left
-to a follow-up rather than done under a feature.
+Read from source, so it holds whether or not the figure compiles. A scanner,
+not a regex, because labels and options nest and a `;` or `node` inside a
+label must not end or start anything. The node keyword is
+`review/figure_layout/_source.py`'s, widened for `to node`; the scanners live
+in `review/figure_layout/_scan.py` (#1112). `_twin.py` consumes this.
 """
 
 import re
@@ -29,7 +20,6 @@ _NODE_START_RE = re.compile(_NODE_KEYWORD)
 # Inside a path, `node` after any operator (`to`, `..`, `edge`), which
 # `_source.py`'s lookbehind leaves out; a declaration follows it.
 _PATH_NODE_RE = re.compile(r"(?<!\\)\bnode\b(?=\s*(?:[\[({]|at\b))")
-# A `\foreach` variable, `\x` or each of `\n/\x`, as `\foreach` declares it.
 _LOOP_VAR_RE = re.compile(r"(?:\\foreach\s*|/\s*)(\\[a-zA-Z]+)(?=[\s/]|in\b)")
 
 
@@ -39,8 +29,8 @@ _END_TOKEN_RE = re.compile(r"\(\s*(?:\[[^\]]*\]\s*)?([A-Za-z][\w-]*)(?:\.[\w ]+)
 
 
 def drawing(source: str) -> str:
-    """The figure's own drawing, comments stripped: everything after the
-    house block, whose `\\node` lines define macros rather than draw."""
+    """The figure's drawing, comments stripped: everything after the house
+    block, whose `\\node` lines define macros rather than draw."""
     ends = list(_END_RE.finditer(source))
     return strip_comments(source[ends[-1].end() :] if ends else source)
 
@@ -79,8 +69,8 @@ def nodes(text: str) -> list[Node]:
 
 
 def _ends(statement: str) -> str:
-    """`first->last` named end of a path statement, or `""`. Labels and
-    the names of nodes placed on it are not ends."""
+    """`first->last` named ends of a path statement, or `""`; labels and
+    nodes placed on it are not ends."""
     text = re.sub(r"\bnode\b\s*(?:\[[^\]]*\]\s*)?\([^)]*\)", "node", blank_groups(statement))
     ends = _END_TOKEN_RE.findall(text)
     return f"{ends[0]}->{ends[-1]}" if len(ends) > 1 else ""

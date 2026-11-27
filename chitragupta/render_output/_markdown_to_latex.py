@@ -1,9 +1,7 @@
 """`markdown_to_latex`: Markdown snippets to LaTeX in one pandoc process.
 
-For text this package did not read from a draft: the book's Glossary and
-List of Symbols (#1138) and the index's printed entries (#1168). Split
-from `chitragupta/render_output/_pandoc.py`, which holds the draft's own
-render, to keep that module under docs/CODE-STANDARDS.md's C2 limit.
+For text not read from a draft: glossary, list of symbols (#1138), index
+entries (#1168).
 """
 
 import subprocess
@@ -11,10 +9,8 @@ import subprocess
 from chitragupta import config, programs
 from chitragupta.render_output._errors import ConversionError, _require
 
-# What `markdown_to_latex` joins its texts with and splits the output on.
-# A raw LaTeX block rather than a paragraph: a text starting `: ` turns
-# the paragraph before it into a definition-list term, which a bare
-# separator paragraph would be, and pandoc copies a raw block verbatim.
+# A raw LaTeX block, not a paragraph: a text starting `: ` would turn a separator
+# paragraph into a definition-list term, while pandoc copies a raw block verbatim.
 _SEPARATOR = "CHITRAGUPTATEXTSEPARATOR"
 _SEPARATOR_BLOCK = f"\n\n```{{=latex}}\n%{_SEPARATOR}\n```\n\n"
 
@@ -22,14 +18,9 @@ _SEPARATOR_BLOCK = f"\n\n```{{=latex}}\n%{_SEPARATOR}\n```\n\n"
 def markdown_to_latex(texts: "list[str]") -> "list[str]":
     """Each of `texts`, Markdown, as a LaTeX fragment, in order.
 
-    For text this package did not read from a draft: the book's glossary
-    and list of symbols (chitragupta/registry/_pages.py, #1138), whose
-    definitions are Markdown in each unit's `scope.md`, and the index's
-    entries (chitragupta/registry/_index_finish.py, #1168). One process for
-    the whole list, joined on `_SEPARATOR`, because a book has a few
-    hundred definitions and a process each would be most of the run.
-    The same inline-code filter as a draft's own render, so a code span
-    breaks the same way in the glossary as in the chapter.
+    One process for the whole list: a book has hundreds of definitions and a
+    process each would dominate the run. Uses the draft render's inline-code
+    filter so code spans break the same way.
     """
     if any(_SEPARATOR in text for text in texts):
         raise ConversionError(f"a text holds the separator {_SEPARATOR!r}")

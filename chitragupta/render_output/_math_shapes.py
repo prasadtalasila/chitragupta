@@ -1,39 +1,18 @@
 """Which backtick spans are mathematics, and by which rule.
 
-`_math_findings` reports a span with no `math.md` row when it is
-mathematics, and this module is how it decides. It used to be one
-operator regex, `[=<>]|\\d\\s*[-+*/^]\\s*\\d`, which was wrong both ways:
-it read the hyphens in `02-01-create-mock-physical-twin/` as subtraction
-(#1115), and it could not see `-1`, `[1 0]` or `A * P_est * A^T + Q`
-(#1116).
+A single operator regex was wrong both ways (#1115, #1116), so the decision is
+a list of small named rules, each tested and named in the warning. Order:
 
-So the decision is a list of small named rules, not one alternation.
-Each gets its own test, the warning names the rule that fired, and a
-false alarm points at the one line to change. The order, which
-`rule_for` follows:
+1. **Known names** (`symbol`, `symbol-built`), first so a draft's symbols keep their kind.
+2. **Anchored shapes** on the whole raw span, before blanking eats what they need.
+3. **Blanking** paths, file names, URL queries, placeholders, dates and versions.
+4. **Search shapes** over what is left.
+5. **Context**: single letters, bare numbers, bare Greek names -- as often code
+   as maths, so only in a draft with a `math.md`, whose "not mathematics"
+   table silences the code ones.
 
-1. **Known names** (`symbol`, `symbol-built`), first so a symbol the
-   draft's own mathematics uses keeps the `symbol` kind it always had.
-2. **Anchored shapes**, matched against the whole raw span. They run
-   before step 3 because blanking can eat what they need: `dV/dSoC` is
-   path-shaped.
-3. **Blanking**: tokens that are plainly paths, file names, URL queries,
-   placeholders, dates or versions become a space.
-4. **Search shapes** over what is left, so a command line naming
-   `02-01-s.md` is judged on the rest of the command.
-5. **Context**: a single letter, a bare number, a bare Greek name. These
-   are as often code (`404`, `beta`) as mathematics, so they count only
-   in a draft that has a `math.md` -- an author who declared mapped
-   mathematics -- and its "not mathematics" table is the remedy for the
-   ones that are code.
-
-Measured over 42 real drafts with 1,132 `math.md` rows, deleting each row
-in turn: these rules notice 1,130 of the forgotten rows, against roughly
-616 for the old regex, and they warn on no code span the old one did not
-except six bare numbers, which the table silences. `plans/1115-1116-math-shape-rules.md`
-has the method.
-
-Imports `_math` only, one way, for the same reason `_math_findings` does.
+Over 42 real drafts these notice 1,130 of 1,132 deleted `math.md` rows versus
+~616 for the old regex (method: `plans/1115-1116-math-shape-rules.md`).
 """
 
 import re
@@ -42,33 +21,28 @@ from chitragupta.render_output._math import _GREEK_NAMES
 
 _GREEK = "|".join(sorted(_GREEK_NAMES | {name.capitalize() for name in _GREEK_NAMES}))
 
-# Step 2. Each is matched against the whole span.
 _ANCHORED = (
     # Numbers only: `-m` and `-v` are command-line flags.
     ("signed-number", re.compile(r"^[-+]\s*\d")),
-    # Numbers only: `[DIGITAL MODEL]` is a label.
-    # Two or more: `[1]` is a reference number.
+    # Numbers only: `[DIGITAL MODEL]` is a label; two or more: `[1]` is a reference.
     ("vector", re.compile(r"^\[\s*[-+]?\d[\d.eE]*(\s*[,;]?\s*[-+]?\d[\d.eE]*)+\s*\](\^T)?$")),
     # A `;` row separator is matrix syntax, never Python's.
     ("matrix", re.compile(r"^\[[^\]]*;[^\]]*\](\^T)?$")),
     ("derivative", re.compile(r"^d\^?\d?[A-Za-z]\w*/d[A-Za-z]\w*(\^\d)?$")),
     ("conditional", re.compile(r"^[A-Za-z]\w*\([^()]*\|[^()]*\)$")),
-    # A subscript is what makes a Greek name mathematics in any draft;
-    # a bare one is step 5's.
+    # A subscript makes a Greek name mathematics in any draft; a bare one is step 5's.
     ("greek-subscript", re.compile(rf"^({_GREEK})_\{{?[\w:,+-]+\}}?$")),
     # A one-character subscript on a plain name: `plant-1` is a name,
-    # `plant_id+1` code, and `noauthor_digital_nodate-1` an undated citekey.
+    # `plant_id+1` code, and an undated citekey's `-1` suffix is neither.
     ("index-step", re.compile(r"^[A-Za-z][A-Za-z0-9]*(_[A-Za-z0-9][+-]1|_?\{\w+[+-]1\})$")),
     ("sci-number", re.compile(r"^[-+]?\d+(\.\d+)?e[-+]?\d+$")),
     # A space after each comma: `1,000` is one number.
     ("number-list", re.compile(r"^[-+]?\d[\d.]*(\s*,\s+[-+]?\d[\d.]*)+$")),
 )
 
-# Step 3. A whole whitespace-separated token, made of path characters.
 _TOKEN = r"(?:^|(?<=\s))[\w.~/-]*{}[\w.~/-]*(?=\s|$)"
 _NOT_MATH = (
-    # A slash and, anywhere in the token, a three-letter run:
-    # `code/02-01-x/`. Three, so that `dW/dt` is not a path.
+    # A slash and a three-letter run: `code/02-01-x/`. Three, so `dW/dt` is not a path.
     re.compile(r"(?:^|(?<=\s))(?=[\w.~/-]*[A-Za-z]{3})[\w.~-]*/[\w.~/-]*(?=\s|$)"),
     re.compile(_TOKEN.format(r"\.[A-Za-z][A-Za-z0-9]{0,4}(?=\s|$)")),
     # A hyphen beside a word: `02-01-create`, `fastapi-0.115.12`.
@@ -80,7 +54,6 @@ _NOT_MATH = (
     re.compile(r"\bv?\d+\.\d+\.\d+\b"),
 )
 
-# Step 4. Matched anywhere in the blanked span.
 _SEARCH = (
     ("relation", re.compile(r"[=<>]")),
     ("digit-op-digit", re.compile(r"\d\s*[-+*/^]\s*\d")),
@@ -102,7 +75,6 @@ _NUMBER = re.compile(r"[-+]?\d[\d.]*")
 
 
 def _base(name: str) -> str:
-    """`T_k` -> `T`: the name a subscript hangs from."""
     return re.sub(r"^[-+]\s*", "", name).split("_", 1)[0]
 
 
@@ -118,8 +90,7 @@ def _known(span: str, symbols: "frozenset[str]") -> "str | None":
         return None
     args = [arg.strip() for arg in re.split(r"[,;]", applied["args"]) if arg.strip()]
     if applied["name"]:
-        # A function counts by its own name: `sleep(5)` is code, and so
-        # is `print(x)` beside a known `x`.
+        # A function counts by its own name: `sleep(5)` and `print(x)` are code.
         return "symbol-built" if _base(applied["name"]) in symbols else None
     named = [arg for arg in args if _base(arg) in symbols]
     if named and all(arg in named or _NUMBER.fullmatch(arg) for arg in args):
@@ -143,9 +114,7 @@ def shape_rule(text: str) -> "str | None":
 def rule_for(span: str, symbols: "frozenset[str]", has_mapping: bool) -> "str | None":
     """The name of the first rule that calls `span` mathematics, or None.
 
-    `symbols` is `_math._symbols_of(mapping)`. `has_mapping` is whether
-    the draft has a `math.md` at all, which is what the context rules
-    turn on.
+    `has_mapping` (the draft has a `math.md`) gates the context rules.
     """
     found = (symbols and _known(span, symbols)) or shape_rule(span)
     if found or not has_mapping:

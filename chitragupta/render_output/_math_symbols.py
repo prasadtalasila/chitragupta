@@ -1,30 +1,18 @@
 """`math.md`'s `## Symbols`: what each mapped symbol means (#1143).
 
-The mapping table above it stays the only source of a symbol's LaTeX;
-this table only gives a mapped key a meaning, so a symbol is defined
-once, in the dossier of the draft that typesets it:
+The mapping table stays the only source of a symbol's LaTeX; this table only
+gives a mapped key a meaning:
 
     | Symbol | Meaning |
     | --- | --- |
     | `m_t`  | **Target moisture** |
-    | `m_lo` | **Moisture thresholds**, lower |
     | `T_c`  | see 02-plant-demonstrator |
     | `e_q`  | quantisation error |
 
-A bold term is a link to the glossary entry that defines it, optionally
-followed by a note telling two symbols of one term apart; `see <unit>`
-points at another unit's row for the same symbol; anything else is the
-meaning in words. Resolving a link or a pointer needs the book and the
-glossary parser, so that is `chitragupta/registry/_symbols.py`'s job:
-this module only reads the table and reports what one draft can know.
-
-It also owns the one reader of `scope.md`'s `## Glossary` section,
-which `chitragupta/dossier/_glossary.py` calls. The glossary's spans use
-mapping rows the way the draft's do, and this package may not import
-`chitragupta/dossier/` (see `_math`'s docstring), while the dossier
-package may import this one.
-
-Imports `_math` and `_math_findings` only, one way.
+A bold term links to a glossary entry; `see <unit>` points to another unit's
+row. Resolving those is `chitragupta/registry/_symbols.py`'s job. Also owns the
+reader of `scope.md`'s `## Glossary`, since this package may not import
+`chitragupta/dossier/` but the reverse is allowed.
 """
 
 import re
@@ -50,18 +38,14 @@ _SEPARATOR_RE = re.compile(r"^\|[\s:|-]+\|\s*$")
 _GLOSSARY_HEADING = re.compile(r"^## Glossary[ \t]*$", re.MULTILINE)
 _NEXT_HEADING = re.compile(r"^## ", re.MULTILINE)
 _HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
-# `dossier stamp`'s line inside `## Glossary`. The pattern's owner is
-# `chitragupta/dossier/_draft_fingerprint._DRAFT_DIGEST_LINE`, which this
-# package may not import: an all-digit digest is otherwise a quantity on
-# some stamps and not others.
+# `dossier stamp`'s line inside `## Glossary`, owned by
+# `dossier/_draft_fingerprint._DRAFT_DIGEST_LINE`, which this package may not import.
 _DIGEST_LINE = re.compile(r"^-\s*draft digest:.*$", re.MULTILINE)
 SCOPE_FILENAME = "scope.md"
 
 
 class Meaning(NamedTuple):
-    """One `## Symbols` row's meaning: `kind` is `link`, `see`, `text`
-    or `malformed`; `text` the term, unit or words; `note` a link's
-    note; `line` the row's line in `math.md`."""
+    """One `## Symbols` row's meaning: `kind` is `link`, `see`, `text` or `malformed`."""
 
     kind: str
     text: str
@@ -70,7 +54,6 @@ class Meaning(NamedTuple):
 
 
 def has_symbols_section(text: str) -> bool:
-    """Whether a `math.md`'s `text` has a `## Symbols` section at all."""
     return SYMBOLS_SECTION_RE.search(text) is not None
 
 
@@ -87,8 +70,7 @@ def _meaning(cell: str, line: int) -> Meaning:
 
 
 def load_symbols(text: str) -> "list[tuple[str, Meaning]]":
-    """Every row of a `math.md`'s `## Symbols`, in file order; `[]`
-    without one. Rows, not a dict, so a symbol written twice is seen."""
+    """Every `## Symbols` row in file order; a list so a duplicate is seen."""
     section = SYMBOLS_SECTION_RE.search(text)
     if section is None:
         return []
@@ -103,9 +85,8 @@ def load_symbols(text: str) -> "list[tuple[str, Meaning]]":
 
 
 def findings(rows: "list[tuple[str, str]]", text: str) -> "list[MathFinding]":
-    """What `math.md`'s `text` says about meanings, given its mapping
-    `rows`: a mapped symbol with none, a meaning with no mapping row, and
-    a row that is empty, half bold or repeated."""
+    """Missing meanings, meanings without a mapping row, and empty, half-bold
+    or repeated rows."""
     symbols = load_symbols(text)
     mapped = dict(rows)
     found = _missing(mapped, {symbol for symbol, _ in symbols}, has_symbols_section(text))
@@ -122,9 +103,7 @@ def findings(rows: "list[tuple[str, str]]", text: str) -> "list[MathFinding]":
 
 
 def _stray(text: str) -> "list[MathFinding]":
-    """A table line under `## Symbols` that is no row, the header or a
-    separator: an unbackticked symbol or a third cell, which would
-    otherwise drop its meaning without a word."""
+    """A non-row line under `## Symbols`, which would otherwise drop its meaning silently."""
     section = SYMBOLS_SECTION_RE.search(text)
     lines = section.group(0).splitlines() if section else []
     found = []
@@ -188,11 +167,9 @@ def _malformed(symbols: "list[tuple[str, Meaning]]") -> "list[MathFinding]":
 
 
 def glossary_section(text: str) -> "tuple[int, str] | None":
-    """`(line of the heading, body)` of a `scope.md`'s `## Glossary`, or
-    `None`; the body's first line is the line after the heading.
+    """`(line of the heading, body)` of a `scope.md`'s `## Glossary`, or `None`.
 
-    HTML comments are blanked rather than removed, so line numbers stay
-    the file's own: the template's worked example is in one.
+    HTML comments are blanked, not removed, so line numbers stay the file's own.
     """
     text = _HTML_COMMENT.sub(lambda m: "\n" * m.group(0).count("\n"), text)
     heading = _GLOSSARY_HEADING.search(text)
@@ -204,8 +181,7 @@ def glossary_section(text: str) -> "tuple[int, str] | None":
 
 
 def glossary_spans(draft: Path) -> "frozenset[str]":
-    """Every backticked span in `draft`'s glossary, which uses `math.md`
-    rows the way the draft does; empty without one."""
+    """Every backticked span in `draft`'s glossary; empty without one."""
     path = mapping_path(draft)
     scope = path.parent / SCOPE_FILENAME if path is not None else None
     if scope is None or not scope.is_file():

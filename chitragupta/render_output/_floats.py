@@ -1,24 +1,10 @@
-"""Where a rendered figure may float, and which ones still land on a
-float-only page (#1065).
+"""Where a rendered figure may float, and which still land on a float-only page (#1065).
 
-`assets/latex/chitragupta-floats.tex` holds the settings and the
-LuaLaTeX hooks that notice such a page; its own header has the
-measurement behind each number. This module only decides which render
-gets the file and reads back what it noticed.
-
-**A standalone LaTeX-bound render** gets it through `--include-in-header`,
-so a `.tex` output carries it inline and compiles alone. **A fragment**
-has no preamble, so a fragment whose unit draws a figure gets the file
-copied beside it and one stderr line naming the `\\input` the assembling
-document needs: the shape `[unicode]` and `[tikz-libraries]` already
-print. A fragment with no figure needs neither.
-
-**The report is advisory.** A figure taller than the text page allows
-belongs on a page of its own, so this is a line for the author to read,
-never a failure. It travels in the pdf's own Info dictionary, because
-pandoc deletes LuaLaTeX's log and kpathsea refuses LuaLaTeX a file
-outside pandoc's temp directory; the `.tex` file's header has the
-measurements.
+Settings and measurements live in `assets/latex/chitragupta-floats.tex`. A
+standalone render gets it via `--include-in-header`; a fragment with a figure
+gets it copied beside it plus a stderr line naming the `\\input` needed.
+The report is advisory only. It travels in the pdf's Info dictionary because
+pandoc deletes LuaLaTeX's log and kpathsea blocks files outside pandoc's temp dir.
 """
 
 import re
@@ -36,14 +22,12 @@ _INFO_RE = re.compile(rb"/ChitraguptaFloatPages\s*<([0-9A-Fa-f]*)>")
 
 
 def path() -> Path:
-    """The shipped file."""
     return config.shipped("assets", "latex", f"{NAME}.tex")
 
 
 def preamble_args(
     output_format: str, fragment: bool, figure_refs: list[str], out_dir: Path
 ) -> list[str]:
-    """pandoc's arguments for the file, copying it beside a fragment."""
     if output_format not in _LATEX_BOUND:
         return []
     if not fragment:
@@ -60,14 +44,12 @@ def preamble_args(
 
 
 def _join(items: list[str]) -> str:
-    """`a`, `a and b`, `a, b and c`."""
     return items[0] if len(items) == 1 else f"{', '.join(items[:-1])} and {items[-1]}"
 
 
 def _figures(numbers: list[str]) -> str:
-    """`Figure 2.5`, `Figures 3.1 and 3.2`, `Figure 3 and an uncaptioned
-    figure`. An empty number is a figure with no `\\caption`, which steps
-    no counter and so has no number of its own to give."""
+    """`Figure 2.5`, `Figures 3.1 and 3.2`. An empty number is an uncaptioned
+    figure, which has no number of its own."""
     named = [number for number in numbers if number]
     uncaptioned = len(numbers) - len(named)
     parts = [f"Figure{'s' if len(named) > 1 else ''} {_join(named)}"] if named else []

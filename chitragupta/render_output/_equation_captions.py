@@ -1,9 +1,7 @@
 """Issue 457: an opt-in equation number, and the `equationref` that reads it.
 
-`docs/WRITING-STANDARDS.md` §12 keeps most displayed equations unnumbered
-on purpose -- a derivation's intermediate steps are noise if every one of
-them gets a number. A Markdown draft opts a *specific* equation in with a
-marker directly above `_math.py`'s own `<!-- math -->` marker:
+§12 keeps most displayed equations unnumbered on purpose. A draft opts one in
+with a marker directly above `_math.py`'s `<!-- math -->` marker:
 
     <!-- equation: energy -->
     <!-- math -->
@@ -11,46 +9,14 @@ marker directly above `_math.py`'s own `<!-- math -->` marker:
     E = m * c^2
     ```
 
-and refers to it with `<!-- equationref: energy -->`, mirroring
-`_tables.py`'s `tableref` and `_figure_captions.py`'s `figureref`. An
-unmarked `<!-- math -->` block -- a derivation step -- is untouched by
-every function in this module; that is the whole mechanism, not an edge
-case of it.
+and refers to it with `<!-- equationref: energy -->`. Unmarked blocks are untouched.
 
-**This module runs after `_math.substitute`, not before.** A table's or
-figure's caption sits *beside* content nothing else touches; an
-equation's marker sits above content `_math.py` itself rewrites into real
-`$$...$$` -- so this module has to recognise whichever shape
-`_math.substitute` left behind, and that shape depends on the format:
-
-- **Every format except `md`** reaches pandoc with a real, checked
-  mapping (`render()`'s `_checked_math_mapping` runs `_math.check()`
-  before either substitution), so a marked block is always `$$...$$` by
-  the time this module sees it.
-- **`md`** never reaches pandoc, so `render()` passes an empty mapping
-  and `_math.substitute(text, {})` changes nothing -- this module sees
-  the original ascii-plus-fence shape, unchanged.
-
-Because this module is the *last* pass in `_substitution.py`'s chain, no
-earlier pass moves an equation marker's position relative to the others,
-so counting matches in the text this module receives gives the same
-document order as counting them in the pristine draft -- unlike
-`_figure_captions.py`, this module needs no precomputed `declared` list
-threaded in from outside; it is self-contained, the same as `_math.py`.
-
-**Numbering breaks §12's own "the `md` path is a no-op for math" rule,
-on purpose and only for numbering.** A marked equation's *content* is
-exactly as untouched on the `md` path as an unmarked one always was; its
-*number* is not, because a hand-counted `**Equation N:**` label is
-written there the same way `_tables.py` already writes `**Table N:**` on
-that path. §12 states both halves explicitly rather than leaving the
-exception to be discovered by reading this module.
-
-**Findings about a marker/reference nobody can resolve are
-`chitragupta/style_equations.py`'s job, not this module's.**
-`warnings()` here mirrors `_tables.warnings`/`_figure_captions.warnings`
-for the same reason those exist: a caller printing to stderr at render
-time needs the same three checks a style report needs, computed once.
+Runs after `_math.substitute`, as the last pass in `_substitution.py`, so it
+sees `$$...$$` on every format but `md` (which keeps the ascii-plus-fence
+shape), and document order is unchanged, so no `declared` list is needed.
+On `md` the number is written as `**Equation N:**`, the one deliberate
+exception to §12's "md is a no-op for math". Unresolvable markers are
+reported by `chitragupta/style_equations.py`; `warnings()` shares the checks.
 """
 
 import itertools
@@ -59,17 +25,12 @@ from typing import NamedTuple
 
 from chitragupta.render_output._tables import line_of
 
-# The formats that go through LaTeX, and so the only ones with an
-# `equation` counter to defer numbering to -- a third, deliberate copy of
-# `_tables._LATEX_BOUND`/`_figure_captions._LATEX_BOUND`; see either
-# module's own comment for why these are not shared.
+# Formats with a LaTeX `equation` counter: a deliberate third copy of
+# `_tables._LATEX_BOUND` (see that module for why they are not shared).
 _LATEX_BOUND = {"tex", "latex", "pdf"}
 
-# The pristine, pre-`_math.substitute` shape: `equation:` directly above
-# `math`, directly above a fence -- what a draft actually contains, and
-# what every format except `md` no longer looks like once `_math` has
-# run. `block` captures the `math`-marker-plus-fence portion whole, so the
-# `md`-path substitution can reuse it byte-for-byte.
+# The pristine, pre-`_math.substitute` shape (and the `md` path's). `block`
+# captures marker-plus-fence whole so the `md` substitution reuses it byte-for-byte.
 _EQUATION_ASCII_RE = re.compile(
     r"^(?P<indent>[ \t>]*)<!--[ \t]*equation:[ \t]*(?P<id>\S+)[ \t]*-->[ \t]*\n"
     r"(?P<block>(?P=indent)<!--[ \t]*math[ \t]*-->[ \t]*\n"
@@ -77,28 +38,23 @@ _EQUATION_ASCII_RE = re.compile(
     re.M | re.S,
 )
 
-# What `_math.substitute` turns the block above into, on every format
-# that reaches pandoc with a real mapping. `latex` is the bare content, for
-# wrapping in a real `equation` environment; `block` is the whole
-# `$$...$$` form, kept verbatim for a format with no LaTeX counter.
+# The block after `_math.substitute`: `latex` is the bare content for an
+# `equation` environment; `block` is the whole `$$...$$` for non-LaTeX formats.
 _EQUATION_DOLLAR_RE = re.compile(
     r"^(?P<indent>[ \t>]*)<!--[ \t]*equation:[ \t]*(?P<id>\S+)[ \t]*-->[ \t]*\n"
     r"(?P<block>(?P=indent)\$\$\n(?P<latex>.*?)\n(?P=indent)\$\$)[ \t]*$",
     re.M | re.S,
 )
 
-# A marker with no valid block after it -- matched separately so "you
-# wrote a marker and it names nothing" is reported as itself, the same
-# split `_math._LONE_MARKER_RE`/`_tables._MARKER_RE` make.
+# A marker with no valid block after it, matched separately so it is reported
+# as itself, as `_math._LONE_MARKER_RE`/`_tables._MARKER_RE` do.
 _MARKER_RE = re.compile(r"^[ \t>]*<!--[ \t]*equation:[ \t]*(?P<id>\S+)[ \t]*-->[ \t]*$", re.M)
 
-# The inline reference, mirroring `_tables._REF_RE`/`_figure_captions._FIGUREREF_RE`.
 _REF_RE = re.compile(r"<!--[ \t]*equationref:[ \t]*(?P<id>\S+?)[ \t]*-->")
 
 
 class Equation(NamedTuple):
-    """One marked, declared equation: its id, the number it takes in a
-    format that has to be told, and where its marker sits."""
+    """One marked, declared equation: its id, number, and marker position."""
 
     id: str
     number: int
@@ -108,10 +64,7 @@ class Equation(NamedTuple):
 def equations(text: str) -> "list[Equation]":
     """Every marked equation in `text`, numbered in document order.
 
-    Matched against the pristine ascii-plus-fence shape, so this is the
-    function both `style_equations.py` (which reads a draft nothing has
-    substituted) and this module's own `md`-path substitution (where
-    `_math.substitute` is a no-op) can share.
+    Matches the pristine shape, shared by `style_equations.py` and the `md` path.
     """
     return [
         Equation(m.group("id"), number, line_of(text, m.start()))
@@ -126,12 +79,8 @@ def references(text: str) -> "list[tuple[str, int]]":
 
 def _substitute_ascii(text: str) -> str:
     """`text` on the `md` path: a numbered label above each untouched block."""
-    # m-57: numbered by position, not by a dict keyed on id -- the same
-    # reason `_tables.substitute` numbers captions by position instead of
-    # a dict: two equations sharing an id would otherwise both look up
-    # the *same* (last-written) dict entry and render the same number.
-    # `sub` visits matches in document order, so a plain counter numbers
-    # each one correctly regardless of what id it claims.
+    # m-57: numbered by position, not a dict keyed on id, so two equations
+    # sharing an id do not both render the last-written number.
     counter = itertools.count(1)
 
     def _replace(match: "re.Match[str]") -> str:
@@ -143,14 +92,10 @@ def _substitute_ascii(text: str) -> str:
 
 
 def _substitute_dollar(text: str, output_format: str) -> str:
-    """`text` on every path `_math.substitute` has already run real math
-    through: a real `equation` environment for a LaTeX-bound format, a
-    written number beside the kept `$$...$$` for everything else."""
-    # m-57: same positional fix as _substitute_ascii above. A LaTeX-bound
-    # format's \label still keys off the id, not the number -- two
-    # equations sharing an id still produce a multiply-defined label, but
-    # that is a draft-authoring error `warnings` below already reports
-    # ("declared by more than one equation"), not a numbering bug.
+    """`text` after `_math.substitute`: an `equation` environment for a
+    LaTeX-bound format, a written number beside `$$...$$` for the rest."""
+    # m-57: numbered by position as above. A shared id still makes a duplicate
+    # \label, which `warnings` reports as an authoring error.
     counter = itertools.count(1)
 
     def _replace(match: "re.Match[str]") -> str:
@@ -167,8 +112,7 @@ def _substitute_dollar(text: str, output_format: str) -> str:
 
 
 def _reference_for(number: "int | None", eq_id: str, raw: str, output_format: str) -> str:
-    """The phrase an `equationref` marker expands to, or `raw` unchanged
-    if the id it names is not a declared equation."""
+    """The phrase an `equationref` expands to, or `raw` if the id is undeclared."""
     if number is None:
         return raw
     if output_format in _LATEX_BOUND:
@@ -178,11 +122,7 @@ def _reference_for(number: "int | None", eq_id: str, raw: str, output_format: st
 
 def substitute(text: str, output_format: str) -> str:
     """`text` with every marked equation numbered and every `equationref`
-    resolved for `output_format`.
-
-    `text` is whatever `_substitution.py`'s chain has produced by the time
-    mathematics has been substituted -- the last step before this one, per
-    this module's own docstring on why the order is fixed.
+    resolved for `output_format`; must run after mathematics substitution.
     """
     is_md = output_format == "md"
     pattern = _EQUATION_ASCII_RE if is_md else _EQUATION_DOLLAR_RE
@@ -199,8 +139,7 @@ def substitute(text: str, output_format: str) -> str:
 def warnings(text: str) -> "list[str]":
     """Every equation marker and reference in `text` that cannot resolve.
 
-    Printed to stderr by `_draft_warnings`, like `_tables.warnings` and
-    `_figure_captions.warnings` -- none of these stops a render.
+    Printed to stderr; none of these stops a render.
     """
     ids = [equation.id for equation in equations(text)]
     declared_starts = {m.start() for m in _EQUATION_ASCII_RE.finditer(text)}

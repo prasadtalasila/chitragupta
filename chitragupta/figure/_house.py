@@ -1,31 +1,19 @@
 """The house vocabulary's rules (#1016): a figure that loads the house
 block and then writes past it.
 
-- `type-below-floor`: text set smaller than the body. The size is the
-  one TeX set (`CGTEXT`), so `\\scriptsize`, a size inherited from a
-  group and a macro that expands to one are all seen. A math run is
-  exempt, since a subscript sets at script size on purpose, unless the
-  node has nothing larger: a label all in math under `\\scriptsize`.
-- `colour-off-palette`: a border, fill, text run or line in a colour the
-  block does not define, a white tint of one excepted. A framed node
-  with no `draw=` colour strokes in the current one, and is the half-
-  styled node #1016 called `raw-node-in-styled-figure`.
-- `tint-outside-band`: a node with text filled with a house hue mixed
-  with white outside 6 to 12, or solid: the hue itself, or its `Line` or
-  `Text` shade, which the label drowns in. A step badge is a `Text`-shade
-  disc on purpose, and a node with no text (a timeline's tick, a bar)
-  has no label to drown.
-- `unnamed-pic`, from source: a `\\pic` not placed in a named `cgwell`,
-  which no rule measures (`node-overlap` sees nodes, not a pic's paths).
-- `focal-count` lives here too: the accent is house vocabulary.
+- `type-below-floor`: text below body size, as TeX set it (`CGTEXT`); a math
+  run is exempt unless the node has nothing larger.
+- `colour-off-palette`: a colour the block does not define (white tints
+  excepted); a framed node with no `draw=` colour counts.
+- `tint-outside-band`: a texted node filled with a house hue outside 6-12%
+  white tint, or solid. Step badges and textless nodes are exempt.
+- `unnamed-pic`, from source: a `\\pic` not in a named `cgwell`.
+- `focal-count`: the accent is house vocabulary too.
 
-**Both colour rules read the colour pgf used**, not the expression: a
-`\\foreach` variable (`\\c Text`) or `\\cgPicColour!55` reaches the log
-unexpanded, and a colour is what a reader sees. The expression is only
-how a finding names it. A path's fill outside a node is not logged per
-line, so a raw `\\fill[red]` is not seen. Nothing here needs the nodes
-in one frame, so these run where the connector rules do not (several
-pictures, `transform canvas`); a line's name there is a best guess.
+Colour rules read the colour pgf used, not the expression (`\\c Text` reaches
+the log unexpanded). A path fill outside a node is not logged, so `\\fill[red]`
+is not seen. These need no shared frame, so they run where the connector
+rules cannot; a line's name there is a best guess.
 """
 
 import re
@@ -42,21 +30,17 @@ from chitragupta.figure._rules import FIGURE, Finding
 from chitragupta.review.figure_layout import Drawn, DrawnNode, FigureResult
 from chitragupta.review.figure_layout._paint import Paint
 
-# The rules that need the probe's drawn nodes.
 HOUSE = ("type-below-floor", "colour-off-palette", "tint-outside-band")
 NO_BLOCK = "the figure carries no house block to read its palette from"
 
-# The probe document's body (`_probe.py`'s `[12pt]`), which is the
-# render's; a size TeX rounded to 11.96pt is still the body.
+# The probe document's body size (`[12pt]`); TeX's 11.96pt still counts as body.
 FLOOR_PT = 12.0
 _ROUNDING_PT = 0.05
-# docs/TIKZ-STYLE.md's tint band, "the band the house block's cards and
-# zones use". #1016 said 15; the block's darkest card is `cgWarm!12`.
+# docs/TIKZ-STYLE.md's tint band. #1016 said 15; the block's darkest card is `cgWarm!12`.
 BAND = (6, 12)
-# How far a channel may sit from a house colour or tint and still be it:
-# xcolor keeps five decimal places and this module mixes from the
-# two-digit hex, so the two part by up to a step of the hex (#1016's
-# review found 381 of the 2,100 `cg*!1..100` tints a step off).
+# Channel tolerance for matching a house colour or tint: xcolor keeps five
+# decimals but this mixes from two-digit hex, so they differ by up to a hex
+# step (381 of 2,100 tints did, #1016's review).
 _SAME = 1.5 / 255
 
 _PIC_RE = re.compile(r"\\pic\b")
@@ -67,9 +51,8 @@ _HUE_RE = re.compile(r"\\colorlet\{(\w+)Text\}")
 
 
 def house_check(source: str, figure: FigureResult) -> tuple[list[Finding], list[tuple[str, str]]]:
-    """The three rules that read the probe, or each listed as not
-    measured: all of them without drawn nodes, the two colour rules
-    without a house block to read the palette from."""
+    """The three rules that read the probe, or each listed as not measured:
+    all without drawn nodes, the colour rules without a house block."""
     if figure.drawn is None:
         return [], [(rule, NO_DRAWN) for rule in HOUSE]
     found = type_floor(figure.drawn)
@@ -91,7 +74,6 @@ def source_rules(source: str) -> list[Finding]:
 
 
 def type_floor(drawn: Drawn) -> list[Finding]:
-    """One finding per node, at its smallest text run below the floor."""
     limit = FLOOR_PT - _ROUNDING_PT
     found = []
     for name, node in drawn.nodes.items():
@@ -116,10 +98,9 @@ class _Palette:
         ]
 
     def find(self, colour: RGB) -> tuple[str, int] | None:
-        """`(name, share)` of the house colour, tinted with white at a
-        whole-number share (100 for the colour itself), nearest `colour`
-        within xcolor's rounding, or `None`. Nearest, because a grey
-        tint of `cgMute` is also near some tint of `cgInk`."""
+        """`(name, share)` of the nearest house colour tint to `colour` within
+        xcolor's rounding, or `None`. Nearest, because a grey tint of `cgMute`
+        is also near some tint of `cgInk`."""
         near = []
         for rgb, name in self.colours:
             share = _share(rgb, colour)
@@ -145,8 +126,8 @@ class _Palette:
 
 
 def _share(base: RGB, colour: RGB) -> int:
-    """The whole-number share of `base` a white tint at `colour` would
-    have, read on the channel `base` sits farthest from white on."""
+    """The whole-number white-tint share of `base` at `colour`, read on the
+    channel `base` sits farthest from white on."""
     reach, channel = max((1 - value, i) for i, value in enumerate(base))
     if reach == 0:
         return 100
@@ -183,8 +164,7 @@ def _node_paint(target: str, node: DrawnNode, palette: _Palette) -> list[Finding
 
 
 def _line_paint(drawn: Drawn, palette: _Palette) -> list[Finding]:
-    """A connector is named by its ends, any other line by where it
-    starts, in mm, as an unnamed node is."""
+    """A connector is named by its ends, any other line by its start in mm."""
     named = {id(con.line): con.name for con in connectors(drawn)[0]}
     found = []
     for line in drawn.lines:
@@ -211,8 +191,7 @@ def _tint(target: str, fill: Paint, palette: _Palette) -> list[Finding]:
 
 
 def unnamed_pics(source: str) -> list[Finding]:
-    """Every `\\pic` not placed `at` a node the figure declares as a
-    `cgwell`, named by its type and where it was put."""
+    """Every `\\pic` not placed `at` a declared `cgwell` node."""
     text = strip_comments(source)
     wells = set(styled_nodes(text, _WELL_RE))
     found = []
@@ -242,7 +221,6 @@ def _readable(paint: Paint) -> bool:
 
 
 def _block(source: str) -> str | None:
-    """The figure's house block, markers included, or `None`."""
     start, end = _START_RE.search(source), _END_RE.search(source)
     if start is None or end is None or end.start() < start.start():
         return None

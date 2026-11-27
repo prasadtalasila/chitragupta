@@ -1,9 +1,6 @@
 """Where a rendered draft lands, and which inputs count as Markdown.
 
-`_output_dir` holds the *policy* -- mirror the draft's own place under
-`content/drafts/` into `content/rendered/`, fall back flat, and refuse to
-write outside `content/`. The mechanism it defers to is
-`config.mirrored_dir()`, shared with `dossier` and `review`.
+`_output_dir` holds the policy; the mirroring is `config.mirrored_dir()`.
 """
 
 from pathlib import Path
@@ -12,69 +9,27 @@ from chitragupta import config
 from chitragupta.render_output._errors import OutsideContentDir
 
 
-# Input suffixes treated as Markdown by the `md` output format (see
-# render()). Anything else -- .tex above all -- is a real conversion and
-# goes to pandoc.
+# Input suffixes the `md` format passes through; anything else (.tex above all)
+# is a real conversion and goes to pandoc.
 _MARKDOWN_SUFFIXES = {".md", ".markdown"}
 
 
 def _output_dir(input_path: Path) -> Path:
-    """Where `input_path`'s rendered output goes: `config.RENDERED_DIR`
-    with the draft's own place under `config.DRAFTS_DIR` mirrored into
-    it, so `content/drafts/dt/survey.md` renders to
-    `content/rendered/dt/survey.{md,tex,pdf,docx}`.
+    """Where `input_path`'s rendered output goes: the draft's place under
+    `DRAFTS_DIR` mirrored into `RENDERED_DIR`, or flat `RENDERED_DIR` for a
+    draft elsewhere under `content/`.
 
-    **Every path this returns resolves inside `config.CONTENT_DIR`**,
-    which is the invariant the checks below exist for. Since 3.17.0 the
-    read side is confined too, but not here: `render()` calls
-    `config.require_inside_content` on its input before this is ever
-    reached, so what arrives is already somewhere under `content/`. The
-    flat fallback below is therefore for a draft that is under `content/`
-    but not under `content/drafts/` -- `content/loose.md`, say -- not for
-    one "anywhere on disk", which no longer reaches this function.
+    **Every path this returns resolves inside `config.CONTENT_DIR`.** Only the
+    part below `DRAFTS_DIR` is carried over, both sides resolved first, so no
+    argument can mirror elsewhere. A `content/rendered`, `content/drafts` or
+    topic directory resolving outside (config or symlinks) raises
+    `OutsideContentDir` rather than redirecting: unlike a skipped escaping
+    image, there is no correct output left to produce.
 
-    What that leaves:
-
-      - A draft not under `DRAFTS_DIR` has no path to mirror, so the
-        flat `RENDERED_DIR` stands. So does a flat
-        `content/drafts/<slug>.md`, whose relative parent is `.`.
-      - Only the part of the draft's path *below* `DRAFTS_DIR` is ever
-        carried over, and both sides are resolved before they are
-        compared, so `relative` can hold neither a `..` nor a symlink's
-        spelling -- there is no argument that mirrors to somewhere else.
-      - The three ways the write could still land outside `content/` are
-        all configuration or symlinks rather than arguments, and each
-        raises `OutsideContentDir` rather than being redirected: a
-        `content/rendered` or `content/drafts` that resolves out of
-        `CONTENT_DIR`, and a mirrored topic directory that resolves out
-        of `RENDERED_DIR`. `_copy_local_images` skips an escaping image
-        reference silently because the draft is still rendered correctly
-        without that one image; here there is no correct output left to
-        produce, so this says so instead.
-
-    The rule itself is `config.mirrored_dir()`, shared with
-    `dossier.dossier_dir()` and `review.report_path()` rather than
-    written out again here. It lives in `config` because this module's
-    docstring commits it to stdlib plus
-    `config`/`citation_gate`/`references` so a genre skill can render
-    under bare `python`, which rules out importing `chitragupta/dossier/`.
-    What stays here is the *policy* -- fall back flat, and refuse to
-    write outside `content/` -- which is this module's to decide.
-
-    **One mirror source, and a caller that can say otherwise.** This
-    function answers "where does a *draft* render to", so `DRAFTS_DIR` is
-    the only source root it knows. A caller rendering something that is
-    not a draft -- `chitragupta/review/__init__.py`, turning a review report into
-    `.tex`/`.pdf` beside the report -- passes `render(output_dir=...)`
-    and never reaches here.
-
-    3.19.2 did that differently, mirroring from `PROVENANCE_DIR` as a
-    second source root so a provenance report's renders would stop
-    colliding. It worked, but it put a review-layer directory in the path
-    of every ordinary draft render, and it landed the renders in
-    `content/rendered/` -- the drafting layer's publish output -- rather
-    than beside the report they belong to. `output_dir` replaces it:
-    "the caller says where" is not a second rule about drafts.
+    The rule lives in `config` because this package must stay importable
+    under bare `python`, which rules out `chitragupta/dossier/`. A non-draft
+    caller (review reports) passes `render(output_dir=...)` instead of adding
+    a second mirror root here, which once put review-layer paths in every render.
     """
     for label, directory in (("rendered", config.RENDERED_DIR), ("drafts", config.DRAFTS_DIR)):
         if not config.resolves_inside(directory, config.CONTENT_DIR):
@@ -102,11 +57,8 @@ def _output_dir(input_path: Path) -> Path:
 
 
 def _target_dir(input_path: Path, output_dir: str | Path | None) -> Path:
-    """Where this render lands: the mirrored default, or the caller's own.
-
-    A caller naming a directory does not widen where this pipeline may
-    write -- `output_dir` is confined to `content/` exactly like the
-    mirrored default it replaces.
+    """Where this render lands: the mirrored default, or the caller's own,
+    which is confined to `content/` exactly like the default.
     """
     if output_dir is None:
         return _output_dir(input_path)

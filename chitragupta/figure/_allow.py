@@ -1,22 +1,13 @@
 """`% cg-allow: <rule-id> [<target>] -- <reason>`: a figure's own record
-that it breaks a rule on purpose (#1053), and what each one set aside
-(#1058).
+that it breaks a rule on purpose (#1053), and what each one set aside (#1058).
 
-The exception lives in the figure file because the figure file is what
-travels: into the draft, into the render, into a thesis this project
-never sees. The reason is required, so an exception is always a claim
-someone can read and disagree with, never a rule silently switched off.
+In the figure file because the file is what travels. The reason is required,
+so an exception is a readable claim, never a rule silently switched off.
+Only full-line comments count: a trailing one dies with its line.
 
-Only a full-line comment counts. A trailing comment on a drawing line is
-too easy to delete along with the line it explains, and then the allow
-would outlive its reason or vanish without one.
-
-An element-scope allow sets aside its rule on the one target it names,
-spelt as the finding prints it, so a later defect of the same kind is
-still found. A target with a space in it is written in double quotes.
-An allow that set nothing aside on a rule that ran is stale, so an
-exception cannot outlive its reason unseen; one whose rule did not run
-is unchecked, never stale, since nothing was measured to say so.
+An element-scope allow covers only the target it names, so later defects of
+the same kind are still found. An allow that set nothing aside on a rule
+that ran is stale; one whose rule did not run is unchecked, never stale.
 """
 
 import re
@@ -32,8 +23,8 @@ _HEAD_RE = re.compile(
     r'\s*(?P<rule>\S*)\s*(?:"(?P<quoted>[^"]*)"|(?P<bare>[^\s"]+))?\s*(?P<rest>.*)'
 )
 
-# The rules that name an unnamed node by its label text, which is never
-# among the drawn names, so a missing name says nothing about them.
+# Rules naming an unnamed node by its label text, never among the drawn names,
+# so a missing name says nothing about them.
 _LABEL_TARGETS = frozenset({"t1-labels", "t2-tags", "w4-pictograph"})
 
 
@@ -54,8 +45,8 @@ class Malformed:
 
 @dataclass
 class Allows:
-    """Every allow in one file: the well-formed ones, which `settle`
-    sorts, and the malformed ones, which allow nothing."""
+    """Every allow in one file: well-formed ones for `settle`, and malformed
+    ones, which allow nothing."""
 
     wellformed: list[Allow] = field(default_factory=list)
     malformed: list[Malformed] = field(default_factory=list)
@@ -73,7 +64,6 @@ class Settled:
 
 
 def parse_allows(source: str) -> Allows:
-    """Every `% cg-allow:` line in `source`, in source order."""
     allows = Allows()
     for match in _ALLOW_RE.finditer(source):
         line = source.count("\n", 0, match.start()) + 1
@@ -86,9 +76,8 @@ def parse_allows(source: str) -> Allows:
 
 
 def _parse(body: str) -> tuple[str, str, str, str]:
-    """`(rule, target, reason, problem)`; `problem` is empty when the
-    line is well formed. The first `--` ends the head, so a reason may
-    contain one of its own."""
+    """`(rule, target, reason, problem)`; `problem` is empty when well formed.
+    The first `--` ends the head, so a reason may contain one."""
     head, _, reason = body.partition("--")
     parts = _HEAD_RE.fullmatch(head)
     rule, rest = parts.group("rule"), parts.group("rest")
@@ -104,8 +93,7 @@ def _parse(body: str) -> tuple[str, str, str, str]:
 
 
 def _scope_problem(rule: str, target: str, rest: str) -> str:
-    """What is wrong with `rule`'s target, or `""`. `rest` is whatever
-    followed the target in the head."""
+    """What is wrong with `rule`'s target, or `""`."""
     if not RULES[rule].allowable:
         return "cannot be allowed"
     if '"' in rest:
@@ -126,10 +114,8 @@ def settle(
     layout: str,
     names: set[str] | None,
 ) -> Settled:
-    """Sort each allow into allowed, unchecked or stale, in that order of
-    precedence, and keep the findings no allow covers. `not_measured` is
-    every rule that did not run, with why; `names` the nodes the probe
-    drew, `None` where it drew nothing to look a target up in."""
+    """Sort each allow into allowed, unchecked or stale (that precedence), and
+    keep the uncovered findings. `names` is `None` where the probe drew nothing."""
     settled, covered = Settled(), set()
     skipped = dict(reversed(not_measured))
     for allow in allows:
@@ -153,9 +139,8 @@ def _covers(allow: Allow, finding: Finding) -> bool:
 
 
 def _key(target: str) -> tuple[str, ...]:
-    """A target as matched: without one pair of surrounding quotes, and a
-    pair (`a+b`) in either order, since which half prints first follows
-    the order the nodes were drawn in."""
+    """A target as matched: one pair of surrounding quotes dropped, and a pair
+    (`a+b`) in either order, since print order follows drawing order."""
     if len(target) > 1 and target[0] == target[-1] == '"':
         target = target[1:-1]
     return (target,) if " " in target else tuple(sorted(target.split("+")))
@@ -175,6 +160,5 @@ def _stale(allow: Allow, names: set[str] | None) -> str:
 
 
 def _named(allow: Allow) -> bool:
-    """Whether `allow`'s target is spelt in node names rather than label
-    text."""
+    """Whether `allow`'s target is spelt in node names, not label text."""
     return allow.rule not in _LABEL_TARGETS and " " not in allow.target

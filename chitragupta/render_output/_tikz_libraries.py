@@ -1,29 +1,13 @@
-r"""Which TikZ libraries a draft's figures ask for, as one preamble load.
+r"""Which TikZ libraries a draft's figures ask for, as one preamble load (#781).
 
-#781. `\usetikzlibrary` is legal in the document body, and figure files
-have always carried their own -- but a figure file is `\input` inside a
-`figure` float, and a float is a group. The library's macros are defined
-*locally* there while `\tikz@library@<name>@loaded` is set *globally*, so
-the second float skips the load and finds none of the macros. Every
-per-figure workaround for that is worse, because
-`tikzlibrarypositioning.code.tex` appends to `\tikz@node@reset@hook`
-globally on each load, so N loads shift every node N times. Measured on a
-`book`-class document inputting one `positioning` figure into three
-floats with the loaded flag cleared between them: the node sat at
-71.26pt, then 128.17pt, then 185.07pt, with `pdflatex` exiting 0 and
-nothing in the log. That is the reported symptom -- figures spilling off
-the page of an assembled book that built cleanly.
+A figure is `\input` inside a float, a group: a library's macros are defined
+locally but its loaded flag globally, so the second float finds no macros.
+Reloading per figure is worse: `positioning` appends to `\tikz@node@reset@hook`
+on each load, shifting every node N times with a clean exit. So the renderer
+loads them once in the preamble; a figure's own load line becomes a no-op, so
+the file still compiles alone or in a user's thesis.
 
-So the renderer loads them once, ungrouped, in the preamble. A figure
-file keeps its own plain load line and is then a no-op that appends
-nothing, which is what lets the same file still compile in the two
-documents this pipeline does not write: `thesis-chapter-writer`'s
-fragment inside a user's own thesis, and the minimal probe document
-`chitragupta.review figure` and docs/WRITING-STANDARDS.md §10 build
-around one figure.
-
-This module reads figure *source* and never compiles anything, which is
-what keeps it -- and its tests -- working on a host with no TeX Live.
+Reads source only, so it and its tests work without TeX Live.
 """
 
 import re
@@ -35,20 +19,16 @@ from pathlib import Path
 from chitragupta._tex_comments import strip_comments
 from chitragupta.render_output._figures import _TEX_FORMATS, _resolve_sibling
 
-# The load itself. Deliberately regex over TikZ rather than a LaTeX
-# parser, matching how `_figures.py` already reads these same files. PGF
-# has no optional-argument form of this macro, so there is nothing
-# between the name and its brace but space.
+# Regex, as `_figures.py` reads these files. PGF has no optional-argument form,
+# so only space sits between the name and its brace.
 _USETIKZLIBRARY_RE = re.compile(r"\\usetikzlibrary\s*\{([^}]*)\}")
 
 
 def libraries_in(source: str) -> list[str]:
     r"""Every library one figure file loads, in source order, deduped.
 
-    An empty name is dropped rather than carried: `\usetikzlibrary{}`
-    fails fatally in TeX on the comma list rather than skipping, so
-    re-emitting one into the preamble would turn one figure's typo into
-    every render's failure.
+    An empty name is dropped: `\usetikzlibrary{}` is fatal in TeX, and one
+    figure's typo would become every render's failure.
     """
     names: list[str] = []
     for group in _USETIKZLIBRARY_RE.findall(strip_comments(source)):
@@ -62,18 +42,10 @@ def libraries_in(source: str) -> list[str]:
 def library_union(figure_refs: list[str], draft_dir: Path) -> list[str]:
     """Every library the draft's figures ask for, sorted.
 
-    Sorted rather than first-seen: this string lands in the preamble of
-    every render, a `set` iterates in hash order, Python randomises
-    string hashing per process, and byte-identical output over unchanged
-    input is a product rule here (docs/CODE-STANDARDS.md, "Repeatable").
-
-    A reference that does not resolve to a readable file under the
-    draft's own directory contributes nothing and says nothing --
-    `_figure_warnings` is what reports a missing figure, and a second
-    report of the same fact from the preamble builder would be noise.
-    `errors="replace"` for the reason `_figure_has_citekey` uses it: a
-    figure file that is not valid UTF-8 is its own problem, and raising
-    here would make the preamble builder the thing that stops a render.
+    Sorted, not set order: output must be byte-identical across processes
+    (docs/CODE-STANDARDS.md, "Repeatable"). An unresolvable or unreadable
+    reference contributes nothing silently: `_figure_warnings` reports it, and
+    a decode failure must not stop a render.
     """
     found: set[str] = set()
     for ref in figure_refs:
@@ -88,18 +60,9 @@ def preamble_libraries(
 ) -> list[str]:
     r"""The union for this render, reporting it when nothing can load it.
 
-    A `--fragment` render emits no preamble, so the load this module
-    exists to produce reaches nothing there and the document that
-    `\input`s the unit has to carry it -- the same structural reason
-    `fvextra` and `\LTcapwidth` are in `book-assembler`'s own preamble
-    (docs/WRITE-A-BOOK.md). One stderr line says which, in the `[prefix] text`
-    shape `render()` already prints every figure, table and equation
-    warning in, because the consumer is a skill reading the render's
-    output rather than a caller reading a return value.
-
-    Printed only when there is something to say: a standalone render has
-    it in its own preamble, and a fragment whose figures load nothing
-    would otherwise get a line naming no library.
+    A `--fragment` has no preamble, so one `[prefix] text` stderr line tells
+    the skill what the `\input`ing document must load (docs/WRITE-A-BOOK.md).
+    Silent when there is nothing to say.
     """
     libraries = library_union(figure_refs, draft_dir)
     if fragment and libraries and output_format in _TEX_FORMATS:
@@ -114,11 +77,8 @@ def preamble_libraries(
 def header_include(libraries: list[str]) -> str:
     r"""The `header-includes` value for a draft that has a figure.
 
-    One string rather than two `--variable` arguments, because
-    `\usetikzlibrary` needs `tikz` already loaded and pandoc's
-    concatenation order for repeated variables is not a contract worth
-    leaning on. An empty union emits the package alone -- never
-    `\usetikzlibrary{}`, which is fatal.
+    One string, since `\usetikzlibrary` needs `tikz` loaded first and pandoc's
+    order for repeated variables is no contract. Never `\usetikzlibrary{}`.
     """
     load = r"\usepackage{tikz}"
     if not libraries:
