@@ -65,9 +65,8 @@ caution over speed; for a genuinely trivial change, use judgement.
    problem. No speculative abstraction for a single call site, no
    unrequested `config.toml` key, no defensive handling for a state that
    cannot occur. Ask whether a reviewer would call it over-engineered; if
-   yes, cut it. Note the one deliberate exception: the *comments* are not
-   subject to this; see
-   [docs/CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid).
+   yes, cut it. The same applies to comments and docstrings; see
+   [Comments and docstrings](#-comments-and-docstrings) below.
 3. **Surgical changes.** Each changed line should trace to the requested
    task. Do not refactor unrelated code, and match the local style of
    whatever you are editing. Remove imports and helpers *your* change
@@ -111,8 +110,8 @@ Read it before a non-trivial change. In brief:
   [docs/CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md#-the-binary-rules)
   for the two ways the JS scan's counting deliberately differs from the
   Python one.
-- **Statements, not physical lines**, because this repository *requires*
-  rationale comments and a physical-line limit would reward deleting them.
+- **Statements, not physical lines**, because a physical-line limit
+  would push the comments that must stay onto the same line as code.
 - **Cognitive complexity is capped at 25, not SonarQube's default 15**,
   aligned with the 25-statement rule for the same anti-over-splitting
   reason. Do not split a function merely to satisfy an S3776 finding of
@@ -129,6 +128,33 @@ Read it before a non-trivial change. In brief:
   [docs/INSPIRATION.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/INSPIRATION.md)
   has
   the provenance.
+
+### 💬 Comments and docstrings
+
+**Record only critical details in code, and delete everything else.** A
+comment or docstring may say what a code fragment, method or class must
+keep doing and why a later change would break it: a constraint, a
+security property, an ordering, a version pin that is load-bearing.
+Write each one in a line or two.
+
+- **Delete** history, rejected alternatives, design essays, issue
+  narratives and restatements of what the code already says. Git keeps
+  the history, `plans/<issue>-*.md` keeps the design, and the PR
+  description keeps the reasoning.
+- **Tests carry no docstrings and no full-line comments**, in Python and
+  JavaScript alike. Inline comments and lint directives may stay. A test's
+  name says what it checks.
+- **Keep a docstring that argparse renders** as a noun or verb command's
+  help. A `DESCRIPTION` constant or a `help=` string is not a docstring
+  and stays regardless.
+- Write new code at this density from the start, not as a cleanup pass.
+  Before committing, read every `"""`, `#`, `/*` and `//` your diff
+  adds and cut whatever is not a binding constraint.
+
+This narrows [docs/CODE-STANDARDS.md](https://github.com/prasadtalasila/chitragupta/blob/main/docs/CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid)'s
+comment rules: its required *why*-comment survives only when it records a
+constraint that still binds. #1259 applied this rule to `tests/`,
+`pyproject.toml` and three modules.
 
 **Measure the headroom before you choose the fix's shape, not after.**
 The 250-line ceiling is a ratchet, so a module already at 244, 248, 249
