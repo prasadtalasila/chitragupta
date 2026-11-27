@@ -1,10 +1,7 @@
 """What `_markdown_inert`'s block scan records, and where it records it.
 
-Split out of `_markdown_inert` (#1021) at the boundary the class already
-had: its "marking" half, which turns a container's own offsets back
-into the document's, and the record it writes into. The "blocks" half,
-which decides what to mark, stays there. Standard library only, like
-`citation_gate` itself.
+The "marking" half of `_markdown_inert` (#1021): container offsets back
+to document offsets. Standard library only.
 """
 
 import bisect

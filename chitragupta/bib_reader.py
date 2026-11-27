@@ -1,18 +1,10 @@
 """Reads the BibTeX-exported .bib file -- the source of truth for
 citekeys and bibliographic metadata (project decision, 2026-07-28).
 
-No auto-sync plugin is installed, so this file is a manual, point-in-time
-export from your reference manager, not continuously auto-synced --
-re-export it after adding papers, then re-run `python -m chitragupta.corpus sync`.
-Whatever citekey BibTeX assigns in this file IS the citekey everywhere
-downstream (the ledger, citation_gate, generated drafts); this module
-never invents its own.
-
-Needs `bibtexparser` (pyproject.toml's main dependency group, installed
-via scripts/install_full_pipeline.sh) -- the one dependency the
-otherwise stdlib-only corpus layer requires, because hand-rolling a
-correct BibTeX parser (nested braces, LaTeX escapes, multi-line values)
-is a worse bet than using a maintained library for something
+The file is a manual export, re-exported after adding papers. Whatever
+citekey it assigns IS the citekey everywhere downstream; this module
+never invents its own. Needs `bibtexparser`, the corpus layer's one
+dependency: hand-rolling a BibTeX parser is a worse bet for something
 citation-critical.
 """
 
@@ -33,64 +25,31 @@ from chitragupta import (
 # Re-exported: callers and tests ask the bib reader whether a citekey is usable.
 from chitragupta.citekey_safety import citekey_problem  # noqa: F401  # pylint: disable=unused-import
 
-# Reference.pdf_resolution values -- *why* a PDF did or didn't resolve.
-# Previously sync.py only ever saw a bare pdf_path of None and reported
-# every one of these as one "no PDF attachment" bucket, which masked two
-# very different problems: an item with only a non-PDF attachment saved
-# (typically an HTML snapshot, but _resolve_pdf_path only actually checks
-# for the *absence* of a pdf-mime entry, not the presence of a
-# text/html one specifically -- invisible to retrieval/citation-gate the
-# same as any other no-PDF item, but not surfaced as such) and an item
-# whose PDF the bib file still points at, but which has since moved or
-# been deleted (a silent data-loss failure, not a "never had a PDF" one).
+# Reference.pdf_resolution values: *why* a PDF did or did not resolve, so
+# an HTML-only item and a PDF that has since moved (silent data loss) are
+# not reported as one bucket.
 PDF_RESOLVED = "resolved"
 PDF_NO_FILE_FIELD = "no_file_field"
 PDF_MALFORMED_FILE_FIELD = "malformed_file_field"
 PDF_PATH_GONE = "pdf_path_gone"
 PDF_NON_PDF_ATTACHMENT = "non_pdf_attachment"
 
-# Issue 821. A `file` field is data someone else's tool wrote -- a
-# reference manager, or a collaborator whose export you were sent -- and
-# it may name any file on the host. One naming `/etc/passwd` or
-# `~/.ssh/id_rsa` had that file parsed into `content/parsed/<citekey>.txt`
-# by the next sync, indexed by retrieval, and quotable into a draft as
-# corpus evidence. Confinement is the fix rather than sanitisation: the
-# rule is "an attachment lives beside the bib file that claims it", not
-# a list of spellings to strip.
-#
-# In PDF_LOST_REASONS below, so a run that refuses one exits nonzero.
-# The commonest real outside path is a collaborator's absolute
-# `/home/bob/Zotero/storage/...`, which before this reported as
-# PDF_PATH_GONE and already exited 3; a refusal that quietly exited 0
-# instead would make this *less* visible than the state it replaces,
-# which is the exact defect #556 was filed for. It is a document the
-# bib file promises and the corpus does not get, which is what that
-# list means.
+# Issue 821: a `file` field is someone else's data and may name any host
+# file (`~/.ssh/id_rsa` became quotable corpus evidence). Confinement to
+# beside the bib file is the fix, not sanitising spellings. In
+# PDF_LOST_REASONS, so a refusal exits nonzero rather than quieter than the
+# PDF_PATH_GONE it replaces (#556).
 PDF_OUTSIDE_PAPERS = "pdf_outside_papers"
 
-# The one reason in this set that `_resolve_pdf_path` never produces:
-# a PDF that is on disk and that this host cannot read anyway
-# (permissions, or a failing device). `chitragupta/sync_decide.py` is
-# what sets it, from the `OSError` `ledger_upsert` hands back when the
-# stat or the hash fails -- so it is only reachable once a run is
-# already under way, which is why the bib-read-time resolver has no
-# branch for it. It lives here rather than there because this is where
-# a reader looks for the set of reasons the no-PDF breakdown can report,
-# and a sixth one kept somewhere else would be found by nobody
-# (issue #556).
+# Set by `sync_decide` from the `OSError` ledger_upsert hands back, never
+# by `_resolve_pdf_path`; kept here with the other reasons (#556).
 PDF_UNREADABLE = "pdf_unreadable"
 
-# The reasons that mean the corpus has a hole in it, as opposed to an
-# item that never had a PDF on this host. `chitragupta/sync.py` gates its
-# exit code on these and not on the whole no-PDF count: an entry with no
-# attachment, an HTML-only snapshot and an unparseable `file` field are
-# ordinary states of a bibliography, where a PDF this export claims and
-# this host cannot produce is a document silently missing from the
-# corpus (issue #556).
+# Reasons that mean the corpus has a hole, which sync gates its exit code
+# on; no attachment or an HTML-only snapshot is an ordinary state (#556).
 PDF_LOST_REASONS = (PDF_PATH_GONE, PDF_UNREADABLE, PDF_OUTSIDE_PAPERS)
 
-# Dict order doubles as the fixed, deterministic order sync.py's
-# no-PDF breakdown reports these in.
+# Dict order is the order sync.py's no-PDF breakdown reports in.
 PDF_RESOLUTION_LABELS = {
     PDF_NO_FILE_FIELD: "no file field in bib entry",
     PDF_PATH_GONE: "PDF path no longer exists on disk",
@@ -116,16 +75,9 @@ class Reference:
     pdf_resolution: str = PDF_NO_FILE_FIELD
 
 
-# What one read of the bib file yields. A result object rather than a bare
-# list so that a further count about the read -- entries dropped or
-# skipped, say -- is a new field here, not a new return shape every
-# caller has to unpack.
-#
-# Issue 841 added the other two ways a read comes back short: entries
-# bibtexparser dropped without raising (unbalanced braces), and citekeys
-# skipped because they cannot be a filename. Either used to be a warning
-# on stdout and nothing else, so `--remove-stale` pruned the row of a
-# paper that was still in the library and the run exited 0.
+# A result object, so another count about the read is a new field, not a
+# new return shape. Issue 841: dropped entries and unfilenameable keys used
+# to be stdout warnings only, so `--remove-stale` pruned live papers.
 @dataclass
 class Library:
     references: list[Reference]
@@ -145,13 +97,10 @@ class Library:
     @property
     def unread(self) -> dict[str, int]:
         """What the bib file holds that this read never saw, as
-        `{description: count}`, nonzero only: entries bibtexparser
-        dropped, and citekeys skipped as unusable filenames.
+        `{description: count}`, nonzero only.
 
-        Nonempty means a citekey missing from the references may be
-        missing only from this read, so sync will not prune on it
-        (issue 841). A shared citekey is not here: it is in
-        `seen_citekeys`, so it cannot make another row look stale.
+        Nonempty means sync will not prune (issue 841). A shared citekey is
+        in `seen_citekeys` instead, so it cannot make another row look stale.
         """
         return _described(
             ("entry", "entries", "dropped unparsed by bibtexparser", self.dropped_entries),
@@ -184,14 +133,8 @@ def listed(problems: dict[str, int]) -> str:
 
 
 def _parse_authors(author_field: str) -> list[tuple[str, str]]:
-    # bibtexparser preserves an author field's original line wrapping, so
-    # a separator split across a line break (`... Doe\n  and Jane Smith`)
-    # is whitespace, not the literal " and " a naive split() requires --
-    # missing it silently collapses two authors into one mangled name.
-    # A zero-width split on "and" (matched only, never consumed) so any
-    # whitespace before and after -- one space, a wrapped newline, a
-    # stray double space -- stays attached to its neighbouring segment
-    # and is trimmed by the per-name strip() below, the same as before.
+    # Split on a zero-width "and" between whitespace: bibtexparser keeps
+    # line wraps, and a naive " and " split merges wrapped authors.
     authors = []
     for name in re.split(r"(?<=\s)and(?=\s)", author_field):
         name = name.strip()
@@ -207,18 +150,8 @@ def _attachment_pdf(
     """One `bib_escapes.attachments` entry, as `(did it parse at all, the
     pdf-mime path it names)`.
 
-    Split out of `_resolve_pdf_path` when issue 821's confinement pushed
-    that function past the 25-statement limit. The split falls here
-    because the two halves answer different questions: this one is
-    about the *field's* shape -- a convention of the export tool, and
-    the reason a path is rejoined with `:` rather than taken as
-    `parts[1]` -- and the caller is about which of several attachments
-    the corpus will actually accept. The splitting itself, escapes and
-    all, is `bib_escapes`'s since #964.
-
-    `None` for the path covers both "not three colon-separated parts"
-    and "parsed, but not a PDF"; the boolean is what tells those apart,
-    and the caller needs both to pick between its two no-PDF reasons.
+    `None` covers both malformed and non-PDF; the boolean tells them
+    apart for the caller's two no-PDF reasons.
     """
     if attachment is None:
         return False, None
@@ -230,24 +163,11 @@ def _attachment_pdf(
 
 
 def _resolve_pdf_path(file_field: str, bib_dir: Path) -> tuple[str | None, str]:
-    """The `file` field format in this project's bib export:
-    `Desc:path:mimetype`, `;`-separated for multiple attachments (e.g. an
-    HTML snapshot alongside the PDF) -- an export-tool convention, not
-    part of the BibTeX standard itself.
+    """Resolve the export's `file` field (`Desc:path:mimetype`,
+    `;`-separated; an export-tool convention, not BibTeX).
 
-    Returns (path, PDF_RESOLVED) on success, or (None, reason) where
-    reason distinguishes *why*: PDF_PATH_GONE (a pdf-mime attachment was
-    listed but its file no longer exists), PDF_NON_PDF_ATTACHMENT (every
-    attachment parsed fine but none is pdf-mime -- typically an HTML
-    snapshot saved instead of the PDF, but this only checks for the
-    absence of a pdf-mime entry, not the presence of text/html
-    specifically, so any other non-PDF mime lands here too), or
-    PDF_MALFORMED_FILE_FIELD (not even one `;`-separated segment had the
-    `Desc:path:mimetype` shape). If more than one attachment is present,
-    a PDF path that's gone still wins over reporting a non-PDF attachment
-    -- the presence of a pdf-mime entry is the more actionable signal (a
-    paper this project's own bib once had a real PDF for, now missing)
-    than "only ever had a non-PDF attachment".
+    Returns (path, PDF_RESOLVED) or (None, reason). A gone pdf-mime path
+    wins over a non-PDF attachment as the more actionable signal.
     """
     saw_parseable_attachment = False
     saw_pdf_mime = False
@@ -258,9 +178,8 @@ def _resolve_pdf_path(file_field: str, bib_dir: Path) -> tuple[str | None, str]:
         if path is None:
             continue
         saw_pdf_mime = True
-        # Confined before is_file(), not after: a refused path is not
-        # probed for existence either, so the reason reported cannot
-        # depend on -- or disclose -- what is actually at it.
+        # Confined before is_file(), so the reason cannot disclose what is
+        # actually at a refused path.
         confined = config.confined_path(path, bib_dir)
         if confined is None:
             saw_outside = True
@@ -279,16 +198,10 @@ def _clean_title(title: str) -> str:
     return re.sub(r"[{}]", "", title)
 
 
-# A citekey is not just an identifier here -- it is a *filename stem*.
-# `content/parsed/<citekey>.txt`, its `.passages.json` sidecar, and the
-# enrichment layer's `content/docling/<citekey>.md` are all built by
-# interpolating it straight into a path, and nothing downstream rewrites
-# it (deliberately: the bib file is the source of truth for citekeys).
-# The validator itself lives in `chitragupta/citekey_safety.py` since
-# #638 -- the review layer needs the same check on citekeys extracted
-# from a *draft*, and cannot import this module's bibtexparser
-# dependency -- re-exported from the imports at the top unchanged, so
-# this stays the natural place to find it from the sync side.
+# A citekey is a filename stem (`content/parsed/<citekey>.txt` and
+# others), never rewritten downstream. Its validator lives in
+# `chitragupta/citekey_safety.py` (#638) so the review layer can use it
+# without bibtexparser; re-exported above.
 
 
 def _reference(entry: dict, bib_dir: Path) -> Reference:
@@ -321,13 +234,9 @@ def read_library() -> Library:
         )
 
     raw_text = config.BIB_FILE_PATH.read_text(encoding="utf-8", errors="replace")
-    # An entry of a type outside bib_parse.STANDARD_TYPES (`@software`,
-    # `@online`, `@dataset`, ...) is skipped, silently, and never synced,
-    # as bibtexparser 1.x's default ignore_nonstandard_types=True did.
-    # That is the maintainer's stated intent (issue 888), not an oversight
-    # -- do not "fix" it. What issue 888 fixed is the count below:
-    # such an entry is ignored, not lost, so it is kept off the raw side of
-    # the dropped-entry comparison and cannot exit 3 or block a prune.
+    # Nonstandard types (`@software`, `@online`...) are skipped silently,
+    # as bibtexparser 1.x did. Intended (issue 888) -- do not "fix" it; they
+    # are kept out of the dropped-entry count, so they cannot exit 3.
     entries = bib_parse.parse_entries(raw_text)
 
     name = config.BIB_FILE_PATH.name

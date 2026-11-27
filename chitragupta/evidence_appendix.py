@@ -1,54 +1,19 @@
-"""Builds the *evidence sidecar* -- a standalone document rendered beside
-a draft, listing each cited source and the verbatim spans its dossier
-recorded as quotable, grouped by the draft section that leans on them.
+"""Builds the *evidence sidecar*: a standalone document beside a draft
+listing each cited source and the verbatim spans its dossier recorded as
+quotable, grouped by draft section (plans/a4-evidence-appendix.md).
 
-`content/rendered/<topic>/survey.evidence.pdf` sits next to
-`content/rendered/<topic>/survey.pdf`. Planned in
-plans/a4-evidence-appendix.md, which is the authoritative design;
-docs/FEATURE-ROADMAP.md's A4 is the roadmap entry.
+A sidecar, not a section inside the draft: the quotes are from
+copyrighted PDFs, and drafts are tracked while a sidecar can be
+gitignored by pattern.
 
-**Why a sidecar and not a section inside the draft.** The roadmap and
-#313 both describe an `Evidence` appendix *inside* the document. It is
-not one, and the reason is not stated in either: `content/dossiers/` is
-gitignored precisely because `evidence.md` quotes copyrighted sources,
-but `content/drafts/digital-twins-for-software-engineers/` and
-`content/rendered/digital-twins-for-software-engineers/` are tracked. An
-appendix inside the draft would commit quoted spans from copyrighted PDFs
-to a public repository. A sidecar can be excluded by pattern; a section
-inside a tracked draft cannot.
+Only `quote:` is printed. A legacy `support:` is a raw 600-character
+retrieval window, so printing it as a quotation would publish source
+wording; `claim:` is the drafter's own words.
 
-**The one field this prints, and the documented rule it narrows.** Only
-`quote:`. docs/DRAFT-ITERATION.md says a *skill* meeting a legacy
-`support:`-only block "reads it as `quote:` -- the conservative reading",
-and `draft-reviser`/`corpus-reviser` both state it as their own
-behaviour. That is right for a drafter deciding whether it *may quote
-from* a block. It is wrong here, and this module deliberately does not
-inherit it: a legacy `support:` holds a raw 600-character retrieval
-window (`EVIDENCE_CHARS` in chitragupta/retrieval.py), and printing one
-as a "quoted, attributed span" in a rendered PDF is exactly the
-publication of source wording this feature exists to prevent. `claim:` is
-excluded for the opposite reason -- it is the drafter's own words, so
-quoting it back would attribute this project's prose to the source.
-
-**Two properties held as shapes rather than as checks**, because #313
-rules out promoting a new check into a gate:
-
-1. A sidecar can never introduce a citekey. Its universe is
-   `references.used_citekeys()` over the draft, so a key the dossier
-   holds but the draft does not cite is dropped -- `references.py`'s own
-   rule, inherited rather than restated.
-2. A sidecar contributes zero citations. Every citekey it prints sits in
-   a code span, which `citation_gate._blank_code` blanks before
-   extraction. Running the gate over a sidecar reports `0 citations ...
-   OK`, and the sidecar cannot perturb the body's first-appearance
-   numbering, which `references.numbered_markdown` and pandoc's citeproc
-   both depend on.
-
-Nothing to say means no file: no dossier, or no `quote:` anywhere in it,
-and `build()` returns None. That is how a genre declines -- not a switch,
-but the absence of deliberate quotes. `tutorial-writer` cites only in
-"Where to go next" and captures no `quote:`, so it emits nothing without
-anyone configuring anything.
+Two properties held as shapes, not checks (#313): a sidecar never
+introduces a citekey (its universe is `references.used_citekeys()`), and
+contributes zero citations (every key sits in a code span, which the
+gate blanks). No dossier or no `quote:` means no file.
 
 Usage:
     python -m chitragupta.draft evidence <file.md> [--format md|tex|pdf]
@@ -65,18 +30,13 @@ from chitragupta.dossier._evidence_check import quotes
 from chitragupta.help_format import ClickParser
 from chitragupta.progname import prog_for
 
-# Where a key the draft cites but `sections.md` files nowhere is
-# collected. Named rather than dropped, and named rather than filed under
-# a section that does not contain it -- the same answer
-# `dossier sections --citekeys` already gives for an unfiled key.
+# Where a cited key that `sections.md` files nowhere is collected: named,
+# never dropped or misfiled.
 UNASSIGNED = "Unassigned"
 
-# The suffix that turns a draft's stem into its sidecar's. Referenced by
-# chitragupta/dossier/_archive.py, which has to strip it to match a
-# sidecar against the draft it belongs to, and by .gitignore, which
-# excludes the pattern so a quoted span never reaches a commit. Changing
-# it here without changing both is what tests/test_evidence_appendix.py's
-# gitignore test exists to catch.
+# Also stripped by dossier/_archive.py and excluded in .gitignore so a
+# quoted span never reaches a commit; tests/test_evidence_appendix.py
+# checks the gitignore agrees.
 SUFFIX = "evidence"
 
 _PREAMBLE = (
@@ -88,14 +48,9 @@ _PREAMBLE = (
 
 def quoted_spans(draft_text: str, dossier: Path, *, latex: bool = False) -> dict[str, list[str]]:
     """citekey -> its `quote:` lines, for keys the draft cites and the
-    dossier quotes, in the draft's own first-appearance order. A block may
-    carry several (#1174), kept in file order; a key with none is omitted
-    rather than mapped to an empty list.
-
-    A block carrying only `relevance:`/`claim:`, or only a legacy
-    `support:`, contributes nothing -- see this module's docstring for
-    why `support:` is not read here even though a skill reads it as a
-    quote.
+    dossier quotes, in first-appearance order. A block may carry several
+    (#1174); a key with none is omitted. `support:` is never read (see the
+    module docstring).
     """
     blocks = evidence_blocks(dossier)
     found: dict[str, list[str]] = {}
@@ -107,13 +62,8 @@ def quoted_spans(draft_text: str, dossier: Path, *, latex: bool = False) -> dict
 
 
 def grouped(spans: dict[str, list[str]], dossier: Path) -> list[tuple[str, list[str]]]:
-    """(section, its quoted citekeys) in `sections.md`'s own row order,
-    with anything unfiled last under `UNASSIGNED`.
-
-    A section whose citekeys all lack a quote is omitted entirely, so no
-    heading is left standing above nothing. Row order rather than the
-    draft's citation order because it is the order the run itself chose,
-    and it is what `citekeys_by_section` already preserves.
+    """(section, its quoted citekeys) in `sections.md`'s row order, with
+    anything unfiled last under `UNASSIGNED`; empty sections are omitted.
     """
     by_section = citekeys_by_section(dossier)
     groups = [
@@ -131,10 +81,8 @@ def grouped(spans: dict[str, list[str]], dossier: Path) -> list[tuple[str, list[
 def _blockquote(quote: str) -> str:
     """One `quote:` value as a Markdown blockquote, in quotation marks.
 
-    The value arrives already normalised by `_evidence_check.quotes`, so
-    a hand-written `quote: "..."` and a bare one render the same. Nothing
-    is stripped here: a value that still opens and closes with a mark
-    keeps it because the mark belongs to a quoted word inside it.
+    Already normalised by `_evidence_check.quotes`; a surviving outer mark
+    belongs to a quoted word, so nothing is stripped.
     """
     lines = f'"{quote.strip()}"'.splitlines()
     return "\n".join(f"> {line}" for line in lines)
@@ -143,14 +91,9 @@ def _blockquote(quote: str) -> str:
 def build(draft_text: str, dossier: Path, con, *, latex: bool = False) -> str | None:
     """The sidecar's Markdown for `draft_text`, or None if there is none.
 
-    None -- rather than an empty document -- whenever the draft cites
-    nothing, the dossier does not exist, or no cited block carries a
-    `quote:`. A caller writes a file only when this returns a string.
-
-    A cited citekey with no ledger row raises `KeyError` through
-    `reference_entries.entries`, which is AGENTS.md's citekey invariant and the
-    same contract `references.build_section` holds: a source this cannot
-    name is never printed as an unattributed quotation.
+    A cited citekey with no ledger row raises `KeyError` (AGENTS.md's
+    citekey invariant): a source this cannot name is never printed as an
+    unattributed quotation.
     """
     spans = quoted_spans(draft_text, dossier, latex=latex)
     if not spans:
@@ -162,11 +105,8 @@ def build(draft_text: str, dossier: Path, con, *, latex: bool = False) -> str | 
         out.append(f"## {title}")
         out.append("")
         for citekey in citekeys:
-            # The citekey in a code span, exactly as references.py labels
-            # a bibliography entry: it is what ties a stanza back to the
-            # draft's own `[@citekey]`, and a code span is invisible to
-            # citation_gate, so printing it here can never read as a
-            # citation.
+            # A code span, as references.py labels an entry: ties the stanza
+            # to the draft, and is invisible to citation_gate.
             out.append(f"### {attributions[citekey]} `{citekey}`")
             out.append("")
             for quote in spans[citekey]:
@@ -176,28 +116,19 @@ def build(draft_text: str, dossier: Path, con, *, latex: bool = False) -> str | 
 
 
 def sidecar_path(draft: Path, out_dir: Path, output_format: str = "md") -> Path:
-    """Where `draft`'s sidecar lands: `<stem>.evidence.<format>` in
-    `out_dir`.
-
-    One place computes this, because three things have to agree on it --
-    the writer, `_archive.py`'s export matching, and `.gitignore`.
-    """
+    """`<stem>.evidence.<format>` in `out_dir`; the writer, `_archive.py`
+    and `.gitignore` must agree on it."""
     return out_dir / f"{draft.stem}.{SUFFIX}.{output_format}"
 
 
 def write(draft: Path, out_dir: Path, draft_text: str | None = None) -> Path | None:
     """Writes `draft`'s Markdown sidecar into `out_dir`, or None if the
-    draft has no quoted evidence to show.
-
-    `draft_text` overrides what is read from disk, for a caller that has
-    already read the draft once and must not risk the two disagreeing --
-    the same override `references.write_numbered` takes, for the same
-    reason.
+    draft has no quoted evidence to show. `draft_text` overrides the disk
+    read, so the caller's copy and this one cannot disagree.
     """
     if draft_text is None:
         draft_text = draft.read_text(encoding="utf-8")
-    # Checked before the ledger is opened, so a draft with nothing quoted
-    # has no sidecar -- and needs no ledger -- rather than a refusal.
+    # Checked before the ledger opens: nothing quoted needs no ledger.
     latex = citation_gate.is_latex(draft)
     if not quoted_spans(draft_text, dossier_dir(draft), latex=latex):
         return None
@@ -219,27 +150,16 @@ def emit(draft: Path, output_format: str = "md", out_dir: Path | None = None) ->
     """The sidecar for `draft` in `output_format`, or None if there is
     nothing to emit.
 
-    Markdown is written directly; any other format is the Markdown
-    handed back to `render_output.render()`. That is safe precisely
-    because a sidecar carries no citations: citeproc has nothing to
-    resolve, so no bibliography machinery -- and no biblatex, which this
-    project does not require -- is involved in rendering one. It is also
-    why a `thesis-chapter-writer` fragment can have a sidecar at all: the
-    sidecar is a standalone document with its own preamble, never
-    something a thesis `\\input`s.
+    Non-Markdown formats go through `render_output.render()`, safe because
+    a sidecar carries no citations: no citeproc or biblatex is involved,
+    which is also why a thesis fragment can have one.
     """
-    # Deferred, and it has to be: render_output imports references and
-    # config at module scope and is reached from chitragupta/draft.py's
-    # dispatch, so importing it here at module scope would make the two
-    # packages import each other on the way up. chitragupta/render_output/
-    # _cli.py defers its own `render` import for the same reason.
+    # Deferred to avoid an import cycle with render_output (as its _cli does).
     from chitragupta.render_output import _target_dir, render
 
     draft = config.require_inside_content(draft)
-    # _target_dir rather than a bare Path(out_dir): the sidecar is
-    # verbatim quoted spans from copyrighted PDFs, and --output-dir's
-    # documented confinement to content/ was otherwise unenforced --
-    # naming a directory must not widen where this pipeline may write.
+    # _target_dir confines --output-dir to content/: the sidecar is
+    # copyrighted text.
     target = _target_dir(draft, out_dir)
     markdown = write(draft, target)
     if markdown is None or output_format == "md":
@@ -248,14 +168,8 @@ def emit(draft: Path, output_format: str = "md", out_dir: Path | None = None) ->
 
 
 def main(argv: list[str] | None = None) -> int:
-    # Imported here, before the parser is built, rather than at module
-    # scope, for the same reason `emit` defers `render`: chitragupta/
-    # render_output/ imports this package's siblings and is reached from
-    # the same chitragupta/draft.py dispatch, so a module-scope import
-    # here would be circular. `_format_arg` is the same one
-    # chitragupta/render_output/_cli.py's own --format uses (#389): a
-    # comma list silently became a literal `<stem>.md,tex,pdf` extension
-    # here too, and this is the one check, not a second copy of it.
+    # Deferred like `emit`'s import. `_format_arg` is render's own (#389):
+    # a comma list became a literal `.md,tex,pdf` extension.
     from chitragupta.render_output._cli import _format_arg
 
     parser = ClickParser(
@@ -278,40 +192,27 @@ def main(argv: list[str] | None = None) -> int:
         "Confined to content/ like every other path this writes",
     )
     args = parser.parse_args(argv)
-    # Imported here rather than at module scope for the same reason
-    # `emit` defers `render`: chitragupta/render_output/ imports this
-    # package's siblings and is reached from the same dispatch.
+    # Deferred, as above.
     from chitragupta.render_output._errors import MissingBinary
 
     try:
         out_path = emit(Path(args.input), args.output_format, args.output_dir)
     except (KeyError, config.OutsideContentDir) as exc:
-        # Both are "this sidecar can't be built, and here is why" rather
-        # than a bug: a citekey the ledger doesn't hold, or a path outside
-        # content/. Reported on stderr like every other refusal in the
-        # drafting layer instead of as a traceback.
+        # A refusal, not a bug: reported on stderr, not as a traceback.
         print(f"[error] {exc.args[0] if exc.args else exc}", file=sys.stderr)
         return 1
     except MissingBinary as exc:
         print(f"[missing-binary] {exc}", file=sys.stderr)
         return 1
     except subprocess.CalledProcessError as exc:
-        # A non-`md` sidecar goes through pandoc, so it can fail the same
-        # ways a render can. Caught for the same reason
-        # chitragupta/render_output/_cli.py catches it: every genre skill
-        # is documented to warn on `[error]`/`[missing-binary]` and carry
-        # on presenting the draft, and a traceback is not something that
-        # instruction can act on. The Markdown sidecar has already been
-        # written at this point and is still on disk, which is the useful
-        # half of the output.
+        # As render_output/_cli.py: skills warn on `[error]` and carry on,
+        # and the Markdown sidecar is already on disk.
         print(f"[error] pandoc failed: {exc.stderr or exc}", file=sys.stderr)
         return 1
 
     if out_path is None:
-        # Exit 0: a draft with no deliberate quotes has nothing to show,
-        # which is the expected answer for `tutorial-writer` and for any
-        # dossier still carrying only legacy `support:` blocks. A refusal
-        # here would train a genre skill to work around a non-problem.
+        # Exit 0: nothing to show is expected (tutorial-writer, legacy
+        # `support:` dossiers); a refusal would teach skills a workaround.
         print(f"{args.input}: no quoted evidence recorded -- no sidecar written")
         return 0
     print(str(out_path))

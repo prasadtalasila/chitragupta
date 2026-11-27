@@ -1,35 +1,16 @@
 """Collection membership: slug paths, their names, and how they match.
 
-A reference manager's collections are a judgement its owner has already
-made -- "these are the modelling papers" -- and #195 asked for it back,
-to scope a draft's retrieval to the shelf someone curated for it rather
-than to the whole library.
+Scopes a draft's retrieval to a curated reference-manager collection
+(#195). chitragupta-importer writes each entry's `cg-collections` field
+(slug paths; ancestors implied) and a `@comment{cg-collections v1 ...}`
+name table (`chitragupta/bib_comments.py`); without them there are no
+collections, which is not an error.
 
-**Where they come from.** chitragupta-importer reads the reference
-manager's own storage and writes two things into `bibliography.bib`:
-
-- each entry's `cg-collections` field, the slug path of every collection
-  the item is directly in (`digital-twin.dt-platforms, a.b`); ancestors
-  are implied, so an item in `a.b.c` is in `a` and `a.b`;
-- one `@comment{cg-collections v1 ...}` table mapping each slug path to
-  the collection's own name (read by `chitragupta/bib_comments.py`).
-
-A bib written any other way carries no collections, and every command
-behaves as it does without them: an absent field is not an error.
-
-**Why slugs.** A slug segment is lower-case `[a-z0-9-]`, frozen by the
-importer per collection id, so a collection renamed in the reference
-manager keeps its slug and a `scope.md` that recorded it keeps working.
-Two siblings with the same name get distinct slugs (`medical`,
-`medical-1`), so they can never be mixed. Slugs need no escaping and no
-shell quoting; names, which may hold `/`, `>` or `,`, are never split.
-
-**Matching is subtree, per segment.** Asking for `a.b` selects `a.b` and
-`a.b.c`, because a parent collection contains its children, but not
-`a.bc`. A user may also name a collection by its display path, the names
-from the root joined with `/`; `resolve` turns either form into one slug
-path or refuses, so a typo or an old `groups` path fails loudly instead
-of silently matching nothing.
+Slugs are frozen per collection id, so a rename keeps a recorded
+`scope.md` working and same-named siblings stay distinct; names, which
+may hold `/`, are never split. Matching is subtree per segment (`a.b`
+selects `a.b.c`, not `a.bc`), and `resolve` refuses a typo or an old
+`groups` path rather than silently matching nothing.
 """
 
 from __future__ import annotations
@@ -126,18 +107,14 @@ def _normalised_display(value: str) -> str:
 def resolve(wanted: str, names: dict[str, str], paths: Iterable[str]) -> str:
     """The one slug path `wanted` names, as a slug path or a display path.
 
-    A slug path is tried first. A display path is compared whole against
-    every rebuilt display path (case, and spacing around `/`, ignored),
-    never split, so a name holding `/` still resolves. Raises
-    `AmbiguousCollection` when it fits several and `UnknownCollection`
-    when it fits none.
+    A display path is compared whole (case and spacing around `/`
+    ignored), so a name holding `/` resolves. Raises
+    `AmbiguousCollection` or `UnknownCollection`.
     """
     shown = display_paths(names, paths)
-    # A slug is lower case by construction, so only a lower-case value is
-    # read as one: `Medical` is a name, and must not quietly become the
-    # slug `medical` when a sibling `medical-1` shares it. `scope.md`
-    # records `<slug>   # <display path>`; a note is cut only after
-    # whitespace, so a name holding `#` (`C# projects`) never is.
+    # Only a lower-case value is read as a slug, so `Medical` cannot quietly
+    # become `medical` beside a `medical-1`. A `scope.md` note is cut only
+    # after whitespace, so `C# projects` survives.
     head = re.split(r"\s+#", wanted.strip(), maxsplit=1)[0]
     if head == head.lower() and head in shown:
         return head
@@ -153,11 +130,8 @@ def resolve(wanted: str, names: dict[str, str], paths: Iterable[str]) -> str:
 def of_row(row) -> tuple[str, ...]:
     """One row's collection paths, for a row from any schema version.
 
-    Reads NULL, an absent column, malformed JSON, and a row fetched
-    without `sqlite3.Row` alike as "none recorded". A ledger is not a
-    place to raise from: a row written by a future version, hand-edited,
-    or fetched by a caller that left the default tuple row factory in
-    place should narrow a filter rather than stop a search.
+    NULL, a missing column, bad JSON or a tuple row all read as "none":
+    a ledger row should narrow a filter, never stop a search.
     """
     try:
         value = row["collections"]
@@ -171,11 +145,8 @@ def of_row(row) -> tuple[str, ...]:
 
 
 def report(rows, names: dict[str, str]) -> list[str]:
-    """The `--collections` listing: slug path, display path, paper count.
-
-    A count includes the papers in every collection beneath it, and a
-    named collection holding no papers is listed with 0, so the listing
-    is the whole tree a `--collection` filter can be given.
+    """The `--collections` listing: slug path, display path, paper count
+    (subtree included; empty named collections listed with 0).
     """
     by_citekey = [of_row(row) for row in rows]
     shown = display_paths(names, [path for paths in by_citekey for path in paths])

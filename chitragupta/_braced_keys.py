@@ -1,22 +1,16 @@
 """Pandoc's braced citation form, `@{key}`, for `chitragupta/citation_gate.py`.
 
-Split out of `citation_gate` for size; `_pandoc_cites` finds where each
-`@{` starts and this finds where it ends. Standard library only, like
-the gate.
+`_pandoc_cites` finds where each `@{` starts; this finds where it ends.
+Standard library only.
 """
 
 import bisect
 import re
 
-# Pandoc's braced form, `@{key}` / `[@{key}]`, takes any key with no
-# whitespace and balanced braces -- `@{fake.key}`, `@{a{b}c}`, even an
-# empty `@{}`. `_pandoc_cites.PANDOC_KEY` cannot spell it, since `{`
-# cannot start a bare key, so `[@{fabricated_2026}]` passed the gate as 0
-# citations while pandoc resolved it (#944). Balance is checked by
-# `braced_keys`, which a regex cannot do.
-# No real citekey is this long. A scan that reaches it without closing
-# reports what it has as a key, which no ledger holds: the gate fails
-# closed, and a run of `@{` with no space stays linear.
+# `@{key}` takes any brace-balanced key without whitespace, which
+# `PANDOC_KEY` cannot spell, so `[@{fabricated_2026}]` once passed the gate
+# as 0 citations (#944). Past this length a scan reports what it has as a
+# key no ledger holds: fail closed, and stay linear.
 BRACED_KEY_LIMIT = 512
 
 

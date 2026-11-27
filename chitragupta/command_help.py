@@ -1,15 +1,9 @@
 """Every layer's one-line help, and its verbs', in one import-light table.
 
-`chitragupta --help` prints a two-level tree of every layer and its verbs
-(#1230). It cannot read that tree off the layers themselves:
-`chitragupta/draft.py` imports every verb module when it loads, and
-`enrich`'s imports are absent unless the optional group is installed, so
-asking for help would cost hundreds of imports or fail outright. This
-module is the one place each help line is written. The dispatchers read
-it back for their own lists, which is what keeps the tree and the layers
-from drifting apart.
-
-Data only, standard library only, importing nothing from this package.
+`chitragupta --help` prints every layer's verbs (#1230) without
+importing the layers, which would be slow or fail without the enrich
+extra. Dispatchers read their lists back from here, so tree and layers
+cannot drift. Data only, standard library only.
 """
 
 # `{name: (one_line, {verb: help})}`, in the front door's dispatch order

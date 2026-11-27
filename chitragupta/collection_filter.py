@@ -1,16 +1,9 @@
 """`--collection`, resolved once against the ledger and applied the same
 way by every command that takes it.
 
-`chitragupta/bib_collections.py` decides what a value means (a slug path,
-or a display path rebuilt from the importer's name table) and what is in
-a subtree; this module supplies the ledger's side of that -- the names
-the last sync recorded and every slug path any item holds -- and the
-refusal a command prints when a value names no collection, or several.
-
-A refusal exits 2 rather than returning nothing: an empty result reads
-as "the shelf has no such paper", which is the wrong conclusion to draw
-from a typo, a renamed collection's old display path or a scope recorded
-as a `groups` path before 7.0.0.
+A value naming no collection, or several, exits 2 rather than returning
+nothing, which would read as "no such paper" after a typo or an old
+`groups` path.
 """
 
 from __future__ import annotations
@@ -64,12 +57,9 @@ def refusal(exc: ValueError) -> list[str]:
 
 
 def resolve_args(args) -> bool:
-    """Replace `args.collection` with its slug path, in place.
-
-    False, with the refusal printed, when it names no collection or
-    several; True otherwise, including when there is no `--collection`.
-    Resolving here, before the search, is what lets `--log` record the
-    slug the search actually ran against.
+    """Replace `args.collection` with its slug path, in place; False, with
+    the refusal printed, when it names none or several. Resolved before
+    the search so `--log` records the slug actually used.
     """
     collection = getattr(args, "collection", None)
     if collection is None:

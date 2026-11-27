@@ -1,12 +1,9 @@
 """What chitragupta-importer writes into a bib besides the entries.
 
-`chitragupta/bib_reader.py` stays the only reader of `bibliography.bib`;
-this module is the part of that read concerned with the importer's
-format (plans/1211-cg-collections-and-renames.md): its two `@comment`
-tables, read through `chitragupta/bib_comments.py`, and the one-line
-notices for a bib or config still set up for the `groups` field that
-7.0.0 stopped reading. Every warning is printed here, during sync, so a
-problem is named once per run rather than by every command.
+The importer's two `@comment` tables (via `bib_comments`) and notices
+for a bib or config still set up for the `groups` field 7.0.0 stopped
+reading (plans/1211-cg-collections-and-renames.md). Warnings are
+printed here, during sync, so each problem is named once per run.
 """
 
 from __future__ import annotations

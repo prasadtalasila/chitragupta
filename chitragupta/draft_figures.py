@@ -1,39 +1,15 @@
 """What a paper's figures are, for a drafting session that wants to
 consider one -- `python -m chitragupta.draft figures <citekey>`.
 
-**Why this exists at all.** `chitragupta/retrieval.py` indexes
-`content/parsed/<citekey>.txt` and nothing else, so that file is the
-whole of what a genre skill can read. Prose is in it; table cell text is
-in it; decoded equations reach it too since #651, because a decoded
-formula is LaTeX and LaTeX is text. A *bitmap* cannot be. Figures were
-therefore the one modality with no route to the drafting stage rather
-than a route that needed widening -- 8,769 crops and 497
-`<stem>.figures.json` indexes existed on disk with no reader anywhere in
-the repository.
+Retrieval reads only parsed text, and a bitmap cannot be text, so figure
+indexes had no reader. **Consider, never replicate:** this returns a
+caption, page, citation string and path as a reading aid; a source
+figure is never put in a draft (docs/CONFIG.md, `docling_images`).
+#627's rejection of vision captioning bound the corpus layer, not this.
 
-**Consider, never replicate.** This hands back a caption, a page, a
-citation string and a path. It is a *reading aid*: look at the figure to
-ground a claim about what a paper shows, or to inform a diagram you are
-drawing yourself. It is never an instruction to put someone else's image
-in a draft. `docs/CONFIG.md`'s `docling_images` section states the
-position -- having a paper in your library grants no right to reproduce
-its figures -- and this implements it rather than revisiting it.
-
-#627 measured and rejected vision captioning of figures because it would
-have put generated text in the *corpus* layer, which may not call an LLM.
-That does not bind this: a drafting-time reader writes nothing back, and
-only the draft changes.
-
-**The layer rule, in the direction that is easy to get wrong.**
-AGENTS.md has the enrichment layer importing nothing from the drafting
-or review layers. A drafting module importing `chitragupta.enrich` would
-be the mirror-image violation, and would drag that layer's optional
-dependencies into an ordinary drafting run. So `content/docling/` is read
-here as a *path*, never through its writer -- exactly as
-`chitragupta/passages.py`'s rung 1 already reads the passage sidecar
-from the same directory. A test asserts the absence of that import,
-because it is the kind of thing a later convenience edit adds without
-noticing.
+`content/docling/` is read as a path, never through `chitragupta.enrich`,
+which would drag the optional stack into drafting; a test asserts the
+import stays absent.
 """
 
 import json
@@ -44,11 +20,8 @@ from chitragupta.citekey_safety import citekey_path
 from chitragupta.progname import prog_for
 from chitragupta.help_format import ClickParser
 
-# Said once, here, so the CLI and any other caller quote the same
-# command. Naming the stage rather than the bare entry point matters: a
-# full `python -m chitragupta.enrich` also runs embeddings and topic
-# modelling, which is a much longer answer to "why can't I see the
-# figures".
+# Names the stage: a full `python -m chitragupta.enrich` is a much longer
+# answer to "why can't I see the figures".
 _NOT_ENRICHED = (
     "no figure index for {citekey} -- the enrichment layer's docling stage "
     "has not run for it. `python -m chitragupta.enrich --stages docling` "
@@ -59,15 +32,9 @@ _NOT_ENRICHED = (
 class FigureIndexError(ValueError):
     """A figure index names an image outside `content/docling/`.
 
-    Raised, not skipped and not rewritten (issue 875). The index is a
-    file on disk like any other -- a restored backup, a hand edit, a
-    shared `content/` -- and its `image` value used to be joined into a
-    path unchecked, so a tampered one pointed `image_path` at any file
-    on the host and this command offered it as a figure to look at.
-    Dropping the one record would hide that the index is no longer what
-    the enrichment layer wrote, and sanitising the name would invent a
-    figure nobody recorded; refusing says which, and the remedy is to
-    re-run the docling stage for that citekey.
+    Raised, not skipped or rewritten (issue 875): a tampered index once
+    offered any host file as a figure. Refusing says the index is not
+    what enrich wrote; the remedy is re-running the docling stage.
     """
 
 
@@ -75,12 +42,8 @@ def _image_path(name: str, citekey: str) -> str:
     """`name` joined under `content/docling/`, once it is certain it
     lands there.
 
-    Where it *lands* is the rule, not its shape: the enrichment layer
-    writes `<stem>_artifacts/picture_N.png`, two components, so "one
-    path component" would refuse every real index. Resolving can raise
-    rather than answer -- a NUL byte gives `ValueError`, and a name the
-    platform will not accept gives `OSError` -- and both are refusals. A
-    symlink loop is one too, answered by `resolves_inside` itself.
+    Where it lands is the rule, not its shape (real names have two
+    components). Resolution errors and symlink loops are refusals.
     """
     path = config.DOCLING_DIR / name
     try:
@@ -101,26 +64,11 @@ def figures(citekey: str) -> "tuple[list | None, str | None]":
     """`(records, None)` for a citekey whose figure index exists, or
     `(None, reason)` for one whose does not.
 
-    The two are deliberately different answers, and an empty list is the
-    *first* of them: "this paper has no figures" and "nothing has looked
-    at this paper yet" are only one word apart in English and nothing
-    like each other in what they ask of the reader -- one is a fact about
-    the paper, the other is a corpus-wide enrichment run they have not
-    done. Collapsing both to `[]` would routinely send someone off to
-    spend an hour on the wrong one.
-
-    Raises `KeyError` for a citekey the ledger does not have, which is a
-    third thing again -- almost always a typo, and the answer to it is
-    never "run the enrichment layer".
-
-    Each record gains `image_path`: the record stores a name relative to
-    the `.md`'s own directory, which is what keeps `content/docling/`
-    movable as a unit, and a caller handed that raw cannot open it
-    without knowing so.
-
-    Raises `FigureIndexError` for an index whose `image` lands outside
-    `content/docling/` -- a fourth answer, and the only one that says
-    the index itself cannot be trusted.
+    "No figures" (`[]`) and "not enriched yet" ask different things of
+    the reader, so they stay distinct. Raises `KeyError` for a citekey not
+    in the ledger, and `FigureIndexError` for an untrustworthy index.
+    Each record gains `image_path`, since the stored name is relative to
+    the `.md`'s directory.
     """
     with ledger.reading() as con:
         row = con.execute("SELECT title FROM items WHERE citekey = ?", (citekey,)).fetchone()
@@ -139,9 +87,8 @@ def figures(citekey: str) -> "tuple[list | None, str | None]":
 
 
 def _print_human(citekey: str, records: list) -> None:
-    """One block per figure. The citation string is printed first because
-    it is the part that belongs in a draft -- the image path is the part
-    that does not."""
+    """One block per figure, the citation string first: it belongs in a
+    draft, the image path does not."""
     if not records:
         print(f"{citekey}: no figures recorded in its docling parse.")
         return
@@ -171,14 +118,11 @@ def main(argv: "list[str] | None" = None) -> int:
     try:
         records, reason = figures(args.citekey)
     except KeyError as exc:
-        # Same shape as `retrieve evidence`'s refusal: named on stderr,
-        # non-zero, because a citekey that does not exist is a caller
-        # error and not a fact about the corpus.
+        # A caller error, not a fact about the corpus.
         print(f"[error] {exc}", file=sys.stderr)
         return 1
     except FigureIndexError as exc:
-        # Nothing on stdout: a `--json` caller must not be handed a
-        # half-trusted list of figures.
+        # Nothing on stdout: `--json` must not get a half-trusted list.
         print(f"[error] {exc}", file=sys.stderr)
         return 1
 
@@ -188,17 +132,10 @@ def main(argv: "list[str] | None" = None) -> int:
         print(reason)
     else:
         _print_human(args.citekey, records)
-    # Zero either way once the citekey is real: "not enriched yet" and "no
-    # figures" are both true answers about the corpus, and this layer's
+    # Zero either way: "not enriched" and "no figures" are true answers;
     # read-only lookups never fail a caller for what the corpus contains.
-    # The refused index above is not such an answer -- it says the index
-    # cannot be believed about anything.
     return 0
 
 
-# Deliberately no `if __name__ == "__main__"` block. The drafting layer is
-# one entry point one level deep -- `python -m chitragupta.draft figures`
-# -- and no module beside `draft.py` carries one, so `python -m
-# chitragupta.draft_figures` imports this and exits 0 without doing
-# anything. docs/ARCHITECTURE.md states the invariant and
-# tests/test_draft_entrypoint.py enforces it per module.
+# No `__main__` block: `python -m chitragupta.draft figures` is the entry
+# (docs/ARCHITECTURE.md; tests/test_draft_entrypoint.py).

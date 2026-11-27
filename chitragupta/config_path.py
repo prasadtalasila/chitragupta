@@ -1,31 +1,11 @@
 """Path containment: is a path inside `content/`, and where does one
 `content/` subtree's path land under another.
 
-Split from `chitragupta/config.py` (#441). Re-exported through
-`config.py`'s own shim (`from chitragupta import config_path` there)
-rather than requiring every one of this module's many callers --
-`render_output`, `citation_gate`, `references`, `review`, `dossier` --
-to add a second tier-1 import alongside `config`, which would widen a
-contract `docs/ARCHITECTURE.md` documents explicitly. `config.py` still
-owns `CONTENT_DIR` itself; `require_inside_content` reads it as
-`config.CONTENT_DIR` (a live attribute lookup on the shared `config`
-module), not a bare name imported at this module's own load time --
-`tests/conftest.py`'s `isolated_config` fixture patches
-`config.CONTENT_DIR` directly, and a bare import here would keep
-reading the value from before that patch.
-
-The `from chitragupta import config` this needs is deferred inside
-`require_inside_content` rather than sitting at module level, for the
-same reason `chitragupta/enrich/_docling_pool.py` defers its own
-back-import: `config.py` imports *this* module (to re-export these four
-names), so if this module is ever imported before `config.py` is (a
-bare `import chitragupta.config_path`, or any other module reaching it
-first), a top-level `from chitragupta import config` here would resume
-`config.py`'s own in-progress execution, hit its `from
-chitragupta.config_path import (...)` line, and find this module still
-mid-import -- an `ImportError` on a name that exists moments later.
-Deferring the import until the function actually runs sidesteps the
-partial-initialization window entirely.
+Split from `chitragupta/config.py` (#441), which re-exports it.
+`CONTENT_DIR` is read as `config.CONTENT_DIR` at call time, so
+`isolated_config`'s patch is seen, and `config` is imported inside the
+function: `config.py` imports this module, so a top-level import would
+hit a partially initialised `config`.
 """
 
 import os
@@ -36,32 +16,19 @@ from pathlib import Path
 class OutsideContentDir(RuntimeError):
     """A path a tool was asked to read or write lies outside CONTENT_DIR.
 
-    Raised rather than worked around. Every path this pipeline reads or
-    writes lives under `content/`, which is what makes a `dossier export`
-    or a copy of that one directory a complete record of the work -- a
-    draft kept somewhere else is invisible to backup, to `dossier`, and
-    to every later revision.
+    Raised, not worked around: `content/` being the whole record of the
+    work is what makes a `dossier export` complete.
     """
 
 
 def resolves_inside(path: Path, root: Path) -> bool:
-    """Whether `path` really lives under `root`, once both are resolved.
+    """Whether `path` really lives under `root`, once both are resolved,
+    so symlinks and `..` answer for where they land.
 
-    Resolving both sides is the whole point: it is what makes a symlink
-    and a `..` component answer for where they actually land rather than
-    for how they are spelled.
-
-    A symlink loop lands nowhere, so it is not inside anything. That is
-    said here rather than left to `Path.resolve()`, which disagrees with
-    itself across supported Pythons: 3.12 and 3.13 raise `RuntimeError`,
-    which no caller caught, and 3.14 answers with the link itself, which
-    looks inside. `os.path.realpath` stops at a loop on every version
-    without raising, so a result that is still a symlink is a loop.
-
-    A NUL byte raises `ValueError`, the refusal every caller catches.
-    `realpath` raises it on POSIX but returns the path untouched on
-    Windows, where `Path.resolve()` used to raise it from a check of its
-    own, so it is raised here rather than left to the platform.
+    A symlink loop is not inside anything: `Path.resolve()` raises on
+    3.12/3.13 and returns the link on 3.14, while `os.path.realpath` stops
+    at the loop on every version. A NUL byte raises `ValueError` here,
+    since Windows `realpath` would not.
     """
     if "\0" in os.fspath(path):
         raise ValueError(f"embedded null byte in {os.fspath(path)!r}")
@@ -75,38 +42,13 @@ def confined_path(value: "str | Path | None", root: Path) -> "Path | None":
     """`value` as a path, or `None` -- reported, never silently -- when
     it does not land inside `root`.
 
-    For the two path-shaped strings this pipeline is *handed* rather
-    than computes: `parsed_path`/`pdf_path` read back out of a ledger
-    row (which reach here through `ledger_paths`, stored relative to
-    their root and anchored at it before this check), and the path
-    inside a bib entry's `file` field (issue 821).
-    Both are data some other tool wrote -- a reference manager, an
-    older release, a collaborator's export, a hand edit of a gitignored
-    sqlite file -- so both can name any file on the host, and every
-    consumer used to open whichever one they named. That made
-    `~/.ssh/id_rsa` indexable as a paper's parsed text, and quotable
-    into a draft as corpus evidence.
-
-    Returns a value rather than raising because the callers are bulk
-    readers over a whole corpus, and one refused row must not take the
-    other six hundred down with it. `None` is the answer they already
-    have a branch for -- "nothing readable here" -- so a refused row
-    reads as unparsed rather than as a new kind of failure. An absent
-    or empty value returns `None` too, and *silently*, because that is
-    the routine case: most rows in a fresh ledger have no parsed text
-    yet, and a warning per row would bury the one that matters.
-
-    The refusal itself is never quiet. This project's own named worst
-    failure mode is the silent skip that drops a paper from the corpus,
-    so a refusal names the offending value and the root it had to land
-    under, on stderr, leaving stdout clean for the `--json` callers.
-
-    `resolves_inside` resolves both sides, which is what makes a symlink
-    answer for where it actually lands -- the case that matters on a
-    shared `content/`, where the name can be inside the corpus and the
-    bytes outside it. Resolving can also raise rather than answer: a NUL
-    byte gives `ValueError`, and a name the platform will not accept
-    gives `OSError` on Windows. Both are refusals, not crashes.
+    For paths this pipeline is handed (ledger `parsed_path`/`pdf_path`,
+    a bib `file` field, issue 821): another tool wrote them, and
+    `~/.ssh/id_rsa` became quotable corpus evidence. Returns rather than
+    raises so one refused row does not stop a bulk read. Absent values
+    return `None` silently (the routine case); a refusal is printed to
+    stderr, keeping stdout clean for `--json`. Resolution errors
+    (`ValueError`, Windows `OSError`) are refusals, not crashes.
     """
     if not value:
         return None
@@ -126,44 +68,15 @@ def confined_path(value: "str | Path | None", root: Path) -> "Path | None":
 
 
 def mirrored_dir(path: Path, source_root: Path, target_root: Path) -> "Path | None":
-    """`target_root` carrying `path`'s own place under `source_root`.
+    """`target_root` carrying `path`'s own place under `source_root`, the
+    rule drafts, renders, dossiers and reviews share per topic.
 
-    The one rule four directories under `content/` obey: a draft at
-    `content/drafts/<topic>/survey.md` has its renders at
-    `content/rendered/<topic>/`, its dossier at
-    `content/dossiers/<topic>/survey/`, and its review reports at
-    `content/review/<topic>/`. One topic directory, one draft's worth of
-    everything.
-
-    Returns `None` when `path` is not under `source_root`, rather than
-    picking an answer, because the callers disagree about what that means
-    and each is right for itself. `render_output._output_dir` and
-    `review.report_path` fall back to the flat target directory: both
-    accept an input that is legitimately elsewhere under `content/`, and
-    writing its output flat is a better answer than refusing to produce
-    any. `dossier.dossier_dir` raises, because a dossier written
-    somewhere unmirrored would be found by nothing later. Policy stays
-    with the caller; only the rule lives here.
-
-    Note this says nothing about which inputs a caller will *accept* --
-    that is a separate decision each one makes for itself, before it gets
-    here (`render_output` and `references` confine reads to `content/`
-    with `require_inside_content`, and `review.require_reviewable` does
-    the same for every review aid).
-
-    Only the part of `path` *below* `source_root` is ever carried over,
-    and both sides are resolved before being compared, so the result can
-    hold neither a `..` nor a symlink's spelling. It is still the
-    caller's job to check the result resolves inside `target_root`:
-    `source_root` and `target_root` are configuration, and a symlinked
-    one can land outside without any argument being at fault.
-
-    Lives here rather than in either caller because `chitragupta/render_output/`
-    is committed to stdlib plus `config`/`citation_gate`/`references` so a
-    genre skill can render under bare `python` -- it cannot import
-    `chitragupta/dossier/`, and before this the rule was written out three times
-    and missed in a fourth place (`citation_provenance`), which is how
-    two drafts named `survey.md` came to share one report.
+    `None` when `path` is not under `source_root`; the caller decides
+    (render/review fall back flat, the dossier raises). Only the part
+    below `source_root` is carried, so the result holds no `..`, but the
+    caller must still confine it to `target_root`. Lives here because
+    render_output cannot import `dossier/`, and copies of the rule let two
+    `survey.md` drafts share one report.
     """
     try:
         relative = Path(path).resolve().relative_to(Path(source_root).resolve())

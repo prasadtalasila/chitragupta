@@ -1,26 +1,10 @@
 """The `@comment` tab tables chitragupta-importer writes into a bib.
 
-The importer puts small lookup tables at the top of `bibliography.bib`,
-each an `@comment{<name> v<N>` block of tab-separated rows. Two exist:
-`cg-collections` (slug path, the collection's own name; read by
-`chitragupta/bib_collections.py`) and `cg-renames` (old citekey, new
-citekey; read by `chitragupta/sync_renames.py`). BibTeX and biber ignore
-comments, so the bib stays valid for every other tool, and chitragupta
-keeps reading one file.
-
-**Read from the raw text, not from bibtexparser.** bibtexparser 1.x
-expands the tabs inside a comment into spaces, and a tab is the only
-separator these rows have. So `comment_blocks` scans the raw bib for
-`@comment{...}` itself, matching braces and skipping the `\\{`/`\\}`
-escapes the importer writes inside a name.
-
-**Tolerant of a newer importer.** Each row's first two tab-separated
-fields are read whatever the block's version; further fields are
-ignored, and a row whose first field the caller rejects is skipped and
-kept for the warning. The version is returned rather than enforced: a
-caller flags one other than `KNOWN_VERSION` (`chitragupta/bib_reader.py`
-makes it a bib-integrity problem) instead of throwing away data that is
-very likely still right.
+`cg-collections` (read by `bib_collections`) and `cg-renames` (read by
+`sync_renames`); BibTeX ignores comments, so the bib stays valid. Read
+from the raw text: bibtexparser 1.x expanded the tabs that are the only
+separator. Tolerant of a newer importer: extra fields are ignored, and
+the version is returned for the caller to flag, not enforced.
 """
 
 from __future__ import annotations

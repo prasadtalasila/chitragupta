@@ -1,45 +1,23 @@
 """What pandoc's Markdown reader does not read as prose, found by block structure.
 
-Standard library only, like `citation_gate` itself. The reasoning, and
-where this must not err, is the comment below.
+Standard library only, like `citation_gate`. See the comment below for
+where this must not err.
 """
 
-# The citation gate has to extract exactly the citations pandoc will
-# resolve (#944). It used to blank code with a line-pairing pass over the
-# whole file and a one-line inline-code regex, and every construct that
-# pass did not know about was a disagreement with pandoc in one direction
-# or the other:
+# The gate must extract exactly the citations pandoc resolves (#944); a
+# line-pairing pass disagreed with pandoc on fences in comments (#945),
+# code under list items (#946), comments, link targets and reference
+# definitions. This is one pass over pandoc's block structure, containers
+# parsed recursively; each rule was checked against `pandoc -t json`, and
+# tests/test_citation_gate_pandoc.py keeps that comparison running.
 #
-# - a fence line inside an HTML comment opened a phantom fence, and an
-#   unclosed fence ran to the end of the file, so every later citation,
-#   fabricated or not, read as 0 citations (#945; pandoc reads neither
-#   as code);
-# - a fence or indented code under a list item or blockquote was measured
-#   from the file's left edge rather than from its container, so a
-#   `@dataclass` under a numbered step read as a citation (#946);
-# - `<!-- [@key] -->`, a link target `[t](http://x/@y)` and a reference
-#   definition were scanned as prose, which pandoc never does.
+# **Where it must not err.** Blanking prose pandoc reads makes a citation
+# vanish from the gate, so a construct is blanked only when complete, and
+# an unplaceable container is read as a larger indent. Known safe-side
+# gaps: `$math$` and raw inline HTML other than comments.
 #
-# This is one left-to-right pass over pandoc's own block structure:
-# blockquotes and list items are stripped of their prefixes and parsed
-# recursively, the way pandoc parses them, and inline constructs are
-# scanned paragraph by paragraph so whichever opens first wins. The rules
-# below were each checked against `pandoc -f markdown -t json`, and
-# `tests/test_citation_gate_pandoc.py` keeps that comparison running.
-#
-# **Where it must not err.** Blanking prose pandoc reads is the dangerous
-# direction: a citation there vanishes from the gate. So every construct
-# is blanked only when it is complete (a fence with its closer, a comment
-# with its `-->`), and a container this cannot place is read as a larger
-# indent rather than a smaller one, which can only leave more text
-# unblanked. Not blanking something pandoc ignores is the safe direction,
-# and two such gaps are known: `$math$`, and raw inline HTML other than a
-# comment. Each can only report a citation pandoc would not resolve.
-#
-# Linear in the input, as the gate hook needs (#824): fence closers, code
-# span closers and comment closers are each found by an index or a
-# memoised search, never by re-scanning from every opener, and containers
-# deeper than `_MAX_DEPTH` are read as prose instead of recursing.
+# Linear (#824): closers come from an index or memoised search, and
+# containers deeper than `_MAX_DEPTH` are read as prose.
 
 import re
 
@@ -58,41 +36,32 @@ from chitragupta._markdown_lines import (
 )
 from chitragupta._markdown_marks import ContainerText, Found
 
-# Containers nested deeper than this are read as prose, not parsed: a
-# line of a thousand `>` would otherwise recurse past Python's limit.
+# A thousand `>` would otherwise recurse past Python's limit.
 _MAX_DEPTH = 32
 
-# A fence opener after at most three spaces: three or more of one
-# character, then optionally one attribute block or one word, then
-# nothing. Anything more ("``` bash -c ``` runs") is not a fence to
-# pandoc, which reads that line as an inline code span instead.
+# A fence opener: three or more of one character, then at most one
+# attribute block or word; more makes it an inline code span to pandoc.
 _FENCE_RE = re.compile(r"(`{3,}|~{3,})[ \t]*(?:\{[^}\n]*\}|\S+)?[ \t]*\r?$")
-# Raw LaTeX, which pandoc hands to LaTeX unread: a `\\citep{}` inside is
-# live in a LaTeX render, so the block is left for the gate to scan.
+# Raw LaTeX: a `\\citep{}` inside is live in a LaTeX render, so not blanked.
 _RAW_TEX_RE = re.compile(r"\{=(?:latex|tex)\}")
-# Every marker pandoc's markdown reader opens a list item, definition or
-# example with. Recognising one pandoc would not costs nothing but a
-# larger indent; missing one would read its indented paragraphs as code.
+# Every pandoc list/definition/example marker. A false match costs only a
+# larger indent; a miss would read indented paragraphs as code.
 _ITEM_RE = re.compile(
     r"(?:[-*+]|\d{1,9}[.)]|#[.)]|\(\d{1,9}\)|[A-Za-z][.)]|\([A-Za-z]\)"
     r"|[ivxlcdmIVXLCDM]+[.)]|\([ivxlcdmIVXLCDM]+\)|\(@[\w-]*\)|@[\w-]*[.)]|[:~])(?=[ \t]|$)"
 )
-# The two of those markers that name an example: `(@label)`, `@label)`
-# and `@label.`. A label they define makes every `@label` outside a
-# bracketed citation an example reference rather than a citation (#1021).
+# Example markers. A label they define makes `@label` outside a bracketed
+# citation an example reference, not a citation (#1021).
 _EXAMPLE_RE = re.compile(r"\(@([\w-]+)\)|@([\w-]+)[.)]")
-# A line of only `-`, `=`, `|`, `:` and `+` under one: a setext underline
-# or a table's delimiter row, either of which pandoc reads before a list
-# item, so the line above defines no example label. Broader than either,
-# deliberately: a label wrongly missed only over-reports.
+# A setext underline or table delimiter row, which pandoc reads before a
+# list item. Deliberately broad: a missed label only over-reports.
 _UNDERLINE_RE = re.compile(r"[ \t|:+]*[-=][-=|:+ \t]*\r?$")
 _DEFINITION_RE = re.compile(r"[:~](?=[ \t])")
 _FOOTNOTE_RE = re.compile(r"\[\^[^\]\s]+\]:")
 _ATX_RE = re.compile(r"#{1,6}(?=[ \t]|$)")
 # A rule, which pandoc tries before a list marker: `-   ---` is a rule.
 _RULE_RE = re.compile(r"([-*_])(?:[ \t]*\1){2,}[ \t]*\r?$")
-# A reference definition is not prose, label included -- unless the
-# label is a citation, which pandoc reads as one (`[@k]: x` cites `k`).
+# Not prose, unless the label is a citation (`[@k]: x` cites `k`).
 _REFERENCE_RE = re.compile(
     r"\[(?![\^@]|-@)[^\]\n]+\]:[ \t]*(?:<[^>\n]*>|\S+)"
     r"(?:[ \t]+(?:\"[^\"\n]*\"|'[^'\n]*'|\([^)\n]*\)))?[ \t]*\r?$"
@@ -124,11 +93,9 @@ class _Container(ContainerText):
 
     def interrupts(self, row: int) -> bool:
         """Does `row` end the paragraph above it?"""
-        # Pandoc's markdown wants a blank line before most blocks, so the
-        # list is short: a complete backtick fence (a tilde fence does not
-        # interrupt), a list marker inside a list item, and -- read as
-        # interrupting because missing one costs a citation -- a
-        # definition or footnote marker.
+        # Short, since pandoc wants a blank line before most blocks. A
+        # definition or footnote marker interrupts because a miss would
+        # cost a citation; a tilde fence does not.
         line = self.lines[row]
         columns, chars = indent(line)
         if columns >= 4:
@@ -159,8 +126,7 @@ class _Container(ContainerText):
             return row + 1
         columns, chars = indent(line)
         if columns >= 4:
-            # Indented code, which cannot interrupt a paragraph: every
-            # paragraph is consumed whole below, so this is a block start.
+            # Indented code; paragraphs are consumed whole, so a block start.
             end = row
             while end < len(self.lines) and (
                 is_blank(self.lines[end]) or indent(self.lines[end])[0] >= 4
@@ -193,9 +159,8 @@ class _Container(ContainerText):
         return None
 
     def _fence(self, row: int) -> "int | None":
-        """A fence is code only with its closer: pandoc reads an unclosed
-        one as a paragraph, so blanking to the end of the file hid every
-        later citation from the gate (#945)."""
+        """Code only with its closer: blanking an unclosed fence hid every
+        later citation (#945)."""
         end = self.fence_at(row)
         if end is None:
             return None
@@ -243,13 +208,10 @@ class _Container(ContainerText):
         return end
 
     def _item(self, row: int, marker_end: int, footnote: bool) -> int:
-        """A list item, definition or footnote, with its content column.
-
-        The column is the first non-space after the marker -- or one past
-        the marker when five or more spaces follow it, since the item
-        then opens with indented code -- and a footnote's is four.
-        Continuation lines indented to it belong to the item, as do the
-        lazy lines pandoc accepts straight after a non-blank one."""
+        """A list item, definition or footnote, with its content column:
+        the first non-space after the marker, or one past it when 5+
+        spaces open indented code; a footnote's is four. Indented and lazy
+        continuation lines belong to the item."""
         line = self.lines[row]
         after = drop(line, marker_end)
         gap, gap_chars = indent(after)
@@ -316,12 +278,8 @@ def non_prose_spans(text: str, *, code_only: bool = False) -> list[tuple[int, in
 
 def prose(text: str) -> tuple[str, set[str]]:
     """`blank(text)` and the example-list labels `text` defines, from one
-    scan, since the gate needs both and the scan is its heaviest pass.
-
-    Only a marker that opens a list item defines a label: in code, a
-    comment, a heading or a lazy paragraph line, `(@label)` is a
-    citation to pandoc, and reading it as a definition would hide every
-    `@label` in the file from the gate (#1021)."""
+    scan. Only a list-item marker defines a label; elsewhere `(@label)` is
+    a citation, and reading it as a definition would hide `@label` (#1021)."""
     found = _scan(text)
     return _blanked(text, [(start, end) for start, end, _ in found.spans]), found.labels
 

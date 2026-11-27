@@ -1,45 +1,28 @@
 """The `file` field the way reference managers actually escape it (#964).
 
-A `file` field holds `Desc:path:mimetype` triples separated by `;`, and
-the exporters escape exactly the characters that would otherwise be read
-as one of those two delimiters, plus the escape itself:
-
-- Zotero and Better BibTeX write a Windows path as
-  `C\\:\\\\Users\\\\me\\\\x.pdf`, the drive colon and every backslash
-  escaped;
-- a `;` that belongs to a file name is written `\\;`;
-- JabRef writes the same triple with an empty description, `:path:PDF`.
-
-Splitting on a bare `:` rebuilt `C\\:\\Users\\me\\x.pdf`, which exists
-nowhere, so every attachment of a Windows library resolved to "no PDF"
-and sync exited 3.
-
-A module of its own, beside `bib_reader` rather than inside it, for two
-reasons: `bib_reader` is close to the 250-line ceiling, and this half is
-stdlib-only where `bib_reader` needs bibtexparser, so a bare-python
-caller can read a stored field without the parser.
+Exporters escape `:`, `;` and `\\` in `Desc:path:mimetype` triples, so a
+Windows path arrives as `C\\:\\\\Users...`; splitting on a bare `:` made
+every Windows attachment "no PDF" and sync exited 3. Stdlib-only, so a
+bare-python caller can read a stored field without bibtexparser.
 """
 
 import re
 
-# Exactly the three escapes the exporters write. `\\n` or `\\x` in a path
-# is a backslash followed by a letter, and stays one.
+# Exactly the three escapes exporters write; `\\n` stays a backslash and n.
 _ESCAPE = re.compile(r"\\([\\:;])")
 
 
 def split_unescaped(value: str, sep: str) -> list[str]:
     """`value` split on every `sep` no backslash escapes, escapes kept.
 
-    A character scan rather than `re.split(r"(?<!\\\\):")`: a lookbehind
-    sees `\\\\:` -- an escaped backslash, then a real separator -- as an
-    escaped separator, which is the drive-letter shape this exists for.
+    A scan, not a lookbehind split: `(?<!\\\\):` misreads `\\\\:` (escaped
+    backslash, then a separator), the drive-letter shape.
     """
     pieces, current = [], []
     chars = iter(value)
     for char in chars:
         if char == "\\":
-            # The escape and the character it escapes travel together, so
-            # neither half is mistaken for a separator or a new escape.
+            # The escape travels with its character, so neither half splits.
             current.append(char + next(chars, ""))
         elif char == sep:
             pieces.append("".join(current))

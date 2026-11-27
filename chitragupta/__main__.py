@@ -18,33 +18,19 @@ installed rather than cloned (#258):
     chitragupta figure new DIR NAME --layout ID ... start a figure from a scaffold (#1052)
     chitragupta figure look FILE [--draft DRAFT] ... see one figure as it will print (#1052)
 
-**This adds a front door, not a command surface.** Every verb, flag and
-exit code below belongs to the layer it dispatches to, unchanged. Like
-`chitragupta/draft.py`, this file parses exactly one thing -- the layer
-name -- and forwards everything after it verbatim, because restating a
-layer's flags here would be a second place for them to drift out of sync
-with what the layer actually does.
+**A front door, not a command surface.** Like `chitragupta/draft.py`,
+this parses only the layer name and forwards the rest verbatim, so a
+layer's flags cannot drift.
 
-**The module form keeps working, and that is a decision rather than an
-accident.** `python -m chitragupta.<layer> <verb>` is what
-`.claude/hooks/` and the genre skills invoke. A console script lives in
-one venv's `bin/`; the module form resolves from any interpreter that can
-import the package. docs/CLI.md records why tier 1 exists at all -- the
-gate chain must not be blockable by a broken venv -- and
-`chitragupta/hook_launchers.py` records the measurement behind it: a hook
-launcher that does not resolve produces *nothing at all*, no error and no
-log line. Routing the citation gate through a PATH lookup that can
-silently miss would be the worst change available in this series. So the
-console script is for humans, the module form is for machines, and both
-are supported on purpose.
+**The module form keeps working on purpose.** `python -m
+chitragupta.<layer>` is what hooks and skills invoke: a console script
+lives in one venv's `bin/`, and a hook launcher that does not resolve
+fails silently (`chitragupta/hook_launchers.py`), so the gate must not
+depend on a PATH lookup. The console script is for humans.
 
-On the command-depth invariant (#144): it is unchanged, only restated.
-The rule forbids reaching *into* a layer's package from the command line
--- `python -m chitragupta.a.b` -- and `chitragupta review verbatim scan`
-does no such thing. It is one layer, one aid, and one aid-subcommand
-owned by that aid's own parser, exactly as `python -m chitragupta.review
-verbatim scan` already was. docs/ARCHITECTURE.md states the invariant in
-its restated form; docs/PACKAGING.md carries the command surface.
+The command-depth invariant (#144) is unchanged: `chitragupta review
+verbatim scan` is one layer, one aid and that aid's own subcommand.
+docs/ARCHITECTURE.md states it; docs/PACKAGING.md carries the surface.
 """
 
 import argparse
@@ -55,11 +41,8 @@ from chitragupta.command_help import HELP, verbs
 from chitragupta.help_format import dispatcher_parser
 from chitragupta.progname import prog_for
 
-# Imported lazily, by name, for the reason `chitragupta/corpus.py` gives
-# for the same trick: asking for `draft gate` -- the one command that must
-# run on a bare interpreter with no venv -- should never pay for
-# `enrich`'s imports, several of which are absent unless the optional
-# group is installed.
+# Imported lazily by name, as corpus.py does: `draft gate` must run on a
+# bare interpreter and never pay for `enrich`'s optional imports.
 LAYERS = {
     name: (module, HELP[name][0])
     for name, module in {
@@ -70,12 +53,8 @@ LAYERS = {
     }.items()
 }
 
-# Package-level commands (#258's "package itself" table): only meaningful
-# once the code is installed rather than cloned, and -- unlike LAYERS --
-# operate on the environment around the pipeline (scaffolding a project
-# directory; later, #265's doctor/install) rather than being an entry
-# point into one of its four layers. Dispatched the same way as LAYERS,
-# in CHOICES below, so this stays the only place the distinction is drawn.
+# Package-level commands (#258): they act on the environment around the
+# pipeline rather than entering one of its four layers.
 COMMANDS = {
     name: (module, HELP[name][0])
     for name, module in {
@@ -95,13 +74,8 @@ DESCRIPTION = (
 
 
 def _version() -> str:
-    """The installed distribution's version.
-
-    `importlib.metadata`, not `pyproject.toml`: an installed package has
-    no `pyproject.toml` beside it, so reading the file would report
-    "unknown" for every user who did not clone the repository. Falls back
-    rather than raising, because `--version` failing is a worse answer
-    than an imprecise one.
+    """The installed distribution's version, via `importlib.metadata`
+    (an install has no `pyproject.toml`); "unknown" rather than raising.
     """
     try:
         from importlib.metadata import PackageNotFoundError, version
@@ -114,8 +88,7 @@ def _version() -> str:
 def tree_rows() -> list[tuple[str, str]]:
     """Each layer or command, then its verbs indented under it: the
     two-level tree `chitragupta --help` prints (#1230). Read from
-    chitragupta/command_help.py, never from the layers, which is what
-    keeps asking for help from importing any of them."""
+    command_help.py, so help imports no layer."""
     rows = []
     for name, (one_line, _) in HELP.items():
         rows.append((name, one_line))
@@ -140,21 +113,16 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv=None) -> int:
-    """No layer at all prints the usage and exits 0.
-
-    That is a "tell me how to use this" request, not an error -- the same
-    rule every layer in this package already applies to a missing verb.
-    """
+    """No layer at all prints the usage and exits 0, as every layer does
+    for a missing verb."""
     parser = build_parser()
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
     if args.layer is None:
         parser.print_help()
         return 0
     module = importlib.import_module(CHOICES[args.layer][0])
-    # `enrich` reads sys.argv itself rather than taking an argv argument,
-    # so it is handed a rewritten one instead of being special-cased into
-    # a different calling convention. Restored afterwards because a test
-    # calling main() twice must not inherit the first call's arguments.
+    # `enrich` reads sys.argv itself, so it gets a rewritten one, restored
+    # afterwards so a second main() call does not inherit it.
     if args.layer == "enrich":
         saved, sys.argv = sys.argv, [prog_for("enrich"), *args.rest]
         try:

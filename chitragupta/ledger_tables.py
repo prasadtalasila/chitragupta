@@ -1,39 +1,23 @@
 """Ledger schema version 5: the importer's collection names and recorded
 citekey renames (plans/1211-cg-collections-and-renames.md).
 
-Three tables beside `items`, none keyed to an items row:
+- `collection_names`: slug path -> name, rewritten every sync, so a
+  rename shows while every recorded slug stays valid.
+- `renames`: old -> new citekey, recorded before any prune so the
+  drafting layer can follow it; `same_pdf` decides whether quotes need
+  re-checking.
+- `stale_citekeys`: keys the last bib read lacked, so `dossier status`
+  knows before `--remove-stale` that a draft cites a paper on its way out.
 
-- `collection_names`: slug path -> the collection's own name, from the
-  bib's `cg-collections` table. Rewritten whole on every sync, so a
-  collection renamed in the reference manager shows its new name while
-  its slug, and every `scope.md` that recorded it, stay the same.
-- `renames`: old citekey -> new citekey, recorded by
-  `chitragupta/sync_renames.py` before any prune can delete the old row,
-  so the drafting layer can still find the replacement after
-  `--remove-stale`. `source` says how it was learnt (`pdf_hash` match or
-  the importer's `cg-renames` table) and `same_pdf` whether the two PDFs
-  are byte-identical, which decides whether quotes need re-checking.
-- `stale_citekeys`: the keys the last whole read of the bib no longer
-  has, rewritten on every sync. A stale key's items row stays until
-  `--remove-stale`, so this is how the drafting layer's `dossier status`
-  knows, before the prune, that a draft cites a paper on its way out.
-
-The migration also clears `items.collections`: version 4 stored Better
-BibTeX `groups` paths there, which no longer mean anything, and a row
-whose entry has left the bib would otherwise keep one forever.
-
-Readers return `{}` on a database without these tables, as `of_row`
-does for a missing column: a connection a caller opened itself should
-narrow a lookup, not stop it.
+The migration clears `items.collections`, whose v4 `groups` paths mean
+nothing now. Readers return `{}` when the tables are missing.
 """
 
 from __future__ import annotations
 
 import sqlite3
 
-# `(key, statement)` steps for ledger._MIGRATIONS. A None key runs on the
-# move to this version whatever the table's shape; ledger._migrate only
-# skips a step whose key names an items column that already exists.
+# Steps for ledger._MIGRATIONS; a None key always runs on the move here.
 MIGRATION: tuple[tuple[str | None, str], ...] = (
     (
         None,
