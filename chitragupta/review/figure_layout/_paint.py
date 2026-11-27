@@ -1,22 +1,11 @@
 """The colours `figure check`'s probe reports paths and text in (#1055).
 
-Three more lines of the log `_drawn.py` reads, for k1 and k2's contrast:
-
-- `CGPAINT <index> <stroke> <fill> <stroke-expr>|<fill-expr>`, just
-  before path `<index>`'s `CGPATH`: the colours it is stroked and filled
-  in, as `r,g,b`, and the `draw=` and `fill=` TikZ was given, as written
-  (empty where none was and the path took the current colour).
-- `CGTEXT <r,g,b> <size> <bold> <math> <glyphs> <name>`, before a
-  node's `CGNODE`: one run of its typeset glyphs sharing a colour, a
-  size in pt, a weight (`1` bold) and whether its font is a math font
-  (`1`, #1016: a subscript sets at script size on purpose), read from
-  the text box itself, so `text=`, `\\textcolor`, `\\color` and a macro
-  that expands to one are all seen, and so is a size from a group.
-- `CGTEXTCOLOR <text-expr>|<name>`, after its runs: the `text=` it was
-  given.
-
-The colours are resolved in TeX, by xcolor, after TikZ has expanded the
-styles, `#1` arguments and `\\colorlet`s that spell them in the source.
+Three log lines `_drawn.py` reads, for k1 and k2's contrast: `CGPAINT`
+(a path's stroke and fill as `r,g,b`, plus the `draw=`/`fill=` as
+written), `CGTEXT` (a run of a node's glyphs: colour, size, bold, math
+font -- #1016, a subscript is small on purpose) and `CGTEXTCOLOR`.
+Colours are resolved in TeX by xcolor after TikZ expanded the styles, so
+`\\textcolor`, `\\colorlet` and macros are all seen.
 """
 
 from dataclasses import dataclass, field

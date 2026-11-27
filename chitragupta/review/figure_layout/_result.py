@@ -1,12 +1,7 @@
 """What one checked figure amounts to.
 
-Its own module so the dependency runs one way: `_report.py` serialises
-these and `__init__.py` builds them, and neither has to import the other.
-
-The derived checks are properties rather than stored fields so a
-`FigureResult` cannot be constructed holding boxes that disagree with its
-own findings -- there is one source of truth (`boxes`) and everything
-else is computed from it.
+Derived checks are properties so a `FigureResult` cannot hold boxes that
+disagree with its findings: `boxes` is the one source of truth.
 """
 
 from dataclasses import dataclass, field
@@ -25,10 +20,8 @@ from chitragupta.review.figure_layout._geometry import (
 class FigureResult:
     """Everything checked about one figure.
 
-    `boxes` is `None` where geometry could not be obtained at all, and
-    the two reasons are kept apart because they mean opposite things to a
-    reader: `skipped` is *the host* cannot compile any figure, `failed`
-    is *this figure* is broken while others may be fine.
+    `boxes` is `None` where no geometry was obtained: `skipped` means the
+    host cannot compile any figure, `failed` that this one is broken.
     """
 
     path: Path
@@ -40,12 +33,8 @@ class FigureResult:
     boxes: dict[str, Box] | None = None
     skipped: str = ""
     failed: str | None = None
-    # The width of the box the whole file was set in, measured only by
-    # `figure check`'s boxed probe (#1053). `review figure` neither sets
-    # nor reports it.
+    # `figure check`'s boxed probe only (#1053, #1054).
     input_width: float | None = None
-    # Every line and node TikZ drew, from the same boxed probe (#1054),
-    # for `figure check`'s connector rules.
     drawn: Drawn | None = None
 
     @property
@@ -54,43 +43,21 @@ class FigureResult:
 
     @property
     def unmeasured(self) -> list[str]:
-        """Declared names the geometry did not come back with.
-
-        #404's failure mode, kept visible after the fix rather than
-        assumed gone: a name the probe could not resolve leaves that node
-        unmeasured, and `protrudes()` then reads the band it occupies as
-        a tall empty one. A reader seeing a protrusion finding beside
-        this list knows to distrust it.
-
-        Empty where `boxes is None`, because nothing was attempted --
-        that is `skipped` or `failed`, and reporting names as unmeasured
-        there would be a second wrong answer on top of the one already
-        reported.
-        """
+        """Declared names the geometry did not come back with (#404), so a
+        protrusion beside them is not to be trusted. Empty when nothing
+        was attempted (`boxes is None`)."""
         if self.boxes is None:
             return []
         return [name for name in self.declared if name not in self.boxes]
 
     @property
     def nothing_measurable(self) -> bool:
-        """Whether this figure compiled and yielded no node geometry at
-        all -- #405.
+        """Whether this figure compiled and yielded no node geometry (#405).
 
-        The distinction the report exists to make. Every geometry check
-        here needs a named node to measure, so a figure that names none
-        reports no overlap and no protrusion *because nothing ran*, which
-        used to be indistinguishable from a figure where everything ran
-        and found nothing. Exactly 1 of the 43 figures in this
-        repository's own drafted book names a node (#393), so this is the
-        normal case rather than a corner.
-
-        Binary, and therefore safe as a finding under
-        docs/AUTO-IMPROVEMENT.md's R3 -- unlike the proportion of names
-        measured, which is a score and stays a labelled diagnostic.
-
-        `current bounding box` is excluded by construction: it is never a
-        declared name, and counting it would make "something was
-        measured" true of every figure that compiles.
+        Every check needs a named node, so a figure naming none used to
+        look clean because nothing ran; most drafted figures name none
+        (#393). Binary, so a finding under R3. `current bounding box` is
+        never declared, so it cannot count as measured.
         """
         if self.boxes is None:
             return False
@@ -106,11 +73,8 @@ class FigureResult:
 
     @property
     def has_findings(self) -> bool:
-        """Whether anything binary fired. Deliberately excludes
-        `empty_fraction` *and* `unmeasured`: neither is a finding, and
-        counting either as one is the first step towards something
-        optimising it. `nothing_measurable` is in because it is binary --
-        the figure named a node or it did not."""
+        """Whether anything binary fired. Excludes `empty_fraction` and
+        `unmeasured`: counting either is the first step to optimising it."""
         return bool(
             self.overlong
             or self.overlapping

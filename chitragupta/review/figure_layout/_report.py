@@ -1,16 +1,8 @@
-"""Turning checked figures into the three things a reader gets: text on
-stdout, a Markdown document, and a JSON payload.
+"""Turning checked figures into text, Markdown and a JSON payload.
 
-Split from `__init__.py` for size, and the seam is a real one: nothing
-here checks anything. It receives `FigureResult`s and serialises them, so
-the checks stay testable without going through a formatter and the
-formatting stays testable without a compile.
-
-**One rule runs through all three formats.** The emptiness proportion is
-labelled advisory wherever it appears and is kept out of the `findings`
-list entirely -- docs/AUTO-IMPROVEMENT.md's R3. A number sitting in a
-findings array is a number something will eventually try to drive to
-zero, and this one must not be.
+Nothing here checks anything. The emptiness proportion is labelled
+advisory everywhere and kept out of `findings` (R3): a number in a
+findings array is one something will try to drive to zero.
 """
 
 from pathlib import Path
@@ -19,14 +11,10 @@ from chitragupta import review
 from chitragupta.review.figure_layout._result import FigureResult
 from chitragupta.review.figure_layout._source import MAX_NODE_WORDS
 
-# Said the same way in the text report, the Markdown and the JSON, so a
-# reader of any of the three learns the same thing about the number.
+# Said the same way in all three formats.
 EMPTINESS_LABEL = "advisory, human-read only -- nothing consumes this"
 
-# The sentence #405 was filed about, in the form that fixes it. The aid
-# measures only nodes the source names, so this is not "the figure is
-# fine" -- it is "there was nothing here to check", and the two used to
-# print identically.
+# #405: "nothing here to check" used to print the same as "fine".
 UNMEASURABLE = (
     "names no node, so nothing was measured -- the overlap, protrusion "
     "and emptiness checks did not run"
@@ -34,15 +22,12 @@ UNMEASURABLE = (
 
 
 def _figure_lines(result: FigureResult) -> list[str]:
-    """One figure's findings, as the report prints them."""
     lines = []
     if result.failed:
         lines.append(f"  - does not compile: {result.failed}")
     for name, count in result.overlong:
         lines.append(f"  - node `{name}` has {count} words (over {MAX_NODE_WORDS})")
-    # These two are comprehensions rather than append loops, unlike their
-    # neighbours, only to keep this function inside C1's 25-statement
-    # limit as findings were added to it. No other difference is meant.
+    # Comprehensions only to stay inside C1's statement limit.
     lines += [
         f"  - an arrowhead lands mid-line at `({point})`, where another path "
         f"continues -- put the `->` on the last piece only"
@@ -61,11 +46,8 @@ def _figure_lines(result: FigureResult) -> list[str]:
     if result.nothing_measurable:
         lines.append(f"  - {UNMEASURABLE}")
     if result.unmeasured:
-        # A diagnostic, not a finding: it is what makes a *protrusion*
-        # finding above untrustworthy, so it is printed beside one rather
-        # than counted as one. Named rather than counted deliberately --
-        # "3 of 7 measured" is a ratio, and R3 keeps a ratio out of
-        # anything something could drive.
+        # A diagnostic, not a finding: it makes a protrusion untrustworthy.
+        # Named, not counted: a ratio is something to drive (R3).
         named = ", ".join(f"`{name}`" for name in result.unmeasured)
         lines.append(
             f"  - declared but not measured: {named} "
@@ -85,16 +67,12 @@ def _figure_lines(result: FigureResult) -> list[str]:
 
 
 def format_report(draft_path: Path, results: list[FigureResult]) -> str:
-    """The plain-text report, for a question asked and answered in one
-    sitting. `render_markdown` is the same findings for a file kept."""
+    """The plain-text report; `render_markdown` is the filed version."""
     if not results:
         return f"No figures found in {draft_path} -- nothing to check."
     lines = [f"TikZ layout check for {draft_path}", ""]
     for result in results:
-        # A figure with nothing to say is left out rather than given an
-        # empty heading. Over a chapter's worth of figures the bare
-        # `path:` lines were most of the output and carried none of the
-        # information.
+        # A figure with nothing to say gets no empty heading.
         said = _figure_lines(result)
         if said:
             lines += [f"{result.path}:", *said]
@@ -104,8 +82,7 @@ def format_report(draft_path: Path, results: list[FigureResult]) -> str:
 
 
 def render_markdown(draft_path: Path, results: list[FigureResult], command: str) -> str:
-    """The same findings as a Markdown document, filed beside the draft's
-    other review reports and read months later."""
+    """The same findings as a Markdown document, filed and read later."""
     lines = review.header(draft_path, "figure", command)
     lines += [
         "## How to read this",
@@ -128,10 +105,8 @@ def render_markdown(draft_path: Path, results: list[FigureResult], command: str)
     for result in results:
         lines += ["## " + str(result.path), ""]
         said = [f"- {line.strip().removeprefix('- ')}" for line in _figure_lines(result)]
-        # Unlike the text report, every figure keeps its heading here: a
-        # filed report is read as a record of what was checked, so a
-        # figure silently absent from it is indistinguishable from one
-        # that was never looked at.
+        # Every figure keeps its heading here: a filed record must show
+        # what was checked.
         lines += said or ["Nothing to report for this figure."]
         lines.append("")
     return "\n".join(lines)
@@ -140,16 +115,9 @@ def render_markdown(draft_path: Path, results: list[FigureResult], command: str)
 def _findings(results: list[FigureResult]) -> list[dict]:
     """One object per binary finding.
 
-    `empty_fraction` is deliberately **not** here, and neither is the
-    count of names that came back unmeasured. Both ride in the per-figure
-    section of the payload instead, because R3's rule is that a
-    continuous score is never the thing optimised -- and a score listed
-    among the findings is a score something will eventually try to close.
-
-    `nothing-measurable` *is* here, and the line between it and its
-    neighbour is worth stating: "no node was named" is binary and has one
-    correct fix, while "3 of 7 names were measured" is a ratio and would
-    be a target.
+    `empty_fraction` and the unmeasured names ride per-figure instead
+    (R3: a score among findings is a target). `nothing-measurable` is
+    binary with one fix, so it is a finding.
     """
     findings = []
     for result in results:
@@ -180,8 +148,7 @@ def _findings(results: list[FigureResult]) -> list[dict]:
 
 
 def payload(draft_path: Path, results: list[FigureResult], command: str) -> dict:
-    """The findings as data -- an additional serialisation of what the
-    report prints, never a second computation."""
+    """The findings as data: a serialisation, never a second computation."""
     body = review.envelope(draft_path, "figure", command)
     body.update(
         {
@@ -192,12 +159,9 @@ def payload(draft_path: Path, results: list[FigureResult], command: str) -> dict
                     "edges": [list(edge) for edge in result.edges],
                     "empty_fraction": result.empty_fraction,
                     "empty_fraction_note": EMPTINESS_LABEL,
-                    # `geometry_checked` is true because a compile
-                    # happened, not because anything was checked -- #405
-                    # is right that this reads as more than it means. It
-                    # is a shipped key, so the fix is the two fields
-                    # beside it rather than a redefinition under a reader
-                    # already consuming it.
+                    # True because a compile happened, not because anything
+                    # was checked (#405); a shipped key, so the two fields
+                    # beside it carry the fix.
                     "geometry_checked": result.boxes is not None,
                     "names_declared": result.declared,
                     "names_unmeasured": result.unmeasured,

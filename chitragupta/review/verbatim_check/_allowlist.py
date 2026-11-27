@@ -1,10 +1,7 @@
 """Per-host boilerplate (acronyms, fixed phrasing, defined terms, whole
 paragraphs) this draft's owner has decided `scan` should never flag.
 config.VERBATIM_ALLOWLIST_PATH is gitignored, per-host data -- see
-docs/PLAGIARISM.md and config.py's own comment on it.
-
-Split out of chitragupta/review/verbatim_check.py (#361) -- see
-chitragupta/review/verbatim_check/_corpus.py's docstring for the split.
+docs/PLAGIARISM.md.
 """
 
 import tomllib
@@ -16,25 +13,14 @@ _ALLOWLIST_KEYS = ("acronyms", "phrases", "definitions", "paragraphs")
 
 
 def _load_allowlist_phrases() -> list[tuple[str, ...]]:
-    """Every phrase across the allowlist file's four categories,
-    normalized into word tuples via `norm()` -- the same tokenization
-    `scan` itself uses on the draft, so a phrase matches regardless of
-    how it's capitalized or spaced in the file.
+    """Every phrase across the allowlist file's four categories, as word
+    tuples via `norm()`, the tokenization `scan` uses on the draft.
 
-    No file -> no suppressions: the normal state for a fresh clone, since
-    nothing ever commits this file (see config.VERBATIM_ALLOWLIST_PATH).
-    A *present* file that isn't valid TOML, that this process cannot read
-    (permissions, or the path is a directory), whose category isn't a
-    list of strings, or that carries a key outside the four documented
-    ones (a typo like `pharses`), raises ValueError rather than
-    degrading to "no suppressions" -- a policy file that silently
-    stopped suppressing is exactly the failure that surfaces months
-    later as "why did this stop working," not as "no findings today."
-    An unknown key is exactly that failure mode: without the check, a
-    misspelled category loads as an empty list, no phrases suppress, and
-    nothing says why. `run()` only catches `ValueError` as a usage error
-    (`OSError` would otherwise escape as an unhandled traceback instead
-    of the same clean exit 2), so both open() and parsing are wrapped.
+    No file means no suppressions. A present file that is malformed,
+    unreadable, mistyped or has an unknown key (a typo like `pharses`)
+    raises ValueError: a policy file that silently stopped suppressing
+    surfaces months later. OSError is wrapped too, since `run()` turns
+    only ValueError into a clean exit 2.
     """
     path = config.VERBATIM_ALLOWLIST_PATH
     if not path.exists():
@@ -67,15 +53,8 @@ def _load_allowlist_phrases() -> list[tuple[str, ...]]:
 def _mask_allowlisted(
     span_word_strs: list[str], allowlist_tuples: list[tuple[str, ...]]
 ) -> list[bool]:
-    """Boolean mask, one entry per word in `span_word_strs`, True where
-    that position is covered by a contiguous occurrence of any
-    allowlisted phrase.
-
-    A phrase can occur more than once in one span, and two allowlisted
-    phrases can overlap (a whole paragraph allowlisted alongside a
-    phrase that also appears inside it) -- ORing into one mask handles
-    both without double-counting a word twice.
-    """
+    """Per-word mask of `span_word_strs`, True where any allowlisted phrase
+    covers it; ORing handles repeated and overlapping phrases."""
     n = len(span_word_strs)
     masked = [False] * n
     for phrase in allowlist_tuples:
@@ -92,20 +71,11 @@ def _mask_allowlisted(
 def _mask_allowlisted_stemmed(
     span_word_strs: list[str], allowlist_tuples: list[tuple[str, ...]]
 ) -> list[bool]:
-    """Tier-2 analogue of `_mask_allowlisted`: an allowlisted phrase is
-    matched after the same stem-and-drop-stopwords reduction
-    `overlap_skipgram` applies before hashing, not against
-    `span_word_strs`' literal wording -- a tier-2 finding is itself only
-    a stemmed, skip-gram-level match, so a literal-text allowlist check
-    would almost never fire on it, defeating the point of allowlisting
-    against a tier built to tolerate a synonym swap in the first place.
-
-    The mask is still indexed by `span_word_strs`' own (original,
-    unstemmed) positions: a stemmed-phrase match spanning reduced
-    positions p..q masks every *original* position from the first
-    matched reduced token's index to the last's, inclusive -- the same
-    "the whole matched stretch counts, stopwords and all" convention
-    `_mask_allowlisted` uses for tier 1.
+    """Tier-2 analogue of `_mask_allowlisted`: phrases match after
+    `overlap_skipgram`'s stem-and-drop-stopwords reduction, since a
+    literal check would almost never fire on a stemmed tier-2 finding.
+    The mask stays indexed by original positions, covering the whole
+    matched stretch, stopwords and all.
     """
     span_stems, span_positions = overlap_skipgram.stem_filter(span_word_strs)
     masked = [False] * len(span_word_strs)

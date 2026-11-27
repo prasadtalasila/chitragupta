@@ -1,9 +1,4 @@
-"""`overlap` and `locate`: the two CLI modes with nowhere else to live --
-neither is shared by anything but the CLI wiring itself.
-
-Split out of chitragupta/review/verbatim_check.py (#361) -- see
-chitragupta/review/verbatim_check/_corpus.py's docstring for the split.
-"""
+"""`overlap` and `locate`: the two CLI modes nothing else shares."""
 
 import re
 from pathlib import Path
@@ -15,10 +10,6 @@ from chitragupta.review.verbatim_check._corpus import norm, pages, sentences_cit
 def _gram_hit_runs(draft_hashes: list[int], grams: dict[int, int]) -> list[list[tuple[int, int]]]:
     """Consecutive-index runs of `draft_hashes` entries present in `grams`,
     as `[(index, posting), ...]` runs -- broken wherever a hash is absent.
-
-    Extracted out of `cmd_overlap` so the run-grouping loop's own nested
-    branching does not also count against that function's complexity --
-    it is a self-contained grouping step with no other caller.
     """
     run: list[tuple[int, int]] = []
     runs: list[list[tuple[int, int]]] = []
@@ -36,17 +27,11 @@ def _gram_hit_runs(draft_hashes: list[int], grams: dict[int, int]) -> list[list[
 
 def cmd_overlap(draft: str | Path, citekey: str, n: int = 8) -> None:
     """Verbatim word-n-gram overlap between `draft`'s paragraphs citing
-    `citekey` and that source's corpus-layer parsed text (chitragupta/ledger.py's
-    `parsed_path`) -- fingerprinted and cached by chitragupta/overlap_index.py, so
-    a re-run over an unchanged source costs no re-fingerprinting.
+    `citekey` and that source's ledger-parsed text, fingerprinted and
+    cached by chitragupta/overlap_index.py.
 
-    This reads the ledger's already-parsed text rather than re-invoking
-    `pdftotext` on the PDF the way `pages()`/this function used to: for a
-    citekey the ledger has actually parsed, that is the same text every
-    other reader of this corpus sees (and the only text a `docling`-backed
-    corpus has at all -- `pdftotext -layout` output never entered the
-    ledger there). A citekey the ledger has not parsed reports "no source
-    text", same as before.
+    The ledger's parsed text, not `pdftotext`: the text every other reader
+    sees, and the only text a `docling` corpus has.
     """
     item = overlap_index.ledger_item(citekey)
     if item is None:
@@ -56,12 +41,8 @@ def cmd_overlap(draft: str | Path, citekey: str, n: int = 8) -> None:
     grams = overlap_index.grams_for_citekey(citekey, pdf_hash, parsed_path, n)
     hits = []
     for s in sentences_citing(draft, citekey):
-        # A space, not "" (#516/m-53). Deleting the marker welds the
-        # tokens either side of it into one -- "twins[@a_2024]are" becomes
-        # the single token "twinsare" -- so a run at the n-gram floor
-        # loses a word and drops below it, silently, in the one mode that
-        # exists to find such runs. `_tokenize_draft`'s docstring records
-        # fixing exactly this for `scan`; it was still live here.
+        # A space, not "" (#516/m-53): deleting the marker welds its
+        # neighbours into one token and can drop a run below the floor.
         w = norm(re.sub(r"\[@[^\]]+\]", " ", s))
         draft_hashes = overlap_index.gram_hashes(w, n)
         for r in _gram_hit_runs(draft_hashes, grams):

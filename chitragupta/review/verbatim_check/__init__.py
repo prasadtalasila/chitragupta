@@ -1,71 +1,35 @@
 """Plagiarism / page-locator helper for reviewing a draft.
 
-One of the review layer's aids (`chitragupta/review/_registry.py`'s
-`AIDS` names them all) -- read over a
-finished draft, by a person or by a driver, never a gate, and never
-holding the write lock. chitragupta/review/__init__.py owns where a written
-report goes (`content/review/<topic>/<stem>.verbatim.md`, mirroring the
-draft's path) and what its header looks like.
-
-Reached through the layer's single entry point, chitragupta/review/__main__.py,
-never as `python -m chitragupta.review.verbatim_check`: this module has no
-__main__ block of its own, so that invocation would import it and exit 0
-without doing anything. See docs/ARCHITECTURE.md on why every layer's
-command surface stays one level deep.
+A review aid, never a gate, no write lock; chitragupta/review/__init__.py
+owns where a written report goes. Reached only through
+chitragupta/review/__main__.py: this package has no __main__ block, so
+`python -m chitragupta.review.verbatim_check` would exit 0 doing nothing
+(docs/ARCHITECTURE.md: command surfaces stay one level deep).
 
 Four modes:
     python -m chitragupta.review verbatim overlap <draft.md> <citekey> [--n 8]
-        report the longest verbatim word-n-gram runs shared between the
-        draft's sentences citing <citekey> and that source's parsed text.
+        longest verbatim word-n-gram runs shared with one cited source.
 
     python -m chitragupta.review verbatim scan <draft.md> [--min-run 8] [--gap 1]
                                        [--limit N] [--json]
                                        [--write] [--formats md,tex,pdf]
-        slide the WHOLE draft across the WHOLE corpus index (chitragupta/overlap_index.py),
-        not just the sources a paragraph happens to cite -- catches verbatim
-        reuse from an uncited source, and reuse in connective prose that
-        cites nothing at all. Prints by default; --write also files the
-        report under content/review/, beside the same draft's provenance
-        and coverage reports. --json prints the same findings as data
-        instead of as text, and --write files that too, as the report's
-        `.json` sibling -- see `scan_payload`.
+        the whole draft against the whole corpus index
+        (chitragupta/overlap_index.py), catching reuse from uncited
+        sources and in uncited prose. --write files the report (and its
+        `.json` sibling, see `scan_payload`) under content/review/.
 
     python -m chitragupta.review verbatim recheck <draft.md> --baseline <scan.json>
                                           [--json]
-        re-scan the draft at the baseline's own floor and report which of
-        its findings are gone, which remain, and which the edits
-        introduced. The deterministic half of #129's remediation loop:
-        "did this rewrite fix the finding without breaking anything else"
-        is an acceptance test, and one a model should not be deciding by
-        reading two reports side by side. Still not a gate -- it exits 0
-        whatever it finds, and `python -m chitragupta.draft gate` remains the only
-        thing in this pipeline that blocks.
+        re-scan at the baseline's floor and report findings gone, kept and
+        introduced: #129's acceptance test, decided deterministically
+        rather than by a model comparing reports. Still exits 0.
 
     python -m chitragupta.review verbatim locate <citekey> "<phrase>" [more phrases...]
-        report which PDF page each phrase (or its distinctive words)
-        appears on, for fact-checking page numbers.
+        which PDF page each phrase (or its distinctive words) is on.
 
-Exits 0 on every successful invocation, findings or not -- a review aid,
-not a gate. A draft this layer will not read (missing, or outside
-content/) exits 1; a malformed invocation exits 2, the usual CLI-usage
-error, not a verdict.
-
-**A package since #361**, split out of what was one 2357-line module: the
-corpus lookup (`pdf_path`/`pages`/`norm`/`sentences_citing`)
-moved to `_corpus.py`, masking/tokenizing to `_masking.py`, the
-gap-tolerant run merger to `_merge.py`, the per-host allowlist to
-`_allowlist.py`, the helpers every tier shares (line lookup, finding
-identity, cites/quotes) to `_shared.py`, the three detection tiers to
-`_exact.py`/`_skipgram.py`/`_embed.py`, the scan orchestrator and published
-finding shape to `_scan.py`, the Markdown report to `_scan_render.py`, the
-`scan` CLI mode's stdout/JSON forms to `_scan_cmd.py`, `recheck`'s baseline
-and comparison machinery to `_baseline.py`/`_recheck.py`, and the `overlap`
-and `locate` CLI modes to `_overlap.py` -- the tiers issue #361 itself
-named, each with their own state and thresholds, plus the seams around
-them. Only the CLI wiring itself stays here, because it has nowhere else
-with fewer than one caller. Every name below is re-exported so `from
-chitragupta.review import verbatim_check as vc; vc.<name>` keeps reaching
-it exactly as it did when this was one file.
+Exits 0 findings or not; 1 for a draft the layer will not read; 2 for a
+malformed invocation. A package since #361; every name is re-exported
+so `vc.<name>` still reaches it.
 """
 
 import argparse
@@ -120,14 +84,8 @@ from chitragupta.help_format import ClickParser
 
 def _bounded_int(minimum: int, name: str) -> Callable[[str], int]:
     """An argparse `type` that rejects an out-of-range value as a usage
-    error rather than letting it through to be silently absorbed.
-
-    A value that parses fine can still be nonsensical: `--limit 0`
-    silently hides every finding behind the same "no verbatim run found"
-    message a genuinely clean draft prints, and a negative `--gap` breaks
-    even a pure-verbatim run's merge (Python's `list[:0]`/negative-gap
-    arithmetic degrade silently rather than raising) -- both look like
-    "nothing to report" instead of the usage error they actually are.
+    error: `--limit 0` and a negative `--gap` otherwise degrade silently
+    into "nothing to report".
     """
 
     def parse(raw: str) -> int:
@@ -143,16 +101,9 @@ def _bounded_int(minimum: int, name: str) -> Callable[[str], int]:
 
 
 def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.ArgumentParser:
-    """The `verbatim` aid's four modes.
-
-    `parser` is passed by chitragupta/review/__main__.py, which has already
-    created this aid's subparser and needs the modes hung off *that*
-    rather than off a fresh top-level parser -- so the flags are declared
-    once, here, and the entry point never restates them.
-    """
+    """The `verbatim` aid's four modes, declared once for __main__."""
     if parser is None:
-        # A one-line description rather than this module's docstring, for
-        # the reason chitragupta/corpus.py's DESCRIPTION gives (#152).
+        # Not this module's docstring (#152; see chitragupta/corpus.py).
         parser = ClickParser(
             description="Report how much wording a draft shares with the sources it cites.",
         )
@@ -220,33 +171,23 @@ def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.Argu
     p_locate.add_argument("citekey", help="The source to search")
     p_locate.add_argument("phrases", nargs="+", help="Phrases to locate")
 
-    # So run() can print this aid's own help when no mode was given,
-    # whether it was reached directly or through the entry point's
-    # `verbatim` subparser -- which is a different parser object.
+    # The entry point's `verbatim` subparser is a different parser object,
+    # so run() needs this one to print help when no mode was given.
     parser.set_defaults(_parser=parser)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Exit codes: `0` on every successful invocation, findings or not --
-    a review aid, not a gate. `1` for a draft this layer will not read
-    (missing, or outside `content/`). `2` for a malformed invocation,
-    the usual CLI-usage error, which argparse already uses.
-
-    No mode at all prints the usage and exits 0: that is the same "tell
-    me how to use this" request as `--help`, not an error.
+    """Exit codes as the module docstring says. No mode prints the usage
+    and exits 0: the same request as `--help`, not an error.
     """
     parser = build_parser()
     return run(parser.parse_args(sys.argv[1:] if argv is None else argv))
 
 
 def run(args: argparse.Namespace) -> int:
-    """Dispatch already-parsed arguments.
-
-    Split from main() so chitragupta/review/__main__.py can hand over the args it
-    parsed with this module's own build_parser(), rather than re-slicing
-    argv and parsing it twice.
-    """
+    """Dispatch already-parsed arguments (for __main__, so argv is parsed
+    once)."""
     if args.mode is None:
         args._parser.print_help()
         return 0
@@ -279,9 +220,8 @@ def run(args: argparse.Namespace) -> int:
                 as_json=args.json,
             )
     except ValueError as exc:
-        # "this input can't be scanned as asked" (e.g. --min-run below the
-        # corpus index's own n-gram size, or a baseline that cannot serve
-        # as one) is a usage error, not a finding.
+        # Unscannable as asked (e.g. --min-run below the index's n-gram
+        # size, or an unusable baseline): a usage error, not a finding.
         print(exc, file=sys.stderr)
         return 2
     return 0

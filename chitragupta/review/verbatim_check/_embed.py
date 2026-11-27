@@ -1,8 +1,5 @@
 """Tier 3: embedding-based paraphrase detection by local alignment over
 sentence embeddings.
-
-Split out of chitragupta/review/verbatim_check.py (#361) -- see
-chitragupta/review/verbatim_check/_corpus.py's docstring for the split.
 """
 
 from pathlib import Path
@@ -29,38 +26,17 @@ def _embed_tier_findings(
     allowlist: list[tuple[str, ...]],
     lexical_findings: list[dict],
 ) -> tuple[list[dict], int, list[dict]]:
-    """Tier 3: embedding-based paraphrase detection by local alignment
-    over sentence embeddings (`chitragupta/overlap_embed.py`, #134/#164). Same
-    shared contract as the other two tier finders, plus a third return
-    value the other two have no use for: **what this run does not cover**.
+    """Tier 3 (`chitragupta/overlap_embed.py`, #134/#164): the tier
+    finders' shared contract plus a third return value, **what this run
+    does not cover**: `[{"reason": str, "partial": bool}, ...]`.
 
-    `lexical_findings` is tier 1's and tier 2's own findings (already
-    computed by the caller), needed *before* `overlap_embed.report()`
-    narrows the alignments -- see the comment at the filter below for
-    why the order matters (#499).
-
-    That third value -- `[{"reason": str, "partial": bool}, ...]` -- is
-    the point of the tier being wired in at all on a host that cannot run
-    it, or that cannot run it against everything a draft cites. Tier 1
-    and tier 2 are always available -- they read an index this repo
-    builds from parsed text with no optional dependency -- so "found
-    nothing" is the only thing either can say. This tier needs the
-    enrichment layer's embedding stack, a built `content/chroma/`,
-    Docling passage sidecars and the draft's own dossier, any of which
-    can be absent on a perfectly healthy checkout (`partial: False`,
-    nothing else ran); and even when it can run, a heading renamed since
-    the dossier was last written or a cited source the corpus grew since
-    `enrich` last ran can each leave part of a draft uncompared while the
-    tier still reports real findings elsewhere (`partial: True`, #499).
-    A caller that only asked "did this tier run at all" could not tell
-    either partial case from a clean, complete run.
-
-    No `gap` parameter, unlike the other two. Tier 1 and tier 2 merge
-    same-diagonal matches with a word-level gap tolerance; the alignment
-    here has its own, in sentences, as `overlap_align.GAP_PENALTY` --
-    a *cost* rather than a limit, so there is no equivalent flag for
-    `--gap` to set and pretending otherwise would put a word count in
-    charge of a sentence-level decision.
+    Tiers 1 and 2 always run; this one needs the enrich stack,
+    `content/chroma/`, passage sidecars and the dossier, any of which may
+    be absent (`partial: False`), and renamed headings or a grown corpus
+    can leave part of a draft uncompared (`partial: True`, #499).
+    `lexical_findings` (tiers 1 and 2) must be applied before
+    `report()`'s cap (#499). No `gap`: the alignment's
+    `overlap_align.GAP_PENALTY` is a cost in sentences, not a word count.
     """
     scope, reason = overlap_embed.open_scope(Path(draft))
     if scope is None:
@@ -78,11 +54,7 @@ def _embed_tier_findings(
             lexical_findings,
         )
     finally:
-        # This function opened the scope, so it closes it -- on every
-        # path, including the two mid-function returns below (#516/m-79).
-        # The body moved into `_findings_within` rather than growing a
-        # `try` around forty lines: the release belongs to whoever
-        # acquired, and that is here.
+        # Whoever acquired the scope releases it, on every path (#516/m-79).
         scope.close()
 
 
@@ -97,21 +69,13 @@ def _findings_within(
     allowlist: list[tuple[str, ...]],
     lexical_findings: list[dict],
 ) -> tuple[list[dict], int, list[dict]]:
-    """`findings`'s body, once tier 3 is known to be runnable.
-
-    Split only so the caller above can own the scope's lifetime; every
-    comment about *what* this does is on the caller's docstring.
-    """
+    """`_embed_tier_findings`'s body, split so the caller owns the scope."""
     sections, unmatched = overlap_segments.draft_sections(
         text, [(w.char, w.char_end) for w in words], scope.citekeys_by_section
     )
     if not sections:
-        # The dossier records citekeys against section headings that this
-        # draft no longer has -- a heading renamed since `sections
-        # --citekeys` last wrote the table, or a `sections.md` written by
-        # a release whose heading convention differed. Nothing to scope
-        # to, and the tier says so rather than reporting a clean scan of
-        # a draft it never compared against anything.
+        # The dossier's sections match no heading here (renamed, or an
+        # older convention): say so rather than report a clean scan.
         return (
             [],
             0,
@@ -130,28 +94,15 @@ def _findings_within(
     reasons = _partial_coverage_reasons(scope, sections, unmatched)
 
     alignments = overlap_embed.align_draft(scope, sections)
-    # The position map is built from *every* alignment and the report
-    # from the narrowed list -- in that order, and not the other way
-    # round. `_cites_source` asks whether a paragraph cites any citekey
-    # that matched somewhere in the span, and `report` has by then
-    # dropped the four weaker sources that matched the same passage. Read
-    # off the narrowed list, a correctly-cited paragraph would report as
-    # `UNCITED SOURCE` whenever the strongest match happened to be a
-    # paper it does not name.
+    # Map from *every* alignment, before `report` drops the weaker sources
+    # matching the same passage, or a correctly cited paragraph would show
+    # `UNCITED SOURCE` whenever the strongest match is a paper it omits.
     citekeys_at_position = _embed_citekeys_at_positions(alignments)
 
-    # Filtered against tier 1's and tier 2's spans *before* `report()`
-    # applies its per-section cap, not after (#499). A section that
-    # quotes a source verbatim -- the strongest alignment there -- and
-    # also paraphrases it elsewhere used to lose the paraphrase: the
-    # verbatim alignment consumed the section's one cap slot, and only
-    # afterwards was it discovered to duplicate the exact-tier finding
-    # and dropped. Filtering first lets the cap fall on what tiers 1
-    # and 2 could not already see, which is the point of this tier.
-    # Overlap, not containment -- a tier-3 alignment is a whole passage
-    # and normally *contains* the exact or skip-gram span rather than
-    # the other way round, so containment would never fire and the same
-    # passage would be reported twice.
+    # Drop tier 1/2 duplicates *before* `report()`'s per-section cap
+    # (#499), or a verbatim quote takes the cap slot and the paraphrase
+    # elsewhere is lost. Overlap, not containment: a tier-3 passage
+    # normally contains the lexical span.
     alignments = [
         a
         for a in alignments
@@ -194,28 +145,14 @@ def _findings_within(
 def _partial_coverage_reasons(
     scope: overlap_embed.Scope, sections: list[overlap_segments.DraftSection], unmatched: int
 ) -> list[dict]:
-    """The `partial: True` entries `_embed_tier_findings` returns
-    alongside real findings -- coverage gaps that do not stop the tier
-    from running, unlike the two `partial: False` cases above (#499).
-
-    Two independent gaps, kept as two independent entries rather than
-    merged into one message: a renamed heading and a corpus grown since
-    `enrich` last ran have different fixes, and a reviewer needs to tell
-    them apart.
+    """The `partial: True` coverage gaps (#499), as separate entries
+    because a renamed heading and a grown corpus have different fixes.
     """
     reasons = []
     if unmatched:
-        # Some, not zero, of the recorded sections matched -- the tier
-        # still runs and still reports real findings, so this is not the
-        # "nothing to scope to" case above. A draft with 9 of 10 headings
-        # renamed would otherwise scan the one matched section and say
-        # nothing about the other nine.
-        #
-        # The denominator is `scope.citekeys_by_section`, not `unmatched
-        # + len(sections)` -- `sections` only holds sections that also
-        # survived prose/sentence extraction, so a matched heading with
-        # no usable prose (an empty section, or one that is only code or
-        # fences) would silently disappear from that count too.
+        # Some sections matched, so the tier still ran. The denominator is
+        # `scope.citekeys_by_section`: `sections` omits matched headings
+        # with no usable prose.
         reasons.append(
             {
                 "reason": (
@@ -246,16 +183,9 @@ def _partial_coverage_reasons(
 def _embed_citekeys_at_positions(
     alignments: list[overlap_embed.SectionAlignment],
 ) -> dict[int, set[str]]:
-    """The tier-3 analogue of `_citekeys_at_positions`: every draft word
-    position an alignment covers, mapped to the citekeys aligned there.
-
-    Same purpose as tier 1's and tier 2's -- a passage that restates a
-    definition several corpus papers each state will align against all of
-    them, and a paragraph correctly citing any one of them is correctly
-    attributed. Without this, the other matches would each report
-    `UNCITED SOURCE` against a paragraph that cites its source properly
-    (the Kritzinger case `_cites_source` documents, which a
-    similarity-based tier hits harder than either lexical one).
+    """Tier 3's `_citekeys_at_positions`: each covered word position
+    mapped to the citekeys aligned there, so a paragraph citing any one
+    of several sources stating the same thing is correctly attributed.
     """
     at_position: dict[int, set[str]] = {}
     for alignment in alignments:
@@ -274,10 +204,8 @@ def _embed_finding(
     paragraph_citekeys: list[set[str]],
     citekeys_at_position: dict[int, set[str]],
 ) -> dict:
-    """The finding dict for one alignment. Mirrors `_exact_finding` and
-    `_skipgram_finding`, and carries the one field they cannot: `score`,
-    the alignment's own strength.
-    """
+    """The finding dict for one alignment, as `_exact_finding`, plus
+    `score`, the alignment's strength."""
     start, end = alignment.word_start, alignment.word_end
     run_words = words[start:end]
     char_start, char_end = run_words[0].char, run_words[-1].char_end
@@ -302,35 +230,14 @@ def _embed_finding(
         ),
         "quoted": _run_is_quoted(run_words),
         "tier": "embedding",
-        # 1-based, like `line` and unlike the 0-based `p_idx` the
-        # tokenizer works in: this is a locator a person reads, and
-        # "paragraph 0" is not how anyone counts paragraphs. Computed in
-        # every tier and thrown away until now -- `run_paragraphs` was
-        # built only to answer `_cites_source` -- though it is the
-        # coarsest and most durable locator a finding has. `line` and
-        # `char_start` both move when anything above the run is edited;
-        # a paragraph number survives ordinary revision, which is what a
-        # reader holding a report next to a changed draft needs.
+        # 1-based, for people; a paragraph number survives edits above the
+        # run that move `line` and `char_start`.
         "paragraph": min(run_paragraphs) + 1,
         "end_paragraph": max(run_paragraphs) + 1,
-        # The source passage this alignment matched, which only this tier
-        # can report and until now was the one thing it computed and threw
-        # away (`SectionAlignment.source_text` has always carried it).
-        # `fragment` above is the *draft's* words -- normalized, lowercased
-        # and stripped of punctuation -- and for tiers 1 and 2 that is also
-        # the source's words, so a report showing `fragment` alone says
-        # everything there is to say. For this tier it does not: the two
-        # sides are by construction *different wording*, and a reader shown
-        # only the draft side in a report headed "verbatim" reasonably reads
-        # a flattened run of fluent prose as a lift and asks why tier 1
-        # missed it. Reporting both sides is what makes a restatement
-        # legible as a restatement.
+        # The source side: unlike tiers 1 and 2, `fragment` (the draft's
+        # words) differs from the source here, and showing both is what
+        # makes a restatement legible as one.
         "source_text": alignment.source_text,
-        # Rounded where it is built, not where it is printed: the JSON
-        # payload and the Markdown report both read this field, and a
-        # float that renders differently in the two is the kind of
-        # difference nobody notices until a diff of two reports is
-        # noise. Three places is well inside what separates two
-        # alignments in practice.
+        # Rounded where built, so the JSON and Markdown agree.
         "score": round(alignment.score, 3),
     }

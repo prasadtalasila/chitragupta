@@ -1,25 +1,13 @@
-"""Gap-tolerant run merging, shared by the exact and skip-gram tiers.
-
-Split out of chitragupta/review/verbatim_check.py (#361) -- see
-chitragupta/review/verbatim_check/_corpus.py's docstring for the split.
-"""
+"""Gap-tolerant run merging, shared by the exact and skip-gram tiers."""
 
 
 def _merge_runs(positions: list[int], gap: int, n: int) -> list[list[int]]:
     """Sorted draft word-positions on one diagonal -> maximal runs,
     merging two anchors separated by at most `gap` non-matching *words*.
 
-    Not `next_start - prev_start - 1 <= gap`: a single edited word inside
-    an n-gram poisons every window that overlaps it, which is n-1
-    consecutive anchor starts (7 for the default n=8), not 1 -- the last
-    clean anchor before a one-word edit and the first clean one after it
-    are n+1 anchor-starts apart, not 2. `gap` counts actual skipped
-    words, so the comparison has to subtract `n`, not `1`, to recover
-    that: `next_start - prev_start - n` is 1 for a genuine single-word
-    edit, matching the "g=1 recovers a single edited word" the design
-    (issue #111, scoping comment) asks for. Using `-1` here would demand
-    gap>=7 to catch the exact same one-word edit -- silently far more
-    permissive than whatever `--gap` value the caller actually chose.
+    Subtracts `n`, not 1: one edited word poisons n-1 consecutive anchors,
+    so `next - prev - n` is 1 for a single-word edit, as #111 asks for
+    g=1; `-1` would silently need gap>=7 for the same edit.
     """
     positions = sorted(set(positions))
     runs = [[positions[0]]]
@@ -34,24 +22,12 @@ def _merge_runs(positions: list[int], gap: int, n: int) -> list[list[int]]:
 def _merge_spans(
     spans: list[tuple[int, int, int]], gap: int
 ) -> list[tuple[int, int, list[tuple[int, int, int]]]]:
-    """The tier-2 analogue of `_merge_runs`: `spans` is `(start, end,
-    page)` triples on one diagonal, merged into maximal runs tolerating
-    up to `gap` non-covered original positions between one span's end
-    and the next's start.
+    """Tier 2's `_merge_runs`: `(start, end, page)` spans on one diagonal,
+    merged across up to `gap` uncovered positions.
 
-    A separate function, not `_merge_runs` reused, because a skip-gram
-    window's width in original draft positions is not fixed the way
-    tier 1's `n`-word anchors are -- it varies with how many stopwords
-    and opposite-family words it happens to skip -- so there is no
-    single `n` to subtract the way `_merge_runs`' gap arithmetic needs.
-    Comparing `start - previous_end` directly needs no such constant:
-    the two spans already carry their own extents.
-
-    Returns `(start, end, members)` triples, `members` the `(start,
-    end, page)` triples that merged into this run -- kept rather than
-    collapsed, so `_skipgram_tier_findings` can recover exactly which
-    original positions were the subject of an actual skip-gram match,
-    not merely inside the merged span (its `matched_words`).
+    Separate because a skip-gram window has no fixed width to subtract;
+    spans carry their own extents. Returns `(start, end, members)`, the
+    members kept so `matched_words` counts only real match positions.
     """
     ordered = sorted(spans)
     runs = [[ordered[0]]]

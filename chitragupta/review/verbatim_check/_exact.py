@@ -1,8 +1,4 @@
-"""Tier 1: exact contiguous n-gram matches against the corpus-wide index.
-
-Split out of chitragupta/review/verbatim_check.py (#361) -- see
-chitragupta/review/verbatim_check/_corpus.py's docstring for the split.
-"""
+"""Tier 1: exact contiguous n-gram matches against the corpus-wide index."""
 
 from chitragupta import overlap_index
 from chitragupta.review.verbatim_check._allowlist import _mask_allowlisted
@@ -27,21 +23,11 @@ def _exact_tier_findings(
     gap: int,
     allowlist: list[tuple[str, ...]],
 ) -> tuple[list[dict], int]:
-    """Tier 1: exact contiguous n-gram matches against the corpus-wide
-    index (`overlap_index.py`). One of possibly several tier finders
-    `scan_findings` unions together -- see that function's docstring for
-    the shared contract every tier finder follows: same finding-dict
-    shape (`tier` naming which one produced it), same `(findings,
-    suppressed)` return.
+    """Tier 1: exact n-gram matches against `overlap_index.py`, under the
+    tier contract `scan_findings` documents.
 
-    A run can span a page break in the source: `chitragupta/overlap_index.py`'s
-    `token_position` is a global offset into the document (#131), not
-    reset per page, so `diagonal` (`src_pos - draft_pos`) stays constant
-    across the boundary and the two halves merge into one run the same
-    way a same-diagonal gap does. Each finding reports `page` and
-    `end_page` -- equal for an ordinary single-page run, `end_page >
-    page` for one that straddles a break -- rather than picking one side
-    and losing the other.
+    Source positions are global (#131), so a run across a page break keeps
+    one diagonal and merges; `page`/`end_page` report both sides.
     """
     index = overlap_index.build_corpus_index()
     if min_run < index.n:
@@ -56,19 +42,9 @@ def _exact_tier_findings(
     n = index.n
     draft_hashes = overlap_index.gram_hashes(word_strs, n)
 
-    # (citekey, diagonal) -> {draft position: source page} for every
-    # n-gram match on that diagonal (src_pos - draft_pos constant) -- two
-    # matches on the same diagonal are still "in step" even with
-    # non-matching words between them, which is exactly what makes a
-    # gap-tolerant merge (below) a same-diagonal 1-D problem rather than a
-    # general alignment one. `page` is not part of the group key: a run
-    # that truly spans a source page break has postings attributed to two
-    # different pages but the same diagonal (global token positions,
-    # #131), and grouping on page too would split it right back apart.
-    # One write per (group, j): a fixed j and diagonal pin src_pos
-    # (`src_pos = diagonal + j`), and a document fingerprint has exactly
-    # one posting per position, so no second write ever competes for the
-    # same key.
+    # (citekey, diagonal) -> {draft position: source page}: same-diagonal
+    # matches stay in step across gaps, making the merge 1-D. Not keyed
+    # on page, which would split runs across a page break (#131).
     groups = {}
     for j, gh in enumerate(draft_hashes):
         for citekey, page, src_pos in overlap_index.postings_for_gram(index, gh):
@@ -103,11 +79,9 @@ def _exact_findings_from_groups(
     paragraph_citekeys: list[set[str]],
     citekeys_at_position: dict[int, set[str]],
 ) -> tuple[list[dict], int]:
-    """Merge each `(citekey, diagonal)` group's positions into runs, drop
-    anything the allowlist or `min_run` rules out, and build a finding for
-    what's left. Extracted out of `_exact_tier_findings` so this loop's
-    own nesting does not also count against that function's complexity.
-    """
+    """Merge each `(citekey, diagonal)` group into runs, drop what the
+    allowlist or `min_run` rules out, and build the rest (split out for
+    complexity)."""
     findings = []
     suppressed = 0
     for (citekey, _diagonal), pos_pages in groups.items():
@@ -152,13 +126,7 @@ def _exact_finding(
     paragraph_citekeys: list[set[str]],
     citekeys_at_position: dict[int, set[str]],
 ) -> dict:
-    """The finding dict for one merged exact-tier `run`.
-
-    Extracted out of `_exact_tier_findings` so its own comprehensions
-    (each already nested inside that function's double loop) do not also
-    count against that function's cognitive complexity -- this is a pure
-    one-run-in, one-dict-out step with no other caller.
-    """
+    """The finding dict for one merged exact-tier `run`."""
     start, end = run[0], run[-1] + n
     matched_words = len({idx for p in run for idx in range(p, p + n)})
     run_words = words[start:end]
@@ -169,10 +137,7 @@ def _exact_finding(
         start, end, run_paragraphs, paragraph_citekeys, citekeys_at_position
     )
     run_pages = [pos_pages[p] for p in run]
-    # Hoisted out of the dict rather than inlined as #131 wrote
-    # it: `finding_id` needs the same start page the payload
-    # reports, and computing `min(run_pages)` twice is how those
-    # two quietly stop agreeing.
+    # One value, so `finding_id` and the payload cannot disagree.
     page = min(run_pages)
     return {
         "id": finding_id(citekey, page, fragment),
@@ -182,8 +147,7 @@ def _exact_finding(
         "span_words": span_words,
         "matched_words": matched_words,
         "start": start,
-        # 1-based, counted in the original text: the only one of
-        # these four a person reads directly.
+        # 1-based, in the original text.
         "line": _line_at(newlines, char_start),
         "char_start": char_start,
         "char_end": char_end,
@@ -193,29 +157,12 @@ def _exact_finding(
         "cites_source": cites_source,
         "quoted": _run_is_quoted(run_words),
         "tier": "exact",
-        # 1-based, like `line` and unlike the 0-based `p_idx` the
-        # tokenizer works in: this is a locator a person reads, and
-        # "paragraph 0" is not how anyone counts paragraphs. Computed in
-        # every tier and thrown away until now -- `run_paragraphs` was
-        # built only to answer `_cites_source` -- though it is the
-        # coarsest and most durable locator a finding has. `line` and
-        # `char_start` both move when anything above the run is edited;
-        # a paragraph number survives ordinary revision, which is what a
-        # reader holding a report next to a changed draft needs.
+        # 1-based; survives edits above the run that move `line`.
         "paragraph": min(run_paragraphs) + 1,
         "end_paragraph": max(run_paragraphs) + 1,
-        # `None`, not absent and not 0.0: every tier's finding has to
-        # carry every published field (`published` projects
-        # `_PAYLOAD_FIELDS` with a hard `KeyError`, deliberately), and a
-        # deterministic tier has no similarity score to report. Zero
-        # would read as "aligned, badly", which is a different claim
-        # from "this tier does not measure that".
+        # `None`, not 0.0 ("aligned, badly"): every finding carries every
+        # published field, and this tier has no similarity score.
         "score": None,
-        # `None` for the same reason `score` is, and meaning the mirror
-        # image of it: not "this tier cannot tell you", but "there is no
-        # second side to show". A deterministic tier only fires where the
-        # two sides share wording, so `fragment` above *is* the source
-        # text; printing it twice under two headings would imply the
-        # comparison found something it did not.
+        # `None`: `fragment` already is the source text here.
         "source_text": None,
     }

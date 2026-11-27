@@ -2,38 +2,18 @@
 claim citing it -- scored by a real NLI entailment model, never
 lexical overlap.
 
-`chitragupta/review/citation_provenance.py` asks a related question
-with a lexical scorer and answers it cheaply; this aid exists because
-the roadmap's own argument for why that is not enough: a paraphrase
-that subtly misstates a paper passes the gate (real citekey), passes
-the verbatim scan (wording now differs), and passes provenance (the
-source remains topically related). Only reading whether the source's
-own words actually entail the claim catches that.
+A subtly misstated paraphrase passes the gate, the verbatim scan and
+lexical provenance; only entailment catches it. Reuses
+citation_provenance.claims() and passages.source_passages(); the
+Entailer (chitragupta/entailment.py) is injected so this logic tests with
+no model.
 
-Reuses citation_provenance.claims() for extraction (line, citekey,
-claim) rather than re-parsing -- the same function
-bench/bench_paraphrase_hunt.py already reuses for the same reason --
-and passages.source_passages() for the source text. Only the scorer
-differs: chitragupta/entailment.py's Entailer, injected rather than
-imported here, so this module's own logic is testable with no model
-anywhere (chitragupta/entailment.py's own tests cover the model seam).
-
-Ranked, never banded. Unlike provenance's "no support found / weak /
-supported" bands, this aid publishes a bare score. Retrieval already
-selected these passages by similarity, so the discriminator here is
-weak in the same way docs/PLAGIARISM-DESIGN.md records for tier 3 --
-and a band would claim a precision this corpus does not support. See
-docs/REVIEW.md's limits section.
-
-**Surfaced, never repaired unattended, and permanently.**
-docs/AUTO-IMPROVEMENT-RATIONALE.md settles this by mechanism, not
-policy: every check this loop owns returns clean on its worst output,
-which is exactly the paraphrase case above. An unattended reviser
-chasing a higher score would make a claim look supported without
-making it supported.
-
-Needs the `enrich` extra (chitragupta/entailment.py). Advisory like
-the other eight -- exit 0 whatever it finds, no lock, no draft blocked.
+Ranked, never banded: retrieval already chose these passages by
+similarity, so a band would claim precision the corpus does not support
+(docs/REVIEW.md). Surfaced, never repaired unattended: a reviser chasing
+the score would make a claim look supported without making it so
+(docs/AUTO-IMPROVEMENT-RATIONALE.md). Needs the `enrich` extra; exit 0
+whatever it finds.
 
 Usage:
     python -m chitragupta.review support content/drafts/<slug>.md
@@ -71,85 +51,29 @@ class Report:
     unscoreable: dict[str, str] = field(default_factory=dict)
 
 
-# Passage labels that cannot be a premise. A section heading is a few
-# words naming what follows; it asserts nothing, so it cannot support a
-# claim -- and `_score_claim` takes `max()` over whatever it is given, so
-# a heading that happens to score well is *reported* as the claim's best
-# supporting passage. That is a wrong answer rather than a weak one,
-# which is why this is a filter and not a ranking penalty (issue #719).
-#
-# Deliberately only `section_header`, though it is 6.9% of the corpus's
-# passage units and `list_item` is another 15.9%: a bulleted line
-# routinely carries a real assertion, and dropping those would lose
-# genuine support with no measurement saying it does not. `table` and
-# `formula` (0.7% each) stay for the same reason -- #632 added them on
-# purpose, and a table cell can support a numeric claim.
-#
-# A passage whose `label` is None is *kept*. `passages._from_sidecar`
-# leaves it None whenever the record has no `label` key, which is every
-# passage from a sidecar written before labelling; dropping those would
-# empty the premise set for those sources and silently move their
-# citations from `scored` to `unscoreable`.
+# A heading asserts nothing, yet `_score_claim`'s max() would report one
+# that scores well as the best support: a filter, not a penalty (#719).
+# `list_item`, `table` and `formula` stay because they can carry real
+# assertions. A None label (pre-labelling sidecar) is kept, or those
+# sources would silently move to `unscoreable`.
 _NOT_A_PREMISE = frozenset({"section_header"})
 
 
 def _quotable(passages: list[Passage]) -> list[Passage]:
-    """Only passages that can serve as an entailment premise: real text,
-    and not one of the labels `_NOT_A_PREMISE` names.
-
-    Unlike provenance's lexical scorer, which can still compare against a
-    page-level bag of words, an entailment model needs an actual premise.
-
-    Both of this module's call sites go through here -- `build_report`'s
-    "is there anything to score" gate and `_score_claim`'s own selection
-    -- so the two cannot disagree about what the premise set is. That is
-    what keeps `_score_claim`'s documented no-empty-result invariant true
-    after the label filter was added.
+    """Passages usable as an entailment premise: real text, not a label
+    `_NOT_A_PREMISE` names. Both call sites use this, so the "anything to
+    score" gate and `_score_claim` agree on the premise set.
     """
     return [p for p in passages if p.quotable and p.label not in _NOT_A_PREMISE]
 
 
-# The cheap lexical scorer decides which premises the expensive model
-# sees. That is the whole cost lever behind issue #693: `_score_claim`
-# sends one pair per quotable passage, and docs/PERFORMANCE.md measures
-# that at 725-887 pairs per citation -- a figure set by how finely the
-# parse segmented the corpus, not by anything the draft controls.
-#
-# Ranked by the *same* overlap count `citation_provenance.score_claim`
-# bands, deliberately: that scorer is already trusted to pick a claim's
-# best passage for the neighbouring aid, and a second notion of lexical
-# similarity here would be one more thing to disagree with it.
-#
-# `top_k` is None everywhere by default, so nothing below runs unless a
-# caller asks for it -- and it should stay that way. This ranker was
-# swept from k = 8 to k = 128 over two real drafts and it damages the
-# report at every one of them (bench/RESULTS.md, 2026-09-09): it agrees
-# with the entailment model about which passage supports a claim for
-# only 56.5% of citations even at k = 128, and claims scoring 0.995
-# uncapped came back at 0.138 -- a well-supported citation promoted to
-# the top of the agenda as the worst finding.
-#
-# That is #693's proposal ruled out, not a cap ruled out: what failed is
-# *lexical* pre-ranking, which is this module's own docstring argument
-# for why provenance is not enough, reappearing one level down. A
-# semantic pre-rank is the untested candidate, and
-# `enrich/embed_index.py`'s `search()` already has the machinery.
-# Precision is unmeasured either way; that needs B9's labels (#757).
-#
-# The mechanism stays because it is what makes that next experiment
-# cheap, not because a value for it is defensible today.
-#
-# Two properties the tests pin, because a cap lacking either is worse
-# than no cap:
-#
-#   - It ranks what `_quotable` already kept, never the raw list, so a
-#     filtered heading cannot occupy a slot a real premise needed.
-#   - Ties resolve on document order (`sorted` is stable over an
-#     already-ordered list), so a capped re-run over an unchanged draft
-#     and corpus reports the same best passage. An arbitrary tie-break
-#     would break R2's stable-identity rule for a whole class of
-#     findings, because an all-stopword claim ties *every* premise at
-#     zero overlap.
+# A lexical pre-rank of the premises the model sees (#693: 725-887 pairs
+# per citation, docs/PERFORMANCE.md). Off by default and should stay off:
+# swept k = 8..128 it damaged the report at every k (bench/RESULTS.md,
+# 2026-09-09). Lexical pre-ranking is ruled out, not a cap; a semantic
+# pre-rank is untested. Kept to make that experiment cheap. Pinned: it
+# ranks only what `_quotable` kept, and ties keep document order so a
+# re-run reports the same best passage (R2).
 def _ranked(claim: str, passages: list[Passage], top_k: int | None) -> list[Passage]:
     """`passages`, cut to the `top_k` sharing most distinctive words with
     `claim` -- or unchanged when `top_k` is None."""
@@ -159,25 +83,13 @@ def _ranked(claim: str, passages: list[Passage], top_k: int | None) -> list[Pass
     return sorted(passages, key=lambda p: -len(wanted & p.words))[:top_k]
 
 
-# Callers pass every passage, not just the quotable ones, so the filter
-# below is not redundant with the caller's own check -- it is what
-# selects which passages the entailer actually sees. Only `build_report`
-# calls this, and only after confirming `_quotable` is non-empty for the
-# same `passages`, so unlike `citation_provenance.score_claim` (a public
-# function with no such guarantee from its callers) this one does not
-# re-guard against an empty result -- and its return type has no
-# `| None` for the same reason: that would be defensive handling for a
-# state this module's own call graph makes impossible.
-#
-# `_ranked` preserves that invariant, because it only ever shortens a
-# non-empty list, and never to zero: `top_k` is at least 1 wherever it
-# is not None, which `config_load._get_optional_positive_int` enforces at
-# load rather than here.
+# Only called after `build_report` confirmed `_quotable` is non-empty, and
+# `_ranked` never shortens to zero (top_k >= 1 is enforced at config load),
+# so no empty-result guard and no `| None`.
 def _score_claim(
     entailer, claim: str, passages: list[Passage], top_k: int | None = None
 ) -> tuple[float, Passage]:
-    """Best-scoring quotable passage for `claim`, over at most `top_k`
-    of them."""
+    """Best-scoring quotable passage for `claim`, over at most `top_k`."""
     quotable = _ranked(claim, _quotable(passages), top_k)
     scores = entailer.score([(p.text, claim) for p in quotable])
     best_index = max(range(len(scores)), key=scores.__getitem__)
@@ -195,10 +107,8 @@ def build_report(draft_path: Path, entailer, top_k: int | None = None) -> Report
                 cache[citekey] = source_passages(con, citekey)
             passages, reason = cache[citekey]
             if not _quotable(passages):
-                # Two different absences, and saying "page-level only"
-                # for the second would be false: a source can have real
-                # readable text and still offer no premise, if every
-                # readable passage it has is a heading.
+                # A source with readable text can still offer no premise
+                # if every readable passage is a heading.
                 report.unscoreable[citekey] = reason or (
                     "the source's only readable passages are section headings, "
                     "which assert nothing to score a claim against"
@@ -225,9 +135,7 @@ def build_report(draft_path: Path, entailer, top_k: int | None = None) -> Report
 
 
 def _command(draft: Path, as_json: bool, write: bool) -> str:
-    """The invocation recorded in both the Markdown header and the JSON
-    envelope -- `--json`/`--write` in full when given, the same rule
-    `uncited_prose._command` states for its own `--genre`."""
+    """The invocation recorded in the Markdown header and JSON envelope."""
     parts = ["python", "-m", "chitragupta.review", "support", str(draft)]
     if as_json:
         parts += ["--json"]
@@ -238,8 +146,7 @@ def _command(draft: Path, as_json: bool, write: bool) -> str:
 
 def build_parser(parser=None) -> argparse.ArgumentParser:
     if parser is None:
-        # A one-line description rather than this module's docstring, for
-        # the reason chitragupta/corpus.py's DESCRIPTION gives (#152).
+        # Not this module's docstring (#152; see chitragupta/corpus.py).
         parser = ClickParser(
             description="Does the cited source actually entail the claim citing it?",
         )
@@ -265,34 +172,27 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _scored(draft_path: Path) -> Report | None:
-    """The scored report, or None once "not run" is on stderr because the
-    enrichment layer, and so the entailer, is not installed, or its
-    model will not load."""
+    """The scored report, or None once "not run" is on stderr (entailer
+    not installed or its model will not load)."""
     entailer, reason = entailment.open_entailer()
     if entailer is None:
         print(f"support: not run -- {reason}", file=sys.stderr)
         return None
-    # Resolved here rather than defaulted inside `build_report`, so that
-    # the config is what the *CLI* obeys while a caller -- notably
-    # bench/bench_support_topk.py, which sweeps k -- pins it per arm at
-    # the call site instead of mutating a module constant mid-run.
+    # Resolved here so the CLI obeys config while bench/bench_support_topk.py
+    # pins k per arm at the call site.
     try:
         return build_report(draft_path, entailer, config.SUPPORT_PREMISE_TOPK)
     except entailment.EntailmentUnavailable as unavailable:
-        # The model loads at the first claim scored, so this is where a
-        # checkpoint that will not load surfaces (#977).
+        # The model loads at the first claim scored (#977).
         print(f"support: not run -- {unavailable}", file=sys.stderr)
         return None
 
 
 def run(args: argparse.Namespace) -> int:
-    """Dispatch already-parsed arguments, split from main() so
-    chitragupta/review/__main__.py can hand over args parsed with this
-    module's own build_parser().
+    """Dispatch already-parsed arguments (for __main__).
 
-    Advisory: exits 0 whatever it finds, including when the enrichment
-    layer is not installed at all -- an unbuilt optional check is not a
-    failure, matching how tier 3 of the verbatim scan degrades."""
+    Exits 0 even when the enrichment layer is not installed: an unbuilt
+    optional check is not a failure."""
     try:
         draft_path = review.require_reviewable(Path(args.draft))
     except (FileNotFoundError, config.OutsideContentDir) as exc:

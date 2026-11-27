@@ -1,13 +1,8 @@
 """The ledger's citekeys, for the verbatim scan to mask (#1187).
 
-A bare citekey written into prose (`fixture_key_2000` outside a `[@..]`
-marker) reads to the scan as a word run; no rewording of the sentence
-removes it, so reporting it is noise. The scan blanks every key the
-ledger knows, the way it blanks a citation marker.
-
-Absent, stale or unreadable ledger means no keys, not an error: the scan
-is a review aid and must still run on a fresh clone. This mirrors
-`style_bare_citekeys._ledger_keys`.
+A bare citekey in prose reads as a word run no rewording removes, so the
+scan blanks every key the ledger knows. No usable ledger means no keys,
+not an error, as `style_bare_citekeys._ledger_keys` does.
 """
 
 import sqlite3
