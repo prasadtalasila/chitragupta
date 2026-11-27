@@ -169,8 +169,8 @@ rewritten. Two consequences are worth knowing before you start:
   module already had (a section comment, a docstring that names two
   jobs), say in the PR body which of the two kinds it was, and delist
   the module if the split takes it off the register.
-- **Rationale can move from a docstring into a `#` comment**, since
-  docstrings count toward the ceiling and comments do not. That is the
+- **A binding constraint can move from a docstring into a `#` comment**,
+  since docstrings count toward the ceiling and comments do not. That is the
   standard's own sanction rather than a loophole, and the same move
   four times in one run is a pattern to state once in a PR body, not a
   thing to re-argue per commit.
@@ -862,8 +862,8 @@ one of them is usually true.
 
 `.opencodereview/rule.json` is what makes it worth running here. OCR's
 built-in rule is generic Python review, and is wrong about this tree in
-both directions: it would flag the dense *why*-comments, the f-string
-`PRAGMA` and the deliberately duplicated pool builders, and it does not
+both directions: it would flag the f-string `PRAGMA` and the
+deliberately duplicated pool builders, and it does not
 know the citekey invariant, the layer boundaries, C1/C2 counted in
 statements, or the `encoding="utf-8"` rule. The project file replaces it
 for `chitragupta/`, `tests/`, `scripts/`, `bench/` and `.github/`, and excludes
