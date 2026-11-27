@@ -10,6 +10,10 @@ import ipaddress
 import signal
 import socket
 import sys
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import uvicorn
 
 LOOPBACK = "127.0.0.1"
 
@@ -36,7 +40,7 @@ def bind_socket(port: int) -> socket.socket:
     return sock
 
 
-def make_server(app):
+def make_server(app) -> "uvicorn.Server":
     import uvicorn
 
     config = uvicorn.Config(app, access_log=False, log_level="warning", lifespan="off")
@@ -47,7 +51,7 @@ def _raise_interrupt(_signum, _frame) -> None:
     raise KeyboardInterrupt
 
 
-def terminate_as_interrupt():
+def terminate_as_interrupt() -> Any:
     """Make SIGTERM end the process the way Ctrl-C does.
 
     uvicorn shuts down on SIGTERM, then restores the previous handler and

@@ -11,6 +11,7 @@ speaks WebSocket, and an open door nobody uses is still a door.
 """
 
 import logging
+from collections.abc import Awaitable, Callable
 
 from chitragupta.webapp._guards import Refusal, header_map, is_api, run_checks
 
@@ -65,7 +66,7 @@ class GuardMiddleware:
         await send({"type": "http.response.body", "body": b""})
 
     @staticmethod
-    def _wrap(path: str, send):
+    def _wrap(path: str, send) -> Callable[[dict], Awaitable[None]]:
         async def guarded_send(message) -> None:
             if message["type"] == "http.response.start":
                 message = {**message, "headers": _headers_for(path, list(message["headers"]))}
