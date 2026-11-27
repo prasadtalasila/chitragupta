@@ -1,22 +1,15 @@
-"""R2's cross-signal merge: two distinct rules, not one fuzzy-matching
-engine -- the issue's own framing ("this cross-signal merge is the work
-no individual aid can do") turns out to have exactly one true-duplicate
-case and one correlated-but-distinct case once the aids' own outputs
-are read closely; see each function's docstring for which is which.
+"""R2's cross-signal merge: two distinct rules, not a fuzzy matcher, since
+the aids' outputs hold one true-duplicate case and one
+correlated-but-distinct case.
 """
 
 from chitragupta.review.agenda._items import Item
 
 
 def _suppress_missing_citekey_duplicates(items: list[Item]) -> list[Item]:
-    """A citekey that has left the ledger makes
-    `citation_provenance.source_passages` return a "not found in the
-    corpus" reason (`passages._not_current`), which scores 0.0 and bands as
-    `"no support found"` -- the same missing citekey surfacing a second
-    time as an apparently independent `unsupported-claim`, when it is a
-    symptom of the `missing-citekey` defect, not new evidence. Drop the
-    `unsupported-claim` item, folding its claim text into the surviving
-    `missing-citekey` item instead of filing the same defect twice.
+    """A citekey that left the ledger also scores 0.0 in provenance, an
+    `unsupported-claim` that is a symptom, not new evidence. Drop it,
+    folding its claim text into the `missing-citekey` item.
     """
     missing_by_citekey = {item.citekey: item for item in items if item.cls == "missing-citekey"}
     kept = []
@@ -30,12 +23,8 @@ def _suppress_missing_citekey_duplicates(items: list[Item]) -> list[Item]:
 
 
 def _cross_link_shared_lines(items: list[Item]) -> list[Item]:
-    """Two items from *different* classes on the same line (e.g. a
-    verbatim-run and an unsupported-claim on the same sentence) are two
-    real defects needing two different fixes -- both survive as distinct
-    items, but each names the other in `detail["also_flagged"]`. This is
-    the concrete, testable form of the cross-signal merge that does not
-    hide either fix behind the other.
+    """Items of different classes on one line are two defects with two
+    fixes: both survive, each naming the other in `detail["also_flagged"]`.
     """
     by_line: dict[int, list[Item]] = {}
     for item in items:
@@ -50,10 +39,8 @@ def _cross_link_shared_lines(items: list[Item]) -> list[Item]:
 
 
 def merge(items: list[Item]) -> list[Item]:
-    """Suppress true duplicates, cross-link correlated-but-distinct
-    findings, then a defensive within-class dedup by `id` -- ids should
-    already be unique by construction; this guards against a future
-    extractor bug rather than a case that currently occurs."""
+    """Suppress true duplicates, cross-link correlated findings, then a
+    defensive within-class dedup by `id` against a future extractor bug."""
     items = _suppress_missing_citekey_duplicates(items)
     items = _cross_link_shared_lines(items)
     seen: dict[str, Item] = {}

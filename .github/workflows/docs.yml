@@ -1,32 +1,11 @@
 name: Docs
 
-# Builds the documentation site and publishes it to GitHub Pages, where
-# it is served at https://prasad.talasila.in/chitragupta/ -- not because
-# this repository claims that domain, but because GitHub propagates a
-# user site's custom domain to every project site under the same
-# account. Nothing here configures the domain, and this repository must
-# NOT contain a CNAME file: adding one would try to claim the domain for
-# this project alone and break the inheritance.
-#
-# Every push builds; only main publishes. A PR gets the build as a check
-# so a broken link or a nav entry pointing at a file that moved fails
-# review rather than the site.
-
-# `branches` alone, with no `tags-ignore` (#512/m-84). Under a
-# `branches:`-filtered push trigger a tag push already matches nothing, so
-# the `tags-ignore: ['v*']` that used to sit here was not narrowing the
-# trigger -- it was *widening* it, re-enabling a docs build for every tag
-# that is not a release tag. ci.yml's own header documents the rule this
-# rests on: a `push` trigger carrying only tag filters stops running on
-# branch pushes entirely, and the two filters interact rather than
-# compose.
+# The domain is inherited from the user site: this repository must NOT contain a CNAME file.
+# `branches` alone: adding `tags-ignore` to a branch-filtered push widens the trigger (#512/m-84).
 on:
   push:
     branches: [main]
   pull_request:
-    # Build and link-check PRs into the figure-drawer v3 integration
-    # branch (#1044). Never published from it: `deploy` runs only for a
-    # push to main, and improve-figures is deliberately not under push.
     branches: [main, improve-figures]
   workflow_dispatch:
 
@@ -36,11 +15,6 @@ concurrency:
 
 jobs:
   build:
-    # Job-level rather than workflow-level (Sonar S8264): a workflow-level
-    # grant reaches every job, including future ones added without
-    # thinking about permissions. `deploy` below already carries its own
-    # block, so scoping this one to `build` leaves nothing inheriting by
-    # default.
     permissions:
       contents: read
     runs-on: ubuntu-26.04
@@ -51,59 +25,14 @@ jobs:
         with:
           python-version: '3.12'
 
-      # Resolved versions come from uv.lock, like every other
-      # dependency in this repository -- DEVELOPER-AGENTS.md's "don't add
-      # a second install path". Only the `docs` extra, because a docs
-      # build has no use for the enrich stack: this installs mkdocs and
-      # its dependencies (plus bibtexparser, the one core dependency), so
-      # the job stays seconds rather than the minutes a torch download
-      # costs.
-      #
-      # Not `scripts/install_full_pipeline.sh`: that script is the single
-      # install path for the *pipeline* (host, Docker and the CI test job
-      # all share it), and it deliberately does not know about this
-      # extra. uv makes its own `.venv` here, which the build below runs
-      # in through `uv run`; nothing else in this job needs it.
-      #
-      # mkdocs-same-dir is what makes mkdocs.yml's `docs_dir: .` legal,
-      # which is why this site needs no staging step and no link
-      # rewriting. See that file's header comment.
-      #
-      # uv itself is pinned and wheels-only (Sonar S8544/S8541: an
-      # unpinned install resolves to whatever PyPI serves that day, and an
-      # sdist fallback runs arbitrary setup scripts), mirroring ci.yml's
-      # and release.yml's -- bump all three, and
-      # scripts/uv-requirements.txt, together.
-      # `--no-build` extends the same refusal to the docs extra itself:
-      # every package in it ships a wheel, so a source build here could
-      # only ever be a substituted artefact, and refusing it costs
-      # nothing. `--locked` fails on a uv.lock that no longer matches
-      # pyproject.toml rather than re-resolving it here.
       - name: Install the docs toolchain
         run: |
           pip install --only-binary ':all:' uv==0.13.9
           uv sync --locked --no-build --no-install-project --extra docs
 
-      # --strict turns MkDocs' warnings into failures. What it actually
-      # catches here is a nav entry pointing at a file that moved and a
-      # link into a page that no longer has that anchor -- both silent
-      # otherwise, and both easy to introduce, since every document in
-      # this repository links freely to every other one.
       - name: Build the site
         run: uv run --no-sync mkdocs build --strict
 
-      # `--strict` checks the Markdown MkDocs was given; it says nothing
-      # about whether the site it produced is usable. It passed cleanly on
-      # a build whose entire stylesheet and JavaScript bundle were missing,
-      # because an over-broad `exclude_docs: assets/` -- meant for this
-      # repo's `assets/csl/` -- also removed the theme's own output. The
-      # site published unstyled and every check was green.
-      #
-      # So: resolve every local href/src in every built page against what
-      # is actually on disk. That catches the missing-theme case, a nav
-      # entry pointing at a file that moved, and a raw HTML link MkDocs
-      # never rewrote (which `--strict` also misses, since it only rewrites
-      # Markdown links).
       - name: Check every reference in the built site resolves
         run: |
           python3 - <<'PY'
@@ -140,8 +69,6 @@ jobs:
                   path = urllib.parse.unquote(ref.split("#")[0].split("?")[0])
                   if not path:
                       continue
-                  # Absolute refs are rooted at the served base path (the
-                  # 404 page uses them, since it can be served from any depth).
                   target = site / path[len(base):] if path.startswith(base) else html.parent / path
                   if not target.resolve().exists():
                       missing.setdefault(ref, set()).add(str(html.relative_to(site)))
@@ -149,8 +76,6 @@ jobs:
           for ref, pages in sorted(missing.items()):
               print(f"::error::broken reference {ref} in {sorted(pages)[:4]}")
 
-          # A belt-and-braces floor, in case a future theme stops being
-          # reachable by reference-walking alone.
           for pattern in ("assets/stylesheets/*.css", "assets/javascripts/*.js"):
               if not list(site.glob(pattern)):
                   print(f"::error::no {pattern} in the built site")
@@ -165,8 +90,6 @@ jobs:
           path: site
 
   deploy:
-    # Only main publishes; a PR gets the build above as a check and
-    # nothing else.
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-26.04

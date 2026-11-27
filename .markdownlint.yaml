@@ -1,40 +1,7 @@
-# markdownlint configuration, adopted from DTaaS
-# (INTO-CPS-Association/DTaaS), the same source docs/CODE-STANDARDS.md
-# takes this project's code standards from.
-#
-# ENFORCED. `.github/workflows/ci.yml`'s `lint` job runs this at a binary
-# zero-messages bar -- see docs/TECHNICAL-DEBT.md's 5.2 for the baseline
-# it was adopted from (927 findings, 827 of them MD060).
-#
-# Run it with:
-#   markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" ".agents/**/*.md" \
-#     ".opencode/**/*.md" "plans/**/*.md" \
-#     "!docs/examples/sample-project" "!docs/examples/*/content" "!.claude/worktrees"
-#
-# All three negations matter locally. The first two are pipeline output
-# -- the sample project, and the content/ of each harness example beside
-# it (see DEVELOPER-AGENTS.md's "The linters, which are enforced"); the
-# third excludes throwaway checkouts of this same repository, which
-# `.claude/**/*.md` otherwise pulls in wholesale -- 40,026 findings from
-# worktree copies against 0 in the tracked tree, measured 2026-09-03.
-# CI never sees it (a fresh checkout has no worktrees), so leaving it out
-# costs only the local run, which is the run that is not optional.
+# Locally also exclude "!.claude/worktrees", or worktree copies flood the run.
 default: true
 
-# Inline HTML. This repository's README uses a <picture>/<source srcset>
-# block for the dark-mode logo, which has no Markdown spelling.
 MD033: false
-
-# Table cell padding, 89% of the original adoption baseline (827 of
-# 927) -- declined then (docs/TECHNICAL-DEBT.md's 5.2) because the
-# alternative was a diff moving spaces around every table in the
-# documentation by hand, burying the substantive history of those
-# files. #362 makes it a machine edit instead:
-# `markdownlint-cli2 --fix` pads every table in one pass, so the
-# judgement changes to **enabled**. A handful of tables containing a
-# pipe inside cell content (an inline code span, mostly) don't
-# auto-fix and are wrapped by hand instead -- see those tables' own
-# history for why.
 
 MD013:
   code_blocks: false
@@ -43,14 +10,4 @@ MD013:
 MD046:
   style: "fenced"
 
-# There is no `overrides:` block here, and the one inherited from
-# upstream has been removed rather than corrected. `overrides` is a
-# markdownlint-**cli2** feature, read from `.markdownlint-cli2.yaml`; a
-# plain `.markdownlint.yaml` like this one is the library's own config
-# schema and ignores the key silently. The inherited block was therefore
-# inert twice over -- it named `.github/` paths, which this project's lint
-# scope (`"*.md" "docs/**/*.md"`) does not reach either.
-#
-# Per-file exceptions are inline directives instead, at the one site that
-# needs one: `README.md`'s `markdownlint-disable-next-line MD041`, which
-# carries its reason beside it and cannot quietly stop applying.
+# No `overrides:` key: it is cli2-only and this file ignores it; use inline directives.

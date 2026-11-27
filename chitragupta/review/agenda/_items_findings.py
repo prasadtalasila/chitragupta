@@ -1,16 +1,10 @@
 """Item extractors reading the other aids' `.json` and `style_check`'s
-findings -- split out of `_items.py` once the drift-based extractors,
-this half and `all_items` together crossed the 250-code-line cap.
+findings.
 
-`synthesis` and `figure` are read (`_sources.py`) but produce no items
-here, for two different reasons worth keeping distinct: `synthesis`
-carries a stable `finding_id` (`chitragupta/review/synthesis.py:122`) but
-has no row in `docs/AUTO-IMPROVEMENT.md`'s item-class table -- a doc-scope
-decision, not a technical blocker. `figure_layout`'s findings
-(`chitragupta/review/figure_layout/_report.py:131`) carry no `id` and no
-severity vocabulary at all -- there is nothing to hang a stable identity
-or a class ranking off, so no class could be defined for it without
-inventing one from nothing.
+`synthesis` and `figure` are read but produce no items, for distinct
+reasons: `synthesis` has no row in docs/AUTO-IMPROVEMENT.md's item-class
+table (a doc-scope decision), and `figure_layout`'s findings carry no `id`
+or severity to hang an identity or ranking on.
 """
 
 from chitragupta.dossier._sections import Section
@@ -22,8 +16,7 @@ from chitragupta.review.agenda._sources import AidSource, StyleSource
 
 def verbatim_run_items(source: AidSource, sections: list[Section]) -> list[Item]:
     """`severity == \"short\"` is unattended (`agenda-reviser` handles
-    it); `\"long\"` is surfaced (#129 reserves it for a human);
-    `\"quoted\"` is not a defect and is excluded entirely."""
+    it); `\"long\"` is surfaced (#129); `\"quoted\"` is excluded."""
     if not source.available:
         return []
     items = []
@@ -35,19 +28,11 @@ def verbatim_run_items(source: AidSource, sections: list[Section]) -> list[Item]
         section = section_anchor(sections, line)
         span = finding.get("fragment") or finding.get("draft_text") or finding.get("id", "")
         citekey = finding.get("citekey")
-        # Summarised by `span_words` with `matched_words` appended when the
-        # two differ, which is `_scan.py`'s `_matched_note` in the aid's own
-        # report ("15 words, 6 matched"). Summarising by `matched_words`
-        # alone described a gapped skip-gram or embedding match as a run
-        # shorter than `--min-run`, which no scan can produce -- and the
-        # agenda must not describe a finding differently from the aid it
-        # quotes. The condition is on the two counts rather than on `tier`
-        # so that any tier matching fewer words than it spans reads right.
-        # `_matched_note` itself is deliberately not imported: this module
-        # reads the aids' filed JSON and nothing else, which is what lets an
-        # agenda be built from reports on disk without the aid that wrote
-        # them being importable -- and that private helper indexes both keys
-        # directly, where every read here tolerates a partial payload.
+        # `span_words`, plus `matched_words` when they differ, as the aid's
+        # own report ("15 words, 6 matched"): matched words alone described a
+        # gapped match as shorter than `--min-run`. `_matched_note` is not
+        # imported: this module reads filed JSON only, tolerating partial
+        # payloads, so an agenda builds without the aid importable.
         words = finding.get("span_words", "?")
         matched = finding.get("matched_words", "?")
         tier = finding.get("tier")
@@ -58,33 +43,20 @@ def verbatim_run_items(source: AidSource, sections: list[Section]) -> list[Item]
                 section=section,
                 citekey=citekey,
                 line=line,
-                # `short` **and a deterministic tier**. `severity` comes
-                # from `_bucket`, which thresholds on `matched_words` and
-                # never looks at `tier`, so a short embedding alignment
-                # reaches this line looking exactly like a short exact
-                # run -- and was marked unattended, authorising
-                # `agenda-reviser` to edit a passage away on the evidence
-                # of a similarity score. `verbatim_check`'s own
-                # `_recheck.py` already refuses to count that tier
-                # (`f["tier"] != "embedding"`, #500) on the grounds its
-                # docstring gives -- "advisory only, permanently", moving
-                # with tier availability and the embedding model rather
-                # than with an edit. Something advisory-only cannot also
-                # be safe to act on unasked; the two modules disagreeing
-                # about the same tier was the bug, not the wording.
-                #
-                # `names` (#1187): a short run mostly of copied proper
-                # names has no other wording, so editing it away is a
-                # judgement for a person. `.get`, because a baseline
-                # filed before the flag existed has no such key and
-                # must stay unattended exactly as it was.
+                # `short` and a deterministic tier: `_bucket` ignores `tier`,
+                # so a short embedding alignment once authorised
+                # `agenda-reviser` to edit a passage on a similarity score.
+                # `verbatim_check/_recheck.py` treats that tier as advisory
+                # only (#500), and advisory cannot also be safe unasked.
+                # `names` (#1187): a run mostly of proper names is a
+                # person's judgement; `.get` keeps older baselines unchanged.
                 unattended=(
                     severity == "short" and tier != "embedding" and not finding.get("names", False)
                 ),
                 summary=_run_summary(tier, words, matched, citekey),
                 detail={"severity": severity, "verbatim_id": finding.get("id")},
-                # `draft_text`, not the `fragment` the id hashes: only
-                # the former is `draft[char_start:char_end]` (R12).
+                # `draft_text`, not the hashed `fragment`: only the former
+                # is `draft[char_start:char_end]` (R12).
                 span=finding.get("draft_text") or None,
             )
         )
@@ -92,18 +64,9 @@ def verbatim_run_items(source: AidSource, sections: list[Section]) -> list[Item]
 
 
 def _run_summary(tier: str | None, words, matched, citekey: str | None) -> str:
-    """One line naming what the tier actually found.
-
-    `"N-word verbatim run"` was said of every finding regardless of tier,
-    which is true only of the exact tier: a skip-gram finding is a
-    stemmed match with words substituted, and an embedding finding shares
-    no wording at all. The agenda must not describe a finding differently
-    from the aid it quotes -- and calling a restatement a verbatim run is
-    a stronger claim than the aid ever made.
-
-    `tier` may be absent from a report filed before the field existed;
-    the wording falls back to the neutral "run", which overstates
-    nothing.
+    """One line naming what the tier actually found: only the exact tier
+    is a "verbatim run", and calling a restatement one overclaims. A
+    report predating `tier` falls back to the neutral "run".
     """
     kind = {
         "exact": "verbatim run",
@@ -118,33 +81,16 @@ def _run_summary(tier: str | None, words, matched, citekey: str | None) -> str:
 
 
 def prose_items(source: StyleSource, sections: list[Section]) -> list[Item]:
-    """One item per `style_check` finding, consumed as-is: it already
-    restricts itself to the decidable rules of
-    docs/WRITING-STANDARDS.md's Section 9, so no further filtering for
-    "mechanically re-checkable" is needed here. A `line` of 0
-    (acronym-drift, which checks the draft's vocabulary as a whole) is
-    not a position and is treated as None, same as any other item with
-    nothing to anchor on.
+    """One item per `style_check` finding, as-is: it already keeps to
+    WRITING-STANDARDS.md Section 9's decidable rules. A `line` of 0
+    (acronym-drift) is treated as None.
 
-    **Unattended, decided in issue 421** after shipping `False` here for
-    one release while nothing consumed the flag. Two other classes are
-    binary and deterministic yet still surfaced, so being re-checkable
-    is not sufficient on its own -- but neither of those is surfaced for
-    failing R3. `uncited-claim` is surfaced because the fix is evidence
-    rather than wording, and `misquoted` because the defect is in
-    `evidence.md` while a reviser edits drafts. `prose` fails neither
-    test: the repair is an edit to the draft, which is R1's write-set
-    exactly, and it fixes the finding rather than disguising it, because
-    there is no underlying evidential claim for a rewording to
-    misrepresent.
-
-    R3 was tested rather than argued: adding a caption and an inline
-    reference took `TableNoCaption` and `FigureUnreferenced` to zero.
-    **Except where the finding says otherwise** (issue 836): a rule whose
-    right repair may be "leave it alone" -- `WideCodeLine` in a block
-    verified to run, a dialect taken from `config.toml` rather than the
-    author -- carries `repair="review"` and is surfaced instead. The
-    rule decides that where the finding is built; this reads it only."""
+    Unattended (issue 421): the repair is a draft edit (R1's write-set)
+    and fixes rather than disguises the finding, there being no evidential
+    claim to misrepresent; R3 was tested (a caption and a reference zeroed
+    `TableNoCaption` and `FigureUnreferenced`). Except a finding marked
+    `repair="review"` (issue 836), whose right repair may be to leave it;
+    the rule decides that, this only reads it."""
     if not source.available or source.data is None:
         return []
     items = []
@@ -167,11 +113,8 @@ def prose_items(source: StyleSource, sections: list[Section]) -> list[Item]:
                     "severity": finding.get("severity"),
                     "count": finding.get("count"),
                 },
-                # Vale's `Match` alone -- the id hashes `rule\x00match`,
-                # which is not draft text (R12). Never refused in
-                # practice, since `prose` is re-derived from the current
-                # draft on every build; `_stale`'s docstring has why that
-                # is correct (#839).
+                # Vale's `Match` alone: the id hashes `rule\x00match`, not
+                # draft text (R12); never refused in practice (#839).
                 span=finding.get("match") or None,
             )
         )
@@ -179,8 +122,7 @@ def prose_items(source: StyleSource, sections: list[Section]) -> list[Item]:
 
 
 def unsupported_claim_items(source: AidSource, sections: list[Section]) -> list[Item]:
-    """Every provenance finding except `band == \"supported\"`, which
-    needs no action."""
+    """Every provenance finding except `band == \"supported\"`."""
     if not source.available:
         return []
     items = []
@@ -212,17 +154,11 @@ def unsupported_claim_items(source: AidSource, sections: list[Section]) -> list[
 
 
 def claim_support_items(source: AidSource, sections: list[Section]) -> list[Item]:
-    """One item per finding the entailer actually scored -- `note` set
-    means no quotable passage (`claim_support.build_report`), so there
-    is no score to rank or act on, and those are excluded. Every scored
-    finding becomes an item regardless of score: unfiltered by design,
-    the reason `claim_support.py` ranks rather than bands -- a cutoff
-    would claim a precision this corpus does not support.
-    `_order.severity_rank` ranks worst-score-first within the class
-    instead of a threshold deciding membership here. The summary states
-    plainly that the score is not a verdict, the caveat
-    `_claim_support_render.py`'s own `_HOW_TO_READ` carries for the
-    standalone report -- an agenda item is read without it."""
+    """One item per finding the entailer scored (`note` set means nothing
+    to rank). Unfiltered by design: a cutoff would claim a precision this
+    corpus lacks, so `_order.severity_rank` ranks instead. The summary
+    says the score is no verdict, since an item is read without the
+    standalone report's caveat."""
     if not source.available:
         return []
     items = []
@@ -251,8 +187,7 @@ def claim_support_items(source: AidSource, sections: list[Section]) -> list[Item
 
 
 def uncited_claim_items(source: AidSource, sections: list[Section]) -> list[Item]:
-    """Every uncited-prose finding becomes an item -- already binary, per
-    the aid's own docstring."""
+    """Every uncited-prose finding becomes an item (already binary)."""
     if not source.available:
         return []
     items = []
@@ -276,13 +211,9 @@ def uncited_claim_items(source: AidSource, sections: list[Section]) -> list[Item
 
 
 def misquoted_items(source: AidSource) -> list[Item]:
-    """One item per quotation-integrity finding -- already filtered to
-    `absent` quotes by `quotation.findings()` itself (`unverifiable` is a
-    count, never a finding, since it names a parse limit rather than a
-    fabrication). No line: a quote lives in `evidence.md`, not the
-    draft's own numbered text, so there is nothing to anchor a section
-    to -- the defect is in the dossier, and `agenda-reviser` edits
-    drafts, which is why this class has no unattended repair."""
+    """One item per `absent` quotation (`unverifiable` is a parse limit,
+    never a finding). No line: the quote lives in `evidence.md`, which
+    `agenda-reviser` cannot edit, hence no unattended repair."""
     if not source.available:
         return []
     items = []

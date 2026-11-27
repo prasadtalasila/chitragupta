@@ -1,20 +1,10 @@
 """Stored typed shortest paths for the topic graph (#714).
 
-The app walks each edge family between two pinned topics with Dijkstra
-over `1 - strength` (`assets/webapp/families.js` path()), so the strong
-route wins over the short one. This module computes the same trees once
-in the builder -- networkx's Dijkstra, one single-source run per topic
-per family -- and stores a next-hop matrix: `next[i][j]` is the index
-into that family's own edge list of i's first hop toward j, `-1` where
-no path exists (an answer, not an absence), one row and column per
-topic in payload order. The reader walks the matrix and resolves each
-hop's evidence from the edge lists it already holds -- indices, never
-inlined citekeys, which is what keeps 131x131x2 affordable.
-
-Never a fused-family matrix: a path over both families would be a
-distance nobody can interpret, and the design refuses it.
-`tests/webapp/path_cases.json` pins the stored trees to families.js's
-own walk, from node and from pytest.
+Dijkstra over `1 - strength` per edge family, as `assets/webapp/families.js`
+path() walks it, stored as a next-hop matrix: `next[i][j]` indexes that
+family's edge list, `-1` where no path exists. Indices, not inlined
+citekeys, keep it affordable. Never a fused-family matrix: that distance
+means nothing. `tests/webapp/path_cases.json` pins it to families.js.
 """
 
 _WEIGHT_KEY = {"overlap": "overlap_coeff", "semantic": "similarity"}
@@ -33,9 +23,8 @@ def next_hop_matrices(labels: list, edges_overlap: list, edges_semantic: list) -
         n = len(labels)
         matrix = [[-1] * n for _ in range(n)]
         for target in labels:
-            # The predecessor tree rooted at the target: a source's first
-            # predecessor toward the target IS its next hop, since the
-            # graph is undirected and Dijkstra trees are symmetric in it.
+            # In an undirected graph, the predecessor toward the target is
+            # the next hop.
             predecessors, _ = nx.dijkstra_predecessor_and_distance(graph, target)
             for source, towards in predecessors.items():
                 if source == target or not towards:

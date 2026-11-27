@@ -1,18 +1,10 @@
-"""`figure check`'s advisory size reports (#1057): how tall the figure
-is, how much of it is empty, how many nodes and edges it has, each
-beside its layout's reference range, and any arrow too short to read.
+"""`figure check`'s advisory size reports (#1057): height, emptiness, node and
+edge counts beside the layout's reference range, and any arrow too short to read.
 
-**Read, never resolved, allowed or capped.** FIGURE-ROADMAP VI.3: a
-bare count means little, so each number sits beside what the layout's
-scaffold and exemplars measure (`_layout.py`), and a range "does not
-authorise a finding when a figure exceeds it". A forty-cell DP trace is
-not over budget. So the four range reports print whatever the number,
-in words that describe and never judge, and the reader decides. Only
-`size-squash` reports a pair it found, because a too-short arrow is a
-defect of the pair, not a property of the figure.
-
-Every number is read back from the probe's boxes and the source parser's
-edge list; nothing here places anything.
+**Read, never resolved, allowed or capped** (FIGURE-ROADMAP VI.3): a range
+"does not authorise a finding when a figure exceeds it", so reports describe
+and never judge. Only `size-squash` names a pair, since a too-short arrow is a
+defect of that pair.
 """
 
 import re
@@ -28,13 +20,11 @@ from chitragupta.review.figure_layout import (
     leaves,
 )
 
-# An arrow under 3mm reads as a tick, not a direction (the v3 plan's
-# threshold). Measured edge to edge; benched over the scaffolds, the
-# exemplars and the reference book's 49 figures in plans/1057.
+# An arrow under 3mm reads as a tick, not a direction; measured edge to edge
+# (benched in plans/1057).
 SQUASH_PT = 3 * 72.27 / 25.4
 
-# The rules that need the compiled boxes, listed as not measured with the
-# caller's reason when there are none.
+# Rules needing the compiled boxes, listed as not measured when there are none.
 GEOMETRY = ("size-height", "size-slack", "size-squash")
 
 NO_AREA = "the picture has no area"
@@ -59,12 +49,9 @@ def advise(
 ) -> tuple[list[Finding], list[tuple[str, str]]]:
     """`(reports, not_measured)` for one figure, in registry order.
 
-    `source` is the figure file's text, `layout` the name it declared (or
-    `--layout` gave), `rows` that layout's reference rows or `None` where
-    it has none, and `unmeasurable` why the boxes cannot be read, or `""`
-    where they can. `height_pt` is the page's text height, which
-    `size-height` reports a share of (`page.Page`). The counts are read
-    from source, so they print either way."""
+    `rows` is `None` where the layout has no reference; `unmeasurable` says why
+    boxes cannot be read (or `""`). `height_pt` is the page's text height for
+    `size-height`. Counts come from source, so they print either way."""
     reports: list[Finding] = []
     not_measured: list[tuple[str, str]] = []
     if unmeasurable:
@@ -89,7 +76,6 @@ def advise(
 def _measured(
     figure: FigureResult, layout: str, rows: list[RangeRow] | None, height_pt: float
 ) -> tuple[list[Finding], list[tuple[str, str]]]:
-    """Height, slack and squash, from boxes known to be there."""
     boxes = figure.boxes
     x1, y1, x2, y2 = boxes[BBOX_NAME]
     width, height = x2 - x1, y2 - y1
@@ -124,9 +110,8 @@ def _measured(
 def _squash(
     figure: FigureResult, ambiguous: list[tuple[str, str]], reports: list[Finding]
 ) -> list[tuple[str, str]]:
-    """Append each squashed pair to `reports`, and return what squash
-    could not read: edges on a path whose pairs are not its ends, then
-    edges with an end that is no measured node."""
+    """Append each squashed pair to `reports`, and return the edges squash
+    could not read (pairs not a path's ends, or ends that are no measured node)."""
     plain = [edge for edge in figure.edges if edge not in ambiguous]
     on_path = [edge for edge in figure.edges if edge in ambiguous]
     found, unreadable = _squashed(figure.boxes, plain)
@@ -152,10 +137,8 @@ def _squash(
 
 
 def slack(boxes: dict[str, Box]) -> float:
-    """The share of the picture no leaf node fills, zone cards excluded:
-    the reference tables' definition, so a figure and its reference are
-    measured alike. Overlapping leaves are double-counted; `node-overlap`
-    reports them."""
+    """The share of the picture no leaf node fills, zone cards excluded, as
+    the reference tables define it. Overlapping leaves are double-counted."""
     x1, y1, x2, y2 = boxes[BBOX_NAME]
     filled = sum(_area(boxes[name]) for name in leaves(boxes))
     return 1 - filled / ((x2 - x1) * (y2 - y1))
@@ -187,9 +170,8 @@ def _squashed(
 
 
 def _node(token: str, boxes: dict[str, Box]) -> str | None:
-    """The measured node a path coordinate names, anchor and leading
-    option set aside, or `None`. A point built from two nodes
-    (`b.north |- a`, `$(a)!0.5!(b)$`) is neither of them."""
+    """The measured node a path coordinate names, anchor and leading option
+    aside, or `None`; a point built from two nodes is neither."""
     if any(mark in token for mark in _BUILT_POINT_MARKS):
         return None
     token = _LEADING_OPTION_RE.sub("", token)
@@ -200,7 +182,6 @@ def _node(token: str, boxes: dict[str, Box]) -> str | None:
 
 
 def _beside(layout: str, rows: list[RangeRow] | None, column: str) -> str:
-    """The reference a number is read beside, or why there is none."""
     if not layout:
         return "no layout declared (`% cg-layout:` or --layout)"
     if rows is None:

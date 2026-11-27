@@ -35,6 +35,7 @@ class TestTheSubcommandsAreTheAids:
             with pytest.raises(RuntimeError, match="drifted apart"):
                 importlib.reload(_registry)
         finally:
+            # Undo before the reload, so _registry stays importable for later tests.
             monkeypatch.undo()
             importlib.reload(_registry)
 

@@ -1,17 +1,8 @@
 """Building (and caching) docling's DocumentConverter, and rejecting a
 conversion it only half-finished.
 
-Split out of chitragupta/pdf_text.py (#361). Reads the current worker's
-device through `_worker.worker_device()` rather than that module's
-global directly -- the accessor exists precisely so a cross-module
-reader never has to.
-
-Imports `ExtractionError`/`MissingDependency`/`unavailable_reason` from
-the package's own `__init__`, which is safe despite this module being
-imported *from* that same `__init__` (via `_backends`): both are already
-defined there before the bottom-of-file import that reaches this module
--- the same load-bearing ordering `chitragupta/dossier/__init__.py`
-documents for its own submodules.
+Importing from the package `__init__` is safe: the names are defined there
+before the import that reaches this module.
 """
 
 from typing import Any
@@ -20,26 +11,18 @@ from chitragupta import config
 from chitragupta.pdf_text import ExtractionError, MissingDependency, unavailable_reason
 from chitragupta.pdf_text._worker import worker_device
 
-# Distinct docling error messages to quote before summarising the rest.
 _MAX_DOCLING_ERRORS = 3
 
-# One converter, reused for the whole process. Docling's
-# DocumentConverter keeps its `initialized_pipelines` cache on the
-# *instance*, so building one per PDF re-initialises the layout, table
-# and OCR models for every single document -- measured at 16.5s of cold
-# start on the documented A40 host, against a corpus of 501 PDFs.
-#
-# Keyed by the settings that change what a converter *is*, not merely
-# memoised on "was one built already": otherwise flipping config.PARSER_OCR
-# (which tests do, and a user editing config.toml mid-session would) keeps
-# silently serving the converter built under the old setting.
+# One converter per process: docling caches initialised pipelines on the
+# *instance*, so one per PDF reloads every model (16.5s cold start on the
+# documented A40 host). Keyed by the settings that change what a converter
+# is, so flipping config.PARSER_OCR (tests do) doesn't serve a stale one.
 _DOCLING_CONVERTER = None
 _DOCLING_CONVERTER_KEY = None
 
 
 def _reset_docling_converter() -> None:
-    """Drop the cached converter. Exists for tests -- module-level state
-    otherwise leaks one test's fake converter into the next."""
+    """Drop the cached converter, so tests don't leak a fake one."""
     global _DOCLING_CONVERTER, _DOCLING_CONVERTER_KEY
     _DOCLING_CONVERTER = None
     _DOCLING_CONVERTER_KEY = None
@@ -68,25 +51,17 @@ def _docling_converter(threads: int | None = None) -> Any:
 
     opts = PdfPipelineOptions()
     opts.do_ocr = config.PARSER_OCR
-    # Without this, docling writes `<!-- formula-not-decoded -->` where
-    # the equation was, and that marker is what lands in
-    # content/parsed/*.txt -- the one artefact chitragupta/retrieval.py
-    # indexes, and so the only thing a drafting skill can see. The
-    # enrichment layer sets the same option from its own key; these are
-    # two parses with two settings, not one setting read twice.
+    # Without this docling writes `<!-- formula-not-decoded -->`, and that
+    # lands in content/parsed/*.txt, the only text retrieval indexes. The
+    # enrichment layer sets the same option from its own key (two parses).
     opts.do_formula_enrichment = config.PARSER_FORMULAS
-    # Docling checks this between pipeline stages, so it bounds a
-    # pathologically slow document but will not interrupt a hard hang
-    # inside one stage. On expiry it returns PARTIAL_SUCCESS rather than
-    # raising -- which check_docling_status turns into an ExtractionError,
-    # so the truncated text is never written.
+    # Checked between stages: bounds a slow document, not a hard hang in
+    # one stage. Expiry returns PARTIAL_SUCCESS, which check_docling_status
+    # rejects, so truncated text is never written.
     opts.document_timeout = config.PARSER_DOCUMENT_TIMEOUT
     if threads is not None or device is not None:
-        # Only touched when a caller has worked out a thread budget or a
-        # pool has claimed a GPU for this worker (i.e. when
-        # [parser].workers > 1); left alone otherwise, so a default
-        # single-worker run gets exactly Docling's own accelerator
-        # settings and this module changes nothing about it.
+        # Only when a thread budget or a claimed GPU exists ([parser].workers
+        # > 1), so a single-worker run keeps docling's own accelerator settings.
         from docling.datamodel.accelerator_options import AcceleratorOptions
 
         kwargs = {}
@@ -102,39 +77,20 @@ def _docling_converter(threads: int | None = None) -> Any:
     return _DOCLING_CONVERTER
 
 
-# The wordings docling's two document_timeout paths actually produce:
-# "Document processing timeout: exceeded 10.000s limit after ..." from
-# the page-batch loop, and "document timeout exceeded" from the threaded
-# pipeline. Only consulted when an error carries no FailureCategory --
-# see _is_docling_timeout.
+# The wordings docling's two document_timeout paths produce; consulted
+# only when an error carries no FailureCategory.
 _DOCLING_TIMEOUT_PHRASES = ("document timeout", "document processing timeout")
 
 
 def _is_docling_timeout(error, message: str) -> bool:
     """Did this ErrorItem come from `document_timeout` expiring?
 
-    Read from docling's own `FailureCategory` rather than the wording,
-    because the two code paths that can expire a document_timeout word
-    themselves differently -- "Document processing timeout: exceeded
-    ...s limit" from the page-batch loop, "document timeout exceeded"
-    from the threaded pipeline -- and a third wording is one upstream
-    release away.
-
-    `.value`, not `str()`: FailureCategory is a str-Enum, so `str()`
-    gives "FailureCategory.TIMEOUT" where the value it compares equal to
-    is "timeout". Getting that wrong would silently classify every real
-    timeout as an unreadable PDF, which is the failure this exists to
-    prevent.
-
-    The wording is consulted only when there is no category at all --
-    what a docling build predating the field looks like -- rather than
-    as a second opinion, so a categorised non-timeout error that happens
-    to mention the word is not miscounted. Even then it matches the two
-    phrases docling actually uses rather than the bare word "timeout",
-    which a failure with nothing to do with `document_timeout` can
-    legitimately contain (a model download giving up, say). Reporting
-    one of those under "raise [parser].document_timeout" would send its
-    reader to a setting that had no part in it.
+    Read from `FailureCategory`, since docling's two timeout paths word it
+    differently. `.value`, not `str()`: it is a str-Enum, and `str()` would
+    classify every real timeout as an unreadable PDF. The wording is the
+    fallback only when there is no category, and matches docling's two
+    phrases rather than "timeout", so unrelated failures (a model download
+    giving up) aren't sent to `[parser].document_timeout`.
     """
     category = getattr(error, "category", None)
     if category is not None:
@@ -146,28 +102,15 @@ def _is_docling_timeout(error, message: str) -> bool:
 def check_docling_status(result) -> None:
     """Reject a conversion Docling only half-finished.
 
-    `convert(raises_on_error=True)` -- the default -- raises only on
-    FAILURE. A PARTIAL_SUCCESS returns quietly with a document that stops
-    early: the page loop hit a bad page, or `document_timeout` expired.
-    Without this check that truncated text is written to
-    content/parsed/<citekey>.txt and the ledger records it as parsed, so
-    every downstream consumer -- retrieval, the citation gate, provenance
-    -- reasons about a source that silently ends at page k of n. On a
-    citation-grounding pipeline that is worse than a visible failure.
-
-    The parse-quality guard cannot stand in for this: it measures
-    run-together words, not missing content, and its min_tokens floor
-    makes it skip exactly the short documents truncation produces.
+    `convert()` raises only on FAILURE; a PARTIAL_SUCCESS returns a
+    document that stops early, which would be recorded as parsed and
+    silently end at page k of n for every citation consumer. The
+    parse-quality guard cannot stand in: it skips short documents.
     """
     status = getattr(result, "status", None)
     if status is None:
-        # Fail closed (#509/m-36). Treating an absent `status` as success
-        # inverted this check's whole purpose: docling renaming or moving
-        # the attribute would have made every PARTIAL_SUCCESS -- a
-        # document that stops at page k of n -- pass silently, which is
-        # the one outcome the docstring above says must never be written.
-        # An upstream rename is a loud, one-line fix found on the first
-        # document; a silently truncated corpus is not discoverable at all.
+        # Fail closed (#509/m-36): an upstream rename of `status` would
+        # otherwise pass every PARTIAL_SUCCESS silently.
         raise ExtractionError(
             "docling returned a result with no `status` attribute, so a "
             "PARTIAL_SUCCESS cannot be told from a SUCCESS -- refusing to "
@@ -178,18 +121,13 @@ def check_docling_status(result) -> None:
     name = getattr(status, "name", str(status))
     if name == "SUCCESS":
         return
-    # Deduplicated and capped: docling appends one error per failed page,
-    # so a timeout on a 675-page book produced 675 identical copies of
-    # "document timeout exceeded" in a single line. The distinct reasons
-    # are the diagnostic; the repetition is noise that buries the summary
-    # line after it.
+    # Deduplicated and capped: docling appends one error per failed page
+    # (675 identical timeouts on one book).
     seen, ordered, timed_out = set(), [], False
     for error in getattr(result, "errors", []):
         message = str(getattr(error, "error_message", error))
-        # Classified over every error, not just the ones that survive the
-        # cap below: docling appends one per failed page and the timeout
-        # arrives last, so a book long enough to time out is exactly the
-        # case where the deciding error is off the end of the list.
+        # Classified over every error, not just the capped ones: the timeout
+        # arrives last, off the end of the list for a long book.
         timed_out = timed_out or _is_docling_timeout(error, message)
         if message not in seen:
             seen.add(message)

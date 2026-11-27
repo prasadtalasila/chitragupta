@@ -1,31 +1,14 @@
 """What a "unit" is, per genre -- the scale the multi-source rule binds at.
 
-`docs/WRITING-STANDARDS.md` §11 states the rule: a unit cites two or more
-citekeys wherever the evidence set allows, and a single-source unit is a
-deliberate choice the drafter states. What differs between genres is not
-the rule but the *unit*, and this module is the one place that mapping
-lives.
+`docs/WRITING-STANDARDS.md` §11: a unit cites two or more citekeys where
+the evidence allows, and a single-source unit is a stated choice. Genres
+differ in the unit, not the rule: a paragraph everywhere would damage
+three genres' prose or exempt them (`plans/b2-multi-source-synthesis.md`).
 
-A multi-source paragraph is what a survey wants and what a textbook
-chapter finds distracting; a tutorial cannot have one at all, because its
-body carries no citations by design. Applying the paragraph everywhere
-would either damage three genres' prose or exempt them from the
-guarantee, and neither is necessary -- see
-`plans/b2-multi-source-synthesis.md`.
-
-**Two scales for a section, not one.** A section that cites two papers by
-running one out before starting the next spans two sources and fuses
-neither, so spread alone cannot tell a fused section from a
-block-structured one. `Unit.longest_run` is what does: the longest run of
-consecutive paragraphs resting on the same single citekey. It makes an
-existing instruction observable rather than adding a new one --
-`textbook-chapter-writer` step 4 already says not to let one citekey
-carry a whole section.
-
-Serves `chitragupta/review/synthesis.py` and nothing else today. Split
-out of it so that both stay under docs/CODE-STANDARDS.md's C2, and
-because "what counts as a unit" and "what the report says about them" are
-genuinely two questions.
+A section has two scales: spread alone cannot tell a fused section from
+one citing two papers in turn, so `Unit.longest_run` counts consecutive
+paragraphs on one citekey, making `textbook-chapter-writer` step 4
+observable.
 """
 
 import re
@@ -34,19 +17,16 @@ from pathlib import Path
 
 from chitragupta import _code_regions, citation_gate, dossier
 
-# The genre-to-unit table, and the whole of the per-genre policy. Keyed by
-# what `dossier init --genre` writes into scope.md, which
-# tests/test_review_units.py pins against `dossier.GENRES` so a sixth
-# genre cannot arrive here as a silent fallback to the paragraph.
+# The genre-to-unit table, the whole per-genre policy. Keyed by `dossier
+# init --genre`'s scope.md value; tests/test_review_units.py pins it to
+# `dossier.GENRES` so a new genre cannot silently fall back.
 UNITS = {
     "survey": "paragraph",
     "thesis-chapter": "paragraph",
     "deep-research": "paragraph",
     "textbook-chapter": "section",
     "tutorial": "document",
-    # A digest is a survey in the sources' words (#1172): each run is one
-    # source's, and a paragraph braids runs from two or more, so the
-    # survey's unit binds there exactly as it does in a survey.
+    # A digest braids one-source runs into paragraphs, as a survey (#1172).
     "digest": "paragraph",
     # Related work fuses sources as a thesis chapter's does (plans/1179-research-paper-genre.md).
     "research-paper": "paragraph",
@@ -54,29 +34,19 @@ UNITS = {
 
 KINDS = ("paragraph", "section", "document")
 
-# Whether prose carrying no citation is *exceptional* in a genre -- worth
-# a finding every time -- or *ordinary*, the genre working correctly.
-# Keyed by the same `- genre:` line as UNITS above, and pinned against
-# `dossier.GENRES` by tests/test_review_uncited.py for the same reason.
-#
-# The split is docs/WRITING-STANDARDS.md §11's, read one level down from
-# the unit table: a tutorial's body "carries no citations at all, by
-# design", and `textbook-chapter-writer` is "not citation-dense; most
-# content is original worked examples and exercises". Measured on the
-# real drafts, `book-chapter.md` yields 81 uncited sentences after every
-# structural exclusion `uncited_prose` applies, and not one of them is
-# actionable -- learning objectives, worked arithmetic and exercises.
-# This is `synthesis.single_source_pct`'s move, which excludes uncited
-# units in the same two genres and for the same reason.
+# Whether uncited prose is exceptional in a genre (a finding every time) or
+# ordinary. Keyed and pinned like UNITS (tests/test_review_uncited.py).
+# §11: a tutorial body cites nothing by design and a textbook chapter is
+# not citation-dense; measured, `book-chapter.md` yields 81 uncited
+# sentences, none actionable. `synthesis.single_source_pct` excludes the
+# same two genres.
 UNCITED_PROSE = {
     "survey": "exceptional",
     "thesis-chapter": "exceptional",
     "deep-research": "exceptional",
     "textbook-chapter": "ordinary",
     "tutorial": "ordinary",
-    # A digest's own paragraphs -- scope, framing, gap analysis -- carry
-    # no citation by design; the `digest` aid is what judges its own
-    # sentences, one by one (#991, #1172).
+    # The `digest` aid judges a digest's own sentences (#991, #1172).
     "digest": "ordinary",
     # Design and evaluation describe the author's own software, uncited by design.
     "research-paper": "ordinary",
@@ -84,41 +54,28 @@ UNCITED_PROSE = {
 
 STANDINGS = ("exceptional", "ordinary")
 
-# What an unknown or unrecorded genre gets: the *strict* reading, unlike
-# FALLBACK_KIND's paragraph, which is merely the commonest. The asymmetry
-# is deliberate -- measuring at the wrong scale produces a wrong number a
-# reader can see, while raising no findings produces a clean report that
-# reads as an answer. Silence is the worse failure, so the fallback is
-# the one that speaks.
+# Unknown genre gets the strict reading, deliberately unlike FALLBACK_KIND:
+# a wrong scale is a visible wrong number, but no findings reads as an
+# answer, so the fallback that speaks is the safer.
 FALLBACK_STANDING = "exceptional"
 
-# What an unknown or unrecorded genre is measured at. The paragraph
-# rather than a refusal: a report that judges nothing is more useful
-# reporting at the wrong scale *and saying so* than not running -- and
-# `resolve_unit` returns "nothing" as the source precisely so the report
-# can say it.
+# Unknown genre is measured at the paragraph rather than refused: a wrong
+# scale, said so, beats not running; `resolve_unit` names the source.
 FALLBACK_KIND = "paragraph"
 
-# `<!-- single-source: why -->` in Markdown, `% single-source: why` in
-# LaTeX. Deliberately carries no `@` sigil and no `\cite`, so the reason
-# a drafter gives -- which usually names the citekey in prose -- cannot
-# be read back as a citation and inflate the count it exists to explain.
+# No `@` and no `\cite` in the marker, so a reason naming the citekey
+# cannot be read as a citation and inflate the count it explains.
 _MARKER_RE = re.compile(r"(?:<!--|%)\s*single-source:\s*(.*?)\s*(?:-->|$)")
 
-# A section opens at a heading, in either markup. The same shapes
-# `citation_provenance` recognises, minus the list and table openers: a
-# table row does not start a section.
+# A section opens at a heading, in either markup (not at a table row).
 _HEADING_RE = re.compile(r"^\s*(?:#{1,6}\s|\\(?:chapter|(?:sub){0,2}section|paragraph)\*?\{)")
 
 
 @dataclass(frozen=True)
 class Unit:
     """One unit of a draft, at whatever scale its genre binds at.
-
-    `text` is marker-stripped, which is what keeps a finding's identity
-    from changing the moment someone declares it -- see `_prose`.
-    `longest_run` is 0 for every kind but `section`, which is the only
-    one with an inside that can be block-structured.
+    `text` is marker-stripped (see `_prose`); `longest_run` is 0 for every
+    kind but `section`.
     """
 
     kind: str
@@ -130,13 +87,9 @@ class Unit:
 
 
 def genre_of(draft: Path) -> str | None:
-    """The genre recorded in this draft's dossier `scope.md`, or None.
-
-    None covers three situations that all want the same treatment -- no
-    dossier, no `- genre:` line, and an empty value. Each means *nobody
-    recorded a genre*, and the honest response is to measure at the
-    fallback and name it. Mirrors `style_language.language_of`, which
-    resolves the dialect from the same file the same way.
+    """The genre recorded in this draft's dossier `scope.md`, or None for
+    no dossier, no `- genre:` line or an empty value, all measured at the
+    fallback and named. Mirrors `style_language.language_of`.
     """
     try:
         scope = dossier.dossier_dir(Path(draft)) / dossier.SCOPE_MD
@@ -152,12 +105,8 @@ def genre_of(draft: Path) -> str | None:
 
 
 def resolve_unit(draft: Path, override: str | None = None) -> tuple[str, str]:
-    """The unit to measure `draft` at, and where that came from.
-
-    Three sources, most specific first, because that is the order in
-    which someone's intent gets more specific -- `style_check`'s policy,
-    and for the same reason: the report must be able to say whether a
-    draft was measured at its own recorded scale or at a fallback.
+    """The unit to measure `draft` at, and where that came from, most
+    specific source first, so the report can say whether a fallback won.
     """
     if override:
         return override, "--unit"
@@ -169,14 +118,8 @@ def resolve_unit(draft: Path, override: str | None = None) -> tuple[str, str]:
 
 def resolve_standing(draft: Path, override: str | None = None) -> tuple[str, str | None, str]:
     """How `draft`'s genre treats uncited prose, the genre, and where it
-    came from.
-
-    Three sources, most specific first -- `resolve_unit`'s own order, and
-    for the same reason: the report must be able to say whether a draft
-    was read under its own recorded genre or under a fallback. The genre
-    travels even when an override won, because "read strictly, because
-    you asked, on a draft recorded as a tutorial" is a different thing to
-    have done than reading a survey under its own genre.
+    came from, in `resolve_unit`'s order. The genre travels even when an
+    override won: strict reading of a recorded tutorial is worth naming.
     """
     if override:
         return UNCITED_PROSE[override], override, "--genre"
@@ -191,7 +134,6 @@ _IMAGE = re.compile(r"^\s*!\[.*\]\([^)]*\)\s*$")
 
 
 def _declaration(lines: list[str]) -> str | None:
-    """The reason a drafter stated for this unit resting on one source."""
     for line in lines:
         found = _MARKER_RE.search(line)
         if found:
@@ -200,13 +142,9 @@ def _declaration(lines: list[str]) -> str | None:
 
 
 def _prose(lines: list[str]) -> str:
-    """A unit's lines as one string, markers removed.
-
-    The removal is load-bearing rather than cosmetic. `synthesis`'s
-    finding identity is keyed on this text, so leaving the marker in
-    would mean *declaring* a single-source unit changed the name of the
-    finding describing it -- and the declared/undeclared split would
-    rename every finding it touched, which is what R2 exists to prevent.
+    """A unit's lines as one string, markers removed: `synthesis` keys
+    finding identity on this text, so declaring a unit single-source must
+    not rename its finding (R2).
     """
     stripped = (_MARKER_RE.sub("", line).strip() for line in lines)
     return " ".join(part for part in stripped if part)
@@ -221,11 +159,7 @@ def _citekeys(lines: list[str], prose: str, latex: bool) -> tuple[str, ...]:
 
 def blocks(lines: list[str], offset: int = 1) -> list[tuple[int, list[str]]]:
     """(first line number, the block's lines) per blank-line-separated block.
-
-    Public because `citation_provenance._paragraph_spans` is the joined
-    view of this same walk. Raw lines rather than joined text, because
-    `synthesis` has to find a declaration marker among them before they
-    are joined -- and joining is the cheaper of the two to add on top.
+    Raw lines, since `synthesis` finds a declaration marker before joining.
     """
     blocks: list[tuple[int, list[str]]] = []
     start, buffer = None, []
@@ -244,15 +178,9 @@ def blocks(lines: list[str], offset: int = 1) -> list[tuple[int, list[str]]]:
 def _paragraph(start: int, lines: list[str], latex: bool) -> Unit | None:
     """One paragraph, or None for a block that is only a marker or an image.
 
-    A marker split off from its unit by a blank line becomes a block of
-    its own, and counting it as an uncited unit would be worse than
-    dropping it: the drafter's mistake would show up as prose that cites
-    nothing rather than as a declaration that attached to nothing.
-
-    An image line is a figure, not a paragraph (#1172). A digest places
-    a source's figure with a caption ending in its cite string, so every
-    such line "rests on one source" by construction, and counting it
-    would ask the drafter to declare each figure as single-source.
+    A marker split off by a blank line is dropped, not counted as uncited
+    prose. An image line is a figure (#1172): a digest's figure captions
+    cite one source by construction.
     """
     prose = _prose(lines)
     if not prose or all(_IMAGE.match(line) for line in lines if line.strip()):
@@ -261,11 +189,8 @@ def _paragraph(start: int, lines: list[str], latex: bool) -> Unit | None:
 
 
 def _longest_run(paragraphs: list[Unit]) -> int:
-    """The longest run of consecutive paragraphs on the same single citekey.
-
-    A paragraph citing nothing, and a paragraph citing two or more
-    sources, both break a run -- the first because it is original prose
-    and the second because it is exactly the fusion the rule asks for.
+    """The longest run of consecutive paragraphs on the same single citekey;
+    uncited and multi-source paragraphs both break it.
     """
     longest = current = 0
     previous = None
@@ -282,10 +207,8 @@ def _longest_run(paragraphs: list[Unit]) -> int:
 
 def _sections(lines: list[str]) -> list[tuple[int, list[str]]]:
     """(first line number, the section's lines) per heading-delimited section.
-
-    Prose before the first heading is a section of its own, and a draft
-    with no headings is one section -- both are the honest reading, and
-    both keep every line of the draft inside exactly one unit.
+    Prose before the first heading is its own section, so every line sits
+    in exactly one unit.
     """
     sections: list[tuple[int, list[str]]] = []
     start, buffer = 1, []
@@ -296,10 +219,7 @@ def _sections(lines: list[str]) -> list[tuple[int, list[str]]]:
         elif buffer:
             buffer.append(line)
         elif line.strip():
-            # Blank lines before the first section open nothing. Counting
-            # them as a section of their own would file a draft that
-            # happens to start with a blank line as having one more unit
-            # than it has, every one of them uncited.
+            # Leading blank lines open no extra, uncited section.
             start, buffer = index, [line]
     if buffer:
         sections.append((start, buffer))
@@ -315,14 +235,9 @@ def _section(start: int, lines: list[str], latex: bool) -> Unit:
 
 
 def units(text: str, kind: str, *, latex: bool = False) -> list[Unit]:
-    """`text` split into units of `kind`.
-
-    Fenced code and LaTeX verbatim are blanked first, by the same
-    `citation_gate` helper `references.py` and `verbatim_check/`
-    already share. That is what keeps a `<!-- single-source: ... -->`
-    inside a fenced block -- a textbook chapter demonstrating this very
-    markup -- from being read as a declaration of the paragraph
-    containing it.
+    """`text` split into units of `kind`. Code and LaTeX verbatim are
+    blanked first (`citation_gate`), so a fenced example of the
+    single-source marker declares nothing.
     """
     if kind not in KINDS:
         raise ValueError(f"Unknown unit kind {kind!r}; expected one of {sorted(KINDS)}.")

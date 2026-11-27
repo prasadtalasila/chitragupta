@@ -1,13 +1,7 @@
 """The merged corpus-wide n-gram index: `index.bin`/`index.json`, built
-by merging every document's own fingerprint.
-
-Split from `chitragupta/overlap_index.py` (#441). Depends one-way on
-`chitragupta/overlap_index_doc.py` (the atomic-write helpers, the
-per-document fingerprint key/builder, and the two version constants
-that gate cache freshness on both tiers) and on
-`chitragupta/overlap_index_ledger.py` (the corpus-wide fingerprintable
-set) -- neither of those two imports anything from here, which is what
-keeps this a plain acyclic import rather than a cycle.
+by merging every document's own fingerprint (#441). Imports
+`overlap_index_doc` and `overlap_index_ledger`, neither of which imports
+this.
 """
 
 import hashlib
@@ -51,8 +45,7 @@ def _index_bin_path() -> Path:
 
 def _corpus_key(doc_keys: list[tuple[str, list]]) -> str:
     """sha256 over every (citekey, per-document key) pair, sorted by
-    citekey -- changes if any document's fingerprint would change, or if
-    one is added or removed."""
+    citekey; changes if any fingerprint would, or a document comes or goes."""
     payload = json.dumps(sorted(doc_keys), sort_keys=True).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
@@ -60,9 +53,7 @@ def _corpus_key(doc_keys: list[tuple[str, list]]) -> str:
 def _checked_corpus_index_header(
     header: object, corpus_key: str, n: int, tokenizer_version: int, header_version: int
 ) -> "tuple[list, int] | None":
-    """`(citekeys, count)` if `header` is fresh, else `None`. Split out of
-    `_parse_corpus_index_binary` to keep each half under the C1 statement
-    limit -- see that function for why this pair is shared at all."""
+    """`(citekeys, count)` if `header` is fresh, else `None`."""
     if not isinstance(header, dict):
         return None
     if (
@@ -80,14 +71,9 @@ def _checked_corpus_index_header(
 
 
 def _unpack_index_arrays(raw: bytes, count: int) -> "tuple[array, array, array, array] | None":
-    """`(grams, citekey_ids, pages, positions)` unpacked from `raw`, the
-    `.bin` file's contents -- `None` if the length doesn't match `count`
-    (a truncated or otherwise corrupt `.bin`, so rebuild rather than risk
-    misreading it). Split out of `_parse_corpus_index_binary` for the same
-    reason as `_checked_corpus_index_header`.
-
-    'Q' (grams) is 8 bytes/entry; the three 'I' postings arrays are 4
-    bytes/entry each.
+    """`(grams, citekey_ids, pages, positions)` unpacked from the `.bin`
+    contents, or `None` if the length doesn't match `count`: rebuild
+    rather than misread a truncated file. 'Q' is 8 bytes, 'I' 4.
     """
     expected_len = count * (8 + 4 + 4 + 4)
     if len(raw) != expected_len:
@@ -114,20 +100,12 @@ def _parse_corpus_index_binary(
     header_version: int,
     bin_path: Path,
 ) -> "tuple[list, array, array, array, array] | None":
-    """The header-and-binary validation `_load_corpus_index` needs,
-    shared with `overlap_skipgram.py` (tier 2) for the same reason
-    `_parse_cached_postings` is: this is the tier-agnostic half of
-    loading a `(header.json, index.bin)` pair -- version/key checks and
-    the four-array binary unpack -- parameterized on the two version
-    constants that actually differ per tier rather than read off a
-    module global. `header_version` and `tokenizer_version` keep each
-    tier's own cache-invalidation rule intact; only the parsing
-    mechanics are shared.
+    """Header-and-binary validation shared with `overlap_skipgram.py`,
+    parameterized on the two version constants so each tier keeps its own
+    cache-invalidation rule.
 
-    Returns `(citekeys, grams, citekey_ids, pages, positions)`, or
-    `None` for any cache miss -- absent/unreadable `.bin`, a version or
-    key mismatch, or a length that doesn't match a truncated-or-corrupt
-    `.bin` -- so the caller only has to construct its own dataclass.
+    Returns `(citekeys, grams, citekey_ids, pages, positions)`, or `None`
+    for any cache miss.
     """
     checked = _checked_corpus_index_header(header, corpus_key, n, tokenizer_version, header_version)
     if checked is None:
@@ -182,11 +160,8 @@ def _save_corpus_index(index: CorpusIndex, corpus_key: str) -> None:
         "citekeys": index.citekeys,
         "count": len(index.grams),
     }
-    # Written after index.bin: a crash between the two leaves index.bin
-    # matching the *new* corpus_key but index.json still naming the old
-    # one, which _load_corpus_index reads as a plain cache miss (key
-    # mismatch) and rebuilds from -- safe, just not free, same as any
-    # other interrupted-write recovery in this codebase.
+    # Written after index.bin: a crash between leaves a key mismatch,
+    # which the loader reads as a cache miss and rebuilds.
     _atomic_write_json(_index_header_path(), header)
 
 
@@ -200,19 +175,12 @@ def _merge_corpus_index(
     index_cls: Callable[..., _IndexT],
     save_fn: Callable[[_IndexT, str], None],
 ) -> _IndexT:
-    """The merge-and-cache algorithm `overlap_index.build_corpus_index` and
-    `overlap_skipgram.build_corpus_index` share: same doc_keys/corpus_key
-    computation, same typed-array accumulation over every document's
-    postings, same permutation sort, same save call. Only the fingerprint
-    function, on-disk cache and index dataclass genuinely differ per
-    tier -- exactly the pieces a caller supplies here, rather than this
-    function reading them off a module global.
+    """The merge-and-cache algorithm both tiers' `build_corpus_index`
+    share; the caller supplies what differs per tier.
 
-    A full cache hit (unchanged corpus) costs one JSON read and one binary
-    read -- no fingerprinting at all. Otherwise, only documents whose own
-    `(pdf_hash, parsed-file stat)` key changed are re-fingerprinted; every
-    other document's postings come from its cached `.fpr` file, and the
-    index is re-merged from all of them.
+    A full cache hit costs one JSON and one binary read. Otherwise only
+    documents whose `(pdf_hash, parsed-file stat)` changed are
+    re-fingerprinted, and the index is re-merged from every `.fpr`.
     """
     items = _ledger_items()
     corpus_key = _corpus_key(
@@ -229,11 +197,8 @@ def _merge_corpus_index(
     citekeys_sorted = sorted(by_citekey)
     id_by_citekey = {citekey: i for i, citekey in enumerate(citekeys_sorted)}
 
-    # Accumulated into typed arrays, not a list of 4-tuples: at the
-    # corpus's real scale (~7,000,000 grams) a Python list of boxed-int
-    # tuples runs to the better part of a gigabyte, where the four
-    # array('Q'/'I') columns together cost under 200MB -- close to the
-    # issue's own "~100MB RAM" estimate for this index.
+    # Typed arrays, not 4-tuples: at ~7,000,000 grams boxed tuples near a
+    # gigabyte, the four columns under 200MB.
     unsorted_grams, unsorted_citekey_ids, unsorted_pages, unsorted_positions = (
         array("Q"),
         array("I"),
@@ -250,8 +215,7 @@ def _merge_corpus_index(
             unsorted_pages.append(page)
             unsorted_positions.append(position)
 
-    # Sort by gram hash via an index permutation over the typed arrays,
-    # rather than sorting tuples directly -- same reason as above.
+    # Sorted via an index permutation over the arrays, for the same reason.
     order = sorted(range(len(unsorted_grams)), key=unsorted_grams.__getitem__)
 
     index = index_cls(
@@ -267,10 +231,7 @@ def _merge_corpus_index(
 
 
 def build_corpus_index(n: int = DEFAULT_N) -> CorpusIndex:
-    """The merged corpus-wide index over every parsed, on-disk ledger item.
-    See `_merge_corpus_index` for the algorithm shared with tier 2's own
-    `build_corpus_index`.
-    """
+    """The merged corpus-wide index over every parsed, on-disk ledger item."""
     return _merge_corpus_index(
         n, _load_corpus_index, fingerprint_document, CorpusIndex, _save_corpus_index
     )

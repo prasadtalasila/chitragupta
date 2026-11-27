@@ -1,34 +1,15 @@
 """A Markdown render's raw LaTeX, dropped the way pandoc's other writers drop it (#1144).
 
-`--format md` on a Markdown draft never reaches pandoc (see `render`), so
-nothing removed a ```` ```{=latex} ```` / `{=tex}` block or a
-`` `...`{=latex} `` span, and every one reached the rendered `.md`
-verbatim, where a Markdown viewer shows it as a box of LaTeX. Pandoc's
-`docx` and `html` writers drop exactly these, and its LaTeX writer
-applies them; this is the first half of that for the one writer that is
-not pandoc. A draft legitimately carries them -- an `\\arraystretch` pair
-around a table is a PDF layout tweak -- so the draft keeps them.
-
-Where they are comes from `_markdown_inert.raw_tex_spans`, the same
-block-structure scan the citation gate reads, so a raw fence shown inside
-a longer code fence stays an example, and fence lengths, tildes and an
-unclosed fence follow pandoc there rather than a second, simpler reading
-here.
-
-**Only `latex` and `tex`.** A `{=html}` block or span is left as it is:
-raw HTML is Markdown's own passthrough, and every Markdown viewer this
-output is for renders it rather than showing it as code. Any other
-format's raw block is pandoc-only and rare enough to leave verbatim
-rather than guess at.
-
-Standard library only, like the rest of this path.
+`--format md` never reaches pandoc, so `{=latex}`/`{=tex}` blocks and spans
+reached the `.md` verbatim. The draft keeps them (they are PDF layout tweaks).
+Locations come from `_markdown_inert.raw_tex_spans`, the citation gate's scan,
+so fence rules follow pandoc. `{=html}` is left alone: Markdown viewers render it.
 """
 
 from chitragupta._markdown_inert import raw_tex_spans
 
-# What may sit before a block's opener on its line and still let the
-# whole line go: indentation and blockquote markers. A list marker may
-# not -- cutting that line would cut the item -- so such a block stays.
+# Indentation and blockquote markers may precede a block's opener and the whole
+# line still goes. A list marker may not -- cutting that line would cut the item.
 _LINE_PREFIX = " \t>"
 # After a dropped inline span, these take the space before it with it:
 # "wide `\\hfill`{=latex}, then" reads "wide, then", not "wide , then".
@@ -41,18 +22,13 @@ def _is_blank(line: str) -> bool:
 
 
 def _line_end(text: str, pos: int) -> int:
-    """Where the line holding `pos` ends, its newline included."""
     newline = text.find("\n", pos)
     return len(text) if newline == -1 else newline + 1
 
 
 def _line_cut(text: str, start: int, end: int, taken: int) -> "tuple[int, int]":
-    """The whole lines holding [start, end), and one blank line beside them
-    where removing them would otherwise leave two blank lines in a row.
-
-    The blank after them goes when the line before is blank too, or they
-    open the document; at the very end, the blank before them goes
-    instead, unless an earlier cut (`taken`) already took it."""
+    """The whole lines holding [start, end), plus one adjacent blank line where
+    removing them would leave two blanks in a row (unless `taken` already took it)."""
     first = text.rfind("\n", 0, start) + 1
     last = _line_end(text, end)
     before = text.rfind("\n", 0, max(first - 1, 0)) + 1
@@ -65,9 +41,7 @@ def _line_cut(text: str, start: int, end: int, taken: int) -> "tuple[int, int]":
 
 
 def _span_cut(text: str, start: int, end: int) -> "tuple[int, int]":
-    """An inline span, and the one space its removal would leave doubled
-    or stranded: before it when punctuation or a line end follows, after
-    it when it opens the line."""
+    """An inline span, and the one space its removal would leave doubled or stranded."""
     if start and text[start - 1] in " \t" and (end == len(text) or text[end] in _CLOSING):
         return start - 1, end
     if (start == 0 or text[start - 1] == "\n") and text[end : end + 1] in (" ", "\t"):
@@ -76,7 +50,6 @@ def _span_cut(text: str, start: int, end: int) -> "tuple[int, int]":
 
 
 def dropped(text: str) -> str:
-    """`text` without its raw LaTeX blocks and inline spans."""
     kept = []
     taken = 0
     for start, end, block in raw_tex_spans(text):

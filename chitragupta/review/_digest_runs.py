@@ -1,34 +1,16 @@
 """A verbatim digest read as citation-terminated runs (#991).
 
-The digest format carries no markup: copied text is ordinary prose and a
-citation ends each copied run. The attribution rule is the whole of this
-module -- **a citation covers every sentence back to the previous
-citation, or to the start of the block** -- so a block is split at its
-citation brackets, not at its sentence boundaries, and each piece is
-then sentence-split for the fallback `_digest_match.py` needs when a
-run is not found whole.
+A citation covers every sentence back to the previous citation or the
+block start, so a block splits at its citation brackets, then each piece
+into sentences for `_digest_match.py`'s fallback. Blocks are
+`_claims.claim_blocks`'; a bracket is a citation only if the extractor
+finds a key (`[sic]` leaves a run open). Trailing text is an uncited run;
+a citation with nothing before it is dropped.
 
-The blocks are `_claims.claim_blocks`', so a heading, a caption, a code
-fence and the reference list are read the way every other aid reads
-them. A bracket counts as a citation only if the citekey extractor finds
-a key in it: `[see 3]` and `[sic]` leave a run open.
-
-What follows the last citation in a block is a run with no citekeys --
-the drafter's own tail -- and a block with no citation at all is one such
-run. A citation with nothing before it (two brackets in a row) covers
-nothing and is dropped.
-
-**A run is the drafter's own words, `own`, in three shapes (#1172)**,
-and `_digest_match.py` checks it for support rather than for copying:
-the citation closing it carries pandoc's `see` prefix (`[see @key]`);
-its block sits directly under an `<!-- own: why -->` line; or it is a
-table row, since a comparison table's cells are never a copied run.
-Each run also records what stands before it -- the citekeys of the run
-before it in the same block, and whether its block follows a displayed
-equation -- which is all `_digest_dangling.py` needs to tell a run that
-opens on "where" or "thus" from one that continues its own source.
-
-Stdlib only, interpreter tier 1 like the aid that reads it.
+A run is `own` (checked for support, not copying, #1172) when closed by
+`[see @key]`, under an `<!-- own: why -->` line, or a table row. Each run
+also records the citekeys before it and whether it follows a displayed
+equation, for `_digest_dangling.py`.
 """
 
 import re
@@ -37,49 +19,36 @@ from dataclasses import dataclass
 from chitragupta import citation_gate, sentences
 from chitragupta.review import _blocks, _claims
 
-# A bracket holding at least one `@`. Whether it is a citation is the
-# extractor's call, not this pattern's.
+# At least one `@`; whether it is a citation is the extractor's call.
 _BRACKET = re.compile(r"\[[^\[\]]*@[^\[\]]*\]")
 
-# Pandoc's prefix `see`, `see also`, before the first key: the sentence
-# it closes is the drafter's, pointing at where the sources say it.
+# Pandoc's `see` prefix: the drafter's sentence, pointing at the sources.
 _SEE = re.compile(r"^\[\s*see\b", re.IGNORECASE)
 
 # The line directly above a block that declares it the drafter's own.
 _OWN = re.compile(r"^\s*<!--\s*own:.*-->\s*$")
 
-# What closes a displayed equation: the fence of a `<!-- math -->` block,
-# `$$`, or LaTeX's `\]`. A block right after one may open on "where".
+# A displayed equation's close; a block right after one may open on "where".
 _MATH_CLOSE = re.compile(r"^\s*(?:```|\$\$|\\\])\s*$")
 _MATH_OPEN = re.compile(r"^\s*<!--\s*math\s*-->\s*$")
 
-# An inline code span: in a digest, the house form of a symbol
-# (`T_h`, mapped in `math.md`), which a copied run carries where the
-# source printed the symbol. `_claims` blanks code, so the symbol would
-# vanish and the run read as a copy-mismatch (#1172). Its backticks are
-# turned to spaces before the blocks are read -- the same length, so no
-# offset moves. A span holding `@` stays code: a citekey shown as code
-# is not a citation.
+# An inline code span is the house form of a symbol (`T_h`, see `math.md`)
+# in a copied run; `_claims` would blank it into a copy-mismatch (#1172),
+# so backticks become spaces (same length, no offset moves). A span with
+# `@` stays code: a citekey shown as code is not a citation.
 _INLINE_CODE = re.compile(r"(?<!`)`([^`\n@]+)`(?!`)")
 
-# A figure the digest shows, as its caption cites it: `Figure 3.5 of
-# [@key]` (review-digest's caption form). A run naming that figure of
-# that source points at something the reader can see.
+# `Figure 3.5 of [@key]`, review-digest's caption form: a run naming that
+# figure points at something the reader can see.
 _SHOWN = re.compile(r"\b(?:Figure|Fig\.)\s*(\d+(?:\.\d+)*)\s+of\s+\[@([^\s,;\]]+)")
 
-# `p. 4`, `pp. 4-5`, `page 4`, `pages 4–5`. The hint pandoc passes
-# through as a locator; the aid treats it as a hint and reports the page
-# the text was actually found on.
+# A page locator: treated as a hint, with the found page reported.
 _PAGES = re.compile(r"\b(?:pp?\.|pages?)\s*(\d+)(?:\s*[-–—]+\s*(\d+))?")
 
-# A citekey inside the bracket, blanked before the locator is searched
-# for: `[@page2020web]` would otherwise read as "page 2020".
+# Citekeys are blanked first, so a key that begins with `page` is not read as a locator.
 _CITEKEY_TOKEN = re.compile(r"@[^\s,;\]]+")
 
-# A sentence with no word character in it -- the `.` left after
-# `[@key].`, which is pandoc's and the survey's convention -- is
-# punctuation belonging to the run just closed, not a sentence of the
-# next one.
+# A wordless sentence (the `.` after `[@key].`) belongs to the closed run.
 _HAS_WORD = re.compile(r"\w")
 
 
@@ -87,12 +56,9 @@ _HAS_WORD = re.compile(r"\w")
 class Run:
     """One citation-terminated run, or the uncited tail of a block.
 
-    `lines` carries one line per sentence (#496's rule: a finding names
-    the line the sentence is on, not the block's first line), and `line`
-    is the first of them, for the whole-run outcomes. `citekeys` is
-    empty exactly for an uncited tail, and `cited` is the citation's page
-    hint, `(first, last)`, or None where the bracket carried none or
-    there was no bracket.
+    `lines` has one line per sentence (#496), `line` is the first.
+    `citekeys` is empty exactly for an uncited tail; `cited` is the page
+    hint `(first, last)` or None.
     """
 
     line: int
@@ -124,9 +90,8 @@ def cited_pages(citation: str) -> tuple[int, int] | None:
 
 
 def _segments(block: str) -> list[tuple[int, str, str | None]]:
-    """`(offset, text, citation)` per piece of `block`: the text before
-    each citation bracket with that bracket, then whatever trails the
-    last one with None."""
+    """`(offset, text, citation)` per piece of `block`, the trailing piece
+    with None."""
     found, at = [], 0
     for match in _BRACKET.finditer(block):
         if not citation_gate.extract_citekeys_from_line(match.group(0)):
@@ -176,8 +141,7 @@ def runs(text: str) -> list[Run]:
     for start, raw_block, block in _claims.claim_blocks(readable):
         own_block = _own_block(lines, start, raw_block)
         after_math = _after_math(lines, start)
-        # A table row's citekey cell attributes the whole row, wherever
-        # the column sits: cells before or after it are not uncited.
+        # A citekey cell attributes the whole row, wherever the column sits.
         row_keys = (
             tuple(citation_gate.extract_citekeys_from_line(block))
             if _blocks.TABLE_ROW.match(raw_block[0])

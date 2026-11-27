@@ -1,36 +1,20 @@
 r"""One figure as it will print, cropped to itself: `chitragupta figure
 look` (#1052).
 
-`figure check` measures what a rule can name; this is for what no rule
-measures -- a label that wrapped badly, an arrow through a zone title, a
-figure that reads as cramped -- which only a look catches. So it writes
-a picture to look at, and measures only what it needs to say about it.
+For what no `figure check` rule measures (bad wraps, cramped layouts): a
+picture to look at.
 
-**Set as the render sets it.** The document is the figure's own page
-(`page.page_for`, #1140): `render()`'s house page, `article` at 12pt on
-A4 with 1in margins, or the book's for a book unit's figure, so
-`\textwidth` is the 453pt or 437.5pt the figure will be set in, with the fonts the probe sets
-(`pdf_fonts.latex_fonts()`) and the figure's own TikZ libraries loaded
-in the preamble as the renderer loads them (#781). A library loaded
-inside the box would add stray width the render does not have (#1046).
-The figure's source is inlined rather than `\input`, as the probe's
-is, so the read fence has no second file to admit.
+**Set as the render sets it**: on the figure's own page (`page.page_for`,
+#1140), with the probe's fonts and the TikZ libraries in the preamble (#781;
+inside the box they add stray width, #1046). Source is inlined, not `\input`,
+so the read fence has no second file to admit.
 
-**Cropped to the figure.** The page is the figure's box plus
-`BORDER_PT` on every side, set through LuaTeX's `\pagewidth` and
-`\pageheight` with the box shipped at the page's corner -- the job the
-`standalone` class does, done by hand because `standalone.cls` is not
-something `_require_tikz` checks for (the probe's reason too). A figure
-wider than the text width gets a hairline at the text width, measured
-from the figure's left edge, which is where a too-wide figure in a
-centred float starts to stick out; one that fits gets none. The border
-is 10pt, not the 1pt it was, because the house soft shadow is drawn
-outside TikZ's bounding box and a 1pt crop cut it off at the bottom and
-right (#1127).
+**Cropped to the figure**: box plus `BORDER_PT` via LuaTeX's `\pagewidth` and
+`\pageheight`, by hand since `_require_tikz` does not check `standalone.cls`.
+A too-wide figure gets a hairline at the text width. The 10pt border keeps
+the house shadow, drawn outside the bounding box (#1127).
 
-**Only what changed is rebuilt.** `<stem>.look.json` records a digest
-of every input and what was measured, so an unchanged figure costs a
-file read rather than a LuaLaTeX run.
+**Only what changed is rebuilt**, via a digest in `<stem>.look.json`.
 """
 
 import hashlib
@@ -39,8 +23,8 @@ import re
 import struct
 import tempfile
 
-# `_run` is this module's one patch point for its external launches
-# (#854), in the shape the probe and the renderer use.
+# `_run` is this module's one patch point for external launches (#854), as in
+# the probe and the renderer.
 from subprocess import CompletedProcess
 from subprocess import run as _run
 from dataclasses import dataclass
@@ -61,7 +45,6 @@ BORDER_PT = 10.0
 # so every look built by the old document is rebuilt.
 DOCUMENT_VERSION = 2
 
-# The document's one line of output, among everything else TeX prints.
 _LOOK_RE = re.compile(
     r"^CGLOOK (?P<wd>[\d.]+)pt (?P<ht>[\d.]+)pt (?P<dp>[\d.]+)pt (?P<tw>[\d.]+)pt",
     re.MULTILINE,
@@ -72,8 +55,8 @@ _LOOK_RE = re.compile(
 class Look:
     """What `look` did for one figure, and what it measured.
 
-    `action` is `wrote`, `current` or `failed`; `detail` says why a
-    failure failed. Sizes are TeX points, `height` including depth.
+    `action` is `wrote`, `current` or `failed`; sizes are TeX points,
+    `height` including depth.
     """
 
     pdf: Path
@@ -128,9 +111,7 @@ class NoHome(ValueError):
 def require_home(figure: Path, output_dir: Path | None) -> None:
     """Raises `NoHome` for a figure outside `content/drafts/` with no
     `output_dir`, and `OutsideContentDir` for an `output_dir` outside
-    `content/`. Such a figure has no mirror, and the flat
-    `content/rendered/` it fell back to mixed scratch looks in with the
-    drafts' and let two figures named alike overwrite each other (#1123)."""
+    `content/`. A flat fallback let alike-named figures overwrite each other (#1123)."""
     if output_dir is not None:
         _target_dir(figure, output_dir)
     elif not config.resolves_inside(figure, config.DRAFTS_DIR):
@@ -141,13 +122,11 @@ def require_home(figure: Path, output_dir: Path | None) -> None:
 
 
 def digest(source: str, on: Page = ARTICLE) -> str:
-    """Everything a look is built from, in one hash."""
     parts = (str(DOCUMENT_VERSION), str(DPI), pdf_fonts.latex_fonts(), on.preamble, source)
     return hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()
 
 
 def _png_size(path: Path) -> tuple[int, int]:
-    """A PNG's pixel size, from its IHDR chunk."""
     width, height = struct.unpack(">II", path.read_bytes()[16:24])
     return width, height
 
@@ -158,7 +137,6 @@ def _paths(figure: Path, out_dir: Path | None) -> tuple[Path, Path, Path]:
 
 
 def _current(figure: Path, key: str, out_dir: Path | None) -> Look | None:
-    """The recorded look, if it was built from `key` and is all there."""
     pdf, png, record = _paths(figure, out_dir)
     try:
         data = json.loads(record.read_text(encoding="utf-8"))
@@ -168,9 +146,8 @@ def _current(figure: Path, key: str, out_dir: Path | None) -> Look | None:
         return None
     if not (pdf.is_file() and png.is_file()):
         return None
-    # A record of any other shape is one this module did not write, and is
-    # rebuilt rather than trusted: a pdf render calls this after its PDF
-    # is written, and must not fail on it.
+    # A record of any other shape was not written here and is rebuilt, not
+    # trusted: a pdf render calls this and must not fail on it.
     try:
         sizes = (float(data["width"]), float(data["height"]), float(data["text_width"]))
         columns, rows = data["pixels"]
@@ -189,9 +166,8 @@ def _failed(figure: Path, detail: str, out_dir: Path | None) -> Look:
 
 def _engine(tmp: Path, program: str, *args: str) -> CompletedProcess[str]:
     """Run `program`, resolved on PATH, in `tmp`."""
-    # The figure file is draft text, and a shared tree's draft text is
-    # someone else's (#823): the pdf render's own engine flags, read fence
-    # and environment, as the probe uses.
+    # Draft text may be someone else's (#823): use the pdf render's engine flags,
+    # read fence and environment, as the probe does.
     return _run(
         [programs.require_program(program), *args],
         cwd=tmp,
@@ -203,7 +179,6 @@ def _engine(tmp: Path, program: str, *args: str) -> CompletedProcess[str]:
 
 
 def _build(figure: Path, source: str, key: str, out_dir: Path | None, on: Page) -> Look:
-    """Compile and rasterize in a temporary directory, then move both in."""
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
         (work / "look.tex").write_text(document(source, on), encoding="utf-8")
@@ -231,19 +206,11 @@ def _build(figure: Path, source: str, key: str, out_dir: Path | None, on: Page) 
 def look(figure: Path, out_dir: Path | None = None, page: Page | None = None) -> Look:
     """`figure`'s look, rebuilt only if anything it is built from changed.
 
-    It is written to `out_dir`, or by default to the figure's mirrored
-    rendered directory. Each directory holds its own look, so a render
-    into another directory (#1114) never touches the default one. The
-    caller confines `out_dir`, as `render` confines `--output-dir`.
-
-    It is set on `page`, or by default on the page the figure prints on
-    (`page.page_for`). Every caller takes the default, so a figure's one
-    record always holds one page and is not rebuilt each time a
-    different caller asks for it (#1140).
-
-    Raises `OSError` or `UnicodeDecodeError` for a figure it cannot read,
-    and `render_output.OutsideContentDir` where the rendered directory
-    resolves outside the content directory: neither is a finding.
+    Written to `out_dir` (confined by the caller) or the mirrored rendered
+    directory; each holds its own look (#1114). Set on the figure's own page
+    by default, which every caller uses so the record holds one page (#1140).
+    Raises `OSError`/`UnicodeDecodeError` for an unreadable figure and
+    `OutsideContentDir` for an escaping directory: neither is a finding.
     """
     source = figure.read_text(encoding="utf-8")
     on = page or page_for(figure)[0]

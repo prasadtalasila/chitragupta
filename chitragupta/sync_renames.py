@@ -1,30 +1,19 @@
 """A citekey that left the bib while the same paper arrived under another
 one -- told apart from a removal, and remembered (plans/1211, D6, D7).
 
-Without this, a renamed key reads as two unrelated events: one paper
-stale, one paper new. The drafts citing the old key fail the citation
-gate later with nothing to say which key replaced it, and once
-`--remove-stale` has pruned the old row the answer is gone for good.
+Without this, the drafts citing the old key fail the gate with nothing
+saying what replaced it, and `--remove-stale` would erase the answer.
 
-**Two sources, one rule each.**
+- The importer's `cg-renames` table wins whenever its new key is in the
+  bib: it is the only source for a merged duplicate whose copies had
+  different PDFs. Chains are followed; a loop or an end outside the bib
+  falls back to the hash.
+- Otherwise `pdf_hash`: a stale row whose hash exactly one bib key holds,
+  that key new this sync. Two entries already sharing a file (a book and
+  its chapter) are two works: deleting one is a removal, never a rename.
 
-- The importer's `cg-renames` table (`chitragupta/bib_tables.py`) says
-  so outright. It wins whenever its new key is in the bib, because it is
-  the only source for a duplicate merged in the reference manager whose
-  copies had different PDFs. A chain inside the table (`a -> b`,
-  `b -> c`) is followed to the key that is in the bib; one that loops,
-  or ends outside it, falls back to the hash.
-- Otherwise the ledger's `pdf_hash`: a stale row whose hash is held by
-  exactly one key still in the bib, and that key is new to the ledger
-  this sync. Byte-identical PDFs are the same paper, whichever tool
-  wrote the bib, but two entries that already shared one file before
-  this sync (a book and its chapter) are two works: deleting one is a
-  removal, reported as `same PDF as ...`, never guessed to be a rename.
-
-**Recorded before any prune** (`ledger_tables`' `renames` table), so the
-drafting layer can still find the replacement after the old row is gone.
-Nothing here edits a draft: corpus-layer code reports, and a draft is
-changed by `dossier apply-renames`, which a person or a skill runs.
+Recorded before any prune. Nothing here edits a draft; that is
+`dossier apply-renames`, run by a person or a skill.
 """
 
 from __future__ import annotations

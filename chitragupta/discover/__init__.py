@@ -1,26 +1,10 @@
 """`python -m chitragupta.corpus discover`: read the topic artefacts.
 
-The reader half of topic discovery (docs/TOPIC-DISCOVERY.md): resolve
-a phrase to a topic that exists, show its papers with ledger detail and
-each paper's other topics, list the linked topics from both edge
-families, walk the graph-exploration views over the stored analytics,
-and -- behind `--out` -- write an extractive Markdown overview. One
-verb, many views:
-
-    chitragupta corpus discover                     # every topic
-    chitragupta corpus discover "digital twin"      # one topic
-    chitragupta corpus discover --paper smith2021   # one paper's topics
-    chitragupta corpus discover --groups 8          # the broad areas
-    chitragupta corpus discover --clusters          # family disagreement
-    chitragupta corpus discover --why A B           # why no edge here
-    chitragupta corpus discover --path A B --family overlap   # the chain
-    chitragupta corpus discover --compare A B       # side by side
-    chitragupta corpus discover "A" --hops 2        # rings by distance
-
-This module computes no topic and no edge; `chitragupta enrich` did
-that once, and `_data`'s refusals name the stage to run when an
-artefact is missing. The resolution ladder lives in `_resolve`, the
-views in `_render`, the overview file in `_overview`.
+The reader half of topic discovery (docs/TOPIC-DISCOVERY.md): one verb,
+many views (a topic, a paper's topics, groups, clusters, paths,
+comparisons, hop rings, and an extractive overview behind `--out`).
+It computes no topic and no edge: `chitragupta enrich` did that, and
+`_data`'s refusals name the stage to run when an artefact is missing.
 """
 
 import argparse
@@ -168,10 +152,8 @@ def _topic_view(args, resolution, graph, topic_set, terms) -> int:
     label = resolution.label
     data = _render.build_topic(label, graph, topic_set, terms)
     data["resolved_via"] = resolution.via
-    # A plural hybrid resolution gets its neighbourhood ranked by
-    # topology (personalised PageRank seeded from every candidate) --
-    # a singular one does not, because the linked-topics lists above
-    # already answer "what is next to this one".
+    # Only a plural hybrid resolution gets a PageRank-ranked
+    # neighbourhood; a singular one already has its linked-topics lists.
     if resolution.via == "hybrid" and len(resolution.ranked) > 1:
         data["neighbourhood"] = [
             {"label": node, "score": score}
@@ -184,18 +166,10 @@ def _topic_view(args, resolution, graph, topic_set, terms) -> int:
             with open(args.out, "w", encoding="utf-8") as handle:
                 handle.write(_overview.build_markdown(data, quoted))
         except OSError as failure:
-            # The view above already printed; only the file write failed,
-            # and "exit 1 naming the path" beats a traceback that buries
-            # the topic view the user asked for.
-            #
-            # On stderr unconditionally, and that is the difference from
-            # review's print_written, whose stream= is conditional on
-            # --json: "wrote X" is legitimate human output when the run
-            # is not emitting a payload, so it belongs on stdout there.
-            # A failure line is never part of the payload in either mode,
-            # and under --json _emit has already written the JSON document
-            # to stdout by the time this runs -- so prose on that stream
-            # hands the caller a parse error about a *file write*.
+            # The view already printed; exit 1 naming the path beats a
+            # traceback. Always stderr (unlike review's print_written):
+            # under --json, stdout already holds the payload, and prose
+            # there would be a parse error about a file write.
             print(f"Could not write the overview to {args.out}: {failure}", file=sys.stderr)
             return 1
     return 0
@@ -203,18 +177,14 @@ def _topic_view(args, resolution, graph, topic_set, terms) -> int:
 
 def _search_view(args, phrase: str, note, topic_set) -> int:
     results = retrieval.search(phrase, k=args.k)
-    # On stderr, as `retrieve` does: a result that surfaced on a word the
-    # caller never typed must say so (#1232). Corrections only -- this
-    # view announced no acronym expansion before, and still does not.
+    # Stderr, as `retrieve` does: a hit on a word the caller never typed
+    # must say so (#1232). Corrections only, no acronym expansion note.
     added = retrieval.query_terms(phrase)[1]
     retrieval_added.announce([entry for entry in added if entry.source == SPELLING])
     if not results:
         labels = ", ".join(t["label"] for t in topic_set["topics"])
-        # Stderr in both modes, by the same rule the --out and --html
-        # write failures below follow: a line the caller cannot parse is
-        # never part of the payload. Nothing has reached stdout on this
-        # path, so a --json caller reads an empty document and a nonzero
-        # exit rather than two English sentences.
+        # Stderr in both modes: a --json caller gets an empty document and
+        # a nonzero exit, never English in the payload.
         print(f"No topic matched {phrase!r} and paper search returned nothing.", file=sys.stderr)
         print(f"Known topics: {labels}", file=sys.stderr)
         return 1
@@ -226,26 +196,20 @@ def _search_view(args, phrase: str, note, topic_set) -> int:
 
 
 def main(argv=None) -> int:
-    """Parse, dispatch, and translate every MissingArtefact -- absent
-    graph, absent ledger, a topic member a later sync removed -- into a
-    refusal on stderr and exit 1, wherever in a view it surfaces."""
+    """Parse, dispatch, and translate every MissingArtefact (absent graph
+    or ledger, a member a later sync removed) into a refusal on stderr
+    and exit 1, wherever in a view it surfaces."""
     args = build_parser().parse_args(argv)
     try:
         origins = _origin.parse(args.origins)
     except ValueError as bad:
-        # Stderr in both modes, and before any view runs: nothing has
-        # reached stdout, so a --json caller reads an empty document and
-        # a nonzero exit rather than a sentence in the stream they
-        # opened expecting one.
+        # Stderr, before any view runs, so --json stdout stays empty.
         print(bad, file=sys.stderr)
         return 1
     if args.path and origins != set(_origin.CLASSES):
-        # Exit 2, argparse's own usage code, like every other view that
-        # refuses a combination. --path walks the stored next-hop
-        # matrices, whose indices are positions in the *whole* graph and
-        # whose routes may run through a topic the filter removed; there
-        # is no honest way to answer over a subset without recomputing,
-        # and the reader recomputes nothing.
+        # Exit 2, argparse's usage code. --path walks stored next-hop
+        # matrices indexed over the *whole* graph; a subset cannot be
+        # answered without recomputing, and the reader recomputes nothing.
         print(
             "--path walks the stored next-hop matrices, which are indexed over the "
             "whole graph -- it does not compose with --origins.",
@@ -255,9 +219,8 @@ def main(argv=None) -> int:
     try:
         return _run(args, origins)
     except _data.MissingArtefact as missing:
-        # One clause for every invocation, --json included, which is why
-        # it cannot consult args: the refusal goes to stderr in both
-        # modes so that stdout carries a payload or nothing at all.
+        # Cannot consult args: stderr in every mode, so stdout carries a
+        # payload or nothing.
         print(missing, file=sys.stderr)
         return 1
 
@@ -265,9 +228,8 @@ def main(argv=None) -> int:
 def _paper_view(args, topic_set) -> int:
     data = _render.build_paper(args.paper, topic_set)
     if data is None:
-        # With --origins narrowing the graph, "in no topic" is usually
-        # the filter's doing rather than the corpus's, and sending the
-        # reader to re-run enrich would be a wild goose chase.
+        # With --origins, "in no topic" is usually the filter's doing, so
+        # don't send the reader off to re-run enrich.
         why = (
             f"none of its topics are of the origins you asked for ({args.origins})"
             if args.origins
@@ -286,10 +248,8 @@ def _run(args, origins: set) -> int:
     if args.html:
         return _export.html_view(args, origins)
 
-    # The filter applies to the artefacts, not to one view: everything
-    # below then reads a graph with only the selected origins in it, and
-    # a phrase naming a filtered-out topic falls through the resolution
-    # ladder exactly as an unknown phrase does.
+    # Filters the artefacts, not one view, so every view agrees and a
+    # filtered-out topic resolves like an unknown phrase.
     graph, topic_set = _origin.keep(_data.load_graph(), _data.load_topic_set(), origins)
     terms = _data.top_terms(topic_set)
 

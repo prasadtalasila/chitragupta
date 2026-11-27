@@ -1,13 +1,8 @@
 """A draft cut into the sections `draft diff` compares, each with its body.
 
-The heading scan is `chitragupta.dossier._sections.sections()`, reused so
-that fenced code and LaTeX verbatim are skipped by the one rule the
-dossier already applies. What is narrowed here is which headings start a
-section: in Markdown the `#` line is the document's title, not a
-section, so it stays with the text above the first `##`; in LaTeX only
-`\\chapter`, `\\section` and `\\subsection` cut, and anything finer stays
-inside its parent. A diff reported per `\\paragraph` would scatter one
-edit across headings no reader thinks of as sections.
+Reuses `dossier._sections.sections()` for fence handling. A Markdown `#`
+title is not a section; in LaTeX only `\\chapter`, `\\section` and
+`\\subsection` cut, so one edit is not scattered across `\\paragraph`s.
 """
 
 from dataclasses import dataclass, field
@@ -17,10 +12,8 @@ from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES
 
 LEADING = "(before the first heading)"
 
-# Every character `str.splitlines()` breaks on besides "\n". The gate
-# numbers a citekey's line by counting "\n" alone, so the heading scan is
-# handed a copy with these blanked to spaces: one character for one, so
-# both count the same lines and a key is placed in the section it sits in.
+# Breaks `str.splitlines()` honours besides "\n", blanked one-for-one so
+# the heading scan counts lines as the gate does.
 OTHER_BREAKS = str.maketrans(dict.fromkeys("\r\v\f\x1c\x1d\x1e\x85\u2028\u2029", " "))
 
 # `sections()` levels: `\chapter` 1, `\section` 2, `\subsection` 3.
@@ -41,7 +34,6 @@ class Section:
 
 
 def _cuts(text: str, suffix: str, lines: list[str]) -> list[tuple[str, int]]:
-    """(title, heading line) for every heading that starts a section."""
     markdown = suffix in _MARKDOWN_SUFFIXES
     found = []
     for heading in sections(text):
@@ -77,9 +69,8 @@ def split(text: str, suffix: str) -> list[Section]:
 def title_at(split_sections: list[Section], line: int) -> str:
     """The title of the section holding 1-indexed `line`.
 
-    The only lines `split()` leaves out are blank ones above the first
-    heading, which hold no citekey; should one be asked about anyway, it
-    is above the first heading, and is named so.
+    Only blank lines above the first heading are unsplit; such a line is
+    named as above the first heading.
     """
     held = (s.title for s in split_sections if s.first_line <= line <= s.last_line)
     return next(held, LEADING)

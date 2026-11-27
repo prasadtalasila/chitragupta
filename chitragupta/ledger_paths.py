@@ -23,13 +23,9 @@ from chitragupta import config
 def read_only_uri(path: Path) -> str:
     """`path` as a sqlite URI that opens it read-only and creates nothing.
 
-    Made absolute, not resolved: `as_uri()` accepts only an absolute
-    path, and `resolve()` on Windows turns a mapped drive (`H:\\proj`)
-    into its UNC target, which `as_uri()` writes as `file://server/...`
-    -- an authority sqlite refuses, so every reader of a ledger on a
-    mapped drive would fail (#966, #963). `absolute()` keeps the drive
-    letter, and a path that is UNC to begin with goes through
-    `_sqlite_file_uri`."""
+    Absolute, not resolved: on Windows `resolve()` turns a mapped drive
+    into a UNC `file://server/...` URI that sqlite refuses (#966, #963).
+    A path that is UNC to begin with goes through `_sqlite_file_uri`."""
     return _sqlite_file_uri(path.absolute().as_uri()) + "?mode=ro"
 
 
@@ -53,12 +49,9 @@ def stored(path: str | Path | None, root: Path) -> str | None:
 
 
 def resolved(value: str | None, root: Path) -> Path | None:
-    """A stored value as a path a reader may open, or `None`.
-
-    `root / value` is the whole of the anchoring: a legacy absolute value
-    collapses to itself (pathlib), so a ledger an older release wrote
-    still reads in place, and `confined_path` refuses -- loudly -- one
-    that lands outside `root`, `..` included (issue 821)."""
+    """A stored value as a path a reader may open, or `None`. A legacy
+    absolute value collapses to itself, and `confined_path` loudly
+    refuses one outside `root` (issue 821)."""
     if not value:
         return None
     return config.confined_path(root / value, root)
@@ -104,12 +97,9 @@ def mark_parsed(con: sqlite3.Connection, citekey: str, parsed_path: Path) -> Non
     con.commit()
 
 
-# The file a parse writes is fully determined by its citekey
-# (pdf_text.extract_text), so a legacy host-absolute value is rewritten
-# to that name whatever host it named. Idempotent: once every row is
-# relative, the WHERE matches nothing. A legacy absolute `pdf_path` is not
-# rewritten here: upsert_reference rewrites it for every bib entry on the
-# next sync.
+# A parse's file is fixed by its citekey, so a legacy absolute value is
+# rewritten to that name. Idempotent. Legacy `pdf_path`s are rewritten by
+# upsert_reference on the next sync.
 _NORMALISE_PARSED = (
     "UPDATE items SET parsed_path = citekey || '.txt' "
     "WHERE parsed_path IS NOT NULL AND parsed_path <> citekey || '.txt'"

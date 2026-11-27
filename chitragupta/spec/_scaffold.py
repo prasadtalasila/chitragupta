@@ -2,15 +2,9 @@
 outline, owns: a preface and a copyright page (#1137), and the index's
 exceptions, `index.toml` (#1168).
 
-`spec init` copies each from `assets/book/` once and never overwrites
-it, so re-running anything here cannot cost an author their words.
-`spec sign` writes the year into the copyright page the first time the
-outline is approved, and never again: a copyright year is the year of
-first publication, and one that followed the build date would quietly
-become next year's on every rebuild.
-
-Split from `chitragupta/spec/_cli.py` so the commands stay commands; the
-file names live here because nothing else writes these files.
+Copied once and never overwritten, so nothing here costs an author
+their words. `spec sign` stamps the copyright year once, on first
+approval: a year following the build date would change every rebuild.
 """
 
 import datetime

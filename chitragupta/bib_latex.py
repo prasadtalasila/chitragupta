@@ -1,19 +1,11 @@
 """bibtexparser 1.x's LaTeX-to-Unicode decoding, kept when the parser
 moved to bibtexparser 2.
 
-Why vendored rather than v2's own `LatexDecodingMiddleware`: that one
-decodes through pylatexenc, which disagreed with 1.x on 1,242 field
-values of this project's real bibliographies -- every `105--107` page
-range became `105–107`, and a macro pylatexenc knows but renders as
-nothing (`\\textbar`) vanished from titles. Those values reach the
-ledger and every rendered reference list, so the upgrade keeps 1.x's
-output byte for byte instead of changing it as a side effect.
-`tests/test_bib_latex.py` pins that against values 1.4.4 produced.
-
-The logic below is 1.4.4's `latexenc.latex_to_unicode` and its two
-helpers, unchanged in behaviour. The 2,547 replacement pairs it reads
-live in `bib_latex_table.json` beside this file, in their original
-order, which matters: the first replacement to match wins.
+Vendored rather than v2's pylatexenc middleware, which changed 1,242
+real field values (`105--107` became an en dash, `\\textbar` vanished),
+reaching the ledger and every reference list.
+`tests/test_bib_latex.py` pins 1.4.4's output. The 2,547 pairs in
+`bib_latex_table.json` keep their order: the first match wins.
 
 Copyright (c) 2012-2018, Francois Boulogne and the python-bibtexparser
 contributors. Used under the BSD-3-Clause option of bibtexparser 1.x's

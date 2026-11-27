@@ -1,21 +1,11 @@
 name: Release
 
-# Only a major or minor version is released: vX.0.0 or vX.Y.0. A patch
-# version (X.Y.Z, Z > 0) is merged to main and never tagged, so it gets
-# no GitHub Release and no PyPI upload; its changes ship with the next
-# minor (DEVELOPER-AGENTS.md, "Versioning and releases"). In a filter
-# pattern `+` repeats the character before it and `.` is literal, so
-# this matches v6.177.0 and not v6.177.1 or v6.177.10.
+# Only vX.0.0/vX.Y.0 release; patch versions are never tagged. `+` repeats, `.` is literal.
 on:
   push:
     tags:
       - 'v[0-9]+.[0-9]+.0'
 
-# Each tag is its own github.ref, so this only ever cancels a re-run of
-# the *same* tag (e.g. a force-pushed/re-pushed tag) -- never one
-# release's run against a different version's, which always groups
-# separately. Added for consistency with ci.yml, not because this repo's
-# documented release flow (DEVELOPER-AGENTS.md) ever re-pushes a tag.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -24,20 +14,13 @@ permissions:
   contents: write
 
 jobs:
-  # The tag filter above already keeps a patch tag from starting a run.
-  # This guard is the second line, for a run started some other way (a
-  # re-run, a trigger widened later): no job here may release a patch.
+  # Second guard behind the tag filter: no job here may release a patch.
   release:
     if: endsWith(github.ref_name, '.0')
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Catches the plausible human mistake of tagging a release before
-      # bumping pyproject.toml's version (or vice versa) -- scripts/release.py
-      # names its archive from pyproject.toml alone, so a mismatch here
-      # would otherwise silently ship a release/chitragupta-<old
-      # version>.zip under a new-version tag.
       - name: Verify tag matches pyproject.toml version
         run: |
           tag_version="${GITHUB_REF_NAME#v}"
@@ -47,62 +30,22 @@ jobs:
             exit 1
           fi
 
-      # scripts/release.py is stdlib-only (tomllib/zipfile/shutil) and
-      # only needs `git` on PATH (already true after actions/checkout) --
-      # no uv/enrich install needed just to build the archives.
-      # Builds both release/chitragupta-<version>.zip and
-      # release/chitragupta-docker-<version>.zip in one run.
       - name: Build release archives
         run: python3 scripts/release.py
 
-      # Three archives, three different questions. The full zip is the
-      # whole project directory -- docs, .claude/ skills, hooks, config
-      # example -- for someone who wants to work in a checkout. The
-      # docker-only zip is docker/ and DOCKER.md alone,
-      # for someone who wants to run a container without the rest of the
-      # repository. The wheel installs the code and the CLI, and is what
-      # `publish-pypi` below hands to PyPI.
-      #
-      # uv is pinned and wheels-only, like docs.yml's and ci.yml's
-      # installs (Sonar S8544/S8541: an sdist fallback runs arbitrary
-      # setup scripts at install time) -- and here more than anywhere,
-      # since this uv builds what reaches PyPI. `==0.13.9` fixes the
-      # version, not the form: without `--only-binary` pip still builds
-      # uv from source when no wheel matches. Bump every site together,
-      # scripts/uv-requirements.txt included.
-      #
-      # uv runs the build; pyproject.toml's [build-system] still names
-      # poetry-core as the backend, which is what decides the files a
-      # wheel carries -- the same backend Poetry itself used, so the
-      # published file set did not move with the switch.
       - name: Install uv
         run: pipx install --pip-args='--only-binary=:all:' uv==0.13.9
 
-      # pyproject.toml's `readme` stays README.md (uv sync reads
-      # it too, not just uv build, so it has to be a file every
-      # checkout actually has -- see that file's own comment; pointing
-      # it at a generated file broke ci.yml's install step the first
-      # time this was tried, #286). This overwrites README.md with
-      # scripts/release.py's absolute-link rewrite of it in *this*
-      # checkout only, right before the one build that reaches PyPI --
-      # never committed, and gone the moment this job's runner is.
       - name: Rewrite README.md for the PyPI-bound build
         run: cp README.pypi.md README.md
 
       - name: Build wheel and sdist
         run: uv build
 
-      # Named with an underscore, not a hyphen: a distribution name
-      # normalises that way in a wheel filename, so `chitragupta-cli-*`
-      # would silently match nothing and attach no artefact.
-      # `release/chitragupta-*.zip` matches both the full and docker-only
-      # archives -- their names share the `chitragupta-` prefix.
+      # Underscore, not hyphen: wheel filenames normalise the name, so `chitragupta-cli-*` matches nothing.
       - name: Show what will be attached
         run: ls -l release/chitragupta-*.zip dist/chitragupta_cli-*
 
-      # Handed to the publish job rather than rebuilt there, so what
-      # reaches PyPI is byte-identical to what is attached to the
-      # release. Two `uv build` runs are not guaranteed to agree.
       - name: Keep the built distributions for the publish job
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -110,15 +53,6 @@ jobs:
           path: dist/
           if-no-files-found: error
 
-      # Pinned to a commit SHA rather than the `v2` tag (which currently
-      # resolves to this same commit, v2.6.2), for the reason ci.yml's
-      # Codecov pin states: S7637 -- a movable tag on an action running
-      # with `contents: write` is exactly the dependency to pin. The
-      # first-party `actions/*` steps in this file are pinned the same way
-      # (#829): being GitHub's own does not stop a tag from being moved,
-      # and `download-artifact` is the one step between the built wheel
-      # and the OIDC publish below. .github/dependabot.yml proposes the
-      # bumps; take them deliberately rather than tracking a tag.
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
@@ -128,20 +62,7 @@ jobs:
             dist/chitragupta_cli-*.tar.gz
           generate_release_notes: true
 
-  # Separate job, and separate permissions. Trusted Publishing needs an
-  # OIDC token; the release job needs to write releases. Neither needs
-  # the other's, and `permissions:` is per job, so splitting them is what
-  # keeps the OIDC token off every step that has no business holding one.
-  #
-  # `needs: release` orders it *after* the GitHub Release is published,
-  # deliberately: a PyPI failure then leaves a complete, downloadable
-  # release behind rather than a tag with no artefacts.
-  #
-  # No guard of its own: `needs: release` skips this job whenever the
-  # release job is skipped, and that job's `if:` is what keeps a patch
-  # tag out. PyPI never accepts a re-upload of a version number, not
-  # even a deleted or yanked one, so a version reaches the index only
-  # after its GitHub Release exists.
+  # Separate job so only it holds the OIDC token; runs only after the release job succeeds.
   publish-pypi:
     needs: release
     runs-on: ubuntu-26.04
@@ -155,28 +76,6 @@ jobs:
           name: dist
           path: dist/
 
-      # No API token, and no secret in repository settings: Trusted
-      # Publishing exchanges GitHub's OIDC token for a short-lived PyPI
-      # one, so there is no long-lived credential to leak or rotate.
-      #
-      # The publisher is registered on PyPI against this repository, this
-      # workflow filename and the `pypi` environment above -- every major
-      # or minor tag since v6.7.0 that reached this job has published
-      # cleanly (docs/PACKAGING.md); a PATCH tag starts no run at all.
-      # A failure here now is a real regression (a renamed environment,
-      # a changed OIDC trust relationship, a PyPI-side outage), not the expected
-      # state: it was only expected once, before that first tag, and this
-      # comment used to say so. If it fails, the tag and the GitHub
-      # Release still land -- this job runs after both, and a failure
-      # here is confined to it.
-      #
-      # The project is `chitragupta-cli`, not `chitragupta`: that name
-      # belongs to an unrelated package on PyPI. docs/PACKAGING.md has
-      # the three-namespaces table and why the command is still
-      # `chitragupta`.
-      #
-      # Pinned to a commit SHA for the reason the release action above
-      # is: a movable tag on a third-party action that can publish to
-      # PyPI is strictly worse than one that can write a release.
+      # Trusted Publishing (no secret); the PyPI project is `chitragupta-cli`.
       - name: Publish to PyPI (Trusted Publishing)
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3

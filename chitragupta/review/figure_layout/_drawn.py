@@ -1,54 +1,24 @@
 """What TikZ drew, as `figure check`'s probe reports it (#1054).
 
-`assets/latex/cg-figure-probe.tex` wraps `\\pgfusepath` and
-`\\pgfmultipartnode`, so the compile logs every path pgf used and every
-node it made, in canvas coordinates (pt). This reads that log.
+`assets/latex/cg-figure-probe.tex` hooks `\\pgfusepath` and
+`\\pgfmultipartnode`, logging every path and node in canvas pt. Read from
+TeX, not source: a source parser cannot see `\\foreach`, `child`, `pic`
+or `(a.north |- b.south)` without re-implementing TikZ.
 
-**Why the lines come from TeX, not the source**: a spike over the 59
-figures in this repository measured 279 lines between two nodes this way
-against 218 at best for a source parser, which cannot see a `\\foreach`
-body, a `child`, a `pic`, or where `(a.north |- b.south)` lands without
-re-implementing TikZ. Here TikZ has already done all of that.
+Log lines (one `\\typeout` per item, under `max_print_line`):
+`CGNODE <wd> <ht> <dp> <shape>/<name>` (unnamed nodes become `cgu-<n>`);
+`CGPATH <index> <N|E> <start-tip> <end-tip> <action>` (`N` a node frame);
+`CGSEG <index> <op> <x> <y>` (op M, L, C, Z, R/S);
+`CGNB <w> <s> <e> <n> <tx> <ty> <b> <c> <name>` (box from four side
+anchors, #1064; a quarter turn is measured, other turns set aside);
+`CGLW` and `CGTIP` (line width, arrowhead hull, #1113); `CGPAINT`,
+`CGTEXT`, `CGTEXTCOLOR` (`_paint.py`). **Names come last** because a
+shape or node name may hold spaces (#1054's review crash).
 
-The grammar, one item per line (`\\typeout` per segment, so a long
-plotted path never reaches `max_print_line`):
-
-- `CGNODE <wd> <ht> <dp> <shape>/<name>`: a node, as it is made, with
-  its text's width, height and depth. TikZ leaves most labels unnamed;
-  the hook names them `cgu-<n>`.
-- `CGPATH <index> <N|E> <start-tip> <end-tip> <action>`: a path, as it
-  is used. `N` is part of a node (its frame), `E` is everything else; the
-  tips are `0` or `1`; `<action>` is pgf's own list (`draw,`, `fill,`).
-- `CGSEG <index> <op> <x> <y>`: one point of that path. `M`ove, `L`ine,
-  `C` (three per Bézier: two supports, then the end), `Z` (close), and
-  `R`/`S` (a rectangle's corner and size).
-- `CGNB <w> <s> <e> <n> <tx> <ty> <b> <c> <name>`: a node's box, the min
-  and max over the points of its four side anchors (#1064), its `text`
-  anchor (`- -` where the shape has none), and the two rotation entries
-  of its transform, printed at the end of the picture. A quarter turn
-  (`rotate=90` or `-90`) is measured: its box is exact, and its text box
-  is turned about the `text` anchor. Any other turn is set aside.
-- `CGLW <index> <width>`: that path's line width (#1113).
-- `CGTIP <index> <tip> <x> <y>`: one point of the convex hull of an
-  arrowhead pgf drew on that path, numbered per tip (#1113).
-- `CGPAINT`, `CGTEXT` and `CGTEXTCOLOR`: the colours paths and text were
-  set in (#1055), whose grammar `_paint.py` documents and reads.
-
-**Names come last**, after a fixed count of fields, because a shape
-(`circle split`, `regular polygon`) or a node (`(data store)`) may have a
-space in its name; split on spaces, it shifted every field after it and
-`figure check` crashed (#1054's review). A shape name never holds `/`.
-
-A node is framed when a node path (`N`) after its `CGNODE` line, made
-while it was being built, was drawn or filled: the hook logs a node
-before building it, so its text box can be read before the node uses it.
-Its colours are its **last** such path's: `cgsoft`'s blur shadow is a
-score of node paths stroked and filled in greys before the frame.
-
-**A node logged before an `E` path is that path's label.** TikZ makes a
-node on a path before it strokes the path, and a `\\node` statement is a
-path of its own, whose empty `E` path consumes it -- so a standalone node
-is never mistaken for the next line's tag.
+A node is framed when a painted `N` path follows its `CGNODE`; its colours
+are the last such path's (`cgsoft`'s shadow paths come first). A node
+logged before an `E` path is that path's label; a `\\node` statement's
+own empty `E` path consumes it, so it never tags the next line.
 """
 
 import re
@@ -68,19 +38,13 @@ class DrawnNode:
     name: str
     shape: str
     box: Box
-    # Where the text was set: the `text` anchor plus the text's own
-    # width, height and depth. `None` for a shape with no `text` anchor.
+    # The `text` anchor plus the text's size; `None` with no `text` anchor.
     text_box: Box | None
-    # Whether a frame was drawn or filled for it. An unframed node that
-    # contains others (an undrawn `fit` group) hides nothing; its text
-    # box is no help, since `fit` sizes it to the whole group.
+    # An unframed node containing others (an undrawn `fit`) hides nothing.
     framed: bool = True
-    # Turned by its transform other than a quarter turn (`sloped`, a
-    # slanted `rotate=`), so its box and text box, read square to the
-    # page, are not where it was set.
+    # Turned other than a quarter turn, so its boxes are not where it was set.
     rotated: bool = False
-    # Its frame's colours (#1055), `None` where it was not filled or not
-    # drawn; its text's runs, and the `text=` it was given.
+    # Frame colours (#1055), `None` where not filled or not drawn.
     fill: Paint | None = None
     stroke: Paint | None = None
     runs: tuple[TextRun, ...] = ()
@@ -89,11 +53,8 @@ class DrawnNode:
 
 @dataclass(frozen=True)
 class DrawnLine:
-    """One stroked subpath that is not part of a node.
-
-    `labels` are the nodes placed on the path it belongs to. A path with
-    several subpaths repeats them on each, since which piece a tag sits
-    beside is for the geometry to say.
+    """One stroked subpath that is not part of a node; `labels` repeat on
+    each subpath of a path, since the geometry decides which a tag is by.
     """
 
     index: int
@@ -102,10 +63,9 @@ class DrawnLine:
     start_tip: bool
     end_tip: bool
     labels: tuple[str, ...]
-    # What it was stroked in (#1055); `None` from a log without paint.
+    # (#1055); `None` from a log without paint.
     stroke: Paint | None = None
-    # Its line width in pt, and the outline of each arrowhead on its
-    # path (#1113); 0 and none from a log without them.
+    # (#1113); 0 and none from a log without them.
     width: float = 0.0
     heads: tuple[tuple[Point, ...], ...] = ()
 
@@ -149,14 +109,13 @@ def parse_drawn(log: str) -> Drawn | None:
 
 @dataclass
 class _Reader:
-    """The log's state as it is read in order: which nodes are waiting
-    for the next path to claim them as its labels."""
+    """The log's state as read in order: which nodes await the next path
+    as its labels."""
 
     paths: dict[int, _Path] = field(default_factory=dict)
     texts: dict[str, tuple[str, float, float, float]] = field(default_factory=dict)
     nodes: dict[str, DrawnNode] = field(default_factory=dict)
     pending: list[str] = field(default_factory=list)
-    # The nodes a painted frame was drawn for, and that frame's paths.
     framed: dict[str, _Path] = field(default_factory=dict)
     colours: Colours = field(default_factory=Colours)
 

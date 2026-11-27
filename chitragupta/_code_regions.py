@@ -1,31 +1,16 @@
 """Where a draft's code regions are, found in time linear in its length.
 
-Three DOTALL regexes used to find these -- `citation_gate`'s verbatim
-blanking, and `style_typeset`'s fenced-block and verbatim-body scans --
-and each paired an opener with its closer through a lazy `.*?`. An
-opener with *no* closer ran that `.*?` to the end of the file before the
-search moved on, so N unclosed openers cost O(N x L): a 20k-line draft
-of bare `\\begin{verbatim}` lines, the kind of thing a paste of a
-corrupted PDF's parsed text produces, took the citation gate hook past
-the harness's 30 s kill, and a killed hook prints no block (#824).
-
-What did not change is the pairing. Each function below reproduces its
-regex's matches exactly, on malformed input too: an opener with no
-closer is skipped rather than run to the end of the file, so a later
-opener can still pair, and a fence whose own length has no closer
-shortens to one that does, the way the regex backtracked. The cost is
-the only difference -- closers are indexed once, and every opener then
-finds its closer by lookup rather than by re-scanning the document.
-`tests/test_code_regions.py` keeps the three regexes as oracles.
-
-Standard library only, like `citation_gate` itself.
+Lazy DOTALL regexes cost O(N x L) on N unclosed openers, enough to push
+the citation gate hook past its 30 s kill, and a killed hook blocks
+nothing (#824). These functions reproduce those regexes' matches
+exactly, malformed input included, with closers indexed once;
+`tests/test_code_regions.py` keeps the regexes as oracles. Stdlib only.
 """
 
 import bisect
 import re
 
-# The environments whose body is not prose -- the one list both callers
-# use, so what the gate blanks and what typesetting measures agree.
+# The one list both callers use, so gate blanking and typesetting agree.
 _ENVS = r"(verbatim|lstlisting|minted)"
 _BEGIN_RE = re.compile(rf"\\begin\{{{_ENVS}\*?\}}")
 # The gate's closer may sit anywhere; typesetting's must start a line.

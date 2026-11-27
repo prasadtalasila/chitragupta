@@ -1,18 +1,12 @@
 """The verbatim digest's findings as data (#991, #1172).
 
-What `_digest_match.check_run` writes and `_digest_render` reads: the
-classes, one record per copied span, finding, own-words sentence and
-uncheckable run, and the `Checked` accumulator whose properties are the
-report's fractions. Split from the matcher so each stays one thing: this
-file says what a result is, that one decides it.
-
-Stdlib only, interpreter tier 1.
+What `_digest_match.check_run` writes and `_digest_render` reads, split
+from the matcher so this says what a result is and that decides it.
 """
 
 from dataclasses import dataclass, field
 
-# Worst first: the order the report lists classes in, and the order a
-# repair pass works them.
+# Worst first: the report's order, and a repair pass's.
 CLASSES = (
     "unsupported-text",
     "copy-mismatch",
@@ -21,17 +15,14 @@ CLASSES = (
     "unquoted-text",
 )
 
-# The classes whose words the unsupported fraction counts.
 FRACTION_CLASSES = ("unsupported-text", "copy-mismatch", "unquoted-text")
 
 
 @dataclass(frozen=True)
 class Span:
     """Verified copied text: a whole run, or one sentence of a broken one.
-
-    `pages` is where the text was found; `cited` is the citation's hint;
-    `note` names a disagreement between the two, an assembled run, or
-    both, and is None when there is nothing to say.
+    `note` names a page disagreement with the `cited` hint, an assembled
+    run, or both.
     """
 
     line: int
@@ -47,14 +38,9 @@ class Span:
 class Finding:
     """One sentence in one class of `CLASSES`, anchored to its own line.
 
-    `detail` is the class's evidence: `copy-mismatch` carries `page`,
-    `share` and `missing`; `unsupported-text` carries `support_score` and
-    `page`; `dangling-reference` carries `kind` and `match`;
-    `repeated-text` carries `first_line`;
-    `unquoted-text` carries nothing. `seq` numbers the sentence within
-    the digest, so two findings on one sentence share it and the same
-    sentence written twice on one line does not (#1172): the fraction
-    counts each distinct `(line, text, seq)` once.
+    `detail` is the class's evidence. `seq` numbers the sentence within the
+    digest, so two findings on one sentence share it and a sentence written
+    twice on one line does not (#1172).
     """
 
     cls: str
@@ -80,8 +66,8 @@ class Own:
 
 @dataclass(frozen=True)
 class Unverifiable:
-    """A run the aid could not check, and why -- one reason per citekey
-    the ladder had no reading-ordered passages for."""
+    """A run the aid could not check: one reason per citekey with no
+    reading-ordered passages."""
 
     line: int
     citekeys: tuple[str, ...]
@@ -90,18 +76,14 @@ class Unverifiable:
 
 
 def _fraction(part: int, whole: int) -> float:
-    # 0.0 for an empty digest: a number rather than a crash, and the
-    # report says "0 of 0 words" beside it.
+    # 0.0 for an empty digest; the report says "0 of 0 words" beside it.
     return round(part / whole, 3) if whole else 0.0
 
 
 @dataclass
 class Checked:
-    """The accumulator `check_run` fills, one run at a time.
-
-    Mutable by design, the same shape as `quotation.py`'s: it is passed
-    by reference through the run loop and read whole afterwards.
-    """
+    """The accumulator `check_run` fills, one run at a time; mutable by
+    design, as `quotation.py`'s."""
 
     spans: list[Span] = field(default_factory=list)
     own: list[Own] = field(default_factory=list)
@@ -116,9 +98,9 @@ class Checked:
 
     @property
     def words_flagged(self) -> int:
-        """Words of every distinct flagged sentence. Keyed by line, text
-        and `seq` so the same sentence written twice is two sentences and
-        one sentence with two classes is one."""
+        """Words of every distinct flagged sentence, keyed by line, text and
+        `seq`: a sentence written twice counts twice, one with two classes
+        once."""
         flagged = {
             (finding.line, finding.text, finding.seq)
             for finding in self.findings

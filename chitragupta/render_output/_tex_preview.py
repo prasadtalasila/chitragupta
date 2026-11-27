@@ -1,50 +1,21 @@
 """What a `.tex` draft's own preview changes, so it shows what the thesis
 will show (#1164, #1120; plans/1120-1164-tex-preview.md).
 
-A thesis-chapter fragment is LaTeX, and its `tex`/`pdf` preview is the
-only place its author sees it typeset before building the thesis.
-Pandoc's LaTeX reader lost four things on the way, each with exit 0:
+Pandoc's LaTeX reader silently lost four things, fixed here:
 
-- **the figure.** It followed `\\input{figures/x.tex}` and dropped the
-  `tikzpicture` inside. Reading with `latex+raw_tex` leaves the `\\input`
-  for LuaLaTeX, which reads the file through `TEXINPUTS` and the #823
-  read fence as it does for a Markdown draft's figures. Only for a
-  LaTeX-bound output: md, html and docx swap a figure for its ASCII twin
-  (`_figures._substitute_ascii_for_tikz`), and a raw `\\ref` would print
-  there as text.
-- **absolute column widths.** `p{2.6cm}` became `l`, before any filter
-  sees the table, so the source is rewritten first: a fraction of
-  `\\linewidth`, which the reader keeps.
-- **heading numbers.** The template left headings unnumbered while
-  pandoc resolved `\\ref` to a number. Under `raw_tex` LaTeX resolves
-  the `\\ref`, and `--number-sections` numbers the headings from the
-  same counters.
-- **the references heading.** A Markdown draft writes its own
-  `## References`; a fragment has none, so the preview names the list.
+- **the figure**: `latex+raw_tex` leaves `\\input` for LuaLaTeX (LaTeX-bound
+  output only; other formats get the ASCII twin).
+- **absolute column widths**: `p{2.6cm}` became `l`, so widths are rewritten as
+  fractions of `\\linewidth` first, only where every column is `p`/`m`/`b`
+  (pandoc zero-widths `l`/`c`/`r` beside a width column).
+- **heading numbers**: `--number-sections` matches LaTeX's `\\ref` numbers.
+- **the references heading**, which a fragment lacks.
 
-What `raw_tex` costs, accepted by the owner: a command pandoc does not
-know now reaches LuaLaTeX, so a command defined only in the thesis's
-preamble stops the pdf. `preamble_file` is the remedy, an optional file
-beside the draft modelled on the book's `content/specs/<book>/preamble.tex`,
-and `undefined_command_hint` names it.
-
-It also costs every alignment or size declaration pandoc does not keep
-inside its group (`\\centering`, `\\small`, ...): `raw_tex` keeps it as
-raw TeX of its own. In a figure, pandoc then sets two `0.45\\linewidth`
-minipages, an empty one and the picture. In a table float, or a
-`{\\centering ...}` group, or a `center` block, pandoc drops the group,
-so the declaration centres or shrinks every later paragraph (measured,
-pandoc 3.1.11; the table on a real thesis chapter). So the preview's
-copy drops a declaration inside any group or environment, and keeps a
-top-level one, which changes the rest of the thesis too.
-
-A width is rewritten only in a spec whose every column is `p`, `m` or
-`b`: once any column has a width, pandoc gives an `l`, `c` or `r` column
-zero width, so `lp{6cm}` would print its first column a letter wide.
-
-Left alone: `em`/`ex` widths, whose size depends on the thesis's font;
-a `*{n}{...}` spec; every Markdown draft; and every `--fragment` render,
-which is the deliverable and never had a reader problem.
+`raw_tex` costs, accepted by the owner: a thesis-only command stops the pdf
+(remedy: `preamble_file`); and grouped declarations (`\\centering`, `\\small`)
+leak to every later paragraph (pandoc 3.1.11), so the preview drops those
+inside groups. `em`/`ex` widths, `*{n}{...}`, Markdown drafts and `--fragment`
+renders are left alone.
 """
 
 import re
@@ -62,43 +33,33 @@ _TITLE = ["--metadata", "reference-section-title=References"]
 # column spec: `tabular*` and `tabularx` take a width first.
 _TABLE_RE = re.compile(r"\\begin\{(tabular\*?|tabularx|longtable)\}")
 _WIDTH_FIRST = {"tabular*", "tabularx"}
-# A `p`/`m`/`b` column's width in an absolute unit, and pt per unit.
 _COLUMN_RE = re.compile(r"([pmb])\{\s*(\d+(?:\.\d+)?|\.\d+)\s*(cm|mm|in|pt|bp)\s*\}")
 _PT = {"cm": 28.4528, "mm": 2.84528, "in": 72.27, "pt": 1.0, "bp": 1.00375}
 
-# The declarations that change every paragraph after them until their
-# group ends, and a control word or symbol.
 _DECLARATIONS = frozenset(
     "centering raggedright raggedleft tiny scriptsize footnotesize small "
     "normalsize large Large LARGE huge Huge".split()
 )
 _CONTROL_RE = re.compile(r"\\([A-Za-z]+|.)", re.DOTALL)
-# A spec's decorations, which name no column: `>{...}`, `<{...}`,
-# `@{...}`, `!{...}`, and rules.
 _DECORATION = "<>@!"
 
-# TeX's report of an undefined command; the line after it is the context,
-# whose last control sequence is the one TeX stopped on: `l.4 Plain \\todo`,
-# or `<argument> see \\citep` for one inside another command's argument.
+# TeX's undefined-command report; the next line's last control sequence is the
+# culprit: `l.4 Plain \\todo`, or `<argument> see \\citep` inside an argument.
 _UNDEFINED_RE = re.compile(r"! Undefined control sequence\.[ \t]*\n(?P<line>[^\n]*)")
 _NAME_RE = re.compile(r"\\([A-Za-z@]+)")
 _CITE_COMMANDS = frozenset({"cite", "citep", "citet", "citealp", "citeauthor"})
 
 
 def is_tex_draft(input_path: Path) -> bool:
-    """Whether the draft is LaTeX rather than Markdown."""
     return input_path.suffix.lower() not in _MARKDOWN_SUFFIXES
 
 
 def preamble_file(input_path: Path) -> Path | None:
-    """The author's preamble for this draft's preview:
-    `<stem>.preamble.tex` beside it, else a `preamble.tex` its
-    directory's chapters share, else `None`.
+    """The author's preamble for this preview: `<stem>.preamble.tex`, else a
+    shared `preamble.tex` in its directory, else `None`.
 
-    Raises `OutsideContentDir` for one that is a symlink out of the
-    draft's directory: pandoc reads the file it is handed with no fence
-    and inlines it into the preview's preamble, so the figures' #823
-    rule (`_assets._refuse_escaping_refs`) applies here too.
+    Raises `OutsideContentDir` for a symlink out of the draft's directory:
+    pandoc inlines it unfenced, so the #823 rule applies here too.
     """
     for candidate in (
         input_path.with_name(f"{input_path.stem}.preamble.tex"),
@@ -117,8 +78,7 @@ def preamble_file(input_path: Path) -> Path | None:
 
 
 def rewrite(text: str, input_path: Path, output_format: str, fragment: bool) -> str:
-    """The text pandoc reads for a `.tex` draft's non-fragment render;
-    `text` itself for anything else."""
+    """The text pandoc reads for a `.tex` non-fragment render; else `text`."""
     if fragment or not is_tex_draft(input_path):
         return text
     text = widths_as_fractions(text, ARTICLE.text_width_pt)
@@ -128,7 +88,6 @@ def rewrite(text: str, input_path: Path, output_format: str, fragment: bool) -> 
 
 
 def pandoc_args(input_path: Path, output_format: str, fragment: bool) -> list[str]:
-    """What pandoc is told for a `.tex` draft's non-fragment render."""
     if fragment or not is_tex_draft(input_path):
         return []
     args = list(_TITLE)
@@ -143,8 +102,7 @@ def pandoc_args(input_path: Path, output_format: str, fragment: bool) -> list[st
 
 
 def widths_as_fractions(text: str, text_width_pt: float) -> str:
-    """Every absolute `p`/`m`/`b` width in a table's column spec, as a
-    fraction of `\\linewidth` against `text_width_pt`."""
+    """Absolute `p`/`m`/`b` column widths as fractions of `\\linewidth`."""
     out, done = [], 0
     for match in _TABLE_RE.finditer(text):
         span = _spec_span(text, match.end(), match.group(1) in _WIDTH_FIRST)
@@ -160,9 +118,8 @@ def widths_as_fractions(text: str, text_width_pt: float) -> str:
 
 
 def without_grouped_declarations(text: str) -> str:
-    """Every alignment or size declaration inside a brace group or an
-    environment removed, with the spaces after it but never a newline. A
-    top-level one, an escaped character and a comment are left as written."""
+    """Every grouped alignment or size declaration removed, with trailing spaces
+    but never a newline. Top-level ones, escapes and comments are kept."""
     out, depth, i = [], 0, 0
     while i < len(text):
         char = text[i]
@@ -191,12 +148,9 @@ def without_grouped_declarations(text: str) -> str:
 def undefined_command_hint(stderr: str | None, input_arg: str) -> str:
     r"""Where to define the command a `.tex` preview stopped on, or "".
 
-    One the thesis's preamble defines is undefined here, where none of
-    that preamble is loaded, and the remedy is the author's preamble
-    file, which no skill writes for them: the line says so, because it is
-    what an agent reads at the moment it would. A citation command is the
-    exception: inside a command pandoc keeps raw it is never resolved,
-    and defining it would print a key, so the hint says to move it.
+    The remedy is the author's preamble file, which no skill writes, so the
+    line says so. A citation command is the exception: kept raw it is never
+    resolved, so the hint says to move it.
     """
     path = Path(input_arg)
     if "Undefined control sequence" not in (stderr or "") or not is_tex_draft(path):
@@ -218,9 +172,7 @@ def undefined_command_hint(stderr: str | None, input_arg: str) -> str:
 
 
 def _only_paragraph_columns(spec: str) -> bool:
-    """Whether every column `spec` names is `p`, `m` or `b`: decorations
-    and rules skipped, a column's own argument skipped, and a `*{n}{...}`
-    repeat read as not."""
+    """Whether every column is `p`, `m` or `b`; a `*{n}{...}` repeat reads as not."""
     columns, i = set(), 0
     while i < len(spec):
         char = spec[i]
@@ -241,9 +193,8 @@ def _fraction(match: re.Match[str], text_width_pt: float) -> str:
 
 
 def _spec_span(text: str, i: int, width_first: bool) -> tuple[int, int] | None:
-    """Where the column spec's content is, from just after
-    `\\begin{env}`: past a width argument and a `[pos]`, then a braced
-    group. `None` where a group is left open or the spec is missing."""
+    """The column spec's content span after `\\begin{env}`, past a width
+    argument and `[pos]`; `None` if open or missing."""
     if width_first:
         i = _skip_group(text, i, "{", "}")
     i = _skip_group(text, i, "[", "]")
@@ -255,7 +206,6 @@ def _spec_span(text: str, i: int, width_first: bool) -> tuple[int, int] | None:
 
 
 def _skip_group(text: str, i: int | None, opener: str, closer: str) -> int | None:
-    """Past an optional group opening at `i` (after space)."""
     i = _skip_space(text, i)
     if i is None or i >= len(text) or text[i] != opener:
         return i

@@ -1,21 +1,10 @@
 """The one `python -m chitragupta.draft style` finding this repository doesn't
 hand to Vale.
 
-Vale's `Acronyms.yml` can verify an acronym was expanded somewhere near
-its first use; it cannot know what a user's own vocabulary currently
-says an acronym expands to, because that vocabulary lives in a per-host
-TOML file (`chitragupta.acronyms.load_vocabulary()`) Vale never reads. This is
-that other half: a draft's own recorded glossary (`scope.md`'s
-`## Glossary`), checked against the vocabulary right now, in plain
-Python -- the first `style_check.py` finding not delegated to Vale.
-
-**Reports only what it can see: the dossier's glossary, not the draft's
-own prose.** A term whose glossary bullet still agrees with the
-vocabulary but whose body text expands it differently produces no
-finding here -- catching that would mean scanning the draft body the way
-Vale's own regex-based rule does, a different and much more expensive
-check this module does not attempt. See docs/WRITING-STANDARDS.md §9 and
-GitHub issue #190.
+Vale never reads the per-host acronym vocabulary, so this checks a
+draft's recorded glossary (`scope.md`'s `## Glossary`) against it in
+plain Python. It does not scan the draft body for differing expansions;
+see docs/WRITING-STANDARDS.md §9 and #190.
 """
 
 from pathlib import Path
@@ -26,21 +15,11 @@ RULE = "chitragupta.AcronymDrift"
 
 
 def findings(draft: Path) -> list[dict]:
-    """One finding per acronym whose glossary-recorded expansion
-    disagrees with the vocabulary -- the same shape
-    `style_check.collapse()` produces from Vale's own findings, so the
-    two merge into one report without `style_report.py` needing to know
-    which check produced which line.
+    """One finding per acronym whose glossary expansion disagrees with the
+    vocabulary, in `style_check.collapse()`'s shape so the two merge.
 
-    `line` is always 0: the mismatch is between two files (`scope.md`
-    and the vocabulary file), not a position in the draft Vale could
-    point at -- the message says so explicitly rather than let a `0`
-    read as a line number nobody wrote at.
-
-    `[]` for a draft with no dossier to compute a path for -- the same
-    "a draft outside content/ has no dossier path to compute" case
-    `style_language.language_of()` already guards against, not an error
-    specific to this check.
+    `line` is always 0 (the mismatch is between two files, and the message
+    says so). `[]` for a draft outside content/, which has no dossier.
     """
     try:
         glossary = dossier.glossary_terms(draft)

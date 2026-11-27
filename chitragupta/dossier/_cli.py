@@ -1,20 +1,10 @@
 """`python -m chitragupta.draft dossier`'s argparse tree: wiring every
-subcommand to the `_cmd_*` handler that now lives beside the data it
-handles, and nothing else.
+subcommand to the `_cmd_*` handler that lives beside the data it
+handles, and nothing else (no flag is restated here).
 
-Split out of chitragupta/dossier.py (#219), mirroring the one rule
-`chitragupta/review/__main__.py` already follows for the same reason: "This
-file only wires them together: it never restates a flag, so there is
-no second place for one to drift out of sync." Every `_cmd_*` handler
-moved to the submodule that owns the state it prints or writes; this
-file only imports each by name and hands it to `set_defaults(func=...)`.
-
-Deliberately named `_cli.py`, not `__main__.py`: this package has no
-`__main__` block on purpose, the same way `chitragupta/dossier.py` had none
-before this split. `python -m chitragupta.dossier` stays the same silent no-op
-`docs/ARCHITECTURE.md` documents for the other four drafting-layer
-modules -- `python -m chitragupta.draft dossier` is this layer's one front
-door, and a package `__main__.py` would quietly open a second one.
+Named `_cli.py`, not `__main__.py`: `python -m chitragupta.draft dossier`
+is the layer's one front door (`docs/ARCHITECTURE.md`), and a package
+`__main__.py` would quietly open a second.
 """
 
 import sys

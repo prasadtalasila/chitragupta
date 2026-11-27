@@ -1,21 +1,11 @@
 """Which ends of a path statement carry a head, from its options (#1162).
 
-`stranded-arrowhead` used to test a path's options for the substrings
-`->` and `<-`. The house styles set their head inside the style
-(`cgedge` is `-{Latex[...]}`), so a figure drawn in house idioms never
-showed either, and the check was off for every scaffold.
-
-The options are read as TikZ applies them: left to right, a later arrow
-specification replacing an earlier one (`\\draw[cgweak, -]` draws no
-head), and a style name standing for its body. Styles come from the
-figure's own `name/.style={...}` definitions first, then from the
-shipped house block, so a figure that carries the block, one that
-`\\input`s it, and a snippet with neither all read the same.
-
-Still regex over TikZ rather than a parser of it, and failing short
-rather than wrong: a style defined in neither place, a `/.append style`,
-a `/.style n args`, and a tip name outside `_TIP_NAMES` are not read,
-and a path whose head comes from one of them is not reported.
+House styles set their head inside the style (`cgedge` is
+`-{Latex[...]}`), so options are read as TikZ applies them: left to
+right, later arrow specs replacing earlier ones, a style name standing
+for its body (the figure's own definitions, then the house block's).
+Regex, failing short rather than wrong: `/.append style`, `/.style n
+args` and unknown tip names are not read.
 """
 
 import functools
@@ -45,15 +35,13 @@ _TIP_NAMES = (
     "To",
     "to",
 )
-# One side of an arrow spec, after every top-level `{...}` and `[...]`
-# has been replaced by `X`: empty, a run of `<`, `>`, `|` and groups
-# (`|<`, `>>`, `{Latex}{Latex}`), or a tip name with optional options.
+# One side of an arrow spec, groups replaced by `X`: empty, `<>|X` runs,
+# or a tip name with optional options.
 _NAMES = "|".join(re.escape(name) for name in _TIP_NAMES)
 _SIDE = rf"(?:[<>|X]+|(?:{_NAMES})X?)?"
 _SPEC_RE = re.compile(rf"(?P<start>{_SIDE})-(?P<end>{_SIDE})")
 
-# `name/.style={`: a name may hold spaces and hyphens (`cg pic colour`,
-# `my-arrow`) and is not the tail of a longer word.
+# A name may hold spaces and hyphens and is not the tail of a longer word.
 _STYLE_RE = re.compile(r"(?<![\w-])([A-Za-z][\w -]*?)\s*/\.style\s*=\s*(?=\{)")
 
 _CLOSERS = {"{": "}", "[": "]"}

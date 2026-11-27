@@ -1,8 +1,5 @@
 """`scan`'s orchestrator: union every detection tier, dedupe, bucket by
 severity, and the published finding shape both `scan` and `recheck` read.
-
-Split out of chitragupta/review/verbatim_check.py (#361) -- see
-chitragupta/review/verbatim_check/_corpus.py's docstring for the split.
 """
 
 from pathlib import Path
@@ -22,58 +19,20 @@ from chitragupta.review.verbatim_check._skipgram import _skipgram_tier_findings
 def scan_findings(
     draft: str | Path, min_run: int | None = None, gap: int = 1, limit: int | None = None
 ) -> tuple[list[dict], int, int, list[dict]]:
-    """Slide `draft`'s whole normalized text across every built detection
-    tier (`_exact_tier_findings`, `_skipgram_tier_findings`,
-    `_embed_tier_findings`), the first two grouping their own matches by
-    `(citekey, diagonal)` and merging into maximal same-diagonal runs,
-    the third aligning sentence embeddings within the scope its dossier
-    records. Returns `(findings, min_run, suppressed, not_run)`:
-    `findings` is every tier's findings unioned (minus anything a
-    stronger tier already covers -- see below) and sorted longest-first,
-    each dict naming which tier produced it (`"tier"`); `suppressed` is
-    the total the allowlist (see `_load_allowlist_phrases`) dropped,
-    summed across tiers; `not_run` is one `{"tier", "reason", "partial"}`
-    entry per gap in what a tier covered -- either it did not run at all
-    (`"partial": False`) or it ran but not against everything the draft
-    cites (`"partial": True`, #499) -- and a tier can contribute more
-    than one entry, e.g. a renamed heading and a stale embedded corpus
-    are independent gaps with independent fixes.
+    """Run `draft` through every detection tier (exact, skip-gram,
+    embedding), sharing one tokenization, allowlist and newline map.
+    Returns `(findings, min_run, suppressed, not_run)`: findings unioned,
+    deduped and longest-first, each naming its `"tier"`; `suppressed` is
+    what the allowlist dropped; `not_run` is one `{"tier", "reason",
+    "partial"}` per coverage gap (#499).
 
-    `not_run` is the fourth return value rather than a silent empty
-    contribution because the two are not the same claim. Tiers 1 and 2
-    are always available, so an empty result from either means "checked,
-    nothing found". Tier 3 depends on the optional enrichment layer, a
-    built `content/chroma/`, Docling sidecars and the draft's dossier;
-    an empty result from it means either "checked, nothing found",
-    "never ran", or "ran, but only against part of what this draft
-    cites" -- and a report that cannot tell a reader which is
-    overstating what was checked.
-
-    Every tier finder shares this function's tokenization, allowlist and
-    newline bookkeeping -- computed once here, not once per tier -- and
-    returns `(tier_findings, tier_suppressed)` in the same finding-dict
-    shape `_PAYLOAD_FIELDS` publishes; nothing downstream of this
-    function (bucketing, rendering, the JSON payload) needs to know how
-    many tiers ran or which one produced any given finding beyond
-    reading `"tier"`.
-
-    This function never raises for "nothing found" and returns an empty
-    list in that case -- this is a review aid, not a gate, and it is not
-    wired into anything that treats a nonzero exit as a failure. It does
-    raise `ValueError` for a request it cannot honor at all -- `min_run`
-    below a tier's own n-gram size, or a malformed allowlist file -- that
-    is not "no findings", it is "this input can't be scanned as asked",
-    and the `scan` CLI (below) turns it into the same stderr-plus-exit-2
-    usage error as its other malformed invocations, e.g. `--gap` with no
-    value.
-
-    A finding is dropped, not just flagged, when the allowlist accounts
-    for enough of it that what's left would not itself have cleared
-    `min_run` -- e.g. a run that is entirely one allowlisted standard's
-    name. A run that merely *contains* a short allowlisted phrase inside
-    a much longer otherwise-unexplained lift is kept: suppressing the
-    whole thing would hide the real overlap the allowlist was never
-    meant to excuse.
+    `not_run` exists because an empty tier 3 may mean "checked, nothing",
+    "never ran" or "ran on part", unlike always-available tiers 1 and 2.
+    Never raises for "nothing found" (a review aid); raises `ValueError`
+    for a request it cannot honour (`min_run` below the n-gram size, a
+    malformed allowlist), which the CLI makes exit 2. A finding is dropped
+    only when the allowlist leaves less than `min_run` of it; a long lift
+    merely containing an allowlisted phrase is kept.
     """
     if min_run is None:
         min_run = overlap_index.DEFAULT_N
@@ -95,21 +54,10 @@ def scan_findings(
     skipgram_findings, skipgram_suppressed = _skipgram_tier_findings(
         words, word_strs, paragraph_citekeys, newlines, text, min_run, gap, allowlist
     )
-    # Pure verbatim reuse trivially satisfies skip-gram matching too --
-    # nothing in the text changed, so both families' stems line up
-    # exactly -- which means tier 2 would otherwise re-report every tier
-    # 1 finding a second time under `"tier": "skip-gram"`, adding no new
-    # information. Drop a skip-gram finding whenever an exact-tier
-    # finding for the *same citekey* already covers an overlapping span:
-    # tier 2 exists to surface what tier 1 structurally cannot, not to
-    # duplicate what it already did.
-    # Drop a skip-gram finding only when an exact finding fully CONTAINS its
-    # span -- the pure-verbatim-reuse case where tier 2 trivially re-finds
-    # what tier 1 already reported. A merely-overlapping exact finding (a
-    # short verbatim island inside a longer paraphrased passage) must not
-    # suppress the skip-gram finding: the wider paraphrase span is exactly
-    # the signal this tier exists to surface, and containment is the
-    # narrowest test that still avoids the redundant report.
+    # Drop a skip-gram finding only when an exact finding for the same
+    # citekey fully CONTAINS it (pure verbatim reuse re-found). Mere overlap
+    # must not suppress it: a verbatim island inside a longer paraphrase is
+    # the paraphrase this tier exists to surface.
     skipgram_findings = [
         f
         for f in skipgram_findings
@@ -121,10 +69,7 @@ def scan_findings(
         )
     ]
 
-    # Tier 3 is filtered against these two tiers' spans *before* it ever
-    # applies its own per-section cap -- see `_embed_tier_findings` for
-    # why the order matters (#499) -- so nothing further needs doing
-    # with `embed_findings` here.
+    # Tier 3 already filters against these spans before its cap (#499).
     lexical_findings = exact_findings + skipgram_findings
     embed_findings, embed_suppressed, embed_reasons = _embed_tier_findings(
         draft,
@@ -142,9 +87,7 @@ def scan_findings(
     suppressed = exact_suppressed + skipgram_suppressed + embed_suppressed
     not_run = [{"tier": "embedding", **entry} for entry in embed_reasons]
 
-    # Longest run first, no silent truncation -- every finding above the
-    # floor prints unless --limit narrows it, matching the issue's explicit
-    # break from `overlap`'s hardcoded top-25.
+    # Longest first, no silent truncation unless --limit asks.
     for f in findings:
         f["names"] = names_heavy(f.get("draft_text") or "")
     findings.sort(key=lambda f: (-f["span_words"], f["citekey"], f["start"]))
@@ -153,35 +96,20 @@ def scan_findings(
     return findings, min_run, suppressed, not_run
 
 
-# A run at or above this many words is "long" for bucketing purposes
-# (see `_bucket`) -- a fixed policy constant, not a flag: the threshold
-# is project-wide reading guidance, not a per-invocation choice.
+# "Long" for bucketing: project-wide reading guidance, not a flag.
 LONG_RUN_WORDS = 15
 
-# Most-damning-first: an uncited long run first, then an uncited short
-# one, and only then a quoted-and-cited run, which is the likeliest to be
-# a deliberate, legitimate quotation.
+# Most-damning first; quoted-and-cited is likeliest a legitimate quotation.
 BUCKET_ORDER = ("long", "short", "quoted")
 
 
 def _bucket(finding: dict) -> str:
     """Which severity bucket the written report groups `finding` under.
 
-    `quoted` only demotes a run to the low-priority `quoted` bucket when
-    it *also* cites its source -- a quoted-but-uncited run is still the
-    finding `overlap` structurally cannot make and `_flags` calls "the
-    one most worth reading first" (see below); burying it under `quoted`
-    just because it happens to sit inside quote marks would contradict
-    that. It buckets by length like any other uncited run instead.
-
-    Length is judged on `matched_words`, not `span_words`. For the exact
-    tier the two are nearly identical (`--gap` only ever interpolates a
-    handful of edited words). For the skip-gram tier they are not:
-    `span_words` is the raw width of a family window and can run to
-    dozens of words on the evidence of a handful of matched stemmed
-    content words. Bucketing on `span_words` would let a weakly-evidenced
-    skip-gram finding outrank a strongly-evidenced one solely because its
-    window happened to stretch across more stopwords.
+    `quoted` only when also cited: a quoted-but-uncited run is the one
+    most worth reading first (`_flags`). Length uses `matched_words`, not
+    `span_words`, which for skip-grams can stretch across many stopwords
+    on little evidence.
     """
     if finding["quoted"] and finding["cites_source"]:
         return "quoted"
@@ -189,18 +117,8 @@ def _bucket(finding: dict) -> str:
 
 
 def _bucket_title(bucket: str) -> str:
-    """`"words of evidence"`, not `"matched words"`.
-
-    The bucket is mixed-tier and the threshold is `matched_words`, which
-    means two different things across the tiers under this one heading:
-    words the two sides actually share on tiers 1 and 2, the width of the
-    aligned sentences on tier 3 (`overlap_segments.matched_words`, which
-    is where this phrasing comes from -- it already describes the field
-    as "how much of this span is evidence"). Saying "matched words" here
-    made the heading assert, of every tier-3 finding beneath it, exactly
-    the shared-wording claim `_words_note` prints `aligned` to deny three
-    lines further down. Bucketing is unchanged; only the claim is.
-    """
+    """`"words of evidence"`, not `"matched words"`: on tier 3 the field is
+    the aligned width, not shared wording, which `_words_note` denies."""
     if bucket == "long":
         return f"Long runs (>= {LONG_RUN_WORDS} words of evidence)"
     if bucket == "short":
@@ -208,12 +126,8 @@ def _bucket_title(bucket: str) -> str:
     return "Quoted runs"
 
 
-# The finding fields the JSON payload publishes, in the order they are
-# written. Spelled out rather than serialising `scan_findings`' dicts
-# directly: those are this module's working representation and a key
-# added there for some later internal purpose would otherwise silently
-# become part of a published contract that #128's severity buckets and
-# #129's remediation loop consume.
+# The published finding fields, in order. Spelled out so an internal key
+# never silently joins the contract #128's buckets and #129's loop consume.
 _PAYLOAD_FIELDS = (
     "id",
     "citekey",
@@ -224,9 +138,7 @@ _PAYLOAD_FIELDS = (
     "matched_words",
     "start",
     "line",
-    # The paragraph the run starts and ends in, 1-based. Beside `line`
-    # rather than at the end: both are human-readable locators into the
-    # draft, and a consumer reading positionally sees them together.
+    # 1-based, beside `line`: both are human-readable locators.
     "paragraph",
     "end_paragraph",
     "char_start",
@@ -236,16 +148,10 @@ _PAYLOAD_FIELDS = (
     "context",
     "cites_source",
     "quoted",
-    # Tier 3's alignment strength, `None` on the two deterministic tiers
-    # (#134). Appended rather than slotted next to `span_words`, so a
-    # consumer reading these positionally -- `bench/`'s `KEPT_FIELDS`
-    # lists are written by hand against this order -- sees the same
-    # prefix it saw before the tier existed.
+    # Tier 3's strength, `None` on deterministic tiers (#134). Appended:
+    # `bench/`'s hand-written `KEPT_FIELDS` read positionally.
     "score",
-    # Tier 3's source side -- the passage it aligned the draft against --
-    # and `None` on the two deterministic tiers, where `fragment` already
-    # is both sides. Appended for the same reason `score` was: consumers
-    # reading these positionally see an unchanged prefix.
+    # Tier 3's source passage; `None` where `fragment` is both sides.
     "source_text",
     # A short run mostly of copied proper names (#1187): the agenda
     # surfaces it to a person instead of marking it unattended.
@@ -255,14 +161,8 @@ _PAYLOAD_FIELDS = (
 
 def published(finding: dict) -> dict:
     """One of `scan_findings`' working dicts as the payload publishes it:
-    `_PAYLOAD_FIELDS` in order, plus the derived `severity`.
-
-    One function rather than the same comprehension in `scan_payload` and
-    `recheck_findings`, so "what a published finding looks like" has a
-    single definition -- `recheck` compares its own freshly-scanned
-    findings against a baseline written by `scan`, and the two disagreeing
-    about the shape is the one way that comparison could go quietly
-    wrong.
+    `_PAYLOAD_FIELDS` in order, plus `severity`. One definition, since
+    `recheck` compares fresh findings against a `scan` baseline.
     """
     return {
         **{field: finding[field] for field in _PAYLOAD_FIELDS},

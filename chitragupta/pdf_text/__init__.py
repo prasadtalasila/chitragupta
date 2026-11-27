@@ -1,33 +1,12 @@
-"""PDF text extraction: dispatches to whichever backend config.PARSER
-names (config.toml's [parser].backend, or the PARSER env var) --
-"pdftotext" (default) or "docling". Both write into
-the same place, content/parsed/<citekey>.txt, so every downstream
-consumer (chitragupta/ledger.py, chitragupta/retrieval.py, chitragupta/review/verbatim_check/)
-stays backend-agnostic; only this module needs to know which one is
-configured.
+"""PDF text extraction: dispatches to config.PARSER's backend, "pdftotext"
+(default) or "docling".
 
-pdftotext has no Python dependency (a subprocess call to poppler-utils).
-Its output has native page boundaries (form-feed characters between
-pages); docling's does not by default, but _extract_docling asks
-for the same `\f` markers explicitly, so both backends' output in
-content/parsed/ has the same shape -- see that function's docstring for
-the one way the two aren't quite identical. See config.toml's [parser]
-comment for the full tradeoffs (speed, OCR cost) before switching off
-the default.
-
-The dispatch is deliberately a table rather than an if/else: adding a
-backend is a `_extract_*` function plus one `_EXTRACTORS` entry, and
-markitdown was removed through the same seam (see docs/PDF-PARSER.md for why).
-
-**A package since #361**, split out of what was one 1034-line module: the
-extraction dispatch stays here, the docling worker pool/GPU/converter
-lifecycle moved to `_sizing.py`/`_gpu.py`/`_worker.py`/`_interrupt.py`/
-`_startup.py`/`_pool.py`/`_converter.py`, the two backend implementations
-to `_backends.py`, and the annotated-output stream to `_annotate.py` --
-the three seams the issue named, the middle one split further because it
-alone was still over C2. Every name below is re-exported so
-`from chitragupta import pdf_text; pdf_text.<name>` keeps reaching it
-exactly as it did when this was one file.
+Both write content/parsed/<citekey>.txt with `\f` page markers, so every
+downstream consumer stays backend-agnostic. The dispatch is a table so a
+backend is one `_extract_*` function plus one `_EXTRACTORS` entry (see
+docs/PDF-PARSER.md, and config.toml's [parser] comment for the tradeoffs).
+A package since #361; every name below is re-exported so
+`pdf_text.<name>` keeps working.
 """
 
 import importlib.util
@@ -43,15 +22,12 @@ class BackendUnavailable(RuntimeError):
 
 
 class MissingBinary(BackendUnavailable):
-    """pdftotext specifically isn't on PATH -- kept as its own subclass
-    (predates the multi-backend dispatch) rather than folded into
-    MissingDependency, since chitragupta/sync.py's early history and tests
-    already reference it by this name."""
+    """pdftotext specifically isn't on PATH; its own subclass because
+    chitragupta/sync.py and tests reference it by this name."""
 
 
 class MissingDependency(BackendUnavailable):
-    """docling specifically isn't installed (not on PATH --
-    a Python package, via pyproject.toml's "enrich" extra)."""
+    """docling specifically isn't installed (the "enrich" extra)."""
 
 
 class ExtractionError(RuntimeError):
@@ -61,13 +37,8 @@ class ExtractionError(RuntimeError):
 def write_failed(path: Path, exc: OSError) -> ExtractionError:
     """A transient ExtractionError for an OSError writing `path`.
 
-    Takes the path rather than a citekey so no caller has to recover one
-    from a filename to report it.
-
-    Disk full or a permission denied is the machine, not the PDF (#842).
-    Raised bare, the OSError escaped both parse paths -- which catch
-    ExtractionError -- and aborted sync, discarding every other
-    document's result; marked transient, it is recorded and retried.
+    Disk full or permission denied is the machine, not the PDF (#842):
+    raised bare it aborted sync; marked transient it is retried.
     """
     error = ExtractionError(f"could not write {path}: {exc}")
     error.transient = True
@@ -75,15 +46,10 @@ def write_failed(path: Path, exc: OSError) -> ExtractionError:
 
 
 def document_failure(exc: Exception) -> ExtractionError:
-    """An exception no backend promised, as this one document's failure.
+    """An exception no backend promised, as this one document's failure (#962).
 
-    The per-document boundary of #962: a docling or pydantic error on one
-    odd PDF, a `UnicodeEncodeError`, or a bug in `passage_records` used to
-    abort a serial sync mid-batch, and in the pool to discard every
-    collected result. Deterministic, as a backend failure is: the same
-    PDF meets the same code next run -- except an `OSError` or a
-    `MemoryError`, which is the machine and is retried, by the rule
-    `write_failed` applies (#842). A string, not the exception, so it
+    Deterministic, except an `OSError` or `MemoryError`, which is the
+    machine and is retried (#842). A string, not the exception, so it
     pickles back from a pool worker whatever the original was.
     """
     error = ExtractionError(f"unexpected {type(exc).__name__}: {exc}")
@@ -106,11 +72,10 @@ _INSTALL_HINT = {
 
 
 def unavailable_reason() -> str:
-    """Human-readable explanation of why config.PARSER's backend isn't
-    usable right now, and how to fix it. Meaningful when is_available()
-    is False, and also reused as MissingDependency's message when a
-    backend's import fails despite that probe passing (a broken
-    transitive dependency -- see _backends._extract_docling)."""
+    """Why config.PARSER's backend isn't usable, and how to fix it.
+
+    Also MissingDependency's message when a backend's import fails despite
+    is_available() passing (a broken transitive dependency)."""
     return _INSTALL_HINT[config.PARSER]
 
 
@@ -120,17 +85,10 @@ def is_available() -> bool:
     return importlib.util.find_spec(config.PARSER) is not None
 
 
-# A "word" for the run-together check below. Letters only: digits and
-# punctuation produce long runs legitimately (DOIs, URLs, base64-ish
-# identifiers, table rules) and would otherwise dominate the count.
-#
-# `[^\W\d_]` is "word character, but not a digit or underscore" -- i.e.
-# any Unicode letter. Spelling it `[A-Za-z]` would silently split
-# accented and non-Latin words ("Schroder" + "der" out of "Schröder"),
-# which both hides real fusion, since a fused run containing an accent
-# gets broken into short pieces, and shrinks the token count toward
-# PARSE_MIN_TOKENS on non-English documents until the guard stops
-# looking at them at all.
+# Letters only: digits and punctuation make long runs legitimately (DOIs,
+# URLs, table rules). `[^\W\d_]` is any Unicode letter; `[A-Za-z]` would
+# split accented words, hiding real fusion and shrinking the token count
+# toward PARSE_MIN_TOKENS on non-English documents.
 _ALPHA_RUN = re.compile(r"[^\W\d_]+")
 
 
@@ -138,18 +96,10 @@ def run_together_ratio(text: str) -> tuple[float, int]:
     """Fraction of alphabetic tokens longer than
     config.PARSE_LONG_WORD_CHARS, plus the total token count.
 
-    A PDF text extractor decides where the spaces go by comparing glyph
-    positions against a tolerance. Set that tolerance too coarse and
-    adjacent words fuse -- "isaninputtooranoutputfromafunction" -- which
-    is invisible in a spot check but silently wrecks retrieval, because
-    chitragupta/retrieval.py tokenizes on whitespace and can no longer match a
-    query term buried inside a fused run.
-
-    Measured on this project's own corpus: pdftotext produced 9 such
-    tokens out of 113,195 (0.01%) while a since-removed backend produced
-    3,647 out of 87,395 (4.17%) over the same 10 PDFs -- three orders of
-    magnitude apart, so any threshold between them separates a healthy
-    parse from a broken one without needing to be tuned precisely.
+    Fused words ("isaninputtooranoutput...") silently wreck retrieval,
+    which tokenizes on whitespace. On this corpus pdftotext gave 0.01%
+    and a since-removed backend 4.17%, so any threshold between them
+    separates healthy from broken without precise tuning.
     """
     tokens = _ALPHA_RUN.findall(text)
     if not tokens:
@@ -161,11 +111,9 @@ def run_together_ratio(text: str) -> tuple[float, int]:
 def quality_warning(text: str) -> str | None:
     """A one-line complaint about `text`, or None if it looks fine.
 
-    Deliberately a warning rather than an error: the extraction did
-    succeed, the text is usable, and a corpus of scanned or unusual
-    documents could trip this legitimately. The point is that a
-    systematic regression gets *reported* by sync instead of being
-    noticed by eye in a retrieval snippet weeks later.
+    A warning, not an error: the text is usable and unusual documents can
+    trip it legitimately; the point is that a systematic regression gets
+    reported by sync.
     """
     ratio, total = run_together_ratio(text)
     if total < config.PARSE_MIN_TOKENS or ratio <= config.PARSE_LONG_WORD_RATIO:
@@ -178,40 +126,20 @@ def quality_warning(text: str) -> str | None:
 
 
 def page_count(text: str) -> int:
-    """Pages in already-extracted `text`, from the `\\f` page-break
-    markers both backends write into content/parsed/<citekey>.txt --
-    pdftotext natively, docling via _backends._extract_docling's
-    page_break_placeholder (see that function's docstring).
+    """Pages in already-extracted `text`, from its `\\f` page-break markers.
 
-    The two backends don't put `\\f` in the same places, confirmed
-    against real `pdftotext -layout` output rather than assumed:
-    pdftotext writes one *after* every page, including the last, so an
-    N-page document ends in `\\f` and contains N of them. Docling's
-    placeholder only goes *between* pages (its own docstring says so),
-    so an N-page document contains N-1 and does not end in one.
-    `.rstrip()` before counting erases exactly that difference -- form
-    feed is whitespace, so it discards a trailing one if pdftotext wrote
-    it and is a no-op if docling didn't -- leaving `count + 1` correct
-    for both without this function needing to know which backend ran.
-
-    Exact for pdftotext. An undercount for docling by however many pages
-    contributed no extracted item, since those get no break -- fine for
-    a throughput ratio (sync's pages/s summary line), not a page census.
+    pdftotext writes one after every page (N), docling only between pages
+    (N-1); `.rstrip()` before counting erases that difference. Docling
+    undercounts pages with no extracted item -- fine for sync's pages/s
+    line, not a page census.
     """
     return text.rstrip().count("\f") + 1
 
 
-# Re-exported so `from chitragupta import pdf_text` keeps reaching every one
-# of these by the same name it always has, from every file outside this
-# package that used to reach a flat chitragupta/pdf_text.py this way. Position
-# is load-bearing, not style: `_backends` reaches back into the two
-# exceptions defined above via `from chitragupta.pdf_text import
-# ExtractionError`, so it (and everything importing it) has to be
-# imported after they exist -- the same ordering chitragupta/dossier/__init__.py
-# uses for its own submodules. `_EXTRACTORS`/`extract_text`/`extract_one`
-# below need `_extract_pdftotext`/`_extract_docling`/`annotated_output`,
-# so this block comes before them rather than at the literal end of the
-# file.
+# Position is load-bearing: `_backends` imports the exceptions defined
+# above, so this block must come after them, and before `_EXTRACTORS` and
+# extract_text, which need these names. Re-exported so
+# `from chitragupta import pdf_text` keeps reaching each one.
 # pylint: disable=wrong-import-position
 from chitragupta.pdf_text._annotate import annotated_output
 from chitragupta.pdf_text._backends import _extract_docling, _extract_pdftotext
@@ -264,52 +192,35 @@ def extract_text(pdf_path: str, citekey: str, threads: int | None = None) -> Pat
     config.PARSER's backend.
 
     Raises MissingBinary/MissingDependency if that backend isn't usable
-    on this host (probe-and-report, like every chitragupta/enrich/* stage -- see
-    render_output.MissingBinary -- rather than letting the backend's own
-    not-found error surface as an uncaught traceback), or ExtractionError
-    if the backend runs but fails on this particular PDF.
-
-    A backend that resolves reading order also returns passage records,
-    which are written beside the text as `<citekey>.passages.json` for
-    chitragupta/passages.py to quote from. The old sidecar is dropped *before*
-    the parse, not replaced after it, so the three ways one can outlive
-    its truth all end at "no sidecar" rather than at stale sentences
-    attributed to the current PDF: the backend changed to one that
-    resolves no reading order, this parse fails outright, or the same
-    backend re-runs over an edited PDF.
+    here (probe-and-report, not a traceback), or ExtractionError if it
+    fails on this PDF. A reading-order backend's passage records go to
+    `<citekey>.passages.json`; the old sidecar is dropped *before* the
+    parse, so a backend change, a failed parse or an edited PDF all end
+    at "no sidecar" rather than stale sentences.
     """
     if not is_available():
         exc_cls = MissingBinary if config.PARSER == "pdftotext" else MissingDependency
         raise exc_cls(unavailable_reason())
 
     out_path = citekey_path(config.PARSED_DIR, citekey, ".txt")
-    # Each disk write is guarded where it happens -- here, and around the
-    # docling backend's own .txt write -- rather than around the whole
-    # parse, so an OSError from anything else is not misreported as one.
+    # Each disk write is guarded where it happens, so an OSError from
+    # anything else is not misreported as one.
     try:
         config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
         passages.clear_sidecar(citekey)
     except OSError as exc:
         raise write_failed(config.PARSED_DIR, exc) from exc
-    # Annotated here rather than in extract_one, so the serial path --
-    # which runs in the parent and never reaches a pool worker -- is
-    # covered by the same code as the parallel one.
-    #
-    # The disable below is for pylint's inference, not a defect. Since
-    # config.PARSER is loaded through _get_choice (#847), pylint (under
-    # Python 3.13, as CI runs it) resolves it to "pdftotext", whose
-    # extractor returns None on purpose -- "this backend resolves no
-    # reading order" -- and the `is not None` below is what reads that.
+    # Annotated here so the serial path, which never reaches a pool
+    # worker, is covered too. The disable is for pylint's inference:
+    # config.PARSER resolves to "pdftotext", whose extractor returns None
+    # on purpose (#847).
     with annotated_output(citekey):
         # pylint: disable=assignment-from-no-return
         records = _EXTRACTORS[config.PARSER](pdf_path, out_path, threads)
         # pylint: enable=assignment-from-no-return
-    # `is not None`, so a backend that resolved reading order and found no
-    # prose still writes an (empty) sidecar. That keeps the file's
-    # presence a reliable answer to "did a reading-order backend parse
-    # this?" -- which is what chitragupta/ledger.py checks before skipping a
-    # document it believes is already parsed. The ladder is unaffected: it
-    # declines an empty sidecar and falls to the page-level rung.
+    # `is not None`, so a reading-order backend that found no prose still
+    # writes an empty sidecar: chitragupta/ledger.py checks its presence
+    # before skipping a document as already parsed.
     if records is not None:
         try:
             passages.write_sidecar(citekey, records)
@@ -322,11 +233,9 @@ def extract_one(job: tuple[str, str, int | None]) -> tuple[str, str | None, Exce
     """Entry point for one pool worker: (pdf_path, citekey, threads) in,
     (citekey, out_path, exception) out.
 
-    Defined at module level, and returning the exception rather than
-    raising it, because both have to survive pickling across a process
-    boundary. Returning it keeps the *type* -- chitragupta/sync.py distinguishes
-    ExtractionError from BackendUnavailable and reports them differently,
-    which a stringified error would lose.
+    Module-level and returning the exception, because both must survive
+    pickling; returning keeps the *type*, which chitragupta/sync.py
+    reports differently for ExtractionError and BackendUnavailable.
     """
     pdf_path, citekey, threads = job
     try:

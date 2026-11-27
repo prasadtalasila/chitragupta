@@ -5,39 +5,17 @@ staleness classes a changed fingerprint can mean: a citekey cited with no
 with no `sections.md` row, a `sections.md` row with no heading, and a
 `math.md` row whose span is gone from the draft.
 
-Headings are compared as a set of titles, so a section moved without
-being renamed is no finding: `sections.md` is keyed by title, and its
-row order carries nothing a later revision reads.
+Headings compare as a set of titles (row order carries nothing). Uses
+`chitragupta.spec.digest` (text), not `dossier.digest` (an unordered
+citekey set that a rewording would not move), as `unit.state()` does.
 
-`scope.md`'s corpus line already answers "has the corpus moved since
-this draft was written?" (`dossier.recorded_corpus`). Nothing answered
-the same question about the draft itself, so a hand edit left
-`sections.md`, `evidence.md` and `math.md` describing a document that no
-longer existed, and `draft-reviser` had no way to know.
+**Who stamps.** There is no Python chokepoint on a skill's edits, so
+`draft-reviser` calls `dossier stamp` after the gate passes. A forgotten
+stamp reads as a human edit, the safe direction to fail.
 
-Reuses `chitragupta.spec.digest` -- a plain sha256[:12] of the text --
-not `dossier.digest`, which is order-independent over a *set of
-citekeys* and would not move at all for a reworded sentence. The book
-track's `unit.state()` already draws exactly this line, between
-`spec.digest` for prose and this package's own `digest` for citekeys;
-this module makes the same choice for a single draft instead of a book
-unit.
-
-**Who stamps.** A draft is written by a skill's `Edit` calls, so there is
-no Python chokepoint to hook automatically. `draft-reviser` calls
-`stamp()` (via `dossier stamp`) itself, after `python -m chitragupta.draft
-gate` passes -- the same point `scope.md`'s corpus line is already
-re-stamped at, by hand, in re-grounding mode. A pipeline that forgets to
-stamp reads as a human edit on the next `status`, which is the right
-direction to fail: a false "you edited this" costs one confirmation; a
-missed stamp would silently corrupt every later drift check.
-
-**Why the five classes are gated on `changed`.** Computed unconditionally
-they would fire on nearly any real dossier -- a legacy one predates
-`sections.md` matching every heading, and a hand-edited `evidence.md`
-routinely lags a draft by one citation. A permanent wall of findings on
-every `status` run is noise nobody reads; gating on "the digest moved at
-all" first is what keeps a healthy, unedited draft's report silent.
+**The five classes are gated on `changed`**: unconditionally they would
+fire on nearly every legacy or hand-edited dossier, and nobody reads a
+permanent wall of findings.
 """
 
 import argparse
@@ -51,11 +29,8 @@ from chitragupta.dossier._citekeys import citekeys_by_section, evidence_blocks
 from chitragupta.dossier._sections import sections
 from chitragupta.render_output import _math, _math_findings, _math_symbols
 
-# `- draft digest: `a1b2c3d4e5f6`` or `- draft digest: not recorded (...)`
-# in scope.md -- one field over from `dossier._CORPUS_LINE`'s corpus
-# fingerprint, and read the same way: a line outside this shape (hand
-# rewritten to something else, or simply absent) means "no baseline",
-# never an error.
+# The draft-digest line in scope.md, read like the corpus line: any other
+# shape (or absence) means "no baseline", never an error.
 _DRAFT_DIGEST_LINE = re.compile(r"^-\s*draft digest:.*$", re.MULTILINE)
 
 _DRAFT_DIGEST_VALUE = re.compile(r"`([0-9a-f]{12})`")
@@ -64,10 +39,8 @@ _DRAFT_DIGEST_VALUE = re.compile(r"`([0-9a-f]{12})`")
 def recorded_draft_digest(dossier: Path) -> "str | None":
     """The digest `stamp` last recorded for this dossier's draft.
 
-    `None` covers "never stamped", "no scope.md" and "the line was
-    hand-edited outside the recognised shape" alike -- all three mean the
-    same thing to every caller: there is no baseline to compare the
-    current draft against.
+    `None` for never stamped, no scope.md, or a hand-mangled line: all
+    mean there is no baseline.
     """
     scope = dossier / SCOPE_MD
     if not scope.is_file():
@@ -82,22 +55,13 @@ def recorded_draft_digest(dossier: Path) -> "str | None":
 def stamp(draft: Path) -> Path:
     """Record `draft`'s current digest into its dossier's `scope.md`.
 
-    Rewrites the `- draft digest:` line in place -- whichever shape it
-    was in, freshly-initialised `not recorded` or a prior digest --
-    rather than appending a second one; appends it once, at the end of
-    the file, for a dossier that predates this field entirely. Everything
-    else in `scope.md` is left untouched.
-
-    Raises rather than guessing if there is no dossier to stamp: this is
-    the one place a caller could otherwise silently write a fingerprint
-    for a draft nothing else in the dossier describes yet.
+    Rewrites the line in place, or appends it once for an older dossier;
+    nothing else changes. Raises with no dossier rather than writing a
+    fingerprint nothing else describes.
     """
     # Deferred: `chitragupta.spec` imports `chitragupta.dossier._sections`,
-    # and this module is reached from `chitragupta.dossier._cli`, which
-    # `chitragupta.dossier.__init__` imports at its own bottom -- a
-    # module-level import here would ask for `chitragupta.spec.digest`
-    # while `chitragupta.spec` is still mid-import. `_archive.py`'s
-    # `evidence_appendix` import defers for the same reason.
+    # so a module-level import would hit a partially imported spec
+    # (`_archive.py` defers likewise).
     from chitragupta.spec import digest as text_digest
 
     if not draft.is_file():
@@ -119,9 +83,7 @@ def stamp(draft: Path) -> Path:
 class Staleness:
     """What moved in a draft since its dossier's last `stamp`.
 
-    The five list fields stay empty until `changed` is true -- see the
-    module docstring for why an unconditional scan would drown `status`
-    in findings on almost any real dossier.
+    The five list fields stay empty until `changed` (module docstring).
     """
 
     recorded_digest: "str | None"
@@ -140,15 +102,9 @@ class Staleness:
 def _math_desync(draft: Path, text: str) -> "list[str]":
     """The `math.md` orphans among `_math_findings.findings()`'s results.
 
-    Filtered to orphans only -- a row with no matching span, the tell
-    that a revision reworded or deleted the sentence it belonged to.
-    `findings()` also reports *gaps* (a quantity-shaped span with no
-    row), which is a pre-existing hygiene finding rather than evidence
-    that the draft moved, so they are deliberately excluded here.
-
-    Selected on `MathFinding.kind`, not on how the message reads: this
-    filter used to test the sentence's last five words, so a reworded
-    warning would have emptied the check with nothing failing (#506/m-66).
+    Orphans only: gaps are a hygiene finding, not evidence the draft
+    moved. Selected on `MathFinding.kind`, not message wording, so a
+    reworded warning cannot empty the check (#506/m-66).
     """
     mapping = _math.load_mapping(draft)
     mapping_file = _math.mapping_path(draft)
@@ -163,7 +119,6 @@ def _math_desync(draft: Path, text: str) -> "list[str]":
 
 
 def staleness(draft: Path) -> Staleness:
-    """What changed in `draft` since its dossier's last `stamp`."""
     from chitragupta.spec import digest as text_digest  # see stamp()'s comment
 
     target = dossier_dir(draft)
@@ -190,28 +145,11 @@ def recorded_but_uncited(draft: Path) -> "dict[str, list[str]]":
     """citekey -> which dossier files still record it, for the citekeys
     the draft's text no longer cites (#701).
 
-    `Staleness.orphaned_evidence` asks nearly the same question and is
-    the wrong tool for two callers that need it. It is gated on
-    `changed`, so it answers nothing at all until someone has run
-    `dossier stamp` -- and stamping landed 2026-08-30, so every dossier
-    written before then is silently exempt with no backfill path. And
-    it differences `evidence.md` alone, so a citekey surviving only in a
-    `sections.md` row is invisible on every surface.
-
-    This is deliberately ungated: the review agenda reports it as a
-    surfaced finding, and a finding that needs a baseline nobody set is
-    a finding nobody sees. `status`'s own block keeps the gate, because
-    the reason for it there is unchanged -- see the module docstring.
-
-    `rejected.md` is **not** read, and that is the load-bearing
-    omission rather than an oversight. A paper this draft weighed and
-    turned down is recorded precisely so it is not reconsidered;
-    reporting it as "recorded but uncited" would describe every
-    rejection ever made as a defect. `_citekeys.CITED_FILES` draws that
-    same line for `drift()`, and this reads its two members
-    individually rather than through it: the finding has to name *which*
-    file still records the citekey, and `_citekeys_in` merges them into
-    one set.
+    Deliberately ungated, unlike `Staleness.orphaned_evidence`: that needs
+    a stamp, which no dossier before stamping has, and reads only
+    `evidence.md`. `rejected.md` is **not** read: a recorded rejection is
+    not a defect. Reads the two `CITED_FILES` separately to name *which*
+    file still records the key.
     """
     target = dossier_dir(draft)
     text = draft.read_text(encoding="utf-8")
@@ -228,12 +166,6 @@ def recorded_but_uncited(draft: Path) -> "dict[str, list[str]]":
 
 
 def status_lines(report: Staleness) -> "list[str]":
-    """`dossier status`'s draft-fingerprint block, as printable lines.
-
-    Kept here rather than folded into `_status.py`'s own print helpers,
-    which are already close to docs/CODE-STANDARDS.md's C2 line limit --
-    a registered file is not a licence to keep growing it.
-    """
     lines = ["Draft fingerprint:"]
     if report.recorded_digest is None:
         lines.append("  not recorded -- run `dossier stamp` once the draft is ready.")

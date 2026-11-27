@@ -1,18 +1,10 @@
 """The project's list of terms no prose rule should report (#1187).
 
-`content/style_exceptions.toml` holds `terms = [...]`: exact strings
-(proper names such as "Unified Process") that no prose rule reports and
-the verbatim scan masks, in every draft under every dialect. Acronym
-expansions from `acronyms.load_vocabulary()` are exceptions already, so
-`terms()` adds them; the file lists only the rest.
-
-It is project data, unlike the per-host verbatim allowlist: absent means
-no terms. A present file that does not parse, cannot be read, has a key
-other than `terms`, or has a `terms` that is not a list of non-empty
-strings raises ValueError, following verbatim_check/_allowlist.py rather
-than acronyms._load's skip-with-note. A broken exceptions file that
-silently loaded as empty would turn suppressed findings back into
-unattended edits, which is exactly the failure #1187 is about.
+`content/style_exceptions.toml` holds `terms = [...]`, exact strings that
+no prose rule reports and the verbatim scan masks; acronym expansions are
+added by `terms()`. Absent means no terms, but a malformed file raises
+ValueError: silently loading as empty would turn suppressed findings back
+into unattended edits, the failure #1187 is about.
 """
 
 import re
@@ -45,8 +37,7 @@ def file_terms() -> tuple[str, ...]:
 
 def terms() -> tuple[str, ...]:
     """File terms plus every acronym expansion, de-duplicated
-    case-insensitively (first spelling wins, file terms first), longest
-    first so a caller matching in order meets the longest term first."""
+    case-insensitively (first spelling wins), longest first."""
     seen: dict[str, str] = {}
     for term in (*file_terms(), *acronyms.load_vocabulary().values()):
         seen.setdefault(term.lower(), term)
@@ -56,16 +47,11 @@ def terms() -> tuple[str, ...]:
 def drop_exempt(findings: list[dict], text: str) -> list[dict]:
     """`findings` minus those lying wholly inside a declared term (#1187).
 
-    Vale's own `exceptions` are per-token and its `swap` rules cannot see
-    a multi-word name, so "Unified Modeling Language" was reported as a
-    dialect slip under en-GB. The span test happens here instead, on the
-    raw findings. A term matches case-insensitively and as whole words;
-    `chitragupta.Acronyms` is never dropped, because it asks whether an
-    acronym was expanded, not whether a word is spelled right.
-
-    Vale's `Span` columns are 1-based, inclusive and counted in
-    characters (measured with vale 3.26.0 on a line beginning "Café"),
-    so they index the Python string directly.
+    Done here because Vale's `exceptions` are per-token and cannot see a
+    multi-word name. `chitragupta.Acronyms` is never dropped: it asks
+    whether an acronym was expanded, not about spelling. Vale's `Span`
+    columns are 1-based, inclusive and in characters (vale 3.26.0), so
+    they index the Python string directly.
     """
     lines = text.split("\n")  # vale counts lines by "\n" only
     pattern = "|".join(re.escape(t) for t in terms())

@@ -1,24 +1,12 @@
 """A2's self-check (#306, plans/a2-claim-quote-split.md): does a
 `claim:` in evidence.md merely restate its own `quote:` with the words
-moved, rather than reflecting the drafter's own reading of the source?
-Advisory only -- see `_cmd_check_evidence` -- and per the plan's own
-constraint, the similarity number is *reported, never optimised*: it
-must not become an acceptance criterion for an unattended edit.
+moved? Advisory only, and the similarity number is *reported, never
+optimised*: it must not become an acceptance criterion.
 
-Reuses `chitragupta.overlap_skipgram`'s stemmed, stopword-filtered word
-stream (`stem_filter`) rather than `overlap_index`'s exact tier -- a
-reworded quote survives stemming and reordering, which an exact n-gram
-match is blind to by construction. It does *not* reuse that module's
-even/odd family split or its `DEFAULT_N=5`: that split buys robustness
-against a single substituted word when aligning a whole document against
-a large corpus, which is not this problem, and a claim/quote pair is a
-sentence, not a document -- at n=5 a short pair never reaches one gram
-at all. `overlap_score`'s docstring below records the fixture scores
-that picked n=2 over n=3.
-
-Only ever runs on a block a genre skill wrote under the new contract:
-a legacy `support:`-only block has no separate `claim:` to compare
-against, and nothing here goes looking for one.
+Reuses `overlap_skipgram.stem_filter` (stemming survives rewording) but
+not its family split or `DEFAULT_N=5`: a claim/quote pair is a sentence,
+and at n=5 a short pair never forms a gram. Legacy `support:`-only
+blocks have no `claim:` and are skipped.
 """
 
 import argparse
@@ -30,62 +18,40 @@ from chitragupta.dossier._citekeys import duplicate_evidence_keys, evidence_bloc
 from chitragupta.overlap_index import _norm, gram_hashes
 from chitragupta.overlap_skipgram import stem_filter
 
-# A bigram, not overlap_skipgram.DEFAULT_N's 5 -- see module docstring.
-# Measured on this module's own test fixtures (tests/test_dossier.py,
-# TestOverlapScore): a reworded quote (clauses swapped, no new words)
-# scores 0.5-0.75 at n=2, a genuine restatement (same topic, different
-# structure and words) scores ~0.08. n=3 still separates that pair but
-# collapses a short reworded fixture to 0.33 -- under a threshold that
-# still needs to catch the long-fixture case -- so n=2 is the width that
-# separates every fixture tried, not merely the first one that worked.
+# A bigram (tests/test_dossier.py TestOverlapScore): reworded quotes score
+# 0.5-0.75 at n=2, genuine restatements ~0.08; n=3 collapses a short
+# reworded fixture to 0.33, so n=2 is the width that separates every one.
 _NGRAM = 2
 
-# Set inside the gap the n=2 fixtures above leave open (0.08 to 0.5),
-# closer to the reworded side than the midpoint so a restatement that
-# drifts a little toward its source's wording still passes.
+# Inside the 0.08-0.5 gap, nearer the reworded side, so a restatement
+# drifting toward its source's wording still passes.
 _OVERLAP_THRESHOLD = 0.5
 
-# `[ \t]*` after the colon, not `\s*`: a newline swallowed there made the
-# next line the value's first, exempt from `_OTHER_FIELD` below, so an
-# empty `quote:` above a `used in:` note read the note as the quote.
+# `[ \t]*`, not `\s*`: a swallowed newline let an empty `quote:` read the
+# next note as the quote.
 _FIELD = re.compile(r"^-?\s*(?P<field>claim|quote|relevance|support):[ \t]*", re.MULTILINE)
 
-# What `quotes()` takes off a `quote:` value before anything reads it
-# (#1174): a page locator at the very end -- `(p. 24)`, `(pp. 12-13)`,
-# `[page 24]`, with a full stop after it if one follows -- and one pair of
-# double quotation marks around the whole value. The matcher flattens
-# punctuation away, so marks never caused a miss, but a locator leaves
-# `p24` behind, which no source contains. The page is derived by
-# locating the quote; a page written by hand is not compared, only
-# dropped, which is the cost the owner accepted for not warning.
-# A dot or a space must follow `p`/`pp`, so a study label such as `(P1)`
-# or `[P12]` -- how a systematic review names its primary studies -- is
-# text, not a locator, and stays.
+# Stripped from a `quote:` value (#1174): a trailing page locator, which
+# leaves `p24` behind that no source contains, and one pair of double
+# quotation marks. A hand-written page is dropped, not compared. A dot or
+# space must follow `p`/`pp`, so a study label like `(P1)` stays.
 _LOCATOR = re.compile(
     r"\s*[(\[]\s*(?:pages?\s+|pp?\.\s*|pp?\s+)\d+(?:\s*[-\u2013]\s*\d+)?\s*[)\]]\s*\.?\s*$",
     re.IGNORECASE,
 )
 _DOUBLE_MARKS = '"\u201c\u201d'
 
-# A later line shaped like a field this module does not read -- `used in:`,
-# `- note:`, `page:` -- ends the value above it rather than joining it.
-# Without this a note written under a `quote:` was checked, and printed in
-# the sidecar, as part of the quotation. At the left margin (a bare or
-# `- ` bulleted field, as every field line is written), lowercase, up to
-# three words: so an indented continuation (`  concepts: ...`) and a
-# wrapped line of source text ("Definition: ...") still continue it.
-# The cost: a wrapped line starting at the margin with up to three
-# lowercase words and a colon ("as follows: ...") is read as a field. A
-# quote is written on one line, which is what avoids it; on the owner's
-# 122 quotes this cut none.
+# A margin line shaped like another field (lowercase, up to three words,
+# colon) ends the value above, or a note under a `quote:` was checked as
+# the quotation. Indented continuations and capitalised wraps continue.
+# Cost: a margin wrap like "as follows: ..." reads as a field; quotes are
+# one line, and on the owner's 122 quotes this cut none.
 _OTHER_FIELD = re.compile(r"^(?:- )?[a-z][a-z0-9_-]*(?: [a-z0-9_-]+){0,2}:(?:\s|$)", re.MULTILINE)
 
 
 def _values(block: str) -> list[tuple[str, str]]:
-    """Every non-empty `field: value` in `block`, in file order -- a
-    match-then-slice-to-the-next-match reading over this module's own
-    field set. The one reading `fields`, `quotes` and `repeated_fields`
-    all share."""
+    """Every non-empty `field: value` in `block`, in file order; the one
+    reading `fields`, `quotes` and `repeated_fields` share."""
     matches = list(_FIELD.finditer(block))
     found = []
     for i, match in enumerate(matches):
@@ -101,12 +67,9 @@ def _values(block: str) -> list[tuple[str, str]]:
 def fields(block: str) -> dict[str, str]:
     """`block`'s fields, keyed by name, the first value of each.
 
-    `evidence.md` has one field parser and this module is it: a second one
-    would be a second place for the field set to drift. A `quote:` may
-    repeat (#1174), so a caller after quotes reads `quotes()`, never this:
-    the `quote` key here is the first raw, un-normalised value, and
-    nothing reads it. The other three fields are single-valued, and a
-    repeat of one is what `repeated_fields` warns about.
+    The one `evidence.md` field parser. `quote:` may repeat (#1174), so
+    callers read `quotes()`; repeats of the other fields are what
+    `repeated_fields` warns about.
     """
     found: dict[str, str] = {}
     for name, value in _values(block):
@@ -162,22 +125,11 @@ def repeated_fields(block: str) -> dict[str, int]:
 
 def overlap_score(claim: str, quote: str) -> "float | None":
     """The share of `quote`'s stemmed content-word bigrams that also
-    appear in `claim`, order-blind so a pure rewording (same words,
-    different order) still scores near 1.0.
+    appear in `claim`, order-blind so a pure rewording still scores near 1.0.
 
-    `None` if `quote` is too short to form even one bigram after
-    stopwords are dropped -- nothing to compare, not a zero score, since
-    a zero would claim the pair was checked and found clean. A quote
-    that short is common (a one-clause quotation), not a degenerate
-    input to reject.
-
-    Normalised by `quote`'s own bigram count, so sensitivity runs one
-    direction only: a short, deliberate quotation restated in the same
-    clause scores high (fires), while a long pasted window condensed
-    into a short claim scores low (silent) -- most of the window's
-    bigrams simply have nowhere to land in a claim a fraction its
-    length. This catches "the quote with its words moved", which is
-    what it is named for; it does not catch paste-then-summarize.
+    `None` if `quote` forms no bigram: a zero would claim the pair was
+    checked and found clean. Normalised by the quote, so it catches "the
+    quote with its words moved", not paste-then-summarize.
     """
     quote_stems, _ = stem_filter(_norm(quote))
     if len(quote_stems) < _NGRAM:
@@ -191,9 +143,7 @@ def overlap_score(claim: str, quote: str) -> "float | None":
 def reworded_claims(dossier: Path) -> dict[str, list[tuple[int, int, float]]]:
     """citekey -> (quote's position, quotes in its block, overlap score),
     for every `quote:` whose block's `claim:` scores at or above
-    `_OVERLAP_THRESHOLD` against it. Empty for a dossier with no
-    evidence.md, no block with both fields, or nothing that crosses the
-    threshold.
+    `_OVERLAP_THRESHOLD` against it.
     """
     found: dict[str, list[tuple[int, int, float]]] = {}
     for citekey, block in evidence_blocks(dossier).items():
@@ -210,9 +160,8 @@ def reworded_claims(dossier: Path) -> dict[str, list[tuple[int, int, float]]]:
 
 def _cmd_check_evidence(args: argparse.Namespace) -> int:
     """`dossier check-evidence <draft>`: print, never block. The score
-    is hidden behind `--score` on purpose -- printing it by default
-    would hand a drafting run a number to reword against until it drops,
-    which is exactly the optimisation the plan's R3 constraint forbids.
+    is behind `--score` so a drafting run is not handed a number to
+    reword against (R3).
     """
     target = _resolve_dossier(Path(args.draft))
     if not target.is_dir():
@@ -222,10 +171,8 @@ def _cmd_check_evidence(args: argparse.Namespace) -> int:
         )
         return 1
 
-    # Printed before the claim/quote findings and independently of them:
-    # a duplicated heading means the block a run was handed is not the
-    # block the file's author last wrote, which makes every finding below
-    # it about text that may not be the one in play (#506/m-65).
+    # Printed first and independently: a duplicated heading means findings
+    # below may be about text not in play (#506/m-65).
     for citekey, count in duplicate_evidence_keys(target).items():
         print(
             f"[warn] {citekey}: {count} blocks under one citekey -- the first is "

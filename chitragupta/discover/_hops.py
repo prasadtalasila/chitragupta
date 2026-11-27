@@ -1,19 +1,10 @@
 """`discover TOPIC --hops N [--family F]`: the ego view's rings, as text.
 
-A port of `assets/webapp/ego.js`'s hopsFrom and reachedVia -- BFS over
-the families asked for, ring one typed by which of them reached each
-neighbour, deeper rings by distance alone (past one hop a topic is
-reached by a path, and labelling a path with one family would claim how
-the reader got there). `tests/webapp/hop_cases.json` pins the two
-implementations to each other. A topic the roots cannot reach has no
-entry at all: an absent distance is the honest answer, and the view
-counts the unreached rather than drawing them far away.
-
-`families` is None everywhere the caller means both, which is what this
-module always did: measuring over the union whatever the reader wanted
-put a topic one shared paper plus one cosine hop away on the same ring
-as a topic two shared papers out, and `--family` could not say
-otherwise because it reached only `--path`.
+A port of `assets/webapp/ego.js`'s hopsFrom and reachedVia, pinned to it
+by `tests/webapp/hop_cases.json`. Only ring one is typed by family;
+deeper rings are reached by a path, which no one family describes.
+Unreachable topics have no entry and are counted, not drawn far away.
+`families=None` means both.
 """
 
 BOTH = ("overlap", "semantic")
@@ -24,8 +15,6 @@ _FAMILY_PROSE = {
     "both": "via both families",
 }
 
-# The same two families as the subject of a sentence about the walk
-# rather than as the label on one neighbour.
 _WALK_PROSE = {
     "overlap": "shared papers",
     "semantic": "semantic nearness",
@@ -67,11 +56,9 @@ def hops_from(graph: dict, roots: list, families: "list | None" = None) -> dict:
 
 
 def reached_via(graph: dict, roots: list, families: "list | None" = None) -> dict:
-    """Which family reaches each direct neighbour: overlap, semantic,
-    or both -- ego.js's reachedVia, over the enabled families. A
-    neighbour both families reach types as the one walked, not as
-    "both": a verdict about an edge the view is not walking claims more
-    than the view can see."""
+    """Which family reaches each direct neighbour (ego.js's reachedVia).
+    A neighbour both reach types as the one walked, not "both", which
+    would claim more than the view sees."""
     pinned = set(roots)
     via: dict = {}
 
@@ -92,11 +79,9 @@ def reached_via(graph: dict, roots: list, families: "list | None" = None) -> dic
 def build_hops(
     graph: dict, label: str, max_hops: "int | None", families: "list | None" = None
 ) -> dict:
-    """The rings up to `max_hops` (None: everything reachable), plus an
-    honest count of what the roots cannot reach at all. The payload
-    records the families walked, so a reader holding the `--json` output
-    can tell "two hops over shared papers" from "two hops over
-    whichever family got there first"."""
+    """The rings up to `max_hops` (None: everything reachable), plus a
+    count of what is unreachable. Records the families walked, so
+    `--json` readers can tell which walk it was."""
     depth = hops_from(graph, [label], families)
     via = reached_via(graph, [label], families)
     deepest = max(depth.values(), default=0)
@@ -120,10 +105,8 @@ def build_hops(
 
 def _over(data: dict) -> str:
     """ " over shared papers", or nothing when both were walked: a
-    qualifier on every default run is noise, and its absence is what
-    makes it worth reading when it is there."""
-    # `build_hops` always records them, so there is nothing to guess
-    # here and no fallback that a test would have to reach for.
+    qualifier on every default run is noise."""
+    # `build_hops` always records them, so no fallback is needed.
     if len(data["families"]) != 1:
         return ""
     return f" over {_WALK_PROSE[data['families'][0]]}"
@@ -133,8 +116,7 @@ def render_hops(data: dict) -> str:
     lines = [f"{data['topic']} — neighbourhood by hop distance{_over(data)}"]
     for ring in data["rings"]:
         lines += ["", f"hop {ring['hop']}:"]
-        # A BFS ring inside the deepest bound is never empty, so no
-        # "none at this distance" apology is needed or possible.
+        # A BFS ring inside the bound is never empty.
         for topic in ring["topics"]:
             suffix = f"  ({_FAMILY_PROSE[topic['via']]})" if "via" in topic else ""
             lines.append(f"  {topic['label']}{suffix}")

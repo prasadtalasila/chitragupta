@@ -1,20 +1,10 @@
 """Private-use characters a report quotes from a source, written as a
 marker the render can set (#1125).
 
-A PDF's text layer carries Unicode private-use code points for glyphs a
-font defines for itself, so they reach `content/parsed/` and from there
-every review report and evidence sidecar that quotes a source. No font
-in the render chain has them, and `assets/latex/chitragupta-lualatex.tex`
-makes a missing glyph a build error, so a report holding one had no PDF.
-
-That error stays right for a *draft* (#996): the author wrote the
-character and can fix it. In a report the character came from the
-source, there is nothing to fix, and a `content/unicode-extra.tex` entry
-per code point does not scale. So a report writes each one as a visible
-`[U+E230]`, in its `.md` and therefore its `.tex` and `.pdf`; its `.json`
-keeps the original.
-
-Stdlib-only.
+PDF text layers carry private-use code points no render font has, and a
+missing glyph is a build error. Right for a draft (#996), but in a
+report the character came from the source, so it is written `[U+E230]`
+in the `.md`/`.tex`/`.pdf`; the `.json` keeps the original. Stdlib-only.
 """
 
 import re

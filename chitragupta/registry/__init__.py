@@ -1,39 +1,17 @@
 """The three consistency registries a book is checked against.
 
-`python -m chitragupta.draft registry build|check|excerpt|index` over a book whose
-outline `chitragupta/spec/` holds and whose units `chitragupta/unit/` has accepted.
-Three registries, all derived by a deterministic post-pass over
-**accepted units only** (#138):
+Derived by a deterministic post-pass over **accepted units only**
+(#138): terminology and notation (each unit's glossary since #1138 and
+`math.md` `## Symbols` since #1143), the claim register, and the
+cross-reference graph. **Nothing here is written by an LLM**, which is
+what makes them trustworthy; extraction reuses the repository's
+existing parsers.
 
-- **terminology and notation** -- read from each unit's `scope.md`
-  glossary since #1138 (chitragupta/registry/_terms.py) and its
-  `math.md` `## Symbols` since #1143 (chitragupta/registry/_symbols.py):
-  a term is defined once, and a symbol means one thing;
-- **the claim register** -- what has been asserted, in which unit, with
-  which citation;
-- **the cross-reference graph** -- which unit points at what, and whether
-  it resolves.
-
-**Nothing here is written by an LLM**, which is the constraint that makes
-them trustworthy at all: they are a reading of accepted prose, the way
-`chitragupta/ledger.py` is a reading of a real bib file. Extraction reuses the
-conventions the repository already has rather than inventing a second
-set -- the dossier glossary's own parser, the sentence splitter the
-provenance aid uses, and the `## References` cut-off
-`chitragupta/acronyms.py` measured against the real 15-chapter book.
-
-**A cross-reference is never spelled `@id`.** That is a citekey position,
-and a section id reaching it would put something the ledger has never
-seen where only a real bibliography entry may go. Markdown cross-
-references are `[text](#id)` and LaTeX ones `\\ref{id}`/`\\cref{id}`;
-`tests/test_registry.py` pins that the citation gate reads neither.
-
-**What these checks cannot see**, stated rather than left implied:
-*contradiction*. Two chapters asserting opposite things is what #138 asks
-for and is not deterministically decidable -- a duplicate is, and that is
-what the claim register flags. The second human sign-off is what covers
-the rest. docs/WRITE-A-BOOK.md carries this and the reason `check` exits 0
-whatever it finds.
+**A cross-reference is never spelled `@id`**: that is a citekey
+position. They are `[text](#id)` and `\\ref{id}`/`\\cref{id}`, and
+`tests/test_registry.py` pins that the gate reads neither. Contradiction
+is not deterministically decidable; the second human sign-off covers
+it, and `check` exits 0 (docs/WRITE-A-BOOK.md).
 """
 
 import re
@@ -41,52 +19,40 @@ from pathlib import Path
 
 from chitragupta import spec, unit
 
-# Three conventions borrowed rather than re-derived. Each is private to
-# the module that owns it; a second regex for the same shape is the
-# "second way of doing something the codebase already does" that
-# docs/CODE-STANDARDS.md calls the highest-value review finding here, and
-# is worse than reaching across for the name. Promoting any of them to a
-# public name belongs in its own PR, not this one.
+# Borrowed private conventions rather than a second regex for the same
+# shape (docs/CODE-STANDARDS.md's highest-value review finding).
 from chitragupta.acronyms import _REFERENCES_HEADING
 from chitragupta.dossier._glossary import _GLOSSARY_TERM
 from chitragupta.citation_gate import extract_citekeys_from_line, is_latex
 from chitragupta.registry import _symbols, _terms
 from chitragupta.sentences import split as split_sentences
 
-# `[text](#some-id)` -- the Markdown cross-reference. Anchored on the
-# closing bracket so a bare `(#id)` in prose is not read as one.
+# Anchored on the closing bracket so a bare `(#id)` in prose is not one.
 _MD_REFERENCE = re.compile(r"\]\(#([A-Za-z0-9][A-Za-z0-9._:-]*)\)")
 
-# `\ref{id}`, `\cref{id}`, `\Cref{id}`, `\autoref{id}` -- the LaTeX ones.
 _TEX_REFERENCE = re.compile(r"\\(?:auto|[cC])?ref\{([^}]+)\}")
 
-# What a unit offers others to point at: a Pandoc `{#id}` attribute, or a
-# LaTeX `\label{id}`. The outline's own unit ids are anchors too, and are
-# added by `build` rather than matched here.
+# A Pandoc `{#id}` or LaTeX `\label{id}`; outline unit ids are added by
+# `build`.
 _MD_LABEL = re.compile(r"\{#([A-Za-z0-9][A-Za-z0-9._:-]*)\}")
 
 
 _TEX_LABEL = re.compile(r"\\label\{([^}]+)\}")
 
-# Everything a claim's identity ignores: case, punctuation and how the
-# prose happened to be wrapped. Two units asserting the same thing with
-# different spacing are one claim made twice, which is the finding.
+# Case, punctuation and wrapping are ignored, so the same claim with
+# different spacing is the duplicate finding.
 _NOT_WORD = re.compile(r"[^a-z0-9]+")
 
 
 def registry_dir(book) -> Path:
-    """Where a book's three registries are written."""
     return spec.spec_dir(book) / "registries"
 
 
 def _prose(text: str) -> str:
     """`text` with the parts no claim is made in removed.
 
-    Two exclusions. A reference list is nothing but citation-bearing
-    lines, so reading it as claims would fill the register with
-    bibliography -- the same cut `chitragupta/acronyms.py` makes, measured
-    there against the real book. And a definition-shaped bullet is
-    left out too: a term's home is the glossary, not a claim.
+    Drops the reference list (as `chitragupta/acronyms.py` does) and
+    definition-shaped bullets, whose home is the glossary.
     """
     cut = _REFERENCES_HEADING.search(text)
     body = text[: cut.start()] if cut else text
@@ -96,14 +62,9 @@ def _prose(text: str) -> str:
 def claims(text: str, *, latex: bool = False) -> list[tuple[str, list[str]]]:
     """`(sentence, citekeys)` for every sentence in `text` that cites.
 
-    `latex` is the unit's own flag (`citation_gate.is_latex`): read with
-    Markdown's backtick rule, a `.tex` unit's `\\citep{}` between two
-    `quoted' phrases dropped out of the register (#957).
-
-    Split per paragraph rather than over the whole unit, so a sentence
-    cannot run across a blank line and swallow the heading or bullet
-    above it -- which would make the same claim in two units look
-    different for a reason that is about layout, not content.
+    `latex` keeps a `.tex` citation between quotes from dropping out
+    (#957). Split per paragraph, so a sentence cannot swallow the
+    heading above it and make one claim look like two.
     """
     found = []
     for paragraph in re.split(r"\n\s*\n", _prose(text)):
@@ -120,8 +81,8 @@ def claim_key(claim: str) -> str:
 
 
 def _unique(values: list[str]) -> list[str]:
-    """`values` in first-seen order, without repeats -- a unit pointing
-    at the same target twice is one edge, not two findings."""
+    """`values` in first-seen order, without repeats: one edge, not two
+    findings."""
     seen: dict[str, None] = {}
     for value in values:
         seen.setdefault(value, None)
@@ -129,17 +90,14 @@ def _unique(values: list[str]) -> list[str]:
 
 
 def references(text: str) -> list[str]:
-    """Every cross-reference target `text` points at, in order."""
     return _unique(_MD_REFERENCE.findall(text) + _TEX_REFERENCE.findall(text))
 
 
 def labels(text: str) -> set[str]:
-    """Every anchor `text` offers other units to point at."""
     return set(_MD_LABEL.findall(text)) | set(_TEX_LABEL.findall(text))
 
 
 def _read_unit(book, unit_id: str, built: dict, anchors: set[str]) -> None:
-    """Fold one accepted unit into the registries being built."""
     path = unit.draft_path(book, unit_id)
     text = path.read_text(encoding="utf-8")
     _terms.read_unit(unit_id, path, built)
@@ -155,10 +113,8 @@ def build(book) -> dict:
     """The three registries, plus the full anchor set, over the units a
     human has accepted.
 
-    Units that are not accepted are named in `skipped` rather than
-    silently left out: a registry built over half a book is not the same
-    claim as one built over all of it, and a reader has to be able to
-    tell which they are holding.
+    Unaccepted units are named in `skipped`, so a reader can tell a
+    half-book registry from a whole one.
     """
     outline = unit.outline(book)
     built = {
@@ -174,16 +130,11 @@ def build(book) -> dict:
         "glossary_maths": [],
         "unnumbered": [],
     }
-    # Every id in the outline, not only the sections: "see Chapter 1" is
-    # an ordinary cross-reference, and reporting it unresolved because a
-    # chapter generates no prose of its own would be a finding about this
-    # module rather than about the book.
-    # Less the generated pages (#1137), which the skeleton gives no label.
+    # Every outline id, so "see Chapter 1" resolves, less the generated
+    # pages (#1137), which have no label.
     anchors = {entry["id"] for entry in outline if entry["id"] not in spec.GENERATED}
-    # The units that are *accepted*, not every section the outline
-    # declares -- since #472 a section can be a heading inside a chapter
-    # rather than a file of its own, and only a file is ever accepted.
-    # `anchors` above stays the whole outline, for the reason stated there.
+    # Only *accepted* units: since #472 a section may be a heading inside
+    # a chapter file, and only files are accepted.
     for entry in unit.acceptance_units(book):
         # A front- or back-matter chapter prints no number (#1137), which
         # the glossary's `\Cref` to its defining unit depends on.
@@ -215,8 +166,7 @@ def _repeats(rows: list[dict], key: str) -> dict[str, list[dict]]:
 def findings(built: dict) -> list[tuple[str, str]]:
     """`(kind, message)` for everything the three registries disagree on.
 
-    Evidence for a human judgement, never a verdict -- which is why the
-    caller prints these and exits 0 regardless. See docs/WRITE-A-BOOK.md.
+    Evidence for a human, never a verdict, so the caller exits 0.
     """
     found = _terms.findings(built) + _symbols.findings(built)
     for rows in _repeats(
@@ -239,15 +189,9 @@ def findings(built: dict) -> list[tuple[str, str]]:
 def excerpt(book, unit_id: str) -> dict:
     """What a unit's generation should be told about the rest of the book.
 
-    The terminology and notation the *other* accepted units already
-    settled (a `## Symbols` row that does not resolve has settled
-    nothing), and the ids available to point at. A unit is not told to conform to itself.
-
-    Deliberately **not** part of `unit.contract`'s input digest: a
-    registry grows with every acceptance, so hashing it in would mark
-    every later unit stale each time one earlier is accepted -- which is
-    exactly the cheap-regeneration property #137 exists for. docs/WRITE-A-BOOK.md
-    has the argument.
+    What the *other* accepted units settled, and the ids to point at.
+    Deliberately **not** in `unit.contract`'s digest: it grows with every
+    acceptance and would mark later units stale (#137).
     """
     built = build(book)
     return {
@@ -257,8 +201,7 @@ def excerpt(book, unit_id: str) -> dict:
     }
 
 
-# Re-exported so `from chitragupta import registry` reaches the entry point
-# `chitragupta/draft.py` dispatches to, as `chitragupta/spec/` and `chitragupta/unit/` do. The
-# position is load-bearing: `_cli` imports the names above from here.
+# Re-exported for `chitragupta/draft.py`; placed last because `_cli`
+# imports the names above from here.
 # pylint: disable=wrong-import-position
 from chitragupta.registry._cli import main

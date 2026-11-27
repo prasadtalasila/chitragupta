@@ -1,93 +1,46 @@
 """Smith-Waterman local alignment over a sentence-similarity matrix.
 
-The half of tier 3 that has no dependencies and no I/O: given a matrix of
-already-computed, already-shifted similarity scores, find the contiguous
-passage pairs inside it. `chitragupta/overlap_embed.py` is the half that decides
-which sentences to compare and where the numbers come from, and it is the
-only caller.
+The dependency-free, I/O-free half of tier 3; `overlap_embed.py` decides
+what to compare and is the only caller. Kept apart so the arithmetic is
+testable against a hand-written matrix rather than through a fake model.
 
-Separate modules because the two halves fail differently and are checked
-differently. This one is arithmetic -- deterministic, exhaustively
-testable against a hand-written matrix, and correct or not on its own
-terms. That one depends on an optional embedding stack, a built chroma
-collection, Docling sidecars and a draft's dossier, any of which can be
-absent, and most of what it does is decide what to do when they are.
-Keeping them together would mean the alignment could only be exercised
-through a fake model.
-
-**Why Smith-Waterman and not a threshold.** #164 makes the argument:
-`scan_findings` already walks the draft in order, matches grams into the
-corpus index and merges consecutive hits into a maximal run -- that is a
-one-dimensional local alignment whose match test is equality, and `--gap`
-is its gap tolerance. This is the same walk with a scoring matrix in
-place of that test. A bi-encoder gives one number per sentence pair; a
-finding needs a span, and the alignment is what turns the first into the
-second.
-
-Stdlib only, and it stays that way: matrix arithmetic belongs to whatever
-produced the vectors (`sentence-transformers` hands back numpy arrays and
-`@` on two of those is the fast path), and by the time a matrix reaches
-here it is a list of lists of floats.
+A bi-encoder gives one number per sentence pair and a finding needs a
+span; the alignment turns one into the other (#164). Stdlib only: by
+the time a matrix reaches here it is lists of floats.
 """
 
 from dataclasses import dataclass
 
 # --------------------------------------------------------------------------
-# Tuning constants
-#
-# Named module constants rather than a new `[overlap]` TOML table,
-# following tier 2's own precedent (`MAX_NUMERIC_SHARE`,
-# `LONG_RUN_WORDS`): these are project-wide detection policy, not a
-# per-host choice, and DEVELOPER-AGENTS.md's no-speculative-abstraction
-# rule says not to invent config surface nothing has asked for. Every
-# value below was measured, not guessed -- see `bench/RESULTS.md`'s
-# embedding-tier section and `bench/bench_overlap_embed.py`.
+# Tuning constants: module constants, not config, as tier 2's are (policy,
+# not a per-host choice). Each was measured: bench/RESULTS.md's embedding
+# tier section and bench/bench_overlap_embed.py.
 # --------------------------------------------------------------------------
 
-# Subtracted from every cosine before it enters the alignment, which is
-# what makes the alignment *local*: a pair scoring below this contributes
-# negatively and terminates the run rather than letting it drift across
-# unrelated prose. It is not a "these two sentences are the same"
-# threshold and must not be read as one -- in a single-field corpus,
-# two unrelated sentences about digital twins routinely cosine at 0.4-0.5
-# on all-mpnet-base-v2, which is exactly why the value sits above that
-# band rather than at some absolute notion of similarity.
+# Subtracted from every cosine so the alignment is local. Not a sameness
+# threshold: unrelated sentences in one field cosine 0.4-0.5 on
+# all-mpnet-base-v2, so it sits above that band.
 TAU = 0.62
 
-# Charged for a sentence skipped on one side. Low, deliberately: a
-# paraphrase that splices two source sentences into one, or splits one
-# into two, is the normal case rather than the exception, and a penalty
-# steep enough to forbid it would restrict this tier to the
-# one-sentence-to-one-sentence rewrites tier 2 can already almost see.
+# Low on purpose: splicing or splitting sentences is the normal paraphrase.
 GAP_PENALTY = 0.25
 
-# The floor a completed alignment must clear to be traced at all.
-# Structural rather than editorial: it is what stops the traceback loop
-# once the table holds nothing positive left, and it is *not* a
-# report/don't-report decision. `chitragupta/overlap_embed.py` ranks and caps
-# instead of thresholding, because a threshold provably cannot work in
-# this corpus -- see `overlap_embed.report`. Anything above zero would
-# make this a policy knob by the back door, so it is exactly zero.
+# Structural, not editorial: it only stops the traceback. overlap_embed
+# ranks instead of thresholding, so anything above zero would be a policy
+# knob by the back door.
 MIN_ALIGNMENT_SCORE = 0.0
 
-# Alignments taken per (section, source) pair. One section can lean on
-# one paper in two separate places, and reporting only the strongest
-# would hide the second; a cap keeps a pathological pair from filling a
-# report with progressively weaker tails of the same passage.
+# One section may lean on one paper in two places; the cap stops a
+# pathological pair filling a report with weaker tails.
 MAX_ALIGNMENTS_PER_PAIR = 3
 
 
 @dataclass(frozen=True)
 class Alignment:
     """One local alignment: half-open sentence-index ranges on each side,
-    the score that traced back to it, and which draft sentences inside
-    that range were actually *matched* rather than absorbed by a gap.
-
-    `matched` is the counterpart of tier 1's `matched_words` and tier 2's
-    same-parity-position count: the span is what a reader is pointed at,
-    and this is the evidence inside it. A paraphrase that splices two
-    source sentences into one leaves the second draft sentence on a gap
-    step, inside the reported span but not itself matched.
+    the score, and which draft sentences were *matched* rather than
+    absorbed by a gap (the evidence inside the span, like tier 1's
+    `matched_words`).
     """
 
     draft_start: int
@@ -108,16 +61,7 @@ _LEFT = (0, 1)
 
 def _fill(scores: list[list[float]], gap_penalty: float) -> tuple[list[list[float]], dict]:
     """The Smith-Waterman DP table over `scores`, plus the traceback
-    pointer for each cell.
-
-    `scores[i][j]` is already `cosine - TAU` -- shifted, so unrelated
-    pairs are negative and an alignment terminates rather than running
-    off the ends. That shift is the only thing separating this from tier
-    1's own merge: `scan_findings` walks the draft in order, matches into
-    the corpus index and merges consecutive hits into a maximal run,
-    which is a one-dimensional local alignment whose match test is
-    equality. This is the same walk with a scoring matrix in place of
-    that test (#164).
+    pointer for each cell. `scores[i][j]` is already `cosine - TAU`.
     """
     rows, columns = len(scores), len(scores[0])
     table = [[0.0] * (columns + 1) for _ in range(rows + 1)]
@@ -139,15 +83,9 @@ def _fill(scores: list[list[float]], gap_penalty: float) -> tuple[list[list[floa
 def _trace(table: list[list[float]], pointers: dict, cell: tuple[int, int]) -> Alignment:
     """Walk back from `cell` to the zero cell that opened this alignment.
 
-    The walk stops at the first cell scoring zero -- that cell is *not*
-    part of the alignment, which is what makes the returned ranges
-    half-open 0-based sentence indices: table row `r` is sentence `r-1`,
-    so stopping on row `i` means the alignment starts at sentence `i`.
-
-    Row 0 and column 0 stop it too. They are the table's zero border and
-    carry no pointer, and an alignment that reaches the very first
-    sentence on either side arrives there with a diagonal step rather
-    than by finding a zero cell first.
+    That cell is not part of it, which makes the ranges half-open 0-based
+    sentence indices. Row and column 0 also stop the walk: they carry no
+    pointer.
     """
     i, j = cell
     matched = []
@@ -170,11 +108,8 @@ def _max_cell(table: list[list[float]], used_rows: set[int]) -> tuple[int, int] 
     """The highest-scoring cell whose row is not already spoken for, or
     `None` when nothing positive is left.
 
-    Rows, not cells: an alignment claims a run of *draft* sentences, and
-    the second-best alignment over the same draft sentences is the same
-    finding pointing at a slightly different part of the source. Barring
-    the rows is what makes `MAX_ALIGNMENTS_PER_PAIR` mean "two places in
-    this section", not "two tracebacks off one peak".
+    Rows, not cells, so `MAX_ALIGNMENTS_PER_PAIR` means separate places in
+    the section, not tracebacks off one peak.
     """
     best = None
     best_score = 0.0
@@ -195,12 +130,8 @@ def align(
     limit: int = MAX_ALIGNMENTS_PER_PAIR,
 ) -> list[Alignment]:
     """Up to `limit` local alignments over `scores`, strongest first, no
-    two sharing a draft sentence.
-
-    `scores` is `cosine - TAU`; an empty matrix (no draft sentences, or a
-    source with no usable passages) has nothing to align and returns
-    nothing rather than raising -- an unalignable pair is an ordinary
-    outcome here, not a malformed request.
+    two sharing a draft sentence. An empty matrix returns nothing: an
+    unalignable pair is ordinary, not malformed.
     """
     if not scores or not scores[0]:
         return []
@@ -213,16 +144,10 @@ def align(
             break
         alignment = _trace(table, pointers, cell)
         if alignment.score < minimum_score:
-            # The best remaining alignment is already below the floor, so
-            # every weaker one is too -- stop rather than keep tracing.
+            # Every weaker alignment is below the floor too.
             break
-        # A traceback can still *run back into* rows an earlier alignment
-        # claimed, even though `_max_cell` would not have started in one.
-        # Such a peak is dropped rather than reported, and its rows are
-        # retired anyway -- which is what makes this loop terminate (the
-        # used set grows every iteration) and what makes `limit` mean
-        # "this many separate places in this section" rather than "this
-        # many tracebacks off one passage".
+        # A traceback that runs into claimed rows is dropped, but its rows
+        # are retired anyway, which guarantees the loop terminates.
         used_rows |= set(range(alignment.draft_start + 1, alignment.draft_end + 1))
         if not _overlaps(alignment, found):
             found.append(alignment)

@@ -1,11 +1,8 @@
 """Walking the stored path matrices (#714): the reader half.
 
-`enrich/topic_paths.py` stored `next[i][j]` -- an index into one
-family's own edge list -- and this module turns a pair of topics into
-the app's own hop shape: each hop with the edge's strength and its
-evidence (shared citekeys, or the bridging pair), resolved from data
-the reader already holds. `labels: None` means no path in *this*
-family, which is an answer, and often the interesting one.
+Turns `enrich/topic_paths.py`'s `next[i][j]` (an index into one
+family's edge list) into the app's hop shape with each edge's evidence.
+`labels: None` means no path in *this* family, which is an answer.
 """
 
 _WEIGHT_KEY = {"overlap": "overlap_coeff", "semantic": "similarity"}

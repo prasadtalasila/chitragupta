@@ -1,19 +1,12 @@
 """`node-overlap` over every node TikZ drew (#1054).
 
-`review figure` measures the nodes a figure's source names, which misses
-text drawn by a macro or left unnamed: `architecture.tex`'s zone titles
-ran into each other and nothing reported it. `figure check`'s probe now
-logs every node, so the same test, `review figure`'s own `overlaps()`,
-runs over all of them. An unnamed node is named in a finding by its
-centre, `(x,y)` in mm, as `c7-dangling-tip` names a point.
+`review figure` only measures nodes the source names, missing macro-drawn or
+unnamed text; the probe logs every node, so `overlaps()` runs over all. An
+unnamed node is named by its centre in mm.
 
-Four kinds of node are left out, each because a reader sees no
-collision: a tag on a drawn line (that is `c6-tag-covered`'s), a node
-turned other than a quarter (its box, read square to the page, is not
-where it was set; a quarter turn is measured, #1064), a
-round node under 7mm (a step badge `\\cgstep` sets over a node's corner on
-purpose, or a dot on a line), and an unframed node with no text or that
-only groups others (a placeholder, an undrawn `fit`).
+Left out, since a reader sees no collision: a tag on a line (`c6-tag-covered`'s),
+a node turned other than a quarter (#1064), a round node under 7mm (a
+`\\cgstep` badge or a dot), and an unframed empty or grouping node.
 """
 
 from chitragupta.figure._connectors import MM, shown_as, zones
@@ -26,7 +19,6 @@ _BADGE_MM = 7.0
 
 
 def drawn_overlaps(drawn: Drawn) -> list[tuple[str, str]]:
-    """Every pair of drawn nodes whose boxes partially intersect."""
     tags = {name for line in drawn.lines for name in line.labels}
     groups = zones(drawn.nodes)
     boxes = {

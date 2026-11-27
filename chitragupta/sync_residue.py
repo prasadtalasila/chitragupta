@@ -1,44 +1,16 @@
 """What else still names a citekey that `sync --remove-stale` is about
 to drop from the ledger -- reported, never repaired (issue #763).
 
-The ledger row is not the only place a citekey lives. Four other
-artefacts below the drafting layer carry it: the enrichment layer's chunk
-vectors under `content/chroma/`, the overlap index under
-`content/overlap/`, the topic graph's edges in `content/topic_graph.json`,
-and the topic membership records in `content/topic_set.json` and
-`content/topics.json` (#782). Drafts and dossiers cite it too, but they
-are the drafting layer's, and that layer reports them: sync records the
-stale keys in the ledger (`ledger_tables.stale_citekeys`), and
-`dossier status --all` names every draft citing one, before the prune as
-after it (plans/1211). This report ends by pointing there. Dropping the row
-leaves every one of them pointing at a paper the corpus no longer holds --
-`chitragupta/citation_gate.py` catches the draft-side symptom, but only
-at the next gate run and without saying what caused it.
+Below the drafting layer, chroma vectors, the overlap index, the topic
+graph and topic membership (#782) carry citekeys; drafts are reported by
+`dossier status --all` (plans/1211), which this report points to.
 
-**Report, do not repair.** Cascading the deletion is what upstream
-(llm_wiki) does and is rejected here: pruning a citekey out of a
-dossier's `evidence.md` destroys evidence a human transcribed by hand,
-and docs/AUTO-IMPROVEMENT.md already reasons through why that class of
-repair must be human-confirmed. Nothing in this module opens a file for
-writing. The confirmation posture `chitragupta/sync_decide.py` already
-has does not change; what changes is that the person is told what they
-are confirming.
-
-**Exact strings only.** A citekey here comes from a human's own BibTeX
-export and is matched literally, bounded by the characters a citekey may
-itself contain. Upstream's three-method fuzzy matcher was deliberately
-not copied: there is nothing to guess at, and a matcher that guessed
-would be reporting residue for a paper that has none.
-
-**Artefact-mediated, like every other edge in docs/ARCHITECTURE.md's
-four-layer graph.** This is corpus-layer code reading files the
-enrichment and drafting layers wrote; it imports neither
-`chitragupta.dossier` nor `chitragupta.enrich`. The one exception is
-`chitragupta/overlap_chroma.py`, which exists precisely so a caller
-outside `chitragupta/enrich/` can ask whether the optional chroma stack
-is installed without importing it -- and it is asked nothing at all
-until `content/chroma/` is already on disk, because this module must
-leave the filesystem exactly as it found it.
+Report, do not repair: cascading the deletion (as llm_wiki does) would
+destroy hand-transcribed evidence (docs/AUTO-IMPROVEMENT.md); nothing
+here opens a file for writing. Exact strings only, no fuzzy matching: a
+guessing matcher would report residue that does not exist. Reads other
+layers' artefacts without importing them; `overlap_chroma` is asked
+nothing until `content/chroma/` exists, so the filesystem is left as found.
 """
 
 import json
@@ -48,8 +20,7 @@ from pathlib import Path
 from chitragupta import chroma_paging, config, overlap_chroma
 from chitragupta.citekey_safety import citekey_path, citekey_problem
 
-# Fixed order, so two runs over the same corpus print identically and a
-# reader can diff them. Roughly cheapest-to-costliest to scan.
+# Fixed order, so two runs print identically; roughly cheapest first.
 OVERLAP = "overlap index"
 TOPIC_GRAPH = "topic graph"
 TOPIC_MEMBERSHIP = "topic membership"
@@ -68,12 +39,8 @@ class Hit:
 
 def _read_json(path: Path, artefact: str, notes: list[str]) -> dict:
     """`path`'s JSON, or `{}` when it is absent or cannot be read."""
-    # An unreadable file is noted rather than raised (#846). Enrichment
-    # writes these with a bare `write_text`, so a killed run leaves one
-    # truncated, and this runs after every upsert has committed and
-    # before the stale list is printed: a traceback here would hide the
-    # one thing the person needed to see, over an artefact `sync` does
-    # not own.
+    # Noted, not raised (#846): a killed enrichment run can leave a file
+    # truncated, and a traceback here would hide the stale list.
     if not path.is_file():
         return {}
     try:
@@ -89,9 +56,8 @@ def _unscanned(artefact: str, path: object, exc: Exception) -> str:
 
 def _fingerprint_files(citekey: str) -> list[str]:
     """`citekey`'s per-document fingerprints that exist on disk."""
-    # A stale ledger key that cannot name a file has none, since every
-    # writer builds the name through `citekey_path` too; raising instead
-    # would put a traceback after sync's upserts have committed (#975).
+    # Every writer names files through `citekey_path`, so a key that cannot
+    # name one has none; raising would follow committed upserts (#975).
     if citekey_problem(citekey):
         return []
     docs = config.OVERLAP_DIR / "docs"
@@ -101,10 +67,8 @@ def _fingerprint_files(citekey: str) -> list[str]:
 
 def _scan_overlap(citekeys: list[str], notes: list[str]) -> dict[str, Hit]:
     """Per-document fingerprints and the merged corpus index."""
-    # Which index named it, not merely that one did: the two tiers are
-    # built independently, so unioning them would report a citekey that
-    # is only in the skipgram index as living in `index.json` -- a path
-    # that need not exist -- and would count a citekey in both as one.
+    # Which index named it: the tiers are built independently, so a union
+    # would misattribute paths and double-count.
     indexed: dict[str, list[str]] = {}
     for name in ("index.json", "skipgram_index.json"):
         path = config.OVERLAP_DIR / name
@@ -119,11 +83,8 @@ def _scan_overlap(citekeys: list[str], notes: list[str]) -> dict[str, Hit]:
 
 
 def _graph_edge_citekeys(graph: dict) -> list[list[str]]:
-    """Every edge's citekey list, across the three kinds of edge the
-    topic graph records. The topic *nodes* carry no citekeys at all --
-    membership lives in `content/topic_set.json` and
-    `content/topics.json`, which are a separate artefact class scanned by
-    `_scan_topic_membership` rather than here."""
+    """Every edge's citekey list, across the topic graph's three edge
+    kinds. Nodes carry none; membership is `_scan_topic_membership`'s."""
     edges = []
     for key, field in (
         ("edges_overlap", "shared"),
@@ -147,13 +108,9 @@ def _scan_topic_graph(citekeys: list[str], notes: list[str]) -> dict[str, Hit]:
 
 
 def _topic_set_citekeys(data: dict) -> list[str]:
-    """Every citekey `topic_set.json` names: one per membership record,
-    plus the `uncovered` list of papers no topic claimed.
-
-    A member carrying no `citekey` yields `None`, which no citekey ever
-    equals -- so a malformed record counts zero instead of raising, which
-    matters in a module that runs immediately before a destructive
-    prompt.
+    """Every citekey `topic_set.json` names, plus its `uncovered` list.
+    A member with no `citekey` yields `None`, so a malformed record counts
+    zero rather than raising before a destructive prompt.
     """
     named = [
         member.get("citekey")
@@ -164,21 +121,15 @@ def _topic_set_citekeys(data: dict) -> list[str]:
 
 
 def _topics_citekeys(data: dict) -> list[str]:
-    """`topics.json` keys both of its maps by citekey: `assignments`
-    (the one topic each paper was assigned) and `memberships` (every
-    topic it scored against)."""
+    """`topics.json`'s `assignments` and `memberships`, both keyed by
+    citekey."""
     return list(data.get("assignments", {})) + list(data.get("memberships", {}))
 
 
 def _scan_topic_membership(citekeys: list[str], notes: list[str]) -> dict[str, Hit]:
-    """Which topic each paper belongs to, across the two files that
-    record it.
-
-    Named per file with its own count, like the overlap index, because the
-    two are written by different stages and either may exist alone.
-    Unlike a dossier, this residue is **self-healing**: both files are
-    regenerated wholesale by the next enrichment run, so a hit here is a
-    staleness that expires rather than one a human must go and remove.
+    """Which topic each paper belongs to, per file with its own count, as
+    either may exist alone. Self-healing: the next enrichment run
+    regenerates both.
     """
     named = [
         (path, extract(_read_json(path, TOPIC_MEMBERSHIP, notes)))
@@ -200,14 +151,10 @@ def _scan_topic_membership(citekeys: list[str], notes: list[str]) -> dict[str, H
 
 
 def _scan_chroma(citekeys: list[str]) -> tuple[dict[str, Hit], "str | None"]:
-    """Chunk vectors, and -- second element -- why they could not be
-    counted when they could not."""
-    # `content/chroma/` is checked for existence *before* the stack is
-    # probed, and the collection is read through `overlap_chroma`, which
-    # never creates one. A corpus embedded under a different
-    # `[enrich].embedding_model` lives in a differently named collection and
-    # reads as zero here; that is a true statement about the collection
-    # this configuration would use, not a miscount.
+    """Chunk vectors, and why they could not be counted when they could not."""
+    # `content/chroma/` is checked before probing, and `overlap_chroma` never
+    # creates a collection. A different `[enrich].embedding_model` reads as
+    # zero, which is true of the collection this config would use.
     if not config.CHROMA_DIR.is_dir():
         return {}, None
     stack = overlap_chroma.optional_stack()
@@ -220,8 +167,7 @@ def _scan_chroma(citekeys: list[str]) -> tuple[dict[str, Hit], "str | None"]:
         collection = overlap_chroma.built_collection(stack[0])
         where = {"citekey": {"$in": sorted(citekeys)}}
         rows = collection and chroma_paging.all_rows(collection, where=where, include=["metadatas"])
-    # Any chroma or sqlite error, noted for `_read_json`'s reason (#970):
-    # a store a killed enrichment run left half-written is not `sync`'s.
+    # Any chroma or sqlite error is noted, as in `_read_json` (#970).
     except Exception as exc:  # noqa: BLE001 -- see the comment above
         return {}, _unscanned(CHROMA, config.CHROMA_DIR, exc)
     if rows is None:
@@ -235,12 +181,9 @@ def _scan_chroma(citekeys: list[str]) -> tuple[dict[str, Hit], "str | None"]:
 
 
 def scan(citekeys: list[str]) -> tuple[dict[str, list[Hit]], list[str]]:
-    """`({citekey: [Hit, ...]}, [note, ...])` for every citekey given.
-
-    A citekey with no residue is present with an empty list, because
-    "nothing else references this" is the answer the caller most wants
-    to be able to say out loud. The notes are the artefact classes that
-    could not be scanned on this host, and the files that could not be read.
+    """`({citekey: [Hit, ...]}, [note, ...])` for every citekey given. A
+    citekey with no residue maps to `[]`; notes name what could not be
+    scanned or read.
     """
     notes: list[str] = []
     chroma, note = _scan_chroma(citekeys)
@@ -258,11 +201,7 @@ def scan(citekeys: list[str]) -> tuple[dict[str, list[Hit]], list[str]]:
 
 def report(citekeys: list[str]) -> None:
     """Print what still references each citekey, grouped by artefact.
-
-    Called with the citekeys a run is about to prune (or, in the default
-    report-only mode, the ones it is inviting a human to prune). Prints
-    nothing at all when there are none, so a routine sync pays neither
-    the scan nor the noise.
+    Prints nothing for no citekeys, so a routine sync pays nothing.
     """
     if not citekeys:
         return
@@ -275,9 +214,7 @@ def report(citekeys: list[str]) -> None:
             continue
         print(f"    {citekey}: still referenced by {len(hits)} artefact class(es)")
         for hit in hits:
-            # "(s)" rather than a singular/plural branch, matching the
-            # spelling the rest of sync's stdout already uses ("1 stale
-            # item(s)") -- one shape, and one less branch to cover.
+            # "(s)", as elsewhere in sync's stdout ("1 stale item(s)").
             print(f"      {hit.artefact:<16} {hit.count} {hit.unit}(s): {', '.join(hit.where)}")
     for note in notes:
         print(f"    NOTE: {note}")

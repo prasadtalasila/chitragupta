@@ -1,12 +1,8 @@
 """Click-style `--help` for every command in this package (#1230).
 
-The front door and the corpus and draft layers each list their commands.
-argparse would wrap that list into one paragraph; this module prints it
-the way Python's click does instead: one command per line, its help cut to
-one line, the full text one level down in that command's own `--help`.
-
-Standard library only. `draft gate` must run on a bare interpreter, and
-the top-level tree must never pay for a layer's imports.
+One command per line, help cut to one line, full text in that command's
+own `--help`. Standard library only: `draft gate` must run on a bare
+interpreter, and the top-level tree must not pay for a layer's imports.
 """
 
 import argparse
@@ -19,12 +15,9 @@ USAGE = "%(prog)s [OPTIONS] COMMAND [ARGS]..."
 
 def truncate(text: str, limit: int) -> str:
     """The whole line if it fits; else its first ` -- ` clause if that
-    fits; else a word cut marked `...`. Never edits the source string,
-    only what is printed.
+    fits; else a word cut marked `...`.
 
-    No sentence cuts: a full stop is as often `e.g.` or `vs.` as the end
-    of a sentence, and cutting there printed "E.g". A word cut that would
-    keep less than half the line is a hard cut instead."""
+    No sentence cuts: `e.g.` and `vs.` printed "E.g"."""
     text = text.strip()
     if len(text) <= limit:
         out = text.rstrip(".")
@@ -49,9 +42,8 @@ def commands_block(rows: list[tuple[str, str]], width: int) -> str:
 
 
 def parser_kwargs() -> dict:
-    """`suggest_on_error` gives a mistyped command "did you mean" on 3.14
-    and later. On 3.12 and 3.13 the keyword raises TypeError, and
-    pyproject.toml still supports both."""
+    """`suggest_on_error` ("did you mean") on 3.14+; 3.12/3.13 raise
+    TypeError on the keyword and are still supported."""
     if sys.version_info >= (3, 14):
         return {"suggest_on_error": True}
     return {}
@@ -123,16 +115,10 @@ def _positional_usage(action) -> str:
 
 
 class ClickParser(argparse.ArgumentParser):
-    """The parser every command in this package is built from (#1230).
-
-    Click's help -- `Usage:`, `Arguments:`, `Options:`, and a `Commands:`
-    list for a parser with subcommands -- from the standard library, so
-    nothing that must run on a bare interpreter gains a dependency.
-    argparse builds a subcommand's parser with its parent's class, so a
-    subcommand gets the same look without asking for it.
-
-    `command_rows` replaces the list a subcommand group would give: a
-    dispatcher forwards its command verbatim and has no group to read."""
+    """The parser every command in this package is built from (#1230):
+    click's help layout from the standard library. Subcommand parsers
+    inherit the class. `command_rows` stands in for a dispatcher, which
+    has no subcommand group to read."""
 
     def __init__(
         self,

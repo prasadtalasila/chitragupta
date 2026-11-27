@@ -1,14 +1,9 @@
 """The four checks that read a figure's source and never compile it.
 
-Node text length, the edge list, stranded arrowheads and a hand-rolled
-TikZ library load are properties of what an author wrote, not of what TeX
-drew, so they need no toolchain and run on any host. Keeping them here
-rather than beside the geometry checks is what lets most of this aid work
--- and most of its tests run -- where TeX Live is not installed.
-
-Deliberately regex over TikZ rather than a LaTeX parser, matching how
-`render_output/_figures.py` already reads these same files. Each pattern
-below says what that costs it.
+Node text length, the edge list, stranded arrowheads and hand-rolled
+library loads need no toolchain, so most of this aid runs where TeX Live
+is not installed. Regex over TikZ, as `render_output/_figures.py` reads
+these files; each pattern says what that costs.
 """
 
 import re
@@ -23,17 +18,11 @@ from chitragupta.review.figure_layout._scan import (
 )
 from chitragupta.review.figure_layout._tips import house_styles, style_definitions, tips
 
-# docs/TIKZ-STYLE.md's conciseness rule, as the number it is written as.
-# One place, because the report quotes it back to the reader.
+# docs/TIKZ-STYLE.md's conciseness rule; the report quotes it back.
 MAX_NODE_WORDS = 15
 
-# `strip_comments` used to be defined here. It moved to
-# `render_output/_tikz_libraries.py` (#781), and then to the leaf
-# `chitragupta/_tex_comments.py` (#1013) so `chitragupta.figure` could
-# share it without an import cycle. It is re-exported under its old name
-# because this module is where every reader of a figure's source looks
-# for it. The canonical definition, and #404's record of what it fixes,
-# live in the leaf.
+# `strip_comments` is re-exported: its home is now `chitragupta/_tex_comments.py`
+# (#781, #1013), but readers of figure source look for it here.
 __all__ = [
     "MAX_NODE_WORDS",
     "edge_list",
@@ -44,32 +33,18 @@ __all__ = [
     "strip_comments",
 ]
 
-# The two spellings TikZ has for declaring a node, as one fragment
-# because both define a real, probe-able name and nothing downstream
-# cares which was used. `_probe.py` builds its own pattern on this rather
-# than repeating it -- the two want different things from a node (that
-# one only ever needs the name), but "what a node declaration looks like"
-# is one fact and belongs in one place.
-#
-# The second branch is the `child { node (a) {A} }` form, and also the
-# mid-path label `-- node (mid) {x}`. The lookbehind is the guard that
-# makes widening safe: without it the bare keyword matches prose inside a
-# label -- `\node (a) {a node (of sorts)}` would declare a node called
-# `of sorts`, and the probe would then fail to compile the figure over
-# it, which is the very defect this widening is fixing. Requiring the
-# character before the keyword to be one a label cannot start with
-# ( `{`, a path operator, a closing bracket ) admits every real
-# declaration and no sentence.
+# Both node spellings define a probe-able name. The second branch covers
+# `child { node (a) {A} }` and mid-path `-- node (mid) {x}`; the lookbehind
+# keeps `node` inside a label (`{a node (of sorts)}`) from declaring a
+# node, which would make the probe fail to compile the figure.
 _NODE_KEYWORD = r"(?:\\node|(?<=[{;\]>|)\-])\s*node)"
 
 _NODE_START_RE = re.compile(_NODE_KEYWORD)
 
 
 def named_nodes(source: str) -> list[tuple[str, str]]:
-    """`(name, label)` of every named node the source declares, in
-    source order, comments stripped. The declaration is read by
-    `_scan.declaration`, so the name may come before or after `at (x,y)`
-    (#1112) and a label holding `(`, `)` or `;` is text."""
+    """`(name, label)` of every named node the source declares, in source
+    order, comments stripped; `_scan.declaration` reads it (#1112)."""
     text = strip_comments(source)
     found = []
     for match in _NODE_START_RE.finditer(text):
@@ -79,53 +54,27 @@ def named_nodes(source: str) -> list[tuple[str, str]]:
     return found
 
 
-# Every parenthesised token in a path statement's body, in source order.
 _PAREN_TOKEN_RE = re.compile(r"\(([^)]*)\)")
 
-# An `edge` operator, or a node placed on a path and named, options
-# first or not (`node[midway] (l)`, `node (l)`): either makes consecutive
-# tokens something other than the two ends of one line. `cgedge` has no
-# word boundary before `edge`, so a style name does not match.
+# An `edge` or a named on-path node makes consecutive tokens not the two
+# ends of one line. `cgedge` has no word boundary before `edge`.
 _ON_PATH_RE = re.compile(r"\bedge\b|\bnode\b\s*(?:\[[^\]]*\]\s*)?\(")
 
-# A bare coordinate rather than a node name: `(0,0)`, `(1.5, -2)`,
-# `(2cm,0)`. `\draw (0,0) -- (2,0);` draws a line between two points and
-# claims nothing about what connects to what, so reporting it as an edge
-# would be noise in the one check that exists to be read closely.
-#
-# The comma is what identifies it: a TikZ node name cannot contain one,
-# and a coordinate always does. That is deliberately broader than a
-# numeric test, because a `\foreach` body writes coordinates like
-# `(\x,-0.12)` and `(\x,\y)` -- macro-valued, not numeric, and still not
-# an edge between two named things. A real drafted figure hit exactly
-# this and reported `\x,-0.12 -> \x,0.12` as an edge.
+# A coordinate, not a node name: a name can never contain a comma, and a
+# comma also catches macro-valued `\foreach` coordinates like `(\x,-0.12)`
+# that a numeric test would report as an edge.
 _COORDINATE_RE = re.compile(r"^[^)]*,")
 
-# An un-unrolled `\foreach` loop variable used as a coordinate on its
-# own, with no comma to be caught by `_COORDINATE_RE`: `\draw
-# (\p)--(\q);` inside `\foreach \p in {...}`. A TikZ node name is never
-# spelled with a leading backslash -- that syntax is reserved for a
-# macro -- so this token is the same "macro-valued, not a name" case,
-# just without the second axis that gives it a comma. Left unexcluded,
-# it reached a real report as the literal edge `\p -> \q`, which then
-# failed to compile when the report itself was rendered: pandoc passes
-# `\p` through and pdflatex rejects it as an undefined control sequence
-# (#389).
+# A lone loop variable `(\p)`: node names never start with a backslash,
+# and `\p -> \q` in a report broke its pdf render (#389).
 _MACRO_TOKEN_RE = re.compile(r"^\s*\\")
 
-# A LaTeX control sequence in a node label. Stripped before counting
-# words: `\textbf{alpha}` reads as one word, and counting the macro as a
-# second would flag figures a human would call concise.
+# Stripped before counting words, so `\textbf{alpha}` is one word.
 _CONTROL_SEQUENCE_RE = re.compile(r"\\[a-zA-Z]+\s*")
 
 
 def _label_words(label: str) -> int:
-    """How many words a reader sees in a node's label.
-
-    Control sequences are stripped rather than counted, and braces with
-    them, so `\\textbf{alpha} beta` is two words -- the count the
-    conciseness rule is actually about.
-    """
+    """How many words a reader sees in a node's label."""
     plain = _CONTROL_SEQUENCE_RE.sub(" ", label).replace("{", " ").replace("}", " ")
     return len(plain.split())
 
@@ -133,10 +82,8 @@ def _label_words(label: str) -> int:
 def overlong_nodes(source: str) -> list[tuple[str, int]]:
     """`(node name, word count)` for every node past `MAX_NODE_WORDS`.
 
-    Binary and safe for anything to act on: a node either exceeds the
-    line or it does not. The fix is never to shrink the font --
-    docs/TIKZ-STYLE.md is explicit that doing so is the same defect
-    wearing a smaller typeface -- but to cut the text or split the node.
+    The fix is to cut the text or split the node, never a smaller font
+    (docs/TIKZ-STYLE.md).
     """
     return [
         (name, count)
@@ -148,57 +95,17 @@ def overlong_nodes(source: str) -> list[tuple[str, int]]:
 def edge_list(source: str) -> list[tuple[str, str]]:
     """Every node-to-node connection the figure draws, in source order.
 
-    Reported for a human to confirm against the prose, never judged:
-    nothing here knows which edges *should* exist, which is exactly why
-    it is the author who has to read it.
+    Reported for the author to confirm against the prose, never judged. A
+    chain becomes consecutive pairs; the operator is ignored; bare
+    coordinates are dropped. Unlike the other checks a wrong entry is
+    worse than a missing one, since the author trusts it as the wiring.
 
-    A chain (`\\draw (a) -- (b) -- (c);`) becomes consecutive pairs, and
-    the operator between the tokens is deliberately ignored -- `--`,
-    `->` and `edge` are rendering differences over one claim about what
-    connects to what. Bare coordinates are dropped: a line between two
-    points is not an edge between two named things.
-
-    **This is a regex over TikZ, not a parser of it, and the difference
-    matters more here than anywhere else in this package.** The other
-    checks fail safe: an under-counted node label is a finding missed, and
-    a missed finding is what an advisory aid does anyway. This one is
-    *read as a list of what the figure claims*, so a wrong entry is worse
-    than a missing one -- an author confirming an edge list against their
-    prose is trusting it to be the figure's actual wiring.
-
-    What that costs, stated so the next reader does not have to
-    rediscover it:
-
-    - **Only `\\draw` and `\\path` are scanned.** An edge drawn by a
-      library that wraps them -- `\\graph`, a `matrix` with `\\arrow`,
-      `chains`'s `join` -- is invisible here, so the list is silently
-      short rather than wrong. A missing edge and a figure that genuinely
-      has none look identical.
-    - **Anchors ride along.** `(a.south) -- (b.north)` reports
-      `a.south -> b.north`, not `a -> b`. Real drafted figures do this
-      often enough to see, and stripping the anchor would be a guess
-      about which side of the dot is a node name.
-    - **`to[...]`/`edge[...]` options are not distinguished** from the
-      nodes around them, and a `node` placed *on* a path (a mid-edge
-      label) is a parenthesised token like any other only when it is
-      named.
-    - **A `\\foreach` body is read literally, once.** The loop is not
-      unrolled, so an edge drawn n times appears once with its macro
-      names intact -- which is why anything containing a comma, or
-      starting with a backslash, is dropped as a coordinate rather than
-      reported: a real node name is never spelled either way.
-    - **A label is text.** A statement ends at its first `;` outside a
-      brace group, and every brace group is emptied before the tokens
-      are read, so `node {0.1 (repaired)}` adds no name and
-      `node {in;\\\\out}` does not end the path (#1112).
-
-    Widening any of these means parsing TikZ's path grammar properly.
-    That is a real piece of work and not obviously worth it: the check
-    exists because a *wrong* edge is invisible to every check over pixels,
-    and it earns that on the ordinary `\\draw (a) -- (b);` figures this
-    pipeline actually produces. Verified against every figure in this
-    repository's own `content/drafts/` -- correct on all of them, which is
-    evidence about those figures and not a proof about TikZ.
+    Known limits of the regex: only `\\draw`/`\\path` are scanned
+    (`\\graph`, `\\arrow`, `join` are silently missed); anchors ride along
+    (`a.south -> b.north`); a `\\foreach` body is read once, literally, so
+    comma or backslash tokens are dropped; brace groups are emptied so a
+    label is text (#1112). Correct on every drafted figure checked, which
+    is evidence, not proof.
     """
     edges = []
     for body in path_bodies(strip_comments(source)):
@@ -207,13 +114,10 @@ def edge_list(source: str) -> list[tuple[str, str]]:
 
 
 def ambiguous_edges(source: str) -> list[tuple[str, str]]:
-    """The `edge_list` pairs whose path has an `edge` operator or a
-    named node placed on it, where consecutive tokens are not ends of one
-    line: `(hub) edge (s1) edge (s2)` joins the hub to each spoke, not
-    `s1` to `s2`, and `(a) -- node (l) {x} (b)` joins `a` to `b`, not
-    either to the label. `figure check`'s `size-squash` (#1057) lists
-    these rather than measure a pair nothing joins; the edge list itself
-    keeps them, as its docstring above says.
+    """The `edge_list` pairs whose path has an `edge` operator or a named
+    on-path node, so consecutive tokens are not ends of one line
+    (`(hub) edge (s1) edge (s2)`). `figure check`'s `size-squash` (#1057)
+    lists these rather than measure them.
     """
     return [
         pair
@@ -233,25 +137,15 @@ def _pairs(body: str) -> list[tuple[str, str]]:
     return list(zip(names, names[1:]))
 
 
-# The leading option group of a path statement -- `\draw[thick,->] ...`.
-# Only the leading group, deliberately: scanning the whole statement for
-# an arrow specification would also find one inside a mid-path node's
-# label (`-- node[midway] {a -> b} (c)`), which is text rather than a
-# tip. `\draw (a) edge[->] (b)` puts its tip outside this group and is
-# therefore missed -- failing short rather than wrong, the same stance
-# `edge_list` takes.
+# Only the leading option group: a whole-statement scan would find `->`
+# inside a mid-path label. `edge[->]` is therefore missed: short, not wrong.
 def _split_options(statement: str) -> tuple[str, str]:
-    """A path statement's leading option group, and everything after it
-    with every brace group emptied.
+    """A path statement's leading option group, and the rest with brace
+    groups emptied.
 
-    Split rather than merely matched so the options are kept out of the
-    point scan: `\\draw[shift={(1,0)},->] (a) -- (b);` has a
-    parenthesised token inside its options, and reading that as the
-    path's first point would compare the wrong coordinate. The options
-    are read from the statement as written, brackets and braces nesting,
-    so `arrows={->}` and `-{Latex[length=2mm]}` reach the tip reader
-    whole (#1162). A group left open takes the whole statement, which
-    then has no points.
+    Split so `shift={(1,0)}` is not read as the first point; options nest
+    so `arrows={->}` and `-{Latex[...]}` reach the tip reader whole
+    (#1162). A group left open takes the whole statement.
     """
     text = statement.lstrip()
     if not text.startswith("["):
@@ -265,62 +159,24 @@ def _split_options(statement: str) -> tuple[str, str]:
 
 
 def _point(token: str) -> str:
-    """A parenthesised token with its internal whitespace normalised.
-
-    `(46,36)` and `(46, 36)` are one point spelled two ways, and this
-    check is entirely a question of whether two statements name the same
-    one. Deliberately string normalisation rather than parsing to
-    numbers: a coordinate can carry a unit (`(2cm,0)`) or a `\\foreach`
-    macro (`(\\x,3)`), and both compare correctly as text while neither
-    survives `float()`.
-    """
+    """A parenthesised token with its whitespace normalised; text, not
+    `float()`, so units and `\\foreach` macros still compare."""
     return ",".join(part.strip() for part in token.strip().split(","))
 
 
 def stranded_arrowheads(source: str) -> list[str]:
-    """Every bare coordinate where an arrowhead lands mid-stroke.
+    """Every bare coordinate where an arrowhead lands mid-stroke (#399).
 
-    docs/TIKZ-STYLE.md's "one arrow is one `\\draw`" rule, mechanised.
-    A line built in pieces, each piece carrying `->`, renders a head
-    where the pieces join as well as at the end -- a second head pointing
-    at nothing. #399 found two colinear segments meeting at `(46,36)`
-    doing exactly this. A head is read from `->`, an `arrows.meta` tip
-    or a style that sets one, as `_tips.py` says (#1162).
+    docs/TIKZ-STYLE.md's "one arrow is one `\\draw`": a line built in
+    pieces each carrying a head renders a head at the joint. Heads come
+    from `_tips.py` (#1162).
 
-    **The junction has to be a bare coordinate, and that clause is what
-    makes the check precise rather than noisy.** Head-to-tail chaining
-    through a *named* node is the normal way to draw a pipeline:
-
-        \\draw[->] (intake) -- (parse);
-        \\draw[->] (parse)  -- (index);
-
-    TikZ clips each path at the node's boundary, so the first head lands
-    on `parse` pointing at it and the second starts from the opposite
-    border. Nothing is stranded. Five of the eleven scaffolds in
-    `assets/tikz/` are drawn this way, so a check without this clause
-    would report a finding on each of them. In #399's figure nothing is
-    drawn at `(46,36)` at all, which is why the head points at empty
-    space -- so `_COORDINATE_RE`, which `edge_list` uses to *discard* a
-    token, is the inclusion filter here.
-
-    Only the head-to-tail spelling is matched: a second statement whose
-    *first* point is the junction. Widening to either endpoint would also
-    fire on an unrelated tick mark that happens to touch the point.
-
-    **And the continuing statement must not draw its own head there**,
-    which is not an obvious clause until you see what it excludes. Two
-    `<->` dimension bars sharing a boundary --
-
-        \\draw[<->] (10,-7) -- (55,-7) node[midway,above] {detection gap};
-        \\draw[<->] (55,-7) -- (95,-7) node[midway,above] {response gap};
-
-    -- are head-to-tail at a bare coordinate and match everything above,
-    but `(55,-7)` is where *both* bars terminate: the second draws a
-    `<` head into the same point, so the pair reads as `|<-->|<-->|` and
-    nothing is stranded. Found by running this over the 43 figures of
-    this repository's own drafted book, where it was the only false
-    positive; the one true positive there is `2-2`'s arrow into
-    `(90,34)`, which a `\\draw[thick]` bezier then continues out of.
+    The junction must be a bare coordinate: chaining through a named node
+    is clipped at its border and is how scaffolds draw pipelines. Only a
+    second statement *starting* at the junction counts (not a tick mark
+    touching it), and not one drawing its own head there: two `<->`
+    dimension bars sharing an end are fine, the one false positive the
+    drafted book's figures showed.
     """
     text = strip_comments(source)
     styles = {**house_styles(), **style_definitions(text)}
@@ -342,31 +198,18 @@ def stranded_arrowheads(source: str) -> list[str]:
     return found
 
 
-# The two TeX internals a figure file has no business naming (#781).
-# `\tikz@library@<name>@loaded` is the flag `\usetikzlibrary` sets
-# globally; clearing it forces a reload. `\tikz@node@reset@hook` is the
-# macro `positioning` appends to globally on every load, which is what
-# makes those reloads multiply every node's placement shift. Either one
-# in a figure file is a workaround for the float-grouping bug the
-# renderer now fixes in the preamble, and it is invisible in a
-# single-chapter render -- it only misbehaves once a second figure exists
-# in the same document.
-#
-# Matched with or without the leading backslash, because both spellings
-# occur: `\tikz@node@reset@hook` directly, and a bare
-# `tikz@library@x@loaded` inside a `\csname ... \endcsname`. The library
-# name admits a dot, since `arrows.meta` is a real library.
+# TeX internals a figure has no business naming (#781): the library
+# `@loaded` flag and `positioning`'s global reset hook. Either is a
+# workaround for a float-grouping bug the renderer now fixes, and misbehaves
+# once a second figure exists. Matched with or without the backslash
+# (`\csname` spelling); a library name may hold a dot.
 _BY_HAND_RE = re.compile(r"\\?(tikz@library@[A-Za-z.]+@loaded|tikz@node@reset@hook)")
 
 
 def loads_library_by_hand(source: str) -> list[str]:
     r"""Every TeX internal this figure file touches to manage a library
-    load itself, in source order, deduped.
-
-    Comments stripped first, for the reason every other check here strips
-    them: a commented-out workaround is inert, and sending an author to
-    fix something that does nothing is a wrong answer rather than a
-    cautious one.
+    load itself, in source order, deduped. Comments are stripped: a
+    commented-out workaround is inert.
     """
     found: list[str] = []
     for name in _BY_HAND_RE.findall(strip_comments(source)):

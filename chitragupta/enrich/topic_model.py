@@ -1,53 +1,17 @@
 """Stage 4: BERTopic clustering over the corpus.
 
-Needs `bertopic` from pyproject.toml's "enrich" extra, in a venv.
-With a handful of documents HDBSCAN will legitimately put everything in
-the outlier topic (-1) -- that is the correct output for a small corpus,
-not a bug. Don't lower `[enrich].topic_min_cluster_size` to force
-clusters into existence on a corpus too small for them; report the
-outlier result honestly instead.
+On a handful of documents HDBSCAN legitimately puts everything in the
+outlier topic (-1): report that honestly rather than lowering
+`[enrich].topic_min_cluster_size` to force clusters. Granularity is
+configurable (docs/CONFIG.md has the sweep).
 
-Granularity on a corpus that *is* large enough is a setting rather than a
-constant (`topic_min_cluster_size`, `topic_min_samples`,
-`topic_neighbors`). Until 6.9.0 it was neither: every parameter saturated
-at n_docs >= 20, so a 497-document corpus received the values written for
-a 20-document one and could not yield more than ~13 topics however far it
-grew. docs/CONFIG.md has the sweep.
-
-Unlike every other stage, this one has no downstream consumer in the
-repository: nothing imports it, and no genre skill reads
-config.TOPICS_PATH. `survey-writer` groups its themes by judgement over
-the evidence it retrieved and says so ("With a small corpus there's no
-BERTopic step"). The output is written for a human deciding what a survey
-should cover. Wiring it in is a real option -- DEVELOPER.md's
-"`content/topics.json` has no consumer" records what that would take and
-why it hasn't been done -- but until then, don't assume a caller
-somewhere depends on this file's shape.
-
-It is also the one stage that can't be incremental, which is the reason
-that matters here: clustering is whole-corpus, so one added document can
-move every assignment, and topic ids are not stable between runs.
-
-BERTopic's clustering step is inherently whole-corpus -- adding one new
-document can shift every cluster assignment, so unlike
-embed_index.build_index() there's no "skip this doc" option for the
-clustering itself. What *is* skippable is the expensive part before it:
-embedding the documents. `doc_vectors.document_embeddings()`, which this
-module calls rather than embedding anything itself, caches one pooled
-vector per citekey (config.TOPIC_EMBED_CACHE_PATH) keyed by text hash,
-embedding model *and* pooling method, and re-embeds only what those say
-is stale.
-
-That cache overlaps embed_index.py's Chroma collection more than it used
-to, and the overlap is worth stating plainly rather than leaving for
-someone to rediscover: since pooling arrived, both split a document with
-the *same* embed_index.chunk_text() call and embed the same chunks with
-the same model, so `content/chroma/` already holds every vector this
-stage recomputes -- 40,741 of them for a 497-document corpus. Pooling
-those instead of re-encoding would make this stage nearly free, at the
-cost of making it depend on the `embed` stage having run and on a
-fallback for documents Chroma lacks. That trade has not been made; the
-duplicated encode is a known cost, not an oversight.
+No genre skill consumes config.TOPICS_PATH (see DEVELOPER.md's
+"`content/topics.json` has no consumer"), so don't assume a caller
+depends on its shape. Clustering is whole-corpus and topic ids are not
+stable between runs; only the embeddings are cached, via
+`doc_vectors.document_embeddings()`. Those re-encode the same chunks
+`content/chroma/` already holds: a known cost, not an oversight, since
+pooling from Chroma would make this stage depend on `embed` having run.
 """
 
 import json
@@ -60,17 +24,15 @@ from chitragupta.enrich.corpus import CorpusDoc
 
 def _unit(matrix) -> Any:
     """Rows scaled to unit length, so a dot product is a cosine. A zero
-    row is left alone rather than divided by zero: a document with no
-    direction matches nothing, which the caller reads as no membership."""
+    row is left alone, matching nothing (no membership)."""
     import numpy as np
 
     norms = np.linalg.norm(matrix, axis=1, keepdims=True)
     return np.divide(matrix, norms, out=np.zeros_like(matrix), where=norms > 0)
 
 
-# Recorded in content/topics.json beside the memberships, so a reader can
-# tell which arithmetic produced the weights they are looking at. Bumped
-# when that arithmetic changes; HDBSCAN soft clustering was v1.
+# Recorded beside the memberships; bumped when the weight arithmetic
+# changes (HDBSCAN soft clustering was v1).
 MEMBERSHIP_MECHANISM = "centroid-cosine-centred-v2"
 
 
@@ -78,18 +40,10 @@ def topic_descriptors(embeddings, topics: list) -> tuple[list[int], Any, Any]:
     """One vector per emergent topic: its members' centroid, in
     mean-centred embedding space.
 
-    **Centring is load-bearing, not a flourish.** In a corpus that is all
-    about one subject, every document and every centroid share a large
-    common component, so raw cosines bunch together and the part that
-    distinguishes them is a thin residual. Measured over 76 topics on this
-    corpus, the raw version gave a mean top-share of 0.20 against a
-    uniform baseline of 0.01 -- barely a signal -- where the centred one
-    gives 0.60.
-
-    Returns `(ids, matrix)`, with row `i` the descriptor for topic
-    `ids[i]`. The outlier topic has no descriptor: -1 means "no topic
-    matched", not a thing to be partly about, and its members would drag
-    a centroid back towards the corpus mean that centring just removed.
+    **Centring is load-bearing**: in a one-subject corpus raw cosines bunch
+    together (mean top-share 0.20 against 0.60 centred, over 76 topics).
+    Returns `(ids, matrix)`. The outlier topic has no descriptor: -1 means
+    "no topic", and would drag centroids back to the mean.
     """
     import numpy as np
 
@@ -104,36 +58,14 @@ def topic_descriptors(embeddings, topics: list) -> tuple[list[int], Any, Any]:
 def topic_memberships(embeddings, citekeys: list, topics: list) -> "dict | None":
     """Every emergent topic each document is *about*, with its strength.
 
-    Two fields in content/topics.json describe the same relation and are
-    not the same claim, which is the distinction this docstring exists to
-    hold:
-
-    - `assignments` is **which cluster a document was put in**. Density,
-      one id, whatever HDBSCAN decided.
-    - `memberships` is **what the paper is about**. Similarity to each
-      topic's descriptor, as many topics as clear the bar.
-
-    They can differ, and that is not a defect: a density-based cluster can
-    be elongated or hollow, so "the region this point sits in" and "the
-    subjects this paper is close to" are genuinely different questions.
-    What *would* be a defect is the artefact implying otherwise, so the
-    assigned topic is **always present** in a document's memberships even
-    when it does not clear the bar on its own. An earlier attempt left it
-    missing for 57% of documents, which read as the file contradicting
-    itself.
-
-    Why descriptors rather than HDBSCAN's own soft clustering, which this
-    replaces: soft clustering answers the density question, and for a core
-    point that answer is nearly binary. Measured on this corpus it gave
-    **1.64 topics per document with only 25% of papers plural**, against
-    5.03 and 92% here -- and 637 of the 642 papers in this library carry
-    hand-made Zotero collection labels across 95 collections, so a corpus
-    known to be plural was being reported as almost entirely singular.
-
-    Returns None where the question is meaningless rather than merely
-    unanswered: the feature switched off, or a corpus whose every document
-    landed in the outlier topic and so has no descriptor to measure
-    against.
+    `assignments` is **which cluster a document was put in** (density);
+    `memberships` is **what the paper is about** (similarity to each
+    descriptor). They can differ, but the assigned topic is **always
+    present** in memberships so the file never contradicts itself.
+    Descriptors replace HDBSCAN soft clustering, which reported a corpus
+    known to be plural as nearly singular (1.64 topics per document
+    against 5.03). Returns None when the feature is off or every document
+    is an outlier.
     """
     if not config.TOPIC_DISTRIBUTION:
         return None
@@ -156,9 +88,7 @@ def topic_memberships(embeddings, citekeys: list, topics: list) -> "dict | None"
         best = ranked[0][1] if ranked else 0.0
         kept = [pair for pair in ranked if pair[1] >= best * config.TOPIC_MEMBERSHIP_RATIO]
         kept = dict(kept[: config.TOPIC_MEMBERSHIP_MAX])
-        # The assigned topic is a membership by construction, whatever its
-        # similarity -- see this docstring on why the two fields must not
-        # be able to contradict each other.
+        # The assigned topic is a membership by construction (see above).
         if assigned != -1:
             kept.setdefault(str(assigned), round(float(row[index[assigned]]), 6))
         if kept:
@@ -167,33 +97,16 @@ def topic_memberships(embeddings, citekeys: list, topics: list) -> "dict | None"
 
 
 def _fit(texts: list, embeddings, model) -> tuple[Any, list[int]]:
-    """Configure UMAP/HDBSCAN/BERTopic for a corpus of this size and fit.
-
-    Split out of run_topic_model() to keep it under
-    docs/CODE-STANDARDS.md's 25-statement limit once the membership pass
-    arrived, and the seam is a real one rather than an arithmetic
-    convenience: everything here is *how* to cluster, everything left
-    there is what to cluster and what to record.
-    """
+    """Configure UMAP/HDBSCAN/BERTopic for a corpus of this size and fit."""
     from bertopic import BERTopic
     from hdbscan import HDBSCAN
     from umap import UMAP
 
-    # UMAP's spectral initialization needs n_neighbors < n_samples or it
-    # raises outright (not just a bad clustering) -- BERTopic's own
-    # defaults (n_neighbors=15) assume a corpus far larger than this
-    # project's current few documents. Scaling down is a correctness fix
-    # for small N, not an attempt to manufacture nicer-looking clusters:
-    # HDBSCAN's min_cluster_size is left low but not forced to 2, so a
-    # tiny corpus still honestly reports as mostly/all outliers.
-    # Spectral initialization needs n_components + 1 < n_samples (it solves
-    # for n_components+1 eigenvectors of an n_samples x n_samples graph),
-    # a tighter constraint than n_neighbors < n_samples alone.
-    # config supplies the desired granularity; these clamps only ever
-    # reduce it, and exist for the small-corpus correctness reason the
-    # comment above gives. The bug they replaced was a hardcoded ceiling
-    # that also clamped a large corpus -- min(15, ...) and min(10, ...)
-    # never rose above 15 and 10 however many documents there were.
+    # UMAP's spectral initialization raises outright unless n_neighbors <
+    # n_samples and n_components + 1 < n_samples. These clamps only ever
+    # reduce config's granularity, for small-corpus correctness; a tiny
+    # corpus still honestly reports mostly outliers. A hardcoded ceiling
+    # that also clamped large corpora was the bug they replaced.
     n_docs = len(texts)
     umap_model = UMAP(
         n_neighbors=min(config.TOPIC_NEIGHBORS, n_docs - 1),
@@ -210,11 +123,8 @@ def _fit(texts: list, embeddings, model) -> tuple[Any, list[int]]:
         prediction_data=True,
     )
 
-    # vectorizer_model decides only what a topic is *called*. Without one,
-    # BERTopic's default has no stop-word list and this corpus's topics
-    # came out named `0_the_and_of_to`; with the default's own vocabulary
-    # they came out named after the authors the papers discuss. See
-    # chitragupta/enrich/topic_labels.py.
+    # vectorizer_model decides only what a topic is *called*: defaults gave
+    # function-word and author-name labels (see topic_labels.py).
     topic_model = BERTopic(
         embedding_model=model,
         umap_model=umap_model,
@@ -230,24 +140,11 @@ def run_topic_model(docs: list[CorpusDoc]) -> dict:
     """Cluster the corpus into emergent topics.
 
     **Unseeded, always, and that is what lets a seed list be unlimited.**
-    BERTopic's `zeroshot_topic_list` used to steer this, and steering cost
-    discovery: every document a seed absorbed was one HDBSCAN never saw.
-    Measured on this corpus, nine seed phrases took the emergent topic
-    count from 81 to 53 -- twenty-eight topics traded away for nine the
-    author already knew about. Pushed further it does not merely trade,
-    it breaks: enough seeds leave HDBSCAN fewer points than its own
-    `min_samples` needs and the fit dies inside sklearn.
-
-    Seeds are therefore matched separately, against these same document
-    vectors, by chitragupta/enrich/topic_seeding.py. An author can now
-    name a hundred topics and still get every emergent one, because the
-    two answers are computed independently and joined afterwards rather
-    than competing for the same documents.
-
-    Keeping the clustering unseeded has a second effect worth naming:
-    BERTopic only swaps its clusterer for a placeholder in zero-shot mode,
-    so `topic_memberships` below now always has a real one to ask, and
-    memberships are recorded for every run rather than only unseeded ones.
+    Steering with `zeroshot_topic_list` absorbed documents HDBSCAN never
+    saw (nine seeds took 81 topics to 53), and enough seeds crash the fit
+    inside sklearn. Seeds are matched separately by topic_seeding.py
+    against the same vectors. Unseeded also keeps a real clusterer for
+    `topic_memberships`.
     """
     import numpy as np
 
@@ -262,9 +159,8 @@ def run_topic_model(docs: list[CorpusDoc]) -> dict:
 
     cache = doc_vectors.document_embeddings(doc_texts, model)
 
-    # Keyed off what actually has a vector, not off doc_texts: a document
-    # whose text chunked to nothing is absent from the cache, and reading
-    # doc_texts here would raise on it.
+    # Keyed off what has a vector: a document that chunked to nothing is
+    # absent from the cache.
     citekeys = [citekey for citekey in doc_texts if citekey in cache]
     if len(citekeys) < 2:
         raise ValueError(
@@ -279,12 +175,8 @@ def run_topic_model(docs: list[CorpusDoc]) -> dict:
         "n_docs": len(texts),
         "assignments": dict(zip(citekeys, [int(t) for t in topics])),
         "topic_info": json.loads(topic_model.get_topic_info().to_json(orient="records")),
-        # Recorded so `topic_converge.py` can refuse to pair these
-        # `assignments` with vectors it re-embeds under a *different*
-        # model or pooling method (#504, m-47) -- exactly the two things
-        # `doc_vectors.document_embeddings`'s own cache already keys a
-        # single document's vector on, just not previously recorded at
-        # the level of "the whole clustering run that produced this file".
+        # Recorded so `topic_converge.py` can refuse vectors re-embedded
+        # under a different model or pooling method (#504, m-47).
         "embedding_model": config.EMBEDDING_MODEL,
         "embedding_method": doc_vectors.EMBED_METHOD,
     }

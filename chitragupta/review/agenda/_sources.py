@@ -1,20 +1,12 @@
 """Reads the twelve inputs `agenda` merges, each degrading to "absent"
-rather than raising -- the same posture every review aid already keeps
-towards an optional input.
+rather than raising.
 
-Eight are on-disk artefacts: the other aids' own `<stem>.<aid>.json`,
-written by an earlier `--json`/`--write` run and read here, never
-recomputed. Three have no on-disk artefact at all and are computed
-in-process instead: `style_check.check()` (the `prose` class; nothing
-ever calls `review.write_json` for it, since it is a drafting-layer
-command, not a review aid), `dossier.drift()` (the `missing-citekey`
-and `candidate` classes) and `recorded_but_uncited()` (the
-`recorded-but-uncited` class).
-
-The twelfth is the acceptance record (`_accept.py`), which raises no
-class of its own: it names the items a person has already considered and
-accepted, and the only thing this run does with it is leave those items
-off the worklist.
+Eight are the aids' `<stem>.<aid>.json`, read, never recomputed. Three
+have no artefact and are computed in-process: `style_check.check()`
+(`prose`), `dossier.drift()` (`missing-citekey`, `candidate`) and
+`recorded_but_uncited()`. The twelfth, the acceptance record
+(`_accept.py`), raises no class; it only keeps accepted items off the
+worklist.
 """
 
 import json
@@ -26,49 +18,21 @@ from chitragupta.dossier._draft_fingerprint import recorded_but_uncited
 from chitragupta.dossier._drift import Drift
 from chitragupta.review.agenda import _accept
 
-# The review aids agenda reads, in `review.AIDS`'s own order -- not all
-# of `review.AIDS`: `agenda` itself is excluded, and so is `union`.
-# Derived rather than listed (#850), so adding an aid to `review.AIDS`
-# adds it here unless it is one of the two named exclusions.
+# The aids agenda reads, in `review.AIDS` order, derived (#850) so a new aid
+# is included unless named here. `TestAidNames` pins this (#573).
 #
-# `union` is excluded because of *what its findings are about*, not
-# because they could not be found: it takes a reviewable path under
-# `content/` and files `<stem>.union.json` beside it exactly as the other
-# eight do, so `_read_aid_json` would locate one perfectly well. But it
-# reads an **assembled book**, and its `dropped`/`appeared` findings are
-# facts about the assembly -- a citekey that a unit stands on and the
-# assembled document does not -- rather than about any one draft's prose,
-# which is what every class in `_items.py` describes and what a person
-# repairs by editing. There is no sentence to fix in the draft this
-# worklist was asked about. docs/PERFORMANCE.md leaves `union` out of the
-# draft-review cost figures on the same book-not-draft ground. This
-# comment said "only `agenda` itself is excluded" through the release
-# that made `union` the tenth aid, which is what #573 was: the sentence
-# that pins the invariant down was the one thing nothing checked.
-# `TestAidNames` now asserts the relationship, so an eleventh aid has to
-# decide rather than inherit this silently.
-#
-# `support`'s
-# findings carry no `band`, so `unsupported_claim_items`
-# (`_items_findings.py`) cannot treat it as a second source for
-# `unsupported-claim` -- but `claim_support_items` reads it as its own
-# `claim-support` class instead, ranked rather than thresholded, so R3
-# (docs/CODE-STANDARDS.md) is not in tension with reading it here.
-# `synthesis` and `figure` carry no item class (see `_items.py`) but are
-# still named in the header as read, not silently dropped.
-# `digest` is excluded because its classes mean nothing outside a
-# verbatim digest (#991): wired in, every existing agenda would carry a
-# "digest: read" line for a report no survey or chapter ever has, and
-# `--baseline`'s refresh would run the digest aid over prose that is
-# not a digest. The digest's report is its own worklist, worked by the
-# `review-digest` skill, never by `agenda-reviser`.
+# `union` is excluded: its findings are about an assembled book, with no
+# sentence to fix in the draft under review. `digest` is excluded: its
+# classes mean nothing outside a digest (#991), and `--baseline` would run
+# it over prose that is not one; `review-digest` works its report.
+# `support` has no `band`, so it feeds its own ranked `claim-support`
+# class, not `unsupported-claim` (R3). `synthesis` and `figure` yield no
+# items but are named in the header as read.
 AID_NAMES = tuple(aid for aid in review.AIDS if aid not in ("agenda", "union", "digest"))
 
-# The item classes raised from an aid's `.json`, and which aid. The three
-# classes missing here (`missing-citekey`, `recorded-but-uncited`,
-# `prose`) are computed in-process every run, so no failed refresh can
-# leave them stale. `TestClassAids` pins the map against `_items.CLASSES`
-# and `AID_NAMES`.
+# Item classes raised from an aid's `.json`, and which aid. The other three
+# are computed in-process each run, so no failed refresh leaves them stale.
+# `TestClassAids` pins this map.
 CLASS_AIDS = {
     "verbatim-run": "verbatim",
     "unsupported-claim": "provenance",
@@ -79,8 +43,8 @@ CLASS_AIDS = {
 
 
 def unverified_classes(aids) -> set[str]:
-    """The item classes whose evidence comes from one of `aids` -- the
-    ones a not-refreshed aid leaves unverified (#837)."""
+    """The item classes whose evidence comes from one of `aids`, which a
+    not-refreshed aid leaves unverified (#837)."""
     return {cls for cls, aid in CLASS_AIDS.items() if aid in aids}
 
 
@@ -88,23 +52,12 @@ def unverified_classes(aids) -> set[str]:
 class AidSource:
     """One of the eight aids' `.json`, as `agenda` sees it.
 
-    `stale` is a caveat on the report, never a merge signal: a finding
-    from a report older than the draft may still be true, so staleness
-    is named in the header and never changes which items are computed
-    from `data` (see the module docstring's determinism note).
-
-    `refreshed` is `agenda --baseline`'s account of re-running the aid
-    (`_refresh.refresh_aids`): `None` when no refresh was attempted --
-    the bare mode, or `coverage` with no query -- and `False` when one
-    was and failed, which leaves the `.json` read here an earlier run's.
-    Unlike `stale` it does change something: that aid's items are
-    listed but left out of `Agenda.objective_class_count` (#837).
-
-    `refresh_error` is the one-line reason when that refresh *raised*
-    (#893), and `None` otherwise. It is not `reason`, which already means
-    "this `.json` could not be read" and which the header prints as
-    `not run -- <reason>`: an aid that raised did run, usually over a
-    readable earlier `.json`, and the two can both be true at once.
+    `stale` (older than the draft) is a header caveat, never a merge
+    signal. `refreshed` is `--baseline`'s account: `None` if not attempted,
+    `False` if failed, which keeps that aid's items out of
+    `Agenda.objective_class_count` (#837). `refresh_error` is the reason a
+    refresh raised (#893), distinct from `reason` ("could not be read");
+    both can hold at once.
     """
 
     available: bool = False
@@ -115,7 +68,6 @@ class AidSource:
     refresh_error: str | None = None
 
     def flags(self) -> dict:
-        """The payload's `sources.aids.<aid>` entry."""
         return {
             "available": self.available,
             "stale": self.stale,
@@ -126,17 +78,10 @@ class AidSource:
 
 @dataclass
 class StyleSource:
-    """`style_check.check()`'s result. `partial` means Vale did not run
-    (`vale_error` was set) -- `prose` is under-reported, not empty, and
-    the header must say so by name because `prose` is an *unattended*
-    class (issue 421; issue 836 exempts `repair="review"` findings): a
-    silently short list of it under-counts
-    `Agenda.objective_class_count`, which a re-run loop terminates on.
-
-    It is not the most populous class, which this docstring claimed
-    until the measurement in `plans/f3-agenda-reviser.md`: prose runs
-    0--6 per draft on the four real drafts, against `candidate`'s
-    7--155."""
+    """`style_check.check()`'s result. `partial` means Vale did not run, so
+    `prose`, an unattended class (issue 421), is under-reported; the header
+    must say so, or `Agenda.objective_class_count` is silently short.
+    """
 
     available: bool = False
     partial: bool = False
@@ -146,11 +91,9 @@ class StyleSource:
 
 @dataclass
 class DriftSource:
-    """The dossier's drift report. `available=False` covers both "this
-    draft is not under content/drafts/" and "it is, but no dossier was
-    ever created for it" -- both are the decided reduced-source-set case,
-    not a refusal. `corpus_available` is a *different* absence
-    (dossier exists, ledger doesn't) and is named separately."""
+    """The dossier's drift report. `available=False` (not under
+    content/drafts/, or no dossier) is a reduced source set, not a refusal;
+    `corpus_available` is the separate dossier-but-no-ledger case."""
 
     available: bool = False
     corpus_available: bool = False
@@ -161,16 +104,9 @@ class DriftSource:
 class RecordedSource:
     """The dossier's recorded-but-uncited citekeys (#701).
 
-    Separate from `DriftSource` although both come from the dossier,
-    because they answer different questions and one of them needs no
-    ledger: drift asks "has the *corpus* moved under this dossier?",
-    this asks "does the *draft text* still cite what the dossier
-    records?". Folding it into `Drift` would have made a finding about
-    the draft depend on a corpus read it does not need.
-
-    `available=False` covers the same two states `DriftSource`'s does
-    -- not under `content/drafts/`, or no dossier -- and for the same
-    reason: a reduced source set, not a refusal.
+    Separate from `DriftSource` because it asks whether the draft text
+    still cites what the dossier records, which needs no ledger. Its
+    `available=False` means what `DriftSource`'s does.
     """
 
     available: bool = False
@@ -183,15 +119,11 @@ class Sources:
     style: StyleSource
     drift: DriftSource
     recorded: RecordedSource
-    # The acceptance record (`_accept.py`) -- an input to this run like
-    # any other, and read here rather than in `build_agenda` so that the
-    # header can name it whether it was present, absent or unreadable,
-    # the same account this module gives of every other optional input.
-    # Defaulted so a caller assembling `Sources` by hand keeps working.
+    # Read here so the header can name it present, absent or unreadable;
+    # defaulted so a hand-built `Sources` keeps working.
     accepted: _accept.AcceptedSource = field(default_factory=_accept.AcceptedSource)
 
     def not_refreshed(self) -> list[str]:
-        """The aids whose `--baseline` refresh failed, in `AID_NAMES` order."""
         return [aid for aid, source in self.aids.items() if source.refreshed is False]
 
 
@@ -202,25 +134,21 @@ def _read_aid_json(draft: Path, aid: str) -> AidSource:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        # A truncated or hand-edited sidecar must not take the whole
-        # agenda down (#496) -- this class degrades to absent like every
-        # other absent input the module docstring lists, with the reason
-        # carried along rather than swallowed.
+        # A truncated or hand-edited sidecar degrades to absent with its reason,
+        # rather than taking the agenda down (#496).
         return AidSource(reason=f"{path}: {exc}")
     stale = path.stat().st_mtime < draft.stat().st_mtime
     return AidSource(available=True, stale=stale, data=data)
 
 
 def _read_style(draft: Path) -> StyleSource:
-    # propose=False: the agenda never reads `proposed_language` (m-73,
-    # issue #495), so the two extra Vale runs `check()` would otherwise
-    # spend computing it on every unset-dialect draft are pure waste here.
+    # propose=False: the agenda never reads `proposed_language` (#495), so
+    # the two extra Vale runs would be waste.
     try:
         result = style_check.check(draft, propose=False)
     except ValueError as exc:
-        # A broken `style_exceptions.toml` (#1187) must not take the whole
-        # agenda down, nor read as "no findings": the source degrades to
-        # not run with the reason carried, as `_read_aid_json` does.
+        # A broken `style_exceptions.toml` (#1187) degrades to not run, with
+        # the reason, rather than crashing or reading as "no findings".
         return StyleSource(reason=str(exc))
     return StyleSource(available=True, partial=bool(result["vale_error"]), data=result)
 
@@ -252,9 +180,8 @@ def collect(
     errors: "dict[str, str] | None" = None,
 ) -> Sources:
     """Every input `agenda` reads for `draft`, each degraded rather than
-    raised where it is absent. `refreshed` and `errors` are
-    `_refresh.refresh_aids`' two maps under `--baseline`, and `None` on
-    the bare path."""
+    raised where absent. `refreshed` and `errors` are
+    `_refresh.refresh_aids`' maps under `--baseline`, else `None`."""
     aids = {aid: _read_aid_json(draft, aid) for aid in AID_NAMES}
     for aid, state in (refreshed or {}).items():
         aids[aid].refreshed = state

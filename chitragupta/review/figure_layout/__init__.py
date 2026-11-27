@@ -1,63 +1,20 @@
 """TikZ layout check: what a figure's own geometry says about it.
 
-One of the review layer's aids (`chitragupta/review/_registry.py`'s
-`AIDS` names them all) -- read over a
-finished draft, by a person or by a driver, never a gate, and
-never holding the write lock. It reports and exits 0 whatever it finds.
+The mechanical half of docs/TIKZ-STYLE.md (#314, D2). A review aid,
+never a gate, no write lock, exit 0 whatever it finds. Node overlap,
+protrusion and "nothing measurable" need lualatex; text overload, the
+edge list, stranded arrowheads and hand-loaded libraries (#781) do not.
+What was measurable is reported, never inferred (#405). Corner emptiness
+is continuous and consumed by nothing (R3). Arrow crossings are not
+checked: a bad approximation would be worse than none.
 
-docs/TIKZ-STYLE.md is the standard a figure is written against; this is
-the mechanical half of it (#314, docs/FEATURE-ROADMAP.md's D2, planned in
-plans/d2-tikz-layout-check.md). Only some of that checklist is decidable
-from geometry, and the split matters:
+**This package measures; it never places.** TikZ owns the layout; every
+coordinate enters through `_probe.py`'s injected `\\pgfpointanchor`, and
+nothing in `_geometry.py` returns a position. Computing one would make
+this a second, worse layout engine that silently disagrees with TikZ.
 
-| Check | Kind | Needs lualatex |
-|---|---|---|
-| Node text overload (>15 words) | binary | no |
-| Edge list | binary, reported for confirmation | no |
-| Stranded arrowhead | binary | no |
-| Loads its TikZ library by hand (#781) | binary | no |
-| Node overlap | binary | yes |
-| Content protrusion | binary | yes |
-| Nothing was measurable | binary | yes |
-| Names declared vs measured | **diagnostic, human-read only** | yes |
-| Corner emptiness | **continuous, human-read only** | yes |
-
-**What was measurable is reported, never inferred** (#405): a figure
-that names no node reports nothing *because nothing ran*, which used to
-print as a clean result. `_result.py`'s `nothing_measurable` has why.
-
-**Corner emptiness is reported and consumed by nothing**, per
-docs/AUTO-IMPROVEMENT.md's R3: no continuous score may be the thing an
-unattended loop optimises. The report labels it as such rather than
-leaving a reader to infer it -- an unlabelled mixture of binary findings
-and a proportion is how a score ends up being driven to zero by
-something that should not be driving it.
-
-**Arrow crossings ("chaotic routing") are deliberately not checked.** Not
-cheaply reachable from node geometry, and a bad approximation of it would
-be worse than its absence, so docs/TIKZ-STYLE.md keeps it a human
-judgement.
-
-**This package measures; it never places.** Worth stating outright,
-because the opposite is the natural assumption about anything holding
-node coordinates. TikZ owns the layout -- `positioning`, `matrix`, `fit`,
-`trees`, `bend` -- and everything here reads back what it decided. Every
-coordinate enters through one door, `_probe.py`'s `\\pgfpointanchor` /
-`\\pgfgetlastxy` injected into the figure's own picture, and every
-function in `_geometry.py` has the shape
-`dict[str, Box] -> bool | list | float`. None of them returns a position.
-Keep it that way: the moment something here computes where a node ought
-to sit, this stops being a check on TikZ's output and becomes a second,
-worse implementation of it that the real one will silently disagree with.
-
-**The edge list is the point.** Every published PaperBanana diagram
-failure is a wrong or missing edge -- semantics, not layout -- and every
-one is invisible to a check over pixels. In TikZ an edge is
-`\\draw (a) -- (b);`, so it is recoverable from source and reported
-plainly for the author to confirm against the prose the figure
-illustrates. It is the cheapest possible faithfulness check, needs no
-model, and exists only because this pipeline generates source rather than
-images.
+The edge list is the cheapest faithfulness check: diagram failures are
+mostly wrong or missing edges, invisible to any pixel check.
 
 Usage:
     python -m chitragupta.review figure <draft.md>
@@ -65,14 +22,9 @@ Usage:
     python -m chitragupta.review figure <draft.md> --write
 """
 
-# **The thresholds are this module's, not TikZ's and not the standard's.**
-# `_geometry.py`'s `_TOLERANCE_PT` and `_PROTRUSION_BAND_FRACTION` are
-# chosen generously so ordinary layouts pass, and they do shape what
-# passes -- a generously spread two-row diagram trips protrusion with
-# nothing wrong with it. They are calibration for an advisory report, so a
-# finding is a claim to agree or disagree with rather than a number to
-# drive down; docs/AUTO-IMPROVEMENT.md's R3 is the same instinct applied to
-# `emptiness()`, the one continuous value here.
+# The thresholds in `_geometry.py` are this module's calibration for an
+# advisory report, generous so ordinary layouts pass: a finding to agree
+# or disagree with, not a number to drive down.
 
 import argparse
 import json
@@ -129,10 +81,8 @@ from chitragupta.review.figure_layout._source import (
 )
 from chitragupta.help_format import ClickParser
 
-# Re-exported so the aid is one import for a caller and one name in
-# `review.AIDS`, while the three modules behind it stay split by what
-# they need: `_source` compiles nothing, `_geometry` is arithmetic, and
-# only `_probe` shells out to lualatex.
+# Re-exported as one import; `_source` compiles nothing, `_geometry` is
+# arithmetic, and only `_probe` shells out to lualatex.
 __all__ = [
     "BBOX_NAME",
     "Box",
@@ -176,17 +126,9 @@ __all__ = [
 def figures_in(draft_path: Path) -> list[Path]:
     """Every TikZ figure file `draft_path` references, as real paths.
 
-    Deliberately not a second parser. `render_output/_figures.py` already
-    owns both spellings a draft uses -- a Markdown draft's
-    `<!-- figure: ... -->` marker and a `.tex` fragment's real
-    `\\input{...}` -- and `_resolve_sibling()` owns the rule that a
-    draft's own text is never a reason to read outside its own directory.
-    Reusing them means a marker convention changes in one place, not two.
-
-    A reference that does not resolve to a readable file is dropped
-    rather than reported here: `render_output`'s own `_figure_warnings()`
-    already tells the user about a dangling marker, and there is no
-    geometry to check for a figure that is not there.
+    Reuses `render_output/_figures.py`'s marker parsing and sibling-only
+    resolution rather than a second parser. A dangling reference is
+    dropped: `render_output` already warns about it.
     """
     text = draft_path.read_text(encoding="utf-8")
     resolved = (_resolve_sibling(draft_path.parent, ref) for ref in _figure_refs(text))
@@ -196,23 +138,10 @@ def figures_in(draft_path: Path) -> list[Path]:
 def check_draft(draft_path: Path) -> list[FigureResult]:
     """Every figure in `draft_path`, checked as far as this host allows.
 
-    The toolchain is probed once, not once per figure: what this host has
-    installed is one fact, and re-probing it per figure would report the
-    same absence n times. Where it is missing the static checks still run
-    -- that is what the source/geometry split in this package is for.
-
-    **Both halves of the toolchain are probed, and needing both is not
-    obvious.** `_require_tikz()` answers "is `tikz.sty` installed?" and
-    deliberately says *nothing* on a host with no `kpsewhich`, leaving
-    the engine to report a missing package itself -- correct for the
-    renderer, which calls `_require(PDF_ENGINE)` separately right beside
-    it. An aid that called only `_require_tikz()` would sail past a host
-    with no TeX at all and then crash on `FileNotFoundError` from the
-    `subprocess` call. CI's Windows leg installs no `os-deps` and is
-    exactly that host; it caught this.
-
-    A figure whose own TikZ does not compile becomes a finding on that
-    figure and nothing more; the remaining figures are still checked.
+    The toolchain is probed once. Both `lualatex` and `tikz.sty` are
+    required: `_require_tikz()` says nothing without `kpsewhich`, so on a
+    host with no TeX at all (CI's Windows leg) it alone would crash later.
+    A figure that does not compile is a finding on that figure only.
     """
     figures = figures_in(draft_path)
     if not figures:
@@ -228,13 +157,8 @@ def check_draft(draft_path: Path) -> list[FigureResult]:
     return [check_figure(path, skipped) for path in figures]
 
 
-# Said the same way in the text report, the Markdown and the JSON, so a
-# reader of any of the three learns the same thing about the number.
-
-
 def build_parser(parser=None) -> argparse.ArgumentParser:
-    """This aid's flags, declared here so the entry point never restates
-    them -- `citation_coverage.build_parser`'s own contract."""
+    """This aid's flags, declared once for the entry point."""
     if parser is None:
         parser = ClickParser(
             description="Report what a draft's TikZ figures' own geometry says.",
@@ -261,12 +185,9 @@ def main(argv: list[str]) -> int:
 
 
 def run(args: argparse.Namespace) -> int:
-    """**Exits 0 whatever it finds.** An aid that can fail a build is a
-    gate, and `citation_gate.py` is the only one this project has.
-
-    `1` is reserved for a draft the layer will not read at all -- missing,
-    or outside `content/` -- which is the same contract the other three
-    aids apply.
+    """**Exits 0 whatever it finds**: `citation_gate.py` is the only gate.
+    `1` is for a draft the layer will not read (missing, or outside
+    `content/`).
     """
     try:
         draft_path = review.require_reviewable(Path(args.draft))

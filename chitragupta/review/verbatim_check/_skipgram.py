@@ -1,8 +1,5 @@
 """Tier 2: deterministic light-paraphrase detection via stemmed
 skip-grams.
-
-Split out of chitragupta/review/verbatim_check.py (#361) -- see
-chitragupta/review/verbatim_check/_corpus.py's docstring for the split.
 """
 
 from chitragupta import overlap_skipgram, overlap_source_text
@@ -27,31 +24,14 @@ def _skipgram_tier_findings(
     gap: int,
     allowlist: list[tuple[str, ...]],
 ) -> tuple[list[dict], int]:
-    """Tier 2: deterministic light-paraphrase detection via stemmed
-    skip-grams (`chitragupta/overlap_skipgram.py`, #133, the CoReMo design --
-    discussion #115, docs/PLAGIARISM-DESIGN.md). Same shared contract as
-    `_exact_tier_findings` -- `(citekey, diagonal)` grouping, allowlist,
-    `_cites_source` -- against `overlap_skipgram`'s own corpus-wide
-    index instead of the exact tier's.
+    """Tier 2: stemmed skip-grams (`chitragupta/overlap_skipgram.py`, #133,
+    docs/PLAGIARISM-DESIGN.md), under `_exact_tier_findings`' contract
+    against its own corpus index.
 
-    Grouping mirrors `_exact_tier_findings`, but a posting here is a
-    whole `(start, end)` skip-gram window, not a single anchor position:
-    `diagonal` is still `src_pos - draft_start`, computed from each
-    window's own start, and `_merge_spans` (not `_merge_runs`) merges
-    same-diagonal windows, since a skip-gram window's width in original
-    positions varies rather than being fixed at `n`.
-
-    `matched_words` counts only the *family members* an actual matched
-    window touched -- same-parity, non-stopword original positions --
-    not every position `_merge_spans` merged in between, which can
-    include the other family's words and any interposed stopwords
-    (`span_words` already counts those, matching tier 1's own
-    span/matched_words split).
-
-    Advisory only: nothing here or in `overlap_skipgram.py` decides
-    gate-eligibility (a later, separate call, issue #130); this tier
-    ships now because discussion #115 says start advisory and promote
-    with evidence, not because it has been judged safe to block on.
+    A posting is a whole `(start, end)` window, so the diagonal comes from
+    each window's start and `_merge_spans` merges them. `matched_words`
+    counts only family members a matched window touched. Advisory only:
+    gate-eligibility is a separate decision (#130, discussion #115).
     """
     index = overlap_skipgram.build_corpus_index()
     n = index.n
@@ -88,24 +68,13 @@ def _skipgram_findings_from_groups(
     paragraph_citekeys: list[set[str]],
     citekeys_at_position: dict[int, set[str]],
 ) -> tuple[list[dict], int]:
-    """Merge each `(citekey, diagonal)` group's spans, drop anything the
-    allowlist or `min_run` rules out, and build a finding for what's
-    left. Extracted out of `_skipgram_tier_findings` for the same reason
-    as `_exact_findings_from_groups`.
+    """Merge each `(citekey, diagonal)` group's spans, drop what the
+    allowlist or `min_run` rules out, and build the rest.
 
-    **One finding per id** (#180). Grouping is by `(citekey, diagonal)`,
-    but a finding's identity is `(citekey, page, fragment)` -- no
-    diagonal in it -- and the two do not agree: a source table whose
-    values repeat puts the *same* draft window at several `src_pos`, so
-    the same window lands in several `(citekey, diagonal)` groups, each
-    of which then merges to the same draft span against the same source
-    page and builds a finding with the same id. #180 measured 190 raw
-    findings resolving to 125 unique ids on one real run, and the
-    duplicates inflated the benchmark's own precision arithmetic, which
-    sums labels over the raw list. Traced against a repeating source
-    block, the colliding findings were identical in every published
-    field, not merely in their id, so keeping the first one seen
-    discards nothing.
+    **One finding per id** (#180): a repeating source table puts the same
+    window on several diagonals, yielding findings identical in every
+    published field, which inflated benchmark precision. Keeping the
+    first discards nothing.
     """
     findings = []
     seen_ids = set()
@@ -144,14 +113,8 @@ def _skipgram_findings_from_groups(
 def _skipgram_citekeys_at_positions(
     groups: dict[tuple[str, int], list[tuple[int, int, int]]],
 ) -> dict[int, set[str]]:
-    """Same purpose as `_citekeys_at_positions` (tier 1), reshaped for
-    tier 2's `(start, end, page)` span postings instead of single
-    positions: every original position some matched skip-gram window
-    covers maps to the citekeys with a matching window there.
-
-    Extracted out of `_skipgram_tier_findings` so this loop's own
-    nesting does not also count against that function's complexity.
-    """
+    """Tier 2's `_citekeys_at_positions`, over `(start, end, page)` span
+    postings."""
     citekeys_at_position = {}
     for (citekey, _diagonal), spans in groups.items():
         for start_j, end_j, _page in spans:
@@ -163,14 +126,8 @@ def _skipgram_citekeys_at_positions(
 def _skipgram_matched_positions(
     members: list[tuple[int, int, int]], word_strs: list[str]
 ) -> set[int]:
-    """Same-parity, non-stopword original positions an actual matched
-    skip-gram window touched -- the real evidence `matched_words` counts,
-    as opposed to every position `_merge_spans` merged in between (which
-    can include the other family's words and any interposed stopwords).
-
-    Extracted out of `_skipgram_tier_findings` for the same reason as
-    `_skipgram_citekeys_at_positions`.
-    """
+    """Same-parity, non-stopword positions a matched window touched: the
+    evidence `matched_words` counts, not everything merged in between."""
     matched_positions = set()
     for m_start, m_end, _page in members:
         parity = m_start % 2
@@ -194,9 +151,7 @@ def _skipgram_finding(
     paragraph_citekeys: list[set[str]],
     citekeys_at_position: dict[int, set[str]],
 ) -> dict:
-    """The finding dict for one merged skip-gram-tier span. Mirrors
-    `_exact_finding`'s role for tier 1 -- extracted for the same reason.
-    """
+    """The finding dict for one merged skip-gram-tier span."""
     matched_positions = _skipgram_matched_positions(members, word_strs)
     run_words = words[start:end]
     char_start, char_end = run_words[0].char, run_words[-1].char_end
@@ -224,32 +179,13 @@ def _skipgram_finding(
         "cites_source": cites_source,
         "quoted": _run_is_quoted(run_words),
         "tier": "skip-gram",
-        # 1-based, like `line` and unlike the 0-based `p_idx` the
-        # tokenizer works in: this is a locator a person reads, and
-        # "paragraph 0" is not how anyone counts paragraphs. Computed in
-        # every tier and thrown away until now -- `run_paragraphs` was
-        # built only to answer `_cites_source` -- though it is the
-        # coarsest and most durable locator a finding has. `line` and
-        # `char_start` both move when anything above the run is edited;
-        # a paragraph number survives ordinary revision, which is what a
-        # reader holding a report next to a changed draft needs.
+        # 1-based; survives edits above the run that move `line`.
         "paragraph": min(run_paragraphs) + 1,
         "end_paragraph": max(run_paragraphs) + 1,
-        # `None`, not absent and not 0.0: every tier's finding has to
-        # carry every published field (`published` projects
-        # `_PAYLOAD_FIELDS` with a hard `KeyError`, deliberately), and a
-        # deterministic tier has no similarity score to report. Zero
-        # would read as "aligned, badly", which is a different claim
-        # from "this tier does not measure that".
+        # `None`, not 0.0: this deterministic tier has no similarity score.
         "score": None,
-        # Unlike tier 1, this tier *does* have a second side worth
-        # showing. A stemmed-subsequence match fires precisely where the
-        # two texts do not read alike -- a substituted word, an
-        # inflection, a reordering -- so `fragment` is the draft's
-        # wording and the source's is something else. The span is
-        # recovered from the group's own diagonal, which is
-        # `src_pos - draft_pos` and therefore constant across the whole
-        # merged run: the source positions are the draft's shifted by it.
-        # `None` when the parsed text is gone (see `source_span`).
+        # Unlike tier 1, a stemmed match means the wording differs, so the
+        # source side is recovered via the constant diagonal; `None` when
+        # the parsed text is gone.
         "source_text": overlap_source_text.source_span(citekey, start + diagonal, end + diagonal),
     }

@@ -55,7 +55,7 @@ first build.
 
 ### ⚖ CPU-only vs. GPU-capable: `TORCH_VARIANT`
 
-`torch` has only a floor in `pyproject.toml` (see that file's own
+`torch` has a floor and a cap in `pyproject.toml` (see that file's own
 comment). `uv.lock` resolves whatever plain PyPI's default Linux
 wheel currently is, and that wheel bundles the full CUDA runtime as
 separate `nvidia-*` packages (`cublas`, `cudnn`, `nccl`, `triton`, ...)

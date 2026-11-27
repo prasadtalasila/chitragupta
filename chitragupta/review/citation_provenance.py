@@ -1,33 +1,13 @@
 """Citation provenance report: for each citation in a draft, what in the
 cited source supports it, and where.
 
-`citation_gate` answers "is this citekey real?" -- exactly, as a hard
-gate. This answers the question that comes next and can't be answered
-exactly: *does the cited paper actually say this?* A claim that drifted
-away from its source during drafting passes the gate cleanly, because
-the citekey is real; only reading the source catches it.
-
-One of the review layer's aids (`chitragupta/review/_registry.py`'s
-`AIDS` names them all) -- read over a
-finished draft, by a person or by a driver, never a gate, and never
-holding the write lock.
-chitragupta/review/__init__.py owns what the seven have in common: where
-the report goes (`content/review/`, mirroring the draft's path) and what its header looks like.
-
-Not a gate, and for a concrete reason. Matching is lexical, so it cannot separate "the source
-doesn't say this" from "the source says it in words I didn't recognise".
-A check that blocked on that distinction would train people to work
-around it, which is exactly the corrosion citation_gate avoids by only
-ever asserting something it can verify exactly.
-
-Passages come from `chitragupta/passages.py`, which owns the sidecar -> pages ->
-`pdftotext` ladder and the rule that a source with no reading order
-reports a page rather than a quotation. This module scores claims
-against whatever that ladder hands back; it no longer decides where the
-text comes from.
-
-Stdlib only (sqlite3/re), like citation_gate.py and references.py --
-runs with bare `python`, no venv.
+`citation_gate` answers "is this citekey real?" exactly; this answers
+"does the cited paper say this?", which a drifted claim with a real
+citekey passes. Not a gate: lexical matching cannot tell "the source
+doesn't say this" from "it says it in other words", and a check blocking
+on that would train people to work around it. Passages come from
+`chitragupta/passages.py`'s ladder, which also decides when a source
+reports a page rather than a quotation. Stdlib only.
 
 Usage:
     python -m chitragupta.review provenance content/drafts/<slug>.md
@@ -67,30 +47,11 @@ class Report:
 def claims(draft_text: str, *, latex: bool = False) -> list[tuple[int, str, str]]:
     """(line number, citekey, the text carrying it) for every citation.
 
-    That text is whatever unit actually makes a claim where the citation
-    sits: the citing **sentence** in prose, the citing **row** in a table,
-    the citing **item** in a list, the **heading** itself when the
-    citation is in one. It is never the raw line the citekey sits on, and
-    never a whole paragraph.
-
-    Both of those were tried. Reading the *line* fails because every draft
-    this project produces is hard-wrapped, so a sentence spans three or
-    four lines and the citation lands on whichever one happens to hold it
-    -- yielding fragments like "." or ", or equivalently as combinations
-    of", which score against nothing. Reading the whole *paragraph* fails
-    the other way: a paragraph citing three papers scores identically
-    against all three, telling a reviewer nothing about which citation is
-    the weak one.
-
-    So the unit is the block (`_blocks.spans`), then the sentence within it
-    (`_claim_sentence.sentence_around`). That matters because a table or a list is one
-    blank-line paragraph containing no sentence boundary at all: reading
-    it whole quoted the entire table back as the claim, once per citekey
-    in it, and scored every row against the whole table's vocabulary --
-    the same identical-claims failure one level up. Blocks are recognised
-    in Markdown and in LaTeX, since every genre skill exports `.tex` and
-    `.pdf` beside the `.md`. Ordinary prose is unaffected: it is one
-    block, read exactly as before.
+    The text is the citing sentence, table row, list item or heading: the
+    block (`_blocks.spans`), then the sentence in it
+    (`_claim_sentence.sentence_around`). The raw line was tried and yields
+    fragments, since drafts are hard-wrapped; the whole paragraph was
+    tried and scores all its citations identically.
     """
     lines = draft_text.splitlines()
     spans = _blocks.spans(lines)
@@ -106,14 +67,9 @@ def claims(draft_text: str, *, latex: bool = False) -> list[tuple[int, str, str]
 
 def score_claim(claim: str, passages: list[Passage]) -> tuple[float, Passage | None]:
     """Best lexical-overlap score over `passages`, and the passage that
-    achieved it.
-
-    Overlap rather than verbatim n-grams: a correct paraphrase keeps most
-    of its content words while changing order and function words, so it
-    scores well here and scores *zero* under the >=8-word exact runs that
-    chitragupta/review/verbatim_check/'s `overlap` mode uses. That mode is looking
-    for borrowed wording; this one is looking for support, and paraphrase
-    is the normal case rather than the exception.
+    achieved it. Overlap rather than verbatim n-grams: a correct paraphrase
+    keeps its content words but scores zero on `verbatim_check`'s exact
+    runs, and paraphrase is the normal case.
     """
     wanted = distinctive(claim)
     if not wanted or not passages:
@@ -129,13 +85,8 @@ def score_claim(claim: str, passages: list[Passage]) -> tuple[float, Passage | N
 
 def build_report(draft_path: Path) -> Report:
     text = draft_path.read_text(encoding="utf-8")
-    # The path, not `.name`. It was the bare filename while every report
-    # landed flat in one directory and the title was decoration; now that
-    # reports mirror the draft's path, two drafts named `survey.md` in
-    # different topics would produce headers that read identically -- the
-    # exact confusion the mirroring exists to prevent, reintroduced inside
-    # the file. It also makes the recorded command re-runnable, which
-    # `survey.md` alone is not.
+    # The path, not `.name`: two topics' `survey.md` would otherwise share
+    # a header, and the recorded command would not re-run.
     report = Report(draft=Path(draft_path))
     with ledger.reading() as con:
         cache: dict[str, list[Passage]] = {}
@@ -157,18 +108,14 @@ def build_report(draft_path: Path) -> Report:
                     note=note,
                 )
             )
-    # Worst first: the report should open on what deserves attention,
-    # not make a reviewer read forty entries to find three.
+    # Worst first, so the report opens on what deserves attention.
     report.findings.sort(key=lambda f: (f.score, f.line))
     return report
 
 
 def _command(draft_path: Path, as_json: bool) -> str:
-    """The invocation recorded in the JSON payload's envelope.
-
-    `--formats` is left out, matching `citation_coverage._command`'s own
-    exclusion: it selects renders *of* the report and changes nothing in
-    the payload or the Markdown it describes.
+    """The invocation recorded in the JSON envelope; `--formats` is left
+    out, as it changes nothing in the payload.
     """
     parts = ["python", "-m", "chitragupta.review", "provenance", str(draft_path)]
     if as_json:
@@ -176,31 +123,14 @@ def _command(draft_path: Path, as_json: bool) -> str:
     return shlex.join(parts)
 
 
-# `run()` calls this rather than repeating its body (#515/m-90). It used
-# to inline the same `review.write(...)`, which left the only caller of
-# this function in the test suite -- two spellings of one path, and the
-# tested one not the one that ships.
-#
-# `report` is the already-built report, passed by `run()` because it needs
-# the same one for the JSON payload; omitted, this builds it. Building it
-# twice is the only thing the shared path would otherwise cost, and
-# `build_report` walks every cited source.
-#
-# The constraint the parameter carries: it must be
-# `build_report(draft_path)` for *this same* `draft_path`, built now. A
-# stale or foreign one would write a report to this draft's path
-# describing a different draft -- which is exactly the shape this aid
-# exists to catch in someone else's prose.
+# Shared with `run()` (#515/m-90), which passes its already-built `report`
+# to avoid walking every source twice. It must be `build_report(draft_path)`
+# for this same draft, built now: a foreign one would file a report on the
+# wrong draft, the very shape this aid exists to catch.
 def write_report(
     draft_path: Path, formats: list[str], report: "dict | None" = None
 ) -> dict[str, Path]:
-    """Writes the report and returns {format: path} for what succeeded.
-
-    The report lands in `content/review/`, mirroring the draft's own
-    place under `content/drafts/`, with its `.tex`/`.pdf` renders beside
-    it -- `chitragupta/review/__init__.py` owns both the path and the degrade-on-missing-
-    binary behaviour, shared with the other two review aids.
-    """
+    """Writes the report and returns {format: path} for what succeeded."""
     return review.write(
         draft_path,
         "provenance",
@@ -212,13 +142,7 @@ def write_report(
 
 
 def build_parser(parser=None) -> argparse.ArgumentParser:
-    """This aid's flags.
-
-    `parser` is passed by chitragupta/review/__main__.py, which has already
-    created the `provenance` subparser and needs the flags hung off
-    *that* -- so they are declared once, here, and the entry point never
-    restates them.
-    """
+    """This aid's flags, hung off the subparser `__main__` created."""
     if parser is None:
         parser = ClickParser(
             description="Report what in each cited source supports the claim citing it.",
@@ -242,16 +166,9 @@ def main(argv: list[str] | None = None) -> int:
 def run(args: argparse.Namespace) -> int:
     """Dispatch already-parsed arguments.
 
-    Split from main() so chitragupta/review/__main__.py can hand over the args it
-    parsed with this module's own build_parser(), rather than re-slicing
-    argv and parsing it twice.
-
-    The `.json` sibling is filed unconditionally, matching the `.md`'s own
-    always-write policy (this aid, unlike the other two, was never
-    print-only) -- `--json` only decides what prints to stdout instead of
-    the written-files summary. Under `--json` that summary moves to
-    stderr, so `provenance --json > findings.json` stays a valid JSON
-    file, the same discipline `verbatim scan --json` follows.
+    The `.md` and `.json` are filed unconditionally; `--json` only decides
+    stdout, moving the written-files summary to stderr so
+    `provenance --json > findings.json` stays valid JSON.
     """
     try:
         draft_path = review.require_reviewable(Path(args.draft))

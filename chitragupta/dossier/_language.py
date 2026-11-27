@@ -1,10 +1,5 @@
 """`dossier set-language`: recording a draft's dialect tag so
 `chitragupta.draft style` can check prose against it.
-
-Split out of chitragupta/dossier.py (#219). The smallest submodule in the
-package -- kept separate from `_cli` anyway, rather than folded in,
-because every other command already gets its own module and a single
-exception would just be a different inconsistency to explain later.
 """
 
 import re
@@ -14,12 +9,8 @@ from pathlib import Path
 from chitragupta import config
 from chitragupta.dossier import SCOPE_MD, dossier_dir
 
-# A BCP-47 tag's shape, not a list of the ones this repo can check. The
-# dossier records what a human declared; `chitragupta.draft style` decides
-# separately which declarations it has rules for, and says so when it has
-# none. Validating against the checker's list here would stop someone
-# recording a true fact about their draft merely because no rule exists
-# for it yet.
+# A BCP-47 tag's shape, not the checker's list: a true declaration must
+# be recordable before any style rule exists for it.
 _LANGUAGE_TAG = re.compile(r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$")
 
 
@@ -29,11 +20,8 @@ _LANGUAGE_LINE = re.compile(r"^- language:.*$", re.MULTILINE)
 def set_language(draft: Path, tag: str) -> Path:
     """Record `tag` as the draft's dialect in its dossier `scope.md`.
 
-    Replaces the line if one is there -- including the "not settled"
-    placeholder `init` ships -- and inserts it after `- genre:` if not,
-    which is where the template puts it and where a reader looks. Every
-    dossier written before 5.12.0 lacks the line entirely, so the insert
-    path is the common one rather than the edge.
+    Replaces the line (including `init`'s placeholder), else inserts it
+    after `- genre:`; older dossiers lack it, so the insert is common.
     """
     if not _LANGUAGE_TAG.match(tag):
         raise ValueError(

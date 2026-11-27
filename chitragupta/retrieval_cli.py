@@ -1,29 +1,11 @@
 """`evidence`, and `python -m chitragupta.draft retrieve`.
 
-Split from `chitragupta/retrieval.py` (#441), where this was its own
-"Zooming in on one document" section plus its own CLI banner. Grouped
-together here for the same reason they were grouped there: `search`
-answers "which documents, and roughly why"; `evidence` answers "what in
-*this* paper actually bears on my query?" for a document already worth
-the attention, and is a lookup rather than a mandatory stage --
-docs/REJECTION.md has the full reckoning for why an earlier, mandatory
-`triage` pass was rejected in favour of this shape. `search` itself, and
-the window chooser `_windows` it shares with `evidence` through
-`_snippet`, stay in `chitragupta/retrieval.py`: both are needed there
-independent of anything below, so this module imports them rather than
-the other way around. `retrieval.py` re-exports `main` from here (at the
-bottom of that file, after `search`/`_windows`/`_full_text` are already
-defined) so `chitragupta/draft.py`'s `retrieval.main(argv)` dispatch keeps
-working unchanged.
-
-Its own entrypoint rather than the `python -c "from chitragupta import
-retrieval; [print(r.citekey, r.snippet) for r in ...]"` one-liner the
-skills used to carry. Three reasons, all about the caller's context
-rather than convenience: the one-liner's output shape was whatever the
-author of each skill happened to write, `--log` needs somewhere to
-hang, and a `--chars` flag with a documented default is a much more
-obvious knob than an argument buried in a shell-quoted Python
-expression.
+`search` ranks documents; `evidence` is an optional lookup inside one
+already worth attention (docs/REJECTION.md says why a mandatory `triage`
+pass was rejected). `search` and `_windows` stay in `retrieval.py`, which
+re-exports `main` from here at its bottom so `draft.py`'s dispatch works.
+A real entrypoint replaced the skills' `python -c` one-liners so the
+output shape, `--log` and `--chars` are documented.
 """
 
 import sqlite3
@@ -53,27 +35,16 @@ def evidence(
 ) -> list[str]:
     """The passages of one document that bear on `query`.
 
-    A lookup for one document you already care about, not a stage
-    anything is obliged to run: use it when a `search` snippet is not
-    enough to judge a source you are minded to cite. Returns more text
-    per document than a snippet, chosen for the query. A citekey whose
-    PDF never parsed raises `KeyError`, as a missing one does (#1118): it
-    has no text to read and may not be cited, so `search` never offers
-    it. A parsed row whose text file is gone still returns `[]`.
-
-    Deliberately reads `parsed_path` rather than going through
-    `chitragupta/passages.py`: this ranks the same text BM25 ranked, so what
-    comes back is what the score was about. `passages.py` owns the
-    quotable-paragraph/page ladder that `citation_provenance` needs to
-    *attribute* a claim -- a different question, asked after drafting.
+    Use it when a `search` snippet is not enough to judge a source. An
+    unparsed citekey raises `KeyError`, like a missing one (#1118); a
+    parsed row whose text file is gone returns `[]`. Reads `parsed_path`,
+    not `passages.py`, so the text is what BM25 ranked.
     """
-    # The citekey is checked before the query, so that naming a key the
-    # ledger doesn't have is reported as the caller error it is even when
-    # the query happens to tokenize to nothing.
+    # The citekey is checked first, so an unknown key is reported even
+    # when the query tokenizes to nothing.
     with ledger.reading() as con:
-        # row_factory set and cleared around the read, matching
-        # ledger.all_items: a connection leaves rows as tuples, and
-        # _full_text addresses its columns by name.
+        # Set and cleared around the read, as in ledger.all_items:
+        # _full_text addresses columns by name.
         con.row_factory = sqlite3.Row
         row = con.execute(
             "SELECT title, parsed_path, status FROM items WHERE citekey = ?", (citekey,)
@@ -186,8 +157,7 @@ def _build_parser() -> Any:
 
 def _run_evidence(args) -> "tuple[int, int] | None":
     """The evidence subcommand: prints the passages and returns
-    (results, chars), or None for a citekey it had to refuse (already
-    reported to stderr)."""
+    (results, chars), or None for a refused citekey (already reported)."""
     try:
         passages = evidence(args.citekey, args.query, args.chars, args.windows)
     except KeyError as exc:
@@ -204,12 +174,9 @@ def _run_evidence(args) -> "tuple[int, int] | None":
 
 
 def _run_search(args) -> tuple[int, int]:
-    """The search subcommand: prints the ranking and returns
-    (results, chars)."""
+    """The search subcommand: prints the ranking, returns (results, chars)."""
     if args.unit == "passage":
-        # `--y-prev` with this unit is already refused in `main` -- it has
-        # to be, since a refusal needs an exit code and this returns a
-        # (results, chars) pair -- so by here the combination cannot occur.
+        # `--y-prev` with this unit was refused in `main`, which can exit.
         from chitragupta import retrieval_passages_cli
 
         return retrieval_passages_cli.run(args)
@@ -242,14 +209,10 @@ def _log_call(args, results: int, chars: int, expanded: str) -> None:
     from chitragupta import dossier
 
     try:
-        # The logged `k` is "how much was asked for", which is `--k`
-        # for the ranking modes and `--windows` for `evidence` --
-        # `evidence` has no `--k`, and logging a bare 1 there put a
-        # number in the column that meant nothing.
+        # The logged `k` is how much was asked for: `--windows` for
+        # `evidence`, which has no `--k`.
         asked_for = args.windows if args.command == "evidence" else args.k
-        # `--collection` is a `search`-only flag (`evidence` zooms into a
-        # citekey already chosen, not a ranking to narrow), so `evidence`'s
-        # args namespace never gets the attribute at all.
+        # `--collection` is `search`-only, absent from `evidence`'s args.
         path = dossier.log_retrieval(
             Path(args.log),
             args.command,
@@ -262,32 +225,17 @@ def _log_call(args, results: int, chars: int, expanded: str) -> None:
             expanded=expanded,
         )
     except (dossier.DossierError, OSError) as exc:
-        # A measurement is worth less than the retrieval it measures:
-        # report and carry on rather than failing the search. OSError
-        # is caught alongside DossierError because the failure this
-        # has to survive is not only "that path isn't a draft" -- a
-        # read-only content/, a full disk or a permissions problem
-        # would otherwise let a bookkeeping write throw away results
-        # the caller has already paid to compute.
+        # A measurement is worth less than the retrieval it measures, so
+        # a failed write (OSError too: read-only content/, full disk) is
+        # reported, never allowed to discard paid-for results.
         print(f"  [not logged] {exc}", file=sys.stderr)
     else:
         print(f"  Logged to {path}")
 
 
-# Single-character, not 1-2 character, since #790 lowered
-# `retrieval._tokenize`'s floor to 2: "AI" and "5G" rank now, and naming
-# one here would send a reader hunting for a cause that is not there.
-# `retrieval.short_query_terms` reads the number from `_tokens.INDEX`;
-# this only prints what it returns, so the two cannot disagree. Said as a comment rather than in
-# the docstring below because this module sits at
-# docs/CODE-STANDARDS.md's 250-line ceiling and comments do not count.
-# Names any single-character query word that ranking can never see. A
-# query built entirely from such terms returns empty with nothing in that
-# result to explain why; a mixed query silently drops just the short
-# ones. Either way the reader making sense of the result deserves to know
-# before they conclude the corpus has nothing on the topic. Written as a
-# comment rather than the docstring it was, for the ceiling this module
-# sits at -- the same trade the paragraph above makes.
+# Names any single-character query word, which ranking can never see
+# (the floor is 2 since #790), so an empty or thinned result is explained.
+# The number comes from `retrieval.short_query_terms`, so the two agree.
 def _warn_of_short_terms(query: str) -> None:
     dropped = short_query_terms(query)
     if dropped:
@@ -300,8 +248,8 @@ def _warn_of_short_terms(query: str) -> None:
 def main(argv: "list[str] | None" = None) -> int:
     args = _build_parser().parse_args(argv)
 
-    # Asked up front, so an absent ledger -- or one needing a sync --
-    # is refused before any note about the query is printed.
+    # Asked up front, so a missing or unsynced ledger is refused before any
+    # note about the query.
     try:
         ledger.read_connection().close()
     except ledger.NoLedger as exc:
@@ -309,22 +257,13 @@ def main(argv: "list[str] | None" = None) -> int:
         return 1
 
     _warn_of_short_terms(args.query)
-    # The other half of "what happened to your query before it was
-    # ranked": the terms acronym expansion (#789) and spelling correction
-    # (#1232) added. Announced
-    # rather than left to the score, because a result that surfaced on a
-    # word the caller never typed is the one they would otherwise have no
-    # way to explain. The same string goes to `--log`, so the note and
-    # `retrieval.md`'s `expanded` column cannot disagree, and both read
-    # the entries every subcommand ranks on (`query_terms`, #953), bar
-    # `--y-prev`'s appended prose (see `query_terms`). Silent
-    # when nothing was added.
+    # Announce words added by acronym expansion (#789) and spelling (#1232):
+    # a result surfacing on an untyped word is otherwise inexplicable. The
+    # same string goes to `--log` (`query_terms`, #953).
     expanded = retrieval_added.announce(query_terms(args.query)[1])
 
-    # Refused rather than quietly ignored: --y-prev merges two rounds on
-    # citekey and caps back to --k, and the passage unit changes what
-    # that merge key means (two passages of one paper are two results
-    # here, one result there). Making it work is its own decision.
+    # Refused, not ignored: --y-prev merges on citekey, and passages make
+    # that key mean something else. Making it work is its own decision.
     if getattr(args, "unit", None) == "passage" and args.y_prev:
         print("[error] --y-prev is document-unit only; drop --unit passage.", file=sys.stderr)
         return 1

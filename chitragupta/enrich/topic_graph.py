@@ -1,39 +1,15 @@
-"""The topic-graph stage, sixth and last in the enrich pipeline: how
-the corpus's topics relate.
+"""The topic-graph stage, last in STAGE_ORDER: how the corpus's topics
+relate, written to `content/topic_graph.json` so `corpus discover` never
+computes an edge itself.
 
-(Unnumbered on purpose: the older stage docstrings carry historic
-numbers with a gap at 2, so "sixth" names the position in STAGE_ORDER
-without extending a numbering that no longer matches the list.)
-
-`content/topic_set.json` answers "which papers is this topic about?".
-Nothing answered "which topics sit near this one?", which is the
-question a reader walking the corpus actually asks next. This stage
-derives that answer and writes it to `content/topic_graph.json`, so the
-tier-1 reader (`corpus discover`) never computes an edge itself.
-
-Two typed edge families, never merged into one score, because they
-answer different questions and their disagreement is itself a signal:
-
-- **Overlap edges** are set arithmetic on shared members, kept only
-  when the shared count is statistically surprising (hypergeometric
-  tail against the corpus size). Each edge carries both Jaccard and the
-  overlap coefficient -- Jaccard punishes a small topic nested inside a
-  large one, which Theme G's rank-truncated seed topics make routine --
-  and names the shared citekeys, so every edge is explainable.
-- **Semantic edges** are average best-match cosine between the two
-  member sets, in the same mean-centred space `topic_descriptors` uses
-  and for the same measured reason. Best-match rather than
-  centroid-to-centroid because HDBSCAN clusters are non-convex and a
-  non-convex cluster's centroid can sit outside it. Kept only between
-  mutual top-k neighbours, and each edge names its closest bridging
-  pair of papers.
-
-The artefact also stores each topic's centred centroid, the corpus
-mean (so a reader can move a query embedding into the same space
-without the embed cache), and an agglomerative merge tree over the
-centroids for a hierarchy view. Like `converge`, this stage re-runs
-nothing: it reads what the earlier stages wrote, does arithmetic, and
-refuses when the recorded embedding model is not the configured one.
+Two typed edge families, never merged, since their disagreement is a
+signal: **overlap edges** (shared members kept only when hypergeometrically
+surprising, with Jaccard and the overlap coefficient, since Jaccard
+punishes a small topic nested in a large one) and **semantic edges**
+(average best-match cosine in `topic_descriptors`' mean-centred space,
+not centroid-to-centroid since HDBSCAN clusters are non-convex; mutual
+top-k only). Also stores centred centroids, the corpus mean and a merge
+tree. Re-runs nothing, and refuses a mismatched embedding model.
 """
 
 import itertools
@@ -48,14 +24,9 @@ from chitragupta.enrich.topic_paths import next_hop_matrices
 
 def _overlap_scan(members: dict, n_docs: int, p_value: float) -> "tuple[list, list]":
     """One pass over every sharing pair, split by the gate: the drawn
-    edges, and the withheld rows `{a, b, shared, p_value}` -- §7.7's
-    `edges_withheld`, bounded by construction to pairs sharing at least
-    one paper. Withheld rows carry no jaccard or overlap coefficient:
-    the gate judged the pair not an edge, and strength numbers on a
-    non-edge would invite reading it as one.
-
-    Pure set arithmetic over `{label: set_of_citekeys}` so it can be
-    driven with hand-picked sets; the caller decides what a member is.
+    edges, and the withheld rows `{a, b, shared, p_value}` (§7.7's
+    `edges_withheld`). Withheld rows carry no strength numbers, which
+    would invite reading a non-edge as an edge.
     """
     from scipy.stats import hypergeom
 
@@ -65,9 +36,7 @@ def _overlap_scan(members: dict, n_docs: int, p_value: float) -> "tuple[list, li
         shared = members[a] & members[b]
         if not shared:
             continue
-        # The tail probability of drawing at least this many of a's
-        # members when |b| papers are drawn from the corpus at random:
-        # small means the overlap is affinity, not arithmetic.
+        # Small tail probability means affinity, not arithmetic.
         p = float(hypergeom.sf(len(shared) - 1, n_docs, len(members[a]), len(members[b])))
         if p >= p_value:
             withheld.append({"a": a, "b": b, "shared": sorted(shared), "p_value": p})
@@ -103,19 +72,15 @@ def _best_match(rows_a, rows_b) -> "tuple[float, int, int]":
     cosines = rows_a @ rows_b.T
     forward = cosines.max(axis=1).mean()
     backward = cosines.max(axis=0).mean()
-    # divmod on the flat argmax, not np.unravel_index: identical result
-    # for a 2-D array, and pylint cannot misread a stdlib divmod the way
-    # it misreads unravel_index's tuple with numpy set as ignored.
+    # divmod, not np.unravel_index, which pylint misreads with numpy ignored.
     i, j = divmod(int(cosines.argmax()), cosines.shape[1])
     return float((forward + backward) / 2), int(i), int(j)
 
 
 def semantic_edges(vectors: dict, neighbors: int) -> list:
     """Semantic edges: `{a, b, similarity, bridge}` between mutual
-    top-k neighbours, over `{label: {citekey: vector}}`.
-
-    The bridge is the closest citekey pair across the edge -- the two
-    papers a reader should open to see why the topics sit together.
+    top-k neighbours, over `{label: {citekey: vector}}`; the bridge is the
+    closest citekey pair across the edge.
     """
     import numpy as np
 
@@ -124,11 +89,8 @@ def semantic_edges(vectors: dict, neighbors: int) -> list:
     for label in labels:
         keys = sorted(vectors[label])
         rows = np.asarray([vectors[label][k] for k in keys], dtype=float)
-        # A zero row is real, not hypothetical: in a one-document corpus
-        # the centred vector is exactly zero. Dividing by its norm would
-        # spread NaN through every similarity and json.dumps would emit
-        # them as bare NaN tokens -- invalid JSON. A zero vector instead
-        # scores 0 against everything, which is the honest answer.
+        # A zero row is real (a one-document corpus centres to zero), and
+        # dividing by its norm would emit NaN, which is invalid JSON.
         norms = np.linalg.norm(rows, axis=1, keepdims=True)
         rows = rows / np.where(norms == 0.0, 1.0, norms)
         normalised[label] = (keys, rows)
@@ -140,15 +102,11 @@ def semantic_edges(vectors: dict, neighbors: int) -> list:
         similarity, i, j = _best_match(rows_a, rows_b)
         scored[(a, b)] = (similarity, [keys_a[i], keys_b[j]])
 
-    # Each topic's neighbours, best first; an edge survives only when
-    # each end ranks the other within its top k.
+    # An edge survives only when each end ranks the other in its top k.
     ranked = {
         label: sorted(
             (other for other in labels if other != label),
-            # `this=label` binds per iteration; a bare closure over
-            # `label` would be pylint's cell-var-from-loop, and although
-            # each key is consumed inside its own iteration here, the
-            # explicit binding costs nothing and cannot rot into the bug.
+            # `this=label` avoids pylint's cell-var-from-loop.
             key=lambda other, this=label: -scored[tuple(sorted((this, other)))][0],
         )[:neighbors]
         for label in labels
@@ -165,9 +123,8 @@ def hierarchy(labels: list, centroids: list) -> list:
     distance}` records, closest merge first, later merges free to name
     an earlier merge's id.
 
-    Not BERTopic's `hierarchical_topics()`: that needs the fitted model
-    no stage persists, and covers emergent topics only -- a centroid
-    exists for every topic here, seed and emergent alike.
+    Not BERTopic's `hierarchical_topics()`: it needs the unpersisted
+    fitted model and covers emergent topics only.
     """
     if len(labels) < 2:
         return []
@@ -191,8 +148,7 @@ def hierarchy(labels: list, centroids: list) -> list:
 
 def build(topic_set: dict, vectors: dict, p_value: float, neighbors: int) -> dict:
     """The whole artefact, from a converged topic set and document
-    vectors. Centring happens here, once, so every consumer -- edges,
-    centroids, the stored corpus mean -- speaks the same space.
+    vectors. Centred once here, so every consumer speaks the same space.
     """
     import numpy as np
 
@@ -253,10 +209,8 @@ def build(topic_set: dict, vectors: dict, p_value: float, neighbors: int) -> dic
 def run_topic_graph(docs) -> dict:
     """Derive the graph and write `content/topic_graph.json`.
 
-    Raises when `content/topic_set.json` is absent rather than
-    converging on your behalf, for the same reason `converge` refuses
-    to cluster: a stage that silently did the previous stage's work
-    would be a different stage wearing this one's name.
+    Raises when `content/topic_set.json` is absent: it never does the
+    previous stage's work.
     """
     if not config.TOPIC_SET_PATH.exists():
         raise ValueError(
@@ -264,12 +218,9 @@ def run_topic_graph(docs) -> dict:
             "this stage relates the topics it produced and creates none itself."
         )
     topic_set = json.loads(config.TOPIC_SET_PATH.read_text(encoding="utf-8"))
-    # The vectors below are re-embedded under *today's* config; pairing
-    # them with a topic set built under another model *or pooling
-    # method* would produce plausible-looking, meaningless edges -- the
-    # same trap converge documents at its own check. A topic set from
-    # before the method stamp existed fails this too, deliberately:
-    # "re-run converge" is cheap and certain, guessing is neither.
+    # Refuse a topic set from another model *or pooling method* (or one
+    # predating the method stamp): pairing gives meaningless edges, and
+    # re-running converge is cheap and certain.
     if (
         topic_set.get("model") != config.EMBEDDING_MODEL
         or topic_set.get("embedding_method") != doc_vectors.EMBED_METHOD
@@ -289,9 +240,8 @@ def run_topic_graph(docs) -> dict:
 
 
 def run_stage(docs) -> dict:
-    """`run_topic_graph()` shaped as an enrichment-stage result --
-    `skipped` when converge has not run, matching every other stage's
-    sequencing-mistake-is-not-an-error posture."""
+    """`run_topic_graph()` shaped as an enrichment-stage result:
+    `skipped` when converge has not run."""
     if not config.TOPIC_SET_PATH.exists():
         return {
             "status": "skipped",

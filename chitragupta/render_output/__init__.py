@@ -1,77 +1,25 @@
 """Stage 7: Pandoc/LaTeX rendering of generated Markdown into PDF/DOCX.
 
-Needs the `pandoc` and TeX Live binaries (apt packages, not pip -- not
-installable via pyproject.toml/uv or any other venv mechanism). A pdf is
+Needs the `pandoc` and TeX Live binaries (apt packages, not pip); a pdf is
 LuaLaTeX with the fonts `install_full_pipeline.sh os-deps` installs (#996).
-Where they aren't, this stage fails cleanly with MissingBinary
-rather than hanging or stack-tracing -- see docker/Dockerfile for a
-target that installs them when the host doesn't have root.
+Without them this fails cleanly with MissingBinary (docker/Dockerfile
+installs them on a host without root).
 
-Every genre-skill draft cites sources with Pandoc-style `[@citekey]`
-markers (see chitragupta/citation_gate.py), so rendering always resolves them via
-pandoc's built-in `--citeproc` against `config.BIB_FILE_PATH` -- without
-it, citations would come out as literal, unresolved `[@key]` text with no
-bibliography. Pandoc's own citation-key tokenizer has a real limitation
-that surfaces on this corpus: a double hyphen (`--`) inside a citekey
-(bibtexparser produces these, e.g. `zech_digital-twins-as--service_2024`)
-truncates the key mid-token, silently losing the citation. `_safe_render_inputs`
-works around this by aliasing just the affected citekey(s) in temporary
-copies of the input and the bib file -- never touching the real
-`bibliography.bib` -- before handing both to pandoc. The same function
-also runs `_sanitize_for_latex` over the temp copy, stripping control
-characters and joining decomposed accents (both from `pdftotext` text in
-`content/parsed/`, and both rejected by pdflatex) -- never in the draft
-on disk. Every other character reaches pandoc as written (#948); a pdf
-prints it from the font chain, a `.tex` gets `_unicode.py`'s `.sty`.
+`[@citekey]` markers resolve via `--citeproc` against `config.BIB_FILE_PATH`
+in IEEE style (`assets/csl/ieee.csl`, `--csl` to override). All fixups (a `--`
+citekey alias, control-character stripping, the manual References swap, the
+CSL collapse attribute) happen on temp copies; the draft and the real
+`bibliography.bib` are never modified.
 
-Citations render in IEEE style -- numeric `[1]` markers, `[3]-[6]` for a
-consecutive run, over a numbered list of complete entries -- via the CSL
-style vendored at `assets/csl/ieee.csl` (`config.CSL_STYLE_PATH`,
-`--csl` to override). Two notes on how that is wired, both explained
-where they're implemented: the collapsing needs one attribute upstream
-IEEE omits, injected into a temp copy by `_collapsed_csl` so the vendored
-file stays byte-identical to upstream; and a draft's own citekey-labeled
-References section (added by `python -m chitragupta.draft references`) has its entries
-swapped out in the temp copy by `_swap_manual_refs_for_citeproc` --
-heading kept, entries replaced by the anchor citeproc fills in -- so
-citeproc's bibliography is the only one in the output, and it appears
-under the draft's own heading. citeproc's is the one that can be numbered
-consistently with the inline markers, and the one with authors and venues
-in it, because it reads `bibliography.bib` directly. Inputs with no such
-section (e.g. thesis-chapter-writer's preamble-less `.tex` fragment,
-which defers to the user's own thesis-wide bibliography) are unaffected.
-
-`--format md` on a Markdown draft does not go through pandoc at all --
-see render() and references.numbered_markdown. Markdown in, Markdown out
-is a citation-numbering job, and pandoc's Markdown writer mangles it:
-escaped `\\[1\\]` markers and a bibliography wrapped in `:::` fenced divs
-and `[...]{.csl-left-margin}` spans, which render as literal punctuation
-anywhere that isn't pandoc.
-
-Every format lands beside the draft: `_output_dir` mirrors the draft's
-own path under `config.DRAFTS_DIR` into `config.RENDERED_DIR`, so
-`content/drafts/dt/survey.md` renders to `content/rendered/dt/survey.*`
-and a flat `content/drafts/survey.md` renders to
-`content/rendered/survey.*` as it always has. Before that, every format
-wrote flat, which lost two things quietly: two topics with a same-named
-draft overwrote each other's output, and `dossier export <topic>
---with-rendered` matched nothing, because it matches a rendered file by
-its path relative to `RENDERED_DIR`.
+`--format md` on a Markdown draft skips pandoc, whose Markdown writer escapes
+markers and emits fenced divs that render as literal punctuation elsewhere.
 
 **Every path this module reads or writes resolves inside
-`config.CONTENT_DIR`**, and the cases that would break that raise
-`OutsideContentDir` rather than being quietly redirected. `render()`
-checks its input; `_output_dir` checks where the output would land. That
-one directory is then the whole record of the work, which is what makes
-`dossier export` or a copy of it complete.
+`config.CONTENT_DIR`**; violations raise `OutsideContentDir`. Output mirrors
+the draft's place under `content/drafts/` into `content/rendered/`.
 
-`python -m chitragupta.draft render <file> --format tex|pdf|...` runs standalone
-with bare `python` (no enrich group) -- it depends only on stdlib plus
-`chitragupta.config`/`chitragupta.citation_gate`/`chitragupta.references` (all three stdlib-only,
-same as this module), deliberately independent of `chitragupta/enrich/__main__.py`,
-which drags in the full corpus build and the docling/embed/topic_model
-imports for stages this one doesn't need. The genre-writing skills under
-`.claude/skills/` call this CLI directly.
+Runs under bare `python` (stdlib plus config/citation_gate/references),
+independent of `chitragupta/enrich/__main__.py`; genre skills call it directly.
 """
 
 import os
@@ -132,24 +80,17 @@ from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES, _output_dir, _t
 from chitragupta.render_output._gate import gated_warnings
 from chitragupta.render_output._substitution import _checked_math_mapping, _substituted
 
-# Everything above is re-exported deliberately, not incidentally. Every
-# caller in this repository reaches these off the module
-# (`from chitragupta import render_output`, then `render_output._output_dir`), and
-# the tests reach eleven of the private helpers that way too. Keeping the
-# package's name and its attribute surface identical to the single module
-# it replaced is what makes the split invisible to all 104 of those
-# references -- a rename would have been a second, unrelated change
-# smuggled into a refactor.
+# Re-exported deliberately: callers and tests reach these (private helpers
+# included) as `render_output._X`, so the package's attribute surface must stay
+# identical to the single module it replaced.
 __all__ = ["MissingBinary", "OutsideContentDir", "render", "main"]
 
 
 def _copy_local_assets(input_path: Path, dest_dir: Path, deferred: bool = False) -> None:
     """Every local file the output needs beside it, copied there.
 
-    Called together, not separately at each site -- one kind being
-    forgotten is how a `tex` output stops compiling alone. `deferred` --
-    a fragment, or a render with its citations deferred -- adds the
-    aliased `.bib` its bibtex pass reads (`_assets._copy_book_bibliography`).
+    Called together so no kind is forgotten. `deferred` (a fragment or deferred
+    citations) adds the aliased `.bib` for bibtex.
     """
     _copy_local_images(input_path, dest_dir)
     _copy_local_tex_includes(input_path, dest_dir)
@@ -159,9 +100,8 @@ def _copy_local_assets(input_path: Path, dest_dir: Path, deferred: bool = False)
 
 def _refuse_misdeferred(output_format: str, fragment: bool, defer_citations: bool) -> None:
     """Raises `ValueError` for a deferred render that is not a standalone
-    `tex`: a pdf or docx would need the bibtex pass pandoc does not run,
-    and a fragment's citations are deferred already. No command line
-    makes this call, so it is the caller's mistake, outside `RENDER_FAILURES`.
+    `tex`: pdf/docx would need a bibtex pass pandoc does not run, and a
+    fragment is deferred already. A caller's mistake, outside `RENDER_FAILURES`.
     """
     if defer_citations and (fragment or output_format != "tex"):
         raise ValueError(
@@ -174,9 +114,8 @@ def _refuse_misdeferred(output_format: str, fragment: bool, defer_citations: boo
 def render(
     input_path: str,
     output_format: str = "pdf",
-    # Every tex/pdf render passes these to pandoc as documentclass,
-    # fontsize, papersize and geometry, so the output opens on the
-    # article page (`page.ARTICLE`) unless a caller names another.
+    # Passed to pandoc as documentclass, fontsize, papersize and geometry for
+    # every tex/pdf render: the article page (`page.ARTICLE`) by default.
     documentclass: str = ARTICLE.documentclass,
     fontsize: str = ARTICLE.fontsize,
     papersize: str = ARTICLE.papersize,
@@ -193,78 +132,30 @@ def render(
 ) -> Path:
     """Renders `input_path` (Pandoc markdown) to `output_format` (pdf/tex/docx/...).
 
-    The output lands in `_output_dir(input_path)` -- `content/rendered/`
-    with the draft's own place under `content/drafts/` mirrored into it.
+    Lands in `_output_dir(input_path)`. `output_dir` overrides it for a
+    non-draft (a review report's renders go beside the report), confined to
+    `content/` and not mirrored into.
 
-    `output_dir` overrides that, for a caller rendering something that is
-    not a draft and so has no business in `content/rendered/`:
-    `chitragupta/review/__init__.py` passes the review report's own directory so a
-    report's `.tex`/`.pdf` land beside its `.md` rather than in the
-    drafting layer's publish output. It is confined to `content/` like
-    every other path this module writes, and it is the caller's whole
-    answer -- nothing is mirrored into it, because the caller has already
-    done that.
-
-    Citations and the bibliography are formatted with `csl` (default:
-    `config.CSL_STYLE_PATH`, the vendored IEEE style), so a rendered draft
-    carries numeric markers -- `[1]`, and `[3]-[6]` for a consecutive run
-    when `collapse_citations` (default: `config.RENDER_COLLAPSE_CITATIONS`)
-    -- over a numbered reference list of complete entries. Without a
-    `--csl`, pandoc falls back to Chicago author-date, which is what this
-    rendered before.
-
-    `--standalone` is passed so a `tex` output is a complete, compilable
-    LaTeX document (documentclass + preamble), not a bare fragment --
-    matching what pandoc already builds internally on the way to a `pdf`
-    output. `fragment=True` is the exception, for a unit destined to be
-    `\\input` into a book (docs/WRITE-A-BOOK.md): no preamble, and its own top
-    heading becomes a `\\chapter`. `documentclass` defaults to LaTeX's
-    plain `article`
-    class, the right shape for the short, section-based genre drafts this
-    project produces (no chapters, no front matter); pass a different
-    value only if a specific draft genuinely needs one. `fontsize`/
-    `papersize`/`margin` default to this project's fixed house style --
-    `\\documentclass[12pt,a4paper]{article}` plus
-    `\\usepackage[margin=1in]{geometry}`.
-
-    `index_terms` names a book's `index-terms.json` (#1168); a fragment
-    rendered with it carries the book index's `\\index{}` entries and
-    leaves `<stem>.index.json` beside it.
-
-    `defer_citations=True` keeps the standalone article but leaves its
-    citations to bibtex, as a fragment's are (`_pandoc_command` has why);
-    the gate runs as for any render.
+    Citations use `csl` (default IEEE), collapsing runs when
+    `collapse_citations`. `--standalone` makes a `tex` output compilable alone;
+    `fragment=True` is for a unit `\\input` into a book (docs/WRITE-A-BOOK.md):
+    no preamble, top heading becomes `\\chapter`. `index_terms` adds a book's
+    `\\index{}` entries (#1168). `defer_citations=True` keeps the standalone
+    article but leaves citations to bibtex; the gate runs as for any render.
     """
     _refuse_misdeferred(output_format, fragment, defer_citations)
     input_path = config.require_inside_content(Path(input_path))
     out_dir = _target_dir(input_path, output_dir)
-    # Read once, here, and thread it through everything below. Three
-    # separate `.read_text()` calls used to answer three questions about
-    # the same draft; once a figure substitution rewrites the copy pandoc
-    # sees, "the draft" and "what is being rendered" are different strings
-    # and any two of them can disagree.
+    # Read once and threaded through: after figure substitution, "the draft" and
+    # "what is rendered" differ, and separate reads could disagree.
     draft_text = input_path.read_text(encoding="utf-8")
-    # Before the early return below, so a Markdown draft rendered to
-    # Markdown -- the one path that never reaches pandoc -- still reports
-    # a figure whose marker or twin is wrong.
+    # Before the early return, so an md-to-md render still reports figure problems.
     for prefix, warning in gated_warnings(draft_text, input_path):
         print(f"[{prefix}] {warning}", file=sys.stderr)
     if output_format == "md" and input_path.suffix.lower() in _MARKDOWN_SUFFIXES:
-        # Markdown in, Markdown out: this is a citation-numbering job, not
-        # a format conversion, and pandoc is the wrong tool for it. Its
-        # Markdown writer escapes every marker (`\[1\]`, because `[1]`
-        # could be a link reference) and emits citeproc's bibliography as
-        # `::: {#refs}` fenced divs full of `[...]{.csl-left-margin}`
-        # spans -- all of which render as literal punctuation anywhere
-        # that isn't pandoc, which is the whole audience for a .md.
-        #
-        # A LaTeX input still goes through pandoc below: converting a
-        # thesis fragment's `\citep{...}` into Markdown genuinely is a
-        # format conversion, and that fragment deliberately carries no
-        # reference list of its own.
-        #
-        # With no pandoc here, `_substituted` also drops the draft's raw
-        # LaTeX, which pandoc's non-LaTeX writers would have (#1144).
+        # Markdown in, Markdown out is citation numbering, not conversion; see
+        # the module docstring for why not pandoc. A LaTeX input still goes
+        # through pandoc below. `_substituted` drops raw LaTeX here (#1144).
         _copy_local_assets(input_path, out_dir)
         return references.write_numbered(
             input_path, out_dir, _substituted(draft_text, input_path, output_format, {})
@@ -273,10 +164,8 @@ def render(
     math_mapping = _checked_math_mapping(draft_text, input_path, math_mapping_path)
     _refuse_escaping_refs(input_path, draft_text)
 
-    # Everything from here on needs the real pandoc/LuaLaTeX/TeX Live
-    # toolchain to exercise -- see #291. Marked per-line rather than by
-    # extracting a helper, since there is no single enclosing block to tag
-    # and this trailing tail is otherwise ordinary sequential code.
+    # From here on needs the real pandoc/LuaLaTeX toolchain (#291); marked
+    # per-line since there is no single enclosing block to tag.
     _require_toolchain(output_format)  # pragma: no cover-windows
     figure_refs = _figure_refs(draft_text)  # pragma: no cover-windows
     if figure_refs and output_format in _TEX_FORMATS:  # pragma: no cover-windows

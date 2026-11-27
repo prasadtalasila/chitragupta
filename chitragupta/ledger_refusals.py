@@ -1,9 +1,6 @@
 """Why a reader could not read the ledger: `ledger.read_connection`'s refusals.
 
-Re-exported by `chitragupta.ledger`, so every caller keeps spelling them
-`ledger.NoLedger` and friends. They live here only because `ledger.py`
-reached the 250-code-line limit (docs/CODE-STANDARDS.md) when the third
-one arrived (#1066).
+Re-exported by `chitragupta.ledger` as `ledger.NoLedger` and friends (#1066).
 """
 
 from __future__ import annotations
@@ -13,13 +10,9 @@ from pathlib import Path
 
 from chitragupta import config
 
-# The exit status of a command that could not read the ledger and so
-# checked nothing (#1066): `draft gate` and `corpus ledger`. Not 1, which
-# is the gate's verdict that a citekey is unresolved, and not 2, which is
-# bad usage -- "I could not check" and "I checked and it failed" must
-# never share a code, or a crash reads as a refusal. The two hooks run on
-# bare python without importing this package, so each spells it as its
-# own constant; tests pin both to this one.
+# A command that could not read the ledger checked nothing (#1066). Not 1
+# (an unresolved citekey) or 2 (bad usage): "could not check" must never
+# read as a verdict. The bare-python hooks restate it; tests pin both.
 EXIT_UNREADABLE = 3
 
 _SYNC = "python -m chitragupta.corpus sync"
@@ -28,8 +21,7 @@ _SYNC = "python -m chitragupta.corpus sync"
 class NoLedger(RuntimeError):
     """There is no ledger to read: `read_connection`'s refusal."""
 
-    # The default message is the two lines `corpus ledger` has always
-    # printed, which the genre skills and the session-start hook tell
+    # The default message is what skills and the session-start hook tell
     # apart from "the ledger is empty".
 
     def __init__(self, detail: str | None = None) -> None:
@@ -44,19 +36,11 @@ class StaleLedger(NoLedger):
     """The ledger predates this version's schema; refused wherever `NoLedger` is."""
 
 
-# Keyed by the prefix of `sqlite3.Error.sqlite_errorname` (Python 3.11+;
-# the floor is 3.12), never by the message, whose wording SQLite does not
-# promise. Each row is what happened, then what to do, and `{journal}` is
-# the journal's file name.
-#
-# The hot journal is #1066's case. Any interrupted write leaves one, and
-# SQLite must roll it back before it answers even `PRAGMA user_version`,
-# which a `mode=ro` handle cannot do. The refusal reports it and does not
-# heal it: rolling back is a write to the user's own data, so it happens
-# when they run the writer, whose read-write open does it on first touch
-# (tests/test_ledger_read.py proves that, so the fix named is not a
-# guess). A damaged file is moved aside, never deleted: it is the only
-# copy of whatever state the user had.
+# Keyed by `sqlite_errorname` prefix, never the message, whose wording
+# SQLite does not promise. A hot journal (#1066) needs a rollback a
+# `mode=ro` handle cannot do; it is reported, not healed, since rolling
+# back writes the user's data (the writer's open does it;
+# tests/test_ledger_read.py). A damaged file is moved aside, never deleted.
 _CAUSES = (
     (
         ("SQLITE_READONLY_ROLLBACK",),
@@ -85,11 +69,8 @@ _CAUSES = (
 
 
 class UnreadableLedger(NoLedger):
-    """The ledger exists but SQLite will not read it; refused wherever `NoLedger` is.
-
-    A `NoLedger`, so every command that already turns that refusal into an
-    `[error]` line reports this one too, rather than a raw sqlite traceback.
-    Its message has the same two lines: what happened, then what to do.
+    """The ledger exists but SQLite will not read it; refused wherever `NoLedger` is,
+    so callers print it as an `[error]` line, not a traceback.
     """
 
     def __init__(self, path: Path, error: sqlite3.Error) -> None:

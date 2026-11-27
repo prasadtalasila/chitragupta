@@ -62,7 +62,7 @@ forever is fine; saying it is on a register it left is not.
 ## 🧱 Tier 1: the debt the ratchet already holds
 
 `code-standards-register.toml` freezes **3 functions** over C1 (25
-statements) and **1 module** over C2 (250 code lines), each with its
+statements) and **0 modules** over C2 (250 code lines), each with its
 current size recorded beside it, which
 `test_every_registered_offender_records_its_current_count` keeps honest.
 Its `c1js`/`c2js` tables hold the same ratchet for `assets/webapp/`.
@@ -90,9 +90,9 @@ deletes its entry, in the PR that pays it.
 
 - **R1.** **Six temp-file-then-`os.replace` writers.** `_atomic_write.write_atomically`
   is the shared one, and its own docstring says it is "not yet shared".
-  The others are `_json_cache.py:102`, `overlap_index_doc.py:133` and
-  `:143` (`_atomic_write_json`, `_atomic_write_bytes`), `enrich/doc_vectors.py:62`
-  and `registry/_pages.py:191`. They differ in cleanup on failure, and
+  The others are `_json_cache.py:77`, `overlap_index_doc.py:99` and
+  `:143` (`_atomic_write_json`, `_atomic_write_bytes`), `enrich/doc_vectors.py:46`
+  and `registry/_pages.py:168`. They differ in cleanup on failure, and
   `doc_vectors.py` uses a fixed `.json.tmp` name, so two concurrent
   writers share one temp file. *Refactor:* route the other five through
   `write_atomically`. (The `retrieval_cache`/`_docling_cache` pair is a
@@ -100,11 +100,11 @@ deletes its entry, in the PR that pays it.
 - **R2.** **`overlap_index_doc.py` and `overlap_skipgram.py` share three function
   bodies, identical down to the AST:** `fingerprint_document`
   (`:241`/`:316`), `_save_doc_cache` (`:197`/`:279`) and
-  `postings_for_gram` (`overlap_index_query.py:46`/`overlap_skipgram.py:408`).
+  `postings_for_gram` (`overlap_index_query.py:29`/`overlap_skipgram.py:280`).
   *Refactor:* one implementation, parameterised by the fingerprint type.
-- **R3.** **`_area(box)` is defined four times:** `figure/_advisory.py:227`,
-  `figure/_connectors.py:181`, `figure/_contrast.py:181` and
-  `review/figure_layout/_geometry.py:146`, in two identical pairs.
+- **R3.** **`_area(box)` is defined four times:** `figure/_advisory.py:208`,
+  `figure/_connectors.py:163`, `figure/_contrast.py:167` and
+  `review/figure_layout/_geometry.py:105`, in two identical pairs.
   *Refactor:* one function in `_geometry`, where `contains` and
   `intersects` already live.
 - **R4.** **The finding-id convention is implemented eight times:**
@@ -127,14 +127,14 @@ deletes its entry, in the PR that pays it.
   leave out `--write`, five others record it, and the sample project's
   reports show both. *Refactor:* derive the line from the parsed
   `argparse` namespace in one place.
-- **R7.** **`_grouped` is identical** in `registry/_pages.py:47` and
-  `registry/_terms.py:63`. *Refactor:* keep one, in `registry/__init__.py`.
+- **R7.** **`_grouped` is identical** in `registry/_pages.py:29` and
+  `registry/_terms.py:53`. *Refactor:* keep one, in `registry/__init__.py`.
 - **R8.** **The caption modules repeat one interface.** `render_output/_equation_captions.py`,
   `_figure_captions.py` and `_tables.py` each define `references` and
-  `warnings`, and `_equation_captions.py:122` and `_tables.py:125` are
+  `warnings`, and `_equation_captions.py:75` and `_tables.py:78` are
   identical. *Refactor:* one caption-kind table driving the three.
 - **R9.** **The same `drifted` property is defined twice,** on
-  `dossier/_drift.py:193` and `dossier/_status.py:68`. *Refactor:* a
+  `dossier/_drift.py:78` and `dossier/_status.py:62`. *Refactor:* a
   shared mixin, or a function both call.
 - **R10.** **Two TikZ node-declaration scanners.** `review/figure_layout/_scan.py::declaration`
   (12 branches) and `figure/_focal.py::declaration` (12 branches) walk
@@ -142,8 +142,8 @@ deletes its entry, in the PR that pays it.
   introduced by `at`, and the label brace. They return different
   tuples. A spelling one learns, the other misses, which is the shape
   of #1162. *Refactor:* one scanner returning `(options, name, label, end)`.
-- **R11.** **Three ways to read the version.** `chitragupta/__main__.py:111` and
-  `install.py:141` ask the installed metadata, while `review/__init__.py:108`
+- **R11.** **Three ways to read the version.** `chitragupta/__main__.py:85` and
+  `install.py:112` ask the installed metadata, while `review/__init__.py:56`
   reads `pyproject.toml`. Under an editable install of another checkout,
   `--version` and the report headers name different versions.
   *Refactor:* one `chitragupta.version()`.
@@ -154,9 +154,9 @@ deletes its entry, in the PR that pays it.
   documents this by pointing at `check_version_bump`. *Refactor:* one
   `scripts/_proc.py`.
 - **R13.** **Three functions called `sidecar_path`.** Two are citekey-keyed
-  paths, `_passage_sidecar.py:23` and `tldr.py:71`, the second
+  paths, `_passage_sidecar.py:17` and `tldr.py:39`, the second
   re-implementing the first's naming "the same way". The third,
-  `evidence_appendix.py:176`, is a different thing under the same name.
+  `evidence_appendix.py:118`, is a different thing under the same name.
   *Refactor:* one citekey-sidecar helper, and rename the third.
 - **R14.** **Four enrich stages hand-build the same result dict.** `run_stage`
   in `enrich/keyword_extract.py`, `topic_converge.py`, `topic_graph.py`
@@ -376,7 +376,7 @@ worse.
 | --- | --- |
 | Very long comments; `.github/workflows/ci.yml` roughly half prose | Required. [The comment rules](CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid): *why*-comments are mandatory here, and the size rules count statements precisely so that explaining yourself is free |
 | Long developer documents (`DEVELOPER-AGENTS.md`, this directory) | Length is not the defect. Shorten by turning a late-firing rule into a command or a check, never by deleting rationale. A word budget is a continuous score, which [R3](AUTO-IMPROVEMENT.md#-the-requirements) rules out |
-| `con.execute(f"PRAGMA user_version = {target}")` (`chitragupta/ledger.py:155`) | Not SQL injection. `PRAGMA` does not accept `?` binding, and `target` is `len(_MIGRATIONS)`, this module's own constant. The comment above it says exactly that |
+| `con.execute(f"PRAGMA user_version = {target}")` (`chitragupta/ledger.py:98`) | Not SQL injection. `PRAGMA` does not accept `?` binding, and `target` is `len(_MIGRATIONS)`, this module's own constant. The comment above it says exactly that |
 | `_load_cache`/`_save_cache` duplicated in `retrieval_cache.py` and `enrich/_docling_cache.py` | Different requirements, and each docstring names them: retrieval needs a per-writer-unique temp name for concurrent subagents and a per-process memo on the index file's `(path, size, mtime_ns)`, because its payload is 14 MB and is read many times per run. Docling's is neither, and says why |
 | 19 broad `except Exception` handlers in `chitragupta`/`scripts` (2 more in `bench/`) | Each has a stated cause and a `# noqa: BLE001` marker that `ruff` reads. See [5.4](#-54-ruff-a-measured-baseline) |
 | `--target host\|docker` accepted but never branched on | Deliberate: the probes decide, the flag is informational. Removing it is a CLI break for no gain |

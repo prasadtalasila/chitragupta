@@ -1,34 +1,9 @@
 """The only module in tier 3 that reaches the optional embedding stack.
 
-`chromadb` and `sentence-transformers` come from pyproject.toml's
-`enrich` extra, which a checkout need not have installed --
-`chitragupta/enrich/embed_index.py` builds `content/chroma/` with them and is
-the enrichment layer's own business. Tier 3 of the overlap scan
-(`chitragupta/overlap_embed.py`) reads what that layer built, and this module is
-the seam between them.
-
-One module for it, deliberately, and this is the property worth keeping:
-**every other part of tier 3 is stdlib-only.** The alignment
-(`chitragupta/overlap_align.py`), the segmentation (`chitragupta/overlap_segments.py`)
-and the tier's own policy (`chitragupta/overlap_embed.py`) all import under a
-bare `python`, so all three are testable without the optional stack
-present and without a fake standing in for a model. Only what is here
-has to be probed for, and probing is most of what it does.
-
-Three things live here:
-
-- `optional_stack()`, which answers "can this host embed at all" without
-  the side effects `embed_index.get_client_and_model()` has (it imports
-  bare, raising `ModuleNotFoundError` uncaught, and `mkdir`s
-  `content/chroma/` on the way past -- so neither "the import worked" nor
-  "the directory exists" can be read off it as an availability signal).
-- `built_collection()`, which answers "has the corpus actually been
-  embedded under the currently configured model".
-- `Embedder`, which loads the model on first use and is the two seams
-  the alignment needs: encode a batch, and compare two encoded batches.
-- `shortlist`, which is the only thing the built collection is used
-  *for* -- ranking which of a section's cited sources are worth
-  aligning against.
+`chromadb` and `sentence-transformers` come from the `enrich` extra. Every
+other part of tier 3 (overlap_align, overlap_segments, overlap_embed) is
+stdlib-only, so it is testable with no model present; only what is here
+has to be probed for.
 """
 
 from typing import Any
@@ -40,12 +15,8 @@ def optional_stack() -> tuple[Any, Any] | None:
     """`(chromadb, SentenceTransformer)`, or `None` if the enrich
     extra is not installed.
 
-    `embed_index.get_client_and_model()` imports these bare and raises
-    `ModuleNotFoundError` uncaught, and it `mkdir`s `content/chroma/` on
-    the way past -- so neither "the import worked" nor "the directory
-    exists" can be read off it as an availability signal. This is the
-    probe that one is missing, in the shape `chitragupta/pdf_text/` already
-    uses for its own optional backend.
+    `embed_index.get_client_and_model()` raises uncaught and `mkdir`s
+    `content/chroma/`, so it cannot serve as an availability probe.
     """
     try:
         import chromadb
@@ -59,16 +30,10 @@ def built_collection(chromadb_module) -> Any:
     """The corpus collection for the configured embedding model, or
     `None` when it does not exist or is empty.
 
-    `get_or_create_collection` deliberately not used: creating an empty
-    collection here would turn "the enrichment layer never ran" into a
-    tier that runs and finds nothing, which is the exact confusion this
-    module's docstring says to avoid. Nor is `get_collection` called
-    speculatively and its failure caught -- chroma's not-found exception
-    type has moved between releases (`ValueError`, then
-    `InvalidCollectionException`, then `NotFoundError`), so catching the
-    right one is a version bet and catching every one is a blanket
-    `except` over a call that can also fail for reasons worth seeing.
-    Asking what exists first needs neither.
+    Not `get_or_create_collection`: an empty collection would make "enrich
+    never ran" look like a tier that found nothing. Not a caught
+    `get_collection` either: chroma's not-found exception type has changed
+    across releases. Asking what exists needs neither.
     """
     if not config.CHROMA_DIR.is_dir():
         return None
@@ -77,35 +42,23 @@ def built_collection(chromadb_module) -> Any:
 
 
 def existing_collection(client) -> Any:
-    """The configured model's collection through `client`, or `None` when
-    it does not exist -- asked rather than created, and without the
-    empty-means-absent rule `built_collection` adds on top.
-
-    Shared with `embed_index.search()` (#853), which has a client of its
-    own and must not create the collection it reads either.
+    """The configured model's collection through `client`, or `None`;
+    asked, never created. Shared with `embed_index.search()` (#853).
     """
     from chitragupta.enrich import embed_index
 
     wanted = embed_index.collection_name()
-    # chromadb 0.5 lists collection objects and 1.0 lists bare names;
-    # both are handled here rather than pinning a client version this
-    # repo does not otherwise care about.
+    # chromadb 0.5 lists objects, 1.0 bare names; both handled, no pin.
     names = {getattr(existing, "name", existing) for existing in client.list_collections()}
     return client.get_collection(wanted) if wanted in names else None
 
 
 def corpus_key() -> str:
-    """The Chroma collection name tier 3 would read or write right now --
-    `embed_index.collection_name()`, exposed through this seam so a
-    caller outside `chitragupta/enrich/` never imports it directly (see
-    module docstring).
+    """The Chroma collection name tier 3 would read or write right now,
+    without importing `chitragupta/enrich/` directly.
 
-    Computed from `config.EMBEDDING_MODEL` alone, so it costs nothing --
-    no chroma client, no installed enrich group -- and is available even
-    where `built_collection()` above returns `None`. That is the point:
-    `recheck` records this beside a baseline so a later comparison can
-    tell "the corpus was rebuilt under a different model" from "an edit
-    changed the findings", which `tier == "embedding"` alone cannot say.
+    Costs nothing and works without the enrich group; `recheck` records it
+    so a baseline can tell a model change from an edit.
     """
     from chitragupta.enrich import embed_index
 
@@ -115,26 +68,11 @@ def corpus_key() -> str:
 class Embedder:
     """The sentence-transformers model, loaded on first use.
 
-    Lazy because loading it costs a few hundred megabytes and several
-    seconds, and a scan whose draft has no dossier -- the ordinary case
-    on a host that never ran the drafting pipeline -- must not pay that
-    to find out it has nothing to do.
-
-    **Encoding and comparing are separate calls, deliberately.** An
-    earlier shape took two lists of *text* and returned a matrix, which
-    read better and re-encoded every source segment once per draft
-    section that cited it: on one real chapter that was 25 sections x 5
-    sources x ~1200 segments of repeat work, and encoding is the whole
-    cost of this tier. Splitting them lets `overlap_embed.align_draft`
-    encode each source once for the whole draft and each section once for
-    all its sources.
-
-    `encode` and `similarity` are also the two seams a test replaces, so
-    the alignment can be exercised over a hand-written matrix with no
-    model present. Matrix multiplication is left to whatever the model
-    returned (`sentence-transformers` hands back a numpy array, and `@`
-    on two of those is the fast path); this module never imports numpy
-    itself, which is what keeps a fake free to return plain lists.
+    Lazy: a scan with no dossier must not pay hundreds of MB to find it has
+    nothing to do. Encoding and comparing are separate calls so each source
+    is encoded once per draft, not once per citing section; they are also
+    the seams a test replaces. This module never imports numpy, so a fake
+    may return plain lists.
     """
 
     def __init__(self, model=None) -> None:
@@ -149,8 +87,7 @@ class Embedder:
         return self._model
 
     def encode(self, texts: list[str]) -> Any:
-        # Normalized, so a dot product *is* the cosine and the alignment
-        # never divides by a norm it would otherwise recompute per cell.
+        # Normalized, so a dot product is the cosine.
         return self.model.encode(texts, show_progress_bar=False, normalize_embeddings=True)
 
     def encode_lists(self, texts: list[str]) -> list[list[float]]:
@@ -166,36 +103,16 @@ def shortlist(collection, embedder, citekeys: list[str], text: str, limit: int) 
     """`citekeys`, ranked by how close the collection's own chunks put
     them to `text`, capped at `limit`.
 
-    The section is encoded once, not once per citekey:
-    `embed_index.search()` re-embeds a single query string at a time,
-    which is right for interactive retrieval and wrong at scan scale.
-    The section is chunked with the same `chunk_text()` the index was
-    built with and every chunk is embedded in one `model.encode()` call.
-
-    **Then one query per citekey, not one for the whole section** (#954).
-    Chroma ranks *chunks*, so a single `$in` query capped at `limit`
-    hands every slot to whichever source owns `limit` chunks nearer than
-    any other source's best, and the rest never come back to be ranked
-    at all. Over-fetching, which is how `embed_index.search()` answers
-    the same crowd-out (#305), only moves the threshold: a long paper
-    still owns more close chunks than any multiplier allows. A section
-    cites a handful of sources, so asking each for its single nearest
-    chunk is exact and costs a few milliseconds per source against
-    embeddings already in hand. Measured on chromadb 1.5.9, 3,420
-    chunks: ~5.5 ms a query, beside ~5-9 ms for the one `$in` query.
-
-    Only distances are read off the hits, and the chunk text is never
-    fetched: chunk metadata is `{citekey, title, text_hash}` with no page
-    and no offset, so nothing built on a chunk could say which page of
-    the source it came from. Ranking which *documents* are worth aligning
-    against is all this collection can honestly answer, and it is exactly
-    what a shortlist needs.
+    The section is chunked and encoded once. Then one query per citekey,
+    not one `$in` query (#954): Chroma ranks chunks, so one long source
+    could take every slot and over-fetching only moves the threshold.
+    ~5.5 ms a query on chromadb 1.5.9. Only distances are read: chunks
+    carry no page, so ranking documents is all this can honestly answer.
     """
     from chitragupta.enrich import embed_index
 
     if len(citekeys) <= 1:
-        # Nothing to rank, and a query would cost an encode to reorder a
-        # list of one.
+        # Nothing to rank.
         return list(citekeys)
     embeddings = embedder.encode_lists(embed_index.chunk_text(text))
     best: dict[str, float] = {}
@@ -206,17 +123,13 @@ def shortlist(collection, embedder, citekeys: list[str], text: str, limit: int) 
             where={"citekey": citekey},
             include=["distances"],
         )
-        # One row per section chunk, each empty when the source owns no
-        # chunk at all; the source's distance is its nearest across them.
+        # A source's distance is its nearest across the section's chunks.
         distances = [distance for row in raw["distances"] for distance in row]
         if distances:
             best[citekey] = min(distances)
     ranked = sorted(best, key=best.__getitem__)
-    # A citekey the collection has no chunk for -- a source in the
-    # bibliography whose PDF never parsed -- ranks last rather than
-    # vanishing, so the shortlist still fills up to its cap. Every source
-    # with a chunk is ranked ahead of it, so it can only take a slot no
-    # embedded source wanted.
+    # A citekey with no chunk (PDF never parsed) ranks last rather than
+    # vanishing, so it only takes a slot no embedded source wanted.
     ranked += [key for key in citekeys if key not in best]
     return ranked[:limit]
 
@@ -224,28 +137,13 @@ def shortlist(collection, embedder, citekeys: list[str], text: str, limit: int) 
 def absent_citekeys(collection, citekeys) -> set[str]:
     """Which of `citekeys` own no chunk in `collection` at all.
 
-    A metadata-only `get`, not a similarity query -- the same call
-    `embed_index.py`'s own upsert uses to check what is already indexed.
-    `shortlist`'s return cannot answer this: it ranks unembedded sources
-    behind every embedded one (#954), but it returns a bare list capped
-    at `limit`, so a citekey that ranks last there may simply be
-    topically distant, and an unembedded one past the cap is not there
-    at all (#499, M-16) -- the corpus grew a paper since `enrich` last
-    ran, that paper never made the shortlist's cap, and nothing said
-    why. This is the presence check that lets a caller say why, across
-    every cited source rather than the shortlisted few.
+    A metadata-only `get`. `shortlist`'s capped list cannot answer this:
+    an unembedded source past the cap is silently absent (#499).
     """
     if not citekeys:
         return set()
-    # Sorted, not just `list()`-ed: a caller may pass a `set`, whose
-    # iteration order is not insertion order and is not stable across
-    # runs, and a query built from it would make `collection.gets` and
-    # any log of what was asked for order-dependent for no reason.
-    # Paged, though the `$in` list is one entry per cited source and so is
-    # never long: what SQLite counts is the rows coming *back*, which is
-    # every chunk those sources own, and a draft citing enough of a
-    # well-chunked corpus reaches the limit on a query that looks small
-    # (#581, and see chitragupta/chroma_paging.py).
+    # Sorted, since a set's order is unstable across runs. Paged: SQLite's
+    # limit counts the chunks coming back, not the keys asked (#581).
     hits = chroma_paging.all_rows(
         collection, where={"citekey": {"$in": sorted(citekeys)}}, include=["metadatas"]
     )

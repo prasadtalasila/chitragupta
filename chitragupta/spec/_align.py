@@ -1,29 +1,15 @@
 """Does the authored chapter still match the outline a human approved?
 
-The book track owns a book's *structure*; the dossier track and the genre
-skills own its *content* (#472). This module is the join: it compares the
-sections a signed `spec.md` declares for a chapter against the headings
-that chapter's author actually wrote.
+The join between the book track's *structure* and the genre skills'
+*content* (#472): a chapter is one authored document and the spec's
+`####` sections are headings inside it
+(plans/472-book-spec-drives-chapter-outlines.md).
 
-**A chapter is one authored document**, and the spec's `####` sections are
-the headings inside it -- which is what makes this check mean anything.
-Under one file per section every file *is* a section by construction, so
-nothing could ever drift. See plans/472-book-spec-drives-chapter-outlines.md.
-
-**Scoped to chapters the spec describes at section level**, and that
-scoping is the whole design. A book retrofitted from prose written before
-this track declares one section per chapter, carrying the chapter's own
-title, while its author wrote about forty headings underneath -- measured
-on `digital-twins-for-software-engineers`, 4 declared sections against 161
-authored headings across the first four chapters. Reporting each of those
-as an undeclared section would put ~225 findings on a book that is not
-wrong, only described at chapter granularity, and a check like that is the
-first thing anyone turns off. So a chapter is compared only when its spec
-says something a draft could contradict.
-
-Reads, and refuses nothing about what a chapter says -- only a chapter
-path that leaves its book (`chapter_draft`). Whether a misalignment
-withholds acceptance is `unit accept`'s question, not this module's.
+**Scoped to chapters the spec describes at section level**: a
+retrofitted book declares one section per chapter over dozens of
+authored headings, and reporting each (~225 findings on the measured
+book) would get the check turned off. Refuses nothing about content;
+whether a misalignment withholds acceptance is `unit accept`'s question.
 """
 
 import difflib
@@ -36,48 +22,30 @@ from chitragupta.dossier._sections import sections as _draft_sections
 from chitragupta.spec import GENERATED, SpecError, spec_path
 from chitragupta.spec._read import read_spec, report_problems
 
-# `3.`, `3.1`, `3.1.2 ` at the start of a heading. A genre skill numbers
-# what it writes and the outline does not, so `3.1 The model half` and
-# `The model half` are the same section -- a numbering scheme is not a
-# structural change and must not read as one.
+# A leading `3.1` is numbering, not structure: genre skills number
+# headings and the outline does not.
 _NUMBERING = re.compile(r"^\d+(?:\.\d+)*\.?\s+")
 
-# Below this, two headings are different sections rather than one
-# reworded. Unmeasured, and deliberately loose: a false rename merges two
-# findings a human then separates, while a false pair of findings hides
-# that an edit was a rewording. The cheaper error is the rename.
+# Below this, two headings are different sections. Unmeasured and loose
+# on purpose: a false rename is the cheaper error.
 _RENAME_RATIO = 0.6
 
-# The heading level a spec section maps to. A chapter document's level 1
-# is its own title and level 3 is detail below what the spec describes --
-# `spec.md` stops at the sections of a chapter (#472). `_TEX_LEVELS` puts
-# `\section` at 2 as well, so `.tex` chapters need no separate path.
+# Spec sections map to level 2 (level 1 is the chapter title, level 3 is
+# below the spec, #472). `_TEX_LEVELS` puts `\section` at 2 as well.
 SECTION_LEVEL = 2
 
 
 def normalise(title: str) -> str:
-    """A heading reduced to what makes it the same section or not."""
     return " ".join(_NUMBERING.sub("", title).split()).casefold().rstrip(".")
 
 
 def chapter_draft(book: Path, chapter_id: str) -> Path:
     """Where a chapter's prose lives -- `<book>/<chapter-id>.md`.
 
-    The two suffixes the genre skills emit, checked in the same order as
-    `unit.draft_path`, and the `.md` name returned when neither exists so
-    a caller can say what is missing. No search and no fallback to a
-    section's own filename: a retrofitted chapter is never
-    section-described, so nothing here ever has to guess at the legacy
-    naming.
-
-    Every candidate is confined to the book here, by this function, and
-    is not left to a check somewhere else (issue 875). `spec.parse`
-    already refuses an id that is not one path component, so a `..` id
-    does not reach this join today -- but that is a guard on one id
-    source, and this join would trust the next one as well. The same
-    check also answers for a chapter file that is itself a symlink out
-    of the book, which no id rule can see. Raises `SpecError` naming the
-    path rather than reading what it points at.
+    `unit.draft_path`'s suffix order; the `.md` name when neither exists.
+    Every candidate is confined to the book here (#875), not trusted to
+    one id source's guard, which also catches a chapter file symlinked
+    out of the book. Raises `SpecError` naming the path.
     """
     for suffix in (".md", ".tex"):
         candidate = _inside_book(Path(book) / f"{chapter_id}{suffix}", book)
@@ -89,10 +57,8 @@ def chapter_draft(book: Path, chapter_id: str) -> Path:
 def _inside_book(path: Path, book: Path) -> Path:
     """`path`, once it is certain it lands under `book`.
 
-    A path that cannot be resolved at all is refused too: a NUL byte
-    gives `ValueError` and a name the platform rejects `OSError`, and
-    `resolves_inside` answers False for a symlink loop. None of them is
-    a chapter anyone can read, and a traceback would name nothing.
+    Unresolvable paths (NUL byte, rejected name, symlink loop) are
+    refused too, rather than raising a traceback that names nothing.
     """
     try:
         if config.resolves_inside(path, book):
@@ -107,7 +73,6 @@ def _inside_book(path: Path, book: Path) -> Path:
 
 
 def chapters(parsed: dict) -> list[tuple[dict, list[dict]]]:
-    """Each chapter in a parsed spec, with the sections declared under it."""
     found: list[tuple[dict, list[dict]]] = []
     for unit in parsed["units"]:
         if unit["kind"] == "chapter":
@@ -121,10 +86,8 @@ def section_described(chapter: dict, declared: list[dict]) -> bool:
     """Whether the spec says anything about this chapter a draft could
     contradict.
 
-    Two or more sections is a description. Exactly one *carrying the
-    chapter's own title* is the retrofitted shape -- it names no structure
-    beyond "this chapter exists", so there is nothing for a heading to
-    disagree with.
+    Two or more sections do; exactly one carrying the chapter's own title
+    is the retrofitted shape and says nothing.
     """
     if len(declared) >= 2:
         return True
@@ -132,12 +95,8 @@ def section_described(chapter: dict, declared: list[dict]) -> bool:
 
 
 def _pair_renames(missing: list[str], extra: list[str]) -> list[tuple[str, str]]:
-    """Reworded headings, removed from `missing` and `extra` in place.
-
-    One finding rather than two: "you renamed this" is what happened, and
-    reporting a deletion plus an addition would leave the reader to work
-    that out themselves.
-    """
+    """Reworded headings, removed from `missing` and `extra` in place:
+    one "renamed" finding, not a deletion plus an addition."""
     renamed: list[tuple[str, str]] = []
     for declared in list(missing):
         close = difflib.get_close_matches(
@@ -153,7 +112,6 @@ def _pair_renames(missing: list[str], extra: list[str]) -> list[tuple[str, str]]
 
 
 def _compare(declared: list[str], authored: list[str]) -> dict:
-    """The four ways an authored chapter can disagree with its outline."""
     shared = {normalise(t) for t in declared} & {normalise(t) for t in authored}
     missing = [t for t in declared if normalise(t) not in shared]
     extra = [t for t in authored if normalise(t) not in shared]
@@ -174,7 +132,6 @@ def _clean(chapter: dict, **extra) -> dict:
 
 
 def align_chapter(book: Path, chapter: dict, declared: list[dict]) -> dict:
-    """One chapter's alignment report."""
     if not section_described(chapter, declared):
         return _clean(chapter, section_described=False, findings=0)
     draft = chapter_draft(book, chapter["id"])
@@ -200,7 +157,6 @@ def align_chapter(book: Path, chapter: dict, declared: list[dict]) -> dict:
 
 
 def align(book: Path, parsed: dict) -> dict:
-    """Every chapter's alignment, and whether anything disagreed."""
     # A generated page (#1137) has no draft, so there is nothing to align.
     reports = [
         align_chapter(book, chapter, declared)
@@ -245,8 +201,6 @@ def _cmd_align(args) -> int:
 
 
 def add_parser(sub, book_help: str) -> None:
-    """Register `align`. Kept beside the check it runs, the way
-    `chitragupta/dossier/_outline.py` keeps its own command."""
     parser = sub.add_parser("align", help="Whether each authored chapter still matches the outline")
     parser.add_argument("book", help=book_help)
     parser.add_argument("--json", action="store_true", help="Machine-readable, for a skill to read")

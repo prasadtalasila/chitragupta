@@ -1,27 +1,18 @@
 """Which ledger rows a draft may cite: the second half of the invariant.
 
-AGENTS.md's one rule has two halves. A citekey must be in the human's
-own `.bib` export, which a ledger row proves, *and* it must have been
+A citekey must be in the human's `.bib` (a ledger row proves that) *and*
 picked up by a real parse of a real PDF, which only `status = 'parsed'`
-proves. `ledger.known_citekeys` answers the first half alone, and the
-gate used it as though it answered both: a `no_pdf` web page, a
-`discovered` PDF not yet read and a `parse_failed` one all passed
-(#1118). Nothing in the corpus could ground a claim attributed to any of
-them.
-
-Split from `chitragupta/ledger.py`, which is at the 250-code-line cap,
-and kept apart from it on purpose: `ledger` is the sync's state, and this
-is the drafting layer's reading of that state. Every reader that decides
-whether a key may be cited -- the gate, render's pre-gate, `unit accept`,
-retrieval -- reads it here, so the definition cannot drift between them.
+proves. Checking rows alone let `no_pdf`, `discovered` and
+`parse_failed` keys pass the gate (#1118). Every reader deciding
+citability (gate, render, `unit accept`, retrieval) reads it here, so
+the definition cannot drift.
 """
 
 import sqlite3
 
 from chitragupta import ledger
 
-# The one status that means a real PDF was read. `ledger_paths.mark_parsed`
-# is the only writer of it.
+# The one status meaning a real PDF was read; only `mark_parsed` writes it.
 PARSED = "parsed"
 
 
@@ -39,12 +30,8 @@ def unparsed_citekeys(con: sqlite3.Connection) -> dict[str, str]:
 
 def unparsed_on_this_host() -> dict[str, str]:
     """`unparsed_citekeys` of this host's ledger, or `{}` when there is no
-    ledger it can read.
-
-    For a reader that ranks something other than the ledger -- the
-    embedding index, built from parsed text whatever the row's status --
-    and must drop what the ledger knows is not citable. With no ledger
-    there is nothing known to drop, and the gate still refuses the key.
+    ledger it can read; for rankers outside the ledger (the embedding
+    index). With no ledger, the gate still refuses the key.
     """
     try:
         with ledger.reading() as con:

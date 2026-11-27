@@ -1,55 +1,23 @@
 """`chitragupta doctor`: probe the environment, report, never install.
 
-An aid, not a gate (SOUL.md, docs/HOOKS.md): it never installs anything
-and always exits 0, in the same shape `chitragupta/enrich/__main__.py`'s
-per-stage probes already use -- a status word and a detail. The word
-differs because the probe does: that layer reports `ok`/`skipped` for a
-Python package, and only a probe for a binary on `PATH`, which is this
-module's job and not that layer's, can report `missing-binary`. "Probe
-for a toolchain; never assume one, in either direction"
-(DEVELOPER-AGENTS.md).
+An aid, not a gate (SOUL.md, docs/HOOKS.md): always exits 0, with a
+status word and a detail per line; only a `PATH` probe can say
+`missing-binary`. Checks, none fatal:
 
-Seven checks, none of them fatal to run without:
-
-1. **OS binaries pip cannot supply** -- pandoc, lualatex, pdftotext,
-   vale. `python -m chitragupta.draft render`/`style` already
-   probe these themselves and report per-call; this is the same probe,
-   run once, up front, so a user finds out before their first render
-   rather than at it. `lualatex` renders a pdf (#996) and compiles the
-   figure-layout probe (#1037); nothing in the pipeline runs pdflatex.
-   It still gets one line, `[optional]` when absent, because a thesis
-   template that forces pdflatex needs it on the author's host.
-2. **Is the `enrich` extra importable?** `pip install chitragupta-cli`
-   alone gives tier 1 and tier 2 (docs/CLI.md); this says whether tier 3
-   is there too, without importing anything from `chitragupta.enrich`
-   itself (this module stays standard-library-adjacent, like
-   `chitragupta/hook_launchers.py`).
-3. **Does the installed torch match this host's GPU driver?** The
-   regression #265 accepts and only partially fixes: `pip install
-   'chitragupta-cli[enrich]'` on a CUDA host still lands a CPU-only torch
-   wheel, silently (`scripts/install_full_pipeline.sh`'s `ensure_gpu_torch`
-   states why). Detected here; `chitragupta install gpu-torch` is the fix
-   this names.
-4. **Does another distribution provide `chitragupta`/`cg`?** The
-   collision #269 accepts on the condition that it stops being silent --
-   `chitragupta` 0.1.1 on PyPI (an unrelated "pytest for prompts" tool)
-   declares the same console scripts and the same top-level import name.
-5. **Can each harness's hook launcher start?** (#812) Every launcher
-   config in the project this runs in -- Claude Code's
-   `.claude/settings.json`, Codex's `.codex/hooks.json` -- read through
-   `chitragupta/launcher_configs.py`, plus an OpenCode project with no
-   plugin. The same faults the session preflight and `draft gate`
-   report, asked for by name.
-6. **Does OpenCode see only its own skill copies?** (#900) An OpenCode
-   project's `.opencode/opencode.json` must deny the unsuffixed skill
-   names, or OpenCode picks among the three harnesses' copies.
-7. **Can LuaLaTeX find every font a pdf render names?** (#996) The
-   fonts and fallback chain in `chitragupta/pdf_fonts.py`, each looked up
-   with `luaotfload-tool --find`: the same database the render uses, not
-   `dpkg`, which on one measured host listed `fonts-noto-core` as
-   installed while its font directory was empty. A missing font fails a
-   render only when the draft holds a character that needs it, so this
-   is the one place that says so before then.
+1. OS binaries pip cannot supply, once up front rather than at the first
+   render; pdflatex is listed as `[optional]` for thesis templates (#1037).
+2. Is every module of the `enrich` extra importable, without importing
+   `chitragupta.enrich`?
+3. Does torch see this host's GPU? `pip install` on CUDA lands a CPU
+   wheel silently (#265); `chitragupta install gpu-torch` fixes it.
+4. Does another distribution provide `chitragupta`/`cg`? (#269, an
+   unrelated PyPI package)
+5. Can each harness's hook launcher start? (#812,
+   `chitragupta/launcher_configs.py`)
+6. Does OpenCode see only its own skill copies? (#900)
+7. Can LuaLaTeX find every pdf font? (#996) Looked up with
+   `luaotfload-tool`, the render's own database; `dpkg` once reported an
+   empty font package as installed.
 """
 
 import argparse
@@ -68,13 +36,8 @@ DESCRIPTION = (
     "extra, torch vs. the GPU driver, a competing distribution, hook launchers."
 )
 
-# What `draft render`/`draft style` and `review figure` (lualatex, for
-# its layout probe) already probe for themselves, per call, plus the two
-# poppler tools `figure look` and a pdf render's figure pictures use
-# (pdftoppm, pdfinfo; #1052), and the two a book's build runs between its
-# LuaLaTeX passes: bibtexu for the bibliography, upmendex for the index
-# (#1168), plus latexdiff for `draft diff --format pdf`'s redline.
-# Doctor probes them once, up front.
+# The binaries render, style, figure and a book build run (#1052, #1168),
+# probed once, up front.
 BINARIES = (
     "pandoc",
     "lualatex",
@@ -115,11 +78,8 @@ def _check_optional_pdflatex() -> str:
     )
 
 
-# Every top-level import name the `enrich` extra installs, in
-# `pyproject.toml`'s `[project.optional-dependencies]` order. Import names, not
-# distribution names, because that is what a stage actually does and what
-# a partial install actually breaks -- `sentence-transformers` imports as
-# `sentence_transformers`.
+# Import names, not distribution names: what a stage imports is what a
+# partial install breaks.
 ENRICH_MODULES = (
     "torch",
     "torchvision",
@@ -135,14 +95,9 @@ ENRICH_MODULES = (
 
 
 def _check_enrich_extra() -> str:
-    """Every module the extra installs, not one of them (#509/m-35).
-
-    Probing `sentence_transformers` alone reported the whole tier ok on a
-    host that had it and nothing else -- so `doctor` passed and the run
-    then failed at the first stage that reached for `docling`, which is
-    the opposite of what a preflight is for. A partial install is the
-    likely state, not a contrived one: the packages are large, and a
-    failed or interrupted `pip install ...[enrich]` leaves exactly this.
+    """Every module the extra installs, not one of them (#509): a partial
+    or interrupted install is the likely state, and probing one module
+    passed hosts that then failed at `docling`.
     """
     missing = [module for module in ENRICH_MODULES if importlib.util.find_spec(module) is None]
     if not missing:

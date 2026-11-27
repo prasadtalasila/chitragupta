@@ -1,11 +1,8 @@
 """Tell a run of copied proper names from copied prose (#1187).
 
-A short verbatim run that is an organisation's or a standard's name
-("National Institute of Standards and Technology") is copied because it
-has no other form, not because a sentence was lifted. The agenda must not
-mark such a run unattended -- an agent editing it away would be guessing
--- so the scan flags it and a person decides. The flag only downgrades:
-no finding is dropped.
+A name like a standards body's has no other form, so the agenda must not
+mark such a run unattended; the scan flags it for a person. The flag
+only downgrades: no finding is dropped.
 """
 
 import re
@@ -20,12 +17,8 @@ def names_heavy(text: str) -> bool:
     """True when at least two content words remain and half or more of
     them are capitalised words that do not open a sentence.
 
-    Stopwords are left out of both counts: a name carries function words
-    ("Institute of Standards and Technology"), and counting the lowercase
-    "of" and "and" against it would hide exactly the runs this flag is
-    for (#1187). A sentence-initial word is capitalised by grammar, so
-    it is never counted as capitalised; "initial" is decided on the full
-    word sequence, before stopwords are dropped.
+    Stopwords are left out of both counts, since names carry "of" and
+    "and" (#1187). Sentence-initial is decided before stopwords drop.
     """
     matches = list(_WORD.finditer(text))
     content = capitalised = 0

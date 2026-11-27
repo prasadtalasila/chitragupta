@@ -1,16 +1,11 @@
 """`paper.md`: the human's own paper-level inputs for a research paper.
 
 The one genre whose evidence is partly the author's own software and
-results, which live at `sources/<software>/code/` and
-`sources/<software>/results/`. `outline.md` stays the per-section file
-it always was; what is per paper -- the software, the venue, the message,
-the contributions and what evidences each -- is here.
-
-The headings follow two sources. The message is the Researchers' Bible's
-(Bundy et al., section 8): a few sentences forming the steps of an
-argument, which the title, abstract, introduction and conclusion all
-follow. The five questions after it are the Stanford InfoLab
-introduction Widom describes. See plans/1179-research-paper-genre.md.
+results (`sources/<software>/code/` and `.../results/`). Per-section
+intent stays in `outline.md`; the software, venue, message and
+contributions are here. Headings follow the Researchers' Bible's
+message (section 8) and the Stanford InfoLab introduction questions
+(plans/1179-research-paper-genre.md).
 """
 
 GENRE = "research-paper"

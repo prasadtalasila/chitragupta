@@ -1,10 +1,7 @@
 """The three things `draft diff` can compare, made to look alike.
 
-A snapshot, the live draft and a bare `--against` file are each a source
-text plus, where they can be found, both forms of every figure the text
-names. Figures are read with the same sibling resolution the snapshot
-store and the renderer use, so a figure path that escapes the draft's
-directory is never read here either.
+Figures are read with the snapshot store's and renderer's sibling rule,
+so a path escaping the draft's directory is never read.
 """
 
 from dataclasses import dataclass
@@ -24,15 +21,12 @@ class FigureForms:
 
 @dataclass(frozen=True)
 class VersionView:
-    """One side of a comparison."""
-
     ref: str  # "004", "current draft", or a file name
     label: str  # manual label or revision label, may be ""
     date: str  # "YYYY-MM-DD", or "" for a file
     text: str
     suffix: str  # ".md" | ".tex"
-    # None when the figures are unknown: a bare `--against` file with no
-    # `figures/` beside it, which says nothing about what was drawn.
+    # None when unknown: an `--against` file with no `figures/` beside it.
     figures: "dict[str, FigureForms] | None"
 
 
@@ -59,13 +53,11 @@ def _view(source: Path, ref: str, label: str, date: str, *, figures: bool) -> Ve
 
 
 def from_snapshot(snap: Snapshot) -> VersionView:
-    """A dossier snapshot, which holds its figures beside its text."""
     label = snap.label or snap.revision_label
     return _view(snap.source, snap.ref, label, snap.taken_at[:10], figures=True)
 
 
 def from_draft(draft: Path) -> VersionView:
-    """The live draft, as it is now."""
     return _view(draft, "current draft", "", "", figures=True)
 
 

@@ -1,44 +1,10 @@
-# Runs docker/Dockerfile.claude as a long-lived agent host: a detached
-# `claude remote-control` session inside tmux (entrypoint.sh), with the
-# workspace bind-mounted from the host so the drafts it writes survive
-# the container.
-#
-# Nothing here is host-specific -- every path, name and id that was once
-# hardcoded is a variable, because the first version of this file
-# carried one developer's home directory, their login name and a release
-# number in its own filename, which made it unusable to anyone else and
-# stale on the next release. Copy `.env.example` to `.env` beside this
-# file (gitignored) and edit that; every variable is documented there
-# rather than twice.
-#
-# **Pick a profile.** Neither service starts without one:
-#
-#   docker compose --profile cpu up -d   # no GPU, or you don't want one
-#   docker compose --profile gpu up -d   # every GPU on the host
-#
-# or set COMPOSE_PROFILES in `.env` and plain `docker compose up -d`
-# works. The two services are otherwise identical -- see the anchor
-# below, which is what keeps them from drifting -- and only one runs at
-# a time, so they deliberately share a container name.
-#
-# Why a profile rather than one service that adapts: a `deploy`
-# reservation naming the nvidia driver makes `up` fail outright ("could
-# not select device driver") on a host without the NVIDIA Container
-# Toolkit. It does not degrade to running without a GPU, and compose has
-# no conditional for it. Two services under two profiles is the only
-# shape that lets one file serve both machines.
+# Pick a profile (cpu or gpu): a `deploy` nvidia reservation makes `up` fail outright without the toolkit.
 name: ${CHITRAGUPTA_PROJECT_NAME:-chitragupta}
 
-# Everything both services share. Anchored rather than repeated: the gpu
-# service differs by exactly the `deploy:` block, and a copy-paste of
-# the other 20 lines is a thing that goes stale on the first edit.
 x-claude: &claude
   build:
     context: .
     dockerfile: Dockerfile.claude
-    # Passed to the ARGs of the same meaning in Dockerfile.claude, so
-    # the account inside the image and the `user:` below cannot disagree
-    # -- they read one variable.
     args:
       CG_USER: ${CHITRAGUPTA_USER:?set CHITRAGUPTA_USER in docker/.env -- see .env.example}
       CG_UID: ${CHITRAGUPTA_UID:?set CHITRAGUPTA_UID in docker/.env to your `id -u`}
@@ -46,35 +12,13 @@ x-claude: &claude
   image: chitragupta-claude:${CHITRAGUPTA_IMAGE_TAG:-latest}
   container_name: ${CHITRAGUPTA_CONTAINER_NAME:-chitragupta-claude}
 
-  # Matches the account the image creates, so a file written into the
-  # bind mounts below is owned by the human outside the container
-  # rather than by root. Required rather than defaulted, here and in
-  # the build args above: the account is a property of your machine,
-  # not of this project, and a default that is wrong for almost
-  # everyone still *works* -- it just writes files owned by the wrong
-  # uid into your workspace. docker/.env is the one place it is set.
+  # Required, not defaulted: a wrong default uid silently writes files owned by someone else.
   user: ${CHITRAGUPTA_USER:?set CHITRAGUPTA_USER in docker/.env -- see .env.example}
 
-  # Both of these, and neither is redundant. CLAUDE_AGENT_NAME is what
-  # entrypoint.sh registers the agent under, i.e. what you pick from in
-  # the remote-control UI; `hostname` is what a shell prompt and
-  # `docker exec -it $(hostname) ...` show inside the container. Without
-  # them the agent's name falls back to the container's short id --
-  # measured: it registered as `05f401525853`, which is unique and
-  # useless when you have two of these running.
   hostname: ${CHITRAGUPTA_CONTAINER_NAME:-chitragupta-claude}
-  # Where `docker exec` lands. The image's WORKDIR is /workspace, which is
-  # an empty directory when CHITRAGUPTA_WORKSPACE_DIR moves the mount.
   working_dir: ${CHITRAGUPTA_WORKSPACE_DIR:-/workspace}
   environment:
     CLAUDE_AGENT_NAME: ${CHITRAGUPTA_CONTAINER_NAME:-chitragupta-claude}
-    # The workspace path inside the container, which rc-daemon.sh runs the
-    # agent from and which entrypoint.sh marks trusted. It is the mount
-    # target below, so the two are one value and cannot drift. Everything
-    # else rc-daemon reads (RC_NAME, RC_PREFIX, RC_PERMISSION_MODE, RC_SPAWN,
-    # RC_VENV) is optional. Compose passes an unset one as an empty string, which
-    # rc-daemon.env's `${VAR:-default}` treats as unset, so its default
-    # applies.
     RC_DIR: ${CHITRAGUPTA_WORKSPACE_DIR:-/workspace}
     RC_NAME: ${RC_NAME:-}
     RC_PREFIX: ${RC_PREFIX:-}
@@ -83,55 +27,21 @@ x-claude: &claude
     RC_VENV: ${RC_VENV:-}
 
   volumes:
-    # `:?` rather than a default: a missing workspace is a mistake to
-    # stop on, not one to paper over by mounting the compose directory
-    # and scaffolding a project into the git checkout.
-    #
-    # The target is CHITRAGUPTA_WORKSPACE_DIR, /workspace unless set. Two
-    # containers that share CHITRAGUPTA_CLAUDE_HOME need different values:
-    # Claude Code keys its remote-control resume pointer
-    # (~/.claude/projects/<path>/bridge-pointer.json) and the server keys
-    # its one-agent-per-folder rule on this path, so with the same one the
-    # second container to start takes over the first one's session.
+    # `:?`, not a default: containers sharing CHITRAGUPTA_CLAUDE_HOME need distinct targets.
     - ${CHITRAGUPTA_WORKSPACE:?set CHITRAGUPTA_WORKSPACE to the host directory to mount in the container}:${CHITRAGUPTA_WORKSPACE_DIR:-/workspace}
     - ${CHITRAGUPTA_CLAUDE_HOME:-./claude}:/home/${CHITRAGUPTA_USER}/.claude
-    # The account record lives in ~/.claude.json, not in ~/.claude, so the
-    # mount above carries the login token but not which organization it
-    # belongs to, and `claude remote-control` refuses to start without that
-    # ("Unable to determine your organization"). Point CHITRAGUPTA_CLAUDE_JSON
-    # at the host's ~/.claude.json and entrypoint.sh copies its
-    # `oauthAccount` into the container's own file on every start. Read-only.
-    # The entrypoint copies nothing else, but the whole file stays readable
-    # by the agent, which runs with bypassPermissions: if it holds secrets
-    # (an MCP server's env or headers), point this at a file holding only
-    # {"oauthAccount": ...} instead. Unset, /dev/null is mounted instead and
-    # the entrypoint skips the copy. Long syntax for `create_host_path:
-    # false`: with the short form, a mistyped path makes the Docker daemon
-    # create a root-owned *directory* there on the host and the copy fails
-    # silently; this way `up` refuses to start and names the path.
+    # Long syntax for create_host_path: false, so a mistyped path fails `up` instead of creating a root dir.
     - type: bind
       source: ${CHITRAGUPTA_CLAUDE_JSON:-/dev/null}
       target: /home/${CHITRAGUPTA_USER}/.claude.host.json
       read_only: true
       bind:
         create_host_path: false
-    # Read-only on purpose: `corpus sync` only ever reads these, and an
-    # agent running with bypassPermissions has no business rewriting the
-    # human's source PDFs. Add papers from the host side. See
-    # `.env.example` -- this source must exist before the first `up`.
+    # Read-only: the agent runs with bypassPermissions and must not rewrite source PDFs.
     - ${CHITRAGUPTA_PAPERS:-${CHITRAGUPTA_WORKSPACE}/papers}:${CHITRAGUPTA_WORKSPACE_DIR:-/workspace}/papers:ro
 
-  # The agent is meant to outlive a reboot; entrypoint.sh ends in a
-  # `tail -f /dev/null`, so the container only exits on a real failure
-  # or an explicit `docker compose down`.
   restart: unless-stopped
 
-  # `Up` has never meant the agent is there: the container is PID 1 on a
-  # `tail`. rc-daemon.sh's status is true while its tmux supervisor lives,
-  # and the supervisor restarts the agent itself, so this catches the one
-  # case it cannot -- tmux or the supervisor dying -- and `docker ps` then
-  # says `unhealthy` instead of a bare `Up`. It does not detect a missing
-  # login: the supervisor is alive and retrying then, see `docker logs`.
   healthcheck:
     test: ["CMD", "rc-daemon.sh", "status"]
     interval: 60s
@@ -140,16 +50,10 @@ x-claude: &claude
     start_period: 20s
 
 services:
-  # For a host with no NVIDIA stack, or one where you simply don't want
-  # the GPUs handed to this container. Everything in the image works
-  # here; the enrich stages just run on the CPU torch wheel, slower.
   claude:
     <<: *claude
     profiles: ["cpu"]
 
-  # Identical, plus every GPU on the host. Needs the NVIDIA Container
-  # Toolkit installed outside the container; without it this service
-  # fails to start and the `cpu` profile is the answer.
   claude-gpu:
     <<: *claude
     profiles: ["gpu"]

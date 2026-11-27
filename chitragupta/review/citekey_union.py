@@ -1,57 +1,15 @@
 """The citekey union invariant: the citekeys out must be the citekeys in.
 
-A deterministic check on the one place this pipeline *combines* evidence
-without writing prose. `book-assembler` composes accepted units into
-`content/rendered/<book>/book.tex`; every unit has already recorded, in
-`content/specs/<book>/units/<unit-id>.json`, the citekeys its prose
-stands on. So the invariant is set arithmetic against something on disk:
-the union of the inputs' citekeys must equal the union in the output.
-No model, no judgement, no threshold.
+Each accepted unit recorded its citekeys under `content/specs/<book>/units/`,
+so the union of the inputs' citekeys must equal the union in the assembled
+`book.tex`: set arithmetic, no model, no threshold (docs/RAG.md on silent drops).
 
-docs/RAG.md catalogues why a combining step drops a source silently --
-four of LlamaIndex's five synthesis modes can lose one with no error and
-no log. What makes a *located* answer possible here is that the expected
-set was recorded before the assembly existed, so "the book dropped
-`smith_2024`, which `ch-model` stands on" is a subtraction rather than a
-reconstruction.
-
-**A book is composed by reference, and reading it any other way gives a
-wholly false report.** `book.tex` is structure only -- it `\\input`s its
-units, whose citations stay `\\citep{key}` (`--natbib`) for the book's
-one `bibtexu` pass -- so the assembly's own text contains no citekey,
-and subtracting against it would report every source in the book as
-lost. `_citekey_union_includes` owns that resolution and its docstring
-owns the argument; what follows from it is the shape of both directions
-here:
-
-- **Dropped**: an accepted unit the assembly never includes. Including a
-  unit includes all of its prose, so omitting one is how a source
-  actually goes missing at this step -- and every citekey only that unit
-  stood on goes with it. Located to the unit.
-- **Appeared**: a citekey in something the assembly includes that is
-  *not* a unit -- a title page, an appendix, a preamble file. It entered
-  outside any acceptance record, which the gate cannot see because the
-  citekey is perfectly real.
-
-Appeared is **withheld** while any unit is unchecked: that citekey may
-be one of theirs, and this reports that it cannot tell rather than a
-finding it has not earned.
-
-**A unit whose record no longer describes its prose is not compared
-against.** `unit.state` distinguishes `unwritten`/`drafted`/`stale:`
-from `accepted`, and a stale record's citekeys describe text that no
-longer exists -- comparing against them reports a drop that is not one.
-Those units are named in the report instead, never silently skipped,
-and so is any include that resolved to no file on disk.
-
-One of the eleven commands in the **review layer**: read over a finished
-assembly, by a person or by a driver, never a gate, never holding the
-write lock. chitragupta/review/__init__.py owns where a written report
-goes (`content/review/<book>/book.union.md`) and what its header says.
-
-Stdlib-only, reusing `chitragupta.citation_gate.extract_citekeys` -- the
-same extractor `unit accept` recorded the input side with, which is what
-makes the two sets comparable at all.
+`book.tex` only `\\input`s its units, so its own text has no citekeys;
+`_citekey_union_includes` resolves the includes. **Dropped** is an accepted
+unit the assembly never includes; **appeared** is a citekey in an included
+non-unit file, withheld while any unit is unchecked. A unit whose record is
+not `accepted` (stale records describe text that no longer exists) is named,
+never compared against. A review aid, never a gate, no write lock.
 
 Usage:
     python -m chitragupta.review union content/rendered/<book>/book.tex
@@ -74,32 +32,25 @@ from chitragupta.help_format import ClickParser
 def _recorded_citekeys(book: Path, unit_id: str) -> list[str]:
     """The citekeys `unit accept` recorded for `unit_id`.
 
-    No error handling, and that is the contract rather than an omission:
-    this is only ever called for a unit `unit.state` has just reported
-    `accepted`, which it does not say unless the record parsed and both
-    of its digests matched.
+    No error handling: only called once `unit.state` said `accepted`,
+    which means the record parsed and its digests matched.
     """
     record = json.loads(unit.record_path(book, unit_id).read_text(encoding="utf-8"))
     return list(record["citekeys"])
 
 
 def _citekeys(text: str, name: str | Path) -> set[str]:
-    """Every citekey in `text`, by the extractor and suffix rule `unit accept`
-    uses -- so the two sides of the subtraction are the same set."""
+    """Every citekey in `text`, by `unit accept`'s extractor, so both sides
+    of the subtraction are the same set."""
     return {key for _, key in citation_gate.extract_citekeys_for(name, text)}
 
 
 def compute(assembled: Path) -> UnionResult:
     """The invariant over `assembled` and the book it was composed from.
 
-    Raises `unit.UnitError` or `spec.SpecError` for a path in no book, or
-    in one whose outline does not parse -- there is no expected set to
-    compare against, and inventing one is the failure this aid catches.
-
-    **Two directories, because the two sides of the subtraction live in
-    two places**: the fragments beside the assembly, the acceptance
-    records under `content/drafts/`. `_book_paths` owns the mapping and
-    its argument.
+    Raises `unit.UnitError` or `spec.SpecError` for a path in no book or with
+    an unparsable outline: inventing an expected set is the failure this
+    catches. `_book_paths` maps the assembly to the records' directory.
     """
     assembled = Path(assembled)
     book = _book_paths.drafts_dir_for(assembled)
@@ -111,9 +62,7 @@ def compute(assembled: Path) -> UnionResult:
 
     result = UnionResult(
         assembled=assembled,
-        # The assembly's *own* citekeys: its skeleton plus every file it
-        # pulls in that no unit owns. Never a unit's -- reading those here
-        # would answer the question with its own input.
+        # Never a unit's citekeys: that would answer with its own input.
         own=_citekeys(text, assembled).union(*(_citekeys(body, name) for name, body in others)),
         outside_units=[name for name, _ in others],
         unresolved=unread,
@@ -121,9 +70,8 @@ def compute(assembled: Path) -> UnionResult:
     for entry in units:
         unit_id = entry["id"]
         state = unit.state(book, unit_id)
-        # A unit that is both unincluded and unbelievable is reported as
-        # unchecked, not as dropped: without a usable record there are no
-        # citekeys to say were lost. The report names both facts.
+        # Without a usable record there are no citekeys to call lost, so a
+        # non-accepted unit is unchecked, never dropped.
         if state == "accepted":
             result.checked.append(
                 UnitInput(unit_id, state, unit_id in included, _recorded_citekeys(book, unit_id))
@@ -136,15 +84,8 @@ def compute(assembled: Path) -> UnionResult:
 def refuse_a_unit(assembled: Path) -> str | None:
     """Why `assembled` is one of the book's own units, if it is.
 
-    Pointed at `ch-model.md`, this aid would report every *other*
-    unit's citekeys as dropped -- a confident and wholly wrong report,
-    and the one misuse the path shape makes easy. Checked by id rather
-    than by name, so it holds for both suffixes a genre skill emits.
-
-    Reaches the records through `_book_paths` for the reason `compute`
-    does, and gains a case by it: a rendered `ch-01.tex` is refused with
-    this message, where deriving the book from its own parent looked for
-    a spec under `content/rendered/` and raised instead.
+    Pointed at a unit, this aid would call every other unit's citekeys
+    dropped. Checked by id, so it holds for both suffixes.
     """
     book = _book_paths.drafts_dir_for(Path(assembled))
     if Path(assembled).stem in {entry["id"] for entry in unit.acceptance_units(book)}:
@@ -158,7 +99,6 @@ def refuse_a_unit(assembled: Path) -> str | None:
 
 
 def _command(assembled: Path, as_json: bool, write: bool) -> str:
-    """The invocation recorded in the Markdown header and JSON envelope."""
     parts = ["python", "-m", "chitragupta.review", "union", str(assembled)]
     if as_json:
         parts += ["--json"]
@@ -168,8 +108,7 @@ def _command(assembled: Path, as_json: bool, write: bool) -> str:
 
 
 def build_parser(parser=None) -> argparse.ArgumentParser:
-    """This aid's flags, declared once here so chitragupta/review/__main__.py
-    never restates them."""
+    """This aid's flags, declared once for chitragupta/review/__main__.py."""
     if parser is None:
         parser = ClickParser(
             description="Report whether an assembled book carries every citekey its units do.",
@@ -198,13 +137,8 @@ def main(argv: list[str]) -> int:
 def _read(draft: str) -> tuple[Path, UnionResult] | None:
     """The assembly and its result, or None once a refusal is on stderr.
 
-    Both refusals get the same answer for the reason the layer already
-    gives exit 1: an input this aid will not read, said once on stderr,
-    rather than a traceback or a report built on a guess.
-
-    `spec.SpecError` is caught alongside `unit.UnitError` because it is a
-    sibling rather than a subclass of it: a path under `content/` in no
-    book at all raised it straight through this handler as a traceback.
+    `spec.SpecError` is a sibling of `unit.UnitError`, not a subclass, so
+    both are caught (a path in no book was a traceback).
     """
     try:
         assembled = review.require_reviewable(Path(draft), "assembled document")
@@ -219,9 +153,8 @@ def _read(draft: str) -> tuple[Path, UnionResult] | None:
 
 
 def run(args: argparse.Namespace) -> int:
-    """Dispatch already-parsed arguments, split from main() so
-    chitragupta/review/__main__.py can hand over args parsed with this
-    module's own build_parser(). Exit 1 is a refusal (see `_read`)."""
+    """Dispatch already-parsed arguments (for __main__). Exit 1 is a
+    refusal (see `_read`)."""
     read = _read(args.draft)
     if read is None:
         return 1

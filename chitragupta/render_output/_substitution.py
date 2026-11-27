@@ -1,11 +1,6 @@
 """The draft-substitution pipeline: math mapping validation, figure/table
 warnings, and the one chain that resolves every marker before a writer
-sees the text.
-
-Split from `chitragupta/render_output/__init__.py` (#441). Re-exported
-from there like every other `_X.py` sibling in this package -- see that
-module's own docstring on why the package's attribute surface has to
-stay identical to the single module it replaced.
+sees the text (#441; re-exported from the package root).
 """
 
 import sys
@@ -35,30 +30,15 @@ def _checked_math_mapping(
 ) -> "dict[str, str]":
     """`input_path`'s ASCII-to-LaTeX mapping, having reported what is wrong.
 
-    Called past `render`'s Markdown-to-Markdown early return, so it runs
-    for exactly the formats that reach pandoc -- the one predicate §12's
-    mapping turns on. A Markdown-to-Markdown render leaves the draft's
-    ASCII alone, which is the whole point of holding the LaTeX elsewhere.
+    Runs only for formats that reach pandoc (a Markdown render keeps its
+    ASCII), but above `_require("pandoc")` so it is testable without pandoc.
+    `check` raises for the two certain conditions (`_math.check`); the gaps
+    only print. A file that can have no `math.md` (outside `content/drafts/`)
+    prints no gaps (#1115), but `check` still runs.
 
-    Above `_require("pandoc")` in the caller, deliberately: a mapping
-    problem is worth reporting on a host with no pandoc installed, and
-    keeping it out of that untestable tail is what lets it be covered.
-
-    `check` raises rather than warning, for the two conditions that are
-    certain rather than heuristic -- see `_math.check`. The gaps below it
-    print and carry on, the way a figure problem does.
-
-    A file that can have no `math.md` -- a review report, anything outside
-    `content/drafts/` -- prints none of them (#1115): each asks for a row
-    nobody can add, and a report's header quoting the draft's path is
-    otherwise read as arithmetic. `check` still runs there, being certain.
-
-    `mapping_path` names the mapping for a copy of a draft rendered
-    outside `content/drafts/`: `draft diff`'s two sides, in
-    `content/review/` (#1194). It is confined to `content/` like every
-    path `render` reads. Such a copy still prints no gaps -- the draft's
-    own render reports them, once -- and nor does it read the glossary,
-    which is mirrored from the path the same way.
+    `mapping_path` names the mapping for a draft copy rendered elsewhere
+    (`draft diff`'s sides, #1194), confined to `content/`; such a copy prints
+    no gaps and reads no glossary.
     """
     if mapping_path is not None:
         mapping_path = config.require_inside_content(Path(mapping_path), "math mapping")
@@ -79,15 +59,9 @@ def _checked_math_mapping(
     return mapping
 
 
-# One list rather than a loop per kind in `render()`, and the tag is what
-# keeps `[figure]` and `[table]` apart in the one stderr stream a genre
-# skill reads.
-#
-# Both kinds are collected *above* `render`'s Markdown-to-Markdown early
-# return, because that path is where a table's number is written here
-# rather than deferred to LaTeX -- so it is the path where an
-# unresolvable marker costs the most, and the one that would otherwise
-# report nothing at all.
+# The tag keeps `[figure]`/`[table]` apart in the one stderr stream a skill
+# reads. Collected above `render`'s md early return, where a table's number is
+# written here and an unresolvable marker would otherwise go unreported.
 def _draft_warnings(draft_text: str, input_path: Path) -> "list[tuple[str, str]]":
     """Every figure, table and equation problem in the draft, tagged with
     its source."""
@@ -99,41 +73,19 @@ def _draft_warnings(draft_text: str, input_path: Path) -> "list[tuple[str, str]]
     )
 
 
-# Figure captions and references, then figure content, then tables, then
-# mathematics -- one chain with one definition, reached by both of
-# `render`'s paths.
+# Figure captions, refs, figure content, tables, mathematics, equation numbers:
+# one chain for both of `render`'s paths.
 #
-# The figure list is computed exactly once, off `draft_text` before either
-# substitution has touched it, and handed to both. Recomputing it off text
-# a prior pass already rewrote is wrong twice over: after `substitute_refs`
-# has run, a `figureref` sentence right after an uncaptioned marker no
-# longer starts with `<!--`, so `substitute_captions`'s own pair regex
-# would misread that sentence as the marker's caption and swallow it, and
-# a marker `substitute_captions` has already wrapped in `\caption{...}` or
-# `**Figure N:**` would spuriously match the pair regex *again*. Captions
-# therefore run first, off the one precomputed list, and refs run second
-# on the result -- a `figureref` marker is a self-contained inline token,
-# so wrapping earlier text in a caption around it changes nothing about
-# resolving it. Both have to run before `_with_figures_for` replaces the
-# marker with actual content, too: after that, the `[marker, caption]`
-# adjacency captions looks for no longer exists. A figure substitution can
-# also introduce a fenced ASCII block, and `_math`'s own display rule
-# reads fences, so mathematics goes last.
+# The figure list is computed once off the pristine `draft_text`: after
+# `substitute_refs` or `substitute_captions` has run, the caption pair regex
+# would swallow a following sentence or rematch a wrapped caption. Captions
+# and refs must also run before `_with_figures_for` replaces the marker.
+# Mathematics goes after figures because a figure can introduce an ASCII
+# fence that `_math` reads.
 #
-# The Markdown path passes an empty mapping, which substitutes nothing --
-# §12 deliberately leaves a Markdown render's ASCII alone, and
-# `tests/test_render_output_math.py` pins that. Tables are the opposite
-# case and pass through here on that path too: their numbers exist
-# nowhere else, since that path never reaches pandoc.
-#
-# Equation numbering runs last, and needs no precomputed list of its own
-# unlike the figure one above: `_equation_captions.py` is the only pass
-# that reads whatever `_math.substitute` left behind rather than content
-# beside it, so nothing earlier in this chain moves an equation marker
-# relative to another one, and counting document order in the result
-# agrees with counting it in `draft_text`. See that module's own
-# docstring for why its numbering, unlike its content, is not gated on
-# `math_mapping` being non-empty -- it runs on every format, `md` included.
+# The md path passes an empty mapping, so no math is substituted
+# (`tests/test_render_output_math.py` pins this), but tables and equation
+# numbers still run there, since nothing else numbers them.
 def _substituted(
     draft_text: str,
     input_path: Path,
@@ -144,30 +96,17 @@ def _substituted(
 ) -> str:
     """The text a writer actually sees, with every marker resolved.
 
-    `fragment` additionally drops the draft's own References section, and
-    a chapter number its own top heading states. A fragment is `\\input`
-    into a larger document that resolves citations once for the whole of
-    itself, so a per-chapter list would be a second, differently numbered
-    answer -- see `_citeproc.drop_manual_refs` -- and that document
-    numbers the chapter itself, so a heading that states its number is
-    numbered twice (`_chapter_number`). Both belong here rather than at
-    the call site because this function is already the one answer to
-    "what does the writer actually see", and a second place that rewrites
-    the same text is a second place for the two to disagree.
-
-    `defer_citations` drops the References section for the same reason
-    and keeps the chapter number: its `\\bibliography` is the document's
-    one list, but the render is a standalone article, not a book's
-    chapter.
+    `fragment` also drops the References section (the including document
+    resolves citations once, `_citeproc.drop_manual_refs`) and a self-stated
+    chapter number (`_chapter_number`). Done here so only one place rewrites
+    what the writer sees. `defer_citations` drops the References only: it is a
+    standalone article with one `\\bibliography`, not a chapter.
     """
     if defer_citations:
         draft_text = drop_manual_refs(draft_text)
     if fragment:
-        # `latex` off a `.tex` suffix rather than off `output_format`: what
-        # it selects is which regions of the *draft* are code, and a `.tex`
-        # draft's backticks are quote characters (`_blank_code`'s own
-        # reason). The output is LaTeX either way here, so keying off the
-        # format would read the wrong document.
+        # `latex` off the `.tex` suffix, not `output_format`: it selects the
+        # draft's code regions, and a `.tex` draft's backticks are quotes.
         draft_text = _chapter_number.unnumbered(
             drop_manual_refs(draft_text),
             input_path.suffix.lower() not in _paths._MARKDOWN_SUFFIXES,
@@ -182,10 +121,8 @@ def _substituted(
     with_figures = _with_figures_for(with_refs, input_path, output_format)
     mathed = _math.substitute(_tables.substitute(with_figures, output_format), math_mapping)
     numbered = _equation_captions.substitute(mathed, output_format)
-    # The Markdown-to-Markdown path -- the only one these two conditions
-    # reach -- has no pandoc to drop raw LaTeX the way its other writers
-    # do (#1144). Last in the chain, so it would catch a raw span any pass
-    # above emitted too; none does today, for `md`.
+    # The md path has no pandoc to drop raw LaTeX (#1144). Last in the chain,
+    # so it catches a raw span from any pass above too.
     if output_format == "md" and input_path.suffix.lower() in _paths._MARKDOWN_SUFFIXES:
         return _raw_tex.dropped(numbered)
     return numbered

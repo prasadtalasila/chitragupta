@@ -1,22 +1,11 @@
 """How the index prints a term (#1168): casing, article, symbols, sort key,
 `upmendex` quoting, sub-entries and cross-references.
 
-Everything here is presentation, decided once the whole book is typeset,
-from the term table (`registry/_index_terms.py`) and the casing counts
-each chapter's sidecar records. The filter never sees any of it: it puts
-only an opaque id in `\\index{}`.
-
-- **Casing** is the book's own: a word is lowercased or capitalised when
-  most of its mid-sentence mentions are, because a glossary line always
-  starts with a capital ("Decision") that the prose does not use. A tie,
-  or no mid-sentence mention, lowercases a plainly capitalised first
-  word and keeps the rest; the report names each such guess, and
-  `[print]` overrides all of it.
-- **A leading article** is inverted, Chicago-style: "four criteria, the".
-- **Sort keys** are plain lowercase text: maths delimiters dropped, Greek
-  spelled out, the article left out, so "ε-greedy" files under E.
-- **Quoting**: `upmendex` reads `! @ | "` as syntax, so each is quoted
-  with `"` in both the sort key and the printed form.
+Presentation only, decided after typesetting; the filter puts only an
+opaque id in `\\index{}`. Casing follows the book's mid-sentence usage,
+since glossary lines start with a sentence capital; guesses are
+reported and `[print]` overrides. `upmendex` reads `! @ | "` as syntax,
+so each is quoted with `"`.
 """
 
 import re
@@ -31,7 +20,6 @@ ARTICLES = ("the", "a", "an")
 _LATEX_NAME = re.compile(r"\\(?:var)?([a-z]+)")
 
 
-# A word as the filter splits prose: spaces, hyphens and dashes separate.
 _TOKEN = re.compile(r"[^\s\-\u2013\u2014]+")
 
 
@@ -39,8 +27,7 @@ def _votes(
     glossary: str, midsentence: "dict[str, int]"
 ) -> "tuple[list[re.Match], list[list[int]]]":
     """`glossary`'s words, and for each `[lowercase, capitalised]`
-    mid-sentence counts. A mention of a different length (another
-    spelling) casts no vote."""
+    mid-sentence counts. Another spelling's mention casts no vote."""
     tokens = list(_TOKEN.finditer(glossary))
     votes = [[0, 0] for _ in tokens]
     for surface, count in midsentence.items():
@@ -74,9 +61,8 @@ def cased(glossary: str, midsentence: "dict[str, int]") -> str:
 
 
 def guessed(glossary: str, midsentence: "dict[str, int]") -> bool:
-    """Whether `cased` lowercased the first word on no evidence: right
-    for "Ecological twin", wrong for a proper noun such as "Kalman
-    filter", so the report names each one."""
+    """Whether `cased` lowercased the first word on no evidence (wrong
+    for a proper noun), so the report names each one."""
     tokens, votes = _votes(glossary, midsentence)
     return bool(tokens) and votes[0][0] == votes[0][1] and _plain(tokens[0].group())
 
@@ -106,7 +92,6 @@ def _greek(char: str) -> str:
 
 
 def sort_key(text: str) -> str:
-    """Plain lowercase text to sort `text` by."""
     text = _LATEX_NAME.sub(
         lambda match: match.group(1) if match.group(1) in _GREEK_NAMES else match.group(0), text
     )
@@ -118,7 +103,6 @@ def sort_key(text: str) -> str:
 
 
 def quote(text: str) -> str:
-    """`text` with `upmendex`'s syntax characters quoted."""
     return re.sub(r'([!@|"])', r'"\1', text)
 
 
@@ -142,11 +126,10 @@ def _sort_of(term: dict) -> str:
 def keys(
     data: dict, midsentence: "dict[str, dict]", convert
 ) -> "tuple[dict[str, list[str]], dict[str, str]]":
-    """Term id -> the `sort@printed` keys it is indexed under, and term id
-    -> its printed form as LaTeX. The keys: its own,
-    unless a parent is `[parent_only]`, then one per parent, each
-    repeating the parent's whole key (otherwise `upmendex` prints the
-    parent twice). `convert` is `markdown_to_latex`, called once."""
+    """Term id -> its `sort@printed` keys, and term id -> its printed
+    LaTeX. Under a `[parent_only]` parent, one key per parent repeating
+    its whole key, or `upmendex` prints the parent twice. `convert` is
+    called once."""
     terms = data["terms"]
     own = {tid: printed(term, midsentence.get(tid, {})) for tid, term in terms.items()}
     under = {
@@ -154,8 +137,7 @@ def keys(
         for tid, term in terms.items()
         for parent in term["parents"]
     }
-    # A parent that is itself a term prints as that term does, or upmendex
-    # would see two parents: the term's own line and the raw name.
+    # A term parent prints as that term, or upmendex sees two parents.
     heads = {}
     for parent in sorted({parent for _, parent in under}):
         pid = term_id(term_key(parent))

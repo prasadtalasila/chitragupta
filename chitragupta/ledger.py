@@ -1,13 +1,9 @@
 """SQLite ledger tracking per-citekey pipeline status.
 
-The ledger lets `sync` be incremental: a paper is only re-parsed if its
-PDF content actually changed, not on every run. Change detection is
-two-stage: a cheap (size, mtime) stat comparison first, and a sha256
-content hash only when that stat doesn't match what was last recorded
-(or there's nothing recorded yet) -- see upsert_reference. This is the
-state that makes the deterministic pipeline safe to run unattended/on a
-schedule, including on a corpus large enough that re-hashing every PDF
-on every no-op run would dominate the run's wall-clock time.
+Makes `sync` incremental: a PDF is re-parsed only when its content
+changed, checked by (size, mtime) first and sha256 only on a mismatch
+(see upsert_reference), so an unattended no-op run does not re-hash
+every PDF.
 """
 
 from __future__ import annotations
@@ -18,23 +14,13 @@ from contextlib import contextmanager
 
 from chitragupta import config, ledger_paths, ledger_tables
 
-# upsert_reference's own implementation, and everything it depends on,
-# lives in chitragupta/ledger_upsert.py (#441) -- this module crossed the
-# 250-code-line C2 limit, and that unit never touches the schema,
-# migrations or the read-only queries below. Re-exported here, the same
-# shape chitragupta/render_output/__init__.py already uses, so every
-# existing `ledger.upsert_reference(...)` call site keeps working
-# unchanged.
+# Re-exported so `ledger.upsert_reference(...)` call sites keep working (#441).
 from chitragupta.ledger_upsert import upsert_reference  # noqa: F401  # pylint: disable=unused-import
 
-# mark_parsed moved to ledger_paths with the rule that a stored path is
-# relative (#966); re-exported so `ledger.mark_parsed` and sync.py are
-# unchanged.
+# Re-exported; stored paths are relative (#966).
 from chitragupta.ledger_paths import mark_parsed  # noqa: F401  # pylint: disable=unused-import
 
-# read_connection's refusals moved to ledger_refusals when the third,
-# UnreadableLedger, would have taken this module past the C2 limit
-# (#1066); re-exported so `ledger.NoLedger` and the rest are unchanged.
+# Re-exported so `ledger.NoLedger` and the rest keep working (#1066).
 from chitragupta.ledger_refusals import (  # noqa: F401  # pylint: disable=unused-import
     EXIT_UNREADABLE,
     NoLedger,
@@ -46,12 +32,8 @@ from chitragupta.ledger_refusals import (  # noqa: F401  # pylint: disable=unuse
 # `ledger_paths` (#966), never as `str(path)`;
 # tests/test_ledger_relocation.py scans for both.
 #
-# _SCHEMA only ever describes the *original* table shape (schema version
-# 0) -- every column added since is a migration in _MIGRATIONS below, not
-# an edit here. That way a brand-new database and an existing one predating
-# a migration go through the exact same code path in _migrate (both start
-# at user_version 0), instead of _SCHEMA silently being "current" for a
-# fresh file while an existing file still needs ALTER TABLE.
+# _SCHEMA is only the original shape (version 0); every later column is a
+# migration, so a new database and an old one take the same path.
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS items (
     citekey TEXT PRIMARY KEY,
@@ -69,72 +51,33 @@ CREATE TABLE IF NOT EXISTS items (
 );
 """
 
-# Ordered, one tuple of (column_name, "ADD COLUMN" statement) pairs per
-# schema version -- version N is "the first N tuples have been applied".
-# Tracked via PRAGMA user_version (a plain integer stored in the database
-# file itself) so an already-migrated ledger -- the common case on every
-# routine `sync` -- skips straight past the loop below on a single
-# integer comparison. Each statement is still paired with the column name
-# it adds and re-checked against PRAGMA table_info(items) before running
-# (_migrate below) rather than trusted on user_version alone: user_version
-# and the table's actual shape could in principle disagree (e.g. a future
-# column added directly to _SCHEMA instead of here), and "ADD COLUMN" on
-# a column that already exists raises, so this is what keeps that
-# specific mistake from crashing every `sync` on every host instead of
-# just being a no-op.
+# One tuple of (column, statement) pairs per schema version, tracked by
+# PRAGMA user_version. Each column is still re-checked against table_info
+# before running, because ADD COLUMN on an existing column raises and
+# would crash every `sync`.
 _MIGRATIONS: list[tuple[tuple[str | None, str], ...]] = [
     (
-        # version 1: upsert_reference's stat-before-hash skip (module
-        # docstring) needs somewhere to persist the (size, mtime) last
-        # observed for a given PDF, so a subsequent no-op sync can compare
-        # against that instead of re-reading and sha256-hashing
-        # potentially gigabytes of PDF content.
+        # version 1: (size, mtime) for the stat-before-hash skip.
         ("pdf_size", "ALTER TABLE items ADD COLUMN pdf_size INTEGER"),
         ("pdf_mtime_ns", "ALTER TABLE items ADD COLUMN pdf_mtime_ns INTEGER"),
     ),
     (
-        # version 2: 'parse_failed' conflated two failures that want
-        # opposite handling. A worker dying marks every in-flight
-        # document failed and must be retried, or one OOM silently
-        # removes them from the corpus for good; a corrupt PDF must NOT
-        # be re-parsed every run, because a sync that exits 1 forever
-        # trains its reader to ignore exit 1 -- which is how the next
-        # real failure gets missed.
-        #
-        # NULL means "recorded before this distinction existed", and is
-        # deliberately treated as transient: those rows predate the
-        # column, and retrying one corrupt PDF once is cheaper than
-        # silently abandoning a document that failed for a transient
-        # reason.
+        # version 2: a dead worker (transient, retried, or one OOM drops
+        # documents for good) versus a corrupt PDF (deterministic, not
+        # retried, or sync exits 1 forever and readers learn to ignore it).
+        # NULL predates the column and is treated as transient.
         ("failure_kind", "ALTER TABLE items ADD COLUMN failure_kind TEXT"),
     ),
     (
-        # version 3: the entry's own BibTeX fields, verbatim, as a JSON
-        # object -- authors, journal/booktitle, volume, pages, publisher,
-        # everything the title/year/doi columns above don't keep.
-        #
-        # chitragupta/references.py needs them to write a real bibliography entry
-        # rather than just "citekey -- Title (Year)", and it may not read
-        # bibliography.bib to get them: chitragupta/bib_reader.py is the only
-        # module allowed to (AGENTS.md), and it needs bibtexparser, while
-        # references.py runs under bare python3. One opaque JSON column
-        # rather than a column per field because nothing here queries or
-        # indexes them -- they are only ever read back whole, for one
-        # citekey at a time, to format an entry.
-        #
-        # NULL means "synced before this column existed". references.py
-        # falls back to the title/year columns for those rather than
-        # failing, so an existing ledger keeps working until the next
-        # `python -m chitragupta.corpus sync` backfills it.
+        # version 3: the entry's BibTeX fields as one JSON object, for
+        # references.py, which runs under bare python3 and may not read
+        # bibliography.bib (only bib_reader may). NULL falls back to
+        # title/year until the next sync backfills it.
         ("bib_fields", "ALTER TABLE items ADD COLUMN bib_fields TEXT"),
     ),
     (
-        # version 4: Zotero collection membership, as a JSON array of normalised
-        # paths (chitragupta/bib_collections.py). NULL for a row synced before
-        # this column existed and for the majority of libraries, whose
-        # export carries no such field at all -- both read as "no
-        # collections recorded", which is what every caller already does
-        # with an empty list.
+        # version 4: Zotero collection paths as JSON
+        # (chitragupta/bib_collections.py); NULL means none recorded.
         ("collections", "ALTER TABLE items ADD COLUMN collections TEXT"),
     ),
     # version 5: chitragupta-importer's collection names and recorded
@@ -154,8 +97,7 @@ def _migrate(con: sqlite3.Connection) -> None:
         for column, statement in steps:
             if column is None or column not in existing_cols:
                 con.execute(statement)
-    # PRAGMA user_version doesn't accept `?` parameter binding -- target
-    # is this module's own len(_MIGRATIONS), never user input.
+    # No `?` binding for PRAGMA; target is our own len(), never user input.
     con.execute(f"PRAGMA user_version = {target}")
 
 
@@ -164,16 +106,10 @@ def connect() -> sqlite3.Connection:
     and migrates it. A reader uses `read_connection` (#843)."""
     config.CONTENT_DIR.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(config.LEDGER_PATH)
-    # The schema and the whole migration run as one write transaction
-    # (#843). In autocommit, two processes first-touching an old ledger
-    # -- deep-research fans out subagents that each start by searching --
-    # both read user_version 0 and the pre-migration columns, and the
-    # loser died on "duplicate column name" re-running an ALTER TABLE.
-    # BEGIN IMMEDIATE takes the write lock *before* user_version is read,
-    # so the second one waits (sqlite's default 5 s timeout), then reads
-    # the version the first committed and does nothing. A failure part
-    # way through rolls every step back rather than leaving a half-added
-    # set of columns behind a stale user_version.
+    # Schema and migration in one write transaction (#843): BEGIN IMMEDIATE
+    # takes the lock before user_version is read, so concurrent first
+    # touches (deep-research subagents) cannot both run ALTER TABLE, and a
+    # failure rolls every step back.
     con.execute("BEGIN IMMEDIATE")
     try:
         con.execute(_SCHEMA)
@@ -189,10 +125,8 @@ def connect() -> sqlite3.Connection:
 
 @contextmanager
 def connection() -> Iterator[sqlite3.Connection]:
-    """`with ledger.connection() as con:` -- connect() plus the
-    close()-in-a-finally every caller was already writing by hand at
-    eight call sites (#292). The writer's; a reader wants `reading()`.
-    """
+    """`with ledger.connection() as con:` -- connect(), closed. A reader
+    wants `reading()`."""
     con = connect()
     try:
         yield con
@@ -200,46 +134,24 @@ def connection() -> Iterator[sqlite3.Connection]:
         con.close()
 
 
-# The one read-only opener (#843). `ledger_cli`, `overlap_index_ledger`
-# and `discover/_data` each carried an identical copy, each with its own
-# docstring on why `connect()` is wrong for a reader: it mkdirs content/,
-# creates the database, runs the migration and commits -- a writer, which
-# takes the write lock (so an inspection could stall a running sync) and,
-# before any sync, *creates* an empty ledger, after which "no ledger" can
-# never be reported again.
-#
-# Read-only via the `mode=ro` URI, which also cannot create a missing
-# file; the existence check ahead of it is what turns that case into the
-# typed refusal. `timeout` is sqlite's default rather than 0 (m-72, #552):
-# the ledger has no WAL, so a reader is locked out for the length of a
-# writer's commit, and waiting takes no lock.
-#
-# A ledger whose user_version is behind `_MIGRATIONS` is refused as
-# `StaleLedger`, not migrated: a reader may not migrate (that is a write,
-# and the race above), and read as-is it would fail later on a missing
-# column with a message naming neither the cause nor the fix. The cost is
-# deliberate and bounded -- after an upgrade that adds a migration, readers
-# say "run sync" until one sync has run, which is also what brings the new
-# column's data in. A zero-byte file reads as user_version 0 and gets the
-# same answer, which is the right one for it too.
-#
-# A file SQLite will not read at all -- a hot journal from an interrupted
-# write, a damaged page, a writer holding the lock past the timeout --
-# fails on this first read too, and is refused as `UnreadableLedger`
-# with its cause rather than escaping as a raw `sqlite3.Error` (#1066).
+# The one read-only opener (#843). `connect()` is wrong for a reader: it
+# takes the write lock and, before any sync, creates an empty ledger.
+# `mode=ro` cannot create a file. `timeout` is sqlite's default, not 0
+# (#552): without WAL a reader waits out a writer's commit.
+# A ledger behind `_MIGRATIONS` is refused as `StaleLedger`, not migrated
+# (a reader may not write); readers say "run sync" until one sync runs.
+# A file SQLite will not read is `UnreadableLedger`, never a raw
+# `sqlite3.Error` (#1066).
 def read_connection() -> sqlite3.Connection:
     """The ledger, read-only. Raises `NoLedger` when there is no file,
     `StaleLedger` when it needs a sync to migrate and `UnreadableLedger`
     when SQLite will not read it; creates nothing."""
     if not config.LEDGER_PATH.exists():
         raise NoLedger()
-    # A file this user cannot open fails here, before there is a
-    # connection to close.
     try:
         con = sqlite3.connect(ledger_paths.read_only_uri(config.LEDGER_PATH), uri=True, timeout=5.0)
     except sqlite3.Error as exc:
         raise UnreadableLedger(config.LEDGER_PATH, exc) from exc
-    # Closed on every way out but the return.
     try:
         (version,) = con.execute("PRAGMA user_version").fetchone()
         if version < len(_MIGRATIONS):
@@ -268,11 +180,9 @@ def reading() -> Iterator[sqlite3.Connection]:
 def mark_parse_failed(
     con: sqlite3.Connection, citekey: str, error: str, *, transient: bool = False
 ) -> None:
-    """transient=True for a failure caused by the *run* rather than the
-    document -- a dead pool worker, a stalled run. Those are retried
-    automatically. The default is deterministic: the backend read this
-    particular PDF and could not parse it, so re-reading it next run
-    would only waste the same time again."""
+    """transient=True for a failure caused by the run (a dead worker, a
+    stall), which is retried; the default means this PDF cannot be parsed
+    and re-reading it would waste the same time again."""
     con.execute(
         "UPDATE items SET status = 'parse_failed', parse_error = ?, failure_kind = ? "
         "WHERE citekey = ?",
@@ -295,35 +205,22 @@ def failure_counts(con: sqlite3.Connection) -> dict[str, int]:
     return counts
 
 
-# Every citekey with a row, whatever its status. Not a citability test: a
-# `no_pdf` row is here too. Whether a draft may cite a key is
-# `ledger_citable.citable_citekeys` (#1118).
+# Every citekey with a row, including `no_pdf`. Not a citability test:
+# that is `ledger_citable.citable_citekeys` (#1118).
 def known_citekeys(con: sqlite3.Connection) -> set[str]:
     return {row[0] for row in con.execute("SELECT citekey FROM items")}
 
 
-# Comfortably under SQLite's SQLITE_MAX_VARIABLE_NUMBER (32766 since
-# 3.32) rather than at it, mirroring chroma_paging.PAGE_SIZE's reasoning
-# on the Chroma side: the ceiling is measured in bound variables, and one
-# citekey costs exactly one here.
+# Under SQLite's 32766 bound-variable ceiling, as chroma_paging.PAGE_SIZE.
 CITEKEY_CHUNK = 30_000
 
 
 def rows_for_citekeys(con: sqlite3.Connection, columns: str, citekeys: list[str]) -> list:
     """`SELECT <columns> FROM items` for every row whose citekey is in
-    `citekeys`, chunked under the variable ceiling.
+    `citekeys`, chunked under the variable ceiling (#639).
 
-    The one place an items read binds a placeholder per citekey (#639):
-    unchunked `IN (?,...,?)` lists broke with "too many SQL variables"
-    past 32766 keys -- the same failure class chroma_paging.all_rows
-    pages the Chroma side past -- and every caller that fixed it locally
-    would be a second copy of this loop. `columns` is a literal written
-    by this package's own callers, never external input, the same
-    standing as the PRAGMA interpolation in `_migrate` above; citekey
-    values are all bound.
-
-    An empty list runs no query at all: `IN ()` is a sqlite syntax
-    error, not an empty match.
+    `columns` is a literal from this package, never external input. An
+    empty list runs no query: `IN ()` is a syntax error.
     """
     rows: list = []
     for start in range(0, len(citekeys), CITEKEY_CHUNK):
@@ -341,59 +238,32 @@ def rows_for_citekeys(con: sqlite3.Connection, columns: str, citekeys: list[str]
 def find_stale(con: sqlite3.Connection, seen_citekeys: set[str]) -> list[tuple[str, str | None]]:
     """Read-only: ledger rows whose citekey is no longer in the bib file.
 
-    Never deletes anything -- this is what `sync`'s default (--remove-stale
-    not passed) mode calls to report what a --remove-stale run would prune,
-    without taking the destructive step. See prune_missing for the version
-    that actually deletes.
+    What `sync` reports without --remove-stale; prune_missing deletes.
     """
     rows = con.execute("SELECT citekey, parsed_path FROM items").fetchall()
     return [(citekey, parsed_path) for citekey, parsed_path in rows if citekey not in seen_citekeys]
 
 
 class PruneRefused(RuntimeError):
-    """prune_missing's guard: the bib file yielded 0 references against a
-    non-empty ledger. A distinct type, not a bare RuntimeError, so a
-    caller (chitragupta/sync.py's main()) can catch this specific refusal
-    without also swallowing an unrelated internal RuntimeError as if it
-    were the same well-understood, print-and-exit-1 case."""
+    """The bib file yielded 0 references against a non-empty ledger. A
+    distinct type so sync.py can catch it without swallowing other
+    RuntimeErrors."""
 
 
 def prune_missing(con: sqlite3.Connection, seen_citekeys: set[str]) -> list[tuple[str, str | None]]:
     """Removes ledger rows whose citekey is no longer in the bib file.
 
-    Without this, a citekey removed from bibliography.bib (the source of
-    truth) stays "known" to citation_gate forever -- exactly the fabricated-
-    citekey failure mode AGENTS.md's invariant exists to prevent, just
-    arriving via deletion instead of invention. Returns the removed
-    (citekey, parsed_path) pairs so the caller can also clean up the
-    now-orphaned parsed text file, though sync.py deliberately doesn't:
-    only the row is what citation_gate actually checks, and pointing
-    BIB_FILE at a smaller export is a documented, routine way to narrow
-    the working set (and does, intentionally, prune the rows it excludes
-    when --remove-stale is passed) -- but leaving the derived text in
-    place means switching BIB_FILE back to a wider export later doesn't
-    force a re-parse of PDFs whose text was already extracted.
+    Otherwise a removed citekey stays citable forever: fabrication by
+    deletion. Parsed text is kept, so widening BIB_FILE again needs no
+    re-parse. Only with `sync --remove-stale`.
 
-    Only called when `sync --remove-stale` is passed (default: off, see
-    sync.run) -- otherwise sync calls the read-only find_stale() instead,
-    so an accidental citekey drop just gets reported, not deleted, until
-    the user explicitly opts in.
-
-    Refuses (raises) rather than pruning when seen_citekeys is empty but
-    the ledger already has rows: bibliography.bib is a manual export
-    (AGENTS.md), and a file that exists and parses cleanly but yields
-    zero entries is far more likely to be a botched re-export, a
-    truncated file, or BIB_FILE pointing at the wrong path than someone
-    deliberately deleting their entire library. Pruning through that
-    would wipe every row in one sync run and make citation_gate report
-    every citekey in every existing draft as fabricated.
+    Refuses when the bib yields zero entries but the ledger has rows: that
+    is far likelier a botched export or wrong BIB_FILE, and pruning would
+    make the gate fail every citekey in every draft.
     """
     stale = find_stale(con, seen_citekeys)
     if not seen_citekeys and stale:
-        # Query the total row count explicitly rather than reusing
-        # len(stale) -- true today only because seen_citekeys is empty
-        # (every row is trivially "stale"), but the message should stay
-        # accurate even if this guard's condition changes later.
+        # Counted, not len(stale), so the message survives a changed guard.
         (total,) = con.execute("SELECT COUNT(*) FROM items").fetchone()
         raise PruneRefused(
             f"Refusing to prune: the bib file yielded 0 references but the "
@@ -413,13 +283,8 @@ def prune_missing(con: sqlite3.Connection, seen_citekeys: set[str]) -> list[tupl
 def all_items(con: sqlite3.Connection) -> list[sqlite3.Row]:
     """Every ledger row, as `sqlite3.Row`.
 
-    The factory is set on a *cursor*, not on the connection (#511/m-81).
-    Setting `con.row_factory` reached every other user of that connection
-    for the duration, and the reset afterwards wrote `None` rather than
-    whatever was there before -- so a caller that had set its own factory
-    silently lost it. There was no `finally` either, so a raised query
-    left the connection in `sqlite3.Row` mode for good. A cursor-level
-    factory has none of those three problems and needs no restoring.
+    The factory is set on a cursor, not the connection (#511), so another
+    user's factory is never overwritten or left changed after a raise.
     """
     cursor = con.cursor()
     cursor.row_factory = sqlite3.Row

@@ -1,37 +1,13 @@
 """The `python -m chitragupta.draft style` findings about tables.
 
-Beside `chitragupta/style_acronym_drift.py`, the other finding in that
-command computed in plain Python rather than by Vale -- and for the same
-kind of reason. Vale matches patterns inside prose; the questions here
-are about a table's *relationship* to the prose around it, which is not
-a pattern:
+Plain Python, since a table's relationship to the prose is not a Vale
+pattern: a table with no caption renders unnumbered (WRITING-STANDARDS.md
+§13), and one no sentence refers to is left to the reader (issue 395).
+Only decidable checks: that a sentence explains a table is not.
 
-- a table with no caption renders with no number, in every format
-  (docs/WRITING-STANDARDS.md §13),
-- a table no sentence refers to is one the reader has to interpret
-  unaided, which is the second half of issue 395.
-
-**Decidable, and only that.** That a sentence points at a table is
-checkable; that it *explains* the table is not, and nothing here
-pretends otherwise -- §9's decidable/not-decidable table records which
-half is which, and the genre skills carry the other half.
-
-**A `.tex` fragment is out of scope**, deliberately rather than by
-omission. `thesis-chapter-writer` writes a real `\\begin{table}` with its
-own `\\caption` and `\\label`, numbered by the thesis that `\\input`s it,
-so the marker vocabulary this checks for does not exist there -- §13's
-carve-out.
-
-The marker syntax itself is not restated here: it lives in
-`chitragupta/render_output/_tables.py`, which is what resolves it at
-render time, and a second copy of those patterns is exactly the drift
-docs/CODE-STANDARDS.md's "one place a fact is written" rules out.
-
-**Id validity and the reference checks are `chitragupta/style_elements.py`'s**,
-shared with `style_figures.py` and, since issue 457, `style_equations.py`
--- three near-identical copies of that logic is the "needless repetition"
-line docs/CODE-STANDARDS.md draws. What stays here is what is genuinely
-table-specific: telling a bare pipe table from a captioned one.
+A `.tex` fragment is out of scope (§13's carve-out): it carries a real
+`\\begin{table}`. The marker syntax lives only in `render_output/_tables.py`,
+and id and reference checks are `style_elements.py`'s.
 """
 
 import re
@@ -50,44 +26,35 @@ RULES = {
     "ref-outside-section": "chitragupta.TableRefOutsideSection",
 }
 
-# A pipe table's first two lines: a row, then the separator that makes it
-# a table rather than a line with pipes in it. Only the pair is matched,
-# because the header row alone is what a finding points at.
+# A pipe table's row plus separator; the header row is what a finding
+# points at.
 _TABLE_HEAD_RE = re.compile(r"^[ \t]*\|.*\|[ \t]*\n[ \t]*\|[ \t:|-]+\|[ \t]*$", re.MULTILINE)
 
-# A caption line with nothing claimed to follow it. Used only to tell
-# "no caption at all" from "a caption nobody can refer to".
+# Used only to tell "no caption" from "a caption nobody can refer to".
 _CAPTION_RE = re.compile(r"^[ \t]*:[ \t]*\S.*$", re.MULTILINE)
 
 
 def _finding(rule: str, match: str, line: int, message: str) -> dict:
-    """One finding in the shape `style_check.collapse()` produces from
-    Vale's own -- a thin `RULES`-bound wrapper over the shared
-    `style_elements.finding`, kept so the calls below read the same as
-    they did before that module existed."""
+    """One finding in `style_check.collapse()`'s shape, bound to `RULES`."""
     return style_elements.finding(RULES, rule, match, line, message)
 
 
 def _uncaptioned(text: str, tables: "list[_tables.Table]") -> "list[dict]":
     """A pipe table with no declared table attached to it.
 
-    Reported as `no-id` where a caption *is* present, because "add a
-    caption" is the wrong instruction for someone who wrote one and
-    stopped -- the marker is what they left out.
+    `no-id` where a caption is present: "add a caption" is the wrong
+    instruction for someone who wrote one and left out the marker.
     """
     declared = {table.line for table in tables}
     captions = {_tables.line_of(text, m.start()) for m in _CAPTION_RE.finditer(text)}
     heads = [_tables.line_of(text, m.start()) for m in _TABLE_HEAD_RE.finditer(text)]
-    # Split once, not per table (#511/m-77). Both uses below were
-    # `text.splitlines()` inside the loop, so the cost was O(document) per
-    # table -- on the 178k-word book this module was tuned against, that
-    # is the whole document re-split for every table in it.
+    # Split once, not per table (#511/m-77): O(document) per table on a
+    # 178k-word book.
     lines = text.splitlines()
     found = []
     for index, line in enumerate(heads):
-        # Bounded by the next table, or a bare table would count the
-        # caption belonging to the captioned table three paragraphs below
-        # it and report nothing at all.
+        # Bounded by the next table, or a bare table would claim a later
+        # table's caption.
         next_head = heads[index + 1] if index + 1 < len(heads) else len(lines) + 1
         following = {c for c in captions if line < c < next_head}
         if following & declared:
@@ -118,19 +85,12 @@ def _uncaptioned(text: str, tables: "list[_tables.Table]") -> "list[dict]":
 
 def findings(draft: Path) -> "list[dict]":
     """Every table finding for `draft`, ordered by where it is."""
-    # `render`'s own answer to "is this a Markdown draft?", not a second
-    # one: the carve-out below has to be the same set of suffixes the
-    # renderer takes its Markdown path for, or a draft could be checked
-    # under one contract and rendered under the other.
+    # `render`'s own Markdown test, so a draft is checked and rendered
+    # under the same contract.
     if draft.suffix.lower() not in _paths._MARKDOWN_SUFFIXES:
         return []
-    # Fenced code blanked first, the same call `review/_claims.py` makes
-    # for the same reason: a tutorial showing a pipe table *as an
-    # example* -- including one demonstrating this section's own markup --
-    # would otherwise be reported as a real table with no caption. That
-    # is a false finding per example, on a report whose usefulness is
-    # entirely a question of noise. It blanks in place, character for
-    # character, so every line number below still points where it says.
+    # Fenced code blanked in place, so a tutorial's example table is not
+    # reported and line numbers stay true.
     text = citation_gate._blank_code(draft.read_text(encoding="utf-8"))
     tables = _tables.tables(text)
     found = (

@@ -31,6 +31,10 @@
 # Ordered worst-first, so the size of each debt is visible without
 # running anything.
 
+# C2: at most 250 code lines per module. None registered; the key stays so
+# the scanner reads an empty debt list.
+c2 = []
+
 # C1: at most 25 statements per function.
 
 [[c1]]
@@ -45,12 +49,6 @@ statements = 27
 name = "scripts/release.py::build_release"
 statements = 26
 
-
-# C2: at most 250 code lines per module.
-
-[[c2]]
-name = "chitragupta/overlap_skipgram.py"
-code_lines = 289
 
 # C1 (JS): at most 25 statements per function, assets/webapp/ only.
 

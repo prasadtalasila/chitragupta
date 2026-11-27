@@ -1,12 +1,8 @@
 """Read-only ledger access for the overlap index -- the corpus-wide
 fingerprintable set, and one item's own `(pdf_hash, parsed_path)`.
 
-Split from `chitragupta/overlap_index.py` (#441). Deliberately not
-`chitragupta/ledger.py::connect()`: that runs the schema, migrations and
-a commit -- a writer, which contradicts this module's "no writer lock"
-contract (see `chitragupta/overlap_index.py`'s own module docstring).
-Opened through `ledger.read_connection`, the one read-only opener, which
-has why its `timeout` is sqlite's default rather than 0 (m-72, #552).
+Not `ledger.connect()`, which writes and so breaks the overlap index's "no
+writer lock" contract; opened through `ledger.read_connection` (#552).
 """
 
 import sqlite3
@@ -15,12 +11,9 @@ from chitragupta import ledger, ledger_paths
 
 
 def _ledger_connect_ro() -> sqlite3.Connection | None:
-    """The ledger read-only, or `None` when there is none to read -- the
-    answer both readers below turn into "nothing fingerprintable"."""
-    # A ledger needing a sync is raised, not folded into `None`: this feeds
-    # the verbatim check, and "no overlap found" against a corpus that was
-    # never read would be a silent pass on a copying check. A ledger SQLite
-    # will not read is raised for the same reason (#1066).
+    """The ledger read-only, or `None` when there is none to read."""
+    # A ledger needing a sync, or one SQLite will not read, is raised: this
+    # feeds the verbatim check, where `None` would be a silent pass (#1066).
     try:
         return ledger.read_connection()
     except (ledger.StaleLedger, ledger.UnreadableLedger):
@@ -31,25 +24,18 @@ def _ledger_connect_ro() -> sqlite3.Connection | None:
 
 def _present_path(parsed_path: str) -> str | None:
     """The absolute path of this row's parsed text, or `None` unless it
-    is both inside `content/parsed/` and actually on disk. The stored
-    value is relative to `config.PARSED_DIR` (#966), so consumers get the
-    resolved path, which opens from any cwd.
+    is inside `content/parsed/` and on disk (#966).
 
-    The confinement is issue 821's: the column is data, and a row
-    repointed at a host file had that file fingerprinted, paged and
-    quoted by every overlap consumer below this module. One gate rather
-    than one per consumer, because `overlap_index_doc`,
-    `overlap_skipgram`, `overlap_source_text` and the verbatim aid all
-    reach their `parsed_path` through these two functions.
+    The confinement is issue 821's: the column is data, and every overlap
+    consumer reaches `parsed_path` through here, so this is the one gate.
     """
     parsed = ledger_paths.parsed_file(parsed_path)
     return str(parsed) if parsed is not None and parsed.exists() else None
 
 
 def ledger_item(citekey: str) -> "tuple[str, str] | None":
-    """`(pdf_hash, parsed_path)` for one parsed citekey whose parsed text
-    still exists on disk, or `None` if the ledger, the citekey, or the
-    file is missing."""
+    """`(pdf_hash, parsed_path)` for one citekey whose parsed text exists,
+    or `None`."""
     con = _ledger_connect_ro()
     if con is None:
         return None
@@ -71,9 +57,8 @@ def ledger_item(citekey: str) -> "tuple[str, str] | None":
 
 def _ledger_items() -> list[tuple[str, str, str]]:
     """`(citekey, pdf_hash, parsed_path)` for every parsed citekey whose
-    parsed text still exists on disk -- the corpus-wide fingerprintable
-    set. A row the ledger calls parsed but whose file has since been
-    deleted is skipped, not fingerprinted as empty."""
+    text still exists on disk; a deleted file is skipped, not fingerprinted
+    as empty."""
     con = _ledger_connect_ro()
     if con is None:
         return []

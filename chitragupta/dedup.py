@@ -1,20 +1,9 @@
 """Near-duplicate citekey detection: flags likely repeat imports of the
-same paper under two different citekeys -- a common Zotero failure mode
-(the same item added twice, once per re-export, or once per each of two
-overlapping search hits).
+same paper under two different citekeys.
 
-Advisory only, exactly like sync.py's existing no-author-metadata
-warning -- this never blocks a sync or removes anything. A human still
-decides whether two flagged entries are really the same source: a shared
-DOI is essentially certain, but a shared title is only a heuristic --
-this project's own real bibliography has a `kayla_digital_2023` /
-`digital_twin_consortium_digital_2023` pair with an identical title
-("Digital Twin Platform Stack Architectural Framework by Digital Twin
-Consortium") that turn out to be a blog post and a webinar recording
-about the same named report, not the same citable source. This checker
-cannot tell that apart from a genuine duplicate and doesn't try to --
-it surfaces the pair and leaves the call to the person re-exporting the
-bib file.
+Advisory only: never blocks a sync or removes anything. A shared DOI is
+near-certain, a shared title only a heuristic (a real blog post and
+webinar shared one title), so a person decides.
 """
 
 import re
@@ -27,32 +16,23 @@ def _normalize_title(title: str) -> str:
     text = re.sub(r"[{}]", "", title).lower()
     text = re.sub(r"[^a-z0-9\s]", " ", text)
     normalized = " ".join(text.split())
-    # "Untitled" is bib_reader's placeholder for a missing title field,
-    # not real title text; a punctuation-only title normalizes to the
-    # same empty string. Either way it isn't a real title to match on --
-    # treated as empty so every entry missing a title doesn't collide in
-    # one bucket and get flagged as a duplicate of every other.
+    # "Untitled" is bib_reader's placeholder; treated as empty, or every
+    # untitled entry would be flagged as a duplicate of every other.
     return "" if normalized == "untitled" else normalized
 
 
 def _normalize_doi(doi: str) -> str:
-    # One pattern for either scheme, then the bare `doi:` label. These are
-    # prefixes being *stripped* from a bibliography's DOI field -- http-form
-    # DOIs exist in the wild and must normalise equal to their https twins;
-    # nothing here ever fetches a URL.
+    # Prefixes stripped from a DOI field; http and https forms must compare
+    # equal. Nothing is fetched.
     text = doi.strip().lower()
     text = re.sub(r"^https?://doi\.org/", "", text)
     return text.removeprefix("doi:")
 
 
 def find_duplicates(references: list[Reference]) -> list[list[Reference]]:
-    """Groups references that share a normalized DOI or normalized title.
-
-    Only groups spanning 2+ distinct citekeys are returned. Two entries
-    under one citekey never reach here: bibtexparser does *not* require
-    unique keys and returns both, so `bib_reader.read_library` drops
-    every entry of such a key and warns naming it (#840) -- which paper
-    that key means is the human's call, not this check's.
+    """Groups references that share a normalized DOI or normalized title,
+    spanning 2+ distinct citekeys. Same-key duplicates never reach here:
+    `bib_reader.read_library` drops and reports them (#840).
     """
     by_doi: dict[str, list[Reference]] = defaultdict(list)
     by_title: dict[str, list[Reference]] = defaultdict(list)

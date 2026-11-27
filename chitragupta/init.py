@@ -1,43 +1,15 @@
 """`chitragupta init [DIR] [--force] [--dry-run] [--agent NAME]`: scaffold a project directory.
 
-A wheel installs importable modules. That is not what this project ships:
-a user with only `pip install chitragupta-cli` has no `config.toml`, no
-`.claude/skills/` (so no hook registers the citation gate), no `content/`
-tree and no `AGENTS.md` for the skills to cite. `scripts/release.py`'s
-zip is the existing answer to "what does a consumer actually need"; this
-is the pip-installed one, writing the same project directory the zip
-ships today.
+A wheel installs modules but no `config.toml`, skills, hooks (so no
+citation gate), `content/` or `AGENTS.md`; this writes the same project
+directory the release zip ships. It reads from `SOURCE_ROOT`, the seam
+`config.shipped()` already uses. The copied `assets/` are for finding
+and editing; the pipeline keeps reading the installed copies until
+`config.toml` is repointed (docs/CONFIG.md).
 
-**Reads from `SOURCE_ROOT`, not from the source tree.** Once this code is
-installed, `chitragupta/config.py`'s `shipped()` already resolves the
-project's vendored assets (the CSL style, the Vale rules, the default
-acronym list) from `PACKAGE_ROOT.parent` -- one level above the installed
-package, wherever that is. `pyproject.toml`'s `[tool.poetry].include`
-ships `.claude/`, `.codex/`, `.opencode/`, `docs/` and the four root
-`.md` files (all but the developer-only skills, #1188) to that exact
-sibling location for the same reason, so this module reads from the same
-seam `shipped()` already established rather than inventing a second one.
-
-**Copying `assets/` does not change what the pipeline reads by
-default.** `shipped()` still resolves the vendored CSL style, Vale
-config and acronym list from the *installed package's* location, not
-from the copy this scaffolds -- editing the copied file has no effect
-until `config.toml`'s `[render].csl`/`[render].vale_config`/
-`[style].acronyms` is repointed at it (docs/CONFIG.md). The copy exists
-so those files are discoverable and editable without a user having to
-locate `site-packages` by hand; it is not a live override by itself.
-
-**The pin that keeps the two lists honest.** `scripts/release.py`'s
-`EXCLUDE_TOP_LEVEL` is a *denylist* over every git-tracked path: a new
-root-level file ships in the release zip unless someone adds it there.
-`TOP_LEVEL` below is an *allowlist* over what a pip-installed reader
-actually needs: a new root-level file is *not* scaffolded unless someone
-adds it here. Two lists that must agree will drift -- #208 is the
-precedent, a root-level file that entered the zip silently and was caught
-by review rather than by a check. `DELIBERATE_DIFFERENCES` is the one
-named set both `tests/test_init.py` and this module read, so a future
-drift fails a test naming which list needs editing rather than passing
-unnoticed on both sides.
+`TOP_LEVEL` is an allowlist, `scripts/release.py`'s `EXCLUDE_TOP_LEVEL` a
+denylist, and two such lists drift (#208). `DELIBERATE_DIFFERENCES` is
+the named set `tests/test_init.py` checks both against.
 """
 
 import argparse
@@ -50,28 +22,14 @@ from chitragupta.developer_skills import developer_skills, is_developer_only
 from chitragupta.progname import prog_for
 from chitragupta.help_format import ClickParser
 
-# Deliberately not `from chitragupta.config import PACKAGE_ROOT`: that
-# module raises at import time when no `config.toml` exists yet
-# (`chitragupta/hook_launchers.py`'s docstring names the same trap), which
-# is exactly the state `init` exists to fix -- a user running it for the
-# first time has no project yet. `PACKAGE_ROOT` needs no project to
-# compute, only this file's own location, so it is a one-line copy
-# rather than an import.
+# Not imported from chitragupta.config: it raises without a `config.toml`,
+# which is exactly the state `init` exists to fix.
 PACKAGE_ROOT = Path(__file__).resolve().parent
 SOURCE_ROOT = PACKAGE_ROOT.parent
 
-# Copied verbatim -- files and whole directory trees -- from SOURCE_ROOT
-# into the target directory, unchanged. Every one of these has to be
-# present for the scaffolded project to actually work: the genre skills
-# cite AGENTS.md by name, CLAUDE.md routes, docs/ is the exhaustive
-# per-flag reference, and .claude/ registers the hooks that enforce the
-# citekey invariant. assets/ is the one exception to "has to be present":
-# the pipeline's own defaults resolve it from the installed package
-# regardless (see the module docstring), so this copy is for the user to
-# find and edit, not something anything here reads. DOCKER.md is a
-# second: `docker/` itself is deliberately not scaffolded (see
-# DELIBERATE_DIFFERENCES), but the doc that says "how do I run this in a
-# container" still has to reach someone who only ever ran `pip install`.
+# Copied verbatim, and each needed: skills cite AGENTS.md, .claude/
+# registers the gate hooks. assets/ is for the user to edit (nothing reads
+# the copy); DOCKER.md must reach pip users though `docker/` is not copied.
 COPY_VERBATIM = (
     ".claude",
     "docs",
@@ -84,13 +42,9 @@ COPY_VERBATIM = (
 )
 
 
-# The trees each harness adds on top of the shared core (#812, #900).
-# `.claude/` is in COPY_VERBATIM for every harness, not only Claude Code:
-# it holds the hook scripts all three launch, so a Codex or OpenCode
-# project without it would have no gate to run. Each harness's skills are
-# its own copy -- `.claude/skills/`, `.agents/skills/` (the only folder
-# Codex reads) and `.opencode/skills/` with its `opencode.json` deny list
-# -- kept in step by tests/test_skill_harness_copies.py.
+# Each harness's trees on top of the shared core (#812, #900). `.claude/`
+# goes to every harness: it holds the hook scripts all three launch. The
+# skill copies are kept in step by tests/test_skill_harness_copies.py.
 AGENT_TREES = {"claude": (), "codex": (".codex", ".agents"), "opencode": (".opencode",)}
 DEFAULT_AGENTS = ("claude",)
 
@@ -104,59 +58,32 @@ class ScaffoldTargetUnsafe(Exception):
     """A target holding a `chitragupta` import the hooks would pick up."""
 
 
-# A hook's `python -m chitragupta...` child runs from the project root,
-# which a checkout needs first on `sys.path` -- so either name here would
-# shadow the installed package (#822). Nothing below scaffolds one, so one
-# already present was put there by someone else. The hooks refuse it at
-# launch as well (.claude/hooks/safe_path.py); this is the louder half.
+# A hook's child runs from the project root, first on `sys.path`, so
+# either name would shadow the installed package (#822). The hooks also
+# refuse it (.claude/hooks/safe_path.py); this is the louder half.
 SHADOWING_NAMES = ("chitragupta", "chitragupta.py")
 
 
-# Every command the scaffolded prose spells out -- a skill's, a
-# subagent's, AGENTS.md's, and the docs/ pages the skills send an agent
-# to -- is run from inside the project. `python -m chitragupta.<layer>`
-# and `python -c "from chitragupta ..."` both put that directory first on
-# `sys.path`, so a `chitragupta/` committed there after `init` would be
-# imported in place of the install on the very next step (#891). A
-# scaffold has no `chitragupta/` of its own -- the package is installed
-# -- so its copies say `python -P`, which leaves the directory off
-# `sys.path` and imports the install whatever sits beside it. The fix
-# lives in text the installed package wrote, not in the code a plant
-# replaces, so it holds for a plant of any age. A checkout keeps plain
-# `-m`: its own `chitragupta/` is the real one, and may not be installed.
-# Three pages are copied unchanged. HOOKS.md and PACKAGING.md explain
-# `-m`'s search order, which `-P` would make them misstate; CLI.md is the
-# command reference, kept word for word as the package documents it.
+# Scaffolded prose says `python -P`, so a `chitragupta/` planted in the
+# project after `init` is never imported in place of the install (#891).
+# A checkout keeps plain `-m`. HOOKS.md and PACKAGING.md explain `-m`'s
+# search order and CLI.md is the verbatim reference, so they stay as-is.
 KEEPS_PLAIN_M = ("docs/CLI.md", "docs/HOOKS.md", "docs/PACKAGING.md")
 MODULE_FORM = re.compile(r"\b(python3?)(\s+)(-m\s+chitragupta\b|-c\s)")
 
 
-# The one entry that changes name on the way in. config.toml is
-# gitignored per-user data (chitragupta/config.py's PROJECT_MARKER), so
-# init writes the user's own starting copy, never the tracked template
-# under its own name -- the same distinction a git checkout already
-# draws with `cp config.toml.example config.toml`.
+# config.toml is gitignored per-user data, so init writes the user's copy
+# from the tracked template, as `cp config.toml.example config.toml` does.
 CONFIG_EXAMPLE = "config.toml.example"
 CONFIG_DEST = "config.toml"
 
-# The second entry that changes name on the way in, and the only one
-# copied *into* `content/`. `[style].acronyms` ships pointing at
-# `content/acronyms.toml`, and `[retrieval].acronym_expansion` is on, so
-# a project with no such file would have a live setting reading a file
-# that does not exist -- discoverable only by someone who reads
-# `config.toml`'s comments. Scaffolded from the same
-# `assets/style/acronyms.toml.example` those comments tell a checkout
-# user to copy by hand, so the two routes into a vocabulary produce the
-# same starting file. It is a *seed*, not a vendored asset: the vendored
-# floor (PDF, CPU, URL, API, HTML) stays in the installed package and is
-# always merged under whatever this file grows into, and
-# `dossier acronyms-suggest --apply` appends to this one.
+# `[style].acronyms` ships pointing here with acronym expansion on, so
+# without the file a live setting reads nothing. A seed, not a vendored
+# asset: the vendored floor stays in the package and is merged under it.
 ACRONYMS_EXAMPLE = "assets/style/acronyms.toml.example"
 ACRONYMS_DEST = "content/acronyms.toml"
 
-# Created empty, so config.toml's default paths (content.dir, bib.path's
-# parent) resolve to something that exists before a first
-# `corpus sync` populates them.
+# So config.toml's default paths exist before a first `corpus sync`.
 EMPTY_DIRS = (
     "papers",
     "content/drafts",
@@ -173,26 +100,18 @@ TOP_LEVEL = frozenset(
     | {"papers", "content"}
 )
 
-# Kept separate from the module docstring above and passed to argparse
-# rather than `description=__doc__`, for the reason tests/test_cli_help_is_short.py
-# pins on every other entry point in this package (#152): the docstring
-# is design commentary aimed at a reader of the file, and printing forty
-# lines of it before the flags buries the two lines that answer "how do
-# I run this".
+# Not `description=__doc__` (#152, tests/test_cli_help_is_short.py): the
+# docstring is design commentary and would bury the flags.
 DESCRIPTION = (
     "Scaffold a project directory -- config.toml, .claude/, "
     "papers/, content/, assets/, the prose docs, and each --agent's launcher."
 )
 
-# What scripts/release.py's zip ships (every git-tracked top-level entry
-# minus its own EXCLUDE_TOP_LEVEL) that `init` deliberately does not
-# scaffold, each for a stated reason -- see the module docstring for why
-# this has to be a named set rather than an unremarked gap.
+# What release.py's zip ships that `init` deliberately does not scaffold
+# (see the module docstring).
 DELIBERATE_DIFFERENCES = frozenset(
     {
-        # Dev/checkout-only machinery: does something only inside a git
-        # checkout of this repository, or names a version/lock fact a `pip
-        # install` resolves independently at install time.
+        # Dev/checkout-only machinery, or version facts pip resolves itself.
         "uv.lock",
         "pyproject.toml",
         "scripts",
@@ -202,32 +121,21 @@ DELIBERATE_DIFFERENCES = frozenset(
         ".markdownlint.yaml",
         ".pylintrc",
         ".opencodereview",
-        # The C1/C2 debt register. It ships, because someone unzipping a
-        # release to work on the pipeline needs it -- `scripts/code_standards.py`
-        # and `tests/test_code_standards_scan.py` both read it. It is not
-        # scaffolded, for the reason every entry in this block shares:
-        # an `init`-ed project has no `chitragupta/` or `scripts/` tree
-        # whose sizes it could describe. The size hook `.claude/` does
-        # scaffold is inert there for the same reason, and says so.
+        # Ships for pipeline developers; an `init`-ed project has no
+        # `chitragupta/` or `scripts/` whose sizes it could describe.
         "code-standards-register.toml",
-        # The git pre-commit hook and its directory. It ships for the same
-        # reason `scripts/` does -- someone unzipping a release to work on
-        # the pipeline can use it -- and `init` does not scaffold it: an
-        # `init`-ed project has no workflows to lint, and pointing a
-        # drafting user's `core.hooksPath` at a hook they never asked for
-        # would be a surprising thing for a scaffolder to do.
+        # An `init`-ed project has no workflows to lint, and setting a
+        # drafting user's `core.hooksPath` would be a surprise.
         "git-hooks",
-        # Audience is someone changing chitragupta's own source, which a
-        # pip-installed, init-ed project does not have -- #267 gives
-        # CLAUDE.md's routing table the "no src/ to change" row this implies.
+        # For changing chitragupta's own source, which an init-ed project
+        # lacks (#267).
         "DEVELOPER-AGENTS.md",
         "DEVELOPER.md",
         "DOCKER-DEVELOPER.md",
         # About the chitragupta *software itself*, not the user's own project.
         "LICENSE",
         "CITATION.cff",
-        # The source code -- already installed via pip, not copied a second
-        # time into the user's project directory.
+        # Already installed via pip.
         "chitragupta",
     }
 )
@@ -253,8 +161,7 @@ def _copy(src: Path, dst: Path) -> None:
 def _write_one(src: Path, dst: Path, *, force: bool, dry_run: bool) -> str:
     """One file: create, report-as-existing, or (with force) overwrite.
 
-    Never destroys silently -- an existing file survives untouched
-    unless `force` names it in the same line it overwrites.
+    An existing file survives unless `force` names it as it overwrites.
     """
     if not dst.exists():
         verb = "would create" if dry_run else "created"
@@ -271,28 +178,16 @@ def _write_one(src: Path, dst: Path, *, force: bool, dry_run: bool) -> str:
 
 
 def _write_tree(src: Path, dst: Path, *, force: bool, dry_run: bool) -> list[str]:
-    """`src` copied file by file, not directory by directory.
+    """`src` copied file by file, so `--force` never deletes a user's own
+    file in a tree.
 
-    A recursive overwrite-the-whole-tree copy would delete a user's own
-    file under, say, `.claude/skills/` the moment `--force` is used --
-    exactly what "never destroys" rules out. Each file gets its own
-    create/exists/overwrite verdict instead.
-
-    `__pycache__` is skipped -- not disk cruft from a checkout, but
-    something `pip install` itself creates: it byte-compiles every `.py`
-    file it installs, including `.claude/hooks/*.py`, which sit in
-    site-packages as data rather than as part of the `chitragupta`
-    package. Measured against an installed wheel (#263's own trap):
-    without this filter, the very first `init` run ships a fresh
-    `__pycache__/*.pyc` into the user's project.
+    `__pycache__` is skipped: `pip install` byte-compiles
+    `.claude/hooks/*.py` in site-packages (#263).
     """
     if src.is_file():
         return [_write_one(src, dst, force=force, dry_run=dry_run)]
-    # Left out entirely: the developer-only skills (#1188), which an
-    # editable install's SOURCE_ROOT -- the checkout itself -- holds, and
-    # `.claude/worktrees/`, where Claude Code keeps that checkout's git
-    # worktrees: gitignored, so in no wheel or zip, but on disk here,
-    # each with its own copy of every skill.
+    # Developer-only skills (#1188), and `.claude/worktrees/`, which an
+    # editable install's checkout holds on disk.
     skip = developer_skills(SOURCE_ROOT) | {".claude/worktrees"}
     return [
         _write_one(f, dst / f.relative_to(src), force=force, dry_run=dry_run)
@@ -316,10 +211,8 @@ def scaffold(
 ) -> list[str]:
     """Write (or, with `dry_run`, describe) the project scaffold into `dest`.
 
-    Returns the report `main()` prints -- in every mode, including
-    `dry_run` -- so `--dry-run` prints exactly the tree a real run
-    writes, from this one manifest, rather than a second and
-    hand-maintained listing of it.
+    Returns the report in every mode, so `--dry-run` prints exactly the
+    tree a real run writes.
     """
     trees = list(dict.fromkeys(tree for agent in agents for tree in AGENT_TREES[agent]))
     missing = [
@@ -328,14 +221,9 @@ def scaffold(
         if not (SOURCE_ROOT / name).exists()
     ]
     if missing:
-        # Refused before anything is written (#509/m-37). `_write_tree`
-        # on an absent source `rglob`s nothing and returns `[]`, so a
-        # wheel built without `.claude/` scaffolded a project with no
-        # citation-gate hook, printed a report that simply did not
-        # mention it, and exited 0. The one thing a scaffold must not do
-        # is report success for a project missing the gate -- and a
-        # partial scaffold is worse than none, since the user has no
-        # reason to look.
+        # Refused before anything is written (#509): a scaffold missing the
+        # gate hook must never report success, and a partial one is worse
+        # than none.
         raise ScaffoldSourceMissing(
             f"this installation is missing {', '.join(missing)}, so the scaffold "
             f"it would write is incomplete. Expected under {SOURCE_ROOT}. "
@@ -343,9 +231,8 @@ def scaffold(
         )
     shadowing = [name for name in SHADOWING_NAMES if (dest / name).exists()]
     if shadowing:
-        # Ahead of `force` and `dry_run` alike: --force is what someone
-        # reaches for over an existing tree, and a dry run must not print a
-        # tree the real run refuses.
+        # Ahead of `force` and `dry_run`: a dry run must not print a tree
+        # the real run refuses.
         raise ScaffoldTargetUnsafe(
             f"{dest} already contains {', '.join(shadowing)}, which the hooks this "
             "would install could import in place of the installed chitragupta. "

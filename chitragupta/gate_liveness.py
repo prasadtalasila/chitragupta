@@ -1,35 +1,17 @@
 """Is the automatic gate actually running? -- asked by the gate a person or skill runs (#812).
 
-Two ways a PostToolUse gate can be off without anyone noticing, and the
-hand-run gate is the one place both can be seen from:
+Two silent ways a PostToolUse gate is off: a launcher that cannot start
+(neither the hook nor the preflight can report it, #197; this runs on an
+interpreter that demonstrably started), and a hook that never fires
+(Codex skips untrusted project hooks; shell-written drafts bypass file
+hooks). An unfired gate looks exactly like a pass.
 
-- **A launcher that cannot start.** The hook cannot report its own
-  failure to spawn, and neither can the session preflight written to
-  report it, since it is launched by the same interpreter name (#197).
-  This runs on an interpreter that has demonstrably started, so its
-  warning survives the launcher being dead. Read from every harness's
-  config (`launcher_configs`), not only Claude Code's.
-- **A hook that starts fine and never fires.** Codex makes that the
-  default state of a fresh project: project hooks are skipped until the
-  user trusts them, and trust is recorded against the hook's hash, so
-  editing a hook makes it untrusted again. A draft written through a
-  shell command is never seen by any harness's file-tool hook either. An
-  unfired gate looks exactly like one that passed.
-
-For the second, the gate hook sets `CHITRAGUPTA_GATE_CALLER=hook` and the
-gate records what it checked under `content/.gate-seen/`; a later run by
-hand compares each draft's current text with that record and warns about
-a draft no hook has seen since it last changed. One small file per draft,
-named by a hash of the draft's path and holding a hash of its text, so
-two hooks gating different drafts at once -- parallel subagents writing
-sections -- never read and rewrite the same file and lose each other's
-record. Only in a project with a
-harness configured -- a launcher config or the OpenCode plugin next to
-`content/` -- since elsewhere no hook was ever expected to fire.
-
-This is detection, never enforcement: nothing here changes the gate's
-verdict or exit code, and a spoofed variable or a hand-edited record
-hides only this warning. Standard library only, like the gate.
+For the second, a hook-invoked gate (`CHITRAGUPTA_GATE_CALLER=hook`)
+records each draft's text hash under `content/.gate-seen/`, one file per
+draft so parallel hooks cannot lose each other's record; a hand run warns
+about a draft no hook has seen since it changed. Only where a harness is
+configured. Detection, never enforcement: nothing here changes the
+verdict. Standard library only.
 """
 
 import hashlib
@@ -65,8 +47,7 @@ def observe(paths: list[str]) -> None:
             if digest is not None:
                 _write(records / _record_name(key), digest)
         return
-    # The project this command runs in, found the way hook_launchers has
-    # always found it, so a dead launcher is reported exactly where it was.
+    # Found as hook_launchers finds it, so a dead launcher is reported there.
     for fault in launcher_configs.faults(hook_launchers.SETTINGS.parent.parent):
         print(DEAD_LAUNCHER.format(fault=fault), file=sys.stderr)
     if not _harness_configured(config.CONTENT_DIR.parent):
@@ -96,8 +77,7 @@ def _write(path: Path, digest: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(digest, encoding="utf-8")
     except OSError:
-        # A record that cannot be written costs only a spurious warning on
-        # the next hand run; it must never fail the gate the hook is running.
+        # Costs only a spurious warning later; must never fail the gate.
         pass
 
 

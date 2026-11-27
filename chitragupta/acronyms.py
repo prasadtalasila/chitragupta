@@ -1,11 +1,9 @@
 """The acronym vocabulary a genre skill reads at step 0.
 
 A vendored default (`assets/style/acronyms.toml`) merged with an optional
-user file (`[style].acronyms` in config.toml), the user's expansion
-winning on a shared key. Additive, not a full-replacement override like
-CSL_STYLE_PATH/VALE_CONFIG_PATH: a user's own domain vocabulary and this
-project's PDF/CPU/URL floor are meant to sit together, not replace one
-another. See assets/style/README.md and GitHub issue #190.
+user file (`[style].acronyms`), the user winning on a shared key. Additive,
+unlike the CSL/Vale overrides: the user's vocabulary and the project's
+floor sit together (#190, assets/style/README.md).
 """
 
 import re
@@ -15,21 +13,16 @@ from pathlib import Path
 
 from chitragupta import config
 
-# The unreadable files already reported by this process, so a drift sweep
-# loading the vocabulary once per recorded query says so once.
+# Unreadable files already reported, so a sweep says so once.
 _NOTED: set[Path] = set()
 
 
 def _load(path: Path) -> dict[str, str]:
     """`path`'s acronyms, or `{}` when it is absent or unreadable.
 
-    An unreadable file is skipped as if it did not exist, with one note on
-    stderr (#1023). This used to raise, on the ground that a silent
-    fallback would hide a typo; but the vocabulary is an aid to every
-    command that reads it (retrieval, the dossier drift sweep, the review
-    aids), and a typo in it ended all of them with a traceback. The note
-    is what keeps the skip from being silent. stderr, because several of
-    those commands' stdout is a contract a genre skill parses.
+    An unreadable file is skipped with one stderr note (#1023): the
+    vocabulary is an aid, and a typo used to crash every command reading
+    it. stderr, because several of those commands' stdout is parsed.
     """
     if not path.is_file():
         return {}
@@ -44,14 +37,8 @@ def _load(path: Path) -> dict[str, str]:
                 file=sys.stderr,
             )
         return {}
-    # A non-string value (a table, an array, a bare number) can't be an
-    # expansion -- filtered here rather than raised, unlike the parse
-    # failure above, so one mistyped entry in an otherwise-good file
-    # doesn't cost the whole vocabulary. Silently dropping it is safe
-    # because every consumer only ever *adds* acronyms to a glossary
-    # (suggest()) or compares against one (stale_expansions()); a term
-    # this file's author never got a valid expansion for behaves the
-    # same as a term they never mentioned at all (#504, m-31).
+    # A non-string value is dropped, not raised, so one bad entry does not
+    # cost the vocabulary; consumers only add or compare (#504).
     return {k: v for k, v in parsed.items() if isinstance(v, str)}
 
 
@@ -64,26 +51,14 @@ def load_vocabulary() -> dict[str, str]:
     return {**vendored, **user}
 
 
-# A shape close enough to Acronyms.yml's own heuristic (a short run of
-# capital letters) to flag as "probably an acronym" without a false
-# positive on an ordinary capitalised glossary term: "DTaaS" and "FMU"
-# both match; "Twin state" and "Connector" don't, because neither starts
-# with two or more capitals in a row.
+# A short run of capitals, as Acronyms.yml: "DTaaS" matches, "Connector"
+# does not.
 _LOOKS_LIKE_AN_ACRONYM = re.compile(r"^[A-Z]{2,}[A-Za-z]*$")
 
-# The other shape a glossary bullet's bolded term takes -- "Digital twin
-# (DT)" rather than "DT" on its own. Measured, not assumed: of the 155
-# distinct glossary terms across the real 15-chapter book at
-# content/dossiers/books/digital-twins-for-software-engineers, none are a
-# bare acronym and 7 (DT, DM, DS, DES, RTF, ROM, UQ) are this parenthetical
-# shape -- so the bare-acronym branch above was firing on none of this
-# project's own real content. It is also the convention Acronyms.yml
-# already assumes: its `second` pattern,
-# `(?:\b[A-Z][a-z]+[\s-]){1,5}\(([A-Z]{2,6})\)`, expects an expansion
-# followed by "(ACRONYM)". The captured name is the terse phrase before
-# the parenthesis, not the bullet's full prose -- a vocabulary file's
-# values are terse ("PDF = Portable Document Format"), and a paragraph is
-# not a usable one.
+# The commoner glossary shape, "Digital twin (DT)" -- measured, a real book's
+# glossary had no bare acronyms at all. Acronyms.yml's `second` pattern
+# assumes it too. The name captured is the terse phrase, as a vocabulary
+# value must be.
 _PARENTHETICAL_ACRONYM = re.compile(r"^(?P<name>.+?)\s*\((?P<acronym>[A-Z]{2,6})\)$")
 
 
@@ -125,19 +100,9 @@ def stale_expansions(glossary: dict[str, str]) -> dict[str, tuple[str, str]]:
     with the current vocabulary -- `{acronym: (glossary's expansion,
     vocabulary's expansion)}`.
 
-    Compared case-insensitively with trailing punctuation stripped, not by
-    substring: a vocabulary value is terse and so is the name `_candidate`
-    extracts from a parenthetical term, so the two sides are the same
-    shape and an exact match is the honest comparison. Measured against
-    the real book named above: a vocabulary built from `suggest()`'s own
-    output produces zero of these, and hand-changing one recorded
-    expansion produces exactly one, naming the chapter that defines it.
-
-    The bare-acronym branch (`"DTaaS" -- Digital Twin as a Service.`) gets
-    the same equality check, but unlike the parenthetical branch above, no
-    real draft in this project's corpus uses that shape yet, so this half
-    is unmeasured. Low-cost either way -- this feeds an advisory finding,
-    never a gate.
+    Compared case-insensitively with trailing punctuation stripped: both
+    sides are terse, so exact equality is the honest test. The
+    bare-acronym branch is unmeasured on real drafts; advisory either way.
     """
     vocabulary = load_vocabulary()
     stale = {}
@@ -155,59 +120,29 @@ def stale_expansions(glossary: dict[str, str]) -> dict[str, tuple[str, str]]:
     return stale
 
 
-# Where a numbered reference list starts, in every genre this pipeline's
-# skills produce (`## 6.15 References`, `## References`, ...). Excluding
-# everything from here on is load-bearing, not defensive: measured
-# against the real 15-chapter book, a citation line shaped like
-# `[12] Author, "Title," in *Venue (ACRONYM)*, pp. 1-9, year.` matches
-# _BODY_ACRONYM for every conference name in it -- 11 of 15 raw
-# candidates on that book were venue abbreviations (ICCCN, ICSA, ETFA,
-# ...) from exactly this, and zero were real domain acronyms.
+# Everything from the reference list on is excluded: on a real book 11 of
+# 15 raw candidates were venue abbreviations from citation lines.
 _REFERENCES_HEADING = re.compile(
     r"^#{1,6}\s*(?:[\d.]+\s*)?References\s*$", re.MULTILINE | re.IGNORECASE
 )
 
-# The same shape _PARENTHETICAL_ACRONYM matches in a glossary bullet,
-# applied to running prose instead of an isolated bolded term -- and the
-# same pattern assets/vale/styles/chitragupta/Acronyms.yml's `second`
-# field already matches for its own, unrelated check (expanded-at-first-
-# use), so this is an established convention, not a new heuristic.
-# `(?:-[a-z]+)*` carries a hyphenated word: chapter 6 of the real book
-# defines "**Functional Mock-up Interface (FMI)**", and without it the
-# name capture restarts at the hyphen and yields "Interface" -- a wrong
-# expansion `acronyms-suggest --apply` would then write into the author's
-# own vocabulary as if they had typed it. Lowercase after the hyphen
-# only, so "Digital Twin-Based" keeps its existing reading as two words.
+# The glossary's parenthetical shape applied to prose, as Acronyms.yml's
+# `second` field. `(?:-[a-z]+)*` keeps "Mock-up" whole, or `--apply` would
+# write "Interface" as an FMI expansion; lowercase only after the hyphen.
 _BODY_ACRONYM = re.compile(
     r"(?P<name>(?:\b[A-Z][a-z]+(?:-[a-z]+)*[\s-]){1,5})\((?P<acronym>[A-Z]{2,6})\)"
 )
 
 
 def body_candidates(text: str) -> dict[str, str]:
-    """Acronyms first defined in a draft's own raw prose via the
-    "Name (ACRONYM)" shape -- returned in the same `{bolded-term-shape:
-    definition}` shape `dossier.glossary_terms()` uses, so a caller can
-    merge this with the real glossary before handing the combined dict
-    to `suggest()`, which never needs to know there were two sources.
+    """Acronyms first defined in a draft's own prose as "Name (ACRONYM)",
+    in `dossier.glossary_terms()`'s shape so a caller can merge them
+    before `suggest()`.
 
-    Two things measured against the real 15-chapter book before this was
-    written, both load-bearing:
-
-    - **Everything from a `## References` heading onward is excluded**
-      -- see `_REFERENCES_HEADING`'s own comment for the measurement.
-    - **A single newline is a hard line-wrap, not a paragraph break, and
-      is collapsed to a space before matching.** Markdown wraps prose at
-      a fixed column, so `"**Digital Twin\\nAggregate (DTA)**"` is one
-      phrase split across two physical lines on disk; matching the raw
-      text truncated it to `"Aggregate"`. A blank line (a real paragraph
-      break) is left alone, so two adjacent paragraphs are never fused
-      into one candidate.
-
-    First occurrence per acronym wins, approximating "first use" without
-    attempting exact first-use detection (section order, the quoted-span
-    exemption `docs/WRITING-STANDARDS.md` §9 gives every rule here) -- a
-    false or truncated candidate costs nothing, since `suggest()` is
-    advisory-only and never applied without a human running `--apply`.
+    Text from a `## References` heading on is excluded, and a single
+    newline (a hard wrap) is collapsed so a wrapped name is not truncated;
+    a blank line still separates paragraphs. First occurrence wins;
+    advisory only, applied only by a human's `--apply`.
     """
     heading = _REFERENCES_HEADING.search(text)
     if heading:

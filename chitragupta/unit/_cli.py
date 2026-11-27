@@ -1,10 +1,7 @@
 """`python -m chitragupta.draft unit`'s three commands and their argparse tree.
 
-Split from `chitragupta/unit/__init__.py` the way `chitragupta/spec/_cli.py` and
-`chitragupta/dossier/_cli.py` are split from theirs, and named `_cli.py` for the
-same reason: this package has no `__main__.py`, because
-`python -m chitragupta.draft unit` is the one front door
-(docs/ARCHITECTURE.md's one-entry-point-per-layer invariant).
+No `__main__.py`: `python -m chitragupta.draft unit` is the one front
+door (docs/ARCHITECTURE.md's one-entry-point-per-layer invariant).
 """
 
 import json
@@ -69,10 +66,8 @@ def _refuse(message: str) -> int:
 def _refusal_before_the_ledger(args, built: dict, draft: Path) -> "str | None":
     """Why `built` may not be accepted at all, or None if it may.
 
-    Everything answerable from the outline and the filesystem alone, so
-    that a book nobody signed off still refuses with that reason on a
-    checkout whose ledger has not been built -- opening the ledger first
-    would have turned "not signed off" into a connection error.
+    Answerable without the ledger, so an unsigned book refuses with that
+    reason even where no ledger has been built.
     """
     if not built["signed_off"]:
         return (
@@ -94,20 +89,14 @@ def _refusal_before_the_ledger(args, built: dict, draft: Path) -> "str | None":
 def _unknown_sources(built: dict, known: "set[str]", unparsed: "dict[str, str]") -> "str | None":
     """Why `--source` may not be recorded, or None if it may.
 
-    `--source` names the papers this unit claims to be grounded in, and
-    that claim went into the permanent acceptance record unchecked
-    (#506/m-69) -- the one thing CLAUDE.md's single rule forbids, since a
-    record naming a citekey no real parse ever produced is exactly the
-    fabricated reference this project exists to stop. Refused with the
-    other argument-shaped faults rather than beside the gate's findings,
-    where it would read as a defect in the prose.
+    An unchecked `--source` put citekeys no real parse produced into the
+    permanent record (#506/m-69), which CLAUDE.md's one rule forbids.
     """
     unknown = [source for source in built["sources"] if source not in known]
     if not unknown:
         return None
-    # A real .bib entry whose PDF never parsed is refused too (#1118), and
-    # said so: "not in the ledger" would send someone to re-export a bib
-    # that already holds it.
+    # A .bib entry whose PDF never parsed is refused too, and said so
+    # (#1118), so nobody re-exports a bib that already holds it.
     reasons = [f"{s} has no parsed PDF (status {unparsed[s]})" for s in unknown if s in unparsed]
     absent = [source for source in unknown if source not in unparsed]
     if absent:
@@ -131,12 +120,8 @@ def _cmd_accept(args) -> int:
     if refusal:
         return _refuse(refusal)
 
-    # The draft is read exactly once and the gate is run over *that*
-    # string. Gating the path and then re-reading it (which is what this
-    # did) left a window in which a write between the two calls got a
-    # permanent record -- digest and citekeys both -- for prose the gate
-    # had never seen (#506/m-69). The gate's own PASS/FAIL shape is kept
-    # by calling its reporter rather than paraphrasing it here.
+    # Read once and gate *that* string: re-reading after gating let a
+    # concurrent write get a record for ungated prose (#506/m-69).
     text = draft.read_text(encoding="utf-8")
     result = citation_gate.check_text(draft, text, known, unparsed)
     citation_gate.report(str(draft), result)
@@ -145,9 +130,8 @@ def _cmd_accept(args) -> int:
             f"the citation gate refuses {draft}, so it cannot be "
             "accepted. Fix the citekeys it named."
         )
-    # Same LaTeX-aware blanking the gate itself just applied to this
-    # draft -- recording with the Markdown rules would drop a citation
-    # sitting between two LaTeX-quoted phrases from the permanent record.
+    # The gate's LaTeX-aware blanking, or a citation between LaTeX
+    # quotes would drop from the record.
     citekeys = sorted({key for _, key in citation_gate.extract_citekeys_for(draft, text)})
     path = record_path(args.book, args.unit)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -160,15 +144,8 @@ def _cmd_accept(args) -> int:
 def _misalignment(book, chapter: str) -> str:
     """How this unit's chapter disagrees with the outline, or "".
 
-    Acceptance records that a human approved *this prose against that
-    outline*, so a chapter whose headings have drifted makes the record
-    say something untrue. Only chapters the outline describes at section
-    level are held to it; `align` reports the rest as having nothing to
-    align, and they carry no findings.
-
-    A chapter nobody has written yet is deliberately not a refusal. A book
-    is drafted unit by unit, and `align`'s "not written yet" would
-    otherwise make the very first unit impossible to accept.
+    Only chapters described at section level are held to it. An unwritten
+    chapter is not a refusal, or the first unit could never be accepted.
     """
     parsed = spec.parse(spec.spec_path(book).read_text(encoding="utf-8"))
     for report in align(book, parsed)["chapters"]:
@@ -189,16 +166,8 @@ def _misalignment(book, chapter: str) -> str:
 def _fingerprint(book, unit_id: str) -> str:
     """What the *dossier* says about this unit's prose.
 
-    Two records of the same text exist -- this layer's `output_digest`,
-    written by `accept`, and the dossier's draft fingerprint, written by
-    `dossier stamp`. They answer different questions ("changed since a
-    human accepted it" against "changed since the sidecars were
-    reconciled") and are refreshed by different commands, so they can
-    disagree. Neither report mentioned the other, which left "stale:
-    draft changed since accepted" as the whole story on a book where
-    nothing had been stamped at all.
-
-    Reported, never enforced: this layer does not judge a dossier.
+    `output_digest` (changed since accepted) and the dossier fingerprint
+    (changed since stamped) can disagree; reported, never enforced.
     """
     draft = draft_path(book, unit_id)
     target = dossier_dir(draft)
@@ -215,9 +184,8 @@ def _fingerprint(book, unit_id: str) -> str:
 def _orphaned(book: Path, found: list[dict]) -> list[str]:
     """Acceptance records whose unit the outline no longer holds.
 
-    Listed, never deleted (#1137): the prose is the author's, and the
-    record is the evidence a person approved it. Taking a unit out of the
-    outline already takes it out of the next assembly.
+    Listed, never deleted (#1137): the record is evidence a person
+    approved the prose.
     """
     units = spec.spec_dir(book) / UNITS_DIRNAME
     held = {entry["id"] for entry in found}

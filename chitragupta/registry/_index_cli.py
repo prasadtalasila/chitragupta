@@ -1,8 +1,5 @@
 """`registry build --index` and `registry index`: the book index's two
 commands (#1168), as `registry/_cli.py` dispatches them.
-
-Split from that module, which holds the registry's other commands, to
-keep both under docs/CODE-STANDARDS.md's C2 limit.
 """
 
 import subprocess
@@ -17,14 +14,12 @@ from chitragupta.render_output._markdown_to_latex import markdown_to_latex
 
 
 def write_index(book, built: dict, target: Path) -> int:
-    """`index-terms.json`, or a refusal that writes nothing (#1168): an
-    `index.toml` naming a term that does not exist would otherwise index
-    something other than what its author asked for."""
+    """`index-terms.json`, or a refusal that writes nothing (#1168): a
+    nonexistent term in `index.toml` would index something unintended."""
     doc, problems = _index_toml.read(spec.spec_dir(book))
     data: dict = {}
     if not problems:
-        # `_linked` is the Glossary page's own reading of which symbols a
-        # unit links to a term, so the index and the page cannot disagree.
+        # The Glossary page's `_linked`, so index and page cannot disagree.
         data, problems = _index_terms.table(
             built["terms"], _pages._linked(built), built["accepted"], doc
         )
@@ -43,8 +38,8 @@ def write_index(book, built: dict, target: Path) -> int:
 
 def cmd_index(args) -> int:
     """The book's index from its typeset `.idx` (#1168): `book.ind`, or a
-    refusal that writes neither it nor the report. Only numbered chapters
-    and appendices are indexed: front and back matter are not."""
+    refusal that writes neither it nor the report. Front and back matter
+    are not indexed."""
     built = build(args.book)
     units = [unit for unit in built["accepted"] if unit not in built["unnumbered"]]
     try:

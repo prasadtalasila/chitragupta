@@ -1,13 +1,6 @@
 """The verbatim report's standing preamble: how to read a finding, what
 each tier can and cannot see, and what this particular scan does not rule
 out.
-
-Split out of `_scan_render.py` when that module crossed
-CODE-STANDARDS.md's C2 line limit -- along the seam that module's own
-docstring already named, "standing preamble prose plus the findings".
-Everything here is text a reader sees before the first finding and none
-of it depends on what was found, with the single exception
-`_completeness_paragraph` documents: which tiers ran.
 """
 
 from chitragupta.review.verbatim_check._scan_notes import _not_run_lines
@@ -15,14 +8,8 @@ from chitragupta.review.verbatim_check._scan_notes import _not_run_lines
 
 def _how_to_read(not_run: list[dict]) -> list[str]:
     """The report's standing preamble: what a finding is, what the two
-    flags mean, what each tier can and cannot see.
-
-    Extracted out of `render_scan_markdown` (which was already over
-    CODE-STANDARDS.md's C1 limit at 27 statements before tier 3 added to
-    it) so the assembly of a report and the prose inside it are not the
-    same function. It takes `not_run` because the last paragraph is the
-    one thing here that is not standing text: what a clean scan does
-    *not* rule out depends on which tiers actually ran.
+    flags mean, what each tier can and cannot see. Takes `not_run`
+    because what a clean scan does not rule out depends on what ran.
     """
     return [
         "## How to read this",
@@ -108,17 +95,10 @@ def _how_to_read(not_run: list[dict]) -> list[str]:
 def _completeness_paragraph(not_run: list[dict]) -> list[str]:
     """What this particular scan does not rule out.
 
-    Three different sentences, because "the paraphrase tier ran and
-    found nothing here", "the paraphrase tier never ran", and "the
-    paraphrase tier ran but not against everything this draft cites"
-    are three different states of knowledge and only one of them is a
-    clean bill of health. `tests/test_skill_verbatim_scan_step.py` holds
-    every skill's run of this scan to the same standard -- say what it
-    cannot see -- and this is where the report itself keeps that
-    promise. Entries carry `"partial": True` when the tier ran and
-    still contributed findings but skipped part of what it should have
-    covered (#499) -- absent, not merely omitted, that key means the
-    tier that could see one did not run at all.
+    "Ran and found nothing", "never ran" and "ran on part" (#499) are
+    different states of knowledge, only one a clean bill; every skill's
+    scan is held to saying what it cannot see
+    (`tests/test_skill_verbatim_scan_step.py`).
     """
     absent = [entry for entry in not_run if not entry.get("partial")]
     partial = [entry for entry in not_run if entry.get("partial")]

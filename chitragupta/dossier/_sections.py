@@ -1,12 +1,5 @@
 """Markdown/LaTeX heading parsing and the `Section` shape everything
-else in this package attributes citekeys against.
-
-Split out of chitragupta/dossier.py (#219). `_cmd_sections` and
-`_sections_citekeys` live here rather than in a shared CLI module
-because they are this module's whole reason to have a CLI surface at
-all -- `sections()`/`attribute_citekeys()` computed for a human to read
-is exactly what the `dossier sections` command is.
-"""
+else in this package attributes citekeys against."""
 
 import argparse
 import re
@@ -18,63 +11,29 @@ from pathlib import Path
 from chitragupta import _pandoc_cites, citation_gate
 from chitragupta.dossier import SECTIONS_MD, _SECTIONS_TEMPLATE, dossier_dir, draft_relpath
 
-# A citekey as the dossier templates write one: inside backticks, starting
-# with a letter, and carrying at least one run of `_`/`:`/`-` separators
-# followed by more alphanumerics -- the shape BibTeX gives a key
-# (`talasila_composable_2025`). Requiring a separator is what keeps
-# ordinary backticked prose out: `status` and `content` have none, and
-# `--force` also fails the letter start.
+# A citekey as the dossier templates write one: backticked or `@`-prefixed
+# (files settled on different habits, and reading only one form lost
+# every section mapping in the shipped example), starting with a letter,
+# with at least one run of `_`/`:`/`-` separators. The run is `+` because
+# BibTeX can collapse a hyphenated word into a doubled hyphen. No trailing
+# year is required (keys can end in `_nodate`).
 #
-# The separator run is `+`, not a single character, because a real key in
-# this project's own corpus is `zech_digital-twins-as--service_2024` --
-# BibTeX collapses "as-a-service" into a doubled hyphen. Matching only one
-# separator dropped it silently.
-#
-# Both delimiters, because the dossier is written by hand and by two
-# different habits. No template shows an example row, so each file settled
-# on whatever the skill filling it in reached for: `evidence.md` headings
-# are backticked, while `sections.md` copies the form the draft cites with
-# (`@key`). Reading only the backticked form lost every section mapping in
-# the shipped example dossier, which is what made `missing` report a
-# departed citekey with no sections to go and edit.
-#
-# A false *negative* is the worse failure, and always was: this set is
-# subtracted from the ledger's citekeys to find what a dossier never
-# considered, so a prose token that looks key-shaped (`draft-reviser`) is
-# inert -- it is not in the ledger, so subtracting it changes nothing,
-# while a missed real key gets reported as "never considered" when it was
-# cited. False positives are no longer entirely free, though: since the
-# drift report, this same set is also differenced the other way to find
-# citekeys that have *left* the ledger, where an invented one would be
-# reported as a broken citation that isn't. The separator requirement is
-# what holds that line, and it is the *only* thing holding it: a match
-# needs a letter start and at least one `_`/`:`/`-` run followed by more
-# alphanumerics, so `@someone` and `@2` are not keys while
-# `@noauthor_digital_nodate` is. Nothing here requires a trailing year --
-# a real key in this corpus ends in `_nodate`.
+# A false *negative* is the worse failure (a cited key reported "never
+# considered"). But this set is also differenced the other way to find
+# keys that *left* the ledger, where an invented key becomes a false
+# broken citation; the separator requirement is the only thing holding
+# that line.
 _KEY = r"[A-Za-z][A-Za-z0-9]*(?:[_:-]+[A-Za-z0-9]+)+"
 
 
 _CITEKEY_TOKEN = re.compile(rf"`({_KEY})`|@({_KEY})")
 
 
-# The same two delimiters with the separator requirement dropped. This is
-# only ever read alongside a *known* set of ledger citekeys (#506/M-28):
-# `Knuth1984` and `Lamport94` are the default style of several reference
-# managers, and `_KEY` cannot see them at all, so a dossier written that
-# way contributed nothing to any parse -- a cited paper leaving the corpus
-# was never reported in `drift().missing`, which is the exact false
-# negative the comment above calls the worse failure.
-#
-# Membership in the ledger, not shape, is what makes these safe to accept:
-# the reason `_KEY` needs a separator is that a shapeless token could be
-# prose (`@someone`) invented into a broken-citation report, and a token
-# that equals a real ledger citekey cannot be invented by construction.
-# So this pattern is deliberately never used on its own -- it is read only
-# alongside `known`, and only ever as an *addition* to the strict scan.
-# The charset is the gate's own `PANDOC_KEY` rather than a third spelling
-# of one: a ledger key this scan could not tokenise the way the gate does
-# is a key the dossier can never be differenced against.
+# The same delimiters without the separator requirement (#506/M-28), for
+# separator-free reference-manager keys `_KEY` cannot see. Safe only
+# because it is read alongside a *known* set of ledger citekeys, and only
+# as an addition to the strict scan: a token equal to a real ledger key
+# cannot be invented. Charset is the gate's own `PANDOC_KEY`.
 _LOOSE_KEY = _pandoc_cites.PANDOC_KEY
 
 _LOOSE_CITEKEY_TOKEN = re.compile(rf"`({_LOOSE_KEY})`|@({_LOOSE_KEY})")
@@ -83,19 +42,11 @@ _LOOSE_CITEKEY_TOKEN = re.compile(rf"`({_LOOSE_KEY})`|@({_LOOSE_KEY})")
 def _citekeys(text: str, known: "set[str] | None" = None) -> list[str]:
     """Every citekey token in `text`, in either delimiter, in order.
 
-    Pass `known` -- a ledger's citekeys -- on any path that differences
-    this result against that ledger, and separator-free keys spelled
-    exactly as the ledger spells them are read too.
-
-    A union of the two scans, never a substitution of one for the other.
-    Filtering a single loose scan by "in `known`, or strictly key-shaped"
-    reads like the same thing and is not: the loose scan runs the gate's
-    grammar, so `@smith_x_2024.v2` tokenises as `smith_x_2024.v2`, which
-    is neither in the ledger nor a strict match -- and a key the strict
-    scan finds inside it (`smith_x_2024`) would have been *lost* the
-    moment a caller passed `known`. That is a new false negative in the
-    direction the comment above calls the worse failure, arriving with
-    the fix for one.
+    Pass `known` (the ledger's citekeys) on any path that differences
+    against that ledger, so separator-free keys are read too. A union of
+    both scans, never a filtered loose scan: the loose grammar reads a key
+    followed by `.v2` as one token, which would lose the strict match
+    inside it.
     """
     strict = [backticked or at_form for backticked, at_form in _CITEKEY_TOKEN.findall(text)]
     if known is None:
@@ -122,17 +73,10 @@ class Section:
         return self.end - self.start + 1
 
 
-# Headings for *outline extraction*: where does each section start and
-# stop, so a revision can Read and Edit one section instead of the whole
-# file. chitragupta/review/citation_provenance.py has a similar-looking pair of regexes
-# doing a different job -- segmenting claim-bearing blocks for scoring --
-# and the two are deliberately not shared: that module needs list items
-# and table rows to be blocks, which would be noise in an outline.
-# The whole rest of the line is captured and the optional ATX closing
-# sequence (`## Title ##`) stripped in `sections()` instead of by a
-# `(.*?)\s*#*\s*$` tail here: that tail's adjacent ambiguous quantifiers
-# backtrack super-linearly on pathological input (Sonar S8786), and a
-# plain-code strip is both linear and easier to confirm faithful.
+# Headings for outline extraction, deliberately not shared with
+# citation_provenance.py's block regexes (it needs list items and table
+# rows as blocks). The ATX closing `##` is stripped in `sections()`, not
+# by a `\s*#*\s*$` tail, which backtracks super-linearly (Sonar S8786).
 _MD_HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
 
 
@@ -160,12 +104,9 @@ _VERBATIM_END = re.compile(r"\\end\{(verbatim|lstlisting|minted|Verbatim)\*?\}")
 def _braced(text: str) -> str:
     """The contents of a `{...}` group, given everything after the `{`.
 
-    Brace-balanced rather than matched by regex, because both regex
-    readings are wrong on titles this project actually produces: a lazy
-    `.*?` stops at the first `}` and truncates `\\emph{twin}` mid-word, a
-    greedy `.*` runs past the closing brace and swallows a trailing
-    `\\label{...}`. A backslash escape is consumed as a pair so that a
-    literal `\\{` in a title doesn't open a group.
+    Brace-balanced, not a regex: lazy matching truncates at a nested
+    `}`, greedy runs into a trailing label. Escapes are consumed as a
+    pair so an escaped brace doesn't open a group.
     """
     depth, out, index = 1, [], 0
     while index < len(text):
@@ -187,8 +128,7 @@ def _braced(text: str) -> str:
 
 def _prose_lines(lines: list[str]) -> Iterator[tuple[int, str]]:
     """(line number, line) for every line outside fenced code blocks and
-    LaTeX verbatim environments -- the fence tracking `sections()`'s
-    docstring says is not a nicety, shared so no caller re-derives it."""
+    LaTeX verbatim environments, shared so no caller re-derives it."""
     in_fence = False
     in_verbatim = False
     for number, line in enumerate(lines, 1):
@@ -207,15 +147,9 @@ def _prose_lines(lines: list[str]) -> Iterator[tuple[int, str]]:
 def sections(text: str) -> list[Section]:
     """The draft's outline: one `Section` per heading, with line ranges.
 
-    Code is skipped first, which is not a nicety. `tutorial.md` in the
-    shipped example content is mostly shell and Python, and a `# Step 1`
-    comment inside a fenced block is indistinguishable from a Markdown
-    heading to anything that doesn't track fences -- so an outline built
-    without this reports sections that don't exist and hands a reviser
-    line ranges that cut a code block in half.
-
-    Markdown and LaTeX are both recognised, since thesis-chapter-writer
-    emits `.tex` and the other four emit `.md`.
+    Code is skipped first: a `# Step 1` comment inside a fenced block
+    would otherwise be a heading and cut a code block in half. Markdown
+    and LaTeX are both recognised.
     """
     lines = text.splitlines()
     found: list[Section] = []
@@ -223,10 +157,8 @@ def sections(text: str) -> list[Section]:
     for number, line in _prose_lines(lines):
         md = _MD_HEADING.match(line)
         if md:
-            # Strip whitespace, then one closing-hash run, then the
-            # whitespace preceding it -- the same shape the regex's old
-            # `\s*#*\s*$` tail matched, so `## Title ##` and `## Title`
-            # both yield "Title" while an interior `#` survives.
+            # Same shape as the old `\s*#*\s*$` tail: `## Title ##` and
+            # `## Title` both yield "Title"; an interior `#` survives.
             title = md.group(2).strip().rstrip("#").rstrip()
             found.append(Section(title, len(md.group(1)), number, number))
             continue
@@ -253,29 +185,15 @@ def attribute_citekeys(
 ) -> tuple[list[tuple[Section, list[str]]], list[str]]:
     """(section, its citekeys) for every heading, plus the unattributed ones.
 
-    The join key is the line number: `sections()` gives each heading a
-    line range, `citation_gate.extract_citekeys()` gives every citekey the
-    line it was cited on, and the intersection is the relation
-    `sections.md` records. Both halves already handle the two syntaxes
-    and skip code, so `.md` (`[@key]`) and `.tex` (`\\citep{key}`) need no
-    separate treatment here.
-
-    Duplicates collapse, keeping first-cited order -- the file answers
-    "which section leans on this paper", and a key cited three times in
-    one section is one answer, not three.
-
-    A key cited before the first heading belongs to no section and is
-    returned separately rather than dropped or forced into the first row.
-    Attributing it to a section that does not contain it would be a wrong
-    answer handed to a reviser, which is the failure this whole file
-    exists to prevent.
+    Joined on line number. Duplicates collapse in first-cited order. A key
+    cited before the first heading is returned separately: attributing it
+    to a section that does not contain it would mislead a reviser.
     """
     outline = sections(text)
     per_section: list[tuple[Section, list[str]]] = [(section, []) for section in outline]
     unattributed: list[str] = []
-    # latex selects LaTeX-aware code blanking (backtick is a quote there,
-    # not code markup) -- without it a citation between two LaTeX-quoted
-    # phrases silently vanished from the derived table.
+    # LaTeX-aware blanking (backtick is a quote there), or a citation
+    # between LaTeX quotes silently vanished.
     for line, citekey in citation_gate.extract_citekeys(text, latex=latex):
         for section, keys in per_section:
             if section.start <= line <= section.end:
@@ -291,12 +209,8 @@ def attribute_citekeys(
 def sections_markdown(text: str, *, latex: bool = False) -> str:
     """The finished `sections.md` for a draft, header and all.
 
-    Deterministic, so it can be regenerated rather than maintained: the
-    template already says the file is "rebuildable from the draft", and
-    this is that sentence made executable. A pipe in a heading is escaped
-    rather than left to break the row -- `_ROW_SPLIT` reads `\\|` as
-    literal, so the round trip through `citekeys_by_section()` returns
-    the heading as written.
+    Deterministic, so it is regenerated rather than maintained. A pipe in
+    a heading is escaped so the round trip returns the heading as written.
     """
     per_section, _ = attribute_citekeys(text, latex=latex)
     rows = "".join(
@@ -312,9 +226,8 @@ def _cmd_sections(args: argparse.Namespace) -> int:
         print(f"No such draft: {draft}", file=sys.stderr)
         return 1
     if args.write and not args.citekeys:
-        # Refused rather than assumed: the bare form prints an outline,
-        # and writing that into sections.md would replace the citekey
-        # relation with a heading list.
+        # Refused: writing the bare outline into sections.md would replace
+        # the citekey relation with a heading list.
         print("--write needs --citekeys.", file=sys.stderr)
         return 1
     text = draft.read_text(encoding="utf-8")
@@ -337,9 +250,8 @@ def _cmd_sections(args: argparse.Namespace) -> int:
 def _sections_citekeys(draft: Path, text: str, write: bool) -> int:
     """`sections --citekeys`: the derived table, printed or written.
 
-    Exit code 1 when the draft has no headings, because there is then no
-    table to build and a caller that piped this somewhere should hear
-    about it rather than write an empty file.
+    Exit 1 with no headings, so a piping caller hears about it rather
+    than writing an empty file.
     """
     latex = citation_gate.is_latex(draft)
     per_section, unattributed = attribute_citekeys(text, latex=latex)
@@ -362,9 +274,8 @@ def _sections_citekeys(draft: Path, text: str, write: bool) -> int:
         print(table, end="")
 
     if unattributed:
-        # Said out loud rather than dropped: a citekey cited above the
-        # first heading is real evidence the table cannot place, and a
-        # reviser reading only the table would never learn it exists.
+        # Said out loud: a reviser reading only the table would never learn
+        # of a citekey cited above the first heading.
         print(
             "Cited before the first heading, so in no section: "
             + ", ".join(f"`{key}`" for key in unattributed),

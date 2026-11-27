@@ -1,10 +1,7 @@
 """`dossier status`: what a dossier holds, and whether the corpus has
 moved since -- the report a person runs to find out what they have.
 
-Split out of chitragupta/dossier.py (#219). Depends on `_drift` (for the
-`--json` single-draft path) but never the reverse -- `status()` itself
-never calls `drift()` (confirmed by reading it: they read overlapping
-dossier state independently, joined only at the CLI layer).
+Depends on `_drift` for the `--json` path, never the reverse.
 """
 
 import argparse
@@ -58,11 +55,8 @@ class Status:
     retrieval_chars: int = 0
     revisions: list[RevisionCost] = field(default_factory=list)
     fingerprint: Staleness | None = None
-    # Named for the function that fills it in, not "outline_drift" --
-    # this dataclass already has an `outline` field (the draft's own
-    # derived heading structure, from `_sections.sections`), and a name
-    # one edit-distance away from it would read as related to that
-    # rather than to outline.md, the human-authored file this is about.
+    # Not "outline_drift": too close to the `outline` field (derived
+    # headings), when this is about the human-authored outline.md.
     declared_vs_actual: OutlineDrift | None = None
 
     @property
@@ -74,13 +68,7 @@ _COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 
 
 def _count(text: str, shape: str) -> int:
-    """How many entries a dossier file holds. Advisory, not exact.
-
-    Nothing depends on the number being right -- `status` prints it so a
-    reader can see at a glance whether a file was filled in or left as
-    the skeleton, and a hand-edited dossier that counts a little wrong
-    still revises fine.
-    """
+    """How many entries a dossier file holds. Advisory, not exact."""
     body = _COMMENT.sub("", text)
     if shape == "blocks":
         return sum(1 for line in body.splitlines() if line.startswith("## "))
@@ -101,10 +89,8 @@ def _count(text: str, shape: str) -> int:
 def status(draft_or_dossier: Path) -> Status:
     """What this dossier holds, and whether the corpus has moved since.
 
-    Never raises on a missing ledger or a missing dossier: this is the
-    command someone runs to find out what they have, including on a
-    machine where the corpus was never built and only a restored backup
-    exists.
+    Never raises on a missing ledger or dossier: it must work on a
+    machine holding only a restored backup.
     """
     path = Path(draft_or_dossier)
     if path.is_dir():
@@ -124,13 +110,8 @@ def status(draft_or_dossier: Path) -> Status:
     if draft is not None:
         report.outline = sections(draft.read_text(encoding="utf-8"))
         report.fingerprint = staleness(draft)
-    # One parse of retrieval.md: retrieval_cost_by_revision's segments
-    # already exclude mark_revision's boundary rows, so the lifetime
-    # totals are just their sum. There used to be a whole-file
-    # `retrieval_cost` beside it, and this comment used to explain why
-    # calling it here as well would parse the same file twice for numbers
-    # `_retrieval_rows` had already computed. That was the only reason it
-    # had left, so #515 deleted it.
+    # One parse: the segments already exclude boundary rows, so lifetime
+    # totals are their sum (#515).
     report.revisions = retrieval_cost_by_revision(dossier)
     report.retrieval_calls = sum(segment.calls for segment in report.revisions)
     report.retrieval_chars = sum(segment.chars for segment in report.revisions)
@@ -143,7 +124,6 @@ def status(draft_or_dossier: Path) -> Status:
 
 
 def _fill_corpus_drift(report: Status, dossier: Path) -> None:
-    """`report.current`/`unconsidered`, when a ledger is readable."""
     corpus_keys = known_citekeys()
     if corpus_keys is not None:
         report.current = (len(corpus_keys), digest(corpus_keys))
@@ -185,16 +165,12 @@ def _cmd_status(args: argparse.Namespace) -> int:
 
 
 def _print_status_files(report: Status) -> None:
-    """The draft line and the per-file table."""
     if report.draft is not None:
         print(f"  draft         {draft_relpath(report.draft)} ({len(report.outline)} sections)")
     else:
         print("  draft         MISSING -- the dossier outlived its draft")
     for entry in report.files:
-        # A count means something for the two files that are lists
-        # (evidence blocks, rejected/section rows) and nothing for the
-        # three that are prose -- "scope.md: 40 entries" would be a
-        # number dressed up as information.
+        # Counts only for list-shaped files; a count of prose is noise.
         if not entry.present:
             print(f"  {entry.name:<14}absent")
         elif not entry.entries:
@@ -206,7 +182,6 @@ def _print_status_files(report: Status) -> None:
 
 
 def _print_status_retrieval(report: Status) -> None:
-    """The retrieval cost block, when this dossier logged any calls."""
     if not report.retrieval_calls:
         return
     kept = next((f.entries for f in report.files if f.name == EVIDENCE_MD), 0)
@@ -218,25 +193,14 @@ def _print_status_retrieval(report: Status) -> None:
     if kept or rejected:
         print(f"  {kept} kept, {rejected} rejected")
     else:
-        # Searched, and recorded nothing it found. Reported rather
-        # than blocked, like every other check outside the citation
-        # gate: it costs a comparison of two numbers already on this
-        # report, and nothing else in the pipeline can see it -- the
-        # draft looks finished and the judgment behind it is gone.
-        #
-        # "no entries" rather than "empty": both counts are 0 for an
-        # absent file too, and the per-file lines above already
-        # distinguish `absent` from `empty (skeleton only)`. Calling
-        # a missing file empty would contradict them.
+        # Searched but recorded nothing: reported, not blocked, since
+        # nothing else can see it once the draft looks finished. "no
+        # entries", not "empty", which means skeleton-only above.
         print("  but evidence.md and rejected.md hold no entries -- this run")
         print("  searched and recorded nothing it found, so a revision will")
         print("  have to re-retrieve and re-judge the same candidates.")
 
-    # Only worth a breakdown once there's more than one segment --
-    # with just one, it would repeat the total line above under a
-    # different label. A dossier revised before `mark-revision`
-    # existed has exactly one ("initial draft") for the same reason a
-    # dossier with no revisions yet does: nothing split it.
+    # A breakdown only with more than one segment, or it repeats the total.
     if len(report.revisions) > 1:
         print("  by revision:")
         for segment in report.revisions:
@@ -245,7 +209,7 @@ def _print_status_retrieval(report: Status) -> None:
 
 def _print_status_outline(report: Status) -> None:
     """ "Did this draft follow outline.md?", from `declared_vs_actual`
-    (#455) -- absent when there is no outline.md to have followed."""
+    (#455); absent when there is no outline.md."""
     if report.declared_vs_actual is None:
         return
     drift = report.declared_vs_actual
@@ -254,10 +218,8 @@ def _print_status_outline(report: Status) -> None:
     empty = [(s.heading, q) for s in drift.sections.values() for q in s.run_empty]
     extended = drift.extended
     regrounded = drift.regrounded
-    # The clause is conditional and the counts beside it are not: "0
-    # extended" is a fact about a run, where "(0 with no evidence)" on
-    # every clean draft would be a standing reminder of a state that
-    # mostly does not occur (#480).
+    # The clause is conditional, unlike the counts, so a clean draft is
+    # not reminded of a state that rarely occurs (#480).
     no_evidence = f" ({len(empty)} with no evidence)" if empty else ""
     print(
         f"\nOutline: {len(run)} declared quer{'y' if len(run) == 1 else 'ies'} "
@@ -275,8 +237,6 @@ def _print_status_outline(report: Status) -> None:
 
 
 def _print_status_drift(report: Status) -> None:
-    """The corpus drift block: unavailable, unchanged, or changed with
-    the unconsidered citekeys named."""
     if report.current is None:
         print(f"Corpus drift: unavailable -- no readable ledger at {config.LEDGER_PATH}.")
         return
@@ -307,7 +267,6 @@ def _print_status_drift(report: Status) -> None:
 
 
 def _print_status_fingerprint(report: Status) -> None:
-    """The draft-fingerprint lines, when this draft has ever been stamped."""
     if report.fingerprint is None:
         return
     print()

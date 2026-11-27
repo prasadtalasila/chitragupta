@@ -1,14 +1,10 @@
 """The `--out` overview: one topic as a Markdown file a draft can grow
 from.
 
-Extractive, never abstractive, and that is a boundary rather than a
-style: Theme G's roadmap declines abstractive topic summaries because a
-summary asserting a claim no paper made is the fabricated citekey's
-failure class wearing different clothes. So the overview *selects* --
-member entries the ledger already holds, linked topics a stage already
-derived, and representative sentences quoted verbatim from member
-papers' parsed text with their citekeys attached. Nothing here is
-paraphrased.
+Extractive, never abstractive: a summary asserting a claim no paper
+made is the fabricated citekey's failure class (Theme G). It only
+*selects* ledger entries, stage-derived links and verbatim sentences
+with their citekeys; nothing is paraphrased.
 """
 
 from typing import Any
@@ -16,24 +12,22 @@ from typing import Any
 from chitragupta import config, ledger, ledger_paths, sentences
 from chitragupta.discover import _data, _resolve
 
-# How many verbatim sentences the overview quotes, and the length band a
-# candidate sentence must fall in -- below it fragments and page furniture
-# dominate, above it block quotes stop being quotable.
+# Quote count and sentence length band: shorter is fragments and page
+# furniture, longer stops being quotable.
 SNIPPET_COUNT = 5
 _SENTENCE_BOUNDS = (40, 400)
 
 
 def _load_model() -> "Any":
     """Isolated so tests fake it; the import is paid only when an
-    overview is actually written."""
+    overview is written."""
     from sentence_transformers import SentenceTransformer  # pylint: disable=import-outside-toplevel
 
     return SentenceTransformer(config.EMBEDDING_MODEL)
 
 
 def _parsed_texts(citekeys: list) -> dict:
-    # Guarded before the query: an empty list would render "IN ()",
-    # which sqlite rejects as a syntax error rather than an empty match.
+    # Guarded: sqlite rejects an empty "IN ()" as a syntax error.
     if not citekeys:
         return {}
     con = _data.read_only_connection()
@@ -53,10 +47,8 @@ def _parsed_texts(citekeys: list) -> dict:
 
 def _candidate_sentences(texts: dict) -> list:
     """Every member sentence inside `_SENTENCE_BOUNDS`, split by
-    `chitragupta/sentences.py`'s rule rather than one of this module's
-    own (#895): a second regex here lacked its citation-abbreviation
-    guards and cut "Smith et al. (2020) found" into a bare "Smith et
-    al." and a subjectless claim."""
+    `chitragupta/sentences.py`'s rule (#895): a local regex lacked its
+    abbreviation guards and cut "et al." citations mid-sentence."""
     low, high = _SENTENCE_BOUNDS
     return [
         (citekey, sentence)
@@ -68,11 +60,9 @@ def _candidate_sentences(texts: dict) -> list:
 
 def snippets(members: list, graph: dict, label: str) -> "list | None":
     """The topic's most representative sentences, verbatim with their
-    citekeys: candidates from every member's parsed text, ranked by
-    cosine to the topic centroid in the same centred space the graph
-    stage stored. `None` -- distinct from "no candidates" -- when the
-    enrich extra is absent or its embedding model will not load (#977),
-    so the caller can say what is missing."""
+    citekeys, ranked by cosine to the centroid in the graph's centred
+    space. `None` (not "no candidates") when the extra or model is
+    unavailable (#977), so the caller can say what is missing."""
     from chitragupta.discover import _render  # pylint: disable=import-outside-toplevel
 
     centroid = _render._graph_node(graph, label).get("centroid") or []
@@ -97,8 +87,8 @@ def snippets(members: list, graph: dict, label: str) -> "list | None":
 
 
 def _linked_lines(linked: dict) -> list:
-    """The linked-topics section's bullet lines, both families with
-    their evidence, or the explicit "none" a reader can trust."""
+    """The linked-topics bullet lines, both families with evidence, or
+    an explicit "none"."""
     lines = [
         f"- {edge['label']} -- shared members "
         f"(jaccard {edge['jaccard']:.2f}, overlap {edge['overlap_coeff']:.2f}, "

@@ -1,19 +1,9 @@
 """`dossier brief`: the kept evidence for one section.
 
-Split out of chitragupta/dossier.py (#219). `status` and `drift` read a
-dossier on behalf of a human. This reads it on behalf of a *subagent*,
-and the difference is what the shape is for: a skill that fans out
-(`deep-research` Phase 5 dispatches one writer per section) has to give
-each subagent the evidence its section stands on. Pasting that evidence
-into the dispatch prompt spends it in the output pool, which is the
-expensive direction (docs/TOKENS.md), and spends it once per subagent.
-Handing over a command instead moves the same text into the subagent's
-own one-shot context, where it is billed once and discarded with that
-context. This does not, and cannot, shrink what the *orchestrator* is
-already carrying -- a context is append-only between compactions -- but
-it removes the re-emission, and, because the dossier outlives the run,
-the need to re-derive any of it after a compaction or in a later
-session.
+Reads the dossier on behalf of a *subagent*. Handing a fan-out writer a
+command instead of pasting evidence into its prompt avoids re-emitting
+it in the expensive output pool once per subagent (docs/TOKENS.md), and
+the dossier survives compaction.
 """
 
 import argparse
@@ -51,15 +41,10 @@ def _match_section(wanted: str, known: dict[str, list[str]]) -> str | None:
     """The `sections.md` row `wanted` names, or None if it names no single
     one.
 
-    Exact first (modulo case and runs of whitespace), then a unique
-    substring either way, so a writer dispatched for "Failure modes"
-    matches the row a skill numbered "2. Failure modes" without the
-    caller having to know how it was numbered.
-
-    An ambiguous name matches *nothing* rather than the first candidate.
-    Guessing here hands a section writer another section's evidence,
-    which is the one failure mode this whole path has to avoid: it comes
-    back as a fluent, correctly-cited section about the wrong thing.
+    Exact first (case and whitespace aside), then a unique substring, so
+    "Failure modes" matches "2. Failure modes". An ambiguous name matches
+    *nothing*: a guess hands a writer another section's evidence, which
+    returns as a fluent, correctly cited section about the wrong thing.
     """
     target = _normalised(wanted)
     for title in known:
@@ -78,17 +63,10 @@ def brief(
 ) -> Brief:
     """The kept-evidence blocks for `citekeys`, for `section`, or for both.
 
-    Reports rather than raises, like everything else here -- but the
-    report distinguishes three things a caller has to tell apart: a
-    citekey with a block (`blocks`), one asked for with no block
-    (`missing`), and a section name that matches no row (`section` back
-    as None, with `known_sections` filled in).
-
-    `missing` is the load-bearing one. A citekey that was retrieved,
-    kept, and then never transcribed exists nowhere once the run that
-    found it ends, and until this the loss was silent: the draft looked
-    finished and the judgment behind it was gone. A dispatch that reads
-    from here turns that into a named citekey at the moment it matters.
+    Reports rather than raises, distinguishing `blocks`, `missing`, and an
+    unmatched section (None, with `known_sections`). `missing` is the
+    load-bearing one: a kept but never transcribed citekey is otherwise
+    lost silently once the run ends.
     """
     known = citekeys_by_section(dossier)
     matched = _match_section(section, known) if section else None
@@ -114,11 +92,9 @@ def _cmd_brief(args: argparse.Namespace) -> int:
     """Exit codes: 0 when it printed at least one block, 1 when it could
     not print any.
 
-    A caller of this is a dispatch prompt, not a person, so "nothing
-    here" has to be a status code rather than a paragraph -- a subagent
-    that reads an empty brief and writes the section anyway produces
-    exactly the ungrounded prose this project exists to prevent. Every
-    diagnostic goes to stderr so that stdout is only ever the evidence.
+    The caller is a dispatch prompt, so "nothing here" must be a status
+    code, or a subagent writes ungrounded prose. Diagnostics go to stderr
+    so stdout is only evidence.
     """
     if not args.citekeys and not args.section:
         print(
@@ -163,7 +139,6 @@ def _cmd_brief(args: argparse.Namespace) -> int:
 
 
 def _explain_unknown_section(section: str, target: Path, report: Brief) -> None:
-    """stderr for a --section that matched nothing: what is there instead."""
     print(
         f"No section matching {section!r} in {draft_relpath(target / SECTIONS_MD)}.",
         file=sys.stderr,
@@ -181,7 +156,6 @@ def _explain_unknown_section(section: str, target: Path, report: Brief) -> None:
 
 
 def _warn_brief_gaps(report: Brief, asked: int) -> None:
-    """The two ungrounded-evidence warnings a brief can end with."""
     if report.missing:
         print(
             f"\n[warn] {len(report.missing)} citekey(s) have no block in "
@@ -197,9 +171,7 @@ def _warn_brief_gaps(report: Brief, asked: int) -> None:
             file=sys.stderr,
         )
     elif not asked:
-        # A row that exists and assigns nothing. Distinct from a name
-        # that matched no row, and it wants the opposite fix: the plan
-        # has a gap in it, rather than the caller having mistyped.
+        # A row that assigns nothing: a plan gap, not a mistyped name.
         print(
             "\n[warn] That section is planned but has no citekeys assigned "
             "to it, so there is nothing to write from. Assign its evidence "

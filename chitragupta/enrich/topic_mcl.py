@@ -1,19 +1,11 @@
 """Stored MCL communities for the topic graph (#712).
 
-A numpy port of `assets/webapp/families.js`'s Markov clustering --
-expand, inflate, renormalise, same self-loops, same convergence test,
-same first-attractor-by-payload-order cluster reading -- run once per
-edge family at every value the app's inflation slider can take (it is
-integer-stepped: 1.2 to 4.0 by 0.1, 29 values), and stored in the
-artefact so both surfaces read the same partitions. MCL is not in
-networkx; §14 weighed a scipy loop, a pinned port of families.js, or
-driving the JS through node, and this is the pinned port --
-`tests/webapp/mcl_cases.json` holds the two implementations to the same
-assignments, from node and from pytest, so neither can drift alone.
-
-Partitions are stored as one cluster index per topic, aligned with the
-artefact's own topic order -- compact, and the reader rebuilds the
-member lists from data it already holds.
+A numpy port of `assets/webapp/families.js`'s Markov clustering, run per
+edge family at every inflation the app's slider can take, so both
+surfaces read the same partitions. MCL is not in networkx; the pinned
+port won over scipy or driving JS through node (§14), and
+`tests/webapp/mcl_cases.json` holds both implementations to the same
+assignments. Stored as one cluster index per topic, in topic order.
 """
 
 from typing import TYPE_CHECKING
@@ -23,8 +15,7 @@ if TYPE_CHECKING:  # the runtime import stays lazy, inside cluster()
 
 MAX_ITERATIONS = 40
 EPSILON = 1e-6
-# The slider's own steps: `#inflation` is min=12 max=40 step=1, read as
-# value/10, so this is every inflation the app can ask for.
+# The slider's steps: `#inflation` min=12 max=40 step=1, read as value/10.
 INFLATIONS = [round(step / 10, 1) for step in range(12, 41)]
 
 _WEIGHT_KEY = {"overlap": "overlap_coeff", "semantic": "similarity"}

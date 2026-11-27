@@ -1,10 +1,7 @@
 """`python -m chitragupta.draft registry`'s four commands, and the Markdown the
 registries are written as.
 
-Split from `chitragupta/registry/__init__.py` the way `chitragupta/spec/_cli.py` and
-`chitragupta/unit/_cli.py` are, and named `_cli.py` for the same reason: this
-package has no `__main__.py`, because `python -m chitragupta.draft registry` is
-the one front door.
+No `__main__.py`: `python -m chitragupta.draft registry` is the one front door.
 """
 
 import subprocess
@@ -23,9 +20,8 @@ from chitragupta.progname import prog_for
 
 _BOOK_HELP = "The book's directory under content/drafts/"
 
-# The review layer's rule, applied to an artefact that will be found on
-# disk months later with nobody around to explain it. Same words, same
-# job: a file cannot rely on a reader having read the documentation.
+# The review layer's rule: a file found on disk months later cannot rely
+# on its reader having read the documentation.
 _BANNER = (
     "<!-- Derived from the accepted units by a deterministic pass. "
     "Evidence for a judgement, not a verdict: nothing here blocks "
@@ -41,8 +37,8 @@ _FILES = {
 
 
 def _cell(value) -> str:
-    """A table cell, with any `|` escaped the way the dossier's own row
-    parser expects to find it (`_ROW_SPLIT` splits on an unescaped one)."""
+    """A table cell, with any `|` escaped as the dossier's `_ROW_SPLIT`
+    expects."""
     return str(value).replace("|", r"\|")
 
 
@@ -65,7 +61,6 @@ def _rows(name: str, built: dict) -> list[tuple]:
 
 
 def meaning_cell(row: dict) -> str:
-    """A `## Symbols` row's meaning as its `math.md` writes it."""
     if row["kind"] == "link":
         return f"**{row['text']}**" + (f", {row['note']}" if row["note"] else "")
     if row["kind"] == "see":
@@ -87,9 +82,7 @@ def _write(book, built: dict) -> list:
     directory.mkdir(parents=True, exist_ok=True)
     for name, headers in _FILES.items():
         path = directory / name
-        # No timestamp, the same rule the review layer's reports and the
-        # sign-off record follow: rebuilding over unchanged units is
-        # byte-identical, so a diff of content/specs/ is a diff of the book.
+        # No timestamp: a diff of content/specs/ is a diff of the book.
         path.write_text(
             f"# {name.removesuffix('.md')}\n\n{_BANNER}\n\n"
             f"{_coverage(built)}\n\n{_table(headers, _rows(name, built))}",
@@ -115,11 +108,9 @@ def _cmd_build(args) -> int:
 def _write_pages(built: dict, args) -> int:
     """The Glossary and List of Symbols, or a refusal that writes neither.
 
-    A *build* refusing, not a check blocking: `registry check` reports
-    the same `[glossary]` bullets and `[notation]` rows and exits 0. A
-    page built over them would silently leave terms out or print a
-    symbol as code, so this stops and says which, as `render` stops on an
-    unmapped `<!-- math -->` marker (SOUL.md, "Atomic, or not at all").
+    A *build* refusing, not a check blocking (`registry check` exits 0):
+    a page would silently drop terms or print a symbol as code (SOUL.md,
+    "Atomic, or not at all").
     """
     problems = _terms.problem_findings(built) + _symbols.blocking(built)
     if problems:
@@ -153,14 +144,10 @@ def _write_pages(built: dict, args) -> int:
 def _cmd_check(args) -> int:
     """Reports and exits 0, whatever it finds.
 
-    Not an oversight and not a flag away from blocking: this is a
-    machine's reading of prose -- which term was defined where, which
-    sentences match, which reference resolves -- and
-    docs/ARCHITECTURE.md's "Layer 4" is explicit that such a check
-    "reports and never blocks, whichever layer it lives in". What #138
-    calls blocking is guaranteed *invocation*: the assembly step (#139)
-    must run this and surface it, and the human sign-off is what
-    decides. docs/WRITE-A-BOOK.md carries the argument.
+    Deliberate: a machine's reading of prose "reports and never blocks"
+    (docs/ARCHITECTURE.md, Layer 4). #138's "blocking" means the assembly
+    step (#139) must run and surface it; the human sign-off decides
+    (docs/WRITE-A-BOOK.md).
     """
     built = build(args.book)
     print("Consistency check -- evidence for a judgement, not a verdict.")
@@ -176,7 +163,6 @@ def _cmd_check(args) -> int:
 
 
 def _cmd_excerpt(args) -> int:
-    """What a unit's generation should be told the rest of the book settled."""
     slice_ = excerpt(args.book, args.unit)
     print(f"# What the rest of {args.book} already settled")
     print("\n## Terminology already defined elsewhere\n")

@@ -1,68 +1,34 @@
 """The incremental cache `chitragupta/retrieval_passages.py` builds its
-passage-level BM25 index from.
+passage-level BM25 index from (#441).
 
-Split from that module at the boundary its parent
-`chitragupta/retrieval.py` already had -- `retrieval_cache.py` is the
-same cut, made for the same reason (#441), and the two files sit in the
-same relationship. Everything here answers *what a document's indexable
-passages are and when they must be recomputed*; what is left there
-answers *how a query is ranked against them*. The split was forced by
-docs/CODE-STANDARDS.md's 250-line C2 limit rather than chosen, which is
-the kind that belongs in the same PR.
-
-What differs from `retrieval_cache.py` stays separate, deliberately:
-the two are invalidated by different things -- that one by the parsed
-`.txt`, this one by the passage sidecar beside it -- and
-`retrieval_cache` also serves a read-only builder (`read_only_index`), so
-a shared fingerprint or index builder would have two callers pulling one
-abstraction in opposite directions. The file plumbing under them has no caller-specific
-behaviour at all, and since #851 both use `chitragupta/_json_cache.py`
-for it rather than a copy each.
+Kept separate from `retrieval_cache.py`: this one is invalidated by the
+passage sidecar, that one by the parsed `.txt`, and that one also serves
+`read_only_index`. The file plumbing is shared via `_json_cache.py` (#851).
 """
 
 from chitragupta import _reference_cut, _tokens, config, passages
 from chitragupta._json_cache import MemoisedJson
 from chitragupta.retrieval import _tokenize
 
-# What may be ranked. `section_header` and `title` are in
-# `passages.PASSAGE_LABELS` and deliberately not here: BM25's length
-# normalization rewards a short dense match, so a three-word heading whose
-# text *is* the query outscores every real paragraph in the corpus while
-# being evidence of nothing. A document's title is already a field on the
-# document-level path, and issue #762 is where title matching gets its
-# answer. `table` and `formula` stay in -- a table is what a quantitative
-# claim rests on, which is why #627 put it in the sidecar at all.
+# What may be ranked. Headings and titles are left out: BM25's length
+# normalization lets a short heading matching the query outrank every
+# real paragraph (titles: #762). Tables stay, as quantitative claims rest
+# on them (#627).
 _INDEXED_LABELS = frozenset({"text", "list_item", "table", "formula"})
 
-# 2 since #790: this index is tokenized by `retrieval._tokenize`, imported
-# above, whose length floor moved from 3 to 2 -- so a byte-identical
-# parsed file and an untouched sidecar now produce different passage term
-# frequencies. Bumped here as well as in `retrieval_cache`, and that is
-# not belt-and-braces: the two indexes are separate files with separate
-# fingerprints (docs/RETRIEVAL.md says so), so invalidating one says
-# nothing about the other, and a stale passage index would keep ranking
-# paragraphs on the old vocabulary while the document index used the new.
-#
-# That second bump is now automatic (issue 845): the same
-# `_tokens.index_version` digest `retrieval_cache` carries is joined to
-# this number, so a vocabulary edit invalidates both indexes at once.
+# Bumped with `retrieval_cache` on tokenizer changes (2 since #790): the
+# two indexes have separate fingerprints, so a stale one would rank on old
+# vocabulary. `_tokens.index_version` is joined in automatically (issue 845).
 _INDEX_SCHEMA_VERSION = _tokens.index_version(2)
 
 
 def _passage_stats(found: list) -> list[dict]:
     """Term frequencies for the indexable passages of one document.
 
-    `i` is the passage's position in `passages.corpus_passages`' own
-    returned list -- what every other consumer of that function sees --
-    rather than its line in the JSON, so a caller can hold the number and
-    look the passage up again.
-
-    Passages at or after the reference heading are dropped, on the
-    boundary `_reference_cut` already owns rather than a re-derived one.
-    That matters more here than on the document path: a bibliography
-    entry is short and stuffed with title words, so as a *passage* BM25's
-    length normalization would rank it above real prose rather than
-    merely adding noise to a pooled score.
+    `i` is the position in `passages.corpus_passages`' list, so a caller
+    can look a passage up again. Passages from the reference heading on
+    are dropped (`_reference_cut`): a short, title-stuffed bibliography
+    entry would outrank real prose as a passage.
     """
     cut = _reference_cut.reference_cut_index(found)
     stats = []
@@ -82,15 +48,9 @@ def _passage_stats(found: list) -> list[dict]:
 def _fingerprint(item) -> list:
     """What must move before a document's passage stats are rebuilt.
 
-    The sidecar's own stat is here, where `retrieval_cache._fingerprint`
-    deliberately leaves it out. That omission is sound there because the
-    `.txt` is the source of truth and a re-parse rewrites both; here the
-    sidecar *is* the source, so a restored or hand-written one beside an
-    untouched `.txt` would otherwise be invisible.
-
-    `MIN_PASSAGE_TOKENS` is here for the same reason: it decides what
-    enters the index, not merely what is returned, so an entry written
-    under one value cannot be reused under another.
+    Includes the sidecar's stat, which `retrieval_cache._fingerprint`
+    omits: here the sidecar is the source. `MIN_PASSAGE_TOKENS` is in too,
+    as it decides what enters the index.
     """
     sidecar = passages.sidecar_path(item["citekey"])
     try:
@@ -101,12 +61,9 @@ def _fingerprint(item) -> list:
     return [item["parsed_path"] or "", item["status"], config.MIN_PASSAGE_TOKENS, *stamp]
 
 
-# The memo, its stamp, the version check and the atomic write, shared with
-# the document index (#851, chitragupta/_json_cache.py) -- and so the same
-# safety argument: a stale memo can only ever serve an entry that still
-# matches `_fingerprint(item)`, so it cannot serve superseded text.
-# `_forget_cache` is also for a caller that has rewritten a sidecar in the
-# same process, which the index file's own stamp cannot see.
+# Shared with the document index (#851, `_json_cache.py`): a stale memo
+# can only serve an entry still matching `_fingerprint(item)`.
+# `_forget_cache` is for a caller that rewrote a sidecar in-process.
 _CACHE = MemoisedJson(lambda: config.RETRIEVAL_PASSAGE_INDEX_PATH, _INDEX_SCHEMA_VERSION)
 _load_cache = _CACHE.load
 _save_cache = _CACHE.save
@@ -114,13 +71,8 @@ _forget_cache = _CACHE.forget
 
 
 def _cached_entry(entry, fp: list) -> "dict | None":
-    """`entry` if it is a usable cache hit, else None.
-
-    The shape check is #504/M-24's lesson from the document path: an entry
-    with a matching fingerprint but a missing or wrong-typed payload was
-    reused as-is and crashed the scorer with a bare KeyError. Costing one
-    re-tokenization is the cheaper answer.
-    """
+    """`entry` if it is a usable cache hit, else None. A matching
+    fingerprint with a bad payload once crashed the scorer (#504/M-24)."""
     if not isinstance(entry, dict) or entry.get("fingerprint") != fp:
         return None
     if not isinstance(entry.get("passages"), list) or not isinstance(entry.get("sidecar"), bool):
@@ -132,16 +84,9 @@ def load_index(items: list) -> "tuple[dict, int]":
     """The `(citekey, passage_index)`-keyed scoring index, and how many
     parsed items had no sidecar to contribute one.
 
-    Only `status == 'parsed'` rows are read, the guard #490 added to the
-    document path: a failed re-parse or a hash-changed sync leaves
-    `parsed_path` naming a superseded PDF's text, and
-    `passages.clear_sidecar` will already have removed the sidecar beside
-    it.
-
-    The only name here without a leading underscore, because it is the one
-    thing `retrieval_passages.py` calls. The rest is this module's own
-    bookkeeping, as `retrieval_cache`'s is behind `_load_index` and
-    `read_only_index`.
+    Only `status == 'parsed'` rows (#490): a failed re-parse leaves
+    `parsed_path` naming superseded text. The one public name here, as
+    `retrieval_passages.py` calls only this.
     """
     cached = _load_cache()
     current = {item["citekey"] for item in items}
@@ -159,10 +104,8 @@ def load_index(items: list) -> "tuple[dict, int]":
             entry = _build_entry(citekey, fp)
             changed = True
         new_cache[citekey] = entry
-        # `sidecar`, not `not entry["passages"]`. A document whose every
-        # passage fell under the token floor has a sidecar and still
-        # contributes nothing, and reporting it as sidecar-less would send
-        # a reader to re-parse a document that is already parsed fine.
+        # `sidecar`, not `not entry["passages"]`: every passage under the
+        # token floor is not a missing sidecar, and needs no re-parse.
         if not entry["sidecar"]:
             without_sidecar += 1
         for stat in entry["passages"]:

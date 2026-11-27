@@ -1,8 +1,7 @@
 """Local files a draft references, copied beside the rendered output.
 
-Images and TikZ figures, on the same rule and for the same reason: a
-`tex` output has to be compilable on its own, and a draft's own
-references are never grounds to read or write outside its directory.
+A `tex` output must compile on its own, and a draft's references are never
+grounds to read or write outside its directory.
 """
 
 import re
@@ -19,15 +18,9 @@ from chitragupta.render_output._figures import (
 )
 
 
-# Matches Markdown image syntax: ![alt](path) or ![alt](path "title"), and
-# CommonMark's angle-bracket form for a destination containing a literal
-# space: ![alt](<my figure.png>). `[^)\s]+` alone (the bare form) can never
-# match a space at all, so a path saved with one -- a screenshot's default
-# name, say -- needs this second alternative or it is never even found
-# (m-58). The alt text admits one level of nested brackets: a verbatim
-# digest's caption ends in its cite string, `Figure 3 of [@key], p.7`
-# (#991), and `[^\]]*` stopped at that citation's `]`, so the figure was
-# never found and never copied beside the `tex` output.
+# Markdown image syntax, including CommonMark's `![alt](<my figure.png>)` for a
+# path with a space (m-58). The alt text admits one level of nested brackets for a
+# digest caption's `[@key]` cite (#991).
 _MD_IMAGE_RE = re.compile(
     r"!\[(?:[^\[\]]|\[[^\[\]]*\])*\]"
     r'\((?:<(?P<angled>[^>]*)>|(?P<bare>[^)\s]+))(?:\s+"[^"]*")?\)'
@@ -40,10 +33,7 @@ _URI_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 def _local_image_refs(text: str) -> list[str]:
     """Every local (non-URL) image path a Markdown draft references.
 
-    Percent-decoded: a *bare* (non-bracketed) destination can't contain a
-    literal space at all, so pandoc/CommonMark's own answer for one is
-    percent-encoding it (`my%20figure.png`) -- which resolves to nothing
-    on disk unless it's decoded back to the real filename first (m-58).
+    Percent-decoded, since a bare destination spells a space as `%20` (m-58).
     """
     return [
         unquote(ref)
@@ -53,22 +43,12 @@ def _local_image_refs(text: str) -> list[str]:
 
 
 def _copy_local_images(input_path: Path, dest_dir: Path) -> None:
-    """Copies every local image `input_path` references alongside the
-    rendered output in `dest_dir`, so a `tex` output is actually
-    self-contained and compilable on its own (`cd` to the directory the
-    render landed in -- see `_output_dir` -- and `pdflatex *.tex`).
+    """Copies every local image `input_path` references beside the output.
 
-    Without this, pandoc's LaTeX writer emits `\\includegraphics{path}`
-    verbatim, unresolved and uncopied -- the `pdf` format only looks fine
-    because pandoc's own internal LaTeX pass reads the image directly
-    via `--resource-path` below, in a temp dir this function never touches.
-    A relative `path` an image reference doesn't resolve to a real file
-    under `input_path`'s own directory is silently skipped here (letting
-    pandoc's own missing-resource handling surface it, same as today), as
-    is any reference `_resolve_sibling` refuses -- absolute, `..`-escaping,
-    or a symlink that lands outside `input_path`'s directory (#823). A
-    draft's image references are never a reason to read outside its own
-    directory or write outside `dest_dir`.
+    Without this a `tex` output's `\\includegraphics` is unresolved (the `pdf`
+    format reads images via `--resource-path`). An unresolvable reference is
+    skipped for pandoc to report; one `_resolve_sibling` refuses (absolute,
+    `..`, or a symlink out of the directory, #823) is skipped too.
     """
     for ref in _local_image_refs(input_path.read_text(encoding="utf-8")):
         src = _resolve_sibling(input_path.parent, ref)
@@ -80,11 +60,9 @@ def _copy_local_images(input_path: Path, dest_dir: Path) -> None:
 def _escapes(draft_dir: Path, ref: str) -> bool:
     """Whether `ref` is spelled inside `draft_dir` but lands outside it.
 
-    The case `_resolve_sibling` refuses and pandoc/the TeX engine would not:
-    both open the spelled name themselves, and the TeX read fence
-    (`tex_engine`, #823, #1037) judges the name, not where a symlink on
-    the way takes it. Absolute and `..` spellings are not this question
-    -- the fence refuses those itself -- so they answer False here.
+    pandoc and TeX open the spelled name, and the TeX read fence (#823, #1037)
+    judges the name, not where a symlink leads. Absolute and `..` spellings
+    answer False: the fence refuses those itself.
     """
     ref_path = Path(ref)
     if ref_path.is_absolute() or ".." in ref_path.parts:
@@ -97,13 +75,9 @@ def _refuse_escaping_refs(input_path: Path, text: str) -> None:
     """Raises `OutsideContentDir` when the draft names a file that is a
     symlink out of its own directory, before pandoc or the TeX engine runs.
 
-    The copiers above skip such a file, but skipping is not enough on the
-    render itself: pandoc embeds a draft's images and the TeX engine `\\input`s
-    its figures by the name the draft spells, so `figures/x.tex -> /anywhere`
-    was compiled into the PDF anyway (#823's review, measured). Refused
-    rather than skipped because the draft really does ask for the file --
-    leaving it out would be a quietly wrong render. An `\\input` is checked
-    as TeX finds it, with and without `.tex`.
+    Skipping is not enough: pandoc and TeX open the spelled name, so the
+    target was compiled in anyway (#823). Refused, since leaving it out would
+    be a quietly wrong render. An `\\input` is checked with and without `.tex`.
     """
     refs = [(ref, (ref, f"{ref}.tex")) for ref in _local_tex_include_refs(text)]
     refs += [(ref, (ref,)) for ref in _local_image_refs(text)]
@@ -118,22 +92,10 @@ def _refuse_escaping_refs(input_path: Path, text: str) -> None:
 
 
 def _copy_beside(src: Path, dst: Path) -> None:
-    """Copies `src` to `dst`, unless they are the same file.
+    """Copies `src` to `dst`, unless they are the same (resolved) file.
 
-    Rendering *into the draft's own directory* is a real case, not a
-    degenerate one: `--output-dir` takes any directory under `content/`,
-    and a caller is free to name the one the draft is already in. There
-    the source and the destination of every figure and image are the same
-    path, and `shutil.copy2` raises `SameFileError` rather than doing
-    nothing -- which failed all fifteen fragment conversions of a real
-    book at once (2026-08-19), back when assembling one meant rendering
-    into `content/drafts/<book>/`. That is no longer how a book is built
-    (its fragments mirror to `content/rendered/<book>/` like any other
-    render), so the guard now answers the general case rather than that
-    one; it is not dead code, and removing it would restore a crash for
-    anyone who points `--output-dir` at their own draft's directory.
-    Compared by resolved path, so a symlinked output directory is caught
-    too.
+    Not dead code: `--output-dir` may name the draft's own directory, where
+    `shutil.copy2` raises `SameFileError`; that once failed a whole book.
     """
     if src.resolve() == dst.resolve():
         return
@@ -142,13 +104,8 @@ def _copy_beside(src: Path, dst: Path) -> None:
 
 
 def _copy_local_tex_includes(input_path: Path, dest_dir: Path) -> None:
-    """Copies every `\\input{...}`/`\\include{...}` file `input_path`
-    references alongside the rendered output in `dest_dir`, mirroring
-    `_copy_local_images` exactly -- same skip rules (absolute,
-    `..`-escaping, a symlink that lands outside `input_path`'s own
-    directory, or not a real file under it), for the same reason: a `tex` output must be
-    self-contained and compilable on its own, and a draft's own
-    references are never a reason to write outside `dest_dir` (#222).
+    """Copies every `\\input{...}`/`\\include{...}` file beside the output,
+    with `_copy_local_images`' skip rules and reasons (#222).
     """
     for ref in _figure_refs(input_path.read_text(encoding="utf-8")):
         src = _resolve_sibling(input_path.parent, ref)
@@ -160,25 +117,12 @@ def _copy_local_tex_includes(input_path: Path, dest_dir: Path) -> None:
 def _copy_book_bibliography(dest_dir: Path) -> None:
     """Writes the corpus bibliography into `dest_dir`, aliased for bibtex.
 
-    The third thing an assembled book needs beside it, and the only one
-    that is not a file the draft itself references. A fragment defers its
-    citations to the book's own `\\bibliography{...}`, and `bibtex`
-    resolves that against a `.bib` in the directory it runs in -- which is
-    `content/rendered/<book>/`, where `book.tex` and the fragments are.
-
-    `config.BIB_FILE_PATH` is the user's own export and is **never
-    modified**; what lands here is a copy, with `aliased_bib_text` applied
-    so the keys match the `\\citep{...}` the fragments carry. Written
-    rather than copied for exactly that reason.
-
-    Idempotent across the units of one book: every unit writes the same
-    bytes, because the aliasing is over the whole file rather than over
-    the keys one draft happens to cite.
-
-    A project with no bibliography yet is not an error here -- the render
-    that produced the fragment would already have failed on the missing
-    file long before this, and a book with no citations has nothing for
-    `bibtex` to answer either way.
+    A fragment defers citations to the book's `\\bibliography{...}`, which
+    bibtex resolves in `content/rendered/<book>/`. `config.BIB_FILE_PATH` is
+    the user's own export and is **never modified**; this writes a copy with
+    `aliased_bib_text` applied so keys match the fragments' `\\citep{...}`.
+    Idempotent across units: the aliasing covers the whole file. No
+    bibliography is not an error here: the render failed earlier.
     """
     if not config.BIB_FILE_PATH.is_file():
         return

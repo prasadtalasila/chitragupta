@@ -1,15 +1,9 @@
 """Scanners over a figure's TikZ source where one regex is not enough
 (#1112): a brace group, a node's declaration, a path statement.
 
-A node's label and options nest, and the characters that end things in
-TikZ's grammar -- `;` ends a statement, `(` opens a name -- are ordinary
-text inside a label. `node[cgtag] {0.1 (repaired)}` is not a node called
-`repaired`, and `node {events in;\\\\actions out}` does not end its path.
-A regex over the statement (`[^;]*`, `\\([^)]*\\)`) read both wrong.
-
-Below `_source.py` and `figure/_labels.py`, which both read through it:
-`_labels.py` had the declaration scanner first (#1056) and it moved down
-here so the probe's node names and `figure check`'s labels agree.
+Inside a label `;` and `(` are ordinary text: `node {a;\\\\b}` does not
+end its path. Shared by `_source.py` and `figure/_labels.py` (#1056) so
+node names and labels agree.
 """
 
 import re

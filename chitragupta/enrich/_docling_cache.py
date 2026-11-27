@@ -2,17 +2,9 @@
 fingerprint, keyed against the settings that change what a cached
 entry means.
 
-Split from `chitragupta/enrich/docling_parse.py` (#441). Self-contained:
-neither function calls back into that module, so the dependency runs
-one way -- `docling_parse.py` imports `_load_cache`/`_save_cache`,
-nothing here imports `docling_parse`.
-
-Deliberately not shared with `chitragupta/retrieval_cache.py`'s own
-`_load_cache`/`_save_cache`, despite the matching names and shape: that
-one needs a per-writer-unique temp name for concurrent subagents; this
-one does not, because `enrich.py` runs this stage from a single
-process. Two copies of a five-line pattern, not one copy imported
-across a layer boundary that has no reason to exist.
+Not shared with `chitragupta/retrieval_cache.py`'s look-alike: that one
+needs a per-writer-unique temp name for concurrent subagents; this stage
+runs from a single process.
 """
 
 import json
@@ -23,41 +15,22 @@ from chitragupta import config, logging_setup
 
 logger = logging.getLogger("chitragupta.enrich.docling_parse")
 
-# Bump when a change to what parse_doc() *writes* makes an existing .md
-# stale even though its PDF hasn't changed -- the (size, mtime_ns)
-# fingerprint below only sees the input, never the output shape, so
-# without this an option change silently serves last run's files
-# forever. Mirrors chitragupta/retrieval.py's _INDEX_SCHEMA_VERSION.
-# config.DOCLING_IMAGES is stored alongside it for the same reason:
-# it's a *runtime* toggle, so it can't be folded into this constant.
-# 2: added <stem>.passages.json, so a cache written by version 1 has
-# no sidecar for citation_provenance to read even though its .md is
-# current.
-# 3: passage sidecars now carry table and formula records (#627), so a
-# version-2 sidecar is missing units even though its .md is current.
+# Bump when what parse_doc() *writes* changes: the fingerprint sees only
+# the input, so an option change would serve last run's files forever.
+# config.DOCLING_IMAGES is stored beside it as a runtime toggle.
+# 2: added <stem>.passages.json. 3: sidecars carry table and formula
+# records (#627).
 _CACHE_VERSION = 3
 
 
 def _load_cache() -> dict:
-    """Corrupt or unexpected-shape cache data is treated as empty rather
-    than raised -- see chitragupta/retrieval.py's _load_cache for the same
-    defensive shape, applied here so a truncated write (e.g. a killed
-    mid-run process) doesn't take down every doc in the next parse_corpus
-    call, just cost it one avoidable re-parse per doc.
+    """Load the cache; corrupt or unexpected-shape data reads as empty,
+    costing one re-parse per doc rather than the whole run.
 
-    A version or image-setting mismatch invalidates the whole cache
-    rather than any one entry: both change what every .md in
-    config.DOCLING_DIR should contain, not just one document's. Scale is
-    one such setting -- the worker converter key at
-    `_docling_pool.py:87` already includes it, and a fingerprint-unchanged
-    PDF re-converted at a different `DOCLING_IMAGE_SCALE` produces
-    differently-sized bitmaps -- but the comparison here omitted it, so a
-    scale change silently kept serving old bitmaps for every doc this
-    cache still considered fresh (#504, m-46).
-
-    `UnicodeDecodeError` is caught beside the JSON error because a write
-    killed inside a multi-byte character fails before json sees it
-    (#967) -- a non-ASCII citekey is enough to put one in the file."""
+    A version, image-setting or image-scale mismatch invalidates the
+    whole cache, since it changes every .md; scale was once omitted and
+    kept serving old bitmaps (#504, m-46). `UnicodeDecodeError` too: a
+    write killed inside a multi-byte character fails before json (#967)."""
     try:
         data = json.loads(config.DOCLING_CACHE_PATH.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
@@ -83,17 +56,10 @@ def _load_cache() -> dict:
 
 
 def _save_cache(cache: dict) -> None:
-    """Atomic write-then-replace so a process killed mid-save leaves the
-    previous, still-valid cache in place instead of a torn file --
-    doesn't need chitragupta/retrieval.py's per-writer-unique temp name (its
-    concurrent-subagent scenario doesn't apply: enrich.py runs
-    this stage from a single process).
-
-    A failure to persist (permission, disk full) is reported, not
-    raised (PR #10 review): by the time this runs, the expensive part
-    -- Docling itself -- has already succeeded, so failing the whole
-    parse over a cache write is worse than the alternative of just
-    re-paying that one doc's parse cost next call."""
+    """Atomic write-then-replace, so a killed save leaves the previous
+    cache. A failure to persist is reported, not raised (PR #10 review):
+    Docling has already succeeded, and a re-parse next call is cheaper
+    than failing the parse."""
     try:
         config.DOCLING_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
         tmp_path = config.DOCLING_CACHE_PATH.with_suffix(".json.tmp")

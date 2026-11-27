@@ -1,30 +1,13 @@
 """Is a citekey safe to use as a filename stem? One answer, shared.
 
-Extracted from `chitragupta/bib_reader.py` (#638), and the move is the
-point: the validator guarded only the bib-sync side, where `read_library`
-rejects an entry whose citekey cannot be a filename -- but the review
-layer builds `content/parsed/<citekey>.txt` and
-`content/docling/<citekey>.passages.json` paths from citekeys extracted
-out of a *draft*, and the LaTeX regex accepts nearly anything inside
-`\\cite{...}`. A draft citing `\\citep{../../secret}` therefore read
-files outside the content tree. Those readers cannot import
-`bib_reader` -- it imports `bibtexparser` at module level, a dependency
-the gate-tier and review-tier modules deliberately run without -- so the
-check lives here, stdlib-only, and `bib_reader` re-exports it unchanged.
+Stdlib-only so the review layer, which builds paths from citekeys found
+in a *draft*, can use it without bibtexparser: `\\citep{../../secret}`
+once read files outside the content tree (#638). `bib_reader`
+re-exports it. The rules are POSIX and Windows combined, so a bib that
+works on Linux cannot fail deep in a parse on the Windows CI leg.
 
-The rules are the union of what POSIX and Windows need, not just this
-host's: a bib file that works on Linux must not quietly produce
-unwritable paths on the Windows CI leg, and the failure would otherwise
-surface as a confusing OSError from deep inside a parse rather than as a
-problem with the bib file. bibtexparser hands back whatever sits between
-`{` and `,`, which includes `smith/2024` and `../escape2024`: the first
-writes into a subdirectory that doesn't exist; the second escapes the
-content directory entirely. Neither is hypothetical -- both parse today.
-
-`citekey_path` is the one place a per-citekey file name is built (#975).
-Validating at each entrance was not enough: `tldr show` joined a
-command-line citekey onto `content/tldr/` before any ledger lookup, so
-`tldr show ../../x` printed a field of any JSON file it could reach.
+`citekey_path` is the one place a per-citekey file name is built (#975;
+`tldr show ../../x` once read any JSON file).
 `tests/test_citekey_path.py` fails on any other `/ f"{citekey}..."` join.
 """
 
@@ -45,11 +28,8 @@ _WINDOWS_RESERVED = {
 
 
 def citekey_problem(citekey: str) -> str | None:
-    """Why `citekey` is unsafe as a filename stem, or None if it is fine.
-
-    Returns a reason rather than a bool so the caller can name the actual
-    problem: "rename it" is only actionable if you say what is wrong with
-    it.
+    """Why `citekey` is unsafe as a filename stem, or None if it is fine;
+    a reason, so the caller can say what to rename.
     """
     if not citekey or not citekey.strip():
         return "it is empty"
@@ -74,11 +54,8 @@ class UnsafeCitekey(ValueError):
 
 
 def citekey_path(directory: Path, citekey: str, suffix: str) -> Path:
-    """`directory / f"{citekey}{suffix}"`, or `UnsafeCitekey`.
-
-    The validation is what confines the result: a citekey
-    `citekey_problem` accepts holds no separator and is not `.` or `..`,
-    so the joined name is one entry directly inside `directory`.
+    """`directory / f"{citekey}{suffix}"`, or `UnsafeCitekey`. A key
+    `citekey_problem` accepts is one entry directly inside `directory`.
     """
     problem = citekey_problem(citekey)
     if problem:
@@ -94,12 +71,11 @@ _KEY_CHAR = r"[^\s\[\](){},;@'\"`|<>:/\\*?]"
 
 def citekey_pattern(citekey: str) -> "re.Pattern[str]":
     """The literal citekey, bounded by every character a citekey may
-    contain, so `smith2020` matches neither inside `smith2020b`,
-    `smith2020.v2` nor `smith+smith2020`. Dots straight after it are
-    sentence punctuation (`see @smith2020.`), since no citekey ends in one.
+    contain, so a key never matches inside a longer key that extends it
+    with a letter, a `.v2` suffix or a `+` prefix. Dots straight after it
+    are sentence punctuation, since no citekey ends in one.
 
-    Shared by the corpus layer's residue report (`sync_residue`) and the
-    drafting layer's rename swap (`dossier/_renames.py`), so a key the
-    one reports is exactly a key the other replaces.
+    Shared by `sync_residue` and `dossier/_renames.py`, so a key one
+    reports is exactly a key the other replaces.
     """
     return re.compile(rf"(?<!{_KEY_CHAR}){re.escape(citekey)}(?=\.*(?!{_KEY_CHAR}))")

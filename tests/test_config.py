@@ -206,6 +206,8 @@ class TestGetHelpers:
             config._get_int("MY_COUNT", "enrich", "count", default=1)
 
 
+# A sanity check on the constants as computed from the real config.toml; the
+# unversioned-data scan's one registered exception (docs/TECHNICAL-DEBT.md).
 class TestRealConfigToml:
     def test_bib_file_path_under_repo_root(self):
         assert config.BIB_FILE_PATH == config.PROJECT_ROOT / "papers" / "bibliography.bib"

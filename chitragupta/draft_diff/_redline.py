@@ -1,25 +1,18 @@
 """The redline: latexdiff over two deferred renders, compiled to a PDF.
 
-Both sides are standalone articles whose citations are still
-`\\citep{key}` (`render(..., defer_citations=True)`), so latexdiff marks
-a citation only where one was added or dropped. Its output is patched
-here rather than configured: latexdiff's default markup loads `ulem`,
-which TeX Live's `texlive-luatex` does not carry, and `--preamble`
-needs a Perl module the bare script lacks (plans/1194-draft-diff.md, "Spike
-findings"). So the markup is redefined with `lua-ul`, which does ship
-there, after latexdiff's own preamble and before `\\begin{document}`.
-
-A redrawn figure behind `\\input` gives latexdiff nothing to mark, and a
-moved section reads to it as one deletion and one insertion; the change
-report knows both, so they are flagged in the margin from it.
+Citations stay `\\citep{key}` so latexdiff marks only added or dropped
+ones. Markup is redefined with `lua-ul` after latexdiff's preamble:
+its default `ulem` is not in `texlive-luatex`, and `--preamble` needs a
+missing Perl module (plans/1194-draft-diff.md, "Spike findings").
+Redrawn figures and moved sections are invisible to latexdiff, so they
+are flagged in the margin from the change report.
 """
 
 import re
 import shutil
 from pathlib import Path
 
-# `_run` is this module's one patch point for its launches, as in
-# `review/figure_layout/_probe.py`: a test fakes it here and nowhere else.
+# `_run` is the one patch point for launches, faked by tests here only.
 from subprocess import run as _run
 
 from chitragupta import config, install, programs
@@ -44,10 +37,9 @@ _HOUSE_MARKUP = r"""%DIF chitragupta house markup: lua-ul
 
 _BEGIN_DOCUMENT = "\\begin{document}"
 
-# latexdiff's UNDERLINE preamble: the `ulem` load, and the AMSMATHULEM
-# block that wraps ulem's `\sout` for math (it ends where the next
-# `%DIF <NAME> PREAMBLE` section starts). Its listings style names
-# `\sout` and `\uwave` too; those keep their colour and lose the rule.
+# latexdiff's UNDERLINE preamble: the `ulem` load and the AMSMATHULEM block
+# (up to the next `%DIF <NAME> PREAMBLE`). Listings `\sout`/`\uwave` keep
+# their colour and lose the rule.
 _ULEM_LOAD = re.compile(r"^\\RequirePackage\[[^]\n]*\]\{ulem\}.*\n", re.MULTILINE)
 _AMSMATHULEM = re.compile(
     r"^%DIF AMSMATHULEM PREAMBLE.*\n(?:(?!%DIF [A-Z_]+ PREAMBLE).*\n)*", re.MULTILINE
@@ -87,7 +79,6 @@ def _escape(text: str) -> str:
 
 
 def _heading_ends(tex: str) -> dict[str, list[int]]:
-    """Each plain heading title, with the offset just past each heading."""
     ends: dict[str, list[int]] = {}
     for match in _HEADING.finditer(tex):
         end = group_end(tex, match.end() - 1)
@@ -181,13 +172,9 @@ def _lualatex(lualatex: str, work: Path, name: str) -> bool:
 def _compile(lualatex: str, bibtexu: str, work: Path, name: str) -> bool:
     """lualatex, bibtexu, lualatex twice; False on a LuaLaTeX failure.
 
-    bibtexu runs only when the first pass wrote a `\\citation`: on an aux
-    with none it prints "I found no \\citation commands" and counts that
-    as an error. A citation struck out of the old side still writes one.
-    `bibtexu` exits 1 on warnings alone (an empty `booktitle`), so its
-    `.blg` is read for an error instead, as book-assembler's build does.
-    Only its closing error count is read: the word "error" elsewhere in
-    the log can be the aux file's name or a warned citekey.
+    bibtexu runs only if a `\\citation` was written (none counts as an
+    error). It exits 1 on warnings alone, so only the `.blg`'s closing
+    error count is read, as book-assembler does.
     """
     for leftover in (".aux", ".bbl", ".blg"):
         (work / f"{name}{leftover}").unlink(missing_ok=True)
@@ -214,9 +201,8 @@ def _bibtex(bibtexu: str, work: Path, name: str) -> None:
 
 def _bibliography_as_patched(work: Path) -> None:
     """Gives the render's copy of the project's `.bib` the name `patch`
-    points `\\bibliography` at. The render keeps the project's own file
-    name (`_assets._copy_book_bibliography`), which bibtex cannot open
-    when it has a space in it, as Zotero's default "My Library.bib" does."""
+    points `\\bibliography` at: bibtex cannot open a name with a space,
+    such as Zotero's default "My Library.bib"."""
     rendered = work / config.BIB_FILE_PATH.name
     if rendered.is_file() and rendered.name != _BIB_FILE:
         shutil.copyfile(rendered, work / _BIB_FILE)
@@ -225,12 +211,9 @@ def _bibliography_as_patched(work: Path) -> None:
 def redline(old_tex: Path, new_tex: Path, report: ChangeReport, out_dir: Path, stem: str) -> Path:
     """Compiles `<stem>.diff.pdf` from two deferred renders; returns its path in `out_dir`.
 
-    Works in `new_tex`'s directory, which holds the new side's
-    `figures/` and the project's `.bib`, read as `bibliography.bib`
-    whatever the project calls it. A LuaLaTeX failure is retried
-    once with `--math-markup=whole`, which replaces a changed formula
-    whole rather than marking inside it; a second failure raises
-    `RedlineFailed` naming the `.diff.tex` and `.log` it leaves behind.
+    Works in `new_tex`'s directory. A LuaLaTeX failure is retried once
+    with `--math-markup=whole`; a second raises `RedlineFailed` naming
+    the `.diff.tex` and `.log` left behind.
     """
     latexdiff = programs.resolve_program("latexdiff")
     lualatex = programs.resolve_program("lualatex")
@@ -238,8 +221,7 @@ def redline(old_tex: Path, new_tex: Path, report: ChangeReport, out_dir: Path, s
     _refuse_missing(latexdiff=latexdiff, lualatex=lualatex, bibtexu=bibtexu)
     work, name = Path(new_tex).parent, f"{stem}.diff"
     diff_tex, diff_pdf = work / f"{name}.tex", work / f"{name}.pdf"
-    # The stem is the caller's; a `..` in it would write beside the work
-    # directory rather than in it.
+    # The stem is the caller's; a `..` would escape the work directory.
     if not config.resolves_inside(diff_tex, work):
         raise ValueError(f"{stem!r} is not a file name: it would write {diff_tex.resolve()}")
     _bibliography_as_patched(work)

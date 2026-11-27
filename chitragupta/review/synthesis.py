@@ -1,31 +1,13 @@
 """Multi-source synthesis report: how many sources each unit of a draft
 rests on, at the unit its genre binds at.
 
-Prose required to fuse two or more sources cannot be a transcription of
-any one of them -- you cannot transcribe two sources simultaneously. That
-is the guarantee `docs/WRITING-STANDARDS.md` §11 asks a drafter for, and
-this is what makes it observable rather than merely written down.
-
-The *unit* differs by genre and the guarantee does not:
-`chitragupta/review/_units.py` owns that mapping and the reasoning.
-This module reports what it finds there, and its header names the genre,
-the unit and where the unit came from -- so a tutorial's report, measured
-at the whole document, cannot be read as a paragraph-scale failure.
-
-**A thin corpus legitimately produces single-source units.** The report
-counts them; it does not judge them, and no draft is blocked by what it
-says. A proportion is exactly the shape docs/AUTO-IMPROVEMENT.md's R3
-exists to keep out of an unattended loop, so there is no threshold here,
-no target, and no per-genre bar -- only counts, and a human to read them.
-
-One of the review layer's aids (`chitragupta/review/_registry.py`'s
-`AIDS` names them all) -- read over a
-finished draft, by a person or by a driver, never a gate, and never holding the write lock.
-
-This aid owns its own units through `_units.py`. `verbatim_check` splits
-paragraphs its own way for its own purposes, and the two are **not**
-expected to agree on a paragraph count; neither is wrong when they
-differ.
+Prose fusing two or more sources cannot transcribe any one of them: the
+guarantee docs/WRITING-STANDARDS.md §11 asks for, made observable. The
+unit differs by genre (`_units.py`); the header names it so a tutorial's
+whole-document report is not read at paragraph scale. A thin corpus
+legitimately yields single-source units, so only counts are reported, no
+threshold or target (R3). A review aid, never a gate, no write lock. Its
+paragraph count need not agree with `verbatim_check`'s.
 
 Usage:
     python -m chitragupta.review synthesis <draft.md>
@@ -44,12 +26,9 @@ from chitragupta.review import _emit
 from chitragupta.review import _synthesis_render, _units
 from chitragupta.help_format import ClickParser
 
-# The run length at which a section's block structure is worth itemising.
-# Not a quality threshold and not tunable: it is the number
-# `textbook-chapter-writer` step 4 already instructs against -- "before
-# reusing the same citekey a third time within one section, do one more
-# search pass". Every section's run is reported whatever its length;
-# this only decides which ones get their own line.
+# Which section runs get their own line (every run is reported); not
+# tunable: `textbook-chapter-writer` step 4's "third time within one
+# section" rule.
 RUN_REPORTED_AT = 3
 
 
@@ -87,25 +66,17 @@ class Report:
 
     @property
     def single_source_pct(self) -> float | None:
-        """Of the units that cite at all -- None when none do.
-
-        Uncited units are excluded deliberately: most of a textbook
-        chapter and effectively all of a tutorial are original prose, and
-        counting that as a failure to fuse sources would make the number
-        meaningless in the two genres that need it read most carefully.
-        """
+        """Of the units that cite at all -- None when none do. Uncited
+        units are excluded: textbooks and tutorials are mostly original
+        prose, which would make the number meaningless there."""
         if not self.citing:
             return None
         return 100.0 * self.single_source / len(self.citing)
 
 
 def resolve(draft: Path, override: str | None) -> tuple[str, str, str | None]:
-    """The unit, where it came from, and the genre it was read from.
-
-    The genre travels even when an override won, because the report says
-    both: "measured at the section, because you asked, on a draft
-    recorded as a tutorial" is a different thing to have done than
-    measuring a textbook chapter at its own unit.
+    """The unit, where it came from, and the genre it was read from; the
+    genre travels even when an override won, since the report says both.
     """
     kind, source = _units.resolve_unit(draft, override)
     return kind, source, _units.genre_of(draft)
@@ -118,13 +89,10 @@ def build_report(draft: Path, kind: str, source: str, genre: str | None) -> Repo
 
 
 def finding_id(kind: str, text: str) -> str:
-    """A finding's name, stable across runs and position-free -- the same
-    convention every other aid's `finding_id` uses.
+    """A finding's name, stable across runs and position-free.
 
-    Keyed on the unit's marker-stripped text, so declaring a unit does
-    not rename the finding that describes it, and on the finding's kind,
-    so a section reported for both its spread and its run keeps two
-    distinguishable names.
+    Keyed on the marker-stripped text, so declaring a unit does not rename
+    it, and on the kind, so one section's two findings stay distinct.
     """
     digest = hashlib.sha256(f"{kind}\x00{text}".encode())
     return digest.hexdigest()[:12]
@@ -145,22 +113,10 @@ def _finding(unit: _units.Unit, kind: str) -> dict:
 def findings(report: Report) -> list[dict]:
     """One object per unit where the guarantee did not bind.
 
-    Two kinds, and a unit raises at most one. `single_source` is a unit
-    resting on one citekey. `single_key_run` is a unit that spans several
-    sources but arrives in blocks -- three paragraphs of one paper, then
-    three of the next -- which satisfies spread and fuses nothing.
-
-    A single-source unit is never *also* reported for its run: a unit
-    resting on one source has a run as long as it has paragraphs, and
-    saying so twice tells a reader nothing the first finding did not.
-
-    An uncited unit is **never** a finding. Original prose is the genre
-    working correctly wherever `_units.UNCITED_PROSE` says it is ordinary,
-    and reporting it would bury what this report is actually for.
-
-    Undeclared first, then by line: a drafter who stated their reason has
-    already done what the rule asks, and the report should not make them
-    read past their own declarations to find what they have not looked at.
+    `single_source` rests on one citekey; `single_key_run` spans several
+    but in blocks, which fuses nothing. A single-source unit is never also
+    reported for its run, and an uncited unit is never a finding
+    (`_units.UNCITED_PROSE`). Undeclared first, then by line.
     """
     found = [_finding(unit, "single_source") for unit in report.citing if len(unit.citekeys) == 1]
     found += [
@@ -172,10 +128,8 @@ def findings(report: Report) -> list[dict]:
 
 
 def _command(draft: Path, unit: str | None, as_json: bool, write: bool) -> str:
-    """The invocation recorded in both the Markdown header and the JSON
-    envelope. `--unit` in full when it was given: a count of single-source
-    paragraphs means something different on a draft whose genre asked for
-    sections."""
+    """The invocation recorded in the Markdown header and JSON envelope;
+    `--unit` included, since it changes what the counts mean."""
     parts = ["python", "-m", "chitragupta.review", "synthesis", str(draft)]
     if unit:
         parts += ["--unit", unit]
@@ -187,15 +141,9 @@ def _command(draft: Path, unit: str | None, as_json: bool, write: bool) -> str:
 
 
 def build_parser(parser=None) -> argparse.ArgumentParser:
-    """This aid's flags.
-
-    `parser` is passed by chitragupta/review/__main__.py, which has
-    already created the `synthesis` subparser and needs the flags hung
-    off *that* -- so they are declared once, here.
-    """
+    """This aid's flags, declared once for chitragupta/review/__main__.py."""
     if parser is None:
-        # A one-line description rather than this module's docstring, for
-        # the reason chitragupta/corpus.py's DESCRIPTION gives (#152).
+        # Not this module's docstring (#152; see chitragupta/corpus.py).
         parser = ClickParser(
             description="Report how many sources each unit of a draft rests on.",
         )
@@ -228,13 +176,8 @@ def main(argv: list[str]) -> int:
 
 
 def run(args: argparse.Namespace) -> int:
-    """Dispatch already-parsed arguments, split from main() so
-    chitragupta/review/__main__.py can hand over args parsed with this
-    module's own build_parser().
-
-    Exits 0 whatever it finds -- including on a draft where every unit
-    rests on one source. This aid is advisory, and a non-zero exit is how
-    a gate speaks.
+    """Dispatch already-parsed arguments (for __main__). Exits 0 whatever
+    it finds: a non-zero exit is how a gate speaks.
     """
     try:
         draft_path = review.require_reviewable(Path(args.draft))

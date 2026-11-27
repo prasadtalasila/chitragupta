@@ -1,13 +1,9 @@
 """How a citation-coverage report reads: the Markdown document and the
 plain-text stdout form.
 
-Split from `chitragupta/review/citation_coverage.py` (#441), which owns
-`CoverageResult` and how it is computed, and passes one in. Nothing here
-imports it back, deliberately -- the same one-way shape
-`chitragupta/review/_uncited_render.py` and `_synthesis_render.py` use
-for their own split, and for the same reason: taking the result as an
-argument rather than recomputing it is what keeps the dependency one-way
-instead of a cycle papered over with a deferred import.
+Takes `CoverageResult` as an argument from `citation_coverage.py` (#441)
+and never imports it back, keeping the dependency one-way rather than a
+cycle behind a deferred import.
 """
 
 from chitragupta import review
@@ -40,12 +36,8 @@ def format_report(draft_path, queries: list[str], result) -> str:
 
 
 def render_markdown(draft_path, queries: list[str], k: int, result, command: str) -> str:
-    """The same report as `format_report`, as a Markdown document.
-
-    Kept beside the plain-text version rather than replacing it: stdout
-    is read in a terminal mid-review and wants no syntax, while a file
-    kept for months is read next to the draft's other review reports and
-    should look like them.
+    """The same report as `format_report`, as Markdown: stdout wants no
+    syntax, while a kept file should look like the other review reports.
     """
     lines = review.header(draft_path, "coverage", command)
     lines += [

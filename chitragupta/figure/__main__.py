@@ -4,34 +4,15 @@
 <figures-dir> <name> --layout ID` and `python -m chitragupta figure look
 <figure.tex> [--draft DRAFT] [--output-dir DIR]` (#1052, #1123).
 
-`figure new` exits 0 once it has written the figure, and 2 for anything
-it refused (a name with a path in it, a file already there, an unknown
-layout) or could not read from the install; it never writes half.
-`figure look` exits 0 whatever the figure does, a failed compile
-included, and 2 only for an unreadable figure, a missing `lualatex`,
-`tikz.sty` or `pdftoppm` (and `pandoc`, with `--draft`), a rendered
-directory outside the content directory, or a figure outside
-`content/drafts/` with no `--output-dir`: the cases where it looked at
-nothing. The last has no mirrored place of its own, and a look written
-loose into `content/rendered/` would overwrite any other figure's of the
-same name (#1123). A draft that does not render is reported and is not
-one of them: the figure's own look is still written.
+Exit codes: 2 always means nothing useful was done (usage error, missing
+tool, broken install, or for `look` a figure outside `content/drafts/` with
+no `--output-dir`, which could overwrite a same-named look, #1123).
+`new` never writes half. `look` exits 0 even on a failed compile or draft
+render. `check` exits 0 whatever it finds: findings are the skill's to
+resolve, never an exit code's. `sync` exits 0 (an aid reports) except
+`--check`, which exits 1 if any file is not current, for `git-hooks/pre-commit`.
 
-`figure check` exits 0 whatever it finds: an objective finding is the
-skill's to resolve or allow, never an exit code's to enforce. 2 is a
-usage error, or a host with no `lualatex` or `tikz.sty`, where it checks
-nothing at all rather than report a half that would read as clean.
-
-`figure sync` exit codes: 0 whatever sync found, including a modified region it
-refused to touch -- this is an aid, and an aid reports. `--check` is the
-one mode that fails: it writes nothing and exits 1 if any file is not
-current, which is what `git-hooks/pre-commit` asks it. 2 is a usage
-error, or a broken install whose shipped block or register cannot be
-read; that is not a finding about any figure, and `chitragupta doctor`
-is where to look.
-
-What to do about a modified region is in docs/TIKZ-STYLE.md, "The house
-figure style".
+For a modified region, see docs/TIKZ-STYLE.md, "The house figure style".
 """
 
 import argparse
@@ -77,9 +58,8 @@ def build_parser() -> ClickParser:
     new = verbs.add_parser("new", help="start a figure from a layout's scaffold")
     new.add_argument("figures_dir", type=Path, help="the draft's figures/ directory")
     new.add_argument("name", help="the figure's file stem, e.g. flow for flow.tex")
-    # Not `choices=`: that would read every scaffold while the parser is
-    # built, so one unreadable file would take `sync` and `check` down
-    # too. `figure new` refuses an unknown id itself, listing the ids.
+    # Not `choices=`: that reads every scaffold at parser build, so one unreadable
+    # file would break `sync` and `check` too. `figure new` refuses unknown ids itself.
     new.add_argument("--layout", required=True, help="the scaffold's layout id, e.g. pipeline")
     figure_look = verbs.add_parser("look", help="see one figure as it will print")
     figure_look.add_argument("figure", type=Path, help="the figure's .tex file")
@@ -204,8 +184,8 @@ def _look(args: argparse.Namespace) -> int:
 
 
 def _look_in_draft(figure: Path, draft: Path, output_dir: Path | None) -> int:
-    """Render `draft` to pdf as `draft render` does, into `output_dir`
-    when given, then report `figure`'s look and the page it printed on."""
+    """Render `draft` as `draft render` does, into `output_dir` when given,
+    then report `figure`'s look and the page it printed on."""
     elsewhere = [] if output_dir is None else ["--output-dir", str(output_dir)]
     argv = [str(draft), "--format", "pdf", *elsewhere]
     pdf = _rendered(_render_parser().parse_args(argv))

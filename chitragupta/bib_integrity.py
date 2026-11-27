@@ -2,11 +2,7 @@
 turns its entries into references: how many entries the raw text really
 holds, and which citekeys more than one entry carries.
 
-Split from `chitragupta/bib_reader.py` when issue 840's duplicate check
-took it past the 250-line ceiling. The seam is the question asked: these
-functions judge the *file* -- what bibtexparser dropped or returned
-twice -- and stdlib is enough for that, where `bib_reader` is about the
-entries it keeps and needs bibtexparser to have them at all.
+Stdlib only, judging the file; split from `bib_reader.py` (#840).
 """
 
 import re
@@ -15,40 +11,21 @@ from collections.abc import Collection
 
 from chitragupta.citekey_safety import citekey_problem
 
-# @comment/@string/@preamble are legitimate BibTeX constructs that never
-# show up among the parsed entries (bibtexparser tracks them separately,
-# not as dropped entries) -- `bib_parse` predefines the month strings,
-# so a real export using any of these is plausible, and counting them as
-# "entries" would fire a false discrepancy warning on a perfectly good file.
+# Never parsed entries, so counting them would false-alarm a good file.
 _NON_ENTRY_TYPES = {"comment", "string", "preamble"}
-# BibTeX allows either `@type{...}` or `@type(...)` -- bibtexparser
-# accepts both (PR #8 review) -- so a file using the paren form would be
-# under-counted by a brace-only pattern, which could hide a genuine drop
-# instead of just risking a false-positive warning on a good file.
+# Both `@type{` and `@type(` (PR #8), or a paren-form file is under-counted
+# and a genuine drop hidden.
 _ENTRY_START_RE = re.compile(r"^@(\w+)\s*[{(]", re.MULTILINE)
 
 
 def block_has_fields(body: str) -> bool:
     """Whether an `@`-block's body carries anything past its citekey.
 
-    A Zotero export writes `@misc{key,\\n}` for an attachment saved with
-    no metadata, and bibtexparser drops it -- correctly, since there is
-    no title, author or year to lose. Counting it as an entry made the
-    dropped-entry warning below fire on every sync against a perfectly
-    healthy library (this project's own bibliography carries two such
-    stubs), and a guard that cries wolf is worse than none: the run it
-    needs to be believed on is the one where a real entry has unbalanced
-    braces. So the test drawn here is bibtexparser's own -- no field
-    means no entry -- and the two agree about what they are counting.
-
-    `body` runs from just past the opening delimiter to the start of the
-    next `@`-block, not to a matching close brace. That bound is the
-    whole point: a forward brace-matcher would, on the *unbalanced* entry
-    this warning exists to catch, run to end of file and swallow every
-    entry after it -- silencing the warning in exactly the case it is
-    for. One trailing `}`/`)` is stripped rather than matched, so a block
-    whose last field value ends in a brace (`title = {T}\\n}`) is not
-    mistaken for a contentless one.
+    bibtexparser rightly drops a Zotero `@misc{key,\\n}` stub, and counting
+    it made the drop warning cry wolf every sync. `body` runs to the next
+    `@`-block, not a matched close brace: a brace-matcher would swallow the
+    rest of the file on the unbalanced entry this warning exists to catch.
+    One trailing `}`/`)` is stripped instead.
     """
     body = body.rstrip()
     if body.endswith(("}", ")")):
@@ -59,28 +36,12 @@ def block_has_fields(body: str) -> bool:
 
 def count_raw_entries(text: str, kept_types: Collection[str] | None = None) -> int:
     """How many actual `@entrytype{...}`/`@entrytype(...)` blocks the raw
-    file text has, independent of whether bibtexparser managed to parse
-    each one.
+    file text has, parsed or not.
 
-    bibtexparser (its splitter, and `bib_parse` after it)
-    silently skips an entry it can't parse -- e.g. unbalanced braces --
-    with no exception and no entry among those returned, so the count of
-    parsed entries alone can't reveal a dropped entry.
-    Comparing against this raw count is the only way `read_library` can
-    tell "the file has exactly as many entries as it looks like" from
-    "some entries silently vanished."
-
-    Contentless stubs are excluded -- see `block_has_fields`. Every
-    match bounds the previous one, including the @comment/@string/
-    @preamble blocks filtered out afterwards: one of those sitting
-    between two entries still ends the first entry's body.
-
-    `kept_types`, when given, is every (lowercase) entry type the parser
-    keeps; a block of any other type is one it ignores by design rather
-    than loses, so it is not counted (issue 888).
-
-    An `@type{` line inside a field value is not a block at all; see
-    `_entry_starts`.
+    bibtexparser silently skips an entry it cannot parse, so this count is
+    the only way to see a drop. Stubs are excluded (`block_has_fields`);
+    filtered @comment-style blocks still bound their neighbours.
+    `kept_types` excludes types the parser ignores by design (issue 888).
     """
     starts = _entry_starts(text)
     ends = [m.start() for m in starts[1:]] + [len(text)]
@@ -93,24 +54,11 @@ def count_raw_entries(text: str, kept_types: Collection[str] | None = None) -> i
 
 def _entry_starts(text: str) -> list:
     """The `@type{` lines that open an entry, skipping those inside a
-    field value (#965).
+    field value (#965), which caused a phantom drop and exit 3 every run.
 
-    An abstract or a `note` quoting BibTeX, wrapped by the exporter so
-    that `@article{` starts a line, was counted as an entry: a phantom
-    drop, exit 3 on every run, and `--remove-stale` refusing to prune.
-
-    Two signs, either enough. **Depth:** an entry's body opens at brace
-    depth 1 and a braced field value at 2 or deeper, so a line at depth
-    1 or less is outside every value. **A blank line before it:** every
-    exporter separates entries with one, and BibTeX quoted in a value
-    almost never has one right before its `@`.
-
-    Neither alone. Depth alone is the issue's suggestion and hides the
-    case this count exists for: an entry with unbalanced braces leaves
-    the depth raised for the rest of the file, so nothing after it would
-    count -- the trap `block_has_fields` describes for a forward
-    brace-matcher. The blank line alone would stop counting a real entry
-    in a hand-kept file that does not separate its entries.
+    Either sign suffices: brace depth <= 1, or a blank line before it.
+    Depth alone stops counting after an unbalanced entry; the blank line
+    alone misses a hand-kept file without separators.
     """
     starts, depth, scanned = [], 0, 0
     for match in _ENTRY_START_RE.finditer(text):
@@ -134,12 +82,8 @@ def dropped_entries(
     raw_text: str, parsed_count: int, bib_name: str, kept_types: Collection[str] | None = None
 ) -> int:
     """How many entries the raw text holds that bibtexparser did not
-    return, warned when nonzero -- see `count_raw_entries` for why this
-    comparison is the only way to see a drop at all.
-
-    The count travels on `bib_reader.Library` (issue 841) rather than
-    ending at the warning: a read that lost an entry must not drive
-    `--remove-stale`, which would prune the lost paper's row."""
+    return, warned when nonzero. Carried on `bib_reader.Library`
+    (issue 841) so a lossy read cannot drive `--remove-stale`."""
     raw_count = count_raw_entries(raw_text, kept_types)
     if parsed_count >= raw_count:
         return 0
@@ -154,15 +98,10 @@ def dropped_entries(
     return raw_count - parsed_count
 
 
-# Issue 840. bibtexparser does not require unique keys: two `@entry`
-# blocks under one citekey both come back, and upserting both made the
-# later one overwrite the earlier's ledger row -- title, DOI, PDF -- with
-# nothing printed and exit 0. A hand-merged export, or two Better-BibTeX
-# libraries with clashing key patterns, produces this routinely. Every
-# entry under such a key is skipped rather than one picked, because
-# picking is guessing which paper the draft author meant by it; the key
-# is still reported as seen (`bib_reader.Library.seen_citekeys`), so the row it
-# already has is neither listed as stale nor pruned while it is fixed.
+# Issue 840: two entries under one key made the later silently overwrite
+# the earlier's row. Every such entry is skipped, never one picked (that is
+# guessing which paper a key means); the key stays in `seen_citekeys`, so
+# its row is not pruned meanwhile.
 def duplicated_citekeys(entries, bib_name: str) -> tuple[str, ...]:
     """The citekeys more than one entry carries, in bib order, each warned."""
     counts = Counter(entry["ID"] for entry in entries)
@@ -180,12 +119,8 @@ def duplicated_citekeys(entries, bib_name: str) -> tuple[str, ...]:
 def unfilenameable_citekeys(entries, duplicated) -> tuple[str, ...]:
     """The citekeys that cannot be a filename, in bib order, each warned.
 
-    Checked before anything else touches an entry: such a citekey would
-    fail much later, inside a parse, as an OSError naming a path rather
-    than the entry that produced it. Skipping the entry loses one paper
-    and says so; letting it through risks writing outside content/. A
-    duplicated key is already skipped and reported as that, so it is not
-    counted twice.
+    Checked first: such a key would fail much later as an OSError, or
+    write outside content/. Duplicated keys are already reported.
     """
     skipped = []
     for entry in entries:

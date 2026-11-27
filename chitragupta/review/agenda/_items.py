@@ -1,9 +1,6 @@
 """`Item`, the worklist-entry type, plus the two dossier-based
-extractors (`missing-citekey`, `recorded-but-uncited`) and the
-`all_items` orchestrator. The other six classes' extractors -- reading
-the other aids' `.json` and `style_check`'s findings -- are
-`_items_findings.py`, split out once the two halves together crossed
-the 250-code-line cap.
+extractors (`missing-citekey`, `recorded-but-uncited`) and `all_items`.
+The aid-reading extractors are `_items_findings.py`.
 """
 
 from dataclasses import dataclass, field
@@ -15,22 +12,11 @@ from chitragupta.review.agenda._sources import RecordedSource
 
 # The item-class table's own order (docs/AUTO-IMPROVEMENT.md).
 #
-# `uncited-source` and `candidate` were both removed from this table. Each
-# said some version of "the corpus holds a paper you surfaced and did not
-# cite" -- `uncited-source` from the coverage aid's `uncited_candidates`,
-# `candidate` from dossier drift's own recorded queries -- and for a draft
-# that makes no claim from a surfaced paper, not citing it is the correct
-# and overwhelmingly common outcome, not a finding. Standing on the agenda
-# they were near-pure volume, and volume on a worklist is not free: it is
-# read, triaged and dismissed by a person, every cycle, forever.
-#
-# Both aids still compute and still report them -- `citation_coverage`'s
-# own `.json`/`.md` and `dossier status` are unchanged, and asking either
-# directly is how you get the list now. What changed is that neither
-# reaches the agenda unasked. `recorded-but-uncited` deliberately stays:
-# it is the different claim that the *dossier* records a citekey the draft
-# no longer cites, which is an inconsistency between two artefacts rather
-# than a paper someone declined to use.
+# `uncited-source` and `candidate` were removed: not citing a surfaced
+# paper is the common, correct outcome, and that volume cost a person
+# triage every cycle. Coverage and `dossier status` still report them.
+# `recorded-but-uncited` stays: it is an inconsistency between dossier and
+# draft, not a paper someone declined.
 CLASSES = (
     "missing-citekey",
     "recorded-but-uncited",
@@ -53,19 +39,14 @@ class Item:
     unattended: bool
     summary: str
     detail: dict = field(default_factory=dict)
-    # The exact draft text this finding was derived from, or None where
-    # the finding is not about the draft's own text. Never serialised --
-    # it exists so `_stale.partition` can refuse an item whose passage
-    # the author has since rewritten. See `_stale.py` for which classes
-    # can fill it and why the rest must not.
+    # The exact draft text this finding came from, or None; never
+    # serialised, it lets `_stale.partition` refuse rewritten passages.
     span: str | None = None
 
 
 def missing_citekey_items(drift: Drift | None) -> list[Item]:
-    """One item per citekey the draft cites that the corpus no longer
-    has -- unattended, per the decided answer to the issue's open
-    question. Anchored on the first of possibly several citing sections;
-    the full list survives in `detail`."""
+    """One unattended item per cited citekey the corpus no longer has,
+    anchored on the first citing section; all of them stay in `detail`."""
     if drift is None:
         return []
     items = []
@@ -88,20 +69,12 @@ def missing_citekey_items(drift: Drift | None) -> list[Item]:
 
 def recorded_but_uncited_items(source: RecordedSource) -> list[Item]:
     """One item per citekey the dossier records and the draft no longer
-    cites -- `missing-citekey` read in the other direction (#701).
+    cites, `missing-citekey` in reverse (#701).
 
-    **Surfaced, never unattended**, and the reason is a limit on what
-    the data can say rather than caution: `recorded - cited` cannot
-    distinguish "the user deleted this citation" from "a candidate was
-    transcribed into `evidence.md` and never cited in the first place".
-    The first wants the block removed, the second wants it left exactly
-    where it is. Deleting recorded evidence unattended would trade a
-    cosmetic staleness for a real loss, so the repair is
-    `dossier prune`, which a person confirms.
-
-    Sits next to `missing_citekey_items` rather than in
-    `_items_findings.py` because it reads the dossier, not an aid's
-    `.json` -- the same split that module's docstring already draws.
+    Surfaced, never unattended: `recorded - cited` cannot tell a deleted
+    citation from a never-cited candidate, and deleting evidence unattended
+    would trade staleness for loss, so the repair is a confirmed
+    `dossier prune`.
     """
     items = []
     for citekey, surfaces in sorted(source.data.items()):
@@ -113,10 +86,8 @@ def recorded_but_uncited_items(source: RecordedSource) -> list[Item]:
                 citekey=citekey,
                 line=None,
                 unattended=False,
-                # Suffixed per surface, not once after the join: two
-                # surfaces read "evidence, sections.md" that way, naming
-                # a file that does not exist and implying the first is
-                # something other than a file.
+                # Suffixed per surface, so no "evidence, sections.md" names
+                # a nonexistent file.
                 summary=f"`{citekey}` is recorded in "
                 f"{', '.join(f'{name}.md' for name in surfaces)} "
                 "but the draft no longer cites it",
@@ -127,8 +98,7 @@ def recorded_but_uncited_items(source: RecordedSource) -> list[Item]:
 
 
 def all_items(sources, sections: list[Section]) -> list[Item]:
-    """Every item from every class, unordered and undeduplicated --
-    `_dedup.merge` and `_order.sort` do the rest."""
+    """Every item from every class, unordered and undeduplicated."""
     from chitragupta.review.agenda import _items_findings as f
 
     return [

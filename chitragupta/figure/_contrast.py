@@ -1,25 +1,14 @@
 """`k1-stroke` and `k2-text`: whether a figure's lines and labels can be
 seen against what lies behind them (#1055).
 
-WCAG 2's thresholds (`_colour.py`): a box's border and a connector clear
-3:1, text clears 4.5:1, and large text (14pt bold, 18pt) clears 3:1.
-Every colour is the probe's (`review/figure_layout/_paint.py`): what pgf
-stroked and filled with, and what each run of a node's glyphs was set
-in, so a colour reached through a style, a `#1` argument, a `\\colorlet`
-or a macro is the colour measured. The fix is nearly always a rename:
-draw in `cg<Hue>Line`, write in `cg<Hue>Text`.
+WCAG 2 thresholds (`_colour.py`), on the colours the probe measured
+(`review/figure_layout/_paint.py`), however they were reached. The fix is
+nearly always a rename: `cg<Hue>Line`, `cg<Hue>Text`.
 
-**The ground** is one colour, found one way. A box's text and border are
-measured against its own fill; a box with none, against the innermost
-filled box that contains it (a zone card, usually); with none of those,
-white. A connector is measured against the innermost filled box that
-contains both its ends, or white.
-
-Three limits, stated rather than guessed at: a translucent fill is read
-as opaque, a shadow is not a ground, and a connector that crosses a
-third zone on its way is measured against the ground of its ends. Lines
-that join no two nodes (an axis, a plot, a `pic`'s outline) are not
-measured; the report already counts them.
+The ground is a box's own fill, else the innermost filled box containing it
+(for a connector: both ends), else white. Stated limits: translucent fills
+read as opaque, shadows are not grounds, and a connector crossing a third
+zone is measured against its ends' ground.
 """
 
 import re
@@ -33,9 +22,8 @@ from chitragupta.review.figure_layout._paint import Paint
 
 CONTRAST = ("k1-stroke", "k2-text")
 
-# `\definecolor{name}{HTML}{RRGGBB}` and `\colorlet{name}{expr}`, read
-# only to *name* a colour the probe measured in a finding, never to
-# measure it.
+# `\definecolor{...}{HTML}{...}` and `\colorlet`, read only to *name* a measured
+# colour in a finding, never to measure it.
 _DEFINE_RE = re.compile(r"\\definecolor\{(\w+)\}\{HTML\}\{([0-9A-Fa-f]{6})\}")
 _COLORLET_RE = re.compile(r"\\colorlet\{(\w+)\}\{(\w+)(?:!(\d+)(?:!(\w+))?)?\}")
 
@@ -52,7 +40,6 @@ def contrast_check(
 
 
 def contrast_rules(source: str, drawn: Drawn) -> list[Finding]:
-    """k1 and k2 over every node and connector the probe drew."""
     names = colour_names(source)
     filled = {name: node for name, node in drawn.nodes.items() if node.fill is not None}
     cons, _ = connectors(drawn)
@@ -79,17 +66,16 @@ def contrast_rules(source: str, drawn: Drawn) -> list[Finding]:
 
 
 def _border(node: DrawnNode) -> bool:
-    """Whether `node` has a border to see: one drawn in its own fill's
-    colour (a step badge's disc) draws no line between them."""
+    """Whether `node` has a visible border: one in its fill's colour (a step
+    badge's disc) draws no line."""
     if node.stroke is None:
         return False
     return node.fill is None or hex_code(node.stroke.colour) != hex_code(node.fill.colour)
 
 
 def colour_names(source: str) -> dict[str, str]:
-    """`{#RRGGBB: name}` for every colour the figure defines by HTML code
-    or `\\colorlet`s from those, white included. The first name of a hex
-    wins, so a palette name is kept over a later alias."""
+    """`{#RRGGBB: name}` for every HTML-coded colour and `\\colorlet` from
+    one, white included; the first name wins, keeping palette names over aliases."""
     palette: dict[str, RGB] = {"white": WHITE}
     for name, code in _DEFINE_RE.findall(source):
         palette[name] = tuple(int(code[i : i + 2], 16) / 255 for i in (0, 2, 4))
@@ -133,8 +119,8 @@ def _ground(
 def _text(
     target: str, node: DrawnNode, ground: tuple[RGB, str], names: dict[str, str]
 ) -> list[Finding]:
-    """One k2 finding per colour of `node`'s text that does not clear its
-    threshold. Runs of one colour at several sizes report the worst."""
+    """One k2 finding per failing text colour of `node`; several sizes of
+    one colour report the worst."""
     failing: dict[RGB, tuple[float, float]] = {}
     for run in node.runs:
         ratio, needs = contrast(run.colour, ground[0]), text_threshold(run.size_pt, run.bold)
@@ -162,8 +148,8 @@ def _stroke(
 
 
 def _shown(paint: Paint, names: dict[str, str]) -> str:
-    """A colour as the figure wrote it, unless that was through a macro
-    (`\\c Text` from a `\\foreach`), which says nothing out of context."""
+    """A colour as the figure wrote it, unless through a macro (`\\c Text`
+    from a `\\foreach`), which means nothing out of context."""
     if paint.written and "\\" not in paint.written:
         return paint.written
     return _name(paint.colour, names)

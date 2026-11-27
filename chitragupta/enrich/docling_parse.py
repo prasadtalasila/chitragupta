@@ -1,62 +1,21 @@
 """Stage 1: Docling PDF parsing.
 
-Layout-aware parsing (headings, tables, reading order) -- a step up from
-the corpus layer's plain pdftotext. Needs `docling` from
-pyproject.toml's "enrich" extra, in a venv; bulky (its own
-layout/OCR models), so this is the stage most likely to be slow or fail
-on a small/CPU-only host. Output is Markdown, written per-doc so a
-failure on one document doesn't lose progress on the others.
+Layout-aware parsing into per-doc Markdown plus the `<doc>.passages.json`
+sidecar for the whole corpus, always. Not made redundant by
+`[parser].backend = "docling"` (one .txt per citekey for BM25), but when
+that is set `_reuse_corpus_parse` adopts the corpus layer's parse instead
+of converting twice; dependency runs enrichment -> corpus only.
 
-Not the same thing as `[parser].backend = "docling"`, and not made
-redundant by it. That setting points chitragupta/pdf_text/ at the same library
-to produce one .txt per citekey for BM25; this stage produces structured
-Markdown plus the `<doc>.passages.json` sidecar for the whole corpus,
-always, whatever that setting says.
+With config.DOCLING_IMAGES on, each doc also gets figure bitmaps
+(rendered by `_docling_crops`, #600) and a `<stem>.figures.json` index:
+a reading aid, never draft content, since citing a paper grants no right
+to reproduce its figures (DEVELOPER.md's "Figures and copyright").
 
-What it no longer does is repeat work the corpus layer has already done.
-When that setting *is* `docling`, `_reuse_corpus_parse` adopts the
-existing parse for a citekey instead of converting the PDF a second time.
-The dependency runs one way only, which is the way this package is
-allowed to depend: the enrichment layer reads the corpus layer's
-artefacts, and nothing in the corpus layer is shaped to make that
-possible (see `pdf_text.docling_process_pool`'s docstring for the same
-rule applied to imports: this module builds its process pool through
-that shared helper rather than importing chitragupta.sync's).
-
-With config.DOCLING_IMAGES on, each doc also gets its figure bitmaps (in
-`<stem>_artifacts/`, rendered one at a time by `_docling_crops` from the
-boxes Docling reports -- not by Docling, which holds every crop until
-the end of the parse and cost +8.95 GiB on one deck, #600) and a
-`<stem>.figures.json` index giving each figure's page, caption, and the
-string to cite it by. Those images are a reading aid for checking a
-draft against its sources -- never draft content, since citing a paper
-grants no right to reproduce its figures. See DEVELOPER.md's "Figures
-and copyright".
-
-parse_corpus() is incremental: a per-citekey (size, mtime_ns) fingerprint
-is cached to config.DOCLING_CACHE_PATH, so a PDF that's unchanged since
-the last call skips straight past DocumentConverter -- the slowest stage
-in this whole pipeline (373s for 5 PDFs, per DEVELOPER.md's own known-gaps
-note this closes). Unlike chitragupta/ledger.py's stat-before-hash, there's no
-sha256 fallback here: a same-size edit that also preserves mtime (e.g.
-`cp --preserve=timestamps`) slips past this check and the .md stays
-stale until something else invalidates the cache entry (deleting it, or
-deleting the .md itself -- see below). That's a real gap, not a free
-trade-off the way it is in ledger.py (there, hashing is the fallback
-that stat merely defers); accepted here because Docling is opt-in
-(`enrich.py --stages docling`, not part of `sync`) and a source
-this stale-cache-prone is rare enough not to warrant sha256-hashing every
-PDF up front just to guard against it. The cache also re-checks that the
-expected output file still exists before trusting a fingerprint match,
-so manually deleting a .md file forces a re-parse instead of leaving it
-silently missing forever.
-
-That fingerprint only sees the *input* PDF, though, so it cannot notice
-a change to what this module writes. `_CACHE_VERSION` and the recorded
-`config.DOCLING_IMAGES` and `config.PARSER_OCR` settings cover that
-second axis: any one of them differing from the cache file invalidates
-the whole cache rather than any single entry, since all three change
-what every .md should contain.
+parse_corpus() is incremental on a (size, mtime_ns) fingerprint with no
+sha256 fallback, so a same-size, mtime-preserving edit stays stale; an
+accepted gap, since this stage is opt-in. A missing output forces a
+re-parse. `_CACHE_VERSION` and the recorded image and OCR settings
+invalidate the whole cache when what is written changes.
 """
 
 import importlib.util
@@ -78,62 +37,33 @@ from chitragupta.enrich._docling_reuse import (
 )
 from chitragupta.enrich.corpus import CorpusDoc
 
-# Fixed name, not __name__: this module has no __main__ block of its
-# own, but naming the logger explicitly keeps it inside the "chitragupta"
-# tree logging_setup.configure() pins permissive -- the same trap
-# chitragupta/sync.py documents at its own getLogger call.
+# Fixed name, not __name__, to stay inside the "chitragupta" logger tree
+# logging_setup.configure() pins (see chitragupta/sync.py).
 logger = logging.getLogger("chitragupta.enrich.docling_parse")
 
-# A bibliography entry with no PDF at all -- a standards page, a software
-# link, a website -- is not a parse failure: there was never anything to
-# parse. Reported in the `skipped:` vocabulary stages.stage_docling
-# already understands (#586), rather than as an `error:`, which that
-# function reads as `partial` for the whole stage. On the 642-document
-# corpus that surfaced this, 145 entries are URL-only, so the stage could
-# never report `ok` again whatever the corpus did -- and the 460
-# documents that failed for a real reason in the same run were
-# indistinguishable from the 145 that were never parseable. The same
-# correction #509 made for a missing docling install, one level down.
+# A bib entry with no PDF (a standards page, a website) is not a parse
+# failure: reported as `skipped:` (#586), not `error:`, which would make
+# the stage `partial` forever and hide real failures among them.
 NO_PDF_SKIP = "skipped: no PDF to parse -- a URL-only bibliography entry"
 
-# What a document abandoned by a worker pool that kept dying is reported
-# as. Here rather than in `_docling_pool.py`, which is the module that
-# writes it, for the same reason NO_PDF_SKIP is: `stages.stage_docling`
-# reads it to escalate the whole stage to `error` (#584), and a stage
-# wrapper should not have to reach into a private sibling for a status
-# `parse_corpus` returns. `_docling_pool` imports it back the way it
-# imports everything from here -- inside the function, see that module's
-# docstring for why.
+# A document abandoned by a pool that kept dying. Here, not in
+# `_docling_pool.py`, so `stages.stage_docling` can read it to escalate
+# to `error` (#584) without reaching into a private sibling.
 POOL_DEATH_ERROR = "error: parse worker died before this document was parsed"
 
 
 def _failure_status(doc: CorpusDoc, exc: Exception) -> str:
     """The status a batch records for a document that did not parse."""
-    # Decided from the document rather than from `exc`: parse_doc raises
-    # for a caller that asked for this one document (`parse_doc(doc)`
-    # without a batch around it should still fail loudly), and matching on
-    # its message would couple this classification to that string.
-    # `not doc.pdf_path` is the same predicate parse_doc tested before
-    # raising, so the two cannot drift apart.
+    # Decided from the document, not by matching `exc`'s message; the same
+    # predicate parse_doc tests, so the two cannot drift.
     return NO_PDF_SKIP if not doc.pdf_path else f"error: {exc}"
 
 
 def _build_converter(threads: int | None = None) -> Any:
-    """Always configured, never bare: `do_ocr` has to be set explicitly
-    because Docling's own default is True and this project's is False
-    (see config.toml's [parser].ocr for the measurement behind that).
-    Picture bitmaps stay off *always*, whatever config.DOCLING_IMAGES
-    says -- see the comment on the return statement, and `_docling_crops`
-    for what produces them instead.
-
-    Callers should build one of these per *corpus*, not per document:
-    DocumentConverter keeps its `initialized_pipelines` cache on the
-    instance, so a converter per document re-initialises the layout,
-    table and OCR models every time -- 16.5s of measured cold start, on a
-    corpus of 501 PDFs. That figure no longer reproduces on docling
-    2.117.0, where rebuilding per PDF costs 0.7% (bench/RESULTS.md,
-    2026-08-30); the reuse is kept regardless, since the cost belongs to
-    the installed docling rather than to this code.
+    """A configured converter: `do_ocr` set explicitly because Docling
+    defaults to True and this project to False (config.toml's
+    [parser].ocr). Picture bitmaps stay off *always* (see the return).
+    Build one per *corpus* (see _docling_pool._LazyConverter).
     """
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.pipeline_options import PdfPipelineOptions
@@ -141,17 +71,12 @@ def _build_converter(threads: int | None = None) -> Any:
 
     opts = PdfPipelineOptions()
     opts.do_ocr = config.PARSER_OCR
-    # Explicit like do_ocr, so a docling default change can't flip it:
-    # with this off a formula reaches the .md and the sidecar as a
-    # `formula-not-decoded` marker, i.e. not at all; with it on, the
-    # recognition model writes the LaTeX into the item's text and
-    # passages.passage_records carries it as a `formula` unit (#627).
+    # Explicit, so a docling default change can't flip it: off, a formula
+    # reaches the .md and sidecar only as `formula-not-decoded` (#627).
     opts.do_formula_enrichment = config.DOCLING_FORMULAS
     opts.document_timeout = config.PARSER_DOCUMENT_TIMEOUT
-    # Under parse_corpus's worker pool each process has claimed its own
-    # GPU (pdf_text.init_worker) and been given a share of the host's
-    # CPUs. Left alone in the single-worker case, so a default run gets
-    # Docling's own accelerator settings unchanged.
+    # Under the worker pool each process has its own GPU and CPU share;
+    # left alone single-worker, so docling's own settings apply.
     device = pdf_text.worker_device()
     if threads is not None or device is not None:
         from docling.datamodel.accelerator_options import AcceleratorOptions
@@ -162,12 +87,9 @@ def _build_converter(threads: int | None = None) -> Any:
         if device is not None:
             kwargs["device"] = device
         opts.accelerator_options = AcceleratorOptions(**kwargs)
-    # `generate_picture_images` is deliberately never set, whatever
-    # config.DOCLING_IMAGES says. Docling retains every crop it produces
-    # until save_as_markdown runs -- +8.95 GiB on one 99-page deck, and a
-    # 74.31 GiB failure at docling_image_scale = 6.0 (#600). It still
-    # reports each picture's page and bbox with the bitmaps off, which is
-    # all _docling_crops needs to render them one at a time instead.
+    # `generate_picture_images` is never set: docling holds every crop
+    # until save_as_markdown (+8.95 GiB on one deck, #600), and the boxes
+    # it still reports are all _docling_crops needs.
     return DocumentConverter(
         format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)}
     )
@@ -182,12 +104,9 @@ def _fingerprint(doc: CorpusDoc) -> list:
 def _is_cached(doc: CorpusDoc, cache: dict) -> bool:
     """Whether parse_doc would skip this document.
 
-    Duplicated from parse_doc's own check rather than refactored out of
-    it, because parse_corpus needs the answer *before* dispatching work
-    to a pool -- a cached document must not be sent to a worker, or the
-    run pays a process and a model load to discover there was nothing to
-    do. A stat, and one JSON read of the passage sidecar
-    (`_outputs_present`, #967), is small next to that.
+    Duplicated from parse_doc because parse_corpus needs it *before*
+    dispatch: a cached document sent to a worker pays a process and a
+    model load for nothing.
     """
     try:
         return cache.get(doc.citekey) == _fingerprint(doc) and _outputs_present(doc.citekey)
@@ -196,24 +115,15 @@ def _is_cached(doc: CorpusDoc, cache: dict) -> bool:
 
 
 def _convert(doc: CorpusDoc, converter) -> "object":
-    """Converter selection plus the conversion itself: builds one only if
-    the caller didn't hand one in (a fully-cached run never reaches this
-    at all), then raises before anything is written if Docling's result
-    is partial rather than complete.
+    """Build a converter if none was handed in, convert, and raise before
+    anything is written if the result is partial.
     """
-    # Built here rather than in parse_doc, so a fully-cached run never
-    # loads Docling's models at all.
     if converter is None:
         converter = _build_converter()
     result = converter.convert(doc.pdf_path)
-    # Same hole chitragupta/pdf_text/ closed in v1.2.0, on the other call site:
-    # convert(raises_on_error=True) raises only on FAILURE, so a
-    # PARTIAL_SUCCESS would otherwise be written to
-    # content/docling/<doc>.md as though complete -- and that .md feeds
-    # embeddings, topic modelling and citation provenance, where a
-    # truncated source is one a claim can be checked against and silently
-    # pass. Raised before anything is written, so the document stays
-    # uncached and is retried next run.
+    # A PARTIAL_SUCCESS would otherwise be written as complete and feed
+    # embeddings and citation provenance, where a truncated source lets a
+    # claim silently pass. Raised before writing, so it is retried.
     pdf_text.check_docling_status(result)
     return result.document
 
@@ -224,21 +134,15 @@ def _write_parse_outputs(doc: CorpusDoc, dl_doc, out_path: Path, stem: str) -> N
     """
     out_path.write_text(dl_doc.export_to_markdown(), encoding="utf-8")
     if config.DOCLING_IMAGES:
-        # The .md above is already the whole text, placeholders included,
-        # whichever branch we are in -- so figures are purely additive
-        # now, where the old save_as_markdown path had to write the
-        # markdown itself. `_docling_figures` owns the rest.
+        # The .md is already whole, placeholders included; figures are
+        # purely additive.
         write_figure_outputs(
             doc, dl_doc, out_path, citekey_path(config.DOCLING_DIR, stem, ".figures.json")
         )
 
-    # Written for every doc, images on or off: chitragupta/review/citation_provenance.py
-    # reads it to quote a real passage rather than a window sliced out of
-    # column-spliced flat text. Cheap next to the parse that produced it.
-    # Same records the corpus layer writes, from chitragupta/passages.py's one
-    # definition of what a passage is -- but under this layer's own
-    # directory, because this parse runs under its own OCR and figure
-    # settings and must not overwrite the corpus layer's copy.
+    # For every doc: citation_provenance quotes a real passage from it. In
+    # this layer's own directory, since this parse uses its own OCR and
+    # figure settings and must not overwrite the corpus layer's copy.
     passages_path = citekey_path(config.DOCLING_DIR, stem, ".passages.json")
     passages_path.write_text(
         json.dumps(passages.passage_records(dl_doc), indent=2), encoding="utf-8"
@@ -246,17 +150,12 @@ def _write_parse_outputs(doc: CorpusDoc, dl_doc, out_path: Path, stem: str) -> N
 
 
 def parse_doc(doc: CorpusDoc, cache: dict | None = None, converter=None) -> Path:
-    """cache, when passed explicitly (parse_corpus does this), is
-    mutated in place but NOT persisted by this call -- the caller owns
-    save timing. Call with cache=None (the default) for a one-off parse
-    that should persist its own result immediately.
+    """Parse one document.
 
-    converter follows the same injected-or-owned shape, for the same
-    reason cache does: parse_corpus builds one and hands it to every
-    document, because building one per document reloads every model per
-    document. A standalone call builds its own -- but note that a loop
-    of standalone parse_doc() calls pays that cost per document, which is
-    what parse_corpus exists to avoid."""
+    An explicit `cache` is mutated but NOT persisted (the caller owns save
+    timing); cache=None persists immediately. `converter` is injected the
+    same way: a loop of standalone calls reloads every model per
+    document, which parse_corpus exists to avoid."""
     if not doc.pdf_path:
         raise ValueError(f"{doc.citekey}: no PDF to parse")
 
@@ -272,9 +171,7 @@ def parse_doc(doc: CorpusDoc, cache: dict | None = None, converter=None) -> Path
     if cache.get(doc.citekey) == fingerprint and _outputs_present(stem):
         return out_path
 
-    # Before the converter, for the same reason as the cache check above:
-    # a document the corpus layer has already parsed costs a file copy
-    # here instead of a second run of the slowest stage in the repository.
+    # Before the converter: an already-parsed document costs a file copy.
     if _reuse_corpus_parse(doc, out_path, stem):
         cache[doc.citekey] = fingerprint
         if owns_cache:
@@ -293,35 +190,16 @@ def parse_doc(doc: CorpusDoc, cache: dict | None = None, converter=None) -> Path
 def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
     """Returns {citekey: 'ok' | 'error: ...'} -- never raises for a single doc failure.
 
-    Parallelised by [parser].workers exactly like chitragupta/sync.py, and for
-    the same reason: this is the slowest stage in the repository, and a
-    first run over a real corpus is measured in tens of minutes. The
-    default of 1 keeps the historical serial path, converter reuse and
-    all.
-
-    One constraint that comes with the worker pool: every start method it
-    can pick (see pdf_text.docling_process_pool) re-imports the calling program's
-    __main__ in each worker -- forkserver preloads torch and docling in
-    its server process, but the worker still runs spawn's preparation
-    step. A script that calls this must therefore guard its top level
-    with `if __name__ == "__main__":`, or every worker re-runs it on
-    startup and the pool dies with BrokenProcessPool.
-    chitragupta/enrich/__main__.py and chitragupta/sync.py both do; an ad-hoc script
-    that doesn't will fail immediately rather than subtly.
+    Parallelised by [parser].workers like chitragupta/sync.py. Every
+    start method re-imports the caller's __main__ in each worker, so a
+    calling script must guard its top level with
+    `if __name__ == "__main__":` or the pool dies with BrokenProcessPool.
     """
-    # Probed once, here, rather than discovered per document (#509/m-40).
-    # `_build_converter` imports docling lazily, so on a host without the
-    # enrich extra every document failed with its own `error: No module
-    # named 'docling'` and the stage reported `partial` -- which says
-    # "some documents did not parse", when what happened is that the
-    # stage could not run at all and nobody has been told to install
-    # anything. `parse_corpus` still returns a per-citekey mapping, so the
-    # one honest answer is one shared `skipped:` line naming the fix.
+    # Probed once, not per document (#509/m-40): otherwise every document
+    # fails "No module named 'docling'" and the stage says `partial`.
     if importlib.util.find_spec("docling") is None:
-        # Probed for `docling` by name rather than through
-        # `pdf_text.is_available()`: that answers for `config.PARSER`,
-        # which may be `pdftotext`, and this stage uses docling
-        # unconditionally whatever the parser setting says.
+        # By name, not `pdf_text.is_available()`, which answers for
+        # `config.PARSER`; this stage always uses docling.
         reason = (
             "skipped: docling is not installed, so this stage cannot run "
             "-- pip install 'chitragupta-cli[enrich]'"
@@ -332,15 +210,9 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
     cache = _load_cache()
     status = {}
 
-    # A document the corpus layer already parsed is kept out of `pending`
-    # for the same reason a cached one is: it must not be sent to a
-    # worker, or the run pays a process and a model load to discover
-    # there was nothing to parse. parse_doc does the actual adoption,
-    # in whichever process ends up calling it.
-    # A set of citekeys rather than a list of docs: `d not in [...]` would
-    # compare every doc against every reusable one, which is quadratic in
-    # the corpus and compares whole dataclasses to do it. A citekey is
-    # unique by construction: it is the ledger's primary key.
+    # Already-parsed documents stay out of `pending` like cached ones.
+    # A citekey set (the ledger's primary key), not a list of docs, to
+    # avoid a quadratic dataclass comparison.
     reusable = {
         d.citekey
         for d in docs
@@ -365,10 +237,7 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
     else:
         converter = _LazyConverter()
         for i, doc in enumerate(docs, 1):
-            # Opened before the slow call, per DEVELOPER-AGENTS.md's
-            # write-lock convention -- otherwise a serial run over a real
-            # corpus prints nothing for the length of one parse per
-            # document, indistinguishable from a hang (issue #50).
+            # Opened before the slow call, or a serial run looks hung (#50).
             logging_setup.say(logger, f"  [{i}/{len(docs)}] {doc.citekey}")
             try:
                 out_path = parse_doc(doc, cache=cache, converter=converter)

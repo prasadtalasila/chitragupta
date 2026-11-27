@@ -1,20 +1,11 @@
 """How the verbatim digest aid prints and serialises what it found (#991).
 
-The report is the digest's own worklist. It leads with the unsupported
-fraction, the number a repair pass drives down, with the copied
-fraction, the own-words share and the not-checkable share beside it so
-the four account for the whole digest (#1172). Item lines use
-`agenda`'s format -- a stable 12-character id, `[surfaced]`, the section
-anchor, a one-line summary -- so a person who has read an agenda reads
-this without learning a second shape, and
-so the ids survive a revision the way agenda's do: `_identity.item_id`
-hashes the sentence, never its line. Every item is `[surfaced]`:
-whether a source backs a sentence and which passage should replace it
-are judgement calls, and nothing a re-run can settle.
-
-The payload is the findings as data, in `review.envelope`'s frame, and
-it is what the next run's `--baseline` reads. No timestamp, for the
-reason `review/__init__.py` gives.
+The report leads with the unsupported fraction, beside the copied,
+own-words and not-checkable shares that account for the whole digest
+(#1172). Item lines use `agenda`'s format, with ids hashing the sentence,
+never its line, so they survive revision. Every item is `[surfaced]`: a
+source's support is a judgement no re-run settles. The payload is what the
+next `--baseline` reads; no timestamp (see `review/__init__.py`).
 """
 
 from dataclasses import asdict
@@ -26,8 +17,7 @@ from chitragupta.review.agenda._identity import item_id, section_anchor
 
 AID = "digest"
 
-# How much of a sentence an item line shows. The payload carries the
-# whole sentence in `detail.text`; the line is for scanning.
+# Item lines are for scanning; the payload's `detail.text` is whole.
 _EXCERPT = 90
 
 
@@ -134,8 +124,7 @@ def _summary_lines(checked: Checked, rows: list[dict]) -> list[str]:
     ]
     lines += [f"- {cls}: {count}" for cls, count in _counts(rows).items()]
     if total == 0:
-        # The fractions are 0.0 by construction, not by merit: say so
-        # where a reader skimming the first line would read success.
+        # Fractions are 0.0 by construction: say so before it reads as success.
         lines.append(
             "- No prose found: nothing to check (a digest is Markdown prose with "
             "`[@citekey]` brackets closing each copied run)."

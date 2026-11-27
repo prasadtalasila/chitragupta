@@ -1,20 +1,9 @@
 """The parse-dispatch engine: fan a batch of documents out across a
-worker pool and collect each one's (out_path, exception) result.
+worker pool and collect each one's (out_path, exception) result (#441).
 
-Split from `chitragupta/sync.py` (#441): this is the pool-management
-half -- executor choice, biggest-file-first scheduling, the
-stall-timeout watchdog and the broken-pool/interrupt recovery -- with
-no ledger or bib-file awareness of its own. `_parse_parallel`'s three
-arguments (`refs`, `workers`, `threads`) are exactly what a caller
-already has; nothing here reads `chitragupta.ledger` or
-`chitragupta.bib_reader`.
-
-This is also the seam the test suite substitutes: `_executor_for` and
-`_parse_serial` are patched directly (`monkeypatch.setattr(sync_pool,
-...)`), not through `chitragupta.sync`, because a real
-`ProcessPoolExecutor` runs its work in a child interpreter where the
-test process's monkeypatches don't exist -- the same reason
-`chitragupta/enrich/_docling_pool.py` is its own module.
+No ledger or bib awareness. Tests patch `_executor_for` and
+`_parse_serial` here directly: a real process pool runs in a child
+interpreter where monkeypatches don't exist.
 """
 
 import logging
@@ -33,39 +22,20 @@ from chitragupta import config, pdf_text
 
 logger = logging.getLogger("chitragupta.sync")
 
-# The (citekey, out_path, exception) triple pdf_text.extract_one produces,
-# yielded back out by both _parse_serial and _parse_parallel.
+# The (citekey, out_path, exception) triple both parse paths yield.
 _ParseResult = tuple[str, str | None, Exception | None]
 
-# Called with each result's three fields the moment it lands, before
-# anything else happens to it: `sync` writes the ledger row here (#961).
-# Until then the pool path wrote no row until every future had drained,
-# so Ctrl+C -- whose handler `os._exit`s -- or a pool failure left every
-# finished `.txt` on disk with its row still `discovered`, and the next
-# run parsed it all again. Landing order, not bib order: the ledger has
-# no order, and `sync` prints in bib order separately.
+# Called the moment a result lands; `sync` writes the ledger row here
+# (#961), so Ctrl+C or a pool failure keeps every finished parse.
 OnLanded = Callable[[str, str | None, Exception | None], None]
 
 
 def _executor_for(workers: int) -> ProcessPoolExecutor | ThreadPoolExecutor:
     """Processes for docling, threads for pdftotext.
 
-    The two backends want opposite things, so this is deliberately
-    backend-conditional rather than one pool type for both. `pdftotext`
-    is an external subprocess that releases the GIL while it runs, so a
-    ThreadPoolExecutor already gets full OS-level concurrency and a
-    process pool would only add pickling and spawn cost on top. `docling`
-    runs in-process and holds the GIL, so threads would serialise exactly
-    the work we are trying to overlap.
-
-    The docling pool itself is pdf_text.docling_process_pool -- shared with
-    chitragupta/enrich/docling_parse.py's own docling-only pool (see its
-    docstring for why the GPU/start-method reasoning lives there now
-    rather than duplicated here).
-
-    Also the seam the tests substitute: a real ProcessPoolExecutor runs
-    its work in a child interpreter, where the test process's
-    monkeypatches don't exist.
+    `pdftotext` is a subprocess that releases the GIL, so threads suffice;
+    docling holds the GIL, so it needs processes
+    (`pdf_text.docling_process_pool`, shared with `enrich/docling_parse.py`).
     """
     if config.PARSER == "docling":
         return pdf_text.docling_process_pool(workers, logger.warning)
@@ -73,13 +43,8 @@ def _executor_for(workers: int) -> ProcessPoolExecutor | ThreadPoolExecutor:
 
 
 def _pdf_size(path: str) -> int:
-    """Bytes, or 0 if the file can't be stat'd.
-
-    Only ever used to sort work biggest-first, so a file that vanished
-    between bib resolution and here just sorts last -- the parse will
-    report the real error a moment later, which is the better place for
-    it.
-    """
+    """Bytes, or 0 if the file can't be stat'd; only used to sort, and the
+    parse reports the real error."""
     try:
         return os.path.getsize(path)
     except OSError:
@@ -90,33 +55,15 @@ def _as_they_land(futures, executor, stalled) -> Iterator[Future]:
     """Yield futures as they complete, giving up if the whole pool goes
     silent for config.PARSER_STALL_TIMEOUT.
 
-    `wait(..., FIRST_COMPLETED)` rather than `as_completed(timeout=...)`:
-    as_completed measures its timeout from the original call, i.e. total
-    elapsed, so on a long corpus it would fire on a perfectly healthy
-    run. What is wanted is the gap *between* completions -- with several
-    workers those arrive constantly, so silence across the entire pool is
-    what distinguishes a hung worker from a merely slow document. That
-    distinction matters because the slowest legitimate document in this
-    corpus takes 246s, and no per-document deadline can be both above
-    that and a useful hang detector.
-
-    The workers are terminated on the way out, not merely abandoned.
-    Without that, in-flight jobs keep running and write
-    content/parsed/<citekey>.txt for documents this run has already
-    reported as failed -- a file on disk contradicting the ledger -- and
-    the processes stay alive holding GPU memory.
-
-    Giving up here is not a data loss: the caller reports the
-    unfinished documents as failures, and since v1.2.0 a failed document
-    is retried on the next run rather than dropped.
+    `wait(FIRST_COMPLETED)`, not `as_completed(timeout=)`, which measures
+    total time: the signal is silence across the pool, since the slowest
+    legitimate document takes 246s. Workers are terminated on the way out,
+    or they would write parses for documents already reported failed and
+    hold GPU memory. The unfinished are retried next run.
     """
-    # Half the budget, twice: a warning at the midpoint, then the kill.
-    # The warning matters because the schedule invites a long first gap
-    # -- submission is biggest-file-first, so at pool start every worker
-    # is on the largest documents at once. On a slow host that gap is the
-    # schedule working, not a hang, and a kill without warning would
-    # repeat every run (stall-killed documents are retried identically),
-    # leaving a legitimate configuration unable to ever finish.
+    # A warning at half the budget, then the kill: biggest-first scheduling
+    # makes a long first gap normal on a slow host, and an unwarned kill
+    # would repeat every run.
     pending = set(futures)
     half = config.PARSER_STALL_TIMEOUT / 2 if config.PARSER_STALL_TIMEOUT else None
     warned = False
@@ -139,30 +86,12 @@ def _as_they_land(futures, executor, stalled) -> Iterator[Future]:
             warned = False
         if not done:
             stalled.append(True)
-            # terminate_workers first, shutdown second -- not the reverse.
-            # ProcessPoolExecutor.shutdown() sets executor._processes = None
-            # unconditionally, even with wait=False (CPython
-            # concurrent/futures/process.py), and terminate_workers reads
-            # that same attribute to find which OS processes to signal.
-            # Calling shutdown() first leaves it nothing to kill: the
-            # wedged worker (blocked in docling/torch native code, or --
-            # this arm's own repro -- in a blocking FIFO read) is never
-            # actually signalled, its sentinel never fires, and the
-            # executor's manager thread then blocks in
-            # mp.connection.wait() forever waiting for a death it was
-            # never told about -- which is what hangs the interpreter's
-            # own atexit join of that thread (issue #698). Reproduced with
-            # bench/bench_pool_rebuild.py's --with-stall-arm and a
-            # faulthandler thread dump pinning the exact three frames.
-            #
-            # cancel_futures drops every job the pool has not yet started
-            # (thread or process). terminate_workers is the other half:
-            # it kills docling's in-flight *processes*, but is a no-op for
-            # the pdftotext ThreadPoolExecutor, which has no `_processes`
-            # to reach -- without this cancel, its queue keeps draining
-            # after this run has already reported those citekeys failed,
-            # writing content/parsed/<citekey>.txt for them behind the
-            # ledger's back.
+            # terminate_workers before shutdown: shutdown() nulls
+            # executor._processes even with wait=False, leaving nothing to
+            # signal, and the wedged worker then hangs the atexit join
+            # (issue #698; bench/bench_pool_rebuild.py --with-stall-arm).
+            # cancel_futures stops the thread pool's queue, which
+            # terminate_workers cannot reach.
             pdf_text.terminate_workers(executor)
             executor.shutdown(wait=False, cancel_futures=True)
             logger.warning(
@@ -177,12 +106,8 @@ def _as_they_land(futures, executor, stalled) -> Iterator[Future]:
 
 
 def _parse_serial(refs, on_landed: OnLanded) -> Iterator[_ParseResult]:
-    """The historical path, taken whenever [parser].workers resolves to 1.
-
-    Deliberately not "a pool with one worker": no executor, no pickling,
-    no subprocess, and pdf_text.extract_text is called with exactly the
-    arguments it always was.
-    """
+    """The path for [parser].workers == 1: no executor, no pickling, and
+    `pdf_text.extract_text` called exactly as before."""
     for ref in refs:
         try:
             result = ref.citekey, str(pdf_text.extract_text(ref.pdf_path, ref.citekey)), None
@@ -195,34 +120,14 @@ def _parse_serial(refs, on_landed: OnLanded) -> Iterator[_ParseResult]:
 
 
 def _drain_pool(executor, jobs, stalled, on_landed: OnLanded) -> tuple[dict, Exception | None]:
-    """The result-draining loop: submit every job and collect (out_path,
-    exc) per citekey as workers finish. Returns whatever was collected
-    before an early exit alongside the pool's break, if any -- the caller
-    reports both, rather than either being lost to an interrupt or a
-    broken pool.
+    """Submit every job and collect (out_path, exc) per citekey as workers
+    finish. Returns what was collected plus the pool's break, if any.
 
-    submit() plus _as_they_land() rather than map(): map yields in *input*
-    order, so a pool that breaks while the first (largest) job is still
-    running would raise before yielding the smaller jobs that had
-    already finished, throwing away real work and reporting parsed
-    documents as failures. _as_they_land records each result at the
-    moment it lands, so a broken pool costs only what was actually in
-    flight.
-
-    Not `with executor`: the context manager's __exit__ calls
-    shutdown(wait=True), and every job is submitted up front, so a
-    KeyboardInterrupt would drain the *entire* remaining queue before
-    exiting. Reported from real use on a 501-document corpus -- Ctrl+C
-    "took forever to exit" and emitted docling teardown tracebacks from
-    workers still being fed. Shutdown is therefore explicit below, with
-    cancel_futures on the interrupt path.
-
-    Each future is mapped back to its citekey, so a `future.result()`
-    that raises something other than a broken pool is that document's
-    failure (`pdf_text.document_failure`), not the batch's. Rare since
-    `extract_one` returns every exception as a string, which leaves a
-    result the worker could not pickle, or a stand-in `extract_one`;
-    one that cannot be *received* breaks the pool instead.
+    Not `map()`, which yields in input order and would lose finished work
+    to a break. Not `with executor`, whose shutdown(wait=True) made Ctrl+C
+    drain the whole queue on a 501-document corpus. A future raising
+    something other than a broken pool is that document's failure
+    (`pdf_text.document_failure`), not the batch's.
     """
     results = {}
     broken = None
@@ -242,25 +147,16 @@ def _drain_pool(executor, jobs, stalled, on_landed: OnLanded) -> tuple[dict, Exc
                 results[citekey] = (out_path, exc)
                 on_landed(citekey, out_path, exc)
                 done += 1
-                # Live progress, on stderr so stdout stays in
-                # bibliography order and diffable between runs. Without
-                # it a parallel run over a real corpus prints nothing for
-                # tens of minutes, which is indistinguishable from being
-                # stuck -- especially under docling's own OCR chatter.
+                # Progress on stderr, so stdout stays diffable; otherwise a
+                # parallel run looks stuck for tens of minutes.
                 logger.info("[%d/%d] %s", done, len(jobs), citekey)
     except BrokenProcessPool as pool_exc:
         # submit() itself raises once the pool is already known-broken.
         broken = pool_exc
     except KeyboardInterrupt:
-        # terminate_workers before shutdown -- see _as_they_land's own
-        # comment on this same pair, a few lines up in this module:
-        # shutdown() nulls executor._processes before terminate_workers
-        # can read it, which leaves it nothing to signal (issue #698).
-        #
-        # cancel_futures drops everything not yet started; wait=False
-        # means we don't block on the handful still running. Whatever
-        # finished already reached `on_landed`, so an interrupted run
-        # keeps its work rather than discarding it.
+        # terminate_workers before shutdown (see _as_they_land, #698);
+        # cancel_futures drops unstarted jobs, and finished ones already
+        # reached `on_landed`.
         pdf_text.terminate_workers(executor)
         executor.shutdown(wait=False, cancel_futures=True)
         logger.warning(
@@ -276,20 +172,13 @@ def _drain_pool(executor, jobs, stalled, on_landed: OnLanded) -> tuple[dict, Exc
 
 
 def _account_for_unfinished(refs, results: dict, broken, stalled, on_landed: OnLanded) -> None:
-    """The failure accounting: warn on a broken pool, then fill in a
-    transient failure for every ref _drain_pool didn't land a result for.
-    Mutates `results` in place, and lands each filled-in failure too.
-
-    Marked transient: these documents were never given a fair attempt,
-    so they must come back next run. A failure the *backend* returned
-    for a specific PDF is deterministic and stays that way.
+    """Warn on a broken pool, then land a transient failure for every ref
+    without a result, mutating `results`. Transient, since they never got
+    a fair attempt and must be retried.
     """
     if broken is not None:
-        # A worker killed outright (the OOM killer is the realistic
-        # cause) takes the whole pool with it, and every future still in
-        # flight. Reported against the documents that didn't get parsed
-        # rather than raised, so the run still writes its ledger updates,
-        # its summary, and a nonzero exit code.
+        # A worker killed outright (OOM) takes the pool with it; reported
+        # per document, so the run still writes its ledger and exits nonzero.
         logger.warning(
             "WARNING a parse worker died (%s) -- the documents it had not "
             "finished are reported as failures below. A lower "
@@ -315,11 +204,8 @@ def _parse_parallel(
 ) -> Iterator[_ParseResult]:
     """Same triples as _parse_serial, produced by `workers` at once.
 
-    Submitted biggest-file-first (the LPT heuristic). One 675-page
-    document in this project's own corpus is 5% of all its pages; picked
-    up last it would define the wall clock single-handedly. File size
-    rather than page count on purpose -- counting pages needs a PDF
-    library, and the corpus layer deliberately has no such dependency.
+    Submitted biggest-file-first (LPT): one 675-page document is 5% of the
+    corpus's pages. File size, as counting pages needs a PDF library.
     """
     jobs = [
         (r.pdf_path, r.citekey, threads) for r in sorted(refs, key=lambda r: -_pdf_size(r.pdf_path))

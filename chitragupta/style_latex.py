@@ -1,29 +1,16 @@
 """What Vale is handed for a `.tex` draft: the draft with its LaTeX
 markup blanked to spaces of the same width.
 
-Vale reads a `.tex` fragment as Markdown (`vale.ini`'s `tex = md`), and
-two faults followed, both measured on a real 8.7k-word thesis chapter:
+Vale reads `.tex` as Markdown (`vale.ini`'s `tex = md`). Measured on a
+real thesis chapter, two ``...'' in a paragraph became one code span, and
+`TokenIgnores` for LaTeX lost findings in long paragraphs (636 of 839
+planted defects reported; all 839 with this blanking; cf. #1187).
 
-- Two ``...'' in one paragraph made a Markdown code span of everything
-  between them, so the draft's own words there were never checked.
-- `vale.ini`'s `TokenIgnores` entries for LaTeX (citation commands,
-  `$...$`, command names) lost findings in long paragraphs. With one
-  defect marker planted on each prose line, 636 of 839 were reported;
-  with the same spans blanked here first, all 839 were. It is the same
-  fault that #1187 met when two entries hid every finding beside a
-  `\\begin` line.
-
-So `style_check.run_vale` hands Vale this text on stdin instead of the
-file. Each blanked span keeps its newlines and becomes spaces, so the
-line and column of every finding are the draft's own. What is blanked is
-what `vale.ini` ignores for LaTeX, with the same patterns: a verbatim
-environment whole (its `BlockIgnores` entry, which would no longer find
-the block once `\\begin{verbatim}` is blank), then citation commands
-with their arguments, inline math, and command names (an argument such
-as `\\emph{this}`'s stays prose). Each `` becomes `""`: two ASCII
-columns, because Vale lost findings when it was given multi-byte curly
-quotes. `style_quotes.drop_quoted` reads the original text, so a
-quotation stays exempt.
+`style_check.run_vale` hands Vale this text on stdin. Blanked spans keep
+their newlines, so every finding's line and column are the draft's own.
+The patterns are `vale.ini`'s LaTeX ignores. Each `` becomes `""`: Vale
+lost findings on multi-byte curly quotes. `style_quotes.drop_quoted`
+reads the original text, so quotations stay exempt.
 """
 
 import re
@@ -33,10 +20,8 @@ VERBATIM = re.compile(
     r"(?s)\\begin\{(verbatim|lstlisting|minted|Verbatim|lstinputlisting)\}.*?\\end\{\1\}"
 )
 CITATION = re.compile(r"\\cite[a-zA-Z]*\s*(\[[^\]]*\])*\{[^}]*\}")
-# Applied to the whole draft rather than block by block as Vale applied
-# its TokenIgnores, so it must neither open on an escaped `\$` nor cross
-# a blank line: either would blank prose up to the next `$` and turn the
-# math after it into prose.
+# Applied to the whole draft, so it must neither open on an escaped `\$`
+# nor cross a blank line: either would turn the math after it into prose.
 MATH = re.compile(r"(?<!\\)\$(?:(?!\n[ \t]*\n)[^$])*\$")
 COMMAND = re.compile(r"\\(?:(?:begin|end)\{[^}]*\}|[A-Za-z]+\*?)")
 
@@ -44,8 +29,7 @@ COMMAND = re.compile(r"\\(?:(?:begin|end)\{[^}]*\}|[A-Za-z]+\*?)")
 def _blank_in(text: str) -> Callable[[re.Match], str]:
     """A `re.sub` replacement that blanks a match within `text`. A match
     that opens its line keeps its first column as `.`: four leading spaces
-    are a Markdown code block, so blanking `\\emph{...}` at the start of a
-    line to spaces would hide the line from Vale."""
+    would be a Markdown code block, hiding the line from Vale."""
 
     def blank(match: re.Match) -> str:
         spaces = re.sub(r"[^\n]", " ", match.group(0))

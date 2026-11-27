@@ -2,27 +2,15 @@
 `% cg-allow:` line, docs/figure-checks/README.md and the figure-drawer skill all
 quote (#1053).
 
-One registry, because the id is the contract between four places and a
-test cross-checks them against this table: a rule only in prose ships
-broken, and a rule only here is one no author can look up.
+One registry, cross-checked by a test against those places: a rule only in
+prose ships broken, one only here cannot be looked up.
 
-**Scope** says what an allow must name. A figure-scope rule is about the
-whole picture and takes no target; an element-scope rule is about one
-node, pair or point and requires one, so "allow every overlap" cannot be
-written. **Class** says what the skill does with a finding: an objective
-one is resolved or allowed with a reason, an advisory one is read.
-Neither is an exit code. An advisory report has nothing an allow could
-set aside, so none is allowable, and none is ever a finding: they are
-reported apart, under their own heading (#1057). `figure check` exits 0 whatever it finds,
-because SOUL.md allows one gate and this is not it.
-
-The seven ids from `review figure` are the `kind` strings its `--json`
-already ships, kept rather than renamed so one finding has one name
-across both commands. Each is binary, so each is objective.
-
-Order here is report order: a figure that does not compile, or names
-nothing to measure, says so before anything measured, and the advisory
-reports come last.
+**Scope**: a figure-scope rule takes no target; an element-scope rule requires
+one, so "allow every overlap" cannot be written. **Class**: objective findings
+are resolved or allowed; advisory reports are only read, never allowable, and
+listed apart (#1057). Exit is 0 regardless: SOUL.md allows one gate and this
+is not it. The seven `review figure` ids keep its `--json` `kind` names.
+Order here is report order.
 """
 
 from dataclasses import dataclass
@@ -33,9 +21,8 @@ class Rule:
     id: str
     scope: str  # "figure" or "element"
     cls: str  # "objective" or "advisory"
-    # False for a compile failure, which is not a property of the drawing
-    # that could be deliberate (nothing else can be checked until it is
-    # fixed), and for every advisory report, which is read, not resolved.
+    # False for a compile failure (not a deliberate property; nothing else can be
+    # checked until fixed) and for every advisory report, which is read, not resolved.
     allowable: bool = True
     # The layouts (`% cg-layout:`) the rule is not evaluated for (#1054).
     exempt: frozenset[str] = frozenset()
@@ -55,16 +42,12 @@ class Finding:
     measurement: str
 
 
-# Diagonal spokes are a radial network's grammar, and curved transitions
-# an automaton's; orthogonal routing, and the attach points it puts at a
-# side's midpoint, are everyone else's. A tree is held to it: #1083 drew
-# the house tree with fanned orthogonal edges.
+# Diagonal spokes are a radial network's grammar and curved transitions an
+# automaton's; everyone else routes orthogonally, trees included (#1083).
 _NOT_ORTHOGONAL = frozenset({"state-machine", "hub-and-spoke-network"})
 
-# A sequence's messages are level, so c1 holds them; but they meet a
-# lifeline at heights time sets, not at even spacing along its side, and
-# a message skipping the lifelines between its ends is the diagram's
-# grammar, not a line through a box (#1063).
+# A sequence's messages meet lifelines at heights time sets, and skipping
+# lifelines between ends is its grammar, not a line through a box (#1063).
 _LIFELINES = frozenset({"sequence"})
 
 RULES: dict[str, Rule] = {

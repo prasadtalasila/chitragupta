@@ -1,26 +1,12 @@
 """How an uncited-prose report reads: the Markdown document and the
 plain-text stdout form.
 
-Split from `chitragupta/review/uncited_prose.py`, which owns which
-sentences are findings and passes its `findings()` list in. Nothing here
-imports it back, deliberately -- that is what keeps the dependency
-one-way instead of a cycle papered over with a deferred import, which is
-the mistake `_synthesis_render.py` records having made first.
-
-Three sentences here are load-bearing and should not be trimmed as
-boilerplate:
-
-- **which genre it was read under, and what that genre means.** A
-  tutorial's report raises no findings by design, and without the
-  sentence saying so it reads as a draft that passed a check. None was
-  applied.
-- **that an uncited sentence is not a defect.** Scope statements, worked
-  examples and the draft's own transitions legitimately cite nothing.
-  The report surfaces; a human decides.
-- **that the fix is evidence, not wording.** Rewording an uncited
-  sentence makes it look supported without making it supported, which is
-  the failure this project exists to prevent, so nothing repairs these
-  findings unattended.
+Takes `findings()` as an argument (one-way dependency). Three sentences of
+the report are load-bearing, not boilerplate: the genre it was read under
+(a tutorial raises nothing by design and would read as a pass); that an
+uncited sentence is not a defect; and that the fix is evidence, not
+wording, since rewording only makes a claim look supported, so nothing
+repairs these unattended.
 """
 
 from chitragupta import review
@@ -42,7 +28,6 @@ _STANDING = {
 
 
 def _under(report) -> str:
-    """One clause naming the genre and where it came from."""
     return {
         "scope.md": f"recorded as `{report.genre}` in this draft's dossier",
         "--genre": f"`{report.genre}`, given on the command line",
@@ -51,7 +36,6 @@ def _under(report) -> str:
 
 
 def _how_to_read(report) -> list[str]:
-    """The paragraph that stops the counts below being misread."""
     return [
         "## How to read this",
         "",
@@ -118,12 +102,8 @@ def _findings_section(report, found: list[dict]) -> list[str]:
 
 
 def render_markdown(report, command: str, found: list[dict]) -> str:
-    """The report as a Markdown document, for `content/review/`.
-
-    Kept beside the plain-text version rather than replacing it: stdout
-    is read in a terminal mid-review and wants no syntax, while a file
-    kept for months is read next to the draft's other review reports and
-    should look like them.
+    """The report as Markdown for `content/review/`; stdout keeps a plain
+    form, which wants no syntax.
     """
     lines = review.header(report.draft, "uncited", command)
     lines += _how_to_read(report)
@@ -133,7 +113,6 @@ def render_markdown(report, command: str, found: list[dict]) -> str:
 
 
 def format_report(report, found: list[dict]) -> str:
-    """The same report, as plain text for stdout."""
     lines = [
         f"Uncited prose in {report.draft}",
         f"Genre: {report.genre or 'not recorded'} "

@@ -11,35 +11,13 @@ words, and what every such sentence is (#991).
         persisting and new items, the counts and fractions before and
         after, and whether the unsupported text fell.
 
-The eleventh aid in `review.AIDS`, and the first over a genre of its
-own: a digest is private study text written mostly in the cited papers'
-own words, with no quotation marks and a citation closing each copied
-run (docs/VERBATIM-DIGEST.md). It is a draft like any other -- named
-by the user, its genre recorded in its dossier's `scope.md` -- so its
-report lands under the ordinary rule, `<stem>.digest.md` beside the
-other aids' reports for the same draft. `_digest_runs.py` reads the
-runs, `_digest_match.py` verifies them, `_digest_render.py` prints and
-serialises, `_digest_recheck.py` compares. This file is the CLI.
-
-**Not a gate, and advisory like the other ten.** Every finding is
-`[surfaced]`: a person decides whether to cite, replace or delete.
-Exits 0 whatever it finds. The digest is never a drafting source for any
-other genre; `review verbatim scan` already catches its wording if it
-reaches one.
-
-**Needs the enriched corpus.** A run is matched against reading-ordered
-passages only -- the Docling sidecar `chitragupta enrich --stages
-docling` writes. A `pdftotext` parse has no reading order, and a run
-copied from one can be a collage of two columns, which is the hazard
-`review quotation` refuses to quote from and the reason this aid does
-not fall back to page text: it reports the run as not checkable and
-names the stage to run.
-
-**Files its report unconditionally**, like `agenda` and for the same
-reason: the `.json` is the next pass's `--baseline`. `--json` only
-decides what prints to stdout.
-
-Stdlib only, interpreter tier 1. Reads the ledger read-only (#843).
+A digest is private study text in the papers' own words
+(docs/VERBATIM-DIGEST.md), never a drafting source. Advisory: every
+finding is `[surfaced]`, exit 0 whatever it finds. Runs match only
+reading-ordered Docling passages: a `pdftotext` run can splice two
+columns, so it is reported not checkable rather than compared. The
+report is filed unconditionally because its `.json` is the next pass's
+`--baseline`. Reads the ledger read-only (#843).
 """
 
 import argparse
@@ -62,11 +40,8 @@ AID = "digest"
 
 
 def build_report(draft: Path) -> tuple[_digest_match.Checked, list[dict]]:
-    """Every run of `draft` checked, and the worklist rows for what failed.
-
-    One ledger connection and one passage lookup per citekey for the
-    whole run: a digest cites few papers many times.
-    """
+    """Every run of `draft` checked, and the worklist rows for what failed,
+    over one ledger connection and one passage lookup per citekey."""
     text = draft.read_text(encoding="utf-8")
     checked = _digest_match.Checked()
     cache: dict[str, tuple[list, str | None]] = {}
@@ -85,9 +60,8 @@ def build_report(draft: Path) -> tuple[_digest_match.Checked, list[dict]]:
 
 
 def _command(draft: Path, args: argparse.Namespace) -> str:
-    """The bare invocation, which is what the filed `.json` records even
-    under `--baseline`: that file is the *next* run's baseline, so its
-    envelope has to name a command that regenerates a report."""
+    """The bare invocation, even under `--baseline`: the filed `.json` is
+    the next run's baseline, so it must name a regenerating command."""
     parts = ["python", "-m", "chitragupta.review", "digest", str(draft)]
     if args.formats != "md,tex,pdf":
         parts += ["--formats", args.formats]
@@ -131,10 +105,8 @@ def _file(draft: Path, args: argparse.Namespace) -> tuple[dict, dict]:
 
 
 def run(args: argparse.Namespace) -> int:
-    """The baseline is loaded before anything is computed: a bad one is a
-    usage error (exit 2) and should cost nothing. The draft is checked
-    first because a draft the layer will not read is exit 1, the same
-    order `agenda` keeps."""
+    """The draft is checked first (exit 1), then the baseline (exit 2)
+    before anything is computed, the order `agenda` keeps."""
     try:
         draft = review.require_reviewable(Path(args.draft))
     except (FileNotFoundError, config.OutsideContentDir) as exc:

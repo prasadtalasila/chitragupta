@@ -1,68 +1,29 @@
 """The considered-and-accepted record: what keeps a surfaced judgement
 item off the next worklist, and the rule for which classes may have one.
 
-The agenda still recomputes from the aids on every run -- nothing here is
-a durable queue with mutable item state, which #767 weighed and rejected:
-the recompute-from-aids property is worth more than the convenience. What
-persists is a set of *identities* a person has already decided about, and
-suppression is a filter applied to a freshly computed list, never a
-stored verdict about an item.
+The agenda still recomputes from the aids every run; a durable queue with
+item state was rejected (#767). What persists is a set of identities a
+person decided about, and suppression filters a freshly computed list.
+Reopening needs no mechanism: `_identity.item_id` hashes the matched span,
+so a reworded claim gets a new id and returns to the worklist.
 
-**Reopening needs no mechanism.** `_identity.item_id` hashes the matched
-span, so a reworded claim raises a different id, which no record matches,
-and the item is back on the worklist -- see `partition` and its test. The
-acceptance says "I have read *this* text and I accept it", which is
-exactly what a span-keyed identity can carry and a citekey- or
-section-keyed one could not (the alternative #767 rejects as too coarse).
+`claim-support`, `uncited-claim` and `unsupported-claim` may be accepted.
+`misquoted` deliberately may not (#775):
 
-**Three classes may be accepted, and one surfaced class deliberately may
-not.** `claim-support`, `uncited-claim` and `unsupported-claim` are
-surfaced because a person genuinely has a call to make. `misquoted` is
-not, and is excluded here rather than merely unimplemented:
+1. It is surfaced because its defect is in `evidence.md`, out of
+   `agenda-reviser`'s reach, not because a person has a call to make.
+2. An `absent` finding is either an unverifiable correct quote or a
+   fabricated one, the failure SOUL.md exists to prevent; 38 residual
+   absents remain, 5 real (`_quotation_match.py`), and R3 bars tuning a
+   discriminator.
+3. Its identity is keyed on the quote, not the draft, so it can become
+   newly true with the quote unchanged (a re-parse, a replaced PDF); an
+   acceptance would then hide a real fabrication.
 
-1. It is surfaced for a *write-set* reason, not a judgement one --
-   docs/AUTO-IMPROVEMENT.md's own entry says the defect is in
-   `evidence.md` while `agenda-reviser` edits drafts, so there is no
-   unattended repair. That is a statement about what a tool can reach,
-   not about a person having a decision to record.
-2. The class conflates two very different findings.
-   `chitragupta/review/_quotation_match.py` measured 70 raw findings
-   reducing to 33 after three normalisations, and 40 to 38 after the
-   fourth issue #775 added, and calls the residue
-   "residual absents": an `absent` finding is either a correct quote the
-   matcher cannot verify or a genuinely fabricated quotation, which is
-   the one failure SOUL.md exists to prevent. The aid does not
-   distinguish them, and the obvious discriminator is closed off --
-   `_quotation_match.py` states that R3 bars a continuous
-   `near_miss_score` from being optimised against.
-3. Its identity is keyed on the wrong side of the comparison.
-   `_items_findings.misquoted_items` sets `section=None`, `line=None` and
-   spans the quote text from `evidence.md`, so a `misquoted` finding can
-   become newly true with the quote byte-identical -- a re-parse under
-   different `PARSER_*` settings, a replaced PDF, a `corpus sync`. The
-   identity would not change, so the acceptance would hold and a real
-   fabrication would stay suppressed. Every acceptable class above is
-   keyed on the draft text it is about.
-
-Issue #775 asked whether `misquoted` should ever be acceptable and
-answered **no**, after narrowing the class with a fourth normalisation
-first. Finding 2 above is reduced but not removed -- 38 residual absents
-remain on the measured corpus, 5 of them the real defect the aid exists
-for -- and finding 3 is untouched, so accepting one would still need an
-identity carrying the parsed source's fingerprint, which #767 declined
-to build. docs/AUTO-IMPROVEMENT.md records the decision; this module
-refuses it today, and
-`TestAcceptableClasses` derives the refused set from `_items.CLASSES` so
-a ninth class has to decide rather than inherit an answer.
-
-**Filed under `content/review/`, beside the report it suppresses from.**
-That is the review layer, which is where #767 places this feature, and
-it keeps the record next to the `<stem>.agenda.json` whose ids it names.
-One consequence is worth knowing: `draft dossier export`/`restore`
-bundles drafts and dossiers, not `content/review/`, so unlike
-`rejected.md` an acceptance record does not survive that round-trip. The
-cost of losing one is a re-judgement, not a wrong answer -- every item
-simply comes back surfaced.
+`TestAcceptableClasses` derives the refused set from `_items.CLASSES`, so
+a new class must decide. The record lives beside `<stem>.agenda.json` in
+`content/review/`, so `dossier export`/`restore` does not carry it; losing
+one costs a re-judgement, never a wrong answer.
 """
 
 import json
@@ -73,21 +34,16 @@ from pathlib import Path
 
 from chitragupta import review
 
-# The surfaced classes a person may record a decision about. Not derived
-# from `Item.unattended`: that field says whether a *tool* may act
-# without asking, which is a different question from whether a *person*
-# has a judgement to record -- `verbatim-run`'s long bucket is surfaced
-# and is still a defect.
+# Not derived from `Item.unattended`, which says whether a tool may act,
+# not whether a person has a judgement to record.
 ACCEPTABLE = (
     "claim-support",
     "uncited-claim",
     "unsupported-claim",
 )
 
-# `<stem>.accepted.json`, not `<stem>.<aid>.json`: `review.report_path`
-# refuses any name outside `review.AIDS`, and rightly -- this is not an
-# aid's report, and adding a key to that registry to file it would
-# claim a report nothing writes.
+# `<stem>.accepted.json`: `review.report_path` rightly refuses names
+# outside `review.AIDS`, and this is no aid's report.
 SUFFIX = "accepted"
 
 
@@ -98,14 +54,9 @@ class NotAcceptable(ValueError):
 
 @dataclass
 class AcceptedSource:
-    """The acceptance record as the agenda sees it -- an optional input
-    that degrades to absent rather than raising, exactly like the eight
-    aids' `.json` in `_sources.py`.
-
-    Degrading is safe in the one direction that matters: a record that
-    cannot be read suppresses nothing, so every accepted item returns to
-    the worklist. The failure mode is a re-judgement, never a hidden
-    finding.
+    """The acceptance record as the agenda sees it: optional, degrading to
+    absent like `_sources.py`'s inputs. Safe, since an unreadable record
+    suppresses nothing; the cost is a re-judgement, never a hidden finding.
     """
 
     available: bool = False
@@ -114,7 +65,6 @@ class AcceptedSource:
 
 
 def accepted_path(draft: Path) -> Path:
-    """`content/review/<topic>/<stem>.accepted.json` for `draft`."""
     return review.report_dir(draft) / f"{Path(draft).stem}.{SUFFIX}.json"
 
 
@@ -130,9 +80,7 @@ def load(draft: Path) -> AcceptedSource:
     records = payload.get(SUFFIX) if isinstance(payload, dict) else None
     if not isinstance(records, list):
         return AcceptedSource(reason=f"{path}: no '{SUFFIX}' list -- not an acceptance record")
-    # A hand-edited row without an id names no item and can suppress
-    # nothing; dropping it keeps the rest of the record usable rather
-    # than failing the whole agenda over one bad line.
+    # An id-less hand-edited row names no item; drop it, keep the rest.
     kept = [row for row in records if isinstance(row, dict) and isinstance(row.get("id"), str)]
     return AcceptedSource(available=True, records=kept)
 
@@ -142,10 +90,8 @@ def accepted_ids(source: AcceptedSource) -> set[str]:
 
 
 def partition(items: list, source: AcceptedSource) -> tuple[list, list]:
-    """`(kept, suppressed)` for one run's items against the record.
-
-    Order is the caller's, untouched: `_order.sort` has already run, and
-    a filter must not renumber what it did not remove.
+    """`(kept, suppressed)` for one run's items against the record, in the
+    caller's order: a filter must not renumber what it did not remove.
     """
     ids = accepted_ids(source)
     kept = [item for item in items if item.id not in ids]
@@ -162,13 +108,9 @@ def accept_command(draft: Path, ids: list[str]) -> str:
 
 
 def _record(item) -> dict:
-    """One accepted item, as the file keeps it.
-
-    Carries the class, section, citekey and summary beside the id, none
-    of which the suppression reads: the id alone decides that. They are
-    there so the record is auditable by a person who no longer has the
-    agenda that raised it -- an opaque list of twelve-character hashes
-    would record the decision without preserving what was decided.
+    """One accepted item, as the file keeps it. Only the id decides
+    suppression; class, section, citekey and summary keep the decision
+    auditable without the agenda that raised it.
     """
     return {
         "id": item.id,
@@ -198,10 +140,8 @@ def _resolve(item_id: str, by_id: dict) -> object:
 
 def accept(draft: Path, items: list, ids: list[str], command: str) -> list[str]:
     """Record each of `ids` as accepted, returning one message per id.
-
-    Raises `NotAcceptable` before writing anything, so a mistyped id in a
-    repeated `--accept` leaves the record exactly as it was rather than
-    half-applied.
+    Raises `NotAcceptable` before writing, so a mistyped id leaves the
+    record untouched.
     """
     source = load(draft)
     if source.reason:
@@ -226,22 +166,13 @@ def accept(draft: Path, items: list, ids: list[str], command: str) -> list[str]:
 
 
 def apply(draft: Path, agenda, args) -> int | None:
-    """`--accept`'s whole side of the command: record each id, say what
-    was recorded, and return the layer's usage-error code if any id was
-    refused.
-
-    Takes the built `Agenda` rather than building one, so this module
-    stays a leaf its own package can import without a cycle.
+    """`--accept`'s side of the command: record each id, report, and return
+    the usage-error code if any was refused. Takes the built `Agenda`, so
+    this module stays a leaf.
     """
-    # Resolved against `items + suppressed`, so an id accepted by an
-    # earlier run reports "already accepted" rather than "no such item"
-    # -- suppression is what would otherwise hide it from the very lookup
-    # checking it. A stale-refused item is deliberately not in that
-    # lookup: it is off this run's worklist on other grounds, and every
-    # refusable class is unacceptable anyway (`build_agenda`). The
-    # messages keep the written-files summary's stream discipline:
-    # stderr under `--json`, so a caller piping stdout through
-    # `json.loads` is unaffected.
+    # Resolved against `items + suppressed`, so a re-accepted id says
+    # "already accepted"; stale-refused items are excluded (no refusable
+    # class is acceptable). Messages go to stderr under `--json`.
     try:
         messages = accept(
             draft,
@@ -259,9 +190,8 @@ def apply(draft: Path, agenda, args) -> int | None:
 
 
 def write(draft: Path, records: list[dict], command: str) -> Path:
-    """The record, with the same provenance envelope every report carries
-    and the same no-date discipline: two identical acceptance histories
-    produce byte-identical files."""
+    """The record, with every report's envelope and no date, so identical
+    histories produce byte-identical files."""
     payload = review.envelope(draft, "agenda", command)
     payload[SUFFIX] = records
     path = accepted_path(draft)

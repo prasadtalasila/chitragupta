@@ -1,21 +1,11 @@
 """Which skills are this repository's own developer tooling (#1188).
 
-A skill marks itself developer-only in its `SKILL.md` frontmatter:
-
-    metadata:
-      audience: developer
-
-It sits beside the genre skills in every harness folder, so a checkout's
-harness offers it with no setup, but no distribution carries it:
-`chitragupta init` does not scaffold it (`chitragupta/init.py`),
-`scripts/release.py` leaves it out of the zip, and `pyproject.toml`'s
-`include` names every other skill folder one by one instead of the whole
-harness trees, since Poetry's `exclude` cannot take a path back out of an
-`include`d folder (measured; tests/test_developer_skills.py pins the
-list).
-
-Stdlib-only, and imports nothing from the package: `scripts/release.py`
-loads this file by path, the way `scripts/merge_pr.py` loads its sibling.
+Marked by `metadata: audience: developer` in `SKILL.md` frontmatter.
+Offered in a checkout, never distributed: not scaffolded, not zipped,
+and `pyproject.toml` lists the other skills one by one because an
+`include`d folder cannot be excluded back out
+(tests/test_developer_skills.py). Stdlib-only and import-free:
+`scripts/release.py` loads this file by path.
 """
 
 import re
@@ -24,9 +14,7 @@ from pathlib import Path
 # Where each harness reads its skills (docs/HARNESS.md).
 SKILL_TREES = (".claude/skills", ".agents/skills", ".opencode/skills")
 
-# `audience: developer` indented under a top-level `metadata:` key, with
-# only other indented lines between them. `\r?` so a `\r\n` checkout
-# still matches.
+# `audience: developer` under a top-level `metadata:`; `\r?` for CRLF.
 _MARKER = re.compile(
     r"^metadata:[ \t]*\r?\n(?:[ \t]+.*\n)*?[ \t]+audience:[ \t]*developer[ \t]*\r?$",
     re.MULTILINE,
@@ -35,10 +23,8 @@ _MARKER = re.compile(
 
 def developer_skills(root: Path) -> set[str]:
     """The skill folders under `root` marked developer-only, as POSIX
-    paths relative to `root` (e.g. `.claude/skills/demo-recorder`).
-
-    Only the frontmatter counts: a skill that *describes* the marker in
-    its body is not marked by it.
+    paths relative to `root`. Only the frontmatter counts, not a body
+    that describes the marker.
     """
     found = set()
     for tree in SKILL_TREES:

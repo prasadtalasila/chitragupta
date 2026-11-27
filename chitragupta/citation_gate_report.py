@@ -1,22 +1,16 @@
 """The citation gate's PASS/FAIL lines, in one printer.
 
-Split from `chitragupta/citation_gate.py`, which is at the 250-code-line
-cap, when #1118 gave a FAIL two causes to tell apart. One printer, so a
-caller gating a document it already holds in memory (`render`'s pre-gate,
-`unit accept`) reports it identically to `run()` rather than
-paraphrasing it. `citation_gate` imports `report` back, so
-`citation_gate.report` stays the name every caller uses.
+So `render`'s pre-gate and `unit accept` report exactly as `run()` does
+(#1118); `citation_gate.report` is re-exported.
 """
 
 
 def report(label: str, result) -> None:
     """Print one `citation_gate.GateResult` in the gate's own shape.
 
-    An unresolved key is one of two things, and the line says which: no
-    ledger row at all (not in the `.bib`, so as good as fabricated), or a
-    real `.bib` entry whose PDF never parsed, which nothing in the corpus
-    can ground (#1118). The second names the status, so the fix -- attach
-    the PDF, or cite something else -- is on the line.
+    An unresolved key either has no ledger row (as good as fabricated) or
+    is a real `.bib` entry whose PDF never parsed (#1118); the line names
+    the status, so the fix is on it.
     """
     if result.ok:
         print(

@@ -1,8 +1,5 @@
 """The Markdown report `scan --write` files: standing preamble prose plus
 the findings, grouped into severity buckets.
-
-Split out of chitragupta/review/verbatim_check.py (#361) -- see
-chitragupta/review/verbatim_check/_corpus.py's docstring for the split.
 """
 
 from pathlib import Path
@@ -34,16 +31,10 @@ def render_scan_markdown(
     suppressed: int = 0,
     not_run: list[dict] | None = None,
 ) -> str:
-    """The same findings as a Markdown report, for `--write`.
-
-    Kept beside `format_scan` rather than replacing it: stdout is read in
-    a terminal mid-review and wants no syntax, while a file kept for
-    months is read next to the same draft's provenance and coverage
-    reports and should look like them.
-
-    `command` is built once, by `scan_command`, and handed to both this
-    function and `scan_payload` -- so the Markdown header and the JSON
-    envelope cannot disagree about what produced them.
+    """The same findings as a Markdown report, for `--write`, beside
+    `format_scan` (a terminal wants no syntax; a kept file should look
+    like its sibling reports). `command` comes from `scan_command`, shared
+    with `scan_payload` so header and envelope agree.
     """
     allowlist_path = config.VERBATIM_ALLOWLIST_PATH
     # Shown relative to the project, as the draft is: an absolute path put
@@ -79,15 +70,8 @@ def render_scan_markdown(
 
 
 def _bucketed_lines(findings: list[dict]) -> list[str]:
-    """The findings themselves, grouped into `BUCKET_ORDER`'s severity
-    sections.
-
-    Extracted out of `render_scan_markdown` for the reason
-    `_exact_findings_from_groups` was extracted out of its own caller:
-    this double loop's nesting was counting against a function that is
-    otherwise a straight-line assembly of a document, and that function
-    was over CODE-STANDARDS.md's C1 limit before this tier added to it.
-    """
+    """The findings, grouped into `BUCKET_ORDER`'s severity sections
+    (split out for C1)."""
     buckets = {key: [] for key in BUCKET_ORDER}
     for f in findings:
         buckets[_bucket(f)].append(f)
@@ -106,9 +90,7 @@ def _bucketed_lines(findings: list[dict]) -> list[str]:
                 f"{_page_range(f)} ({_tier_note(f)}){flag_text}",
                 "",
             ]
-            # The heading locates the run in the *source* (`p.N`); this
-            # locates it in the draft. Its own line rather than more
-            # heading, which is already carrying five facts.
+            # Locates the run in the draft; the heading has the source page.
             position = _draft_position(f)
             if position:
                 lines += [f"At draft {position}.", ""]
@@ -124,19 +106,10 @@ def _passage_lines(finding: dict) -> list[str]:
     """The finding's text: one blockquote where the two sides are the
     same words, two marked-up ones where they are not.
 
-    A bare blockquote under a report headed "verbatim" reads as a
-    quotation of the source, and on the exact tier it *is* one. On the
-    skip-gram and embedding tiers it is the draft's own words,
-    normalized -- so the same rendering made a substitution or a
-    restatement look like an uncaught lift and invited exactly the wrong
-    question ("why did the exact tier miss this?").
-
-    Printing both sides answers that; marking them up is what makes the
-    answer readable. Finding a swapped word by collating two paragraphs
-    is work a reader will do carefully twice and then stop doing, and it
-    is the whole content of a tier-2 or tier-3 finding -- so the words
-    that differ are marked and the overlap is left bare, rather than the
-    reverse. See `_scan_diff.annotate`.
+    On tiers 2 and 3 a lone blockquote of the draft's normalised words
+    looked like an uncaught lift. Both sides are shown, differing words
+    marked and the overlap bare, since collating by eye is work readers
+    stop doing (`passage_diff.annotate`).
     """
     if finding["source_text"] is None:
         return [f"> {finding['fragment']}", ""]

@@ -1,10 +1,5 @@
 """Building the pandoc invocation itself: the CSL style a render actually
-uses, the argv/environment pandoc runs under, and running it.
-
-Split from `chitragupta/render_output/__init__.py` (#441). Re-exported
-from there like every other `_X.py` sibling in this package -- see that
-module's own docstring on why the package's attribute surface has to
-stay identical to the single module it replaced.
+uses, the argv/environment pandoc runs under, and running it (#441).
 """
 
 import os
@@ -22,52 +17,20 @@ from chitragupta.render_output._tables import _LATEX_BOUND
 from chitragupta.render_output._tikz_libraries import header_include, preamble_libraries
 from chitragupta.render_output._unicode import font_header_path
 
-# What a table's caption is allowed to be as wide as. pandoc writes every
-# Markdown table as a `longtable`, and `longtable.sty` sets its captions
-# in a `\parbox` of `\LTcapwidth`, which it initialises to a hardcoded
-# **4in** -- not `\textwidth`, and not anything derived from the page. So
-# at this project's own geometry (a4, `margin=1in`, so a 6.27in
-# `\textwidth`) every table caption wrapped inside the middle two-thirds
-# of the line while the prose around it ran the full width. Measured on a
-# real `pdflatex` run, not inferred: one 150-character caption set as
-# three lines before this and two after.
-#
-# Guarded with `\ifdefined` rather than made conditional on the draft
-# having a table, because pandoc's own LaTeX template only loads
-# `longtable` when the document has one (`$if(tables)$`) -- so the
-# register does not exist in a table-free draft, and an unguarded
-# `\setlength` would turn every such render into an `Undefined control
-# sequence`. `header-includes` is emitted after that package load, which
-# is what makes the guard read the right answer.
-#
-# `\ifdefined` is an e-TeX primitive rather than a plain-TeX one, which
-# matters only for a `tex` output, since that is compiled by the reader's
-# engine and not by the LuaLaTeX a `pdf` output pins. Every engine in
-# use for LaTeX today is e-TeX-based, pdflatex included.
-#
-# LaTeX-bound formats only: pandoc's HTML template interpolates
-# `header-includes` into `<head>` verbatim, so an unconditional one would
-# put a `\setlength` in an HTML document.
-#
-# A `--fragment` render emits no preamble for this to land in, so it
-# reaches nothing there -- passed anyway, exactly as the `fvextra` load
-# below is, rather than carrying a second `not fragment` condition. The
-# book that `\input`s the unit sets the same length in its own preamble
-# (`.claude/skills/book-assembler/SKILL.md`), where `longtable` is loaded
-# unconditionally and no guard is needed.
+# A table caption's width. pandoc writes tables as `longtable`, whose captions
+# use `\LTcapwidth`, hardcoded to 4in, not `\textwidth`, so captions wrapped in
+# the middle of the line (measured). Guarded with `\ifdefined` because the
+# template loads `longtable` only when there is a table, and an unguarded
+# `\setlength` would be an `Undefined control sequence`. LaTeX-bound only:
+# HTML's template puts `header-includes` in `<head>`. A fragment's book sets it
+# in its own preamble (book-assembler's SKILL.md).
 _LONGTABLE_CAPTION_WIDTH = (
     r"header-includes=\ifdefined\LTcapwidth\setlength{\LTcapwidth}{\textwidth}\fi"
 )
 
-# The one engine chitragupta's own pdf renders use (#996). LuaLaTeX reads
-# UTF-8 and OpenType fonts natively, so a character prints when a font
-# has it, not when someone has written a table entry for it -- which is
-# the limit #948's chitragupta-unicode.sty works around under pdflatex.
-# Chosen over XeLaTeX for luaotfload's fallback chains: one list covers a
-# Latin draft quoting a Telugu title or a Chinese author, where XeLaTeX
-# needs per-script font switching that, measured, still dropped
-# Devanagari and three symbols. plans/996-unicode-pdf-engine.md has the
-# measurements, including the build-time cost.
+# chitragupta's pdf engine (#996): LuaLaTeX prints any character some font has.
+# Over XeLaTeX for luaotfload's fallback chains; XeLaTeX's per-script switching
+# still dropped Devanagari and symbols (plans/996-unicode-pdf-engine.md).
 PDF_ENGINE = "lualatex"
 
 
@@ -76,13 +39,8 @@ def _render_csl(  # pragma: no cover-windows
 ) -> Path:
     """The CSL style this render actually hands pandoc.
 
-    `MissingBinary` rather than a new exception type, even though a style
-    file isn't a binary: it is the same class of failure (a render input
-    this host doesn't have), and every genre skill's documented behaviour
-    is to warn-and-continue on the `[missing-binary]` prefix `main()`
-    prints for it, rather than blocking the draft. A new type would need
-    its own handler here and a matching line in all five SKILL.md files
-    to get the same outcome.
+    `MissingBinary`, not a new type: the same class of failure (a missing
+    render input), which every genre skill already warns-and-continues on.
     """
     csl_path = _resolve_csl(csl) if csl is not None else config.CSL_STYLE_PATH
     if not csl_path.is_file():
@@ -100,12 +58,9 @@ def _render_csl(  # pragma: no cover-windows
 def _has_code_block(text: str) -> bool:
     """Whether a draft has anything that renders as a LaTeX `verbatim`.
 
-    Both spellings, for the reason `_figure_refs` reads both of its own:
-    a Markdown draft fences its code and a `.tex` fragment writes the
-    environment outright, and this decides whether `fvextra` is loaded
-    for either. Deliberately not `citation_gate`'s equivalents -- those
-    match a *complete* block in order to blank it, and an unterminated
-    fence should still load the package rather than silently not.
+    Both the Markdown fence and the `.tex` environment. Not `citation_gate`'s
+    matchers: those need a complete block, but an unterminated fence should
+    still load `fvextra`.
     """
     return bool(re.search(r"^[ \t]*(`{3,}|~{3,})", text, re.MULTILINE)) or bool(
         re.search(r"\\begin\{(verbatim|lstlisting|minted)\*?\}", text)
@@ -132,37 +87,19 @@ def _pandoc_command(
 ) -> tuple[list[str], dict[str, str] | None]:
     """The pandoc argv and the environment to run it in.
 
-    `defer_citations` takes a fragment's citations -- `--natbib`, no
-    reference-list filter -- and none of its shape: the output stays a
-    standalone article whose labels need no prefix. `draft diff` renders
-    both versions of a draft this way so latexdiff compares `\\citep{key}`
-    with `\\citep{key}`; resolved, one new citation renumbers every later
-    one and each renumbering reads as a change (plans/1194-draft-diff.md).
+    `defer_citations` takes a fragment's `--natbib` citations but none of its
+    shape. `draft diff` renders both versions this way so latexdiff compares
+    `\\citep{key}` with `\\citep{key}`; resolved numbers would shift and every
+    renumbering would read as a change (plans/1194-draft-diff.md).
     """
     deferred = fragment or defer_citations
-    # A fragment is for `\input` into a larger document, so it gets no
-    # preamble and no `\begin{document}` -- and its own `#` heading is
-    # that document's chapter, not a section, which is why the two flags
-    # travel together (docs/WRITE-A-BOOK.md's assembly step is the caller).
-    # Citations are **deferred**, not resolved: `--natbib` emits
-    # `\citep{key}` and leaves the numbering to one `bibtex` pass over the
-    # whole assembled document. Citeproc assigns numbers in the pass that
-    # builds the list, so resolving per unit and listing per book would
-    # give two chapters the same `[2]` for different sources -- measured,
-    # not assumed. The book supplies `\bibliographystyle{IEEEtran}` and
-    # `\bibliography{...}`; `_copy_book_bibliography` puts the `.bib`
-    # beside it. A thesis fragment wants the same thing for the same
-    # reason (.claude/skills/thesis-chapter-writer's "inherit the thesis's
-    # own document-wide bibliography"), which is why this keys off
-    # `fragment` and needs no further discrimination.
-    # `--no-highlight` travels with it for the same reason: pandoc's
-    # syntax-highlighting output uses `Shaded`/`Highlighting` environments
-    # that only the standalone template defines, so a highlighted fragment
-    # fails to compile in the book that \input-s it. Plain `verbatim` is
-    # what a fragment can promise. Its citations stay `\citep{key}`
-    # (`--natbib`, below), so the book supplies only its own
-    # `\bibliographystyle`/`\bibliography` -- see book-assembler's
-    # references/latex-conventions.md.
+    # A fragment is `\input` into a larger document: no preamble, its `#` is a
+    # chapter. Citations are deferred (`--natbib`) to one bibtex pass over the
+    # whole book: per-unit citeproc gave two chapters the same `[2]` for different
+    # sources (measured). The book supplies the style and `\bibliography{...}`.
+    # `--no-highlight` too: `Shaded`/`Highlighting` exist only in the standalone
+    # template, so a highlighted fragment fails in the book (see book-assembler's
+    # references/latex-conventions.md).
     shape = ["--top-level-division=chapter", "--no-highlight"] if fragment else ["--standalone"]
     cmd = [
         "pandoc",
@@ -170,41 +107,25 @@ def _pandoc_command(
         *shape,
         *_unit_labels.pandoc_args(input_path, fragment),
         *_index_terms.pandoc_args(input_path, index_terms, out_path.parent),
-        # Local image references (`![...](figure.png)`) in the draft are
-        # relative to input_path's own directory, not whatever directory
-        # this CLI happened to be invoked from. Without this, pandoc's
-        # PDF/DOCX writers (which read the image file themselves, unlike
-        # the tex writer, which just emits an unverified \includegraphics
-        # path) can't find it, and silently replace the image with its
-        # alt-text caption instead of erroring -- a wrong-but-successful
-        # render that's easy to miss without diffing file sizes.
+        # Images are relative to the draft's directory. Without this, pandoc's
+        # PDF/DOCX writers silently replace a missing image with its alt text.
         "--resource-path",
         str(input_path.resolve().parent),
         "--variable",
         f"documentclass={documentclass}",
         "--variable",
         f"fontsize={fontsize}",
-        # Pandoc's own default LaTeX template appends "paper" itself
-        # (papersize=a4 -> "...,a4paper,..."); passing "a4paper" here
-        # would double up to "a4paperpaper" -- verified empirically
-        # against pandoc 3.1.3's default template, not documented
-        # anywhere obvious, so don't "fix" this back to "a4paper".
+        # The template appends "paper" itself; "a4paper" here would become
+        # "a4paperpaper" (pandoc 3.1.3). Don't "fix" this back to "a4paper".
         "--variable",
         f"papersize={papersize}",
         "--variable",
         f"geometry:margin={margin}",
-        # Straight before `--citeproc`: pandoc runs citeproc and filters
-        # in argv order, and this one rewrites the bibliography citeproc
-        # is about to read. A `.bib` field's raw TeX (`\directlua{...}`)
-        # then prints as text instead of running in LuaLaTeX, and the
-        # author's own citation prefix and suffix, which citeproc merges
-        # into the same node, are never touched (#1022) -- see the
-        # filter's own header. Before breakable_inline_code.lua too,
-        # which puts raw `\penalty0` breaks between pieces of a code span:
-        # run the other way round, a `\texttt{...}` in a `.bib` title
-        # printed those as visible text. A fragment has no reference list
-        # here (`--natbib` defers it to the book's bibtex), so it has
-        # nothing to rewrite.
+        # Straight before `--citeproc` (filters run in argv order): a `.bib`
+        # field's raw TeX (`\directlua{...}`) then prints as text, leaving the
+        # author's prefix/suffix untouched (#1022). Before breakable_inline_code.lua
+        # too, or a `\texttt` in a `.bib` title shows its `\penalty0` breaks. A
+        # fragment has no reference list here to rewrite.
         *(
             []
             if deferred
@@ -218,19 +139,14 @@ def _pandoc_command(
         *(["--natbib"] if deferred else ["--citeproc", "--csl", str(csl_path)]),
         "--bibliography",
         str(safe_bib),
-        # Gives a long inline code span (a URL, a REST path, a file
-        # path) somewhere to break in LaTeX/PDF output -- see the
-        # filter's own header comment for why pandoc's default
-        # \texttt{...} can't. It no-ops for every other writer
-        # (FORMAT ~= "latex"), so it's safe to pass unconditionally.
+        # Lets a long inline code span break in LaTeX (see the filter's header);
+        # a no-op for other writers, so safe unconditionally.
         "--lua-filter",
         str(config.shipped("assets", "pandoc", "breakable_inline_code.lua")),
     ]
-    # A fragment's book supplies its own `\bibliographystyle`; a deferred
-    # standalone render has only pandoc's template to name one, whose
-    # default is `plainnat` (author-year). IEEEtran with natbib's numeric
-    # compressed markers is the bibtex spelling of the IEEE CSL a plain
-    # render uses, so a compiled redline reads like the draft's own pdf.
+    # A deferred standalone render names its own style (the template default
+    # is author-year `plainnat`): IEEEtran with compressed numeric natbib,
+    # matching the IEEE CSL of a plain render.
     if defer_citations:
         cmd += [
             "--variable",
@@ -238,25 +154,10 @@ def _pandoc_command(
             "--variable",
             "natbiboptions=numbers,sort&compress",
         ]
-    # Loaded only for a draft that actually has a figure (#222) --
-    # pandoc's default LaTeX template has no \usepackage{tikz}, so a bare
-    # tikzpicture environment fails with "Environment tikzpicture
-    # undefined" without it, but the package load itself is inert for a
-    # draft that never draws one, so this stays conditional.
-    #
-    # The libraries those figures ask for ride in the *same* string
-    # (#781), not a second `--variable`: `\usetikzlibrary` needs `tikz`
-    # already loaded, and pandoc's concatenation order for repeated
-    # variables is not a contract to lean on. They are loaded here rather
-    # than left in the figure file because a figure file is `\input`
-    # inside a `figure` float and a float is a group -- see
-    # `_tikz_libraries.py` for what that does to node placement.
-    #
-    # Not conditioned on `_LATEX_BOUND`, matching the tikz load it
-    # extends rather than quietly diverging from it: `_figure_refs` reads
-    # the draft on disk, so an html render of a figure-bearing draft
-    # already interpolates this into `<head>`. Deliberate -- changing it
-    # would be a second, unrelated fix.
+    # `tikz` only for a draft with a figure (#222); the template lacks it. The
+    # libraries ride in the same string (#781; see `_tikz_libraries.py`). Not
+    # gated on `_LATEX_BOUND`, matching the tikz load: html already gets this in
+    # `<head>`, and changing that would be a second, unrelated fix.
     if figure_refs:  # pragma: no cover-windows
         cmd += [
             "--variable",
@@ -265,28 +166,12 @@ def _pandoc_command(
                 preamble_libraries(figure_refs, input_path.parent, fragment, output_format)
             ),
         ]
-    # Same shape, same reason, for a draft that has a fenced code block:
-    # a LaTeX `verbatim` line is one unbreakable box, so a line wider
-    # than the page runs into the margin and the engine reports an
-    # Overfull \hbox. `fvextra`'s `breaklines` wraps it instead, marking
-    # each continuation with a `,→` so a wrapped line cannot be misread
-    # as two. Both environments are redefined because which one pandoc
-    # emits depends on highlighting: a plain fence becomes `verbatim`,
-    # and a language-tagged one becomes `Highlighting` (whose
-    # `commandchars` has to be carried over, or every highlight macro
-    # prints literally).
-    #
-    # `breaklines` without `breakanywhere`, so a break lands at a space
-    # rather than mid-identifier -- checked against this project's own
-    # book, where no over-wide line lacks a space before the limit.
-    #
-    # Conditional for the reason the tikz load is: `fvextra` ships in
-    # texlive-latex-extra, and a host with a smaller TeX should not lose
-    # a render that works today over a package its draft never needs.
-    # A `--fragment` render emits no preamble at all, so this reaches
-    # nothing there -- a book supplies it from its own preamble, the
-    # same way it supplies its bibliography commands (book-assembler's
-    # references/latex-conventions.md).
+    # A fenced code block: `verbatim` lines are unbreakable boxes that overrun the
+    # margin, so `fvextra`'s `breaklines` wraps them with a `,→` marker. Both
+    # `verbatim` and `Highlighting` are redefined (the latter keeping its
+    # `commandchars`, or highlight macros print literally). No `breakanywhere`,
+    # so breaks fall at spaces. Conditional, like tikz, because `fvextra` is
+    # texlive-latex-extra; a fragment's book supplies it itself.
     if has_code_block:  # pragma: no cover-windows
         cmd += [
             "--variable",
@@ -295,18 +180,13 @@ def _pandoc_command(
             r"\DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines}"
             r"\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\},breaklines}",
         ]
-    # `_unicode.preamble_files`: chitragupta-unicode.sty for a `.tex`
-    # output compiled later by someone's pdflatex (#948), and the
-    # project's own unicode-extra.tex. A file per -H rather than a third
-    # header-includes string: pandoc keeps both, include-in-header after
-    # the variable, which is the order the .sty wants (after amssymb,
-    # which the template loads).
+    # `_unicode.preamble_files`: the `.sty` for a `.tex` (#948) and the project's
+    # unicode-extra.tex. A file per -H, which pandoc emits after header-includes,
+    # the order the .sty needs (after amssymb).
     for path in preamble_files or []:
         cmd += ["--include-in-header", str(path)]
-    # A `.tex` draft's preview reads raw TeX, numbers its headings, titles
-    # its reference list and loads the author's preamble file (#1164,
-    # #1120). Here, before the font header the pdf branch adds, which
-    # stays last; `_tex_preview` has why.
+    # A `.tex` draft's preview setup (#1164, #1120); before the font header,
+    # which stays last. `_tex_preview` has why.
     cmd += _tex_preview.pandoc_args(input_path, output_format, fragment)
     # Where a figure may float (#1065): every standalone LaTeX-bound render,
     # and a copy beside a fragment that draws one. `_floats` has why.
@@ -317,61 +197,34 @@ def _pandoc_command(
     if output_format == "pdf":  # pragma: no cover-windows
         _require_tex_readable_tmpdir()
         cmd += ["--pdf-engine", PDF_ENGINE]
-        # Last in the preamble. It sets chitragupta/pdf_fonts.py's fonts and
-        # fallback chain itself, overriding the template's, because only
-        # newer pandoc templates know `mainfontfallback` (apt's 3.1.3 on
-        # Ubuntu 24.04 does not); then a character no font in the chain
-        # has stops the build and is named (see the file's own header).
+        # Last in the preamble: sets the fonts and fallback chain itself, since
+        # apt's pandoc 3.1.3 template lacks `mainfontfallback`.
         cmd += [
             "--include-in-header",
             str(font_header_path()),
         ]
-        # No `\write18` at all, not even TeX Live's default restricted
-        # allow-list (`shell_escape = p`). Nothing a draft legitimately
-        # needs calls out to a shell, and the allow-list is still code
-        # execution chosen by the document (#823). The one casualty is
-        # graphicx's `.eps` -> `repstopdf` conversion; docs/SECURITY.md
-        # says to use PDF or PNG figures instead.
-        # The read fence rides along: `tex_engine` (#1037) has why it is a
-        # LuaTeX callback and no longer kpathsea's `openin_any=p` alone.
+        # No `\write18` at all, not even TeX Live's restricted allow-list: that is
+        # still document-chosen code execution (#823). Casualty: `.eps` conversion
+        # (docs/SECURITY.md says use PDF/PNG). The read fence rides along
+        # (`tex_engine`, #1037).
         cmd += [f"--pdf-engine-opt={opt}" for opt in tex_engine.engine_opts()]
-        # LaTeX's own \input/\include search path is separate from
-        # --resource-path above (that's pandoc's, for images pandoc
-        # reads itself). Without TEXINPUTS, the engine looks for
-        # figures/fig1.tex relative to its own working directory, not
-        # the draft's -- confirmed failing with "! LaTeX Error: File
-        # 'figures/fig1.tex' not found" otherwise. The trailing separator
-        # is not optional: TEXINPUTS is a prefix, not a replacement, and
-        # dropping it loses the default search path the engine needs for
-        # its own style files. It is os.pathsep, not ':', because TeX on
-        # Windows separates with ';' and a ':' there splits the drive
-        # letter off the draft's own directory (#950). Merges with os.environ rather than
-        # replacing it -- env={"TEXINPUTS": ...} alone drops PATH, and
-        # the subprocess can't find pandoc at all. chitragupta-unicode.sty
-        # is not on it: it does nothing under LuaLaTeX, so a pdf render
-        # no longer loads it (#996; `_unicode.preamble_files`).
+        # LaTeX's own \input search path, separate from --resource-path, so
+        # figures/x.tex resolves from the draft's directory. The trailing separator
+        # keeps the default path for style files; it is os.pathsep because TeX on
+        # Windows uses ';' and ':' would split the drive letter (#950). Merged with
+        # os.environ, or PATH is lost and pandoc is not found.
         env = tex_engine.engine_env({"TEXINPUTS": f"{input_path.resolve().parent}{os.pathsep}"})
-        # Reads outside the draft are refused (#823): without that, a
-        # `.bib` title of `\input{/home/alice/.netrc}` reaching the engine
-        # as raw LaTeX would typeset the file into the reference list.
-        # pandoc's own `--sandbox` does not help: it confines pandoc's
-        # reads, not the engine's, and it drops a docx render's images
-        # (measured on pandoc 3.6.4; plans/823-tex-read-hardening.md).
-        # The fence checks the name as TeX spells it, so the draft's
-        # `figures/x.tex`, found through TEXINPUTS above, still loads --
-        # and so a symlink is invisible to it, which is why `render()`
-        # refuses an escaping one first (`_refuse_escaping_refs`), and
-        # why a dotted TMPDIR is refused up front
-        # (`_require_tex_readable_tmpdir`). `tex_engine` sets the rules
-        # after the host's environment, so a host cannot loosen them.
+        # Reads outside the draft are refused (#823), or a `.bib` title of
+        # `\input{<some private file>}` would typeset it. pandoc's `--sandbox`
+        # confines pandoc, not the engine, and drops docx images
+        # (plans/823-tex-read-hardening.md). The fence checks names as TeX spells
+        # them, so symlinks are invisible to it: hence `_refuse_escaping_refs`
+        # and `_require_tex_readable_tmpdir`. Rules are set after the host env, so
+        # a host cannot loosen them.
         #
-        # It fences TeX's own reads, not Lua's. Under LuaLaTeX,
-        # `\directlua` in a draft or a figure file can read and write
-        # any file the user can, and read the environment; that is
-        # an accepted residual (docs/SECURITY.md). A `.bib` field,
-        # which is a collaborator's text rather than the author's,
-        # cannot reach it: bib_raw_tex_as_text.lua prints its raw
-        # TeX as text.
+        # It fences TeX's reads, not Lua's: `\directlua` in a draft or figure can
+        # reach any user file (an accepted residual, docs/SECURITY.md). A `.bib`
+        # field cannot: bib_raw_tex_as_text.lua prints its raw TeX as text.
     cmd += ["-o", str(out_path)]
     return cmd, env
 
@@ -385,25 +238,13 @@ def _require_toolchain(output_format: str) -> None:  # pragma: no cover-windows
 
 
 def _require_pdf_toolchain() -> None:
-    """Raises `MissingBinary` unless this host can render a pdf: `lualatex`
-    on PATH, its font loader installed, and the fonts the header sets.
+    """Raises `MissingBinary` unless this host can render a pdf: `lualatex`,
+    its font loader, and the fonts the header sets.
 
-    `lualatex` itself is in `texlive-binaries` and its format in
-    `texlive-latex-base`, so it is on PATH on a host that installed
-    neither font loader nor fonts. `luaotfload` is `texlive-luatex`.
-    Without it, every pdf render failed with `! Font \\TU/lmr/m/n/10=...
-    not loadable: metric data not found or bad`, which names a font that
-    is installed and says nothing about the missing package (measured,
-    plans/996-unicode-pdf-engine.md, Q0). Same probe and same reasoning
-    as `_require_tikz`, including saying nothing when there is no
-    `kpsewhich` to ask.
-
-    Then the three fonts the shipped header sets (`pdf_fonts.REQUIRED_FONTS`).
-    Without one, every render failed inside pandoc with fontspec's `The
-    font "STIXTwoText" cannot be found`, which `_unicode_repair_hint` does
-    not read and which names no remedy (#1022). About 0.2 s a font,
-    against a LuaLaTeX run of seconds. Said nothing when there is no
-    `luaotfload-tool` to ask, for the same reason as `kpsewhich`.
+    `lualatex` can be on PATH without `luaotfload` (`texlive-luatex`), whose
+    absence gives a misleading "font not loadable" error (plans/996, Q0).
+    Missing `pdf_fonts.REQUIRED_FONTS` gave a fontspec error naming no remedy
+    (#1022); ~0.2 s a font. No `kpsewhich` or `luaotfload-tool` means no probe.
     """
     _require(PDF_ENGINE)
     kpsewhich = programs.resolve_program("kpsewhich")
@@ -430,14 +271,9 @@ def _require_tex_readable_tmpdir() -> None:
     """Raises `MissingBinary` when the TeX engine could not read pandoc's
     own temp copy of the draft.
 
-    pandoc compiles in `$TMPDIR/tex2pdf.-XXXX/` and names `input.tex` to
-    the engine absolutely, and kpathsea's `openin_any=r` (`tex_engine`,
-    #823) refuses that name when a directory in it starts with a dot,
-    so `TMPDIR=~/.cache/tmp` -- common on HPC and quota'd homes -- failed
-    every pdf render with an exit 43 that reads as a security refusal.
-    `MissingBinary` for `_render_csl`'s reason: a render input this host
-    does not have, with the same warn-and-continue handling in every
-    genre skill.
+    kpathsea's `openin_any=r` (#823) refuses a path with a dotted directory,
+    so `TMPDIR=~/.cache/tmp` (common on HPC) failed every pdf with exit 43.
+    `MissingBinary` for `_render_csl`'s reason.
     """
     tmp = Path(tempfile.gettempdir())
     dotted = [part for part in tmp.parts if part.startswith(".")]
@@ -452,19 +288,11 @@ def _require_tex_readable_tmpdir() -> None:
 
 def _run_pandoc(cmd: list[str], env: dict[str, str] | None) -> None:
     """Runs pandoc, then forwards any stderr it printed even though it
-    exited 0.
-
-    `capture_output=True` was silently discarding it on the success path
-    (M-7) -- citeproc's own diagnostics ("citation not found", a missing
-    image) land on pandoc's stderr with a zero exit code, not a raised
-    `CalledProcessError`, so nothing surfaced them. `check=True` still
-    raises on a nonzero exit; that exception already carries its own
-    stderr, so this is only for the case a raise never reaches.
+    exited 0: citeproc's "citation not found" and missing images exit 0 (M-7).
     """
-    # Both programs by absolute path (#974): pandoc, and the engine it
-    # spawns by whatever name `--pdf-engine` gives, which on Windows is
-    # looked up in cwd before PATH. Resolved here rather than where `cmd`
-    # is built, which the tests do on hosts with no TeX at all.
+    # Both programs by absolute path (#974): on Windows the engine named by
+    # `--pdf-engine` is looked up in cwd before PATH. Resolved here, not where
+    # `cmd` is built, because tests build it on hosts with no TeX.
     argv = [programs.require_program(cmd[0]), *cmd[1:]]
     if "--pdf-engine" in argv:
         engine = argv.index("--pdf-engine") + 1
@@ -473,8 +301,7 @@ def _run_pandoc(cmd: list[str], env: dict[str, str] | None) -> None:
     if result.stderr.strip():
         for line in result.stderr.splitlines():
             print(f"[pandoc] {line}", file=sys.stderr)
-    # A figure still alone on a float-only page, which the pdf records
-    # itself because its log is gone by now (#1065). Advisory: printed,
-    # never raised.
+    # A figure alone on a float-only page, recorded in the pdf since its log is
+    # gone (#1065). Advisory: printed, never raised.
     if "--pdf-engine" in argv:
         _floats.print_report(Path(argv[argv.index("-o") + 1]))

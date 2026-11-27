@@ -1,15 +1,9 @@
 """The corpus layer's passage sidecar on disk: where it lives, how it is
 written, and whether what is there can be read at all.
 
-Split out of `chitragupta/passages.py` for issue 844, which that module
-had no room for under docs/CODE-STANDARDS.md's 250-line ceiling. The
-boundary is the one `_passage_records.py` drew: everything here is about
-the *file* and never touches `Passage`, while everything left there turns
-a readable file's records into passages. Re-exported from
-`chitragupta/passages.py`, so `passages.write_sidecar` and friends --
-which `pdf_text` calls and the tests monkeypatch -- are unchanged.
-
-Stdlib-only, like its parent.
+About the file, never `Passage` (issue 844); re-exported from
+`chitragupta/passages.py`, so tests' monkeypatches are unchanged.
+Stdlib-only.
 """
 
 import json
@@ -23,25 +17,17 @@ from chitragupta.citekey_safety import citekey_path
 def sidecar_path(citekey: str) -> Path:
     """The corpus layer's passage sidecar for `citekey` (rung 2).
 
-    Built from the citekey in one place, so the writer in
-    `chitragupta/pdf_text/` and the reader in `passages` cannot drift
-    apart. The enrichment layer's own sidecar (rung 1) is *not* this path
-    -- it lives under `config.DOCLING_DIR`, written by that layer's own
-    parse under its own OCR and figure settings, so the two must not share
-    a file even though they now key on the same string.
+    Not the enrichment layer's rung-1 sidecar under `config.DOCLING_DIR`,
+    whose OCR and figure settings differ.
     """
     return citekey_path(config.PARSED_DIR, citekey, ".passages.json")
 
 
 def write_sidecar(citekey: str, records: list[dict]) -> Path:
-    """Write `records` whole or not at all.
-
-    Through `_atomic_write.write_atomically`, shared with the parsed text
-    (#894): a bare `write_text` killed mid-write left a torn file that
-    every reader took for "no passages" (issue 844). Its temp name does
-    not end in `.passages.json`, so debris from a killed write is never
-    read as a sidecar. An `OSError` still reaches the caller unchanged --
-    `pdf_text.extract_text` reports it as a transient failure (#842).
+    """Write `records` whole or not at all (#894): a torn file read as "no
+    passages" (issue 844). The temp name never ends in `.passages.json`.
+    An `OSError` reaches `pdf_text.extract_text` as a transient failure
+    (#842).
     """
     path = sidecar_path(citekey)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -52,13 +38,9 @@ def write_sidecar(citekey: str, records: list[dict]) -> Path:
 def clear_sidecar(citekey: str) -> None:
     """Drop any corpus-layer sidecar for `citekey`.
 
-    Called before every re-parse rather than after a failed one. A
-    sidecar quotes the PDF *as parsed at the time it was written*, so it
-    outlives its own truth in three ways: the backend changes to one that
-    produces no passages, the parse of an edited PDF fails outright, or
-    the same backend re-runs and produces different text. Removing it up
-    front makes all three land on "no sidecar" instead of "last week's
-    sentences, attributed to today's document".
+    Before every re-parse, not after a failed one: otherwise a changed
+    backend, a failed parse or new text leaves last week's sentences
+    attributed to today's document.
     """
     sidecar_path(citekey).unlink(missing_ok=True)
 
@@ -71,11 +53,8 @@ def read_records(path: Path) -> list | None:
     """The records at `path`, or None when there is no file.
 
     Raises `SidecarUnreadable` for a file that is there and cannot be
-    read, including one that decodes to something other than a list.
-    `UnicodeDecodeError` is in that set because a file truncated mid-write
-    can split a multi-byte character, which fails before json sees it.
-    An empty list is *readable*: `pdf_text.extract_text` writes one for a
-    reading-order parse that found no prose, and it means "parsed".
+    read; `UnicodeDecodeError` covers truncation mid-character. An empty
+    list is readable: it means "parsed, no prose".
     """
     try:
         records = json.loads(path.read_text(encoding="utf-8"))
@@ -89,12 +68,8 @@ def read_records(path: Path) -> list | None:
 
 
 def sidecar_state(path: Path) -> str:
-    """`"absent"`, `"unreadable"` or `"ok"` -- what `sync` needs to know.
-
-    A reader folds all three of absent, empty and torn into "no passages",
-    which is right for a reader and wrong for `ledger_upsert.
-    _parse_outputs_present`: only a torn file needs a re-parse, and an
-    empty one must not get one on every run.
+    """`"absent"`, `"unreadable"` or `"ok"` -- what `sync` needs to know:
+    only a torn file needs a re-parse, never an empty one.
     """
     try:
         records = read_records(path)

@@ -1,19 +1,11 @@
 """The notation half of the terminology registry: each accepted unit's
 `math.md` `## Symbols`, resolved across the book (#1143).
 
-A symbol's meaning lives in the `math.md` of the unit that typesets it
-(`chitragupta/render_output/_math_symbols.py` reads the table). Here the
-book resolves what one draft cannot: a bold link to the glossary term it
-names, in any accepted unit, and a `see <unit>` pointer to that unit's
-row for the same symbol. Every row then has a *meaning key* -- the
-linked term's `term_key` or the words, plus the note -- which both the
-`[notation]` findings and the List of Symbols group by, so the check and
-the page cannot disagree.
-
-Also here, not in `render_output/_math_findings.py`: the glossary-maths
-finding, a glossary span the shape rules call mathematics that has no
-row in its own unit's mapping and so prints as code. Rows are never
-borrowed from another unit.
+Resolves glossary links and `see <unit>` pointers into a *meaning key*,
+which both `[notation]` findings and the List of Symbols group by, so
+they cannot disagree. Also the glossary-maths finding (an unmapped
+glossary span that would print as code); rows are never borrowed from
+another unit.
 """
 
 from pathlib import Path
@@ -41,8 +33,7 @@ def read_unit(unit_id: str, draft: Path, built: dict) -> None:
     not_math = _math.not_math(text)
     names = _math._symbols_of(mapping)
     for span in sorted(_math_symbols.glossary_spans(draft) - set(mapping) - not_math):
-        # The context rules (a bare letter, a bare number) only for a unit
-        # that keeps a math.md, as `render` decides them for its draft.
+        # Context rules only for a unit that keeps a math.md, as `render`.
         rule = rule_for(span, names, bool(text))
         if rule is not None and not _math._CITEKEY_RE.match(span):
             built["glossary_maths"].append({"unit": unit_id, "span": span, "rule": rule})
@@ -59,8 +50,7 @@ def _row(
         "note": meaning.note,
         "line": meaning.line,
         "typeset": mapping.get(symbol),
-        # The unit's own mapping applied here, per unit, as `_terms` does
-        # for definitions, so the pages convert a whole book in one call.
+        # Converted per unit, as `_terms` does, so pages convert in one call.
         "symbol_markdown": _math.substitute(f"`{symbol}`", mapping),
         "note_markdown": _math.substitute(meaning.note, mapping),
         "text_markdown": _math.substitute(meaning.text, mapping),
@@ -68,7 +58,6 @@ def _row(
 
 
 def _defined_terms(built: dict) -> "dict[str, str]":
-    """`term_key` -> the term as the first unit in outline order spells it."""
     spelled: dict[str, str] = {}
     for row in built["terms"]:
         spelled.setdefault(term_key(row["term"]), row["term"])
@@ -79,8 +68,7 @@ def resolve(built: dict) -> "list[tuple[str, str]]":
     """Give every resolvable `## Symbols` row its `key` and `label`, and
     return a `[notation]` finding for each one that does not resolve.
 
-    Run once, by `registry.build`, after every unit is read: a link may
-    name a term a later unit defines."""
+    Run once after every unit is read: a link may name a later term."""
     spelled = _defined_terms(built)
     problems = []
     for row in built["symbols"]:
@@ -131,12 +119,10 @@ def _pointer_problem(row: dict, target: "dict | None", built: dict) -> "tuple[st
 
 
 def resolved(built: dict) -> "list[dict]":
-    """The rows with a meaning key and LaTeX: what the List of Symbols prints."""
     return [row for row in built["symbols"] if "key" in row and row["typeset"] is not None]
 
 
 def _clashes(built: dict) -> "list[tuple[str, str]]":
-    """A symbol naming two things, and a symbol typeset two ways."""
     found = []
     for symbol, rows in _grouped(resolved(built), lambda row: row["symbol"]).items():
         meanings = _grouped(rows, lambda row: row["key"])
@@ -170,7 +156,6 @@ def _glossary_maths(built: dict) -> "list[tuple[str, str]]":
 
 
 def findings(built: dict) -> "list[tuple[str, str]]":
-    """Every `[notation]` finding, in the order `registry check` prints."""
     unresolved = built["unresolved_symbols"]
     return unresolved + _clashes(built) + _unit_findings(built) + _glossary_maths(built)
 

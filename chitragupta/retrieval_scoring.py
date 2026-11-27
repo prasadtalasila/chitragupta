@@ -1,68 +1,22 @@
 """Okapi BM25, its two free parameters (#788), and the field weights
 that tilt it (#762).
 
-Split from `chitragupta/retrieval.py`, which sat at exactly the
-250-code-line C2 limit when field weighting arrived -- the same pressure
-that produced `retrieval_cache.py` and `retrieval_cli.py` (#441). The
-boundary is not only the line count, and is worth stating so the next
-split lands in the same place: `retrieval.py` owns *what text an item
-contributes* -- `_full_text`, the reference cut, the snippet windows --
-and this module owns *what that text scores*.
+`retrieval.py` owns what text an item contributes; this module owns what
+that text scores. Fields are a list (`FIELDS`), so adding one is a tuple
+entry and a config key. #770's `caption` and `table` fields were
+declined: there are no caption records, and `table` measured a loss
+(bench/RESULTS.md, 2026-09-17).
 
-**Field-list-driven rather than two named weights.** `FIELDS` below has
-`title` and `abstract`, and #772 re-points where the abstract is read
-from -- a change to one tuple and one config table rather than a third
-scalar threaded through three functions.
+The weighted frequency is a delta on the unweighted one,
+`tf~ = tf_full + SUM over fields of (w_f - 1) * tf_f`, with one
+saturation on `tf~`. So a weight of 1.0 reproduces the old ranking
+structurally, and fields need not partition the document (an abstract
+sits inside the body). Unlike BM25F, length is not weighted: that would
+move `avgdl` at any weight and lose the 1.0 baseline.
 
-The seam has been asked for a third field once and declined it. Issue
-#770 proposed `caption` and `table`; `caption` cannot be built here at
-all, because `_passage_records.PASSAGE_LABELS` deliberately keeps figure
-captions out of the sidecar and there are zero caption records across
-this corpus, and a `table` field measured a monotone loss on both BM25
-ground truths (bench/RESULTS.md, 2026-09-17). Adding a field is still one
-tuple and one config key; that this one is not here is a measurement, not
-an omission.
-
-**The weighted term frequency is a delta on the unweighted one:**
-
-    tf~ = tf_full + SUM over fields of (w_f - 1) * tf_f
-
-with one BM25 saturation applied to `tf~`, not one per field. Two
-properties follow, and both are load-bearing:
-
-- **A weight of 1.0 reproduces the previous ranking exactly**, because
-  every added term is multiplied by zero. That is #762's own success
-  criterion, and it is structural here rather than a number a test
-  checks: `field_deltas` returns an empty list, so `weighted_freq` never
-  looks at a field count at all.
-- **The fields need not partition the document.** An abstract's text sits
-  *inside* the parsed body, so title/abstract/body is not a partition and
-  subtracting one out of another would be fragile against whitespace
-  normalization and the reference cut. Adding a delta does not care.
-
-Document length is deliberately **not** weighted, which is where this
-departs from textbook BM25F. Real BM25F normalizes each field by its own
-length, and doing so here would break the identity above -- `avgdl` would
-move the moment any weight left 1.0, so "weight 1.0 changes nothing"
-would stop being true and no measurement would have a baseline. The cost
-is that a field weight raises a document's score without raising its
-modelled length; the benefit is the baseline. Recorded as the deliberate
-trade it is, not an oversight.
-
-**`k1` and `b` are configuration, not constants.** They shape
-term-frequency saturation and length normalization respectively, they
-ship at the textbook 1.5/0.75, and #788 is what makes those numbers
-*examined* on this corpus rather than merely inherited from TREC-era news
-and web collections. `bench/bench_retrieval_bm25_params.py` sweeps them
-one parameter at a time; bench/RESULTS.md has what it found and why
-neither default moved, which for `k1` is a statement about the ground
-truth available rather than about the parameter. They stay configurable
-because that sweep answers the question for *this* bibliography only --
-`b` exists exactly to handle the four-page-paper-to-whole-book length
-spread, and the next corpus's spread is not this one's.
-
-Stdlib only, like `retrieval.py` itself: this runs under bare `python3`
-with no venv (docs/ARCHITECTURE.md).
+`k1` and `b` ship at the textbook 1.5/0.75 and stay configurable, since
+the sweep (bench/RESULTS.md) answers only for this bibliography's length
+spread. Stdlib only (docs/ARCHITECTURE.md).
 """
 
 import math
@@ -70,39 +24,21 @@ import sqlite3
 
 from chitragupta import _abstract, config, passages
 
-# The fields that may carry a weight, in the order a reader should meet
-# them. `config.RETRIEVAL_FIELD_WEIGHTS` lists the same names and cannot
-# import this tuple -- this module imports `config`, so the dependency
-# only runs one way -- which is why the two are pinned equal by a test
-# (tests/test_retrieval_scoring.py) rather than by construction. Adding a
-# field in one place alone reddens that test; it would otherwise raise a
-# KeyError in `field_deltas` on the next search.
+# The weightable fields. `config.RETRIEVAL_FIELD_WEIGHTS` cannot import
+# this (this module imports `config`), so tests/test_retrieval_scoring.py
+# pins the two equal; a mismatch would KeyError in `field_deltas`.
 FIELDS = ("title", "abstract")
 
 
 def field_texts(item: sqlite3.Row) -> dict[str, str]:
     """`item`'s text for each field that has any, keyed by field name.
 
-    A field is *absent* rather than empty when the source cannot supply
-    it, so `field_freqs` writes no entry and `weighted_freq` adds nothing
-    -- the `pdftotext` backend writes no passage sidecar at all, and it
-    is the shipped default (`[parser].backend`), so "no abstract" is the
-    ordinary case rather than an error. docs/RETRIEVAL.md states which
-    backend makes the abstract weight live.
-
-    The abstract is read from `passages.corpus_passages` -- rung 2, this
-    layer's own parse -- and never from `passages.structural_passages`,
-    which prefers the enrichment layer's rung 1. Two invariants say so.
-    `retrieval.py`'s docstring promises that running the enrichment
-    layer's Docling stage does not change what BM25 ranks. And
-    `retrieval_cache._fingerprint` deliberately does not stat a sidecar,
-    on the argument that the corpus layer rewrites the `.txt` whenever it
-    rewrites its own sidecar -- an argument that holds for rung 2 and not
-    for rung 1, which the enrichment layer writes without touching
-    `content/parsed/` at all. Reading rung 1 here would therefore leave a
-    cached entry matching after a Docling run, serving pre-enrichment
-    abstracts indefinitely with nothing to notice. #772 proposes making
-    that reversal deliberately, with the fingerprint change it needs.
+    A field the source cannot supply is absent, not empty: `pdftotext`,
+    the default backend, writes no sidecar, so "no abstract" is ordinary
+    (docs/RETRIEVAL.md). The abstract comes from rung 2, never the
+    enrichment layer's rung 1: BM25 must not change when Docling runs, and
+    `retrieval_cache._fingerprint` would not notice a rung-1 rewrite.
+    #772 proposes reversing that with the fingerprint change it needs.
     """
     texts = {"title": item["title"] or ""}
     found = passages.corpus_passages(item["citekey"])
@@ -113,12 +49,8 @@ def field_texts(item: sqlite3.Row) -> dict[str, str]:
 
 
 def field_freqs(item: sqlite3.Row, tokenize) -> dict[str, dict[str, int]]:
-    """Per-field term counts for `item`, tokenized by `tokenize`.
-
-    `tokenize` is passed in rather than imported: it lives in
-    `retrieval.py`, which imports this module, and taking it as an
-    argument is what keeps that one-directional -- the same reason
-    `retrieval_cache._load_index` takes its `tokenize_item`.
+    """Per-field term counts for `item`, tokenized by `tokenize`, which is
+    passed in because `retrieval.py` imports this module.
     """
     counts: dict[str, dict[str, int]] = {}
     for name, text in field_texts(item).items():
@@ -132,12 +64,8 @@ def field_freqs(item: sqlite3.Row, tokenize) -> dict[str, dict[str, int]]:
 
 def field_deltas() -> list[tuple[str, float]]:
     """`(field, weight - 1)` for every field whose weight is not 1.0.
-
-    Computed once per `bm25_scores` call rather than per (document, term)
-    pair: the loop below runs over the whole corpus, and re-reading the
-    config inside it was the obvious way to make a stdlib ranker slow.
-    Empty at the shipped defaults, which is what makes the whole field
-    seam free when nobody has turned it on.
+    Computed once per `bm25_scores` call, outside the corpus loop; empty
+    at the defaults, so the seam is free when unused.
     """
     return [
         (name, config.RETRIEVAL_FIELD_WEIGHTS[name] - 1.0)
@@ -149,12 +77,9 @@ def field_deltas() -> list[tuple[str, float]]:
 def weighted_freq(entry: dict, term: str, deltas: list[tuple[str, float]]) -> float:
     """`term`'s frequency in `entry`, tilted by `deltas`.
 
-    An entry with no `field_freqs` scores exactly as it did before this
-    module existed, whatever the weights say. That is not defensive
-    coding: `chitragupta/discover/_resolve.py` builds synthetic index
-    entries by hand -- `term_freqs` and `length`, nothing else -- to rank
-    topic labels, and turning a retrieval weight up must not silently
-    re-rank the topic resolver too.
+    An entry with no `field_freqs` scores unweighted: `discover/_resolve.py`
+    builds such entries to rank topic labels, which a retrieval weight
+    must not re-rank.
     """
     freq = float(entry["term_freqs"].get(term, 0))
     if not deltas:
@@ -162,14 +87,9 @@ def weighted_freq(entry: dict, term: str, deltas: list[tuple[str, float]]) -> fl
     fields = entry.get("field_freqs") or {}
     for name, delta in deltas:
         freq += delta * fields.get(name, {}).get(term, 0)
-    # A field's counts come from the passage sidecar and the full count
-    # from the flattened `.txt`; the two normalize whitespace and
-    # hyphenation differently, so a field can out-count the whole
-    # document for one term. Below a weight of 1 that makes `freq`
-    # negative, which BM25's saturation curve turns into a negative
-    # contribution -- ranking a document that contains the term *below*
-    # one that does not. Clamped rather than asserted: the mismatch is a
-    # property of two parsers, not a bug a caller can fix.
+    # Sidecar and `.txt` normalize differently, so a field can out-count
+    # the document; below weight 1 that would rank a document containing
+    # the term below one without it. Clamped: no caller can fix it.
     return max(0.0, freq)
 
 
@@ -185,19 +105,12 @@ def bm25_scores(index: dict, terms: list[str]) -> dict[str, float]:
     }
     idf = {t: math.log((doc_count - doc_freq[t] + 0.5) / (doc_freq[t] + 0.5) + 1) for t in term_set}
 
-    # Document frequency, and so every IDF, is read from `term_freqs`
-    # alone and never from the weighted count. A field weight says how
-    # much a match *matters*, not how rare the term is across the corpus,
-    # and letting it move IDF would make one document's weight change
-    # every other document's score.
+    # Document frequency, and so IDF, is from `term_freqs` alone: a weight
+    # says how much a match matters, and must not move other documents.
     deltas = field_deltas()
-    # Okapi's two free parameters, read here rather than bound at import
-    # for the same reason `field_deltas` re-reads the weights: it is what
-    # lets bench/bench_retrieval_bm25_params.py sweep a grid in one
-    # process. Read once per call, outside the loop below, because that
-    # loop runs over the whole corpus and re-reading config inside it is
-    # the obvious way to make a stdlib ranker slow. #788 is the sweep
-    # they came through; docs/RETRIEVAL.md says what it found.
+    # Read per call (so bench_retrieval_bm25_params.py can sweep in one
+    # process), once, outside the corpus loop. docs/RETRIEVAL.md has the
+    # #788 results.
     k1, b = config.RETRIEVAL_K1, config.RETRIEVAL_B
     scores: dict[str, float] = {}
     for citekey, entry in index.items():

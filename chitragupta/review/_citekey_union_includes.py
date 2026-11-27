@@ -1,40 +1,15 @@
 """What an assembled book pulls in, and where its own citekeys come from.
 
-Split from `chitragupta/review/citekey_union.py` because resolving an
-assembly's includes is a separate job from the set arithmetic over them,
-and because getting it wrong is the difference between a useful report
-and a wholly false one.
+A book is composed by reference: `book.tex` is structure only and holds no
+citekey (units keep `\\citep{key}` until the book's one bibtex pass), and
+`book.md` is a table of contents. So the answer to "did the citekeys come
+out?" is which units the assembly includes; omitting one drops every
+source only it stood on. Citekeys in included non-unit files (title page,
+appendix, preamble) entered outside any record, which `appeared` reports.
 
-**A book is composed by reference, not by fusion**, and that is the fact
-this module exists to handle. `.claude/skills/book-assembler` writes
-`book.tex` as *structure only* -- "every word of prose lives in the units
-this file \\inputs" -- and each unit's citations stay `\\citep{key}`
-(`--natbib`) until the book's one `bibtexu` pass resolves them, so
-**`book.tex` itself contains no citekey at all**. `book.md` is the
-same shape in Markdown: a table of contents hyperlinking the chapter
-files, never their prose.
-
-So reading the assembly's own text for citekeys and subtracting finds
-nothing and would report every unit's sources as lost. What actually
-answers "did the citekeys come out?" is *which units the assembly
-includes*: including a unit includes all of its prose, so omitting one
-drops every source only it stood on. That is the same invariant, read
-against the artefact this pipeline really produces.
-
-The assembly does still have citekeys of its own, and they are the other
-direction's whole subject: anything in a file it includes that is **not**
-an acceptance unit -- a title page, a hand-written appendix, a preamble
-definitions file. A citekey entering there entered outside any unit's
-record, which is exactly what `appeared` reports.
-
-**Deliberately not a second `\\input` parser**, the same call
-`chitragupta/review/figure_layout/` already made across this same
-boundary: `render_output/_figures.py` owns how a LaTeX include is spelled
-and the rule that a draft's own text never resolves outside its own
-directory, so both are imported rather than restated. Only the two things
-that module has no reason to know are local -- a Markdown *link* (it
-matches image syntax, and a book's table of contents is not images) and
-the suffix a bare `\\input{foo}` leaves off.
+Not a second `\\input` parser: `render_output/_figures.py` owns include
+spelling and the no-escape rule. Only Markdown links and the suffix a bare
+`\\input{foo}` leaves off are local.
 """
 
 import re
@@ -43,27 +18,18 @@ from pathlib import Path
 from chitragupta.render_output._assets import _URI_SCHEME_RE
 from chitragupta.render_output._figures import _local_tex_include_refs, _resolve_sibling
 
-# A Markdown link to a local file: `[Chapter 1](01-chapter.md)`. Not
-# `_local_image_refs`, which matches `![alt](path)` -- an assembled
-# `book.md` is a table of contents linking its chapters, and an image
-# reference is not an include.
+# A link, not `_local_image_refs`: `book.md` links its chapters.
 _MD_LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)\s]+)\)")
 
-# The suffixes a bare include may leave off. LaTeX's `\input{foo}` means
-# `foo.tex`; `.def` is here because a book assembled before citations
-# were deferred inputs `citeproc-defs.def`, and `.md` because a unit may
-# be drafted as one.
+# Suffixes a bare include may leave off; `.def` for books assembled before
+# citations were deferred (`citeproc-defs.def`), `.md` for a unit drafted so.
 _SUFFIXES = (".tex", ".md", ".def")
 
 
 def references(text: str) -> list[str]:
     """Every local file the assembly names, in document order, deduplicated.
-
-    Order is kept because the report walks the book's own structure, and
-    an include repeated in a preamble should not be listed twice. A link
-    with a URI scheme is dropped here rather than by `_resolve_sibling`,
-    which would only report it as "not found on disk" -- a URL was never
-    going to be a file, and naming it as a coverage gap would be noise.
+    URI-scheme links are dropped here: a URL reported "not found on disk"
+    would be noise.
     """
     found: list[str] = []
     for target in _local_tex_include_refs(text) + _MD_LINK.findall(text):
@@ -74,11 +40,8 @@ def references(text: str) -> list[str]:
 
 def _resolve(book: Path, target: str) -> Path | None:
     """`target` as a file beside the assembly, or None if none exists.
-
-    `_resolve_sibling` first and unmodified, so the absolute-path and
-    `..`-escape refusals stay in one place. The suffix loop is the one
-    thing it cannot do for us: `\\input{foo}` and `\\input{foo.tex}` are
-    the same file to LaTeX, and the shipped book.tex uses both forms.
+    `_resolve_sibling` keeps the absolute and `..`-escape refusals; the
+    suffix loop is because `\\input{foo}` and `{foo.tex}` are one file.
     """
     direct = _resolve_sibling(book, target)
     if direct is not None:
@@ -95,29 +58,11 @@ def split(
 ) -> tuple[set[str], list[tuple[str, str]], list[str]]:
     """`(unit ids included, (name, text) per non-unit file read, names not read)`.
 
-    An include is a unit when its **stem** is an acceptance unit id --
-    matched by id rather than by filename, because a unit may be drafted
-    as `.md` and rendered to `.tex` for assembly, and the two are the same
-    unit. Everything else is the assembly's own material, and its text is
-    returned for the caller to take citekeys from -- read here, once,
-    rather than resolved here and opened again there.
-
-    **A unit-stem match still has to resolve, same as any other
-    include.** Marking it "included" on the id match alone -- before
-    `_resolve` ever runs -- let a renamed or deleted chapter file report
-    "included" regardless (#496), which is exactly the silent loss this
-    aid exists to catch. So a unit-stem include that does not resolve to
-    a real file joins `unread` instead of `included`, and the caller then
-    reports it the same way an omitted unit is reported.
-
-    **Two ways an include goes unread, and both are returned rather than
-    dropped.** It may resolve to no file at all; or it may resolve to
-    something that is not text -- a `book.md` may link a cover image or a
-    PDF, and `\\input` will happily name a file this cannot decode. Reading
-    one raises `UnicodeDecodeError` mid-run, which would take the whole
-    report out over a file that was never going to carry a citekey. A
-    report that silently ignored either would be claiming coverage of
-    material it never saw, so they are named instead.
+    An include is a unit when its stem is an acceptance unit id (a unit may
+    be `.md` or `.tex`), but it must still resolve: an id match alone
+    reported a deleted chapter as included (#496). An include that resolves
+    to no file, or to an undecodable one (a cover image), is returned as
+    unread, never dropped, so the report claims no coverage it lacks.
     """
     included: set[str] = set()
     others: list[tuple[str, str]] = []

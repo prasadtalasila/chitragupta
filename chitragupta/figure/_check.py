@@ -1,20 +1,10 @@
 """What `chitragupta figure check` finds in one figure file (#1053).
 
-One compile, through `review figure`'s own probe in its boxed form
-(`review/figure_layout/_probe.py` has why the box and the preload go
-together), then every rule in `_rules.RULES`: the three this command
-adds, and `review figure`'s seven findings under the ids its JSON
-already ships. Then the figure's own `% cg-allow:` lines are settled
-against what fired (`_allow.py`).
-
-**It measures; it never places**, for the reason
-`review/figure_layout/__init__.py` gives: every number here is read
-back from what TikZ decided, and the fix for a finding is to change
-what the figure asks TikZ for.
-
-The thresholds are this module's: TeX's own `\\hfuzz` for width, and
-half a point for stray space, which is rounding rather than a space
-(an interword space at 12pt is about 4pt).
+One compile through `review figure`'s boxed probe, then every rule in
+`_rules.RULES`, then the figure's `% cg-allow:` lines settled (`_allow.py`).
+**It measures; it never places** (see `review/figure_layout/__init__.py`).
+Thresholds: TeX's `\\hfuzz` for width, and half a point for stray space
+(rounding; an interword space at 12pt is ~4pt).
 """
 
 import re
@@ -45,8 +35,8 @@ from chitragupta.review.figure_layout import (
 _HFUZZ_PT = 0.1
 _STRAY_PT = 0.5
 
-# The rules that need the compiled geometry, listed as not measured
-# whenever it is missing, so their silence is never read as a pass.
+# Rules needing compiled geometry, listed as not measured when it is missing so
+# their silence is never read as a pass.
 GEOMETRY = (
     "nothing-measurable",
     "size-width",
@@ -58,12 +48,10 @@ GEOMETRY = (
     *HOUSE,
 )
 
-# Why the geometry is missing. The probe sits inside the figure's last
-# `tikzpicture` environment, so a file with none (a bare `\tikz`, say)
-# has nowhere to put it and is not compiled at all, rather than reported
-# as a compile failure that is the probe's, not the figure's. A picture
-# whose only `\end{tikzpicture}` sits in a macro body that never runs
-# compiles and prints no extent.
+# Why the geometry is missing. The probe sits in the last `tikzpicture`, so a
+# file with none (a bare `\tikz`) is not compiled at all, rather than blaming the
+# figure for the probe's failure. An `\end{tikzpicture}` only in an unrun macro
+# compiles but prints no extent.
 NO_PICTURE = "the file has no tikzpicture environment to measure"
 NO_EXTENT = "the picture's extent was not printed (is its last tikzpicture inside a macro?)"
 _NOT_COMPILED = "the figure does not compile"
@@ -73,14 +61,10 @@ _PICTURE_RE = re.compile(r"\\begin\s*\{tikzpicture\}")
 
 @dataclass
 class CheckResult:
-    """One file's report. `allowed` pairs each honoured allow with the
-    measurements it set aside, and `stale` and `unchecked` each other
-    allow with why (#1058); `not_measured` pairs a rule with why it
-    could not run. `figure` is kept for the diagnostics the report
-    prints beside the findings.
-    `advisory` is #1057's size reports, kept out of `findings` because
-    nothing is to be resolved or allowed about them, and `layout` the
-    name they were read against (`""` for none)."""
+    """One file's report. `allowed`, `stale`, `unchecked` and `not_measured`
+    pair allows or rules with what they set aside or why (#1058). `advisory`
+    holds #1057's size reports, kept out of `findings` as nothing about them
+    is resolved or allowed; `layout` is what they were read against."""
 
     path: Path
     width_pt: float
@@ -101,9 +85,9 @@ class CheckResult:
 def check(
     path: Path, width_pt: float, layout: str = "", height_pt: float = ARTICLE.text_height_pt
 ) -> CheckResult:
-    """Compile `path` once, unless it has no picture to measure, and
-    report every rule on a `width_pt` by `height_pt` page (#1140). The caller
-    has established that `lualatex`, `tikz.sty` and a UTF-8 `path` exist."""
+    """Compile `path` once, unless it has no picture, and report every rule on
+    a `width_pt` by `height_pt` page (#1140). The caller has checked that
+    `lualatex`, `tikz.sty` and a UTF-8 `path` exist."""
     source = path.read_text(encoding="utf-8")  # pragma: no cover-windows
     skipped = "" if _pictures(source) else NO_PICTURE  # pragma: no cover-windows
     figure = check_figure(path, skipped, boxed=True)  # pragma: no cover-windows
@@ -114,10 +98,8 @@ def check(
 
 
 def _twin_text(path: Path) -> str | None:
-    """The ASCII twin beside `path`, or `None` where there is none. A
-    byte that is not UTF-8 is replaced, not raised: the twin's alphabet
-    is WRITING-STANDARDS §10's to police, and a check must not crash on
-    the file it is reporting about."""
+    """The ASCII twin beside `path`, or `None`. Undecodable bytes are replaced:
+    the twin's alphabet is §10's to police, and a check must not crash on it."""
     twin = path.with_suffix(".txt")
     return twin.read_text(encoding="utf-8", errors="replace") if twin.is_file() else None
 
@@ -133,10 +115,9 @@ def apply(
 ) -> CheckResult:
     """Every rule over an already-checked figure, with its allows applied.
 
-    Each allow is matched against everything that fired, so two allows
-    for one target both report what they set aside. `layout` overrides the
-    figure's own `% cg-layout:` line. `twin` is the ASCII twin's text,
-    `None` where the figure has none (#1056)."""
+    Each allow is matched against everything that fired, so two allows for one
+    target both report. `layout` overrides the figure's `% cg-layout:` line;
+    `twin` is `None` without one (#1056)."""
     layout = layout or declared_layout(source)
     fired, not_measured = evaluate(source, figure, width_pt, layout)
     paired, unpaired = agree(source, twin, path.with_suffix(".txt").name)
@@ -166,9 +147,8 @@ def apply(
 def evaluate(
     source: str, figure: FigureResult, width_pt: float, layout: str = ""
 ) -> tuple[list[Finding], list[tuple[str, str]]]:
-    """`(findings, not_measured)`, the findings in `RULES` order. `layout`
-    is the one the connector rules' exemptions read; `""` reads the
-    figure's own `% cg-layout:` line."""
+    """`(findings, not_measured)` in `RULES` order. `layout` feeds the connector
+    exemptions; `""` reads the figure's own `% cg-layout:` line."""
     findings: list[Finding] = []
     if figure.failed:
         findings.append(Finding("does-not-compile", FIGURE, figure.failed))
@@ -196,7 +176,6 @@ def _in_rule_order(findings: list[Finding]) -> list[Finding]:
 
 
 def _missing(figure: FigureResult) -> str:
-    """Why the compiled geometry cannot be read, or `""` where it can."""
     if figure.failed:
         return _NOT_COMPILED
     if figure.boxes is None:
@@ -215,9 +194,8 @@ def _names(figure: FigureResult) -> set[str] | None:
 
 
 def _unmeasurable(source: str, figure: FigureResult) -> str:
-    """Why #1057's size reports cannot read the boxes, or `""`. The probe
-    reads the last picture's extent, and an earlier picture's nodes sit
-    in another picture's frame, so several pictures are not measured."""
+    """Why #1057's size reports cannot read the boxes, or `""`: an earlier
+    picture's nodes sit in another frame, so several pictures are not measured."""
     pictures = _pictures(source)
     if pictures > 1 and not _missing(figure):
         return f"{pictures} tikzpictures; only the last one's extent is read"
@@ -233,9 +211,8 @@ def _size(
 ) -> tuple[list[Finding], list[tuple[str, str]]]:
     """`size-width` and `size-stray`.
 
-    One picture is measured by its own bounding box. Several are what a
-    reader sees side by side, so their width is the whole box, and the
-    box's extra width is their spacing rather than stray space.
+    Several pictures are seen side by side, so their width is the whole box
+    and its extra width is spacing, not stray space.
     """
     pictures = _pictures(source)
     x1, _, x2, _ = figure.boxes[BBOX_NAME]
@@ -267,7 +244,6 @@ def _size(
 
 
 def _geometry(figure: FigureResult) -> list[Finding]:
-    """`review figure`'s findings that need the compiled boxes."""
     found = []
     if figure.nothing_measurable:
         found.append(
@@ -283,8 +259,8 @@ def _geometry(figure: FigureResult) -> list[Finding]:
 
 
 def _static(figure: FigureResult) -> list[Finding]:
-    """`review figure`'s findings read from source, under the ids its
-    JSON ships; they hold whether or not the figure compiled."""
+    """`review figure`'s source-read findings, under its JSON ids; they hold
+    whether or not the figure compiled."""
     found = []
     if figure.by_hand:
         found.append(Finding("loads-library-by-hand", FIGURE, ", ".join(figure.by_hand)))

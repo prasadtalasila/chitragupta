@@ -1,10 +1,8 @@
 """Routing rules over a figure's connectors (#1054): `c1-orthogonal`,
 `c3-coincident`, `c4-attach` and `c7-dangling-tip`.
 
-Each reports a measurement in millimetres and never a verdict on the
-figure as a whole, the way `figure check`'s other rules do. Thresholds
-are the v3 plan's (`plans/fig-xii-figure-drawer-v3.md`, "Connector
-rules"), held or moved by the bench in `bench/RESULTS.md`.
+Each reports a measurement in mm, never a verdict. Thresholds are
+`plans/fig-xii-figure-drawer-v3.md`'s, held or moved by `bench/RESULTS.md`.
 """
 
 import math
@@ -30,16 +28,14 @@ from chitragupta.review.figure_layout import Box, Drawn, DrawnLine, DrawnNode, P
 _COLLINEAR_PT = 0.5
 _SHARED_MM = 2.0
 
-# c4: how far a lone end may sit off its side's midpoint, how far several
-# may sit off even spacing, and how close two may come. The lone end's
-# 1mm (the v3 plan said 0.5mm) is c1's: a line c1 accepts as level may be
-# up to 1mm off, and so lands up to 1mm off one midpoint (bench/RESULTS.md).
+# c4: lone-end offset from the midpoint, offset from even spacing, minimum gap.
+# The lone end's 1mm (not the plan's 0.5mm) matches c1's level tolerance
+# (bench/RESULTS.md).
 _MIDPOINT_MM = 1.0
 _SPACING_MM = 1.0
 _APART_MM = 2.0
 
-# c7: how close a tip must come to a node or a line to land on it. An
-# arrow that points at a line often stops just short of it on purpose.
+# c7: how close a tip must come to land; arrows at a line often stop short on purpose.
 _LANDS_MM = 1.0
 
 # Shapes with no flat sides, which c4 cannot measure.
@@ -49,9 +45,8 @@ ROUND = frozenset(
 
 
 def orthogonal(cons: list[Connector], layout: str | None) -> list[Finding]:
-    """`c1-orthogonal`: a connector between nodes off by more than 1mm in
-    both x and y is an elbow. A straight diagonal piece, or a curve, is
-    not. A layout the rule exempts is not evaluated."""
+    """`c1-orthogonal`: a connector off by more than 1mm in both x and y is an
+    elbow; straight diagonals and curves are not. Exempt layouts are skipped."""
     if layout in RULES["c1-orthogonal"].exempt:
         return []
     found = []
@@ -74,12 +69,10 @@ def _has_diagonal(line: DrawnLine) -> bool:
 
 
 def coincident(cons: list[Connector]) -> list[Finding]:
-    """`c3-coincident`: two connectors running together for more than
-    2mm, so one hides the other. Two that share an end point are excused
-    only when both leave the shared stretch: a trunk that forks or
-    merges (`retrieval.tex`), which the reader follows. One lying on the
-    other end to end -- a return edge on its forward edge, a chain edge
-    under a skip edge -- is reported as such (#1163)."""
+    """`c3-coincident`: two connectors running together over 2mm, one hiding
+    the other. A shared-end pair is excused only when both leave the shared
+    stretch (a fork or merge); one lying on the other end to end is
+    reported (#1163)."""
     found = []
     for one, other in combinations(cons, 2):
         shared = sum(
@@ -118,12 +111,9 @@ def _length(line: DrawnLine) -> float:
 
 
 def _overlap(s: tuple[Point, Point], t: tuple[Point, Point]) -> float:
-    """How long two segments lie along one another: 0 unless both ends
-    of `t` are within `_COLLINEAR_PT` of the line through `s`, then the
-    length of `t`'s projection that falls on `s`. Measured against the
-    whole line, not the segment, so a short segment lying on a long one
-    scores the same in either order (#1163). A pair at a slight slant,
-    inside the tolerance at one end only, can still score by order."""
+    """How long two segments lie along one another: 0 unless both ends of `t`
+    are within `_COLLINEAR_PT` of the *line* through `s` (so order does not
+    matter, #1163), then the length of `t`'s projection onto `s`."""
     (p, q), (r, u) = s, t
     length = math.dist(p, q)
     if length == 0 or math.dist(r, u) == 0:
@@ -145,16 +135,10 @@ def attach_points(
 ) -> tuple[list[Finding], list[str]]:
     """`c4-attach`: `(findings, round nodes not measured)`.
 
-    A lone end on a side sits at its midpoint; N ends sit at `L*k/(N+1)`
-    and at least 2mm apart. The side is the one the end is nearest.
-
-    Only a straight connector's end whose last piece meets its side square
-    on is measured: an edge arriving at an angle, or bent, lands off the
-    midpoint by geometry, which is `c1-orthogonal`'s finding or a `bend`'s
-    construction rather than a second defect. Ends at one point (a trunk)
-    count once, a zone's ends are not measured (a line into a group is
-    not attaching to a side), and a layout `c1` exempts is exempt here
-    too."""
+    A lone end sits at its side's midpoint; N ends at `L*k/(N+1)`, at least 2mm
+    apart. Only straight ends meeting their side square on are measured: an
+    angled or bent arrival is c1's finding or a `bend`'s geometry. Trunk ends
+    count once; zone ends and c1-exempt layouts are skipped."""
     if layout in RULES["c4-attach"].exempt:
         return [], []
     sides: dict[tuple[str, str], tuple[float, list[float]]] = {}
@@ -191,8 +175,7 @@ def _distinct(positions: list[float]) -> list[float]:
 
 
 def _ends(con: Connector) -> list[tuple[str, Point, Point]]:
-    """`(node, end point, the next distinct point along the line)` for
-    both ends of a connector."""
+    """`(node, end point, next distinct point along the line)` for both ends."""
     points = con.line.points
     first = next((p for p in points[1:] if p != points[0]), points[0])
     last = next((p for p in reversed(points[:-1]) if p != points[-1]), points[-1])
@@ -208,8 +191,7 @@ def _square_end(box: Box, at: Point, near: Point) -> tuple[str, float, float] | 
 
 
 def _side(box: Box, point: Point) -> tuple[str, float, float]:
-    """`(side, position along it, its length)` for the side `point` is
-    nearest."""
+    """`(side, position along it, its length)` for the side `point` is nearest."""
     w, s, e, n = box
     x, y = point
     distances = {"west": abs(x - w), "east": abs(x - e), "south": abs(y - s), "north": abs(y - n)}
@@ -236,13 +218,9 @@ def _spacing(positions: list[float], length: float) -> str:
 
 
 def dangling(drawn: Drawn) -> list[Finding]:
-    """`c7-dangling-tip`: an arrow that leaves a node and whose tip lands
-    on no node (a label or note included, a coordinate not) and on no
-    other line, within 1mm.
-
-    Only an arrow that leaves a node: an axis points along itself and a
-    dimension line's tips mark its extent, so neither points at a thing
-    (`value-ladder.tex`, `four-timestamps.tex`)."""
+    """`c7-dangling-tip`: an arrow leaving a node whose tip lands within 1mm of
+    no node (labels count, coordinates do not) and no other line. Only arrows
+    leaving a node: axes and dimension lines point at nothing."""
     boxes = [node.box for node in drawn.nodes.values() if node.shape != "coordinate"]
     nodes = solid(drawn)
     found = []

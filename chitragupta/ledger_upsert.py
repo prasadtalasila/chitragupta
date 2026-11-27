@@ -1,23 +1,8 @@
-"""Turning a `bib_reader.Reference` into a ledger row: the write path
-`chitragupta/ledger.py`'s `upsert_reference` used to hold directly.
+"""Turning a `bib_reader.Reference` into a ledger row.
 
-Split from `chitragupta/ledger.py` (#441): `upsert_reference`, the
-status-transition logic in `_next_status` and the PDF stat-before-hash
-check (module docstring) form one self-contained unit that never touches
-the schema, the migrations, or the read-only status queries the rest of
-`ledger.py` still holds -- none of it is called from anywhere else in
-that module.
-
-The `bib_fields`/`collections` JSON encoding came along in that split and
-left again in issue #556's, once this module crossed the 250-code-line
-ratchet: `chitragupta/ledger_bib_fields.py` holds it now, and that
-module's docstring has why.
-
-`upsert_reference` stays reachable as `ledger.upsert_reference`, via a
-module-level re-export in `ledger.py`, the same shape
-`chitragupta/render_output/__init__.py` already uses for its own split:
-the split is invisible to every one of this project's existing call
-sites, none of which had to change.
+Split from `chitragupta/ledger.py` (#441), which re-exports
+`upsert_reference`; the JSON field encoding is in
+`chitragupta/ledger_bib_fields.py`.
 """
 
 from __future__ import annotations
@@ -32,20 +17,13 @@ from typing import TYPE_CHECKING
 from chitragupta import config, ledger_bib_fields, ledger_paths, passages
 
 if TYPE_CHECKING:
-    # Only for the upsert_reference type hint -- citation_gate.py imports
-    # chitragupta.ledger, which imports this module, and must not require
-    # bibtexparser (chitragupta/bib_reader.py's only dependency) just to
-    # check citekeys against the ledger.
+    # Type hint only: citation_gate imports ledger, which imports this,
+    # and must not require bibtexparser.
     from chitragupta.bib_reader import Reference
 
-# `chitragupta.sync`, not this module's own name, exactly as
-# chitragupta/sync_pool.py does: the only thing written here is a
-# mid-sync warning, and docs/CLI.md documents "chitragupta.sync" as the
-# `%(name)s` every corpus-layer line in logs/pipeline.log carries,
-# "whatever the command that started it is spelled". A name of this
-# module's own would put one warning outside that. `sync`'s *stdout* is
-# a documented, diffable contract, so this goes to the log rather than
-# into the middle of that output.
+# `chitragupta.sync`, as in sync_pool.py: docs/CLI.md documents it as the
+# corpus layer's logger name. Logged, because sync's stdout is a diffable
+# contract.
 logger = logging.getLogger("chitragupta.sync")
 
 
@@ -67,57 +45,22 @@ def _pdf_identity(ref: Reference, row, on_missing_pdf) -> tuple[int | None, int 
     when there is nothing readable behind `ref.pdf_path`."""
     if not ref.pdf_path:
         return None, None, None
-    # The other all-`None` case, recorded identically to the reference
-    # that simply has no `file` field: the PDF that was there when
-    # `bib_reader` read the bib file and is gone by the time this runs --
-    # moved, renamed or deleted by the reference manager while the sync
-    # was already under way. That race used to abort the whole run with
-    # an uncaught OSError from os.stat, taking every document still
-    # unvisited with it (plans/code-review-2026-09.md, m-71);
-    # chitragupta/enrich/docling_parse.py's `_is_cached` already catches
-    # the identical race on the other layer's stat, and this is the same
-    # answer.
-    #
-    # "For this run" is the whole of the claim: `pdf_path` is still
-    # written to the row, so a file that comes back is picked up by the
-    # next sync with no --reparse and no manual repair. What the run
-    # loses is one document's parse, reported rather than inferred.
-    #
-    # The `try` spans the hash as well as the stat, deliberately: the
-    # same disappearance one microsecond later surfaces from `_hash_pdf`'s
-    # open instead, and a half-filled answer (a size with no hash) is a
-    # state `_next_status` has no branch for.
-    #
-    # `on_missing_pdf` is how this reaches `sync`'s printed tally and
-    # exit code (issue #556): without it the run reported the document
-    # as "unchanged" and exited 0, because `sync_decide` decides the
-    # no-PDF case from `ref.pdf_path`, which is still set here. A
-    # callback rather than a wider return type, because the *policy* --
-    # which counter, which label, which exit code -- belongs to
-    # `sync_decide`, and because widening `needs_parse` would have
-    # changed every call site (250-odd, nearly all of them tests) to
-    # carry a value one caller wants.
-    #
-    # It is handed the exception, not just a signal, and that is
-    # load-bearing rather than a courtesy: this catches every `OSError`,
-    # so the cause may be a permission or an I/O error rather than a
-    # missing file, and those are different diagnoses with different
-    # remedies. `sync_decide._lost_pdf_reason` is what tells them apart,
-    # off the exception's type -- so a signal alone would have forced
-    # every cause into one reason and one piece of wrong advice. Which
-    # is what the first version of this did, until review caught it.
+    # A PDF that vanished mid-sync is recorded like a reference with no
+    # file, for this run only (m-71); `pdf_path` is still written, so the
+    # next sync picks it up. The `try` covers the hash too, since a
+    # half-filled answer has no `_next_status` branch.
+    # `on_missing_pdf` takes the exception, not a flag (#556): the cause may
+    # be permission or I/O rather than absence, and
+    # `sync_decide._lost_pdf_reason` tells them apart. A callback keeps the
+    # policy in `sync_decide` without widening `needs_parse`.
     try:
         pdf_size, pdf_mtime_ns = _stat_pdf(ref.pdf_path)
         stat_unchanged = (
             row is not None and row[0] is not None and (row[1], row[2]) == (pdf_size, pdf_mtime_ns)
         )
-        # Trust an unchanged (size, mtime) instead of re-hashing -- a
-        # deliberate trade-off (PR #8 review): always-hashing *would*
-        # still catch a same-size edit that also preserves mtime (e.g.
-        # `cp --preserve=timestamps` overwriting the file in place), which
-        # this stat-first check cannot. That's judged rare enough, and
-        # re-reading every PDF's bytes on every run expensive enough at
-        # this corpus's scale, to accept losing that one edge case.
+        # Trust an unchanged (size, mtime) instead of re-hashing (PR #8): a
+        # same-size edit that preserves mtime is missed, judged rare enough
+        # against re-reading every PDF on every run.
         return pdf_size, pdf_mtime_ns, (row[0] if stat_unchanged else _hash_pdf(ref.pdf_path))
     except OSError as exc:
         logger.warning("no-pdf  %s: %s", ref.citekey, exc)
@@ -129,43 +72,19 @@ def _pdf_identity(ref: Reference, row, on_missing_pdf) -> tuple[int | None, int 
 def _parse_outputs_present(citekey: str, parsed_path: str | None) -> bool:
     """Every file a successful parse leaves behind, not just the row.
 
-    The ledger records *that* a parse happened. It cannot notice that the
-    output has since been deleted, or that a file this project only
-    started writing later was never there at all -- and either way the row
-    still says "parsed", so every subsequent run skips the document and
-    the gap stays open forever.
-
-    Two things must be on disk for a citekey the ledger calls parsed:
-
-    - the parsed text itself; and
-    - the passage sidecar, when `[parser].backend` is one that resolves
-      reading order. `pdf_text.extract_text` writes it for every such
-      parse, empty included, so its absence means the text was produced by
-      a backend (or a version of this project) that could not write one.
-
-    That second clause is what upgrades an existing corpus: switch to
-    `docling`, or install a version that keeps Docling's document model,
-    and the next `sync` re-parses the documents that predate it instead of
-    quietly leaving them without quotable passages. It costs one re-parse
-    per affected document, once.
-
-    Directly mirrors `chitragupta/enrich/docling_parse.py`'s `_outputs_present`,
-    which exists for the same reason on the other layer's artefacts.
+    The row cannot notice deleted output, so it would skip the document
+    forever. Both the parsed text and, for a backend that resolves
+    reading order, the passage sidecar must exist; a missing sidecar
+    re-parses an older corpus once. Mirrors `docling_parse._outputs_present`.
     """
-    # The stored value is relative to `config.PARSED_DIR` (#966). Confined,
-    # not raised on (issue 821): a row whose `parsed_path`
-    # lands outside `content/parsed/` has no parse this pipeline will
-    # read, so it reads as "outputs gone" and the next sync re-parses
-    # it -- which rewrites the column correctly and lets a relocated
-    # project heal itself instead of needing a hand repair.
+    # Relative to `config.PARSED_DIR` (#966). A path outside
+    # `content/parsed/` reads as gone, so a relocated project heals on the
+    # next sync instead of raising (#821).
     parsed = ledger_paths.parsed_file(parsed_path)
     if parsed is None or not parsed.exists():
         return False
-    # A sidecar that is there but unreadable -- torn by a killed write
-    # before `write_sidecar` became atomic, or hand-damaged -- counts as
-    # gone under any backend (issue 844): every reader takes it for "no
-    # passages", and `pdf_text.extract_text` clears it before re-parsing,
-    # so one re-parse heals it whichever backend runs.
+    # An unreadable sidecar counts as gone under any backend (#844); one
+    # re-parse heals it.
     state = passages.sidecar_state(passages.sidecar_path(citekey))
     return state == "ok" or (state == "absent" and config.PARSER != "docling")
 
@@ -181,21 +100,10 @@ def upsert_reference(
 
     Returns True if the PDF content is new/changed and needs (re-)parsing.
 
-    `commit=False` leaves the transaction open for the caller to close
-    (#511/m-75). Every row is rewritten on every run -- `last_synced`
-    always moves -- so a no-op sync over the 646-entry corpus this was
-    measured on was 646 separate fsync'd write transactions. It also
-    multiplied the windows in which the read-only inspector sees a
-    half-written ledger, which is the reason this matters beyond speed.
-    The default stays `True` so a caller that does one upsert (every
-    test here, and any future ad-hoc use) is unchanged; `sync_decide`
-    passes `False` and commits once around its whole loop.
-    `on_missing_pdf`, when given, is called with the `OSError` if
-    `ref.pdf_path` was set and could not be read (issue #556). Optional
-    for the same reason `commit` has a default: it exists for the one
-    caller that reports a run, and every other call site stays as it
-    was. `_pdf_identity` has why the signal is a callback rather than a
-    wider return type.
+    `commit=False` leaves the transaction open (#511): one fsync'd
+    transaction per row made a no-op sync slow and widened the windows in
+    which a reader sees a half-written ledger. `on_missing_pdf` is called
+    with the `OSError` for an unreadable `ref.pdf_path` (#556).
     """
     now = datetime.now(timezone.utc).isoformat()
 
@@ -209,10 +117,7 @@ def upsert_reference(
 
     needs_parse = False
     if force and pdf_hash is not None:
-        # `sync --reparse`: re-extract regardless of what the ledger
-        # believes. The point is to recover from output that is recorded
-        # as fine but isn't -- which the ledger, by definition, cannot
-        # detect on its own.
+        # `sync --reparse`: recover from output recorded as fine but not.
         needs_parse = True
     if row is None:
         status = "discovered" if pdf_hash else "no_pdf"
@@ -245,13 +150,8 @@ def upsert_reference(
     else:
         new_status, must_reparse = _next_status(row, pdf_hash, force, ref.citekey)
         needs_parse = needs_parse or must_reparse
-        # A changed hash means the bytes behind the old parsed_path are
-        # gone -- keeping the column would let it survive byte-identical
-        # (title, parsed_path, exists, size, mtime) through a --reparse
-        # that then fails deterministically, since none of those describe
-        # *content* (#490). Untouched on a same-hash update (including a
-        # forced reparse of an unchanged PDF): the old text is still
-        # accurate until a real parse says otherwise.
+        # A changed hash clears parsed_path, or stale text survives a
+        # failed --reparse looking current (#490); a same-hash update keeps it.
         old_hash = row[0]
         parsed_path = None if pdf_hash != old_hash else row[5]
         con.execute(
@@ -290,43 +190,20 @@ def _next_status(row, pdf_hash, force, citekey) -> tuple[str, bool]:
     """The status an existing row moves to, and whether that demands a
     re-parse beyond what `force` already decided.
 
-    One branch for the two re-parse triggers on a byte-identical
-    PDF -- outputs gone from disk, and the transient-failure
-    retry below -- because their consequence is identical and
-    two branches with the same body invite the implementations
-    drifting apart (Sonar S1871).
-
-    Retry a *transient* failed parse even though the PDF is
-    byte-identical -- a NULL kind predates the distinction and
-    counts as transient (see chitragupta/ledger.py's _MIGRATIONS version 2).
-    Without this, needs_parse was true only for a new or
-    changed document, so a failure stuck until the file itself
-    changed -- which for a corrupt PDF is never. That was
-    tolerable while failures were per-document and permanent;
-    it stopped being tolerable once a worker pool could mark
-    every in-flight document parse_failed on one worker's
-    death. Unattended, that silently drops those documents from
-    the corpus for good: each later run counts them "unchanged"
-    and exits 0. A retry costs one re-parse of a genuinely bad
-    PDF per run, which is visible and bounded; the alternative
-    is invisible and permanent.
-
-    A deterministic failure deliberately keeps its old status, so it is
-    still counted and still makes the run exit nonzero, but it
-    is not re-parsed. --reparse and editing the PDF are the two
-    escape hatches for a misclassification.
+    A *transient* failure (NULL kind included, see ledger._MIGRATIONS v2)
+    is retried on a byte-identical PDF: one dead worker can mark every
+    in-flight document failed, and without a retry they drop out of the
+    corpus silently for good. A deterministic failure keeps its status
+    and is not re-parsed; --reparse and editing the PDF are the escape
+    hatches. Both triggers share one branch (Sonar S1871).
     """
     old_hash, _old_size, _old_mtime_ns, old_status, old_kind, old_parsed_path = row
     if force and pdf_hash is not None:
         return "discovered", False
     if pdf_hash != old_hash:
         return ("discovered" if pdf_hash else "no_pdf"), pdf_hash is not None
-    # 'discovered' rides in the same branch: it *means* "needs parsing",
-    # but this path used to return needs_parse=False for it, so any run
-    # that separated upsert from parse (backend unavailable, interrupt or
-    # crash before the result landed) stranded the document permanently --
-    # the next healthy sync counted it "unchanged" and exited 0, the
-    # silent-drop failure the retry above already closed for parse_failed.
+    # 'discovered' means "needs parsing": returning False stranded any
+    # document whose parse was interrupted after the upsert.
     outputs_gone = old_status == "parsed" and not _parse_outputs_present(citekey, old_parsed_path)
     transient_failure = old_status == "parse_failed" and old_kind != "deterministic"
     if pdf_hash is not None and (old_status == "discovered" or outputs_gone or transient_failure):

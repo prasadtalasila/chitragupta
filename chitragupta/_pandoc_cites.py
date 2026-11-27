@@ -1,10 +1,7 @@
 """Pandoc's Markdown citation grammar, for `chitragupta/citation_gate.py`.
 
-Split out of `citation_gate` for size (#1021). Every module that finds a
-Pandoc citation -- the gate, `references_renumber`, the dossier's key
-scan and the render's figure and citeproc checks -- takes it from here,
-so what one of them reads as a citation the others read too. Standard
-library only, like the gate.
+The one definition every module that finds a Pandoc citation uses
+(#1021), so they all agree. Standard library only, like the gate.
 """
 
 import bisect
@@ -12,53 +9,24 @@ import re
 
 from chitragupta._braced_keys import braced_keys
 
-# Pandoc's own citekey grammar, and the one definition of it in this
-# package: a letter, digit, `_` or `*` start, then letters, digits and
-# `_`, with `:.#$%&-+?<>~/` allowed only *between* them. The lookahead is
-# what stops a sentence-final `.` or a closing `>` being eaten -- pandoc
-# resolves `key` in "shown by @key.", not `key.`. Restricting the body to
-# `[A-Za-z0-9_-]` truncated the key at the first of those characters, so
-# the gate verified a *prefix* of what pandoc would look up: a draft
-# citing `[@smith:2020]` passed on a ledger holding `smith`, and pandoc
-# then rendered `[?]` -- the one thing this gate exists to catch. In the
-# other direction a legitimate Better-BibTeX key (`doe.2020`) was refused
-# as unknown, pushing an author to "fix" a correct citation.
-#
-# "Letter" and "digit" are Unicode's, as they are pandoc's (#1021): with
-# ASCII classes `[@müller_2020]` was checked as the key `m` and
-# `@日本_2021` was not seen at all, and the ledger admits such keys from
-# a Better BibTeX export with key folding off. Python's `\w` is pandoc's
-# `isAlphaNum` plus `_` on every character the differential test draws,
-# a combining mark included: it ends the key in both. A digit may start
-# a key (`[@3dprinting_2020]`), and so may `*`: `@*` is pandoc's
-# cite-everything wildcard, which would put every entry in the bib file
-# into the reference list, so it is reported as the key `*` and fails.
-#
-# A `:` or `/` may also stand before a `/`, as in pandoc's grammar, so a
-# URL-shaped key reads whole: `[@a:/b]` cites `a:/b`, and `@c//d` cites
-# `c//d`. Without it the gate checked the prefix `a` (#1021).
-#
-# A hyphen *run* is matched whole, deliberately unlike pandoc, which
-# stops at `--` (verified against `pandoc -t json` on this host). Keys
-# with a doubled hyphen are real here -- bibtexparser collapses
-# "as-a-service" into `zech_digital-twins-as--service_2024` -- and
-# render_output/_citeproc.py already repairs that for pandoc by aliasing
-# the run away in a temp copy. That repair is driven by this pattern, so
-# matching pandoc's truncation here would both refuse the key at the gate
-# and leave the alias unbuilt, silently dropping the citation instead.
+# Pandoc's citekey grammar: `:.#$%&-+?<>~/` only *between* key characters,
+# so a sentence-final `.` is not eaten. A narrower body made the gate check
+# a prefix (a key with a `:` passed on the part before it, and pandoc
+# rendered `[?]`) and
+# refused real Better-BibTeX keys.
+# Letters and digits are Unicode's, as pandoc's (#1021). `*` may start a
+# key: `@*` cites everything, so it is reported as key `*` and fails. A
+# `:` or `/` may precede `/`, so URL-shaped keys read whole.
+# A hyphen *run* is matched whole, unlike pandoc: bibtexparser produces
+# `--` keys, and render_output/_citeproc.py aliases them for pandoc using
+# this pattern. Matching pandoc here would refuse the key and drop it.
 PANDOC_KEY = r"[\w*](?:\w|-+(?=\w)|[:.#$%&+?<>~/](?=\w)|[:/](?=/))*"
 
-# Every `@` that could open a citation, with the `-` of a suppressed
-# author if one comes first: a bare key, or the `{` of a braced one.
-# Whether it does open one depends on what stands before it, which a
-# lookbehind cannot express (`_opens`).
+# Every `@` that could open a citation, with a suppressed-author `-`.
+# What stands before decides, which a lookbehind cannot express (`_opens`).
 _AT_RE = re.compile(rf"(-?)@(?:({PANDOC_KEY})|\{{)")
-# A bracket opens or closes a bracketed citation unless escaped, and a
-# blank line ends the paragraph, closing any left open -- a line of only
-# `>` included, which is a blockquote's blank line. Blank in the
-# *original* text: a line blanking emptied (inline code, a comment) is
-# still inside its paragraph, and reading it as a break closed the
-# bracket early and dropped the citation in it.
+# Brackets unless escaped; a blank line (or a lone `>`) closes them. Blank
+# in the *original* text: a blanked code line is still in its paragraph.
 _BRACKET_RE = re.compile(r"\\[\s\S]|[\[\]]|\n[ \t>]*(?=\n)")
 
 
@@ -87,12 +55,8 @@ def _dot_run(text: str, pos: int) -> int:
 def _after_tex_command(text: str, pos: int) -> bool:
     """Whether `pos` follows a raw TeX command, `\\name` or `\\name12`.
 
-    Pandoc 3.6's Markdown reader hands such a command to TeX, so the `@`
-    after it is the first thing in a new inline, and opens a citation:
-    `\\x@k` cites `k`. Pandoc 3.1 does so only after a name ending in
-    digits (`\\xa12@k`), and a command either knows to take an argument
-    (`\\emph@k`) swallows the `@`. Reading all of them as citations
-    covers whichever pandoc renders, and can only over-report.
+    Pandoc versions disagree on whether `@` after one opens a citation;
+    reading all as citations covers both and can only over-report.
     """
     end = pos
     while end and text[end - 1] in "0123456789":
@@ -106,24 +70,12 @@ def _after_tex_command(text: str, pos: int) -> bool:
 def _opens(text: str, pos: int, latex: bool) -> bool:
     """Whether a citation may start at `pos`, by what stands before it.
 
-    Anything but a letter, a digit or a `.` may, which is pandoc's rule.
-    That is what keeps an email address (`name@example.com`) from
-    reading as a citation, and nothing more is needed for that: an
-    address has a letter or digit before its `@`. The rule used to
-    exclude `_%+-` as well, "for email addresses", and that hid `pre-@k`,
-    `x_@k`, `x%@k` and `x+@k` from the gate while pandoc cited every one
-    of them (#1021).
-
-    A backslash before the `@` escapes it only when it is not itself
-    escaped, so the run is counted: `\\@k` is no citation, `\\\\@k` is.
-    Nor does a `.` block it when escaped (`\\.@k`), or when it ends a run
-    of three that pandoc's smart punctuation reads as an ellipsis
-    (`x...@k`; `x....@k` is an ellipsis and a full stop).
-    The odd case is what keeps LaTeX's @-as-letter idiom (`\\makeatletter
-    ... \\@ifundefined`) out, which matters because a thesis chapter's
-    `.tex` is gated too. For the same reason a raw TeX command before the
-    `@` (`_after_tex_command`) counts only in Markdown: in a `.tex` file
-    `\\c@page` is LaTeX's own counter, not a citation.
+    Anything but a letter, digit or `.` may (pandoc's rule); that alone
+    keeps email addresses out. Excluding `_%+-` too hid real citations
+    (#1021). An odd backslash run escapes the `@`, which keeps LaTeX's
+    `\\@ifundefined` out of a gated `.tex`; an escaped `.` or one ending a
+    three-dot ellipsis does not block. A raw TeX command before `@` counts
+    only in Markdown: in `.tex`, `\\c@page` is a counter.
     """
     if pos == 0:
         return True
@@ -140,9 +92,8 @@ def _opens(text: str, pos: int, latex: bool) -> bool:
 def _inside_brackets(text: str, source: str) -> tuple[list[int], list[bool]]:
     """Each offset where bracket depth turns zero or non-zero, and which.
 
-    Depth counts nested brackets and never goes below zero, so a stray
-    `]` cannot close a group still open. Erring towards "inside" is the
-    safe direction for `citations` below: inside, a label is a citation.
+    Depth never goes below zero, erring towards "inside", where a label
+    is a citation: the safe direction.
     """
     changes, inside = [0], [False]
     depth = 0
@@ -169,20 +120,15 @@ def citations(
 ) -> list:
     """(start, end, key) of every citation pandoc reads in `text`, in order.
 
-    `text` has had its code and other non-prose blanked already, from
-    `source` (`text` itself when not given), and `latex` says it is a
-    `.tex` file's (`_opens`). `labels` are the
-    example-list labels it defines (`_markdown_inert`): pandoc reads
-    `@label`, `(@label)` and `@{label}` as a reference to that example,
-    not a citation, everywhere except inside a bracketed citation
-    (`[@label]`, `[see @label, p. 3]`), where it still cites.
+    `text` is already blanked from `source`; `latex` marks a `.tex` file.
+    `labels` (example-list labels) are references, not citations, except
+    inside a bracketed citation, where they still cite.
     """
     found = []
     braced = []
     for match in _AT_RE.finditer(text):
         at = match.start() + len(match.group(1))
-        # The `@` after a `-` may always open one; the `-` itself, which
-        # marks the author suppressed, only by the same rule as an `@`.
+        # A `-` marks the author suppressed, and opens only by `@`'s rule.
         if match.group(1) and _opens(text, match.start(), latex):
             start = match.start()
         elif match.group(1) or _opens(text, at, latex):

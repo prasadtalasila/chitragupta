@@ -1,3 +1,6 @@
+# Fails the session if it wrote into the checkout's real content/ (#862).
+# Checks the effect, not the code: a size+mtime snapshot of content/ at
+# session start, compared at finish, which also catches identical rewrites.
 import os
 import stat
 from pathlib import Path

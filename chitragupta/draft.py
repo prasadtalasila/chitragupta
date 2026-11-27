@@ -1,99 +1,20 @@
 """The drafting layer's single entry point: `python -m chitragupta.draft <verb>`.
 
-Thirteen commands, run by hand or by a genre skill over one draft:
+`gate` is the hard gate every genre skill loops on; the other verbs
+(dossier, retrieve, references, evidence, render, style, spec, unit,
+registry, tldr, figures, diff) are listed in `VERBS`, with help text in
+chitragupta/command_help.py.
 
-    python -m chitragupta.draft gate <file> [<file> ...]
-        verify every citekey in a draft against the ledger -- this
-        layer's only exit, the hard gate every genre skill loops on.
+One entry point, one level deep, like `corpus` and `review`: no module
+beside this one has a `__main__` block, so `python -m chitragupta.dossier`
+does nothing (docs/ARCHITECTURE.md states the invariant). This parses
+only the verb and forwards the rest verbatim to the module's own
+`main(argv)`, so flags cannot drift between two parsers. `retrieve`, not
+`retrieval`, keeps verbs imperative or noun-like.
 
-    python -m chitragupta.draft dossier <command> ...
-        the working state behind a draft: create it, inspect it,
-        back it up, restore it.
-
-    python -m chitragupta.draft retrieve search|evidence ...
-        BM25 retrieval over the synced corpus.
-
-    python -m chitragupta.draft references <file.md> [--heading TEXT]
-        an IEEE reference list built from exactly the citekeys a
-        Markdown draft cites.
-
-    python -m chitragupta.draft evidence <file> [--format md|tex|pdf]
-        the evidence sidecar rendered beside a draft: each cited source
-        and the spans its dossier marked quotable.
-
-    python -m chitragupta.draft render <file> --format tex|pdf|...
-        the drafting layer's publish step: Pandoc/LaTeX rendering to
-        tex/pdf/docx.
-
-    python -m chitragupta.draft style <file>
-        a draft's prose against docs/WRITING-STANDARDS.md -- a review
-        aid, never a gate.
-
-    python -m chitragupta.draft spec init|show|sign|status|align|seed <book>
-        the outline a book is generated from, and the human sign-off on
-        it -- the book-scale track's first artefact (docs/WRITE-A-BOOK.md).
-
-    python -m chitragupta.draft unit contract|accept|status <book> [<unit-id>]
-        one section's generation contract -- what it is generated from,
-        hashed -- and the record of its acceptance (docs/WRITE-A-BOOK.md).
-
-    python -m chitragupta.draft registry build|check|excerpt|index <book> [<unit-id>]
-        terminology, claims and cross-references over a book's accepted
-        units -- a review aid, never a gate (docs/WRITE-A-BOOK.md).
-
-    python -m chitragupta.draft tldr write|show <citekey>
-        a one-paragraph, human-authored summary per citekey, cached
-        under content/tldr/ and keyed to a fingerprint of its parsed
-        text -- a browsing aid, never read by `corpus ledger`
-        (docs/FEATURES.md).
-
-    python -m chitragupta.draft figures <citekey>
-        one paper's figures -- caption, page, the string to cite each by,
-        and the crop to look at while drafting. A reading aid; a source
-        figure is never reproduced in a draft (AGENTS.md).
-
-    python -m chitragupta.draft diff <file> [--against REF] [--format md|pdf] [--json]
-        what changed in a draft since a snapshot of it: a change report,
-        and a redline PDF -- a review copy, never a deliverable
-        (docs/DRAFT-ITERATION.md).
-
-**One entry point, one level deep**, like `python -m chitragupta.corpus sync` for the
-corpus layer and `python -m chitragupta.review <aid>` for the review layer. None
-of the modules beside this one carries a `__main__` block any more,
-so `python -m chitragupta.dossier` (or any of the others) imports the module
-and exits 0 without doing anything -- the same trap `chitragupta/enrich/`'s and
-`chitragupta/review/`'s submodules carry, and the reason this file exists rather
-than a scattering of separate commands. docs/ARCHITECTURE.md states the invariant.
-
-Unlike the review layer, the verb names are not the keys of some
-other dict that also owns a file-naming contract -- there was no existing
-vocabulary here to inherit (the modules share little beyond
-`chitragupta/config.py`), so `VERBS` is where the vocabulary is decided, once.
-
-Most verbs are their module's own name. `retrieve` is not:
-it was chosen over `retrieval` because every other verb here is already
-an imperative (`gate`, `render`) or a noun standing in for one
-(`dossier`, `references`), and a layer whose commands read as a mix of
-the two would be harder to guess at than one that picks a form and
-keeps it.
-
-Each module already parses its own arguments -- `dossier` and `retrieval`
-built their own `argparse.ArgumentParser` with their own subcommands
-before this file existed, `render_output` and `references` had their own
-flat parser, and `citation_gate` was deliberately never argparse at all
-(it takes no options). Restating any of that here, in a shared
-`build_parser`, would mean a second place for a flag to drift out of
-sync with what the module actually does -- so this file does not parse
-flags at all. It parses exactly one thing, the verb, and forwards
-everything after it verbatim to that module's own `main(argv)`.
-
-Exit codes are each module's own, unchanged by the dispatch: whatever `0`
-(success), `1` (refusal -- outside `content/`, missing, unresolved
-citekey) and `2` (malformed invocation) already meant for that command
-before it had a shared front door, plus `gate`'s `3` (the ledger could
-not be read, so nothing was checked). The one refusal said here rather
-than by the module is "no ledger to read" (`ledger.NoLedger`, which
-includes one that needs a sync or cannot be read), exit 1.
+Exit codes are each module's own (0 success, 1 refusal, 2 bad usage,
+`gate`'s 3 for an unreadable ledger); the one refusal said here is
+`ledger.NoLedger`, exit 1.
 """
 
 import argparse
@@ -119,8 +40,7 @@ from chitragupta.command_help import verbs
 from chitragupta.help_format import dispatcher_parser
 from chitragupta.progname import prog_for
 
-# The help strings live in chitragupta/command_help.py, the one place
-# `chitragupta --help`'s tree can read them without importing a layer.
+# Help strings live in command_help.py, readable without importing a layer.
 VERBS = {
     verb: (module, verbs("draft")[verb])
     for verb, module in {
@@ -141,9 +61,7 @@ VERBS = {
 }
 
 
-# What `--help` prints, deliberately *not* this module's docstring (#152)
-# -- see chitragupta/corpus.py's DESCRIPTION for the reasoning, which is the same
-# at every entry point in this project.
+# Not the module docstring (#152); see corpus.py's DESCRIPTION.
 DESCRIPTION = "The drafting layer: work on one draft -- gate it, cite it, render it."
 
 
@@ -153,17 +71,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv=None) -> int:
-    """No verb at all prints the usage and exits 0 -- the same "tell me
-    how to use this" request as `--help`, not an error. The same rule
-    `chitragupta/review/__main__.py` already applies to a missing aid."""
+    """No verb prints the usage and exits 0, as `review` does for a
+    missing aid."""
     parser = build_parser()
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
     if args.verb is None:
         parser.print_help()
         return 0
-    # Every verb reads the ledger through `ledger.read_connection` (#843),
-    # which refuses rather than creating one; said once here as the same
-    # `[error]` line a genre skill already reacts to, not as a traceback.
+    # Every verb reads through `ledger.read_connection` (#843), which
+    # refuses rather than creates; said as an `[error]` line, not a traceback.
     try:
         return VERBS[args.verb][0].main(args.rest)
     except ledger.NoLedger as exc:

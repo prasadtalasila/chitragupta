@@ -2,21 +2,10 @@
 that `--write` files under `content/review/` -- and its JSON payload,
 with the `finding_id` both the payload and `quotation.findings()` key on.
 
-Split from `chitragupta/review/quotation.py` for the reason
-`_uncited_render.py` was split from `uncited_prose.py` -- the aid stays
-under docs/CODE-STANDARDS.md's C2 cap, and the layout of a report is a
-different thing to change from what the report decides.
-
-**The absent findings lead.** A reader opening this has one question --
-which of these quotations is not in the paper it names -- and the
-confirmed spans are the answer to a different one. The confirmed and
-unverifiable counts still print, because "nineteen checked, all clean"
-and "nineteen not checked at all" are different reports and a bare
-"no findings" cannot tell them apart. The `- Universe:` line above them
-is the other half (#838): it says whether there was a dossier, and a
-quote in it, to check at all.
-
-Stdlib-only.
+Absent findings lead: they answer the reader's one question. Confirmed
+and unverifiable counts still print, since "nineteen checked, all clean"
+and "nineteen not checked" differ; the `- Universe:` line says whether
+there was a dossier and a quote to check at all (#838).
 """
 
 import hashlib
@@ -31,7 +20,6 @@ _NOT_A_VERDICT = (
 
 
 def _tally(report) -> list[str]:
-    """The three counts, always all three."""
     return [
         f"- Quotes checked: {len(report.checked)}",
         f"- Confirmed in the cited source: {len(report.of('found'))}",
@@ -41,9 +29,8 @@ def _tally(report) -> list[str]:
 
 
 def which(index: int, of: int) -> str:
-    """The ` (quote N of M)` suffix for a block with several quotes, else
-    nothing -- so two quotes from one source never print as the same line
-    (#1174). The agenda's `misquoted` summary uses it too."""
+    """The ` (quote N of M)` suffix for a block with several quotes, so two
+    quotes from one source never print as one line (#1174)."""
     return f" (quote {index} of {of})" if of > 1 else ""
 
 
@@ -106,8 +93,8 @@ _EMPTY = {
 
 
 def _clean(report) -> list[str]:
-    """The no-absent-span paragraph, which must not claim a quote the
-    parse could not check was found."""
+    """The no-absent-span paragraph, which must not claim an unchecked
+    quote was found."""
     skipped = len(report.of("unverifiable"))
     if not skipped:
         return ["Every checked quote was found in its cited source."]
@@ -119,8 +106,8 @@ def _clean(report) -> list[str]:
 
 def _body(report, found) -> list[str]:
     """Everything below the header, shared by both printed forms. The
-    universe line leads, so `grep '^- Universe:'` says which of #838's
-    three zero-findings situations a report is."""
+    universe line leads, so `grep '^- Universe:'` tells #838's three
+    zero-findings cases apart."""
     universe = f"- Universe: `{report.universe}`"
     if report.universe in _EMPTY:
         return [universe, ""] + _EMPTY[report.universe]
@@ -139,44 +126,29 @@ def _body(report, found) -> list[str]:
 
 
 def format_report(report, found) -> str:
-    """What a bare invocation prints."""
     return "\n".join([f"Quotation integrity: {report.draft}", ""] + _body(report, found)).rstrip()
 
 
 def render_markdown(report, command: str, found) -> str:
-    """The written report: the layer's standard header, then the body."""
     header = review.header(report.draft, "quotation", command)
     return "\n".join(header + _body(report, found)) + "\n"
 
 
 def finding_id(citekey: str, quote: str) -> str:
-    """A finding's name, stable across runs and position-free -- the same
-    convention every other aid's `finding_id` uses.
+    """A finding's name, stable across runs and position-free.
 
-    Keyed on the pair whose truth is in question, so both halves hold and
-    both are wanted. Editing an unrelated block renames nothing, and
-    re-attributing the quote or correcting it to the real span makes the
-    finding disappear, which is what "this finding is gone" should mean
-    (R2). And *any* edit to the quote text is a new finding by
-    construction, a typo fix included: a changed span is a different
-    assertion about the source and has not been checked. Keying on the
-    citekey alone would let a repaired quote inherit its predecessor's
-    identity and read, in a later comparison, as one that was resolved.
+    Keyed on (citekey, quote), the pair whose truth is in question: any
+    quote edit, a typo fix included, is a new unchecked assertion, and
+    keying on the citekey alone would let a repaired quote read as resolved
+    (R2).
     """
     return hashlib.sha256(f"{citekey}\n{quote}".encode()).hexdigest()[:12]
 
 
 def quotation_payload(report, command: str, found: list[dict]) -> dict:
-    """The same verdicts the report prints, as data -- an additional
-    serialisation, never a second computation.
-
-    Every checked quote appears, not only the findings: the tier that
-    confirmed a span is what tells a reader the check was contiguous
-    rather than an ordered alignment around an ellipsis, and a count of
-    what was skipped is what separates "seven checked, all clean" from
-    "seven not checked at all". `universe` is what separates "no
-    dossier", "no quote" and "checked" when all three have zero
-    findings (#838).
+    """The same verdicts the report prints, as data. Every checked quote
+    appears, with its tier, and `universe` separates "no dossier", "no
+    quote" and "checked" when all have zero findings (#838).
     """
     payload = review.envelope(report.draft, "quotation", command)
     payload.update(

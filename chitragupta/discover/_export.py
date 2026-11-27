@@ -1,17 +1,10 @@
 """The two views that write a file instead of printing one: `--html`
 (one static page) and `--app` (the interactive directory).
 
-Together here because they share one contract, and reading them side by
-side is how it stays shared: nothing reaches stdout before the write, a
-failure line goes to stderr in both modes because diagnostics are never
-part of a payload, and the success report is shaped by `--json` because
-under that flag it *is* the payload. Both take the `--origins` selection
-and hand it to the builder, so an exported artefact contains what it
-says it contains rather than hiding topics on screen (#742).
-
-Split out of `__init__` when the module crossed the 250-code-line limit
-(docs/CODE-STANDARDS.md): "write the graph somewhere and report where"
-is one responsibility, and it is not the resolution ladder's.
+One shared contract: nothing reaches stdout before the write, a failure
+line goes to stderr in both modes, and the success report is shaped by
+`--json` because it then *is* the payload. Both filter by `--origins`
+so an export contains what it says (#742).
 """
 
 import sys

@@ -1,25 +1,9 @@
 """Read-only ledger inspection: `python -m chitragupta.corpus ledger`.
 
-Split from `chitragupta/ledger.py` (#441): the library crossed the
-250-code-line limit docs/CODE-STANDARDS.md sets, and this CLI was
-already its own architectural seam there -- reached only through
-`ledger.failure_counts`/`ledger.all_items`/public reads, never through
-`ledger._migrate`/`ledger.upsert_reference`.
-
-Its own entrypoint rather than a `sync --inspect` flag, for two reasons
-that are both about what a *reader* needs. `sync` takes the pipeline
-write lock, so an inspect flag on it would exit 2 exactly when you most
-want to look -- during a run; this takes no lock at all, which is the
-property `chitragupta/runlock.py`'s separate lock file exists to
-preserve. And `sync` needs bibtexparser, while reading the ledger needs
-only sqlite3, so this runs under the bare system interpreter like
-`citation_gate` and `references` do.
-
-No `config.require_inside_content` call here, unlike those two: its
-arguments below are `--list` (a flag), `--status` (a status name) and
-`--citekey` (a citekey looked up in the DB) -- none is a filesystem path,
-so the tier-1 confinement rule applies vacuously rather than needing a
-check.
+Split from `chitragupta/ledger.py` (#441). Not a `sync --inspect` flag:
+`sync` holds the write lock (an inspect would exit 2 mid-run) and needs
+bibtexparser, while this takes no lock and runs under bare python3.
+No argument is a filesystem path, so no content confinement is needed.
 """
 
 import sqlite3
@@ -80,22 +64,11 @@ def main(argv: "list[str] | None" = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    # Opened read-only, NOT via ledger.connect(): connect() runs the schema and
-    # migrations and commits, which takes a write lock and can bump
-    # PRAGMA user_version. That would contradict this command's whole
-    # reason for existing -- inspecting without interfering, including
-    # while a sync is mid-run. `ledger.read_connection` has why its
-    # timeout is sqlite's default rather than 0 (m-72).
-    #
-    # Both refusals -- no ledger, and one that needs a sync to migrate
-    # it -- exit 0 with the instruction on stdout: they are positions in
-    # clone -> config -> sync -> draft, not faults, and the session-start
-    # hook reads a non-zero exit here as "the corpus layer will not start".
-    #
-    # A ledger that is there but SQLite will not read is the exception
-    # (#1066): a fault, not a position, so it exits 3 with the cause on
-    # stderr, and the session-start hook reports that code as itself
-    # rather than as a missing config file.
+    # Read-only, not ledger.connect(), which migrates and takes the write
+    # lock: inspecting must not interfere with a running sync.
+    # No ledger, or one needing a sync, exits 0 with the instruction: a
+    # stage, not a fault, and the session-start hook reads non-zero as
+    # "will not start". An unreadable ledger is a fault: exit 3 (#1066).
     try:
         con = ledger.read_connection()
     except ledger.UnreadableLedger as exc:
@@ -104,14 +77,12 @@ def main(argv: "list[str] | None" = None) -> int:
     except ledger.NoLedger as exc:
         print(exc)
         return 0
-    # connect() leaves rows as tuples; this CLI addresses columns by name
-    # so that adding one doesn't silently shift the output.
+    # Columns by name, so adding one cannot shift the output.
     con.row_factory = sqlite3.Row
     try:
         return _show(con, args)
     except sqlite3.Error as exc:
-        # A damaged page the first read did not reach (#1066): the same
-        # fault as one it did, so the same refusal and the same exit.
+        # A damaged page the first read missed (#1066): same refusal.
         print(ledger.UnreadableLedger(config.LEDGER_PATH, exc), file=sys.stderr)
         return ledger.EXIT_UNREADABLE
     finally:
@@ -142,10 +113,8 @@ def _show_item(con, citekey) -> int:
 def _list_items(con, status, collection=None) -> int:
     """`--list`/`--status`/`--collection`: matching items, then the count.
 
-    The collection filter is applied in Python rather than in SQL because
-    a value is a slug path or a display path, resolved through the name
-    table, and matching is a subtree (`chitragupta/collection_filter.py`).
-    A value naming no collection, or several, is refused with exit 2.
+    The collection filter runs in Python: values resolve through the name
+    table and match a subtree. Naming none or several exits 2.
     """
     rows = con.execute(
         "SELECT * FROM items WHERE (? IS NULL OR status = ?) ORDER BY citekey",
@@ -201,8 +170,7 @@ def _print_summary_counts(con, counts, total) -> None:
     try:
         kinds = ledger.failure_counts(con)
     except sqlite3.OperationalError:
-        # A ledger written before failure_kind existed. Read-only, so
-        # it cannot be migrated here -- `python -m chitragupta.corpus sync` does that.
+        # Predates failure_kind; read-only, so sync migrates it.
         kinds = {"deterministic": 0, "transient": 0}
     if kinds["deterministic"]:
         print(

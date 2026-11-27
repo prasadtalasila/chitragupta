@@ -1,69 +1,42 @@
 """The geometry checks: pure arithmetic over parsed node boxes.
 
-Separated from `_probe.py` because none of this needs a toolchain. A box
-is four floats however it was obtained, so every rule here is testable
-without TeX on the host -- which is most of what makes this aid's
-own test suite runnable on CI's Windows leg, where no TeX is installed.
-
-Three checks live here, and **one of them is not like the others**:
-`overlaps()` and `protrudes()` are binary, and `emptiness()` is a
-continuous proportion that docs/AUTO-IMPROVEMENT.md's R3 forbids anything
-unattended from optimising. The report labels which is which; this module
-keeps them separate functions so a caller cannot accidentally treat the
-proportion as a verdict.
+Needs no toolchain, so it tests on CI's Windows leg without TeX.
+`overlaps()` and `protrudes()` are binary; `emptiness()` is a continuous
+proportion R3 forbids anything unattended from optimising, kept a
+separate function so no caller treats it as a verdict.
 """
 
 import math
 
-# The name the picture's own bounding box is reported under. TikZ's
-# `current bounding box` is a real pseudo-node, so it is read through the
-# identical mechanism as a real node -- but it is not one, and every
-# check that iterates nodes has to exclude it (it contains all of them by
-# construction, so an overlap check including it reports every node).
+# `current bounding box` is read like a node but contains every node, so
+# every node-iterating check must exclude it.
 BBOX_NAME = "current bounding box"
 
-# Two boxes closer than this in either axis are treated as touching
-# rather than colliding, and a bounding box within this of the node union
-# is treated as tight. TeX rounds to ~1e-5pt, and TikZ's own bounding box
-# sits a fraction inside the outermost node anchors (measured: 0.2pt on
-# this host), so an exact comparison would report every figure.
+# Touching, not colliding, and a "tight" bbox: TeX rounds to ~1e-5pt and
+# TikZ's bbox sits ~0.2pt inside the outermost anchors, so exact
+# comparison would report every figure.
 _TOLERANCE_PT = 1.0
 
-# An empty horizontal band taller than this fraction of the figure is
-# reported as protrusion. A third is deliberately generous: an ordinary
-# layered diagram leaves real gaps between its rows, and this check
-# exists for the figure with one element stranded far above the rest,
-# not for the one with comfortable row spacing.
+# Generous: ordinary layered diagrams have real row gaps; this is for one
+# element stranded far above the rest.
 _PROTRUSION_BAND_FRACTION = 1 / 3
 
 Box = tuple[float, float, float, float]
 Point = tuple[float, float]
 
-# Points per Bézier piece when a curve is flattened into straight ones.
 _CURVE_STEPS = 8
 
 
 def _without_bbox(boxes: dict[str, Box]) -> dict[str, Box]:
-    """`boxes` minus the picture's own extent -- the real nodes only."""
     return {name: box for name, box in boxes.items() if name != BBOX_NAME}
 
 
 def overlaps(boxes: dict[str, Box]) -> list[tuple[str, str]]:
     """Every pair of nodes whose boxes *partially* intersect.
 
-    Binary, and the one geometry check safe for anything to act on. Two
-    exclusions, both of them real layouts rather than tolerances:
-
-    - **Touching edge-to-edge is not a collision**, so the comparison
-      carries `_TOLERANCE_PT`.
-    - **Containment is not a collision either.** A node that wholly
-      contains another is a zone or a grouping box -- the
-      `backgrounds`-layer idiom docs/TIKZ-STYLE.md explicitly
-      recommends -- and its children sitting inside it is the point of
-      it, not a defect. Without this the check reports the layouts the
-      standard recommends: run over this repository's own drafts, a
-      two-zone architecture figure produced eight "overlaps", every one
-      of them a labelled zone containing the nodes it exists to group.
+    Edge-to-edge touching (`_TOLERANCE_PT`) and containment are not
+    collisions: a zone wholly containing its children is the
+    `backgrounds` idiom docs/TIKZ-STYLE.md recommends.
     """
     nodes = sorted(_without_bbox(boxes).items())
     found = []
@@ -75,12 +48,8 @@ def overlaps(boxes: dict[str, Box]) -> list[tuple[str, str]]:
 
 
 def intersects(one: Box, other: Box) -> bool:
-    """Whether two boxes overlap on *both* axes.
-
-    Both, not either: two nodes sharing an x range but stacked vertically
-    are an ordinary layered layout, and checking one axis alone would
-    report every one of them.
-    """
+    """Whether two boxes overlap on *both* axes; one axis alone would
+    report every vertically stacked layout."""
     ax1, ay1, ax2, ay2 = one
     bx1, by1, bx2, by2 = other
     x_overlap = min(ax2, bx2) - max(ax1, bx1)
@@ -89,14 +58,12 @@ def intersects(one: Box, other: Box) -> bool:
 
 
 def _either_contains(one: Box, other: Box) -> bool:
-    """Whether one box wholly encloses the other -- a zone, not a clash."""
     return contains(one, other) or contains(other, one)
 
 
 def contains(outer: Box, inner: Box) -> bool:
-    """Whether `outer` encloses `inner`, to `_TOLERANCE_PT`. Shared with
-    `figure check`'s connector rules (#1054), so a zone is one thing to
-    both."""
+    """Whether `outer` encloses `inner`, to `_TOLERANCE_PT`; shared with
+    `figure check`'s connector rules (#1054) so a zone is one thing to both."""
     ox1, oy1, ox2, oy2 = outer
     ix1, iy1, ix2, iy2 = inner
     return (
@@ -108,13 +75,8 @@ def contains(outer: Box, inner: Box) -> bool:
 
 
 def leaves(boxes: dict[str, Box]) -> list[str]:
-    """The nodes that wholly enclose no other node: zone cards dropped.
-
-    What `figure check`'s slack counts as filled (#1057), and what the
-    layout reference tables were measured with. A zone is mostly the
-    ground its children sit on, so counting its area would call a
-    sprawling zoned figure full.
-    """
+    """The nodes enclosing no other node (#1057): a zone's area would call
+    a sprawling zoned figure full."""
     nodes = _without_bbox(boxes)
     return [
         name
@@ -124,13 +86,10 @@ def leaves(boxes: dict[str, Box]) -> list[str]:
 
 
 def edge_gap(one: Box, other: Box) -> float | None:
-    """How far apart two boxes joined by an edge are, edge to edge.
+    """Nearest-point distance between two boxes joined by an edge.
 
-    The distance between the nearest points of the two boxes, so a
-    diagonal pair is measured corner to corner. `None` where the pair
-    has no gap for an arrow to cross: a zero-area box (a coordinate, a
-    bend point), one box enclosing the other (a zone and its child), or
-    two boxes that intersect, which `overlaps()` already reports.
+    `None` where there is no gap for an arrow to cross: a zero-area box,
+    containment, or intersection (`overlaps()` reports that).
     """
     if not (_area(one) and _area(other)):
         return None
@@ -151,29 +110,13 @@ def _area(box: Box) -> float:
 def protrudes(boxes: dict[str, Box]) -> bool:
     """Whether the figure has a tall empty band across its full width.
 
-    docs/TIKZ-STYLE.md's LaTeX-specific veto, as arithmetic: LaTeX sets a
-    figure as a rectangular box, so one element sticking out above the
-    main block forces surrounding text to wrap around the highest point
-    and wastes every inch of vertical space beside it.
-
-    **Measured as the largest empty horizontal band**, not as the
-    bounding box against the union of node boxes. The union is what the
-    roadmap first proposed and it does not work: where the protruding
-    element is itself a node -- the usual case, and the one the veto
-    describes -- the union already contains it, so the two agree exactly
-    and nothing is ever reported. A gap is what the defect actually is.
-
-    One mechanism covers both shapes of it, which is why the bounding box
-    is included as a boundary: a band between two nodes catches a
-    protruding node, and a band between the outermost node and the
-    picture's own edge catches non-node content (a stray path, a label
-    placed outside every node) reaching past them.
-
-    **Vertical only, deliberately.** The veto is about vertical space,
-    and horizontal gaps are load-bearing in half of docs/TIKZ-STYLE.md's
-    own layout metaphors -- a pipeline and a hub-and-spoke are *made* of
-    them, so checking x would report the metaphors the standard
-    recommends.
+    docs/TIKZ-STYLE.md's veto: LaTeX sets a figure as a rectangle, so one
+    element sticking up wastes the space beside it. Measured as the
+    largest empty horizontal band, not bbox against the node union: the
+    protruding element is usually a node, so the union already contains
+    it and nothing would be reported. The bbox is a boundary so stray
+    non-node content counts too. Vertical only: horizontal gaps make up
+    pipelines and hub-and-spoke layouts.
     """
     if BBOX_NAME not in boxes:
         return False
@@ -194,31 +137,11 @@ def protrudes(boxes: dict[str, Box]) -> bool:
 def emptiness(boxes: dict[str, Box]) -> float | None:
     """Proportion of the picture's bounding box no node occupies.
 
-    **Continuous, and therefore human-read only.**
-    docs/AUTO-IMPROVEMENT.md's R3 forbids a continuous score from being
-    the thing an unattended loop optimises, so this is reported, labelled
-    as advisory, and consumed by nothing. A figure with generous
-    whitespace is not thereby a worse figure -- which is exactly why no
-    machine gets to drive this number down.
-
-    The node area is summed, so overlapping nodes are double-counted and
-    the emptiness comes out slightly low. Acceptable precisely because
-    overlap is reported independently by `overlaps()`: a figure clean
-    enough to pass that check has no double-counted area left to distort
-    this one.
-
-    `None` in the two cases where the question has no answer, rather than
-    a number that reads like one:
-
-    - **The picture has no extent** to be empty of. Reporting 0.0 there
-      would read as "perfectly packed".
-    - **The figure names no nodes at all.** A figure drawn entirely from
-      `\\draw` paths and `\\foreach` bodies is a real and ordinary shape
-      -- two of this repository's own drafted figures are exactly that --
-      and it has no node area to subtract, so the arithmetic would say
-      "100% empty" about a picture that is visibly full. That is a
-      measurement artefact, not a finding, and printing it as a
-      percentage invites someone to act on it.
+    **Continuous, and therefore human-read only** (R3): consumed by
+    nothing. Overlapping nodes double-count, which is acceptable because
+    `overlaps()` reports them. `None` when the picture has no extent (0.0
+    would read as "perfectly packed") or names no nodes (an all-`\\draw`
+    figure would read "100% empty").
     """
     if BBOX_NAME not in boxes:
         return None
@@ -235,8 +158,7 @@ def emptiness(boxes: dict[str, Box]) -> float | None:
 
 def subpaths(segments: list[tuple[str, Point]]) -> list[tuple[list[Point], bool]]:
     """`[(points, curved)]`, one per subpath of two points or more, from
-    a path's logged `(op, point)` segments (`_drawn.py` has the ops).
-    Curves are flattened; a rectangle is dropped."""
+    logged `(op, point)` segments; curves flattened, rectangles dropped."""
     pieces: list[tuple[list[Point], bool]] = []
     points: list[Point] = []
     curved, supports, rectangle = False, [], False
