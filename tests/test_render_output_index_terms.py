@@ -1,12 +1,3 @@
-"""The index filter (#1168): one `\\index{<id>}` per term per chapter, and
-the sidecar `registry index` reads.
-
-The filter cases run the shipped `assets/pandoc/index_terms.lua` through
-real pandoc with exactly the argv `_index_terms.pandoc_args` adds, as
-`test_render_output_unit_labels.py` does: the filter is Lua, which
-coverage cannot measure, so every rule it carries has a case here.
-"""
-
 import json
 import subprocess
 from pathlib import Path
@@ -35,7 +26,6 @@ def terms_file(tmp_path: Path, terms: dict, min_mentions=2, skip=("Exercises",))
 
 
 def fragment(tmp_path: Path, text: str, terms: Path) -> "tuple[str, dict]":
-    """`text` as a fragment render's LaTeX, and the sidecar it wrote."""
     draft = tmp_path / f"{UNIT}.md"
     draft.write_text(text, encoding="utf-8")
     cmd = ["pandoc", str(draft), "-t", "latex", "--natbib", "--top-level-division=chapter"]
@@ -46,9 +36,6 @@ def fragment(tmp_path: Path, text: str, terms: Path) -> "tuple[str, dict]":
 
 
 TWIN = {"t1": (["digital twin"], [], [])}
-
-
-# --- the argv -------------------------------------------------------------
 
 
 def test_no_term_table_adds_nothing(tmp_path):
@@ -81,9 +68,6 @@ def test_the_cli_refuses_index_terms_without_fragment(tmp_path, capsys):
         main([str(tmp_path / "ch.md"), "--format", "tex", "--index-terms", "t.json"])
     assert exc.value.code == 2
     assert "--index-terms needs --fragment" in capsys.readouterr().err
-
-
-# --- the filter ------------------------------------------------------------
 
 
 @needs_pandoc
@@ -199,8 +183,6 @@ class TestTheFilter:
         assert "digital\\index{t1|textbf} twin" in latex
 
     def test_a_term_glossed_in_the_plural_matches_its_singular(self, tmp_path):
-        """Found on the digital-twins book: the glossary's "lifecycle
-        phases" against prose that says "lifecycle phase" eight times."""
         terms = terms_file(
             tmp_path, {"t1": (["lifecycle phases"], [], []), "t2": (["boxes"], [], [])}
         )

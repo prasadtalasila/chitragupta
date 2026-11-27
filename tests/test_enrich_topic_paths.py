@@ -1,11 +1,3 @@
-"""chitragupta/enrich/topic_paths.py + discover/_paths.py (#714).
-
-The property under test: walking the stored next-hop matrices yields
-exactly the routes the browser's own Dijkstra walks --
-`tests/webapp/path_cases.json` is the contract, asserted from node by
-tests/webapp/families.test.js and from here by this module.
-"""
-
 import json
 from pathlib import Path
 

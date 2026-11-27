@@ -1,11 +1,3 @@
-"""chitragupta/enrich/topic_brokerage.py: stored brokerage (#713).
-
-The property under test: the builder's networkx numbers and the
-browser's egoStats arithmetic are the same numbers --
-tests/webapp/brokerage_cases.json is the contract, asserted from node
-by tests/webapp/ego.test.js and from here by this module.
-"""
-
 import json
 from pathlib import Path
 

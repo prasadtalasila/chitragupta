@@ -1,7 +1,3 @@
-"""chitragupta/retrieval.py: BM25-ranked search over a cached term-frequency
-index, the retrieval contract genre skills call before the
-embeddings-based upgrade (chitragupta/enrich/embed_index.py)."""
-
 import json
 import os
 from pathlib import Path
@@ -35,21 +31,12 @@ class TestTokenize:
         assert retrieval._tokenize("ISO 9001 standard") == ["iso", "9001", "standard"]
 
     def test_keeps_a_two_character_acronym(self):
-        """#790's whole point: "AI", "DT" and "5G" are content words in a
-        technical bibliography, and the floor used to drop every one of
-        them from both the index and the query."""
         assert retrieval._tokenize("AI and DT for 5G networks") == ["ai", "dt", "5g", "networks"]
 
     def test_still_drops_a_single_character(self):
-        """The floor is 2, not 1, and the sweep behind that is in
-        bench/RESULTS.md: dropping to 1 admits every list marker, variable
-        name and OCR fragment in the corpus for no recall it did not
-        already have."""
         assert retrieval._tokenize("a b c x y 1 2 3") == []
 
     def test_a_two_character_stopword_stays_out(self):
-        """The stopword list is consulted independently of the floor, so
-        lowering the floor must not readmit "of" or "in"."""
         assert retrieval._tokenize("of in at by on is AI") == ["ai"]
 
 
@@ -58,16 +45,9 @@ class TestShortQueryTerms:
         assert retrieval.short_query_terms("digital twin architecture") == []
 
     def test_a_two_character_word_is_no_longer_flagged(self):
-        """Since #790 the floor is 2, so "AI" and "5G" rank rather than
-        being warned about. A warning naming a word that *did* reach
-        ranking would send a reader looking for a cause that is not
-        there."""
         assert retrieval.short_query_terms("AI safety in 5G networks") == []
 
     def test_flags_one_character_words(self):
-        # "a" is not flagged -- it is dropped as a stopword regardless of
-        # length, so naming it would not explain anything the length
-        # floor specifically cost this query.
         assert retrieval.short_query_terms("a x y model") == ["x", "y"]
 
     def test_a_query_of_only_short_terms_is_entirely_flagged(self):
@@ -76,13 +56,6 @@ class TestShortQueryTerms:
 
 class TestQueryTerms:
     def test_strips_wh_words_and_a_modal(self):
-        # "co" is here since #790 and its presence is the point, not an
-        # accident of the example: docs/CORPUS-SEARCH.md recorded
-        # `co-simulation` tokenizing to `simulation` alone as a defect
-        # beside the interrogative one, because a document written the
-        # same way yields both halves and the query only offered one.
-        # Lowering the floor to 2 closes it, so this case now pins both
-        # behaviours at once.
         assert retrieval._query_terms("what are the failure modes of co-simulation") == [
             "failure",
             "modes",
@@ -107,11 +80,6 @@ class TestQueryTerms:
         ]
 
     def test_tokenize_itself_is_not_touched(self):
-        """_query_terms must be additive over _tokenize, not a
-        replacement for it -- document-side indexing calls _tokenize
-        directly and must keep seeing interrogatives, or every
-        document's IDF moves for a change the roadmap explicitly
-        declined."""
         assert retrieval._tokenize("what why how") == ["what", "why", "how"]
 
 
@@ -122,24 +90,12 @@ class TestSnippet:
         assert "digital" in snippet
 
     def test_picks_the_window_covering_the_most_query_terms(self):
-        """Not the first match -- the best one. A paper that mentions one
-        query term in its front matter and discusses the actual subject
-        forty thousand characters later used to be judged on the front
-        matter."""
         text = "ABSTRACT twin " + "x " * 400 + " soil moisture twin controller " + "y " * 400
         snippet = retrieval._snippet(text, {"twin", "soil", "moisture"}, window=60)
         assert "soil" in snippet
         assert "moisture" in snippet
 
     def test_is_the_same_snippet_whatever_the_hash_seed(self):
-        """`terms` is a set and string hashing is randomised per process,
-        so anything that iterates it and stops at the first hit returns a
-        different snippet run to run. That was tolerable at a 500-char
-        window and not tolerable at the short windows an earlier version
-        of this module rejected candidates on -- there it made the
-        rejection itself irreproducible (docs/REJECTION.md). Run in
-        subprocesses because PYTHONHASHSEED is read at interpreter
-        start."""
         program = (
             "from chitragupta import retrieval;"
             "text = 'ABSTRACT twin ' + 'x '*400 + ' MIDDLE greenhouse ' "
@@ -170,10 +126,6 @@ class TestSearch:
         assert retrieval.search("") == []
 
     def test_a_question_and_its_keyword_form_rank_the_same(self, ledger_con):
-        """`what` must not survive into the query's term set: seed a
-        third title where the literal word "what" is what would win the
-        ranking pre-fix, so this is red before _query_terms is wired in,
-        not vacuously green."""
         add_citable(ledger_con, "a2024", title="Structural Health Monitoring")
         add_citable(ledger_con, "b2024", title="Unrelated Paper About Cats")
         add_citable(ledger_con, "c2024", title="What Is Wrong With Benchmarks What What")
@@ -184,14 +136,6 @@ class TestSearch:
         assert keyword_hits == question_hits == ["a2024"]
 
     def test_a_two_character_acronym_ranks(self, ledger_con):
-        """#790's success criterion, end to end rather than at the
-        tokenizer: a query that is nothing but a two-character content
-        word must find the paper about it and leave the others alone.
-
-        Red before the floor moved, and not vacuously: pre-#790 `search`
-        returned `[]` here, because `_query_terms` dropped "5g" and a
-        query with no terms at all short-circuits.
-        """
         add_citable(ledger_con, "a2024", title="5G Network Slicing")
         add_citable(ledger_con, "b2024", title="Unrelated Paper About Cats")
         assert [r.citekey for r in retrieval.search("5g")] == ["a2024"]
@@ -199,14 +143,6 @@ class TestSearch:
     def test_an_acronym_reaches_a_paper_that_only_spells_it_out(
         self, ledger_con, tmp_path, monkeypatch
     ):
-        """#789's success criterion, end to end: with expansion on, a
-        query of nothing but `DT` reaches the paper that says "digital
-        twin" throughout and never writes the abbreviation.
-
-        Red with the feature off, and not vacuously -- BM25 is exact
-        match, so `dt` appears in no document here at all and the search
-        returns nothing.
-        """
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
         add_citable(ledger_con, "a2024", title="A Digital Twin Of A Greenhouse")
         add_citable(ledger_con, "b2024", title="Unrelated Paper About Cats")
@@ -218,9 +154,6 @@ class TestSearch:
     def test_switching_expansion_off_leaves_the_ranking_alone(
         self, ledger_con, tmp_path, monkeypatch
     ):
-        """The identity #789 asks for, over a corpus where expansion
-        *would* otherwise move things: every citekey and every score is
-        what it was, not merely the same top result."""
         for citekey, title in (
             ("a2024", "A Digital Twin Of A Greenhouse"),
             ("b2024", "Twin Studies In Psychology"),
@@ -241,11 +174,6 @@ class TestSearch:
         )
 
     def test_an_added_term_scores_as_a_typed_one(self, ledger_con, monkeypatch):
-        """#789's sweep put full weight ahead of every fraction of it, so
-        there is no per-term discount: a paper carrying only the
-        expansion competes on equal terms with one carrying the acronym,
-        and the two tie here rather than ordering by how the query was
-        spelled."""
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "twin"})
         add_citable(ledger_con, "typed2024", title="DT Study")
         add_citable(ledger_con, "added2024", title="Twin Study")
@@ -254,10 +182,6 @@ class TestSearch:
         assert scores["typed2024"] == pytest.approx(scores["added2024"])
 
     def test_the_snippet_is_cut_around_an_added_term(self, ledger_con, tmp_path, monkeypatch):
-        """A document reached through an expansion says nothing the
-        caller typed, so a snippet built from the typed terms alone would
-        have no window to anchor on and fall back to the paper's opening
-        characters -- a result the reader cannot judge."""
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
         parsed = parsed_file("a2024")
         parsed.write_text(
@@ -284,9 +208,6 @@ class TestSearch:
 
     @pytest.mark.parametrize("status", ["no_pdf", "discovered", "parse_failed"])
     def test_search_never_returns_an_unparsed_row(self, ledger_con, status):
-        """#1118: a row whose PDF never parsed is not citable, so search
-        must not offer it -- a `no_pdf` web page matched on its title was
-        how one reached a draft. The parsed row still comes back."""
         add_citable(ledger_con, "parsed_2024", title="Robotics In Practice")
         ledger.upsert_reference(
             ledger_con, make_reference(citekey="web_2024", title="Robotics web page")
@@ -310,10 +231,6 @@ class TestSearch:
         assert results[0].citekey == "a2024"
 
     def test_missing_parsed_file_does_not_crash(self, ledger_con):
-        """Inside `content/parsed/` and simply not there -- the case the
-        `OSError` branch is for, and the one issue 821's confinement
-        must not swallow: a refused path takes a different branch, so a
-        test pointing outside the corpus would stop exercising this."""
         ref = make_reference(citekey="a2024", title="Some Title About Robotics")
         ledger.upsert_reference(ledger_con, ref)
         ledger.mark_parsed(ledger_con, "a2024", parsed_file("does-not-exist"))
@@ -323,8 +240,6 @@ class TestSearch:
         assert results[0].citekey == "a2024"
 
     def test_only_a_parsed_row_counts_as_missing_its_text(self, ledger_con, capsys):
-        """A `discovered` or `no_pdf` row has no parsed text by design;
-        counting it would make the note fire on every healthy corpus."""
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Robotics"))
         ledger.upsert_reference(ledger_con, make_reference(citekey="b2024", title="Robotics Too"))
         ledger.mark_parsed(ledger_con, "b2024", parsed_file("does-not-exist"))
@@ -335,10 +250,6 @@ class TestSearch:
         assert capsys.readouterr().err == ""
 
     def test_undecodable_bytes_are_replaced_not_dropped(self, ledger_con):
-        """Issue 844: `errors="ignore"` here and `errors="replace"`
-        everywhere else meant BM25 ranked a different text from the one
-        the aids quote -- dropping a stray Latin-1 byte fused `na\\xefve`
-        into the word `nave`, which this document does not contain."""
         parsed = parsed_file("a2024")
         parsed.write_bytes(b"a na\xefve reading of robotics")
         add_citable(ledger_con, "a2024", title="Robotics")
@@ -347,9 +258,6 @@ class TestSearch:
         assert "�" in retrieval._full_text(ledger.all_items(ledger_con)[0])
 
     def test_parse_failed_status_does_not_serve_stale_parsed_text(self, ledger_con, tmp_path):
-        # #490: a parsed doc whose PDF changes and then fails to reparse
-        # keeps its old parsed_path in the row; retrieval must not read it,
-        # because it names text from the superseded (pre-change) PDF.
         parsed = parsed_file("a2024")
         parsed.write_text("this document mentions blockchain repeatedly blockchain blockchain")
         ref = make_reference(citekey="a2024", title="Unrelated Title")
@@ -360,12 +268,6 @@ class TestSearch:
         assert retrieval.search("blockchain") == []
 
     def test_a_cached_hit_is_invalidated_by_a_later_parse_failure(self, ledger_con, tmp_path):
-        # The real #490 order: search() once while 'parsed' (writing the
-        # on-disk cache against a fingerprint that says nothing about
-        # status), then a parse failure on the *same* file path -- title,
-        # parsed_path and the file's own stat are all unchanged, so a
-        # fingerprint blind to status would still hit and serve the
-        # cached, pre-failure tokens straight past _full_text's guard.
         parsed = parsed_file("a2024")
         parsed.write_text("this document mentions blockchain repeatedly blockchain blockchain")
         ref = make_reference(citekey="a2024", title="Unrelated Title")
@@ -386,15 +288,6 @@ class TestSearch:
     def test_length_normalization_prevents_long_docs_from_winning_structurally(
         self, ledger_con, tmp_path
     ):
-        # Regression for the raw-term-frequency ranker's core bug: with no
-        # length normalization, a long document only needed to accumulate
-        # *more raw hits* than a short one to outrank it, regardless of how
-        # small a fraction of the long document those hits represent. Here
-        # the long document mentions the query term twice (a higher raw
-        # count than the short document's one mention) but is buried in
-        # ~1200 words of unrelated filler -- the old scorer would have
-        # ranked it first on raw count alone; BM25's length normalization
-        # must rank the short, tightly-on-topic document first instead.
         short_parsed = parsed_file("short2024")
         short_parsed.write_text("Blockchain is the entire subject of this short paper.")
         long_parsed = parsed_file("long2024")
@@ -416,11 +309,6 @@ class TestSearch:
         assert isinstance(results[0].score, float)
 
     def test_returns_at_most_one_result_per_citekey(self, ledger_con):
-        """Issue #305: a per-citekey cap is a no-op here because `scores`
-        is a dict keyed by citekey -- no matter how strongly a document
-        matches, it can contribute only one entry to `ranked`. Several
-        identical documents, so nothing about content or score is what
-        keeps them distinct in the result, only the citekey."""
         for i in range(4):
             add_citable(ledger_con, f"item{i}_2024", title="Digital Twin Digital Twin")
 
@@ -431,10 +319,6 @@ class TestSearch:
 
 
 class TestIndexCaching:
-    """The scale fix: search() must not re-read and re-tokenize every
-    document's parsed text from disk on every call -- only building a
-    snippet for the returned top-k should touch a parsed file at all."""
-
     def test_cache_file_is_created_on_first_search(self, ledger_con, tmp_path):
         parsed = parsed_file("a2024")
         parsed.write_text("digital twin content")
@@ -471,8 +355,6 @@ class TestIndexCaching:
 
         results = retrieval.search("digital twin", k=1)
         assert [r.citekey for r in results] == ["winner2024"]
-        # loser2024 never makes the top-k, so ranking it must have come
-        # from the cached index, not a fresh read+tokenize of its file.
         assert loser_parsed not in read_calls
 
     def test_changed_parsed_file_content_triggers_reindex(self, ledger_con, tmp_path):
@@ -512,9 +394,6 @@ class TestIndexCaching:
     def test_cache_that_is_valid_json_but_wrong_top_level_shape_is_rebuilt(
         self, ledger_con, tmp_path
     ):
-        # Regression (PR #6 review): _load_cache only checked data.get("version"),
-        # so valid JSON that isn't a dict at all (a bare array here) would
-        # crash on that .get() call instead of being treated as a cache miss.
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
         config.RETRIEVAL_INDEX_PATH.write_text(json.dumps([1, 2, 3]))
         add_citable(ledger_con, "a2024", title="Digital Twin")
@@ -523,9 +402,6 @@ class TestIndexCaching:
         assert [r.citekey for r in results] == ["a2024"]
 
     def test_cache_whose_items_value_is_the_wrong_shape_is_rebuilt(self, ledger_con):
-        # Same class of bug one level deeper: "items" present but not a
-        # dict (e.g. a list) -- cached.get(citekey) in _load_index() would
-        # otherwise crash on it instead of treating it as a cache miss.
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
         config.RETRIEVAL_INDEX_PATH.write_text(
             json.dumps({"version": 1, "items": ["not", "a", "dict"]})
@@ -536,9 +412,6 @@ class TestIndexCaching:
         assert [r.citekey for r in results] == ["a2024"]
 
     def test_cache_entry_for_one_citekey_that_is_the_wrong_shape_is_rebuilt(self, ledger_con):
-        # A single cached per-document entry that isn't a dict (rather
-        # than the whole cache) must not crash cached_entry.get(...) in
-        # _load_index() either.
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
         config.RETRIEVAL_INDEX_PATH.write_text(
             json.dumps({"version": 1, "items": {"a2024": "not-a-dict"}})
@@ -549,11 +422,6 @@ class TestIndexCaching:
         assert [r.citekey for r in results] == ["a2024"]
 
     def test_a_matching_fingerprint_with_missing_term_freqs_is_rebuilt(self, ledger_con):
-        # #504, M-24: a dict entry whose "fingerprint" matches but whose
-        # "term_freqs"/"length" are missing or the wrong type used to be
-        # reused as-is and crash _bm25_scores's entry["length"] read with
-        # a raw KeyError -- against this module's own documented promise
-        # that any unexpected shape is a cache miss, not a crash.
         add_citable(ledger_con, "a2024", title="Digital Twin")
         with ledger.connection() as con:
             item = ledger.all_items(con)[0]
@@ -584,45 +452,16 @@ class TestWindows:
         assert retrieval._windows("nothing relevant here", {"blockchain"}, 50, 3) == []
 
     def test_a_term_inside_a_longer_word_is_not_an_anchor(self):
-        """A window is anchored on the term as a *word*, not as a
-        substring.
-
-        Latent before #790 and load-bearing after it: the tokenizer now
-        admits two-character terms, and "ai" sits inside maintainer,
-        said, detail, fair and failed. Measured on the real corpus before
-        this was fixed, 37 of 134 appearances of a two-character query
-        term in a returned snippet were substring-only -- the snippet did
-        not contain the word the reader searched for. A snippet exists so
-        a drafting skill can judge relevance itself rather than trust a
-        score, and one anchored inside "said" cannot serve that.
-        """
         text = "The maintainer said the detail was fair. Later, AI systems failed."
         (window,) = retrieval._windows(text, {"ai"}, 30, 1)
         assert "AI systems" in window
 
     def test_a_boundary_the_tokenizer_splits_on_still_anchors(self):
-        """The boundary is the tokenizer's, not Python's `\\b`.
-
-        `\\b` is defined over `[A-Za-z0-9_]` and Unicode letters, while
-        `_tokenize` splits on `[a-z0-9]+`, so they disagree on an
-        underscore and on an accented letter. `_tokenize("ai_model")` is
-        `["ai", "model"]` -- the index counted "ai" there -- so a
-        document whose only occurrence is `ai_model` ranks, and with
-        `\\b` produced no window at all: the snippet silently fell back
-        to the paper's opening 500 characters, with the searched-for word
-        nowhere in it, and `evidence` returned nothing for a document it
-        had just ranked. That is worse than the substring matching this
-        replaced, not better.
-        """
         text = "ai_model is the subject of this paper, at some length here"
         (window,) = retrieval._windows(text, {"ai"}, 30, 1)
         assert "ai_model" in window
 
     def test_a_term_inside_a_longer_word_does_not_score_a_window(self):
-        """The same rule on the scoring half, not only the anchoring
-        half. `_windows` ranks a candidate by how many distinct terms
-        fall inside it, and counting "ai" inside "detail" there would
-        pick the wrong window even when the anchors were right."""
         text = "detail maintainer fairly said ||| soil AI ||| " + "filler " * 20
         (window,) = retrieval._windows(text, {"ai", "soil"}, 24, 1)
         assert "soil AI" in window
@@ -634,10 +473,6 @@ class TestWindows:
         assert "sensor" in best
 
     def test_finds_a_passage_late_in_a_long_document(self):
-        """The limitation `_snippet` has and this fixes: it anchors on the
-        first occurrence of any term, so a document that says the word
-        early and discusses it 40,000 characters later reports the early
-        mention."""
         text = "twin " + "filler " * 6000 + "the pump is actuated by the twin controller"
         windows = retrieval._windows(text, {"pump", "actuated", "twin"}, 60, 1)
         assert "pump" in windows[0]
@@ -670,11 +505,6 @@ class TestWindows:
         assert "[Figure 2]" in windows[0]
 
 
-# One row of a real table in this corpus measures ~450 characters, against
-# a 500-character default window -- so a hit inside a table returned a
-# fragment cut through the middle of one row, without the header row that
-# says what the columns are. That header is most of why the table was
-# worth retrieving.
 class TestWindowsExpandPipeTables:
     TABLE = (
         "Some prose before the table that mentions calibration.\n"
@@ -693,25 +523,17 @@ class TestWindowsExpandPipeTables:
         assert "| Difference Equations | discrete | deterministic |" in window
 
     def test_the_block_keeps_its_row_structure(self):
-        """`_clean_window` normalises whitespace, which for a pipe table
-        means collapsing every row onto one line -- a table with no rows
-        is not a table. Expanding the window without this does nothing
-        useful."""
         (window,) = retrieval._windows(self.TABLE, {"stochastic"}, 40, 1)
         rows = [line for line in window.split("\n") if line.startswith("|")]
         assert len(rows) == 4
 
     def test_a_hit_outside_a_table_is_untouched(self):
-        """The whole change has to be invisible to the callers it does not
-        serve, which is most of them."""
         text = "the result shows a clear trend in the data here"
         assert retrieval._windows(text, {"result", "trend"}, 50, 1) == [
             "the result shows a clear trend in the data here"
         ]
 
     def test_a_table_over_the_cap_keeps_its_header_row(self):
-        """Truncating is fine; truncating back to a mid-row cut with no
-        header would put us where we started."""
         wide = "| Name | Value |\n|---|---|\n" + "".join(
             f"| row{i} | needle |\n" for i in range(4000)
         )
@@ -720,18 +542,12 @@ class TestWindowsExpandPipeTables:
         assert len(window) <= retrieval_tables._TABLE_BLOCK_MAX_CHARS
 
     def test_a_table_that_ends_the_document_is_still_a_block(self):
-        """The block is closed by the line that follows it -- so a table
-        with nothing after it is closed by running out of text instead,
-        which is a separate path and the one a paper ending in an
-        appendix table takes."""
         text = "some prose beforehand\n\n| Name | Value |\n|---|---|\n| a | needle |"
         (window,) = retrieval._windows(text, {"needle"}, 20, 1)
         assert window.startswith("| Name | Value |")
         assert "| a | needle |" in window
 
     def test_a_hit_away_from_a_table_in_the_same_document_is_untouched(self):
-        """A document having a table somewhere must not change how a
-        window elsewhere in it is rendered."""
         text = (
             "| Name | Value |\n|---|---|\n| a | b |\n\n"
             + "x " * 400
@@ -742,8 +558,6 @@ class TestWindowsExpandPipeTables:
         assert "|" not in window
 
     def test_a_table_and_a_prose_hit_come_back_side_by_side(self):
-        """Each window is rendered on its own terms: the table keeps its
-        rows, the prose beside it is flattened exactly as before."""
         text = (
             "| Name | Value |\n|---|---|\n| a | needle |\n\n"
             + "x " * 400
@@ -754,19 +568,12 @@ class TestWindowsExpandPipeTables:
         assert "\n" not in prose
 
     def test_two_hits_in_one_table_collapse_to_a_single_block(self):
-        """The caller de-overlaps its spans before this runs, so two
-        windows catching different corners of one table are not
-        overlapping when it picks them -- and become the same block once
-        widened. Returning both would print one table twice and spend the
-        caller's result budget doing it."""
         rows = "".join(f"| row{i} | needle |\n" for i in range(30))
         text = "| Name | Value |\n|---|---|\n" + rows
         windows = retrieval._windows(text, {"needle"}, 60, 2)
         assert len(windows) == 1
 
     def test_a_lone_pipe_line_is_not_treated_as_a_table(self):
-        """A single piped line is prose (a shell command, a maths
-        alternation), not a block worth preserving newlines for."""
         text = "run the command | grep needle | sort and read the output"
         (window,) = retrieval._windows(text, {"needle"}, 60, 1)
         assert "\n" not in window
@@ -799,15 +606,11 @@ class TestEvidence:
         assert retrieval_cli.evidence("a2024", "the of and") == []
 
     def test_a_citekey_whose_pdf_never_parsed_is_refused(self, ledger_con):
-        # #1118: it has no text to quote and may not be cited, so asking
-        # for its evidence is the caller error a missing key is.
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Robotics"))
         with pytest.raises(KeyError, match=r"a2024 has no parsed PDF \(status no_pdf\)"):
             retrieval_cli.evidence("a2024", "quantum entanglement")
 
     def test_parse_failed_status_does_not_serve_stale_parsed_text(self, ledger_con, tmp_path):
-        # #490, same read boundary as retrieval.search's regression above;
-        # since #1118 the row is refused outright rather than read as empty.
         self._seed(ledger_con, tmp_path, "simulation time must follow wall clock time")
         ledger.mark_parse_failed(ledger_con, "a2024", "corrupt pdf")
         with pytest.raises(KeyError, match=r"status parse_failed"):
@@ -825,16 +628,6 @@ class TestEvidence:
 
 
 class TestOneQueryOneSetOfTerms:
-    """#953: every consumer of a query ranks on the terms `search` ranks on.
-
-    `evidence` used to window on the typed terms while `search` ranked on
-    the typed terms plus the acronym expansion, so a paper `search` put
-    first on "digital twin" answered "no passage matches" for `DT`. The
-    passage unit and the dossier drift report had the same split. The
-    class is two pipelines for one query, so the table below runs one
-    query through every pipeline and compares what each ranked on.
-    """
-
     QUERIES = [
         "DT fidelity",
         "digital twin fidelity",
@@ -860,7 +653,6 @@ class TestOneQueryOneSetOfTerms:
 
     @staticmethod
     def _ranked_on(monkeypatch, run) -> "set[str] | None":
-        """The terms `run` handed to BM25, or None if it never scored."""
         seen = []
         real = retrieval_scoring.bm25_scores
 
@@ -902,10 +694,6 @@ class TestOneQueryOneSetOfTerms:
         assert replayed == searched
 
     def test_a_query_with_no_terms_never_reads_the_vocabulary(self, corpus, monkeypatch):
-        """Sharing `query_terms` put the drift report on the vocabulary's
-        path, so a query that tokenizes to nothing must not read it: there
-        is nothing for an expansion to add to."""
-
         def explode():
             raise AssertionError("read the vocabulary")
 
@@ -913,17 +701,11 @@ class TestOneQueryOneSetOfTerms:
         assert retrieval.query_terms("what is the") == ([], [])
 
     def test_a_paper_search_ranks_first_on_an_acronym_has_an_evidence_window(self, corpus):
-        """The issue's scenario end to end. Red before the fix: the text
-        says "digital twin" and never `DT`, so the typed term alone
-        anchors no window at all."""
         assert [r.citekey for r in retrieval.search("DT", k=1)] == ["a2024"]
         (window,) = retrieval_cli.evidence("a2024", "DT", windows=1)
         assert "digital twin" in window
 
     def test_the_cli_logs_the_expansion_evidence_actually_used(self, corpus, capsys):
-        """The note `evidence` prints, and the `expanded` it logs, now
-        describe terms the run used rather than ones only `search` would
-        have."""
         from chitragupta import dossier
 
         draft = config.DRAFTS_DIR / "survey.md"
@@ -939,10 +721,6 @@ class TestOneQueryOneSetOfTerms:
 
 
 class TestSpellingCorrection:
-    """#1232 end to end, against a vocabulary built from a real ledger:
-    `strucutral` is in no paper, and `structural` is in two, the floor a
-    correction target must clear."""
-
     @pytest.fixture
     def corpus(self, ledger_con):
         for citekey, text in (
@@ -967,8 +745,6 @@ class TestSpellingCorrection:
         assert sorted(r.citekey for r in retrieval.search("strucutral")) == ["a2024", "b2024"]
 
     def test_off_never_builds_a_vocabulary(self, corpus, monkeypatch):
-        """With the setting off, every query in this file ranks exactly as
-        before #1232: no vocabulary is built, so none can move anything."""
         monkeypatch.setattr(
             retrieval_spelling, "vocabulary", lambda _: pytest.fail("built a vocabulary")
         )
@@ -1021,10 +797,6 @@ class TestCli:
     def test_search_notes_what_acronym_expansion_added(
         self, ledger_con, tmp_path, capsys, monkeypatch
     ):
-        """#789 asks that the log record which terms were added, so a
-        caller can see why a result surfaced. On stderr, beside the
-        "too short to search on" note: stdout is a contract the genre
-        skills parse."""
         self._seed(ledger_con, tmp_path)
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
         assert retrieval.main(["search", "DT patterns"]) == 0
@@ -1041,9 +813,6 @@ class TestCli:
         assert "acronym expansion" not in capsys.readouterr().err
 
     def test_the_logged_row_records_what_was_added(self, ledger_con, tmp_path, monkeypatch):
-        """The note and the column are one string: `--log` writes what
-        the note printed, so a dossier read months later explains the
-        same result the session saw explained."""
         from chitragupta import dossier
 
         self._seed(ledger_con, tmp_path)
@@ -1054,8 +823,6 @@ class TestCli:
 
         assert retrieval.main(["search", "DT patterns", "--log", str(draft)]) == 0
         logged = (dossier.dossier_dir(draft) / "retrieval.md").read_text()
-        # By position, not by `endswith`: #788 appended the two BM25
-        # settings after the expansion cell.
         row = logged.rstrip().splitlines()[-1]
         assert [c.strip() for c in row.strip().strip("|").split("|")][8] == "dt -> digital twin"
 
@@ -1070,10 +837,6 @@ class TestCli:
         assert "not in the ledger" in capsys.readouterr().err
 
     def test_evidence_strips_interrogatives_from_the_query(self, ledger_con, tmp_path):
-        """A second, separate anchor exists only for the literal word
-        "what" -- pre-fix it earns evidence() a second window; post-fix
-        it contributes no anchor at all, so this is genuinely red before
-        _query_terms is wired in, not vacuously green."""
         parsed = parsed_file("a2024")
         parsed.write_text(
             ("padding word here " * 40)
@@ -1102,11 +865,6 @@ class TestCli:
     def test_search_notes_a_missing_parsed_file_on_every_run(
         self, ledger_con, tmp_path, capsys, extra
     ):
-        """Issue 844: a `content/parsed/` restored from a partial backup
-        made a paper rank on its title alone with no message. Run twice,
-        because the second run serves every entry from the cache, and
-        that is the run the count used to be invisible on. On stderr:
-        stdout is the contract the genre skills parse."""
         self._seed(ledger_con, tmp_path)
         add_citable(ledger_con, "b2024", title="Twin Gone")
         ledger.mark_parsed(ledger_con, "b2024", parsed_file("b2024"))  # never written
@@ -1143,10 +901,6 @@ class TestCli:
         assert "too short to search on (dropped): x" in err
 
     def test_a_two_character_query_word_no_longer_warns(self, ledger_con, tmp_path, capsys):
-        """#790 lowered the floor to 2, so "AI" reaches ranking and the
-        warning must stop naming it -- a warning about a word that did
-        rank is worse than none, because it sends the reader looking for
-        a cause that is not there."""
         self._seed(ledger_con, tmp_path)
         assert retrieval.main(["search", "AI digital twin architecture"]) == 0
         assert "too short to search on" not in capsys.readouterr().err
@@ -1162,11 +916,6 @@ class TestCli:
         assert "too short to search on (dropped): x" in capsys.readouterr().err
 
     def test_evidence_with_no_matching_passage_is_not_an_error(self, ledger_con, tmp_path, capsys):
-        """The `search` counterpart above is covered; this is its
-        `evidence` twin. A document that exists and simply says nothing
-        about the query is an answer, and the two reasons it can happen --
-        no match, or no parsed text -- are indistinguishable from here, so
-        the message names both rather than guessing."""
         self._seed(ledger_con, tmp_path)
         assert retrieval.main(["evidence", "quantum chromodynamics", "--citekey", "a2024"]) == 0
         out = capsys.readouterr().out
@@ -1223,9 +972,6 @@ class TestCli:
         ]
 
     def test_evidence_log_records_no_collection(self, ledger_con, tmp_path, capsys):
-        """`evidence` takes no `--collection` -- its args namespace never
-        gets the attribute, and logging it must not crash on the missing
-        attribute rather than record a scope that was never asked for."""
         from chitragupta import dossier
         from chitragupta.dossier import _retrieval
 
@@ -1303,7 +1049,6 @@ class TestCli:
     def test_a_draft_outside_drafts_reports_but_does_not_fail_the_search(
         self, ledger_con, tmp_path, capsys
     ):
-        """A measurement is worth less than the retrieval it measures."""
         self._seed(ledger_con, tmp_path)
         stray = tmp_path / "stray.md"
         stray.write_text("# s\n")
@@ -1400,12 +1145,6 @@ class TestCli:
 
 
 class TestDocsQuoteTheActualDefaults:
-    """docs/CLI.md and docs/RETRIEVAL.md spell these numbers out in prose,
-    and prose does not fail a build when a constant moves. Review caught
-    that drift twice on this work -- CLI.md said 700 after the default
-    became 600, then said 3 windows after the default became 2 -- so the
-    quoted values are pinned to the constants rather than trusted."""
-
     def test_the_docs_quote_the_actual_defaults(self):
         cli = (config.shipped("docs", "CLI.md")).read_text(encoding="utf-8")
         chars_row = next(line for line in cli.splitlines() if "`--chars N`" in line)
@@ -1423,17 +1162,7 @@ class TestDocsQuoteTheActualDefaults:
         assert (
             f"{retrieval_cli.EVIDENCE_WINDOWS} x {retrieval_cli.EVIDENCE_CHARS} characters" in retr
         )
-        # Same reason as the rest of this class: RETRIEVAL.md states the
-        # table cap in prose, and a cap that moves without the sentence
-        # moving is exactly the drift the docstring above records twice.
-        # Whitespace-normalised, so the assertion survives the prose being
-        # rewrapped -- it is the number that must not drift, not the
-        # column the line happens to break at.
         assert f"{retrieval_tables._TABLE_BLOCK_MAX_CHARS} characters" in " ".join(retr.split())
-        # #762's field weights, same reason again: RETRIEVAL.md shows the
-        # `[retrieval]` block as a TOML snippet a reader will copy, and a
-        # weight that ships at something other than 1.0 while the snippet
-        # still says 1.0 would be read as "this is inert" when it is not.
         for field, weight in config.RETRIEVAL_FIELD_WEIGHTS.items():
             assert f"weight_{field} = {weight}" in retr
 
@@ -1446,11 +1175,6 @@ class TestDocsQuoteTheActualDefaults:
 
 
 class TestLogNeverFailsTheSearch:
-    """docs/CLI.md states that a `--log` problem is reported and skipped,
-    never fatal. `DossierError` covered "that path isn't a draft"; a
-    filesystem failure was not covered and would have thrown away results
-    the caller had already paid to compute."""
-
     def _seed(self, con, tmp_path):
         parsed = parsed_file("a2024")
         parsed.write_text("padding " * 50 + "digital twin architecture patterns")
@@ -1480,13 +1204,6 @@ class TestLogNeverFailsTheSearch:
 
 
 class TestTheIndexIsParsedOncePerProcess:
-    """m-74 (#511). `search()` json-parses the whole term-frequency index
-    -- 14 MB live on the corpus this was measured against -- and
-    deep-research dispatches several parallel subagents that each call it
-    more than once. Re-parsing per call is the single largest fixed cost
-    in a retrieval run and buys nothing, because within one process the
-    file only changes when `_save_cache` writes it."""
-
     def test_a_second_load_does_not_reread_the_file(self, ledger_con, tmp_path, monkeypatch):
         parsed = parsed_file("a2024")
         parsed.write_text("digital twin content", encoding="utf-8")
@@ -1502,9 +1219,6 @@ class TestTheIndexIsParsedOncePerProcess:
         assert reads == []
 
     def test_a_rewrite_by_this_process_is_seen_without_a_reread(self, ledger_con, tmp_path):
-        """`_save_cache` refreshes the memo from what it just wrote, so
-        the next `_load_cache` neither re-parses nor serves the old
-        payload -- the two ways this could have gone wrong."""
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
         retrieval_cache._save_cache({"a2024": {"fingerprint": [], "length": 1, "term_freqs": {}}})
         assert set(retrieval_cache._load_cache()) == {"a2024"}
@@ -1512,8 +1226,6 @@ class TestTheIndexIsParsedOncePerProcess:
         assert set(retrieval_cache._load_cache()) == {"b2024"}
 
     def test_a_rewrite_behind_this_modules_back_is_picked_up(self, isolated_config):
-        """The stamp is `(path, size, mtime_ns)`, so a file replaced by
-        something else -- another process, a test -- is re-read."""
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
         retrieval_cache._save_cache({"a2024": {"fingerprint": [], "length": 1, "term_freqs": {}}})
         assert set(retrieval_cache._load_cache()) == {"a2024"}
@@ -1530,9 +1242,6 @@ class TestTheIndexIsParsedOncePerProcess:
         assert set(retrieval_cache._load_cache()) == {"c2024"}
 
     def test_the_path_is_part_of_the_stamp(self, isolated_config, tmp_path, monkeypatch):
-        """Two trees' indexes can be the same size, and `mtime_ns` is not
-        a guarantee across filesystems. `config.RETRIEVAL_INDEX_PATH` is
-        not a constant across a test session, so it is in the key."""
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
         retrieval_cache._save_cache({"a2024": {"fingerprint": [], "length": 1, "term_freqs": {}}})
         first = retrieval_cache._CACHE.stamp()

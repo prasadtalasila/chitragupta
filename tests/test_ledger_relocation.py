@@ -1,11 +1,3 @@
-"""#966: a ledger survives its project moving.
-
-Moved directory, renamed content dir, a container path then the host
-path: all the same case. The stored paths must not name the host, so
-the second sync re-parses nothing and refuses nothing. The schema scan
-is the class test: every `*_path` column, including one added later.
-"""
-
 import os
 import shutil
 from pathlib import Path, PurePosixPath, PureWindowsPath
@@ -26,7 +18,6 @@ BIB = """
 
 
 def point_at(monkeypatch, root: Path, content: str = "content") -> None:
-    """Every path sync reads or writes, under `root`."""
     monkeypatch.setattr(config, "CONTENT_DIR", root / content)
     monkeypatch.setattr(config, "PARSED_DIR", root / content / "parsed")
     monkeypatch.setattr(config, "LEDGER_PATH", root / content / "ledger.sqlite")
@@ -35,7 +26,6 @@ def point_at(monkeypatch, root: Path, content: str = "content") -> None:
 
 @pytest.fixture
 def parses(isolated_config, monkeypatch):
-    """The citekeys sync actually parsed, in order."""
     seen = []
     monkeypatch.setattr(pdf_text, "is_available", lambda: True)
 
@@ -105,8 +95,6 @@ def test_a_relocated_project_reparses_nothing(tmp_path, monkeypatch, parses, cap
 
 
 def test_a_legacy_absolute_ledger_survives_upgrade_and_move(tmp_path, monkeypatch, parses, capsys):
-    """An older release wrote host-absolute paths. Upgrade and move in
-    one step, and the next sync must still re-parse nothing."""
     make_project(tmp_path / "a")
     point_at(monkeypatch, tmp_path / "a")
     sync.run()
@@ -141,10 +129,6 @@ def test_no_ledger_column_stores_an_absolute_path(tmp_path, monkeypatch, parses)
 
 
 def test_parsed_paths_follow_the_configured_content_dir(tmp_path):
-    """The stored `<citekey>.txt` is read from `parsed/` under whatever
-    `[content].dir` names, not from a fixed `content/parsed/`. Checked
-    through a real `config.toml` in a child process, because `point_at`
-    above sets the derived paths directly and never reads the setting."""
     project = tmp_path / "project"
     project.mkdir()
     example = (Path(__file__).resolve().parent.parent / "config.toml.example").read_text(

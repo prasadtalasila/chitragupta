@@ -1,9 +1,3 @@
-"""The wording rules `w1` to `w4` (#1055), read from a figure's source.
-
-Must-not-fire cases are most of each class: a rule that fires on a
-correct label teaches an author to stop reading it.
-"""
-
 from chitragupta.figure._wording import words, wording_rules
 
 
@@ -95,7 +89,6 @@ class TestW1Case:
         assert _advisory(_named("")) == []
 
     def test_only_cglab_names_are_read(self):
-        """A box broken by hand may be one phrase wrapped (*user*)."""
         assert _advisory("\\node[draw] (n) {physical twin\\\\pot, pump};") == []
 
     def test_the_cglab_definition_is_not_a_name(self):
@@ -170,7 +163,6 @@ class TestW4Pictograph:
         ]
 
     def test_an_emoji_with_its_selector_is_reported_once_each(self):
-        """An unnamed node is shown by its words, which a pictograph is not."""
         found = _objective("\\node {go ❤️ ❤️};")
 
         assert found == [("w4-pictograph", '"go"', '"❤" (U+2764), "️" (U+FE0F) in the label')]
@@ -193,8 +185,6 @@ class TestW4Pictograph:
 
 
 class TestOddSource:
-    """Source the scanner must read without a crash or a misreading."""
-
     def test_a_cglab_with_spaces_before_its_arguments_is_read(self):
         assert [f[0] for f in _advisory("\\node (n) {\\cglab {feature store} {x}};")] == ["w1-case"]
 

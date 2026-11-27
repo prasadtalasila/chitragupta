@@ -1,12 +1,3 @@
-"""scripts/render_diagrams.py: re-render the diagram exports and record
-which source each was rendered from (#850).
-
-The launcher is faked throughout -- a real render needs mermaid-cli and a
-headless browser, which a unit suite does not install. What is pinned is
-the part that can go wrong silently: which command runs, that a failed
-render records nothing, and what the manifest holds.
-"""
-
 import json
 import re
 import subprocess
@@ -18,7 +9,6 @@ from scripts import render_diagrams
 
 @pytest.fixture
 def tree(tmp_path, monkeypatch):
-    """A diagrams directory with two sources, wired in as the script's own."""
     diagrams = tmp_path / "diagrams"
     (diagrams / "svg").mkdir(parents=True)
     (diagrams / "a.mmd").write_text("flowchart LR\n  A --> B\n", encoding="utf-8")
@@ -40,8 +30,6 @@ def recorder(returncode=0):
 
 class TestFingerprint:
     def test_a_crlf_checkout_fingerprints_like_an_lf_one(self, tmp_path):
-        """Windows CI checks the sources out with CRLF under autocrlf; the
-        fingerprint must not change with the line endings."""
         lf, crlf = tmp_path / "lf.mmd", tmp_path / "crlf.mmd"
         lf.write_bytes(b"flowchart LR\n  A --> B\n")
         crlf.write_bytes(b"flowchart LR\r\n  A --> B\r\n")
@@ -56,9 +44,6 @@ class TestFingerprint:
 
 class TestRender:
     def test_it_runs_the_documented_commands_for_each_source(self, tree):
-        """An SVG for the web and a PDF for papers and slides: Mermaid writes
-        an SVG's labels as HTML, which only a browser draws, so the PDF comes
-        from the same browser render."""
         calls, run = recorder()
         assert render_diagrams.render(["a", "b"], run=run) == 0
         source = ["mmdc", "-i", str(tree / "a.mmd"), "-b", "white"]
@@ -83,9 +68,6 @@ class TestRender:
         assert manifest["b"] == "old" and "a" in manifest
 
     def test_a_failed_render_is_not_recorded_as_fresh(self, tree, capsys):
-        """Recording a fingerprint for an SVG that did not re-render would
-        assert a freshness nothing checked -- the one thing this file must
-        never say."""
         _calls, run = recorder(returncode=1)
         assert render_diagrams.render(["a"], run=run) == 1
         assert not (tree / "svg" / "sources.json").exists()
@@ -205,8 +187,6 @@ class TestStamp:
         assert out.endswith(THEME[1] + "\n")
 
     def test_a_state_diagram_keeps_its_roles(self):
-        """stateDiagram takes classDef; dropping a hand-written role and
-        putting nothing back would leave its `class` lines styling nothing."""
         out = render_diagrams.stamp(
             "stateDiagram-v2\n  classDef flow fill:#fff\n  class a flow\n", THEME
         )
@@ -231,7 +211,6 @@ class TestStamp:
 
 @pytest.fixture
 def docs(tree, tmp_path, monkeypatch):
-    """A DIAGRAMS.md listing `a` and `b`, and a palette, wired in."""
     style = tmp_path / "TIKZ-STYLE.md"
     style.write_text(PALETTE_DOC, encoding="utf-8")
     md = tmp_path / "DIAGRAMS.md"
@@ -245,7 +224,6 @@ def docs(tree, tmp_path, monkeypatch):
     (tree / "a.mmd").write_text('---\ntitle: "A"\n---\nflowchart LR\n  A --> B\n', encoding="utf-8")
     monkeypatch.setattr(render_diagrams, "DIAGRAMS_MD", md)
     monkeypatch.setattr(render_diagrams, "STYLE_DOC", style)
-    # No other doc unless a test adds one: sync() reads every doc under DOCS.
     monkeypatch.setattr(render_diagrams, "DOCS", tmp_path / "no-other-docs")
     return md
 
@@ -276,12 +254,8 @@ class TestSync:
         assert "already matches" in capsys.readouterr().out
 
 
-# --- diagrams outside DIAGRAMS.md --------------------------------------------
-
-
 @pytest.fixture
 def other(docs, tmp_path, monkeypatch):
-    """A second doc whose one block is named by its marker line."""
     root = tmp_path / "docs-root"
     (root / "book").mkdir(parents=True)
     page = root / "book" / "PAGE.md"
@@ -295,9 +269,6 @@ def other(docs, tmp_path, monkeypatch):
 
 
 class TestDiagramsOutsideDiagramsMd:
-    """Every Mermaid block in the docs gets an export, not only
-    DIAGRAMS.md's: a block elsewhere is named by the comment line above it."""
-
     def test_sources_lists_diagrams_md_then_each_doc_with_blocks(self, other, docs):
         assert render_diagrams.sources() == [(docs, ["a", "b"]), (other, ["page-flow"])]
 
@@ -325,10 +296,6 @@ class TestDiagramsOutsideDiagramsMd:
 
 
 class TestTheSiteStylesheet:
-    """mkdocs-material draws Mermaid with its own colour variables, which
-    beat the diagrams' init directive: an unclassed node came out in the
-    theme's amber accent on the site and house blue everywhere else."""
-
     def test_it_sets_materials_mermaid_variables_from_the_palette(self):
         css = render_diagrams.mermaid_css(render_diagrams.palette(PALETTE_DOC))
         init, _ = THEME

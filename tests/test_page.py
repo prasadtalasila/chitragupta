@@ -1,8 +1,3 @@
-"""The two pages a draft prints on (#1140, X-1 and X-5 reduced): what
-each records, that LuaLaTeX agrees with it, that the render defaults and
-the book skeleton say the same, and which page a figure is checked on.
-"""
-
 import inspect
 import re
 import subprocess
@@ -22,9 +17,6 @@ SKELETON = REPO_ROOT / ".claude" / "skills" / "book-assembler" / "assets" / "boo
 @needs_tikz
 @pytest.mark.parametrize("measured", page.PAGES.values(), ids=list(page.PAGES))
 def test_each_recorded_text_block_is_what_lualatex_sets(measured, tmp_path):
-    """The values are recorded, not computed, so this compile is what
-    keeps them true: a class or geometry change moves `\\textwidth` and
-    turns this red, which arithmetic over papersize and margin did not."""
     (tmp_path / "page.tex").write_text(
         measured.preamble + "\\begin{document}\n"
         "\\typeout{CGPAGE \\the\\textwidth\\space\\the\\textheight}\nx\n\\end{document}\n",
@@ -68,8 +60,6 @@ def test_the_spec_file_name_is_the_spec_modules():
 
 
 def test_render_output_imports_in_a_fresh_interpreter():
-    """`page` must not import `spec`: `spec` reaches `render_output`
-    through the dossier, and `render_output` imports `page`."""
     result = run_python("-c", "import chitragupta.render_output", check=False)
 
     assert result.returncode == 0, result.stderr

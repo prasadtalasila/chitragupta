@@ -1,13 +1,3 @@
-"""The LuaLaTeX font chain prints everything pdflatex printed (#996).
-
-Under pdflatex, a draft's Greek, math letters, sub- and superscripts and
-the rest printed through #948's chitragupta-unicode.sty. A pdf render now
-runs LuaLaTeX, where that file is a no-op, so each of those characters
-needs a glyph in STIX Two or a font in `chitragupta/pdf_fonts.py`'s
-fallback chain -- otherwise a draft that rendered yesterday fails today
-under `\\tracinglostchars=3`. This renders every one of them.
-"""
-
 from types import SimpleNamespace
 
 import pytest
@@ -16,8 +6,6 @@ from chitragupta import pdf_fonts, render_output
 from chitragupta.render_output import _unicode
 from tests.conftest import content_draft, lualatex_available, pandoc_available
 
-# Characters per paragraph: short enough that TeX can break the line
-# between them, so no overfull box hides a glyph off the page.
 _PER_LINE = 40
 
 
@@ -28,8 +16,6 @@ def test_the_required_fonts_are_the_three_the_preamble_sets():
 
 
 def test_font_installed_reads_the_message_not_the_exit_status(monkeypatch):
-    # luaotfload-tool exits 0 whether or not the font exists (measured,
-    # luaotfload 3.26).
     def fake_run(cmd, **kwargs):
         name = cmd[1].removeprefix("--find=")
         found = name == "STIX Two Text"
@@ -59,8 +45,6 @@ def test_family_strips_the_feature_list():
 
 
 def test_the_shipped_header_carries_the_generated_font_block():
-    # The header sets the fonts itself (apt pandoc 3.1.3 knows no
-    # mainfontfallback), so the block in it must match latex_fonts().
     from chitragupta import config
 
     header = config.shipped("assets", "latex", "chitragupta-lualatex.tex").read_text(
@@ -85,16 +69,10 @@ def test_the_font_block_names_the_whole_chain():
 )
 def test_every_character_the_sty_prints_under_pdflatex_prints_under_lualatex(isolated_config):
     chars = sorted(_unicode.mapped_characters())
-    # #948's 1873, plus the 36 outlined Latin letters and digits Unicode 16
-    # added (U+1CCD6 to U+1CCF9), mapped once the .sty moved to Python 3.14's
-    # tables. A new entry needs a glyph too, which the render below proves.
     assert len(chars) == 1909
     lines = [" ".join(chars[i : i + _PER_LINE]) for i in range(0, len(chars), _PER_LINE)]
     isolated_config.BIB_FILE_PATH.write_text("")
     draft = content_draft(isolated_config, "draft.md")
     draft.write_text("# Every mapped character\n\n" + "\n\n".join(lines) + "\n", encoding="utf-8")
 
-    # A missing glyph is a build error (assets/latex/chitragupta-lualatex.tex),
-    # so a render that returns is the assertion; the error, if any, names
-    # the first character no font has.
     assert render_output.render(str(draft), output_format="pdf").exists()

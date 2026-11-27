@@ -1,17 +1,3 @@
-"""Filtering the topic graph by where each topic's phrase came from
-(#742): `corpus discover --origins seed,keyword,corroborated,emergent`.
-
-The properties under test: origin is defined once and every view reads
-the same definition; a corroborated topic -- one both the hand-written
-seed file and the extracted keywords file name -- satisfies the seed
-predicate and the keyword predicate, so either ticked class shows it;
-the flag filters the artefacts the views read, so the terminal list,
-`--json`, `--html` and `--app` cannot disagree about what is in the
-graph; an unknown or empty selection is a refusal rather than a
-silently empty graph; and no flag at all leaves every view exactly as
-it was.
-"""
-
 import json
 
 import pytest
@@ -40,9 +26,6 @@ class TestParse:
         assert "corroborated" in str(raised.value)
 
     def test_an_empty_selection_refuses(self):
-        """`--origins ""` and `--origins ,` ask for a graph with no
-        topics in it, which is not a view -- and would otherwise render
-        as an empty canvas the reader would read as an empty corpus."""
         for value in ("", "  ", ","):
             with pytest.raises(ValueError):
                 _origin.parse(value)
@@ -57,18 +40,12 @@ class TestClassify:
         return {t["label"]: t["origin"] for t in topics}
 
     def test_a_phrase_in_both_files_is_corroborated(self, isolated_config):
-        """Case-insensitively, matching `_seed_phrases()`'s dedup rule.
-        Named for what it says -- two independent sources agree on this
-        topic -- rather than for the set operation behind it."""
         origins = self.annotate(
             isolated_config, hand=("digital twin",), extracted=("Digital TWIN",)
         )
         assert origins["digital twin"] == "corroborated"
 
     def test_the_graph_nodes_take_the_same_annotation_as_the_app(self, isolated_config):
-        """One definition of origin: the app payload and the graph nodes
-        the terminal views read are annotated by the same function, so a
-        `--json` run and the canvas cannot disagree about a class."""
         prepare(isolated_config)
         write_phrase_files(hand=("digital twin",))
         from chitragupta.discover import _app
@@ -101,8 +78,6 @@ class TestKeep:
         assert self.labels(isolated_config, {"emergent"}) == ["machine learning"]
 
     def test_seed_keeps_a_corroborated_topic(self, isolated_config):
-        """A corroborated topic *is* seeded, so asking for hand-written
-        topics must not hide the ones the corpus also named."""
         labels = self.labels(
             isolated_config, {"seed"}, hand=("digital twin",), extracted=("digital twin",)
         )
@@ -127,25 +102,15 @@ class TestKeep:
         assert self.labels(isolated_config, {"corroborated"}, hand=("digital twin",)) == []
 
     def test_an_edge_with_a_dropped_end_goes_with_it(self, isolated_config):
-        """Both families: an edge is a claim about a pair, and half a
-        pair is not a weaker claim -- it is a line to a node the reader
-        cannot see."""
         graph, _ = self.filtered(isolated_config, {"emergent"})
         assert graph["edges_overlap"] == []
         assert graph["edges_semantic"] == []
 
     def test_the_topic_set_is_filtered_in_step(self, isolated_config):
-        """Or the views refuse for drift: `_page.build_payload` compares
-        the two artefacts and raises when one knows a topic the other
-        does not."""
         _, topic_set = self.filtered(isolated_config, {"emergent"})
         assert [t["label"] for t in topic_set["topics"]] == ["machine learning"]
 
     def test_the_stages_own_numbers_are_left_alone(self, isolated_config):
-        """`uncovered` and `edges_withheld` are the stage's statements
-        about the corpus, not about the reader's current view. Rescaling
-        them to a filtered subset would publish a number no stage ever
-        produced."""
         prepare(isolated_config)
         graph = json.loads(json.dumps(GRAPH))
         graph["edges_withheld"] = [{"a": "digital twin", "b": "machine learning", "why": "gate"}]
@@ -156,11 +121,6 @@ class TestKeep:
         assert kept_set["uncovered"] == ["quantum sensing"]
 
     def test_a_drifted_topic_set_label_survives_the_filter(self, isolated_config):
-        """The filter is subtractive: it removes what the *graph* says is
-        an unselected origin, and never a label the graph does not know.
-        A topic_set label absent from the graph is drift, and the views
-        refuse by name for it -- filtering it away here instead would
-        take the refusal with it."""
         prepare(isolated_config)
         graph = json.loads(json.dumps(GRAPH))
         graph["topics"] = [t for t in graph["topics"] if t["label"] != "digital twin"]
@@ -168,10 +128,6 @@ class TestKeep:
         assert "digital twin" in [t["label"] for t in topic_set["topics"]]
 
     def test_a_stored_partition_is_filtered_in_step_with_the_topics(self, isolated_config):
-        """`communities` is one cluster id per topic *by position*. Left
-        alone while the topic list shrinks, every surviving topic reads
-        back the id of whichever topic now sits at its index -- silently
-        wrong, which is worse than a crash."""
         prepare(isolated_config)
         graph = json.loads(json.dumps(GRAPH))
         graph["communities"] = {
@@ -184,11 +140,6 @@ class TestKeep:
         assert kept["communities"]["semantic"]["partitions"]["2.0"] == [2]
 
     def test_the_stored_path_matrices_go_rather_than_mislead(self, isolated_config):
-        """They hold next-hop indices into the edge lists, and a stored
-        route may run through a topic the filter removed -- so a
-        truncated matrix would point at edges that are gone. Dropping
-        them leaves both consumers on the honest path they already have
-        for an older artefact."""
         prepare(isolated_config)
         graph = json.loads(json.dumps(GRAPH))
         graph["paths"] = {"overlap": {"next": [[-1, 0], [0, -1]]}}
@@ -226,9 +177,6 @@ class TestCli:
     def test_a_topic_the_filter_dropped_is_no_longer_resolvable(
         self, isolated_config, capsys, monkeypatch
     ):
-        """The filter applies to the artefacts, not to one view, so a
-        phrase that names a filtered-out topic falls through the
-        resolution ladder exactly as an unknown phrase does."""
         prepare(isolated_config)
         place_nowhere(monkeypatch, "digital twin")
         assert discover.main(["--origins", "emergent", "digital twin", "--json"]) == 1
@@ -240,9 +188,6 @@ class TestCli:
         assert "bogus" in capsys.readouterr().err
 
     def test_the_refusal_goes_to_stderr_under_json_too(self, isolated_config, capsys):
-        """Nothing has reached stdout on this path, so a --json caller
-        reads an empty document and a nonzero exit rather than a
-        sentence in the stream they opened expecting one."""
         prepare(isolated_config)
         assert discover.main(["--origins", "bogus", "--json"]) == 1
         captured = capsys.readouterr()
@@ -265,15 +210,6 @@ class TestCli:
         assert [t["label"] for t in payload["topics"]] == ["machine learning"]
 
     def test_the_app_payload_records_what_shipped(self, isolated_config, tmp_path):
-        """So a checkbox for a class the export excluded can say *why*
-        it is unavailable, instead of doing nothing when clicked -- the
-        reader can tell "filtered out at export" from "this corpus has
-        none".
-
-        What it records is the classes that *can* appear, not the words
-        the caller typed: `--origins seed` ships corroborated topics
-        too, and a corroborated checkbox disabled over corroborated
-        topics on the canvas would be a lie."""
         prepare(isolated_config)
         app_dir = tmp_path / "app"
         assert discover.main(["--app", str(app_dir), "--origins", "keyword"]) == 0
@@ -286,8 +222,6 @@ class TestCli:
         assert payload_of(app_dir)["origins"] == list(_origin.CLASSES)
 
     def test_a_paper_view_reads_the_filtered_artefacts(self, isolated_config, capsys):
-        """And says the filter is why, rather than sending the reader to
-        re-run enrich over a pipeline that is working fine."""
         prepare(isolated_config)
         assert discover.main(["--paper", "p1", "--origins", "emergent", "--json"]) == 1
         err = capsys.readouterr().err
@@ -301,10 +235,6 @@ class TestCli:
         assert "enrich" in capsys.readouterr().err
 
     def test_path_refuses_to_compose_with_a_narrowed_graph(self, isolated_config, capsys):
-        """The stored next-hop matrices are indexed over the whole graph
-        and their routes may run through a filtered-out topic. Exit 2 --
-        argparse's usage code, as every other view-combination refusal
-        here uses -- rather than a plausible-looking wrong walk."""
         prepare(isolated_config)
         assert (
             discover.main(
@@ -323,16 +253,11 @@ class TestCli:
         assert "--origins" in capsys.readouterr().err
 
     def test_the_help_says_seed_includes_corroborated(self):
-        """The one misreadable thing about the flag, so it belongs where
-        the reader meets it rather than only in docs/CLI.md."""
         text = discover.build_parser().format_help()
         assert "corroborated" in text
 
 
 class TestConfigPaths:
     def test_the_annotation_reads_both_phrase_files(self, isolated_config):
-        """A tripwire on the two paths the annotation depends on: if
-        either moves, origin silently degrades to provenance and every
-        keyword topic reads as a plain seed."""
         assert config.SEED_TOPICS_PATH.name.endswith(".toml")
         assert config.KEYWORDS_PATH.name.endswith(".toml")

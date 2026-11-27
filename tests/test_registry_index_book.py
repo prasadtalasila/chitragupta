@@ -1,15 +1,3 @@
-"""The book index end to end (#1168): two accepted chapters, their term
-table, real fragment renders through the filter, a book compiled by
-LuaLaTeX, `registry index`, and the last pass that prints the index.
-
-Slow (it compiles), so CI's Linux leg skips it and the local run is the
-one that holds it (DEVELOPER-AGENTS.md, "This local run is the only one
-that compiles TeX"). The keys are the ones the escaping prototype on
-issue 1168 tried: each would break a printed form inside `\\index{}`,
-and here each is a glossary term that reaches the index through an
-opaque id instead, in the body and in a footnote.
-"""
-
 import shutil
 import subprocess
 
@@ -18,7 +6,6 @@ import pytest
 from chitragupta import registry, render_output, spec
 from tests.conftest import lualatex_book, pandoc_available
 
-# conftest's `signed_book` reads this module's BOOK_SPEC as the outline.
 from tests.test_registry import BOOK_SPEC, accept  # noqa: F401
 
 pytestmark = [
@@ -67,9 +54,6 @@ def book(signed_book):
 
 
 def build(book, capsys):
-    """The book track for an indexed book: term table, fragments through
-    the filter, two passes, `registry index`, the last pass. Returns the
-    rendered directory."""
     rendered = None
     for unit in ("ch-model", "ch-data"):
         draft = book / f"{unit}.md"

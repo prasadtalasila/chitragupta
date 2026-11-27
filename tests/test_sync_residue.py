@@ -1,10 +1,3 @@
-"""chitragupta/sync_residue.py: what else still names a citekey that
-`sync --remove-stale` is about to drop (issue #763).
-
-Report, never repair -- so alongside the counts, these tests assert that
-every artefact is byte-identical afterwards.
-"""
-
 import json
 
 import pytest
@@ -24,9 +17,6 @@ def write_text(path, body):
 
 @pytest.fixture
 def residue_corpus(isolated_config):
-    """One stale citekey (`smith_gone_2020`) with residue in all five
-    artefact classes, and a lookalike (`smith_gone_2020b`) that must
-    never be mistaken for it."""
     cfg = isolated_config
     write_text(cfg.OVERLAP_DIR / "docs" / "smith_gone_2020.fpr", "x")
     write_text(cfg.OVERLAP_DIR / "docs" / "smith_gone_2020.skipgram.fpr", "x")
@@ -42,9 +32,6 @@ def residue_corpus(isolated_config):
             "edges_semantic": [{"bridge": ["kept_2021", "smith_gone_2020"]}],
         },
     )
-    # Membership is keyed by citekey in both files, so `smith_gone_2020b`
-    # sitting in `uncovered` is the reverse of the prefix trap: scanning
-    # the shorter key must not pick the longer one up either.
     write_json(
         cfg.TOPIC_SET_PATH,
         {
@@ -80,8 +67,6 @@ def residue_corpus(isolated_config):
 
 
 class FakeCollection:
-    """Stands in for a chroma collection: one `get` that pages."""
-
     def __init__(self, rows):
         self.rows = rows
 
@@ -122,13 +107,8 @@ class TestScan:
         assert notes == []
 
     def test_a_longer_citekey_is_not_matched_as_a_prefix(self, residue_corpus):
-        # Exact strings only -- upstream's fuzzy matcher was deliberately
-        # not copied, so `smith_gone_2020` must not answer for
-        # `smith_gone_2020b`, which is a different paper.
         found, _notes = sync_residue.scan(["smith_gone_2020b"])
         hits = {hit.artefact: hit.count for hit in found["smith_gone_2020b"]}
-        # The membership hit is its own `uncovered` entry, not the two
-        # `smith_gone_2020` memberships sitting beside it.
         assert hits == {sync_residue.TOPIC_MEMBERSHIP: 1}
 
     def test_absent_artefacts_scan_clean(self, isolated_config):
@@ -137,9 +117,6 @@ class TestScan:
         assert notes == []
 
     def test_the_skipgram_index_is_named_as_itself(self, isolated_config):
-        # Not as `index.json`: the two tiers are built independently, so
-        # reporting the wrong one would send a reader to a path that need
-        # not exist at all.
         write_json(isolated_config.OVERLAP_DIR / "skipgram_index.json", {"citekeys": ["only_2001"]})
         found, _notes = sync_residue.scan(["only_2001"])
         assert [hit.where for hit in found["only_2001"]] == [
@@ -147,9 +124,6 @@ class TestScan:
         ]
 
     def test_a_stale_key_that_cannot_name_a_file_is_scanned_not_raised(self, isolated_config):
-        # #975: the fingerprint paths go through `citekey_path`, which
-        # refuses this key. The report runs after sync has committed,
-        # so a traceback there would hide it; the index entry still counts.
         write_json(isolated_config.OVERLAP_DIR / "index.json", {"citekeys": ["../escape"]})
         found, _notes = sync_residue.scan(["../escape"])
         (hit,) = found["../escape"]
@@ -167,9 +141,6 @@ class TestScan:
         )
 
     def test_topic_membership_names_each_file_and_its_own_count(self, residue_corpus):
-        # Two memberships in topic_set.json (one per topic), and two in
-        # topics.json (`assignments` and `memberships` each key by
-        # citekey) -- reported per file, the way dossier mentions are.
         found, _notes = sync_residue.scan(["smith_gone_2020"])
         (hit,) = [
             hit for hit in found["smith_gone_2020"] if hit.artefact == sync_residue.TOPIC_MEMBERSHIP
@@ -181,8 +152,6 @@ class TestScan:
         )
 
     def test_a_citekey_only_in_topics_json_is_still_found(self, isolated_config):
-        # topic_set.json need not exist for topics.json to be scanned;
-        # the two are written by different stages.
         write_json(isolated_config.TOPICS_PATH, {"assignments": {"lone_2003": 7}})
         found, _notes = sync_residue.scan(["lone_2003"])
         (hit,) = found["lone_2003"]
@@ -190,8 +159,6 @@ class TestScan:
         assert hit.where == (f"{isolated_config.TOPICS_PATH} (1)",)
 
     def test_a_member_carrying_no_citekey_is_ignored_rather_than_raising(self, isolated_config):
-        # A malformed member reports zero, not a KeyError: this module
-        # runs immediately before a destructive prompt.
         write_json(
             isolated_config.TOPIC_SET_PATH,
             {"topics": [{"label": "x", "members": [{"score": 0.5}]}]},
@@ -200,10 +167,6 @@ class TestScan:
         assert (found, notes) == ({"anything_2000": []}, [])
 
     def test_drafting_layer_files_are_not_scanned(self, residue_corpus):
-        """Dossiers and drafts are the drafting layer's, and `dossier status
-        --all` reports them; the corpus layer reads only its own and the
-        enrichment layer's artefacts (the residue fixture's dossier cites
-        `smith_gone_2020`)."""
         drafts = residue_corpus.DRAFTS_DIR
         drafts.mkdir(parents=True, exist_ok=True)
         (drafts / "s.md").write_text("[@smith_gone_2020]\n")
@@ -304,9 +267,6 @@ class TestReport:
     def test_a_torn_artefact_is_noted_and_the_report_still_prints(
         self, residue_corpus, capsys, artefact, path_of, torn
     ):
-        """A killed enrich run leaves a truncated file behind, and `sync`
-        used to die on it with a traceback after every upsert had
-        committed, before saying which citekeys were stale (#846)."""
         path_of(residue_corpus).write_bytes(torn)
         sync_residue.report(["smith_gone_2020"])
         out = capsys.readouterr().out

@@ -1,13 +1,3 @@
-"""The session guard that keeps the suite out of the checkout's real content/ (#862).
-
-`isolated_config` points every path constant at a tmp_path tree, but
-nothing made a test use it: two groups wrote `retrieval_index.json`, the
-pipeline lock and its holder record into the real `content/`, and the
-existing scan (`test_unversioned_data_scan.py`) only sees *reads* of
-config.toml and the .bib. These pin the detector on the exact shapes it
-was blind to, and the hook wiring that turns a finding into a red run.
-"""
-
 import os
 import types
 from pathlib import Path
@@ -19,8 +9,6 @@ from tests.conftest import run_python
 
 
 def tracked_tree(root):
-    """A content/ shaped like a fresh checkout's: tracked sample files,
-    nothing generated."""
     draft = root / "drafts" / "digital-twins-for-software-engineers" / "survey.md"
     draft.parent.mkdir(parents=True)
     draft.write_text("# survey\n", encoding="utf-8")
@@ -52,8 +40,6 @@ class TestChanges:
         ]
 
     def test_an_overwrite_of_the_same_size_is_still_a_write(self, tmp_path):
-        """The real index is overwritten, not created, on a checkout that
-        has one -- and a same-length payload changes only the mtime."""
         draft = tracked_tree(tmp_path)
         before = content_guard.snapshot(tmp_path)
         stat = draft.stat()
@@ -70,16 +56,12 @@ class TestChanges:
         assert "deleted drafts/digital-twins-for-software-engineers/survey.md" in changed
 
     def test_an_empty_directory_left_behind_is_named(self, tmp_path):
-        """`mkdir(parents=True)` ahead of a write that never happened
-        still leaves a directory in the user's tree."""
         tracked_tree(tmp_path)
         before = content_guard.snapshot(tmp_path)
         (tmp_path / "parsed").mkdir()
         assert "created parsed/" in content_guard.changes(before, content_guard.snapshot(tmp_path))
 
     def test_content_created_from_nothing_is_named(self, tmp_path):
-        """CI's checkout has tracked files under content/, but a project
-        made by `chitragupta init` may have none until a test writes."""
         root = tmp_path / "content"
         before = content_guard.snapshot(root)
         assert before == {}
@@ -91,17 +73,12 @@ class TestChanges:
 
     @pytest.mark.skipif(os.name == "nt", reason="symlinks need privileges on Windows")
     def test_a_dangling_symlink_is_an_entry_not_a_crash(self, tmp_path):
-        """A user's content/ can hold a link to a moved drive; following
-        it raised FileNotFoundError at sessionstart and broke every run."""
         tracked_tree(tmp_path)
         before = content_guard.snapshot(tmp_path)
         (tmp_path / "parsed").symlink_to(tmp_path / "moved-away")
         assert content_guard.changes(before, content_guard.snapshot(tmp_path)) == ["created parsed"]
 
     def test_a_file_that_vanishes_mid_walk_is_skipped(self, tmp_path, monkeypatch):
-        """A concurrent real run's SQLite journal can be listed by
-        os.walk and deleted before it is stat'ed; that has to read as
-        "not there", not as a traceback in place of the report."""
         tracked_tree(tmp_path)
         journal = tmp_path / "ledger.sqlite-journal"
         journal.write_bytes(b"")
@@ -161,8 +138,6 @@ class TestSessionHooks:
         assert reporter.lines == []
 
     def test_an_interrupted_session_keeps_its_own_exit_code(self, tmp_path):
-        """Ctrl-C mid-run leaves whatever the interrupted test wrote, and
-        reporting that as a test failure would hide the interruption."""
         reporter = FakeReporter()
         session = fake_session(reporter, exitstatus=pytest.ExitCode.INTERRUPTED)
         content_guard.record(session, tmp_path)
@@ -174,8 +149,6 @@ class TestSessionHooks:
         assert any("created pipeline.lock.db" in line for line in reporter.lines)
 
     def test_no_baseline_adds_no_second_traceback(self):
-        """If sessionstart raised before `record`, pytest is already
-        reporting that; a KeyError here would bury it under another."""
         reporter = FakeReporter()
         session = fake_session(reporter, exitstatus=pytest.ExitCode.INTERNAL_ERROR)
 
@@ -186,20 +159,12 @@ class TestSessionHooks:
 
 
 def test_conftest_wires_the_guard_to_the_real_content_dir():
-    """The hooks only work if conftest calls them; a guard that is
-    defined and never registered fails open, silently."""
     source = (Path(__file__).parent / "conftest.py").read_text(encoding="utf-8")
     assert "content_guard.record(session, config.CONTENT_DIR)" in source
     assert "content_guard.verify(session)" in source
 
 
 class TestTheRealHooksEndToEnd:
-    """The fake session above proves `verify`'s logic, and the source
-    check proves conftest names it; neither proves pytest itself exits
-    non-zero. A nested pytest loads conftest as a plugin against a
-    throwaway `CONTENT_DIR` (config's environment override), so the
-    checkout is never the tree written."""
-
     def _run(self, tmp_path, body: str):
         content = tmp_path / "content"
         content.mkdir()
@@ -220,7 +185,6 @@ class TestTheRealHooksEndToEnd:
         assert "created leak.txt" in done.stdout
 
     def test_a_run_that_wrote_nothing_exits_zero(self, tmp_path):
-        """The control: without it, the exit 1 above could be anything."""
         done = self._run(tmp_path, "assert config.CONTENT_DIR")
         assert done.returncode == pytest.ExitCode.OK, done.stdout + done.stderr
         assert "(#862)" not in done.stdout

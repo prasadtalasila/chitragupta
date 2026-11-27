@@ -1,14 +1,3 @@
-"""`chitragupta/bib_parse.py`: bibtexparser 2 read into bibtexparser 1.x's
-entry dicts.
-
-`EXPECTED` below is what bibtexparser 1.4.4 returned for `AWKWARD_BIB`
-(through `bib_reader`'s old customization), recorded before 1.x left the
-lock, so these tests keep checking 1.x's behaviour after it is gone.
-The file is built to hit every rule the module docstring lists. The same
-comparison was run on 2,365 references from three real reference-manager
-exports and differed on none.
-"""
-
 import logging
 
 import pytest
@@ -111,9 +100,6 @@ class TestMatchesBibtexparser1:
         assert bib_parse.parse_entries(AWKWARD_BIB) == EXPECTED
 
     def test_the_key_order_is_1xs_too(self):
-        """Reverse file order, then ENTRYTYPE and ID, then `file` last.
-        The dicts become `Reference.fields`, which is stored, so order is
-        part of the output."""
         got = bib_parse.parse_entries(AWKWARD_BIB)
         assert [list(e) for e in got] == [list(e) for e in EXPECTED]
 
@@ -129,8 +115,6 @@ class TestValues:
         assert self._one("month = mar", mar="Marzo")["month"] == "Marzo"
 
     def test_an_undefined_macro_is_kept_rather_than_ending_the_read(self):
-        """1.x raised `UndefinedString` here and the whole sync died with
-        a traceback; one stray macro in an export is not worth that."""
         assert self._one("number = nosuchmacro")["number"] == "nosuchmacro"
 
     def test_a_hash_inside_braces_or_quotes_does_not_concatenate(self):
@@ -145,36 +129,26 @@ class TestValues:
         assert self._one("abstract = {a\n  b}")["abstract"] == "a\nb"
 
     def test_a_tab_is_expanded_by_column_as_pyparsing_did(self):
-        """`{a<TAB>}` was `a` and five spaces under 1.x: the tab sits at
-        column 19 of `@misc{k, title = {a`, and the next stop is 24."""
         assert self._one("title = {a\t}")["title"] == "a     "
 
 
 class TestWhatIsSkipped:
     def test_a_non_standard_type_is_skipped_and_said(self, caplog):
-        """Issue 888: skipped by design, and logged in 1.x's words."""
         with caplog.at_level(logging.WARNING, logger="chitragupta.bib_parse"):
             entries = bib_parse.parse_entries("@software{s, title = {x}}\n")
         assert entries == []
         assert "Entry type software not standard. Not considered." in caplog.text
 
     def test_an_entry_with_no_fields_is_skipped(self):
-        """`bib_integrity.block_has_fields` does not count such a stub as
-        an entry either, so the two still agree."""
         assert bib_parse.parse_entries("@misc{stub,\n}\n") == []
 
     def test_a_citekey_with_braces_is_refused_not_rewritten(self):
-        """1.x decoded `Thesis_{X}` into the citekey `Thesis_X` -- a key
-        the bib file does not contain. 2.x refuses the block instead, so
-        `bib_integrity.dropped_entries` counts and warns about it."""
         text = "@phdthesis{Thesis_{X}, title = {Braced key}}\n@misc{ok, title = {T}}\n"
         assert [e["ID"] for e in bib_parse.parse_entries(text)] == ["ok"]
 
 
 class TestDuplicates:
     def test_both_entries_under_one_citekey_come_back(self):
-        """`bib_integrity.duplicated_citekeys` refuses both, and can only
-        do that if it sees both (issue 840)."""
         got = bib_parse.parse_entries("@misc{k, title = {one}}\n@book{k, title = {two}}\n")
         assert [(e["ID"], e["title"]) for e in got] == [("k", "one"), ("k", "two")]
 
@@ -185,7 +159,6 @@ class TestDuplicates:
 
 class TestTheFileField:
     def test_a_zotero_path_is_left_raw(self):
-        """#964: decoding `\\;` raised TypeError and ended the read."""
         got = _by_id(bib_parse.parse_entries(AWKWARD_BIB))[("zotero_2024", "misc")]
         assert "AB\\;CD" in got["file"]
 
@@ -201,11 +174,6 @@ class TestTheFileField:
         assert bib_parse._decoded_file("{\\x}") == "{\\x}"
 
 
-# What chitragupta-importer writes (its bibtex.py): tab-indented fields,
-# braces escaped, parentheses and `@` left raw, and two `@comment` tables
-# ahead of the entries -- `cg-collections` and, since #1253/#1255,
-# `cg-renames`, whose rows can chain (`a` -> `b` -> `c`) and retire a
-# duplicate's key (`-1`).
 IMPORTER_HEAD = (
     "@comment{cg-renames v1\n"
     "lehner_pattern_2023-1\tlehner_pattern_2023\n"
@@ -229,12 +197,6 @@ def _importer_entry(key, abstract):
 
 
 class TestALineStartingWithAnAtSignInsideAValue:
-    """bibtexparser 2's splitter starts a new block at any line beginning
-    `@word(` or `@word{`, even inside a value, and drops the entry it was
-    in; 1.x kept it. The importer escapes braces but not parentheses, so
-    Zotero text such as a decorator or an annotation quoted at the start of
-    a line reaches the bib raw."""
-
     @pytest.mark.parametrize(
         "abstract",
         [
@@ -249,15 +211,10 @@ class TestALineStartingWithAnAtSignInsideAValue:
         text = IMPORTER_HEAD + _importer_entry("k1", abstract) + "\n" + _importer_entry("k2", "x")
         entries = bib_parse.parse_entries(text)
         assert [e["ID"] for e in entries] == ["k1", "k2"]
-        # As 1.x read it: the value whole -- indentation after a newline
-        # gone and braces dropped, as everywhere else -- not cut short.
         expected = bib_parse.bib_latex.latex_to_unicode(abstract.replace("\n   ", "\n"))
         assert entries[0]["abstract"] == expected
 
     def test_an_unbalanced_entry_is_still_skipped_and_the_rest_kept(self):
-        """The guard reaches only inside an entry whose braces balance, so
-        recovery after a broken one is exactly 1.x's: the broken entry
-        goes, the ones after it stay."""
         text = (
             "@article{a,\n\ttitle = {ok},\n}\n\n"
             "@article{b,\n\ttitle = {never closed,\n}\n\n"
@@ -271,8 +228,6 @@ class TestALineStartingWithAnAtSignInsideAValue:
         assert [e["ID"] for e in bib_parse.parse_entries(text)] == ["lehner_pattern_2023"]
 
     def test_a_private_use_character_already_in_the_file_comes_back_as_written(self):
-        """The mask is a private-use code point the file does not hold, so
-        one it does hold is never mistaken for a hidden `@`."""
         abstract = "has \ue000 in it\n@article(and a guarded line)"
         text = _importer_entry("k1", abstract) + "\n" + _importer_entry("k2", "x")
         entries = bib_parse.parse_entries(text)
@@ -282,10 +237,6 @@ class TestALineStartingWithAnAtSignInsideAValue:
 
 class TestAValueTheDecoderCannotRead:
     def test_is_kept_raw_rather_than_ending_the_read(self):
-        r"""1.x's decoder raises `TypeError` on `\;` (its table maps it to a
-        multi-character string), and the importer writes a URL raw -- so
-        one such URL ended the whole sync. The `file` field already kept
-        its raw value on this error (#964); every field does now."""
         text = (
             "@misc{k1,\n\ttitle = {T},\n\turl = {https://e.org/a\\;b},\n}\n\n"
             "@misc{k2,\n\ttitle = {Next},\n}\n"
@@ -296,12 +247,6 @@ class TestAValueTheDecoderCannotRead:
 
 
 class TestABackslashBeforeABrace:
-    """BibTeX counts every brace, and so did 1.x: `\\}` still closes a value.
-    2.x treats `\\{` and `\\}` as escaped and does not count them, so a value
-    ending in a backslash never closed and the entry was dropped.
-    chitragupta-importer writes a URL and a DOI raw, so a URL ending in
-    `\\` reaches the bib as `url = {...\\}`."""
-
     @pytest.mark.parametrize("field", ["url", "doi"])
     def test_a_value_ending_in_a_backslash_keeps_its_entry(self, field):
         text = (

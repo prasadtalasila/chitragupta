@@ -1,11 +1,3 @@
-"""chitragupta/enrich/topic_converge.py: the join of the two topic answers.
-
-The property under test throughout: **the human's name wins**. An
-emergent topic close enough to a phrase the author wrote is renamed by
-it, not listed beside it -- which is what "seeds are a starting point"
-has to mean once it reaches an artefact.
-"""
-
 import json
 
 import pytest
@@ -36,41 +28,27 @@ class TestConverge:
         assert named == {0: "near"}
 
     def test_a_tie_breaks_on_the_phrase_so_runs_are_diffable(self, isolated_config):
-        """Two seeds equidistant from one cluster would otherwise resolve
-        by dict order, and a topic set whose names shuffle between runs is
-        one nobody can diff."""
         forward = topic_converge.converge(
             {0: [1.0, 0.0]}, {"alpha": [1.0, 0.0], "zulu": [1.0, 0.0]}, min_similarity=0.4
         )
         reverse = topic_converge.converge(
             {0: [1.0, 0.0]}, {"zulu": [1.0, 0.0], "alpha": [1.0, 0.0]}, min_similarity=0.4
         )
-        # Which of the two wins is arbitrary; that both input orders agree
-        # is the property. Sorting ascending on the phrase makes it "alpha".
         assert forward == reverse == {0: "alpha"}
 
     def test_a_phrase_names_only_its_closest_topic(self, isolated_config):
-        """Built the other way first, and the real corpus refuted it: on a
-        digital-twins corpus, letting every close cluster take the phrase
-        produced eight topics called `digital twin` and three called `dt
-        architecture` -- nineteen seed-named topics from nine phrases,
-        none distinguishable from its namesakes. A label that does not
-        distinguish is not a label."""
         named = topic_converge.converge(
             {0: [1.0, 0.0], 1: [1.0, 0.3]}, {"platform": [1.0, 0.05]}, min_similarity=0.4
         )
         assert named == {0: "platform"}
 
     def test_the_losing_topic_keeps_its_own_identity(self, isolated_config):
-        """Not lost, just not renamed: it stays emergent with its derived
-        label and its own members."""
         named = topic_converge.converge(
             {0: [1.0, 0.0], 1: [1.0, 0.3]}, {"platform": [1.0, 0.05]}, min_similarity=0.4
         )
         assert 1 not in named
 
     def test_two_phrases_can_name_two_topics(self, isolated_config):
-        """One phrase per topic is a pairing, not a cap of one overall."""
         named = topic_converge.converge(
             {0: [1.0, 0.0], 1: [0.0, 1.0]},
             {"alpha": [1.0, 0.05], "beta": [0.05, 1.0]},
@@ -100,8 +78,6 @@ class TestBuild:
         assert all(t["provenance"] == "emergent" for t in got["topics"])
 
     def test_a_paper_appears_under_every_topic_it_is_about(self, isolated_config):
-        """The many-to-many view, not the single assignment -- which is
-        the whole reason `memberships` exists."""
         got = topic_converge.build(MEMBERSHIPS, CITEKEYS, {}, {"topics": []})
         under = {t["topic_id"]: [m["citekey"] for m in t["members"]] for t in got["topics"]}
         assert under[0] == ["a_2020", "b_2021"]
@@ -114,9 +90,6 @@ class TestBuild:
         assert [m["citekey"] for m in under_zero["members"]] == ["a_2020", "b_2021"]
 
     def test_a_seed_that_named_nothing_still_appears(self, isolated_config):
-        """The useful case, not a leftover: the author named something the
-        clustering did not separate out, and an empty topic_id is the
-        signal that the corpus does not organise the way they assumed."""
         report = {
             "topics": [{"phrase": "fidelity", "matches": [{"citekey": "d_2023", "score": 0.5}]}]
         }
@@ -131,7 +104,6 @@ class TestBuild:
         assert sum(1 for t in got["topics"] if t["label"] == "digital twin") == 1
 
     def test_uncovered_names_the_papers_no_topic_reached(self, isolated_config):
-        """The one number an author planning a draft actually wants."""
         got = topic_converge.build(MEMBERSHIPS, CITEKEYS, {}, {"topics": []})
         assert got["uncovered"] == ["d_2023"]
 
@@ -143,15 +115,10 @@ class TestBuild:
 
 class TestRunStage:
     def test_it_refuses_to_cluster_on_your_behalf(self, isolated_config):
-        """This stage's contract is that it re-runs nothing. A stage that
-        silently did an hour of GPU work would be a different stage
-        wearing this one's name."""
         with pytest.raises(ValueError, match="Run the bertopic stage first"):
             topic_converge.run_topic_converge([], ())
 
     def test_the_stage_wrapper_skips_rather_than_failing(self, isolated_config):
-        """A `--stages converge` before bertopic is a sequencing mistake,
-        not a broken corpus."""
         result = topic_converge.run_stage([], ())
         assert result["status"] == "skipped"
         assert "bertopic first" in result["detail"]["reason"]
@@ -174,9 +141,6 @@ class TestRunStage:
 
 
 class FakeModel:
-    """Encodes each phrase to the vector `VECTORS` names for it, so a test
-    can place a seed at a chosen angle to a cluster."""
-
     VECTORS: dict = {}
 
     def encode(self, texts, show_progress_bar=False):
@@ -186,9 +150,6 @@ class FakeModel:
 
 
 class TestRunTopicConverge:
-    """The whole join, driven through fakes: it must read the artefacts
-    the earlier stages wrote and cluster nothing itself."""
-
     def prepare(self, cfg, monkeypatch, assignments, memberships, vectors):
         from chitragupta import seed_topics as seed_topics_module
         from chitragupta.enrich import doc_vectors, embed_index
@@ -248,8 +209,6 @@ class TestRunTopicConverge:
         result = topic_converge.run_topic_converge([], ("digital twin",))
         assert isolated_config.TOPIC_SET_PATH.exists()
         assert json.loads(isolated_config.TOPIC_SET_PATH.read_text(encoding="utf-8")) == result
-        # The space stamp the graph stage refuses without: model alone
-        # does not identify the space when the pooling method changes.
         from chitragupta.enrich import doc_vectors
 
         assert result["embedding_method"] == doc_vectors.EMBED_METHOD
@@ -272,11 +231,6 @@ class TestRunTopicConverge:
         assert result["n_emergent"] == 2
 
     def test_a_different_embedding_model_refuses_to_converge(self, isolated_config, monkeypatch):
-        """#504, m-47: `assignments` is a clustering computed against a
-        specific embedding space. Zipping it with vectors re-embedded
-        under a *different* model would pair a topic id with a vector it
-        was never clustered against and hand back a plausible-looking,
-        meaningless result."""
         self.prepare(
             isolated_config,
             monkeypatch,
@@ -294,9 +248,6 @@ class TestRunTopicConverge:
     def test_a_pre_m47_topics_json_with_no_recorded_model_refuses_to_converge(
         self, isolated_config, monkeypatch
     ):
-        """A topics.json written before this fix has no "embedding_model"
-        key at all -- must not compare equal to today's config by
-        accident and silently converge against the wrong assumption."""
         self.prepare(
             isolated_config,
             monkeypatch,
@@ -314,12 +265,6 @@ class TestRunTopicConverge:
 
 
 class TestMembershipsAreSynthesisedWhenAbsent(TestRunTopicConverge):
-    """m-43 (#509). `memberships` is `None` whenever
-    `[topics].topic_distribution` is off, and `build` reads only that
-    field -- so converging on such a corpus silently produced zero
-    emergent topics and listed every paper as uncovered. That is a report
-    about the setting, dressed up as a finding about the library."""
-
     def test_assignments_stand_in_and_the_result_says_so(self, isolated_config, monkeypatch):
         FakeModel.VECTORS = {}
         self.prepare(
@@ -335,9 +280,6 @@ class TestMembershipsAreSynthesisedWhenAbsent(TestRunTopicConverge):
         assert result["membership_source"] == "assignments"
 
     def test_the_outlier_topic_is_not_a_topic(self, isolated_config, monkeypatch):
-        """-1 is HDBSCAN's "no cluster", left out here exactly as
-        `topic_descriptors` leaves it out -- otherwise the stand-in would
-        invent a topic the clustering never found."""
         FakeModel.VECTORS = {}
         self.prepare(
             isolated_config,

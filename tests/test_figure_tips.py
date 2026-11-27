@@ -1,12 +1,5 @@
-"""Which ends of a path carry a head, read from its options and the
-styles they name (#1162). No TeX: this is the source side of
-`stranded-arrowhead`.
-"""
-
 from chitragupta.review.figure_layout._tips import house_styles, style_definitions, tips
 
-# The house block's arrow styles, as a figure carries them, plus a bar
-# that draws a head at each end and a style called with an argument.
 HOUSE = (
     r"\tikzset{cgedge/.style={draw=cgFlowLine, -{Latex[length=2.6mm, width=2.1mm]},"
     r" shorten >=1.5pt},"
@@ -57,8 +50,6 @@ def test_a_hyphenated_style_is_read():
 
 
 def test_a_later_spec_wins():
-    """`\\draw[cgweak, -]` is a live idiom in the drafted book: the `-`
-    takes the style's head off."""
     assert tips("cgedge, -", house_styles()) == (False, False)
     assert tips("-, ->", {}) == (False, True)
 
@@ -70,8 +61,6 @@ def test_the_arrows_key_is_read():
 
 
 def test_blanked_braces_are_read():
-    """`path_bodies` empties every brace group, so options arrive as
-    `-{}` rather than `-{Latex[...]}`."""
     assert tips("-{}", {}) == (False, True)
 
 

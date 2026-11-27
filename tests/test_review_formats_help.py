@@ -1,8 +1,3 @@
-"""Every review aid's `--formats` help names the engine a pdf render runs
-(#1022). Ten parsers each carried their own copy, which said
-"pandoc/pdflatex" for two releases after #996 moved the render to
-LuaLaTeX; they now share `review._emit.add_formats`."""
-
 import argparse
 import importlib
 
@@ -19,7 +14,6 @@ AIDS = [
 
 
 def _formats_action(parser):
-    # verbatim_check takes --formats on its `scan` subcommand.
     for action in parser._actions:
         if "--formats" in action.option_strings:
             return action

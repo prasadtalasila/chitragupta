@@ -1,9 +1,3 @@
-"""findings() -- the one `python -m chitragupta.draft style` finding not
-delegated to Vale: a draft's recorded glossary checked against the
-current acronym vocabulary. See chitragupta/style_acronym_drift.py and the
-measurement behind it in chitragupta/acronyms.py.
-"""
-
 from chitragupta import acronyms, dossier, style_acronym_drift
 from tests.conftest import content_draft
 
@@ -23,9 +17,6 @@ def test_no_findings_without_a_dossier(isolated_config):
 
 
 def test_no_findings_for_a_draft_outside_content_drafts(tmp_path):
-    """dossier.dossier_dir() raises DossierError for a draft that isn't
-    under content/drafts/ (test fixtures, an ad-hoc file) -- the same
-    case style_language.language_of() already tolerates."""
     draft = tmp_path / "loose.md"
     draft.write_text("prose\n", encoding="utf-8")
     assert style_acronym_drift.findings(draft) == []

@@ -1,17 +1,3 @@
-"""`.claude/hooks/code_standards_hook.py`, exercised as a module.
-
-The same split `tests/test_hook_modules.py` states for the drafting
-hooks, and for the same reason: a hook is run by the harness as
-`python <path>`, so the subprocess tests beside this file
-(`tests/test_code_standards_hook.py`) prove the contract and contribute
-no coverage, while this file reaches every branch.
-
-The hook itself is issue 431's, and is the first developer-side entry in
-`docs/HOOKS.md`'s registry -- advisory class, so every test here is
-ultimately asserting one of three things: it never blocks, it always
-exits 0, and it says nothing when there is nothing to say.
-"""
-
 import importlib.util
 import io
 import json
@@ -25,7 +11,6 @@ HOOKS = REPO_ROOT / ".claude" / "hooks"
 
 
 def load():
-    """A fresh module object, so one test's monkeypatching cannot leak."""
     if str(HOOKS) not in sys.path:
         sys.path.insert(0, str(HOOKS))
     spec = importlib.util.spec_from_file_location(
@@ -55,29 +40,18 @@ class TestWhichWritesItCaresAbout:
         assert target is not None
 
     def test_a_relative_path_is_resolved_against_the_repo_root(self, hook):
-        """Claude Code documents `file_path` as absolute and it always has
-        been, but a substring match would silently skip a relative one --
-        no leading slash to match, no error, just an unchecked write. The
-        same near-miss `draft_target.py` records for drafts."""
         assert hook.source_target(stdin_with("chitragupta/config.py")) is not None
 
     def test_a_draft_is_not_a_target(self, hook):
         assert hook.source_target(stdin_with(REPO_ROOT / "content" / "drafts" / "s.md")) is None
 
     def test_a_test_module_is_not_a_target(self, hook):
-        """C2 does not cover `tests/` at all and C1's only registered test
-        offender is silent anyway, so hooking it would report nothing
-        useful and interrupt the file being written at the moment it is
-        being written. The hook's scope is the intersection of the two
-        rules' roots, which is the only line neither rule argues with."""
         assert hook.source_target(stdin_with(REPO_ROOT / "tests" / "test_config.py")) is None
 
     def test_a_non_python_file_is_not_a_target(self, hook):
         assert hook.source_target(stdin_with(REPO_ROOT / "docs" / "HOOKS.md")) is None
 
     def test_traversal_cannot_pass_for_a_source_file(self, hook):
-        """Containment is `is_relative_to` on resolved paths, not a string
-        test -- `chitragupta/../../etc/passwd` must not read as one."""
         assert hook.source_target(stdin_with("chitragupta/../../etc/passwd")) is None
 
     def test_a_path_outside_the_repo_is_not_a_target(self, hook, tmp_path):
@@ -85,9 +59,6 @@ class TestWhichWritesItCaresAbout:
 
 
 class TestMalformedStdinFailsOpen:
-    """Three shapes, each meaning "no file path was given". A hook that
-    raises on one of them is a hook that stops firing, silently."""
-
     def test_invalid_json(self, hook):
         assert hook.source_target(io.StringIO("{not json")) is None
 
@@ -121,9 +92,6 @@ class TestWhatItSays:
         assert "m.py::f" in payload["hookSpecificOutput"]["additionalContext"]
 
     def test_it_never_emits_a_block_decision(self, hook, monkeypatch, capsys):
-        """The rule that decides everything: C1/C2 is a ratchet whose
-        escape hatch is part of the standard, so this is the fail-silent
-        class. The citation gate stays the only hook that may block."""
         monkeypatch.setattr(hook, "source_target", lambda _: Path("chitragupta/config.py"))
         monkeypatch.setattr(
             hook,
@@ -146,17 +114,10 @@ class TestRunningTheScanner:
         assert [f["rule"] for f in hook._findings(path)] == ["C2"]
 
     def test_a_missing_scanner_is_silent_not_an_error(self, hook, monkeypatch, tmp_path):
-        """`chitragupta/init.py`'s `COPY_VERBATIM` begins `".claude"`, so
-        this hook is scaffolded into every drafting project -- and those
-        deliberately have no `scripts/` tree. A missing scanner there is
-        the expected state, not a fault."""
         monkeypatch.setattr(hook, "SCANNER", tmp_path / "absent.py")
         assert hook._findings(tmp_path / "m.py") == []
 
     def test_an_installed_project_never_launches_its_scanner(self, hook, monkeypatch):
-        """Issue 890: outside the checkout, a `scripts/code_standards.py`
-        is not this repository's scanner, so nothing under the root runs."""
-
         def launched(*args, **kwargs):
             raise AssertionError("the scanner was launched")
 
@@ -165,10 +126,6 @@ class TestRunningTheScanner:
         assert hook._findings(Path("m.py")) == []
 
     def test_unreadable_scanner_output_is_silent(self, hook, monkeypatch):
-        """Reading another command's stdout defensively, the same posture
-        `style_check_hook.py` documents: a checker that failed or changed
-        shape must cost nothing."""
-
         class _Result:
             stdout = "not json"
 

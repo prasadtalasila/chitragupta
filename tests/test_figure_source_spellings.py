@@ -1,9 +1,3 @@
-"""Four valid TikZ spellings `figure check` misread (#1112): a node's name
-after `at`, nodes made in a `\\foreach`, and a `(` or `;` in a tag's
-text. The source readers are tested on every host; the loop needs the
-drawing hook, so its case compiles and self-skips where TeX is missing.
-"""
-
 import pytest
 
 from chitragupta import page
@@ -39,8 +33,6 @@ class TestNameAfterAt:
         assert node_names("\\node[draw] at (a.east) {x};\n") == []
 
     def test_a_two_tier_labels_gloss_counts_toward_its_words(self):
-        """The whole braced label is read, so `\\cglab`'s gloss counts:
-        the regex this replaced stopped at the title's `}` (#1112)."""
         gloss = " ".join(["word"] * 14)
 
         assert overlong_nodes(f"\\node (a) {{\\cglab{{One two}}{{{gloss}}}}};\n") == [("a", 16)]
@@ -82,8 +74,6 @@ class TestTagText:
 
 
 class TestHeadsFromStyles:
-    """`stranded-arrowhead` reads a head set by a style (#1162)."""
-
     def test_the_issues_reproduction_is_reported(self):
         source = r"\draw[cgedge] (a) -- (46,36); \draw[cgedge] (46,36) -- (b);"
 
@@ -111,8 +101,6 @@ class TestHeadsFromStyles:
         assert stranded_arrowheads(source) == []
 
     def test_a_braced_arrows_key_is_read(self):
-        """The options are read before brace groups are emptied, so
-        `arrows={->}` reaches the tip reader whole."""
         source = r"\draw[arrows={->}] (a) -- (1,2); \draw (1,2) -- (b);"
 
         assert stranded_arrowheads(source) == ["1,2"]
@@ -123,15 +111,12 @@ class TestHeadsFromStyles:
         assert stranded_arrowheads(source) == ["1,2"]
 
     def test_a_headless_first_piece_is_not_stranded(self):
-        """`cgedge, -` is the repair for a stranded head."""
         source = r"\draw[cgedge, -] (a) -- (1,2); \draw[cgedge] (1,2) -- (b);"
 
         assert stranded_arrowheads(source) == []
 
 
 class TestExpandLoops:
-    """A macro-spelled name, against what the hook logged (no TeX)."""
-
     LOGGED = drawn(
         [
             node("s1", (0, 0, 10, 10)),

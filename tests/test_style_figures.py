@@ -1,14 +1,3 @@
-"""chitragupta/style_figures.py: the figure findings `draft style` reports.
-
-Mirrors `tests/test_style_tables.py`, minus `TestNoId` only. The
-`TestNoCaption` half arrived with issue 421: `docs/WRITING-STANDARDS.md`
-§10 no longer accepts an uncaptioned figure, so the marker that carries
-no caption is a finding like its table analogue. The `FigureNoId`
-absence stands, and for its own unchanged reason -- a figure marker
-always carries an id by construction, since the id *is* the base name
-the marker names, so there is no "marker with no id" state to find.
-"""
-
 from pathlib import Path
 
 from chitragupta import style_figures
@@ -28,11 +17,6 @@ def rules(findings: list[dict]) -> list[str]:
 
 
 class TestNoCaption:
-    """Issue 421 reversed §10's accepted case, so this is the half that
-    inverted. The R3 evidence the flag flip rests on is that adding the
-    caption takes the finding away -- `test_adding_the_caption_clears_it`
-    is that, asserted rather than argued."""
-
     def test_an_uncaptioned_marker_is_reported(self, tmp_path):
         body = "# S\n\n<!-- figure: figures/x -->\n\nSome prose after a blank line.\n"
         found = style_figures.findings(draft_with(body, tmp_path))
@@ -58,10 +42,6 @@ class TestNoCaption:
         assert style_figures.findings(draft_with(body, tmp_path)) == []
 
     def test_an_uncaptioned_marker_is_still_unreferenced_only_once(self, tmp_path):
-        """A marker with no caption carries no `Figure`, so it cannot also
-        be reported unreferenced -- there is nothing for a `figureref` to
-        point at. One defect, one finding, and the caption is the fix that
-        makes the second check reachable."""
         body = "# S\n\n<!-- figure: figures/x -->\n\nProse.\n"
         assert rules(style_figures.findings(draft_with(body, tmp_path))) == [
             "chitragupta.FigureNoCaption"
@@ -145,8 +125,6 @@ class TestFindingShape:
         assert found[0]["severity"] == "suggestion"
 
     def test_a_latex_fragment_is_left_to_its_own_numbering(self, tmp_path):
-        # §10's carve-out: a .tex fragment writes a real \\begin{figure}
-        # the consuming thesis numbers, with no marker vocabulary at all.
         fragment = tmp_path / "chapter.tex"
         fragment.write_text(
             "\\begin{figure}\n\\input{figures/x.tex}\n\\caption{X}\\label{fig:x}\n\\end{figure}\n",
@@ -156,11 +134,6 @@ class TestFindingShape:
 
 
 class TestMessagesCiteTheFiguresFile:
-    """§10 moved to `docs/writing-standards/figures.md` (#1212) and the
-    core keeps only a stub, so a finding that cites the core sends the
-    author one hop short of the rule. Every message that cites §10 names
-    the file it lives in now, in the form `style_equations` prints."""
-
     def test_every_cited_section_names_the_figures_file(self, tmp_path):
         body = f"# S\n\n<!-- figure: figures/x -->\n\nSome prose after a blank line.\n\n{CAPTIONED}"
         found = style_figures.findings(draft_with(body, tmp_path))

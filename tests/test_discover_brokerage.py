@@ -1,10 +1,3 @@
-"""The topic view's stored-brokerage section (#713).
-
-The property under test: the terminal prints the artefact's own four
-numbers with the same reading the app panel gives, and prints nothing
--- recomputing nothing -- for an artefact from an older run.
-"""
-
 import json
 
 from test_discover import GRAPH, TOPIC_SET, prepare

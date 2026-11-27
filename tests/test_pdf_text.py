@@ -1,12 +1,3 @@
-"""chitragupta/pdf_text.py: dispatches PDF text extraction to whichever backend
-config.PARSER names (pdftotext/docling).
-
-docling is mocked via sys.modules (it is imported
-lazily inside its _extract_* function, not at module top), matching
-tests/test_enrich_docling_parse.py's pattern -- fast, deterministic, and
-doesn't need the real package installed.
-"""
-
 import enum
 import importlib.machinery
 import importlib.util
@@ -28,15 +19,6 @@ from chitragupta import config, install, passages, pdf_text
 
 
 class TestExtractTextPdftotext:
-    """Fast, deterministic: doesn't require pdftotext on PATH.
-
-    extract_text() calls is_available() (programs.resolve_program("pdftotext"))
-    before dispatching to _extract_pdftotext, so without stubbing that
-    too, every test below would actually depend on the real binary being
-    on PATH regardless of the subprocess.run mock -- true on this repo's
-    Linux CI (poppler-utils via os-deps), not guaranteed on every host
-    these tests might run on (PR #11 review)."""
-
     @pytest.fixture(autouse=True)
     def _pdftotext_present(self, programs_on_path):
         pass
@@ -46,7 +28,6 @@ class TestExtractTextPdftotext:
 
         def fake_run(cmd, **kwargs):
             calls.append(cmd)
-            # pdftotext writes to stdout (#894); Python writes the file.
             return subprocess.CompletedProcess(cmd, 0, stdout=b"extracted text", stderr=b"")
 
         monkeypatch.setattr(subprocess, "run", fake_run)
@@ -80,9 +61,6 @@ class TestExtractTextPdftotext:
 
 
 class FakeTextItem:
-    """One entry of a DoclingDocument's `texts`, as passage_records reads
-    it: a label, the text, and a single provenance carrying the page."""
-
     def __init__(self, text, label="text", page=1):
         self.text = text
         self.label = label
@@ -90,17 +68,6 @@ class FakeTextItem:
 
 
 class FakeDoclingDocument:
-    """Enough of a DoclingDocument for _extract_docling.
-
-    `markdown` may be a single string or a list of per-page strings. The
-    list form is what makes page breaks testable, and it mimics the real
-    serializer's placement: the placeholder goes *between* consecutive
-    pages, with none before the first or after the last. That was checked
-    against docling_core 2.89.0 on a real 51-page paper -- 51 pages in
-    the model produced 51 form-feed-separated segments, where `pdftotext`
-    on the same PDF produced 52 (it emits a trailing form feed).
-    """
-
     def __init__(self, markdown, texts=None):
         self._pages = markdown if isinstance(markdown, list) else [markdown]
         self.texts = texts or []
@@ -110,15 +77,6 @@ class FakeDoclingDocument:
 
 
 class FakeDoclingResult:
-    """What a real docling `convert()` returns on a clean parse.
-
-    `status` is not decoration: real docling always sets it, and
-    `check_docling_status` now *fails closed* on its absence (#509/m-36)
-    -- a fake without it was standing in for a docling that had renamed
-    the attribute, which is exactly the state that must never be read as
-    success.
-    """
-
     def __init__(self, markdown, texts=None):
         self.document = FakeDoclingDocument(markdown, texts)
         self.status = types.SimpleNamespace(name="SUCCESS")
@@ -126,14 +84,8 @@ class FakeDoclingResult:
 
 class FakeDoclingConverter:
     last_convert_path = None
-    # How many times DocumentConverter(...) was *constructed*, which is
-    # the thing the converter cache exists to keep at 1: every
-    # construction re-initialises Docling's real layout/table/OCR models.
     build_count = 0
     last_format_options = None
-    # Set by a test that needs the converted document to have real pages
-    # or real text items. None leaves the default: one page of Markdown
-    # and no passages, which is what most of these cases care about.
     next_pages = None
     next_texts = None
 
@@ -148,14 +100,8 @@ class FakeDoclingConverter:
         FakeDoclingConverter.last_convert_path = pdf_path
         if "explode" in str(pdf_path):
             raise RuntimeError("simulated docling failure")
-        # A card with no memory left. Raised on a CUDA device -- and on
-        # None, which is docling's own AUTO resolution, i.e. cuda:0 --
-        # but not on the CPU, so a test can watch the fallback actually
-        # produce a parse rather than just change a string.
         if "cudaoom" in str(pdf_path) and self.device != "cpu":
             raise RuntimeError("CUDA error: out of memory")
-        # The other half of the pair: an allocation torch made itself,
-        # which fails everywhere, so the CPU fallback runs out of road.
         if "alwaysoom" in str(pdf_path):
             raise RuntimeError("CUDA out of memory. Tried to allocate 20.00 MiB")
         return FakeDoclingResult(
@@ -165,7 +111,6 @@ class FakeDoclingConverter:
 
     @staticmethod
     def pipeline_options():
-        """The PdfPipelineOptions the last-built converter was handed."""
         return FakeDoclingConverter.last_format_options["pdf"].pipeline_options
 
 
@@ -176,8 +121,6 @@ def fake_docling(monkeypatch):
     FakeDoclingConverter.last_format_options = None
     FakeDoclingConverter.next_pages = None
     FakeDoclingConverter.next_texts = None
-    # The cache is module state, so it survives between tests and would
-    # otherwise serve one test's converter to the next.
     pdf_text._reset_docling_converter()
 
     fake_submodule = types.ModuleType("docling.document_converter")
@@ -189,10 +132,6 @@ def fake_docling(monkeypatch):
         "docling.document_converter", loader=None
     )
     fake_package = types.ModuleType("docling")
-    # importlib.util.find_spec("docling") (is_available()'s probe) raises
-    # ValueError if the name is already in sys.modules with no __spec__
-    # set -- a bare types.ModuleType() has none, unlike a normally-
-    # imported package.
     fake_package.__spec__ = importlib.machinery.ModuleSpec("docling", loader=None)
     base_models = types.ModuleType("docling.datamodel.base_models")
     base_models.InputFormat = types.SimpleNamespace(PDF="pdf")
@@ -224,10 +163,6 @@ def fake_docling(monkeypatch):
 
 class TestDoclingOcrSetting:
     def test_ocr_is_off_by_default(self, isolated_config, fake_docling, tmp_path):
-        """Docling's own default is do_ocr=True. This corpus is
-        born-digital papers with real text layers, and its OCR runs on
-        the CPU -- measured at 2.33x the total parse time for output that
-        was byte-identical on 6 of 7 sampled documents."""
         pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
         assert fake_docling.pipeline_options().do_ocr is False
 
@@ -239,20 +174,12 @@ class TestDoclingOcrSetting:
 
 class TestDoclingFormulaSetting:
     def test_formula_enrichment_is_off_by_default(self, isolated_config, fake_docling, tmp_path):
-        """Same economics as OCR: an extra model download and an extra
-        pass per page, so a corpus that never cites an equation should
-        not pay for one."""
         pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
         assert fake_docling.pipeline_options().do_formula_enrichment is False
 
     def test_formula_enrichment_can_be_turned_on(
         self, isolated_config, fake_docling, monkeypatch, tmp_path
     ):
-        """Off, a formula reaches content/parsed/*.txt as the literal
-        string `<!-- formula-not-decoded -->` -- 148 of 497 documents on
-        the corpus this was measured against -- so the prose leading into
-        it ("More formally:") dangles into nothing. On, it is LaTeX, which
-        is text, which is what chitragupta/retrieval.py already indexes."""
         monkeypatch.setattr(config, "PARSER_FORMULAS", True)
         pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
         assert fake_docling.pipeline_options().do_formula_enrichment is True
@@ -260,9 +187,6 @@ class TestDoclingFormulaSetting:
 
 class TestDoclingConverterReuse:
     def test_converter_is_built_once_across_calls(self, isolated_config, fake_docling, tmp_path):
-        """DocumentConverter.initialized_pipelines is an *instance*
-        attribute, so a converter per PDF reloads every model per PDF --
-        16.5s of cold start, measured, against a corpus of 501 files."""
         for i in range(3):
             pdf_text.extract_text(str(tmp_path / f"paper{i}.pdf"), f"key_{i}")
         assert fake_docling.build_count == 1
@@ -270,8 +194,6 @@ class TestDoclingConverterReuse:
     def test_changing_the_ocr_setting_rebuilds_the_converter(
         self, isolated_config, fake_docling, monkeypatch, tmp_path
     ):
-        """Caching on nothing but "was one built already" would silently
-        serve an OCR-enabled converter after the setting was turned off."""
         pdf_text.extract_text(str(tmp_path / "a.pdf"), "a")
         assert fake_docling.build_count == 1
 
@@ -283,11 +205,6 @@ class TestDoclingConverterReuse:
     def test_changing_the_formula_setting_rebuilds_the_converter(
         self, isolated_config, fake_docling, monkeypatch, tmp_path
     ):
-        """The same trap the OCR case above documents, one setting along:
-        a toggle that changes what every parse produces but is absent
-        from the cache key serves the converter built under the old
-        value, so flipping it in config.toml mid-session silently
-        changes nothing."""
         pdf_text.extract_text(str(tmp_path / "a.pdf"), "a")
         assert fake_docling.build_count == 1
 
@@ -299,8 +216,6 @@ class TestDoclingConverterReuse:
     def test_a_failed_convert_does_not_discard_the_converter(
         self, isolated_config, fake_docling, tmp_path
     ):
-        """One unparseable PDF must not cost the next document a full
-        model reload -- the failure is in the file, not the converter."""
         with pytest.raises(pdf_text.ExtractionError):
             pdf_text.extract_text(str(tmp_path / "explode.pdf"), "bad")
         pdf_text.extract_text(str(tmp_path / "fine.pdf"), "good")
@@ -326,10 +241,6 @@ class TestExtractTextDocling:
     def test_broken_transitive_dependency_becomes_missing_dependency(
         self, isolated_config, monkeypatch, tmp_path
     ):
-        """The package is findable (is_available()'s find_spec probe
-        passes) but a broken transitive dependency makes the actual
-        `from docling.document_converter import DocumentConverter` fail
-        anyway (PR #11 review)."""
         monkeypatch.setattr(config, "PARSER", "docling")
         fake_package = types.ModuleType("docling")
         fake_package.__spec__ = importlib.machinery.ModuleSpec("docling", loader=None)
@@ -344,11 +255,6 @@ class TestExtractTextDocling:
 
 
 class TestAWriteFailureIsTransient:
-    """#842: an OSError writing this document's output (disk full,
-    permissions) is caused by the machine, not the PDF -- so it must reach
-    sync as a transient ExtractionError, which both parse paths catch, and
-    not as a bare OSError that aborts the whole batch."""
-
     def test_the_parsed_text_write(self, isolated_config, fake_docling, tmp_path, monkeypatch):
         real_write_text = Path.write_text
 
@@ -386,9 +292,6 @@ class TestAWriteFailureIsTransient:
     def test_an_oserror_outside_a_write_is_not_reworded_as_one(
         self, isolated_config, monkeypatch, tmp_path
     ):
-        """The guard is on the writes, not the whole parse: an OSError from
-        anything else keeps its own type rather than claiming a write."""
-
         def extractor(pdf_path, out_path, threads=None):
             raise FileNotFoundError(2, "No such file or directory", "pdftotext")
 
@@ -400,21 +303,12 @@ class TestAWriteFailureIsTransient:
     def test_a_backend_failure_is_still_not_transient(
         self, isolated_config, fake_docling, tmp_path
     ):
-        """The backend turns a conversion failure into ExtractionError
-        before the write guard sees it, so a PDF docling cannot read stays
-        deterministic, as before."""
         with pytest.raises(pdf_text.ExtractionError) as caught:
             pdf_text.extract_text(str(tmp_path / "explode.pdf"), "key")
         assert getattr(caught.value, "transient", False) is False
 
 
 class TestTheParsedTextIsWrittenWholeOrNotAtAll:
-    """#894: the parsed `.txt` goes through a temp sibling and `os.replace`
-    under both backends. pdftotext used to write it itself, so a kill
-    mid-write left a truncated file `_parse_outputs_present` accepted, and
-    a full disk surfaced as a failed pdftotext run -- a *permanent* parse
-    failure -- rather than as #842's transient write failure."""
-
     @pytest.fixture
     def pdftotext_prints(self, isolated_config, monkeypatch):
         monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/pdftotext")
@@ -432,8 +326,6 @@ class TestTheParsedTextIsWrittenWholeOrNotAtAll:
 
     @staticmethod
     def _torn_write(monkeypatch):
-        """Half the bytes land, then the disk fills: what a kill or ENOSPC
-        mid-write leaves behind in a non-atomic writer."""
         real_bytes, real_text = Path.write_bytes, Path.write_text
 
         def torn(real, half):
@@ -469,8 +361,6 @@ class TestTheParsedTextIsWrittenWholeOrNotAtAll:
     def test_a_failed_rewrite_keeps_the_previous_text_whole(
         self, either_backend, monkeypatch, tmp_path
     ):
-        """The previous parse's text is replaced whole or not at all -- never
-        truncated in place, as opening the final path for writing did."""
         config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
         previous = config.PARSED_DIR / "smith_2024.txt"
         previous.write_text("the previous parse", encoding="utf-8")
@@ -482,7 +372,6 @@ class TestTheParsedTextIsWrittenWholeOrNotAtAll:
     def test_a_failed_pdftotext_run_is_still_permanent(
         self, isolated_config, monkeypatch, tmp_path
     ):
-        """A PDF pdftotext cannot read is the PDF, not the machine."""
         monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/pdftotext")
 
         def fake_run(cmd, **kwargs):
@@ -496,9 +385,6 @@ class TestTheParsedTextIsWrittenWholeOrNotAtAll:
 
 
 class TestDoclingPageBreaks:
-    """The parsed .txt has to have the same *shape* as pdftotext's, or
-    everything downstream that splits on form feeds reports p.1."""
-
     def test_pages_are_separated_by_form_feeds(
         self, isolated_config, fake_docling, tmp_path, monkeypatch
     ):
@@ -511,29 +397,18 @@ class TestDoclingPageBreaks:
     def test_the_split_gives_one_based_page_numbers(
         self, isolated_config, fake_docling, tmp_path, monkeypatch
     ):
-        """Docling puts a break *between* pages and none before the
-        first, so the nth segment is page n. Checked against real
-        docling_core 2.89.0 output: a 51-page paper produced exactly 51
-        segments. Deliberately not compared against pdftotext's count on
-        the same PDF -- that backend emits a trailing form feed after the
-        last page, so it yields one more segment for the same document.
-        """
         monkeypatch.setattr(FakeDoclingConverter, "next_pages", ["alpha", "beta", "gamma"])
         out = pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
         pages = out.read_text().split("\f")
         assert pages[2 - 1] == "beta"
 
     def test_the_form_feed_does_not_disturb_the_quality_warning(self, isolated_config):
-        """`\\f` is whitespace, so run_together_ratio's word count and
-        ratio are what they were before page breaks were restored."""
         without = pdf_text.run_together_ratio("alpha beta gamma delta")
         assert pdf_text.run_together_ratio("alpha beta\fgamma delta") == without
 
 
 @pytest.mark.usefixtures("programs_on_path")
 class TestCorpusLayerPassageSidecar:
-    """The structure Markdown can't carry, written beside the text."""
-
     @staticmethod
     def _texts():
         return [FakeTextItem("A reading-ordered paragraph.", page=3)]
@@ -553,8 +428,6 @@ class TestCorpusLayerPassageSidecar:
         assert passages.sidecar_path("smith_2024").parent == out.parent
 
     def test_pdftotext_writes_none(self, isolated_config, monkeypatch, tmp_path):
-        """Not an oversight: `-layout` output can splice two columns into
-        one line, so there is nothing in it that may be quoted."""
         monkeypatch.setattr(config, "PARSER", "pdftotext")
         monkeypatch.setattr(pdf_text, "is_available", lambda: True)
         monkeypatch.setattr(
@@ -566,9 +439,6 @@ class TestCorpusLayerPassageSidecar:
     def test_switching_to_pdftotext_removes_a_stale_one(
         self, isolated_config, monkeypatch, tmp_path
     ):
-        """The sidecar quotes the PDF as parsed when it was written. A
-        backend that resolves no reading order must not leave the old
-        one behind for the ladder to keep quoting."""
         passages.write_sidecar("smith_2024", [{"text": "From the docling run.", "page": 1}])
         monkeypatch.setattr(config, "PARSER", "pdftotext")
         monkeypatch.setattr(pdf_text, "is_available", lambda: True)
@@ -580,9 +450,6 @@ class TestCorpusLayerPassageSidecar:
         assert not passages.sidecar_path("smith_2024").exists()
 
     def test_a_failed_parse_removes_a_stale_one(self, isolated_config, fake_docling, tmp_path):
-        """The case a write-on-success ordering would miss: a citekey
-        that parsed cleanly last week and fails today would otherwise go
-        on quoting last week's text."""
         passages.write_sidecar("smith_2024", [{"text": "From last week.", "page": 1}])
 
         with pytest.raises(pdf_text.ExtractionError):
@@ -609,11 +476,6 @@ class TestCorpusLayerPassageSidecar:
     def test_a_document_with_no_prose_still_writes_an_empty_sidecar(
         self, isolated_config, fake_docling, tmp_path, monkeypatch
     ):
-        """Written even when empty, so the file's presence answers "did a
-        reading-order backend parse this?" -- which is what chitragupta/ledger.py
-        checks before skipping a document it believes is parsed. Were it
-        omitted here, that check would re-parse this document on every
-        single run, forever."""
         monkeypatch.setattr(
             FakeDoclingConverter,
             "next_texts",
@@ -625,9 +487,6 @@ class TestCorpusLayerPassageSidecar:
     def test_an_empty_sidecar_does_not_capture_the_ladder(
         self, isolated_config, fake_docling, tmp_path
     ):
-        """The other half of writing it empty: rung 2 must decline rather
-        than match and yield nothing, so the page-level rung still
-        answers."""
         assert passages._from_sidecar(passages.sidecar_path("smith_2024")) is None
         passages.write_sidecar("smith_2024", [])
         assert passages._from_sidecar(passages.sidecar_path("smith_2024")) is None
@@ -664,11 +523,6 @@ class TestUnavailableReason:
 
 
 class TestDropStdlibShadowingPathEntries:
-    """A dependency that appends its own package directory to sys.path can
-    shadow the standard library for every spawned worker. OpenCV does
-    exactly this, and leaves the entry behind even when its own import
-    fails -- issue #45."""
-
     def test_removes_an_entry_that_shadows_a_stdlib_module(self, tmp_path, monkeypatch):
         shadowing = tmp_path / "site-packages" / "cv2"
         (shadowing / "typing").mkdir(parents=True)
@@ -682,9 +536,6 @@ class TestDropStdlibShadowingPathEntries:
         assert str(tmp_path) in sys.path  # unrelated entries are left alone
 
     def test_a_package_directory_outside_site_packages_is_left_alone(self, tmp_path, monkeypatch):
-        """A project of your own that contains a `typing/` package must
-        not lose its sys.path entry -- only an installed package
-        directory is a candidate."""
         project = tmp_path / "my-project" / "vendor"
         (project / "typing").mkdir(parents=True)
         (project / "typing" / "__init__.py").write_text("")
@@ -694,8 +545,6 @@ class TestDropStdlibShadowingPathEntries:
         assert str(project) in sys.path
 
     def test_a_site_packages_entry_without_a_shadowing_name_is_kept(self, tmp_path, monkeypatch):
-        """Being installed is not enough; the directory has to actually
-        shadow something."""
         harmless = tmp_path / "site-packages" / "requests"
         harmless.mkdir(parents=True)
         (harmless / "__init__.py").write_text("")
@@ -705,8 +554,6 @@ class TestDropStdlibShadowingPathEntries:
         assert str(harmless) in sys.path
 
     def test_never_removes_site_packages_itself(self, tmp_path, monkeypatch):
-        """A `typing` backport installed into site-packages must not cost
-        the interpreter its entire import path."""
         site = tmp_path / "site-packages"
         (site / "typing").mkdir(parents=True)
         (site / "typing" / "__init__.py").write_text("")
@@ -716,17 +563,12 @@ class TestDropStdlibShadowingPathEntries:
         assert str(site) in sys.path
 
     def test_an_empty_entry_is_skipped(self, monkeypatch):
-        """An empty sys.path entry means the current directory. It is not
-        a package directory, and joining a name onto it would produce a
-        relative path that happens to exist."""
         monkeypatch.setattr(sys, "path", ["", "/nonexistent"])
 
         assert pdf_text.drop_stdlib_shadowing_path_entries() == []
         assert sys.path == ["", "/nonexistent"]
 
     def test_the_pool_context_sanitises_before_children_are_created(self, tmp_path, monkeypatch):
-        """The whole point: children inherit the parent's sys.path, so it
-        has to be clean before the pool exists, not after."""
         shadowing = tmp_path / "site-packages" / "cv2"
         (shadowing / "typing").mkdir(parents=True)
         (shadowing / "typing" / "__init__.py").write_text("")
@@ -738,13 +580,6 @@ class TestDropStdlibShadowingPathEntries:
 
 
 class TestExtractTextMissingBinary:
-    """Regression coverage: a host without poppler-utils installed used to
-    surface this as an uncaught FileNotFoundError traceback out of
-    subprocess.run (chitragupta/sync.py caught only CalledProcessError) instead of
-    a reported, honest result -- the same probe-and-report shape every
-    chitragupta/enrich/* stage already follows (e.g. chitragupta/render_output.py's
-    MissingBinary)."""
-
     def test_raises_missing_binary_instead_of_file_not_found(
         self, isolated_config, monkeypatch, tmp_path
     ):
@@ -775,9 +610,6 @@ class TestExtractTextMissingDependency:
     def test_missing_dependency_is_a_backend_unavailable(
         self, isolated_config, monkeypatch, tmp_path
     ):
-        """sync.py catches the BackendUnavailable base, not the specific
-        subclass -- MissingBinary and MissingDependency must both be
-        instances of it."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(pdf_text.importlib.util, "find_spec", lambda name: None)
         with pytest.raises(pdf_text.BackendUnavailable):
@@ -807,11 +639,6 @@ class TestExtractTextReal:
 
 
 class TestParseQualityGuard:
-    """The guard exists because a backend that fuses words together is
-    invisible in a spot check but silently breaks retrieval: BM25
-    tokenizes on whitespace, so a query term inside a fused run can
-    never match. Ratios below come from this repo's own corpus."""
-
     HEALTHY = " ".join(["the quick brown fox jumps over a lazy dog"] * 40)
 
     def test_clean_text_produces_no_warning(self, isolated_config):
@@ -824,8 +651,6 @@ class TestParseQualityGuard:
         assert "losing spaces" in warning
 
     def test_short_documents_are_not_judged(self, isolated_config):
-        """Below min_tokens the ratio is noise -- a cover page or a scan
-        that yielded almost nothing shouldn't be reported as broken."""
         assert pdf_text.quality_warning("averyverylongfusedtokenindeedyes short") is None
 
     def test_empty_text_is_not_a_crash(self, isolated_config):
@@ -833,18 +658,12 @@ class TestParseQualityGuard:
         assert pdf_text.quality_warning("") is None
 
     def test_ratio_counts_only_alphabetic_runs(self, isolated_config):
-        """DOIs, URLs and long digit strings are legitimately long and
-        must not be mistaken for fused words."""
         digits = " ".join(["10.1000/abcd1234567890123456789"] * 60)
         ratio, total = pdf_text.run_together_ratio(digits)
         assert ratio == 0.0
         assert total > 0
 
     def test_counts_non_ascii_letters_as_letters(self, isolated_config):
-        """This corpus is full of names like Schroder-with-an-umlaut and
-        Greek in formulae. An ASCII-only pattern splits those into short
-        pieces, which both hides real fusion and shrinks the token count
-        toward min_tokens until the guard stops judging the document."""
         text = " ".join(
             ["Schr\u00f6der", "W\u00fcllnerstra\u00dfe", "\u03b1\u03b2\u03b3\u03b4"] * 100
         )
@@ -866,24 +685,13 @@ class TestParseQualityGuard:
 
 
 class TestPageCount:
-    """Both backends' output in content/parsed/ carries the same `\\f`
-    page-break markers -- pdftotext natively, docling via
-    _extract_docling's page_break_placeholder (see that function's own
-    docstring for the one way the two aren't quite identical)."""
-
     def test_single_page_has_no_form_feed(self):
         assert pdf_text.page_count("no page breaks here") == 1
 
     def test_counts_one_more_than_form_feeds_between_pages(self):
-        """Docling's shape: a break between pages, none before the
-        first and none after the last."""
         assert pdf_text.page_count("page one\fpage two\fpage three") == 3
 
     def test_a_trailing_form_feed_does_not_inflate_the_count(self):
-        """pdftotext's shape: a break after *every* page, including the
-        last -- confirmed against real `pdftotext -layout` output, not
-        assumed. Naively doing count() + 1 on this would over-count a
-        3-page document as 4."""
         assert pdf_text.page_count("page one\fpage two\fpage three\f") == 3
 
     def test_empty_text_counts_as_one_page(self):
@@ -892,11 +700,6 @@ class TestPageCount:
 
 class TestAllowedCpus:
     def test_uses_affinity_when_available(self, monkeypatch):
-        """os.cpu_count() reports the machine's CPUs; sched_getaffinity
-        reports the ones this process may actually run on. On a shared or
-        containerised host those differ a lot -- 96 vs 48 on the machine
-        this was developed on -- and sizing a pool off the larger number
-        spawns workers that only descheduling each other."""
         monkeypatch.setattr(pdf_text._sizing.os, "cpu_count", lambda: 96)
         monkeypatch.setattr(
             pdf_text._sizing.os, "sched_getaffinity", lambda pid: set(range(48)), raising=False
@@ -904,8 +707,6 @@ class TestAllowedCpus:
         assert pdf_text.allowed_cpus() == 48
 
     def test_falls_back_to_cpu_count_without_affinity(self, monkeypatch):
-        """sched_getaffinity is Linux-only -- it does not exist on Windows
-        or macOS, and this project's CI has a windows-latest leg."""
         monkeypatch.delattr(pdf_text._sizing.os, "sched_getaffinity", raising=False)
         monkeypatch.setattr(pdf_text._sizing.os, "cpu_count", lambda: 8)
         assert pdf_text.allowed_cpus() == 8
@@ -917,16 +718,11 @@ class TestAllowedCpus:
 
 
 class TestWorkerCeiling:
-    """The one ceiling that doesn't depend on how many documents there
-    are -- which is why it can be asked before the bibliography is read."""
-
     def test_docling_charges_four_cpus_per_worker(self, monkeypatch):
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         assert pdf_text.worker_ceiling(docling=True) == 12
 
     def test_pdftotext_gets_one_per_cpu(self, monkeypatch):
-        """A short single-threaded subprocess, so charging it a docling
-        worker's 4 CPUs would under-use the machine."""
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         assert pdf_text.worker_ceiling(docling=False) == 48
 
@@ -940,9 +736,6 @@ class TestWorkerCeiling:
         assert pdf_text.worker_ceiling(docling=True) == 1
 
     def test_docling_regardless_of_config_parser(self, monkeypatch):
-        """chitragupta/enrich/ always builds a Docling pool and must pass
-        docling=True unconditionally -- worker_ceiling must not re-derive
-        that from config.PARSER, which enrich never sets (#502)."""
         monkeypatch.setattr(config, "PARSER", "pdftotext")
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         assert pdf_text.worker_ceiling(docling=True) == 12
@@ -954,8 +747,6 @@ class TestResolveWorkers:
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
 
     def test_default_of_one_stays_one(self, monkeypatch):
-        """The default must reproduce the historical behaviour exactly --
-        no pool, no subprocesses -- however many CPUs are lying around."""
         monkeypatch.setattr(config, "PARSER_WORKERS", 1)
         assert pdf_text.resolve_workers(500, docling=True) == (1, None)
 
@@ -965,15 +756,11 @@ class TestResolveWorkers:
 
     @pytest.mark.parametrize("cpus,expected", [(4, 1), (8, 2), (16, 4), (48, 12)])
     def test_auto_on_small_hosts(self, monkeypatch, cpus, expected):
-        """A four-core/eight-thread desktop must not be handed 12 workers
-        just because a 48-CPU host would be."""
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: cpus)
         monkeypatch.setattr(config, "PARSER_WORKERS", "auto")
         assert pdf_text.resolve_workers(500, docling=True)[0] == expected
 
     def test_oversized_request_is_clamped_and_explained(self, monkeypatch):
-        """Silently obeying thrashes the host; silently ignoring hides the
-        clamp. Say it."""
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 8)
         monkeypatch.setattr(config, "PARSER_WORKERS", 15)
         workers, note = pdf_text.resolve_workers(500, docling=True)
@@ -987,8 +774,6 @@ class TestResolveWorkers:
         assert pdf_text.resolve_workers(500, docling=True) == (4, None)
 
     def test_never_more_workers_than_documents(self, monkeypatch):
-        """Standing up 12 docling workers to parse 3 documents costs 12
-        model loads to save two documents' worth of work."""
         monkeypatch.setattr(config, "PARSER_WORKERS", "auto")
         assert pdf_text.resolve_workers(3, docling=True)[0] == 3
 
@@ -997,16 +782,10 @@ class TestResolveWorkers:
         assert pdf_text.resolve_workers(0, docling=True)[0] == 1
 
     def test_pdftotext_worker_is_not_charged_four_cpus(self, monkeypatch):
-        """Each pdftotext is a short single-threaded subprocess, so the
-        docling divisor would under-use the host by 4x here."""
         monkeypatch.setattr(config, "PARSER_WORKERS", "auto")
         assert pdf_text.resolve_workers(500, docling=False)[0] == 48
 
     def test_docling_regardless_of_config_parser(self, monkeypatch):
-        """Same #502 regression one level up: chitragupta/enrich/ passes
-        docling=True while config.PARSER is "pdftotext" and must still get
-        the docling-sized ceiling and complaint wording, not the
-        pdftotext one."""
         monkeypatch.setattr(config, "PARSER", "pdftotext")
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 8)
         monkeypatch.setattr(config, "PARSER_WORKERS", 15)
@@ -1033,8 +812,6 @@ class TestDoclingThreadBudget:
     def test_no_thread_budget_leaves_doclings_own_accelerator_settings(
         self, isolated_config, fake_docling, tmp_path
     ):
-        """The single-worker default must reach Docling untouched, so a
-        default run is exactly what Docling would have done alone."""
         pdf_text.extract_text(str(tmp_path / "a.pdf"), "a")
         assert fake_docling.pipeline_options().accelerator_options is None
 
@@ -1047,19 +824,12 @@ class TestDoclingThreadBudget:
     def test_a_different_budget_rebuilds_the_converter(
         self, isolated_config, fake_docling, tmp_path
     ):
-        """The thread count is baked into the converter, so it belongs in
-        the cache key alongside the OCR setting."""
         pdf_text.extract_text(str(tmp_path / "a.pdf"), "a", threads=2)
         pdf_text.extract_text(str(tmp_path / "b.pdf"), "b", threads=4)
         assert fake_docling.build_count == 2
 
 
 class TestExtractOne:
-    """The pool's entry point. Returns its error instead of raising so
-    that both the value and the exception survive pickling back to the
-    parent -- and returns the exception *object*, since chitragupta/sync.py
-    reports ExtractionError and BackendUnavailable differently."""
-
     def test_success_returns_the_output_path(self, isolated_config, fake_docling, tmp_path):
         citekey, out_path, exc = pdf_text.extract_one((str(tmp_path / "a.pdf"), "a", None))
         assert citekey == "a"
@@ -1083,8 +853,6 @@ class TestExtractOne:
     def test_the_returned_exception_survives_pickling(
         self, isolated_config, fake_docling, tmp_path
     ):
-        """The whole reason for returning rather than raising: this triple
-        has to cross a process boundary."""
         import pickle
 
         _, _, exc = pdf_text.extract_one((str(tmp_path / "explode.pdf"), "bad", None))
@@ -1092,9 +860,6 @@ class TestExtractOne:
 
 
 def _fake_nvidia_smi(monkeypatch, n_gpus=None, returncode=0, raises=None, found=True):
-    """Stand in for the real nvidia-smi, which this development host
-    genuinely has -- without this every "no GPUs" case below would count
-    the four A40s in the room and fail."""
     monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/nvidia-smi" if found else None)
 
     def fake_run(cmd, **kwargs):
@@ -1108,10 +873,6 @@ def _fake_nvidia_smi(monkeypatch, n_gpus=None, returncode=0, raises=None, found=
 
 class TestGpuCount:
     def test_zero_when_the_pool_is_not_docling(self):
-        """A pdftotext pool has no GPU path at all, so there is nothing
-        to spread across devices -- whatever config.PARSER currently
-        says. `chitragupta/sync.py` decides the `docling` argument from that
-        setting; `chitragupta/enrich/` always passes True (#502)."""
         assert pdf_text.gpu_count(docling=False) == 0
 
     def test_counts_the_gpus_nvidia_smi_lists(self, monkeypatch):
@@ -1120,9 +881,6 @@ class TestGpuCount:
         assert pdf_text.gpu_count(docling=True) == 4
 
     def test_counting_does_not_import_torch(self, monkeypatch):
-        """The point of asking nvidia-smi: a parent that has imported
-        torch pays 1.2s and ~200MB for a question it can answer without
-        either, and a parent that has *initialised CUDA* cannot fork."""
         monkeypatch.delitem(sys.modules, "torch", raising=False)
         _fake_nvidia_smi(monkeypatch, n_gpus=2)
 
@@ -1131,9 +889,6 @@ class TestGpuCount:
         assert "torch" not in sys.modules
 
     def test_falls_back_to_torch_when_nvidia_smi_is_absent(self, monkeypatch):
-        """A slim container can pass /dev/nvidia* through without the
-        driver's CLI tools. Returning 0 there would silently put every
-        worker back on cuda:0."""
         _fake_nvidia_smi(monkeypatch, found=False)
         monkeypatch.setitem(
             sys.modules,
@@ -1143,8 +898,6 @@ class TestGpuCount:
         assert pdf_text.gpu_count(docling=True) == 3
 
     def test_a_failing_nvidia_smi_falls_back_too(self, monkeypatch):
-        """Present but unhappy -- a driver/library mismatch makes it exit
-        non-zero rather than print an empty list."""
         _fake_nvidia_smi(monkeypatch, n_gpus=0, returncode=9)
         monkeypatch.setitem(
             sys.modules,
@@ -1154,23 +907,16 @@ class TestGpuCount:
         assert pdf_text.gpu_count(docling=True) == 1
 
     def test_a_hanging_nvidia_smi_does_not_hang_the_sync(self, monkeypatch):
-        """A wedged driver makes nvidia-smi block forever. That must cost
-        _NVIDIA_SMI_TIMEOUT and a fallback, not the whole run."""
         _fake_nvidia_smi(monkeypatch, raises=subprocess.TimeoutExpired(["nvidia-smi"], 10))
         monkeypatch.setitem(sys.modules, "torch", None)
         assert pdf_text.gpu_count(docling=True) == 0
 
     def test_zero_when_neither_nvidia_smi_nor_torch_can_answer(self, monkeypatch):
-        """The enrich group may be installed without a working torch, and
-        a missing GPU is not an error -- it just means one device."""
         _fake_nvidia_smi(monkeypatch, found=False)
         monkeypatch.setitem(sys.modules, "torch", None)
         assert pdf_text.gpu_count(docling=True) == 0
 
     def test_a_broken_cuda_runtime_counts_as_no_gpus(self, monkeypatch):
-        """torch imports fine but the driver is missing or mismatched --
-        reported as CPU-only rather than taking down the whole sync."""
-
         def explode():
             raise RuntimeError("CUDA driver version is insufficient")
 
@@ -1183,12 +929,6 @@ class TestGpuCount:
         assert pdf_text.gpu_count(docling=True) == 0
 
     def test_docling_regardless_of_config_parser(self, monkeypatch):
-        """chitragupta/enrich/ always runs Docling, whatever [parser].backend
-        says -- so a pool built with docling=True must count real GPUs
-        even when config.PARSER is "pdftotext", the shipped default.
-        Regression test for #502, where gpu_count re-derived
-        "is this Docling" from config.PARSER and got it wrong for every
-        enrich caller."""
         monkeypatch.setattr(config, "PARSER", "pdftotext")
         monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
         _fake_nvidia_smi(monkeypatch, n_gpus=2)
@@ -1196,11 +936,6 @@ class TestGpuCount:
 
 
 class TestVisibleDevices:
-    """nvidia-smi ignores CUDA_VISIBLE_DEVICES; every CUDA process obeys
-    it. Counting without applying it would hand worker 3 a `cuda:3` that
-    does not exist in its view -- and README documents that variable as
-    the way to confine a run to one card."""
-
     def test_unset_means_every_device(self, monkeypatch):
         monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
         assert pdf_text._visible_devices(4) == 4
@@ -1218,13 +953,10 @@ class TestVisibleDevices:
         assert pdf_text._visible_devices(4) == 0
 
     def test_minus_one_means_no_devices(self, monkeypatch):
-        """The conventional way to say "hide every GPU"."""
         monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "-1")
         assert pdf_text._visible_devices(4) == 0
 
     def test_enumeration_stops_at_the_first_invalid_entry(self, monkeypatch):
-        """CUDA's own documented behaviour, and the reason this is a loop
-        with a break rather than a length."""
         monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "0,nonsense,1")
         assert pdf_text._visible_devices(4) == 1
 
@@ -1237,8 +969,6 @@ class TestVisibleDevices:
         assert pdf_text._visible_devices(4) == 2
 
     def test_more_uuids_than_cards_is_clamped(self, monkeypatch):
-        """A UUID can't be checked against anything, so the count has to
-        be -- otherwise a worker gets handed a cuda:N with no N."""
         monkeypatch.setenv("CUDA_VISIBLE_DEVICES", ",".join(f"GPU-{i}" for i in range(6)))
         assert pdf_text._visible_devices(4) == 4
 
@@ -1248,16 +978,6 @@ class TestVisibleDevices:
 
 
 def _fake_gpus(monkeypatch, free, listed=None, returncode=0, found=True, raises=None):
-    """nvidia-smi answering both questions this module puts to it:
-    `--list-gpus` for the count, `--query-gpu=index,memory.free` for how
-    much room each card has.
-
-    `free` maps *physical* device index to the free-memory field as a
-    string, so a test can hand back "[N/A]" the way a card in a bad state
-    really does. `listed` decouples the card count from that mapping,
-    which is the only way to reach the case where nvidia-smi reports
-    memory for fewer cards than it lists.
-    """
     monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/nvidia-smi" if found else None)
     n_listed = len(free) if listed is None else listed
 
@@ -1279,14 +999,6 @@ _CRAMPED = 600  # what the 44.4 GiB-occupied GPU 0 actually had left
 
 
 class TestUsableDevices:
-    """A card another process has filled must not be handed to a worker.
-
-    The run this comes from found GPU 0 holding 44.4 GiB of a previous
-    run's orphaned workers. Four of 24 workers were assigned to it, could
-    not load a model, and -- being ~19s per failure against minutes per
-    success -- were fed 334 of the corpus's 456 documents by a pool that
-    hands work to whoever is free first."""
-
     @pytest.fixture(autouse=True)
     def _no_device_mask(self, monkeypatch):
         monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
@@ -1303,13 +1015,9 @@ class TestUsableDevices:
         devices, complaint = pdf_text.usable_devices(docling=True)
         assert devices == [1, 2, 3]
         assert "cuda:0 (0.6 GiB free)" in complaint
-        # The survivors are named too: "which card is it using?" is the
-        # question a user asks next, and the answer is otherwise invisible.
         assert "cuda:1,2,3" in complaint
 
     def test_a_card_exactly_at_the_threshold_is_kept(self, monkeypatch):
-        """The boundary is >=, so a card with precisely enough room is
-        used rather than left idle."""
         _fake_gpus(monkeypatch, {0: pdf_text._GPU_MIN_FREE_MIB, 1: _ROOMY})
         assert pdf_text.usable_devices(docling=True) == ([0, 1], None)
 
@@ -1320,8 +1028,6 @@ class TestUsableDevices:
         assert "cuda:0" in complaint
 
     def test_every_card_full_falls_back_to_the_cpu(self, monkeypatch):
-        """Slower -- measured 4.7x with OCR off, 1.8x with it on -- but
-        a run that finishes, which beats 456 failures."""
         _fake_gpus(monkeypatch, {0: _CRAMPED, 1: _CRAMPED})
         devices, complaint = pdf_text.usable_devices(docling=True)
         assert devices == []
@@ -1329,14 +1035,10 @@ class TestUsableDevices:
         assert "parsing on the CPU" in complaint
 
     def test_no_memory_reading_assumes_every_card_is_usable(self, monkeypatch):
-        """Forgiving in the same way gpu_count is: refusing a GPU on the
-        strength of a measurement we don't have is the worse mistake, and
-        _demote_to_cpu recovers from the assignment if it was wrong."""
         _fake_gpus(monkeypatch, {i: _ROOMY for i in range(2)}, returncode=9)
         assert pdf_text.usable_devices(docling=True) == ([0, 1], None)
 
     def test_an_unreadable_card_is_assumed_usable(self, monkeypatch):
-        """A driver that can't report on one card prints "[N/A]" for it."""
         _fake_gpus(monkeypatch, {0: "[N/A]", 1: _ROOMY})
         assert pdf_text.usable_devices(docling=True) == ([0, 1], None)
 
@@ -1345,15 +1047,10 @@ class TestUsableDevices:
         assert pdf_text.usable_devices(docling=True) == ([0, 1], None)
 
     def test_a_card_nvidia_smi_did_not_report_on_is_kept(self, monkeypatch):
-        """nvidia-smi listed four cards but gave memory for three, so the
-        physical mapping runs out before the device list does."""
         _fake_gpus(monkeypatch, {0: _ROOMY, 1: _ROOMY, 2: _ROOMY}, listed=4)
         assert pdf_text.usable_devices(docling=True) == ([0, 1, 2, 3], None)
 
     def test_cuda_visible_devices_are_checked_by_physical_card(self, monkeypatch):
-        """The trap this mapping exists for: with CUDA_VISIBLE_DEVICES=3,1
-        the process's cuda:0 *is* physical card 3, so reading free memory
-        at index 0 would check the wrong card and skip the wrong one."""
         monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "3,1")
         _fake_gpus(monkeypatch, {0: _ROOMY, 1: _ROOMY, 2: _ROOMY, 3: _CRAMPED})
         devices, complaint = pdf_text.usable_devices(docling=True)
@@ -1361,16 +1058,11 @@ class TestUsableDevices:
         assert "cuda:0" in complaint
 
     def test_a_uuid_device_list_is_not_filtered(self, monkeypatch):
-        """A UUID can't be resolved to nvidia-smi's index without torch,
-        and guessing which card is which would skip an arbitrary one."""
         monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "GPU-abc,GPU-def")
         _fake_gpus(monkeypatch, {0: _CRAMPED, 1: _CRAMPED, 2: _ROOMY, 3: _ROOMY})
         assert pdf_text.usable_devices(docling=True) == ([0, 1], None)
 
     def test_a_hanging_nvidia_smi_does_not_hang_the_sync(self, monkeypatch):
-        """A wedged driver makes nvidia-smi block rather than answer.
-        Costing the run its GPUs would be bad; costing it the whole sync
-        would be worse, so this falls through to "assume usable"."""
         _fake_gpus(
             monkeypatch,
             {0: _ROOMY, 1: _ROOMY},
@@ -1379,7 +1071,6 @@ class TestUsableDevices:
         assert pdf_text.usable_devices(docling=True) == ([0, 1], None)
 
     def test_no_nvidia_smi_means_no_filtering(self, monkeypatch):
-        """torch answered the count; nothing can answer the memory."""
         _fake_gpus(monkeypatch, {}, found=False)
         monkeypatch.setitem(
             sys.modules,
@@ -1389,9 +1080,6 @@ class TestUsableDevices:
         assert pdf_text.usable_devices(docling=True) == ([0, 1], None)
 
     def test_docling_regardless_of_config_parser(self, monkeypatch):
-        """Same #502 regression as TestGpuCount, one level up: a Docling
-        pool built while config.PARSER is "pdftotext" (chitragupta/enrich/'s
-        actual situation) must still see and filter real GPUs."""
         monkeypatch.setattr(config, "PARSER", "pdftotext")
         _fake_gpus(monkeypatch, {0: _CRAMPED, 1: _ROOMY})
         devices, complaint = pdf_text.usable_devices(docling=True)
@@ -1400,9 +1088,6 @@ class TestUsableDevices:
 
 
 class TestParseVisibleDevices:
-    """_visible_devices' counting is covered above; this is the mapping
-    back to physical cards that per-device memory readings need."""
-
     def test_unset_maps_each_device_to_itself(self, monkeypatch):
         monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
         assert pdf_text._parse_visible_devices(3) == (3, [0, 1, 2])
@@ -1421,12 +1106,6 @@ class TestParseVisibleDevices:
 
 
 class TestCudaOomRecovery:
-    """A worker that can't get device memory fails a document in ~19s
-    where a working one takes minutes, so a ProcessPoolExecutor -- which
-    hands the next document to whoever is free first -- feeds the broken
-    one preferentially. Four such workers out of 24 took 334 of 456
-    documents down with them."""
-
     @pytest.fixture(autouse=True)
     def _reset(self):
         pdf_text._reset_worker_device()
@@ -1434,12 +1113,9 @@ class TestCudaOomRecovery:
         pdf_text._reset_worker_device()
 
     def test_recognises_the_driver_level_message(self):
-        """240 of the 334 failures in the run this comes from. A bare
-        RuntimeError -- there is no dedicated type to catch."""
         assert pdf_text.is_cuda_oom(RuntimeError("CUDA error: out of memory")) is True
 
     def test_recognises_the_torch_allocator_message(self):
-        """The other 94. torch.OutOfMemoryError, in the real thing."""
         assert (
             pdf_text.is_cuda_oom(RuntimeError("CUDA out of memory. Tried to allocate 20.00 MiB"))
             is True
@@ -1451,8 +1127,6 @@ class TestCudaOomRecovery:
     def test_an_oom_falls_back_to_the_cpu_and_the_document_parses(
         self, isolated_config, fake_docling, tmp_path, capsys
     ):
-        """The whole point: the document that triggered the fallback is
-        still parsed, not counted as a failure."""
         pdf_text.init_worker(_FakeCounter(), _FakeLock(), [0, 1])
         out = pdf_text.extract_text(str(tmp_path / "cudaoom.pdf"), "key")
         assert "Parsed content" in out.read_text()
@@ -1462,16 +1136,12 @@ class TestCudaOomRecovery:
     def test_the_fallback_sticks_for_the_rest_of_the_run(
         self, isolated_config, fake_docling, tmp_path
     ):
-        """Demoting per document would put the worker back on the full
-        card for the next one, which is the failure loop this replaces."""
         pdf_text.init_worker(_FakeCounter(), _FakeLock(), [0])
         pdf_text.extract_text(str(tmp_path / "cudaoom.pdf"), "one")
         pdf_text.extract_text(str(tmp_path / "b.pdf"), "two")
         assert fake_docling.pipeline_options().accelerator_options.device == "cpu"
 
     def test_a_serial_run_falls_back_too(self, isolated_config, fake_docling, tmp_path):
-        """No pool means no assigned device, which means docling's own
-        AUTO -- and that resolves to cuda:0, the same card."""
         assert pdf_text.worker_device() is None
         out = pdf_text.extract_text(str(tmp_path / "cudaoom.pdf"), "key")
         assert "Parsed content" in out.read_text()
@@ -1480,8 +1150,6 @@ class TestCudaOomRecovery:
     def test_an_oom_the_cpu_cannot_escape_is_reported_as_transient(
         self, isolated_config, fake_docling, tmp_path
     ):
-        """Caused by the machine at this moment rather than by the PDF,
-        so the ledger must retry it next run instead of writing it off."""
         pdf_text.init_worker(_FakeCounter(), _FakeLock(), [0])
         with pytest.raises(pdf_text.ExtractionError) as caught:
             pdf_text.extract_text(str(tmp_path / "alwaysoom.pdf"), "key")
@@ -1490,8 +1158,6 @@ class TestCudaOomRecovery:
     def test_an_ordinary_backend_failure_stays_deterministic(
         self, isolated_config, fake_docling, tmp_path
     ):
-        """A PDF docling genuinely cannot read is the same next run, and
-        retrying it forever would be the bug this guards against."""
         pdf_text.init_worker(_FakeCounter(), _FakeLock(), [0])
         with pytest.raises(pdf_text.ExtractionError) as caught:
             pdf_text.extract_text(str(tmp_path / "explode.pdf"), "key")
@@ -1500,8 +1166,6 @@ class TestCudaOomRecovery:
 
 class TestCudaIsInitialised:
     def test_false_when_torch_was_never_imported(self, monkeypatch):
-        """Asking the question must never be what makes the answer true,
-        so this reads sys.modules rather than importing torch."""
         monkeypatch.delitem(sys.modules, "torch", raising=False)
         assert pdf_text.cuda_is_initialised() is False
         assert "torch" not in sys.modules
@@ -1515,8 +1179,6 @@ class TestCudaIsInitialised:
         assert pdf_text.cuda_is_initialised() is False
 
     def test_true_once_something_has_used_a_gpu(self, monkeypatch):
-        """chitragupta/enrich/embed_index runs sentence-transformers, and a
-        library caller may have done anything before calling in."""
         monkeypatch.setitem(
             sys.modules,
             "torch",
@@ -1525,9 +1187,6 @@ class TestCudaIsInitialised:
         assert pdf_text.cuda_is_initialised() is True
 
     def test_an_unanswerable_torch_is_assumed_initialised(self, monkeypatch):
-        """Guessing wrong towards "cold" hands every worker a broken CUDA
-        context; guessing wrong towards "hot" costs ~1.5s of startup."""
-
         def explode():
             raise RuntimeError("no CUDA-capable device is detected")
 
@@ -1541,10 +1200,6 @@ class TestCudaIsInitialised:
 
 class TestStartMethod:
     def test_auto_prefers_forkserver(self, monkeypatch):
-        """The whole point: torch and docling are imported once in the
-        forkserver process and inherited, rather than once per worker.
-        Measured at four workers: 9.6s to first parse against spawn's
-        11.3s."""
         monkeypatch.setattr(config, "PARSER_START_METHOD", "auto")
         monkeypatch.setattr(
             multiprocessing, "get_all_start_methods", lambda: ["fork", "spawn", "forkserver"]
@@ -1553,17 +1208,12 @@ class TestStartMethod:
         assert pdf_text.start_method() == ("forkserver", None)
 
     def test_auto_falls_back_to_spawn_silently(self, monkeypatch):
-        """Windows has spawn and nothing else, and this project's CI has
-        a windows-latest leg. Picking what the platform has is what
-        "auto" was asked to do, so there is nothing to report."""
         monkeypatch.setattr(config, "PARSER_START_METHOD", "auto")
         monkeypatch.setattr(multiprocessing, "get_all_start_methods", lambda: ["spawn"])
         monkeypatch.setattr(pdf_text._startup, "cuda_is_initialised", lambda: False)
         assert pdf_text.start_method() == ("spawn", None)
 
     def test_an_explicit_forkserver_that_cannot_be_honoured_says_so(self, monkeypatch):
-        """Silence here would leave a config key that reads as honoured
-        and isn't."""
         monkeypatch.setattr(config, "PARSER_START_METHOD", "forkserver")
         monkeypatch.setattr(multiprocessing, "get_all_start_methods", lambda: ["spawn"])
         monkeypatch.setattr(pdf_text._startup, "cuda_is_initialised", lambda: False)
@@ -1572,8 +1222,6 @@ class TestStartMethod:
         assert "not available on this platform" in complaint
 
     def test_an_initialised_cuda_forces_spawn(self, monkeypatch):
-        """A forkserver started from a process holding a CUDA context
-        hands every worker a broken one."""
         monkeypatch.setattr(config, "PARSER_START_METHOD", "auto")
         monkeypatch.setattr(
             multiprocessing, "get_all_start_methods", lambda: ["fork", "spawn", "forkserver"]
@@ -1589,17 +1237,11 @@ class TestStartMethod:
         assert pdf_text.start_method() == ("spawn", None)
 
     def test_spawn_does_not_need_the_cuda_check(self, monkeypatch):
-        """Nothing is inherited under spawn, so a hot CUDA context in
-        this process is simply not spawn's problem."""
         monkeypatch.setattr(config, "PARSER_START_METHOD", "spawn")
         monkeypatch.setattr(pdf_text._startup, "cuda_is_initialised", lambda: True)
         assert pdf_text.start_method() == ("spawn", None)
 
     def test_fork_is_not_a_configurable_value(self):
-        """Not an oversight: this process holds the run lock and the
-        ledger open as live sqlite connections, and SQLite says not to
-        carry an open connection across fork(). It also measured no
-        faster than forkserver, so there is nothing being given up."""
         assert "fork" not in config.PARSER_START_METHODS
 
 
@@ -1611,10 +1253,6 @@ class TestPreloadModules:
         assert pdf_text.preload_modules() == list(pdf_text._PRELOAD_MODULES)
 
     def test_drops_what_this_host_does_not_have(self, monkeypatch):
-        """forkserver.main() swallows ImportError per module but nothing
-        else -- a torch whose native library fails to load raises
-        OSError, and that would take the forkserver down before a single
-        worker existed."""
         monkeypatch.setattr(
             importlib.util,
             "find_spec",
@@ -1635,31 +1273,12 @@ class TestPreloadModules:
     reason="no forkserver to prestart on this platform (Windows has spawn only)",
 )
 class TestPrestartPool:
-    """Starting the forkserver early is where the saving actually is:
-    workers already import torch concurrently, so what forkserver removes
-    from them it adds to pool construction -- unless that import is
-    overlapped with the parent's own pre-pool work."""
-
     @pytest.fixture(autouse=True)
     def _a_machine_with_room(self, monkeypatch):
-        """Pin the CPU count, because prestart_pool now asks
-        worker_ceiling() and every test here depends on the answer.
-
-        Without this these tests read the *developer's* core count and
-        mean different things on different machines: at 48 cores the
-        ceiling is 12 and a pool is coming, at 2 it is 1 and
-        prestart_pool correctly declines. That is exactly how this class
-        passed locally and failed CI -- on the change whose whole point
-        was to make the pool decision machine-dependent.
-
-        The small-machine tests below override it; monkeypatch is
-        last-write-wins within a test.
-        """
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
 
     @pytest.fixture
     def started(self, monkeypatch):
-        """Records whether the forkserver was asked to start."""
         from multiprocessing import forkserver
 
         calls = []
@@ -1672,8 +1291,6 @@ class TestPrestartPool:
         return calls
 
     def test_the_fixture_above_means_a_pool_really_is_coming(self):
-        """Guards the guard: if this stops being >1, every "starts
-        nothing" test below would pass for the wrong reason."""
         assert pdf_text.worker_ceiling(docling=True) > 1
 
     def test_starts_the_forkserver_when_a_pool_is_coming(self, monkeypatch, started):
@@ -1686,8 +1303,6 @@ class TestPrestartPool:
         assert started == ["started"]
 
     def test_a_default_serial_run_starts_nothing(self, monkeypatch, started):
-        """[parser].workers = 1 takes the serial path, which has no pool
-        -- starting a torch-importing process for it would be pure cost."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 1)
         monkeypatch.setattr(pdf_text._startup, "start_method", lambda: ("forkserver", None))
@@ -1697,11 +1312,6 @@ class TestPrestartPool:
         assert started == []
 
     def test_auto_on_a_small_machine_starts_nothing(self, monkeypatch, started):
-        """`workers = "auto"` is not the same as "a pool is coming".
-        Four available CPUs put the docling ceiling at 1, so the run goes
-        serial no matter how many documents there are -- and without this
-        check every sync on a four-core laptop would launch a forkserver
-        and import torch to then not use it."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", "auto")
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 4)
@@ -1713,8 +1323,6 @@ class TestPrestartPool:
         assert started == []
 
     def test_auto_on_a_large_machine_does_start(self, monkeypatch, started):
-        """The other side of the same check -- 48 CPUs is a ceiling of 12,
-        so a pool really is coming."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", "auto")
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
@@ -1725,8 +1333,6 @@ class TestPrestartPool:
         assert started == ["started"]
 
     def test_an_explicit_count_above_a_ceiling_of_one_starts_nothing(self, monkeypatch, started):
-        """Asking for 8 on a four-core machine still resolves to 1 --
-        resolve_workers clamps it -- so there is still no pool to warm."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 8)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 4)
@@ -1738,11 +1344,6 @@ class TestPrestartPool:
         assert started == []
 
     def test_the_pdftotext_backend_starts_nothing(self, monkeypatch, started):
-        """It gets a thread pool, and has no use for torch at all.
-
-        Note the machine here has plenty of room -- the autouse fixture
-        pins 48 CPUs -- so this really is the backend check declining,
-        not the ceiling check."""
         monkeypatch.setattr(config, "PARSER", "pdftotext")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
 
@@ -1760,8 +1361,6 @@ class TestPrestartPool:
         assert started == []
 
     def test_a_failure_to_prestart_is_swallowed(self, monkeypatch):
-        """An optimisation that could not be applied is not a problem to
-        report -- the pool will start its own forkserver a moment later."""
         from multiprocessing import forkserver
 
         monkeypatch.setattr(config, "PARSER", "docling")
@@ -1783,10 +1382,6 @@ class TestPrestartPool:
 
 class TestProcessPoolContext:
     def test_the_forkserver_is_told_what_to_preload(self, monkeypatch):
-        """The preload list is the entire reason for preferring
-        forkserver, and it has to be set before the first Process is
-        created -- the server is started lazily by that call and imports
-        its list exactly once."""
         recorded = []
 
         class FakeContext:
@@ -1803,9 +1398,6 @@ class TestProcessPoolContext:
         assert complaint is None
 
     def test_spawn_gets_no_preload_list(self, monkeypatch):
-        """It has nowhere to put one -- spawn's children import
-        everything themselves."""
-
         class FakeContext:
             def set_forkserver_preload(self, names):
                 raise AssertionError("spawn has no forkserver to preload")
@@ -1819,11 +1411,6 @@ class TestProcessPoolContext:
 
 
 class TestWorkerDevice:
-    """Docling's AcceleratorDevice.AUTO resolves to cuda:0 in *every*
-    process, so without this every worker piles onto one card. Measured
-    before this existed: at 12 workers GPU 0 ran pinned at 100% while
-    GPUs 1-3 sat at 0%."""
-
     @pytest.fixture(autouse=True)
     def _reset(self):
         pdf_text._reset_worker_device()
@@ -1839,8 +1426,6 @@ class TestWorkerDevice:
         assert seen == ["cuda:0", "cuda:1", "cuda:2", "cuda:3", "cuda:0", "cuda:1"]
 
     def test_the_round_robin_walks_only_the_usable_cards(self):
-        """A device *list* rather than a count, so a card usable_devices
-        skipped is never handed out -- not even to worker 0."""
         counter, lock = _FakeCounter(), _FakeLock()
         seen = []
         for _ in range(4):
@@ -1849,8 +1434,6 @@ class TestWorkerDevice:
         assert seen == ["cuda:1", "cuda:2", "cuda:4", "cuda:1"]
 
     def test_no_gpus_means_no_device_override(self):
-        """Leave docling to its own AUTO resolution rather than forcing
-        a device that doesn't exist."""
         pdf_text.init_worker(_FakeCounter(), _FakeLock(), [])
         assert pdf_text._worker._WORKER_DEVICE is None
 
@@ -1866,8 +1449,6 @@ class TestWorkerDevice:
     def test_device_is_part_of_the_converter_cache_key(
         self, isolated_config, fake_docling, tmp_path
     ):
-        """Two workers in one process (the thread-pool path, and tests)
-        must not share a converter pinned to someone else's GPU."""
         counter, lock = _FakeCounter(), _FakeLock()
         pdf_text.init_worker(counter, lock, [0, 1, 2, 3])
         pdf_text.extract_text(str(tmp_path / "a.pdf"), "a")
@@ -1878,8 +1459,6 @@ class TestWorkerDevice:
 
 
 class _FakeCounter:
-    """Stands in for a multiprocessing.Value."""
-
     def __init__(self):
         self.value = 0
 
@@ -1893,12 +1472,6 @@ class _FakeLock:
 
 
 class TestDoclingPartialSuccess:
-    """docling's convert(raises_on_error=True) raises only on FAILURE.
-    PARTIAL_SUCCESS returns quietly with a document that stops early --
-    a bad page, or document_timeout expiring. Writing that to
-    content/parsed/<citekey>.txt and marking it parsed would hand the
-    citation gate a source that silently ends at page k of n."""
-
     def test_partial_success_is_rejected(
         self, isolated_config, fake_docling, monkeypatch, tmp_path
     ):
@@ -1941,16 +1514,6 @@ class TestDoclingPartialSuccess:
         assert out.read_text().startswith("# Parsed content")
 
     def test_a_result_without_a_status_attribute_is_refused(self):
-        """m-36 (#509), and a deliberate reversal of what this test used
-        to assert. The old contract was "don't make the check itself a new
-        failure mode if a docling version stops exposing status" -- which
-        sounds cautious and is not: without `status` a PARTIAL_SUCCESS,
-        a document that stops at page k of n, cannot be told from a clean
-        parse, so the lenient reading writes truncated text to
-        `content/parsed/` and marks it parsed. An upstream rename is a
-        loud one-line fix caught on the first document; a silently
-        truncated corpus is not discoverable at all, and this pipeline's
-        whole job is that its sources are what they claim to be."""
         with pytest.raises(pdf_text.ExtractionError) as raised:
             pdf_text.check_docling_status(types.SimpleNamespace())
         assert "no `status` attribute" in str(raised.value)
@@ -1959,14 +1522,7 @@ class TestDoclingPartialSuccess:
 class _FakeResult:
     def __init__(self, status_name, messages, categories=None):
         self.status = types.SimpleNamespace(name=status_name)
-        # `categories`, when given, is parallel to `messages`. Omitting
-        # it leaves the attribute off the error entirely, which is also
-        # what a docling build predating FailureCategory looks like --
-        # the case check_docling_status falls back to the wording for.
         cats = categories if categories is not None else [None] * len(messages)
-        # strict=True: a categories list of the wrong length is a typo in
-        # the test, and silently dropping the tail would show up as a
-        # baffling assertion failure rather than as the mistake it is.
         self.errors = [
             types.SimpleNamespace(error_message=m)
             if c is None
@@ -2001,8 +1557,6 @@ class _FakeProcess:
 
 
 class TestTerminateWorkers:
-    """Ctrl+C has to leave nothing behind holding a GPU."""
-
     def test_workers_are_asked_to_stop(self):
         procs = {0: _FakeProcess(), 1: _FakeProcess()}
         pdf_text.terminate_workers(types.SimpleNamespace(_processes=procs))
@@ -2010,8 +1564,6 @@ class TestTerminateWorkers:
         assert not any(p.killed for p in procs.values())
 
     def test_a_worker_ignoring_sigterm_is_killed(self):
-        """Measured for real: 21 processes survived terminate() alone,
-        because onnxruntime/torch native code doesn't honour it promptly."""
         stubborn = _FakeProcess(alive_after_terminate=True)
         pdf_text.terminate_workers(types.SimpleNamespace(_processes={0: stubborn}))
         assert stubborn.terminated
@@ -2023,10 +1575,6 @@ class TestTerminateWorkers:
         pdf_text.terminate_workers(types.SimpleNamespace(_processes={0: gone}))
 
     def test_a_worker_that_dies_between_terminate_and_join_is_not_an_error(self):
-        """The race this guards: the process exits on its own between the
-        two loops, so join/kill find nothing. Ctrl+C must not turn into a
-        traceback because a worker was helpful."""
-
         class VanishingProcess(_FakeProcess):
             def join(self, timeout=None):
                 raise ProcessLookupError("reaped between terminate and join")
@@ -2036,23 +1584,9 @@ class TestTerminateWorkers:
         assert vanishing.terminated
 
     def test_a_thread_pool_has_nothing_to_terminate(self):
-        """The pdftotext backend uses threads; there are no processes."""
         pdf_text.terminate_workers(types.SimpleNamespace())
 
     def test_an_already_shut_down_pool_has_nothing_to_terminate(self):
-        """`ProcessPoolExecutor.shutdown()` sets `_processes = None`
-        (CPython `concurrent/futures/process.py`, the block that drops
-        references "to reduce the risk of opening too many files"), so
-        the attribute is *present and None* rather than absent -- which
-        the `getattr` default above does not cover.
-
-        This is the state the stall watchdog's own recovery path meets:
-        `sync_pool._as_they_land` calls `terminate_workers` when the
-        watchdog fires, and the executor may already be tearing down. It
-        raised `AttributeError: 'NoneType' object has no attribute
-        'values'` there, so the mechanism meant to rescue a stalled sync
-        crashed instead of rescuing it (issue #726).
-        """
         pdf_text.terminate_workers(types.SimpleNamespace(_processes=None))
 
 
@@ -2064,9 +1598,6 @@ class TestInterruptGuard:
         assert signal.getsignal(signal.SIGINT) is before
 
     def test_off_the_main_thread_it_degrades_instead_of_raising(self, monkeypatch):
-        """signal.signal raises ValueError off the main thread. The pool
-        still works there; it just can't catch Ctrl+C."""
-
         def refuse(*args):
             raise ValueError("signal only works in main thread")
 
@@ -2088,13 +1619,10 @@ class TestInterruptGuard:
         assert "7/24" in err
         assert "re-run to continue" in err
         assert procs[0].terminated
-        # 130 = 128 + SIGINT, the conventional shell exit code.
         assert exits == [130]
 
 
 class TestDocumentTimeout:
-    """One setting, both backends, by whichever mechanism each has."""
-
     def test_pdftotext_gets_a_subprocess_timeout(self, isolated_config, monkeypatch, tmp_path):
         monkeypatch.setattr(config, "PARSER_DOCUMENT_TIMEOUT", 30.0)
         monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/pdftotext")
@@ -2126,8 +1654,6 @@ class TestDocumentTimeout:
     def test_a_timed_out_pdftotext_is_an_extraction_error(
         self, isolated_config, monkeypatch, tmp_path
     ):
-        """A hard kill, unlike docling's, which is cooperative -- so this
-        is the one backend where a hang really can be stopped."""
         monkeypatch.setattr(config, "PARSER_DOCUMENT_TIMEOUT", 5.0)
         monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/pdftotext")
 
@@ -2156,12 +1682,6 @@ class TestDocumentTimeout:
 
 
 class TestTimeoutIsRecordedAsSuch:
-    """A document that ran out of time is a different failure from a
-    document the backend could not read, and only the caller can say so
-    usefully -- the fix for one is a config value, for the other the PDF.
-    The distinction rides on the exception, like `transient` does, so it
-    survives the trip back from a pool worker."""
-
     def test_a_timed_out_pdftotext_says_it_timed_out(self, isolated_config, monkeypatch, tmp_path):
         monkeypatch.setattr(config, "PARSER_DOCUMENT_TIMEOUT", 5.0)
         monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/pdftotext")
@@ -2186,8 +1706,6 @@ class TestTimeoutIsRecordedAsSuch:
         assert getattr(excinfo.value, "timed_out", False) is False
 
     def test_docling_says_so_from_its_own_failure_category(self):
-        """The category, not the wording: docling's two timeout paths
-        word themselves differently, so matching prose would miss one."""
         result = _FakeResult(
             "PARTIAL_SUCCESS", ["something upstream reworded"], categories=["timeout"]
         )
@@ -2196,10 +1714,6 @@ class TestTimeoutIsRecordedAsSuch:
         assert excinfo.value.timed_out is True
 
     def test_a_str_enum_category_is_read_by_value(self):
-        """docling's FailureCategory is a str-Enum, so str() on it gives
-        'FailureCategory.TIMEOUT' rather than the 'timeout' it compares
-        equal to. Read `.value`, or every real timeout is missed."""
-
         class FailureCategory(str, enum.Enum):
             TIMEOUT = "timeout"
 
@@ -2227,28 +1741,18 @@ class TestTimeoutIsRecordedAsSuch:
         ],
     )
     def test_the_wording_is_the_fallback_when_there_is_no_category(self, message):
-        """A docling build predating FailureCategory still has to be
-        classified, not silently reported as an unreadable PDF -- and
-        both of its wordings have to be recognised, not just one."""
         result = _FakeResult("PARTIAL_SUCCESS", [message])
         with pytest.raises(pdf_text.ExtractionError) as excinfo:
             pdf_text.check_docling_status(result)
         assert excinfo.value.timed_out is True
 
     def test_an_unrelated_timeout_is_not_this_timeout(self):
-        """The fallback matches docling's own phrasing, not the bare
-        word: a failure that mentions a timeout it did not cause would
-        otherwise send its reader to raise a setting that had no part in
-        it."""
         result = _FakeResult("PARTIAL_SUCCESS", ["connection timeout fetching model weights"])
         with pytest.raises(pdf_text.ExtractionError) as excinfo:
             pdf_text.check_docling_status(result)
         assert excinfo.value.timed_out is False
 
     def test_a_timeout_past_the_display_cap_is_still_found(self):
-        """docling appends one error per page and the timeout arrives
-        last, so classification has to read every error even though only
-        the first few are shown."""
         result = _FakeResult(
             "PARTIAL_SUCCESS",
             [f"page {i} was skipped" for i in range(20)] + ["out of time"],
@@ -2260,9 +1764,6 @@ class TestTimeoutIsRecordedAsSuch:
         assert excinfo.value.timed_out is True
 
     def test_the_mark_survives_the_trip_back_from_a_worker(self):
-        """extract_one returns the exception rather than raising it, so
-        the mark is only useful if pickling keeps it -- which it does
-        only because it lives in the instance __dict__."""
         error = pdf_text.ExtractionError("out of time")
         error.timed_out = True
         revived = pickle.loads(pickle.dumps(error))
@@ -2271,9 +1772,6 @@ class TestTimeoutIsRecordedAsSuch:
 
 class TestDoclingErrorMessage:
     def test_repeated_reasons_are_collapsed(self):
-        """docling appends one error per failed page: a timeout on the
-        675-page book in this corpus produced 675 identical copies in a
-        single line, burying the summary that followed them."""
         result = _FakeResult("PARTIAL_SUCCESS", ["document timeout exceeded"] * 675)
         with pytest.raises(pdf_text.ExtractionError) as excinfo:
             pdf_text.check_docling_status(result)
@@ -2290,27 +1788,8 @@ class TestDoclingErrorMessage:
 
 
 class TestBackendChatterCarriesTheCitekey:
-    """#154: whose document is this OCR complaining about?
-
-    RapidOCR -- Docling's OCR engine when `[parser].ocr` is on -- reports
-    a page it could not read twice over, on two different channels: a
-    bare `print` ("RapidOCR returned empty result!") and a `logging`
-    warning ("The text detection result is empty"). Neither names a
-    document. In a real run they interleave with `sync`'s own
-    `[n/N] <citekey>` progress lines, and the reader's obvious inference
-    -- that a complaint belongs to the citekey printed above it -- is
-    wrong: `sync` opens that line *before* the slow call, and with
-    `[parser].workers > 1` several documents are in flight at once.
-
-    So the annotation is applied where the citekey is actually known, in
-    `extract_text`, around the backend call and nowhere wider. Both
-    channels, because the paste in #154 has both.
-    """
-
     @pytest.fixture
     def _fake_backend(self, isolated_config, monkeypatch, tmp_path):
-        """Installs `chatter` as the backend and returns a runner that
-        parses one document through it."""
         monkeypatch.setattr(pdf_text, "is_available", lambda: True)
         monkeypatch.setattr(config, "PARSER", "docling")
         pdf = tmp_path / "paper.pdf"
@@ -2332,9 +1811,6 @@ class TestBackendChatterCarriesTheCitekey:
         assert capsys.readouterr().out == "[lin_utwin_2023] RapidOCR returned empty result!\n"
 
     def test_stderr_is_prefixed_too(self, _fake_backend, capsys):
-        """Docling's own chatter goes to stderr, and `sync` reads the two
-        streams separately -- annotating only one would leave half the
-        run unattributed."""
         _fake_backend(lambda: print("empty page", file=sys.stderr))
         assert capsys.readouterr().err == "[lin_utwin_2023] empty page\n"
 
@@ -2344,10 +1820,6 @@ class TestBackendChatterCarriesTheCitekey:
         assert out == "[lin_utwin_2023] first\n[lin_utwin_2023] second\n"
 
     def test_a_line_built_across_several_writes_is_prefixed_once(self, _fake_backend, capsys):
-        """`print(..., end="")` is how a progress bar is drawn, and how
-        this project's own partial lines are built. Prefixing each write
-        would stripe the citekey through the middle of one line."""
-
         def chatter():
             print("loading ", end="")
             print("models", end="")
@@ -2358,31 +1830,12 @@ class TestBackendChatterCarriesTheCitekey:
 
     @pytest.fixture
     def _foreign_logger(self, monkeypatch, request):
-        """A logger of its own with `sys.stderr` swapped for a buffer.
-
-        A real `logging.StreamHandler` on a real stream, because the
-        whole claim under test is about the stream a handler resolves --
-        `caplog` intercepts records before any of that and would pass
-        against an implementation that annotated nothing.
-
-        Its own name, `propagate` off, and handlers dropped afterwards:
-        a handler left on a shared logger outlives the test, and its next
-        write lands on a stream pytest has since closed. That is not
-        hypothetical -- it is how the first draft of these tests failed,
-        in a *different* test.
-        """
         buffer = io.StringIO()
         logger = logging.getLogger(f"FakeOCR.{request.node.name}")
         logger.propagate = False
         logger.setLevel(logging.WARNING)
 
         def redirect():
-            """Called from the test *body*, not from this fixture.
-
-            pytest reassigns `sys.stderr` when the call phase begins, so
-            a swap made during fixture setup is silently undone before
-            the test runs -- and the test then passes or fails on
-            pytest's stream rather than on this buffer."""
             monkeypatch.setattr(sys, "stderr", buffer)
             return buffer
 
@@ -2395,10 +1848,6 @@ class TestBackendChatterCarriesTheCitekey:
     def test_a_log_handler_built_during_the_parse_is_annotated(
         self, _fake_backend, _foreign_logger
     ):
-        """The second channel, and the reason one mechanism covers both:
-        a StreamHandler resolves `sys.stderr` when it is built, and every
-        OCR engine here is imported lazily *inside* the first parse -- so
-        what it captures is the annotating stream."""
         logger, redirect = _foreign_logger
         buffer = redirect()
 
@@ -2410,11 +1859,6 @@ class TestBackendChatterCarriesTheCitekey:
         assert buffer.getvalue() == "[lin_utwin_2023] The text detection result is empty\n"
 
     def test_the_citekey_is_never_printed_twice_on_one_line(self, _fake_backend, _foreign_logger):
-        """The bug a first attempt at this shipped: annotating the
-        `logging` record *and* the stream it is written to prefixes every
-        logged line twice, because the handler's output passes through
-        the stream as well. Caught by a real OCR run rather than by a
-        unit test -- so here is the unit test."""
         logger, redirect = _foreign_logger
         buffer = redirect()
 
@@ -2426,11 +1870,6 @@ class TestBackendChatterCarriesTheCitekey:
         assert buffer.getvalue().count("[lin_utwin_2023]") == 1
 
     def test_a_captured_stream_keeps_up_with_the_citekey(self, _fake_backend, _foreign_logger):
-        """The property that makes the lazy imports safe. A handler built
-        while document A was parsing holds that wrapper for the rest of
-        the process; the citekey is read per write, so its next line says
-        B rather than going on saying A -- which is worse than saying
-        nothing, because it is confidently wrong."""
         logger, redirect = _foreign_logger
         buffer = redirect()
         _fake_backend(
@@ -2441,10 +1880,6 @@ class TestBackendChatterCarriesTheCitekey:
         assert buffer.getvalue() == "[doc_b] later chatter\n"
 
     def test_a_handler_bound_before_any_parse_is_left_alone(self, _fake_backend, _foreign_logger):
-        """The documented limit, and the reason logs/pipeline.log is
-        safe: `sync` configures its own handlers up front, so this
-        project's log format -- which docs/CLI.md tells a scheduler to
-        grep -- is never rewritten."""
         logger, redirect = _foreign_logger
         buffer = redirect()
         logger.addHandler(logging.StreamHandler(sys.stderr))
@@ -2452,18 +1887,11 @@ class TestBackendChatterCarriesTheCitekey:
         assert buffer.getvalue() == "a message of ours\n"
 
     def test_nothing_is_annotated_outside_the_backend_call(self, _fake_backend, capsys):
-        """The window is exactly the backend call. `sync`'s own stdout is
-        a documented, diffable contract -- a citekey leaking into it
-        afterwards would change what every reader of that contract sees."""
         _fake_backend(lambda: None)
         print("a line sync printed after the parse")
         assert capsys.readouterr().out == "a line sync printed after the parse\n"
 
     def test_a_progress_bar_redraw_is_prefixed_each_time(self, _fake_backend, capsys):
-        r"""`\r` redraws a line in place rather than continuing it, so it
-        starts a line and wants the prefix again. Docling loads its
-        weights behind a tqdm bar drawn exactly this way."""
-
         def chatter():
             sys.stderr.write("loading:  0%\rloading: 50%\rloading: 100%\n")
 
@@ -2475,9 +1903,6 @@ class TestBackendChatterCarriesTheCitekey:
         )
 
     def test_the_streams_are_restored_when_the_backend_raises(self, _fake_backend, capsys):
-        """Restored on the failing path too, or one unreadable PDF
-        prefixes the rest of the run with its citekey."""
-
         def chatter():
             raise pdf_text.ExtractionError("unreadable")
 
@@ -2488,14 +1913,7 @@ class TestBackendChatterCarriesTheCitekey:
 
 
 class TestAnnotatedOutputOnItsOwn:
-    """The context manager `extract_text` uses, exercised directly for
-    the cases a backend fixture cannot reach."""
-
     def test_it_nests_without_doubling_the_prefix(self, capsys):
-        """Not a shape `extract_text` produces today. It is pinned
-        because the restore is written as "put back what was there"
-        rather than "put back the real stream", and because a second
-        wrapper over the first would print two citekeys on one line."""
         with pdf_text.annotated_output("outer"):
             with pdf_text.annotated_output("inner"):
                 print("innermost")
@@ -2503,19 +1921,12 @@ class TestAnnotatedOutputOnItsOwn:
         assert capsys.readouterr().out == ("[inner] innermost\n[outer] back outside\n")
 
     def test_it_writes_through_untouched_outside_any_document(self, capsys):
-        """A stream a backend captured during a parse outlives the
-        `with`. Between documents it must be transparent, or `sync`'s own
-        output picks up a stray prefix."""
         with pdf_text.annotated_output("k"):
             captured = sys.stdout
         captured.write("between documents\n")
         assert capsys.readouterr().out == "between documents\n"
 
     def test_it_delegates_unknown_attributes_to_the_real_stream(self, monkeypatch):
-        """Docling asks whether it is writing to a terminal before
-        drawing a progress bar. A wrapper that swallowed `isatty` would
-        change the backend's behaviour, not just its formatting."""
-
         class Stub(io.StringIO):
             def isatty(self):
                 return True
@@ -2530,17 +1941,11 @@ class TestAnnotatedOutputOnItsOwn:
         assert sys.stdout is stub
 
     def test_write_reports_the_length_it_was_given(self):
-        """`write` returns a character count, and something downstream
-        will eventually check it. Reporting the prefixed length would be
-        a lie about what the caller wrote."""
         with pdf_text.annotated_output("k"):
             assert sys.stdout.write("four") == 4
 
 
 def test_the_docling_hint_names_each_shape_its_own_command():
-    # #1022 review: `chitragupta install enrich` in a checkout runs
-    # an unpinned pip install over the editable one, so the hint must not
-    # offer it as the checkout's command.
     from chitragupta import pdf_text
 
     hint = pdf_text._INSTALL_HINT["docling"]

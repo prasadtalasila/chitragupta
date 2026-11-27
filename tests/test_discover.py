@@ -1,12 +1,3 @@
-"""chitragupta/discover/: the reader over the topic artefacts.
-
-The property under test throughout: **the reader computes no topic and
-no edge** -- it resolves a phrase to topics that already exist, displays
-relations a stage already derived, and says which rung of the ladder
-answered (`resolved_via`), degrading honestly when the enrich extra is
-absent rather than pretending semantic resolution ran.
-"""
-
 import json
 
 import pytest
@@ -116,9 +107,6 @@ def prepare(cfg):
 
 
 class FakeModel:
-    """Encodes any text to the vector VECTORS names for it, so a test
-    can steer the semantic rung without sentence-transformers."""
-
     VECTORS: dict = {}
 
     def encode(self, texts, show_progress_bar=False):
@@ -128,24 +116,14 @@ class FakeModel:
 
 
 class IndifferentReranker:
-    """Scores every candidate alike, so `_rescored` keeps the fused
-    order and a test about the rungs is not also a test of the
-    cross-encoder."""
-
     def predict(self, pairs):
         return [0.0] * len(pairs)
 
 
-# Raw zero sits at (-0.5, -0.5) from the (0.5, 0.5) corpus mean GRAPH
-# and WHY_GRAPH share: perpendicular to digital twin and machine
-# learning, and pointing away from formal methods, so no centroid is
-# near it. A graph without centroids ranks nothing semantically anyway.
 NOWHERE = [0.0, 0.0]
 
 
 def place_nowhere(monkeypatch, phrase: str) -> None:
-    """Fake the semantic rung so `phrase` lands near no topic, for a
-    refusal test whose phrase already misses every lexical rung."""
     FakeModel.VECTORS = {phrase: NOWHERE}
     monkeypatch.setattr(_resolve, "_load_model", lambda: FakeModel())
 
@@ -190,9 +168,6 @@ class TestResolveLadder:
     def test_a_topic_without_a_centroid_never_ranks_semantically(
         self, isolated_config, monkeypatch
     ):
-        """A topic whose members all failed to parse has no centroid; it
-        can still win the lexical rungs, but geometry has nothing to say
-        about it."""
         FakeModel.VECTORS = {"anything": [1.0, 0.0]}
         graph = dict(GRAPH)
         graph["topics"] = [
@@ -203,8 +178,6 @@ class TestResolveLadder:
         assert [label for label, _ in ranked] == ["digital twin"]
 
     def test_hybrid_fires_when_lexical_rungs_miss(self, isolated_config, monkeypatch):
-        """'cyber replica' shares no token with any label, so only the
-        semantic ranking places it -- next to the digital-twin centroid."""
         FakeModel.VECTORS = {"cyber replica": [1.0, 0.0]}
         monkeypatch.setattr(_resolve, "_load_model", lambda: FakeModel())
         monkeypatch.setattr(_resolve, "_load_reranker", lambda: IndifferentReranker())
@@ -236,8 +209,6 @@ class TestResolveLadder:
 @pytest.mark.real_resolver_loaders
 class TestModelLoading:
     def test_both_lazy_loaders_construct_the_configured_model(self, monkeypatch):
-        """Patched at sys.modules so the `from sentence_transformers
-        import ...` lines under test are the shipped ones."""
         import sys
         import types
 
@@ -252,8 +223,6 @@ class TestModelLoading:
         assert seen == [config.EMBEDDING_MODEL] * 2
 
     def test_the_reranker_loader_asks_for_the_configured_cross_encoder(self, monkeypatch):
-        """Patched one level down, at the shared loader, so the line
-        under test is the shipped `_load_reranker` and no model loads."""
         from chitragupta import reranker
 
         seen = []
@@ -288,9 +257,6 @@ class TestDataLoading:
             _data.entries_for(["p1"])
 
     def test_a_stale_artefact_citekey_refuses_instead_of_crashing(self, isolated_config):
-        """A sync that removed a paper leaves the topic artefacts naming
-        a citekey the ledger no longer holds; the reader must refuse with
-        the re-run instruction, not hand the user a KeyError traceback."""
         make_ledger(isolated_config, ["p1"])
         with pytest.raises(_data.MissingArtefact, match="no longer"):
             _data.entries_for(["p1", "vanished2020"])
@@ -326,9 +292,6 @@ class TestListView:
         assert "topic-graph" in capsys.readouterr().err
 
     def test_a_missing_artefact_under_json_leaves_stdout_empty(self, isolated_config, capsys):
-        """The refusal is diagnostics, not a payload: a `--json` caller
-        gets an empty document and a nonzero exit, never a sentence on
-        the stream it opened expecting one."""
         assert discover.main(["--json"]) == 1
         streams = capsys.readouterr()
         assert streams.out == ""
@@ -341,7 +304,6 @@ class TestTopicView:
         assert discover.main(["digital twin"]) == 0
         out = capsys.readouterr().out
         assert "Title of p1" in out
-        # p2 belongs to both topics; the digital-twin view must say so.
         assert "machine learning" in out
 
     def test_linked_topics_show_both_edge_families_with_evidence(self, isolated_config, capsys):
@@ -399,9 +361,6 @@ class TestTopicView:
     def test_an_unanswerable_phrase_under_json_leaves_stdout_empty(
         self, isolated_config, capsys, monkeypatch
     ):
-        """The near-miss list is a refusal like any other, so `--json`
-        gets it on stderr rather than two sentences where a document
-        was asked for."""
         from chitragupta import retrieval
 
         prepare(isolated_config)
@@ -463,8 +422,6 @@ class TestRenderEdgeCases:
         assert "topics:" not in capsys.readouterr().out.split("stray2018")[-1]
 
     def test_search_without_a_note_carries_none(self, isolated_config, capsys, monkeypatch):
-        """The semantic rung ran and answered 'too far' -- no degradation
-        happened, so the fallback output carries no note."""
         from chitragupta import retrieval
 
         prepare(isolated_config)
@@ -538,7 +495,6 @@ class TestOverviewFile:
 
         class SnippetModel:
             def encode(self, texts, show_progress_bar=False):
-                # Sentences naming p1 rank highest against the centroid.
                 return [
                     [1.0, 0.0] if "p1" in t else [0.0, 1.0]
                     for t in (texts if isinstance(texts, list) else [texts])
@@ -554,11 +510,6 @@ class TestOverviewFile:
     def test_a_citation_abbreviation_does_not_cut_a_snippet(
         self, isolated_config, tmp_path, monkeypatch
     ):
-        """The #835 reproduction through the overview path (#895): the
-        overview's own splitter broke after "al." before "(2020)", so a
-        snippet could be a bare "Smith et al." and the next a claim with
-        no subject. Lengthened past `_SENTENCE_BOUNDS`' floor so both
-        sentences are quotable at all."""
         from chitragupta.discover import _overview
 
         prepare(isolated_config)
@@ -585,8 +536,6 @@ class TestOverviewFile:
         assert not any(line.endswith((" al.", " Dr.", " vs.")) for line in quoted)
 
     def test_candidates_use_the_shared_sentence_rule(self):
-        """One sentence-splitting rule in the package: the overview's
-        candidates are exactly `sentences.split`'s, length-filtered."""
         from chitragupta import sentences
         from chitragupta.discover import _overview
 
@@ -600,10 +549,6 @@ class TestOverviewFile:
         assert len(expected) == 2
 
     def test_the_835_reproduction_verbatim_does_not_fragment(self, monkeypatch):
-        """The literal #835 string, with the length floor lowered so no
-        fragment is hidden by it. It comes back whole, exactly as
-        `tests/test_sentences.py` pins for the shared rule: "X." reads as
-        a lone initial. The old overview rule cut it into four."""
         from chitragupta.discover import _overview
 
         monkeypatch.setattr(_overview, "_SENTENCE_BOUNDS", (1, 400))
@@ -611,9 +556,6 @@ class TestOverviewFile:
         assert _overview._candidate_sentences({"k": text}) == [("k", text)]
 
     def test_a_topic_with_no_parsed_text_says_so(self, isolated_config, tmp_path, monkeypatch):
-        """Members whose parse never happened leave nothing quotable; the
-        overview names that instead of quietly omitting the section."""
-
         prepare(isolated_config)
         for member in ("p1", "p2"):
             (isolated_config.CONTENT_DIR / "parsed" / f"{member}.txt").unlink()
@@ -655,17 +597,12 @@ class TestOverviewFile:
         target = tmp_path / "no-such-dir" / "overview.md"
         assert discover.main(["digital twin", "--out", str(target)]) == 1
         streams = capsys.readouterr()
-        # The stream is pinned, not just the text: the failure line is
-        # diagnostics on stderr, and stdout stays whatever the view emitted.
         assert str(target) in streams.err
         assert str(target) not in streams.out
 
     def test_an_unwritable_out_path_leaves_json_stdout_parseable(
         self, isolated_config, tmp_path, capsys, monkeypatch
     ):
-        """`--json --out` has already written the payload to stdout by the
-        time the write fails, so a failure line on that stream would leave
-        the caller parsing JSON followed by prose."""
         from chitragupta.discover import _overview
 
         prepare(isolated_config)
@@ -681,9 +618,6 @@ class TestOverviewFile:
         assert str(target) in streams.err
 
     def test_a_graph_stale_against_the_topic_set_refuses(self, isolated_config, capsys):
-        """One stage re-run without the other leaves a label only
-        topic_set.json knows; that is a refusal naming topic-graph, not
-        a StopIteration traceback."""
         graph = json.loads(json.dumps(GRAPH))
         graph["topics"] = [t for t in graph["topics"] if t["label"] != "digital twin"]
         write_artefacts(isolated_config, graph=graph, topic_set=TOPIC_SET, topics=TOPICS_JSON)
@@ -699,8 +633,6 @@ class TestOverviewFile:
     def test_nothing_is_written_without_the_flag(self, isolated_config, tmp_path, capsys):
         prepare(isolated_config)
         discover.main(["digital twin"])
-        # tmp_path holds the fixture's content/ tree; what must be absent
-        # is any overview file, which only --out may create.
         assert not list(tmp_path.glob("*.md"))
         assert not list((tmp_path / "content").glob("*.md"))
 
@@ -715,11 +647,6 @@ class TestCorpusWiring:
 
 
 class TestSearchAnnouncesSpelling:
-    """#1232: the search fallback ranks through `query_terms`, so with
-    spelling correction on it can rank on a word nobody typed. It says so
-    on stderr, as `retrieve` does, so a `--json` caller's stdout stays a
-    payload."""
-
     @pytest.fixture
     def fallback(self, isolated_config, monkeypatch):
         from chitragupta import retrieval, retrieval_spelling
@@ -751,8 +678,6 @@ class TestSearchAnnouncesSpelling:
         assert "[note]" not in capsys.readouterr().err
 
     def test_an_acronym_expansion_is_not_announced_here(self, fallback, capsys, monkeypatch):
-        """Only corrections: the fallback announced no acronym expansion
-        before #1232, and that is not this change's to alter."""
         from chitragupta import acronyms
 
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})

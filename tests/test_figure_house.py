@@ -1,13 +1,3 @@
-"""The house-vocabulary rules (#1016): `type-below-floor`,
-`colour-off-palette`, `tint-outside-band` and `unnamed-pic`.
-
-The paint and type rules run over synthetic drawn figures, so they run
-on every host; the colours are the house block's own. The end-to-end
-cases under `TestAgainstRealLualatex` compile the fixtures under
-tests/fixtures/figure/house/, and every shipped scaffold and exemplar,
-and self-skip where TeX is missing.
-"""
-
 from pathlib import Path
 
 import pytest
@@ -31,7 +21,6 @@ FLOW = (0.0, 0x72 / 255, 0xB2 / 255)
 FLOW_TEXT = mix(FLOW, INK, 0.95)
 BLUE = (0.0, 0.0, 1.0)
 
-# The house block's colours as a figure carries them: inside its region.
 BLOCK = (
     "% >>> chitragupta figure style v6 -- copy, do not edit <<<\n"
     "\\definecolor{cgInk}{HTML}{1A1A1A}%\n"
@@ -119,7 +108,6 @@ class TestOffPalette:
         assert _found(_card("a", fill=red_tint)) == [("colour-off-palette", "a", "fill red!10")]
 
     def test_an_unwritten_border_is_a_raw_node(self):
-        """`\\node[draw]`: the current colour, black."""
         assert _found(_card("a", stroke=Paint((0.0, 0.0, 0.0), ""))) == [
             ("colour-off-palette", "a", "border (current colour)")
         ]
@@ -130,13 +118,11 @@ class TestOffPalette:
         ]
 
     def test_a_house_shade_is_on_it_whatever_xcolor_rounded(self):
-        """xcolor's `cgFlow!95!cgInk` parts from the hex mix by a step."""
         rounded = tuple(min(1.0, channel + 1 / 255) for channel in FLOW_TEXT)
 
         assert _found(_card("a", stroke=Paint(rounded, "cgFlowText"))) == []
 
     def test_a_tint_is_on_it_as_xcolor_rounds_it(self):
-        """`cgFlow!50` as xcolor logs it, a hex step off the hex mix."""
         assert _found(_card("a", stroke=Paint((0.5, 0.72354, 0.84903), "cgFlow!50"))) == []
 
     def test_a_hue_darkened_by_hand_is_a_shade_nobody_chose(self):
@@ -147,7 +133,6 @@ class TestOffPalette:
         ]
 
     def test_a_colour_written_through_a_macro_is_read_by_its_value(self):
-        """`\\cgPicColour!55` in a pic, `\\c Text` from a `\\foreach`."""
         pic = line((0, 0), (10, 0), stroke=Paint(mix(FLOW, WHITE, 0.55), "\\cgPicColour !55"))
         loop = _card("a", stroke=Paint(BLUE, "\\c Text"))
 
@@ -228,7 +213,6 @@ class TestTintBand:
         assert [f[0] for f in _found(state)] == ["tint-outside-band"]
 
     def test_a_node_with_no_text_has_no_label_to_drown(self):
-        """A timeline's accented tick is a solid `cgAccentLine` bar."""
         tick = _card("e2", box=(0, 0, 2.6, 9), fill=Paint(FLOW, "cgFlowLine"), runs=[])
 
         assert _found(tick) == []
@@ -336,7 +320,6 @@ class TestHouseCheck:
         assert set(_house.HOUSE) <= set(_check.GEOMETRY)
 
     def test_evaluate_reports_them_with_the_source_rules(self):
-        # Too pale rather than too dark, which k1 would also report.
         figure = self._figure(drawn([_card("parse", fill=_tint(3))], []))
         source = BLOCK + "\\begin{tikzpicture}[cg]\n\\pic at (0,1) {cgstore};\n\\end{tikzpicture}"
 
@@ -355,9 +338,6 @@ class TestHouseCheck:
 @pytest.mark.slow
 @needs_tikz
 class TestAgainstRealLualatex:
-    """Each fixture fires exactly its rule; the clean ones fire none of
-    #1016's, and nor does any figure this repository ships."""
-
     @pytest.mark.parametrize(
         ("fixture", "rule"),
         [
@@ -399,8 +379,6 @@ class TestAgainstRealLualatex:
         assert "unnamed-pic" not in _ours(result)
 
 
-# The rules these fixtures are about; the twin and size rules, which a
-# small fixture trips for its own reasons, are other tests' business.
 _OURS = {*_house.HOUSE, "unnamed-pic", "node-overlap", "content-protrusion"}
 
 

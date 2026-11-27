@@ -1,7 +1,3 @@
-"""chitragupta/render_output/_unicode.py: which renders get
-chitragupta-unicode.sty, what a fragment is told (#948), and how the
-project's unicode-extra.tex reaches a LuaLaTeX render (#996)."""
-
 import subprocess
 
 import pytest
@@ -28,17 +24,12 @@ class TestMappedCharacters:
         assert _unicode.needs_sty("the 𝑡 statistic")
 
     def test_the_check_reads_the_text_after_nfc(self):
-        # U+2126 OHM SIGN is printed by the kernel and not mapped, but
-        # _sanitize_for_latex's NFC turns it into U+03A9 GREEK CAPITAL
-        # OMEGA, which pdflatex cannot print without the .sty.
         assert "Ω" not in _unicode.mapped_characters()
         assert _unicode.needs_sty("10 kΩ")
 
 
 class TestPreambleFiles:
     def test_a_pdf_never_loads_the_sty(self, tmp_path):
-        # #996: a pdf render is LuaLaTeX, where the .sty is a no-op and the
-        # font chain prints CO₂. Nothing is copied beside it either.
         out = tmp_path / "out"
         assert _unicode.preamble_files("CO₂", "pdf", False, tmp_path, out) == []
         assert not out.exists()
@@ -67,10 +58,6 @@ class TestPreambleFiles:
         assert "\\usepackage{chitragupta-unicode}" in err
 
     def test_a_fragment_also_gets_the_lualatex_font_header(self, tmp_path, capsys):
-        """#1037: LuaLaTeX is the recommended engine for the document that
-        `\\input`s a fragment, so the fragment takes the font setup the
-        pdf preview uses, beside the opt-in `.sty` for a pdflatex
-        template, and the notice gives the LuaLaTeX lines first."""
         out = tmp_path / "out"
         out.mkdir()
         assert _unicode.preamble_files("CO₂", "tex", True, tmp_path, out) == []
@@ -98,15 +85,9 @@ class TestPreambleFiles:
         files = _unicode.preamble_files("CO₂ ☃", "tex", False, tmp_path, out)
         assert len(files) == 2
         header = files[-1].read_text(encoding="utf-8")
-        # The shim first, so the same line works where the kernel lacks
-        # the command (LuaLaTeX, XeLaTeX); the project's file verbatim after.
         assert header.startswith("\\ifdefined\\DeclareUnicodeCharacter\\else")
         assert header.endswith("\\DeclareUnicodeCharacter{2603}{*}\n")
-        # The project's own file is never rewritten.
         assert extra.read_text(encoding="utf-8") == "\\DeclareUnicodeCharacter{2603}{*}\n"
-        # Loaded even when the draft has nothing the shipped .sty maps,
-        # and on a pdf, which loads no .sty at all: the user's own
-        # characters are the reason the file exists.
         assert len(_unicode.preamble_files("☃", "pdf", False, tmp_path, out)) == 1
 
 
@@ -128,14 +109,10 @@ class TestRenderReal:
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text(self._DRAFT, encoding="utf-8")
         text = pdf_text(render_output.render(str(draft), output_format="pdf"))
-        # The font prints the character itself, where pdflatex's .sty
-        # printed `CO\textsubscript{2}`, which pdftotext reads as `CO2`.
         assert "CO₂ budget" in text
         assert "R², 5 µm, ½, the 𝑡 statistic" in text
 
     def test_996_s_probe_renders_every_character_as_written(self, isolated_config):
-        # The issue's own success criterion: Greek, math letters, a
-        # Telugu word and a Chinese name, from the font chain.
         isolated_config.BIB_FILE_PATH.write_text("")
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text("CO₂ 𝑡 ℝ ≤ α 𝒶, తెలుగు, 王小明.\n", encoding="utf-8")
@@ -143,9 +120,6 @@ class TestRenderReal:
         assert "CO₂ 𝑡 ℝ ≤ α 𝒶, తెలుగు, 王小明." in text
 
     def test_a_character_no_font_has_fails_naming_itself(self, isolated_config):
-        # U+2FFFD is unassigned, so no font in the chain may have it.
-        # Unifont covers nearly all of the BMP, so an assigned character
-        # that is reliably absent is hard to find; an unassigned one is not.
         isolated_config.BIB_FILE_PATH.write_text("")
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text("A gap \U0002fffd here.\n", encoding="utf-8")
@@ -155,8 +129,6 @@ class TestRenderReal:
         assert not (isolated_config.RENDERED_DIR / "draft.pdf").exists()
 
     def test_the_overlay_prints_a_character_under_lualatex(self, isolated_config):
-        # A line written for #948's pdflatex stopped a LuaLaTeX build with
-        # `Undefined control sequence` before the shim (measured).
         isolated_config.BIB_FILE_PATH.write_text("")
         extra = isolated_config.CONTENT_DIR / "unicode-extra.tex"
         extra.parent.mkdir(parents=True, exist_ok=True)
@@ -177,7 +149,6 @@ class TestRenderReal:
 
 @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
 def test_an_html_render_keeps_every_character_as_written(isolated_config):
-    # Review Focus 5: a browser prints all of these; nothing may change them.
     isolated_config.BIB_FILE_PATH.write_text("")
     draft = content_draft(isolated_config, "draft.md")
     draft.write_text("R² H₂O 5 µm 𝑡 Ⅳ ①\n", encoding="utf-8")
@@ -186,13 +157,10 @@ def test_an_html_render_keeps_every_character_as_written(isolated_config):
 
 
 def test_each_preamble_file_becomes_an_include_in_header(tmp_path):
-    # Without a real pandoc, so the Windows leg (no os-deps) reaches the
-    # loop too; the real renders above only run where LuaLaTeX does.
     header, extra = tmp_path / "header.tex", tmp_path / "unicode-extra.tex"
     cmd, _ = render_output._pandoc_command(
         *(tmp_path / name for name in ("in.md", "bib.bib", "ieee.csl", "out.tex", "in.md")),
         "tex", "article", "12pt", "a4", "1in", [], False, False, [header, extra],
     )  # fmt: skip
     flagged = [cmd[i + 1] for i, arg in enumerate(cmd) if arg == "--include-in-header"]
-    # Then the float settings, which every standalone LaTeX render takes (#1065).
     assert flagged == [str(header), str(extra), str(_floats.path())]

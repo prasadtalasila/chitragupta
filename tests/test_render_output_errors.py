@@ -1,12 +1,3 @@
-"""chitragupta/render_output/_errors.py: the PATH probe behind MissingBinary.
-
-Split from one test module to mirror `chitragupta/render_output/`'s own split,
-the way `tests/test_enrich_*.py` mirrors `chitragupta/enrich/`. Shared setup --
-the binary probes and the figure fixtures -- lives in `tests/conftest.py`
-so the eight modules do not each re-run a `kpsewhich` subprocess at
-import.
-"""
-
 import ast
 import builtins
 import importlib
@@ -34,12 +25,6 @@ class TestRequire:
 
 
 def _raised_classes():
-    """`(module, line, class)` for every `raise X(...)` in the package.
-
-    `_cli.py` is left out: its one raise is argparse's own
-    `ArgumentTypeError`, a refusal of the command line before `render()`
-    is called, which argparse reports itself.
-    """
     package = Path(render_output.__file__).parent
     for source in sorted(package.glob("*.py")):
         if source.name == "_cli.py":
@@ -58,12 +43,6 @@ def _raised_classes():
                 yield source.name, node.lineno, found
 
 
-# A call no command line can make -- `defer_citations` with a fragment or
-# a format other than tex -- is the caller's mistake, not a render that
-# failed, so it is deliberately outside `RENDER_FAILURES`: a caller that
-# degrades on a failed render must not swallow it.
-# Only that one site: a `ValueError` from a real render step anywhere
-# else is a failure a caller must be able to catch, and still trips this.
 def _is_the_caller_mistake(name, line, cls):
     lines, first = inspect.getsourcelines(render_output._refuse_misdeferred)
     return (name, cls) == ("__init__.py", ValueError) and first <= line < first + len(lines)
@@ -84,9 +63,6 @@ class TestRenderFailures:
         assert not _is_the_caller_mistake("__init__.py", first + len(lines), ValueError)
 
     def test_every_raise_in_the_package_is_a_render_failure(self):
-        # #949: `review.write` listed the exceptions render() raised when
-        # it was written and missed the four added since. Walking every
-        # raise site is what keeps a new one from being forgotten again.
         sites = list(_raised_classes())
         assert sites, "the walk found no raise sites at all"
         strays = [

@@ -1,11 +1,3 @@
-"""chitragupta/enrich/topic_graph.py: the topic graph, derived not divined.
-
-The property under test throughout: **every edge is explainable by
-naming real papers**. An overlap edge carries the shared citekeys; a
-semantic edge carries the closest bridging pair; neither family is ever
-collapsed into the other's score.
-"""
-
 import json
 
 import pytest
@@ -16,9 +8,6 @@ from chitragupta.enrich import topic_graph
 
 class TestOverlapEdges:
     def test_a_shared_paper_makes_an_edge_when_surprising(self):
-        # 3 of a's 3 members inside b's 3, in an 8-doc corpus: the tail
-        # is 1/56, well under the floor. (At n_docs=6 it is exactly
-        # 0.05 and correctly gated -- the boundary is exclusive.)
         edges = topic_graph.overlap_edges(
             {"a": {"p1", "p2", "p3"}, "b": {"p1", "p2", "p3"}}, n_docs=8, p_value=0.05
         )
@@ -29,18 +18,12 @@ class TestOverlapEdges:
         assert topic_graph.overlap_edges({"a": {"p1"}, "b": {"p2"}}, n_docs=4, p_value=0.5) == []
 
     def test_chance_overlap_is_gated_out(self):
-        """Two topics covering most of a small corpus share a paper by
-        arithmetic necessity, not by affinity -- the hypergeometric tail
-        reads that as unsurprising and the edge is withheld."""
         edges = topic_graph.overlap_edges(
             {"a": {"p1", "p2", "p3"}, "b": {"p3", "p4", "p5"}}, n_docs=5, p_value=0.05
         )
         assert edges == []
 
     def test_both_coefficients_travel_on_the_edge(self):
-        """Jaccard punishes a small topic nested in a big one; the
-        overlap coefficient reads containment as containment. Both are
-        reported so neither reading is lost."""
         members = {"small": {"p1", "p2"}, "big": {"p1", "p2", "p3", "p4", "p5", "p6"}}
         edges = topic_graph.overlap_edges(members, n_docs=40, p_value=0.05)
         assert edges[0]["jaccard"] == pytest.approx(2 / 6)
@@ -60,10 +43,6 @@ class TestOverlapEdges:
 
 class TestWithheldEdges:
     def test_a_gated_pair_lands_in_the_withheld_list_with_its_p(self):
-        """The same pair test_chance_overlap_is_gated_out silences: the
-        gate's refusal is now stored (#710, §7.7), shared citekeys and
-        the p it weighed included, so the reader-side views can quote
-        the stage instead of recomputing it."""
         members = {"a": {"p1", "p2", "p3"}, "b": {"p3", "p4", "p5"}}
         withheld = topic_graph.withheld_edges(members, n_docs=5, p_value=0.05)
         assert len(withheld) == 1
@@ -71,8 +50,6 @@ class TestWithheldEdges:
         assert withheld[0]["b"] == "b"
         assert withheld[0]["shared"] == ["p3"]
         assert withheld[0]["p_value"] >= 0.05
-        # No strength numbers on a non-edge: the gate judged it not an
-        # edge, and jaccard on a refusal would invite reading it as one.
         assert set(withheld[0]) == {"a", "b", "shared", "p_value"}
 
     def test_a_drawn_pair_is_not_withheld_and_vice_versa(self):
@@ -82,8 +59,6 @@ class TestWithheldEdges:
         assert withheld == []
 
     def test_nothing_shared_is_not_withheld_either(self):
-        """An empty intersection is a different fact from a refused one
-        -- §3 bounds the list to pairs sharing at least one paper."""
         assert topic_graph.withheld_edges({"a": {"p1"}, "b": {"p2"}}, n_docs=4, p_value=0.5) == []
 
 
@@ -107,10 +82,6 @@ class TestSemanticEdges:
         assert edges[0]["bridge"] == ["near", "other"]
 
     def test_one_sided_affinity_is_not_an_edge(self):
-        """c sits closer to a than b does, but a's top-1 neighbour is b
-        and b's is a -- so a-c exists only if c also ranks a first AND a
-        ranks c within its top k. With k=1 the mutual test prunes the
-        asymmetric pair."""
         vectors = {
             "a": {"p1": [1.0, 0.0, 0.0]},
             "b": {"p2": [0.98, 0.2, 0.0]},
@@ -121,10 +92,6 @@ class TestSemanticEdges:
         assert ("a", "c") not in pairs and ("c", "a") not in pairs
 
     def test_best_match_average_respects_cluster_shape(self):
-        """A crescent's centroid sits outside it. Best-match averaging
-        scores by the members that actually face each other, so two
-        interlocking clusters keep a high similarity where a
-        centroid-to-centroid cosine would dilute it."""
         interlocked = {
             "a": {"p1": [1.0, 0.0], "p2": [-1.0, 0.0]},
             "b": {"p3": [1.0, 0.05], "p4": [-1.0, -0.05]},
@@ -136,9 +103,6 @@ class TestSemanticEdges:
         assert topic_graph.semantic_edges({"a": {"p1": [1.0, 0.0]}}, neighbors=3) == []
 
     def test_a_zero_vector_scores_zero_instead_of_poisoning_the_json(self):
-        """In a one-document corpus the centred vector is exactly zero;
-        dividing by its norm would spread NaN through every similarity,
-        and json.dumps emits NaN as a bare token no parser accepts."""
         edges = topic_graph.semantic_edges(
             {"a": {"p1": [0.0, 0.0]}, "b": {"p2": [1.0, 0.0]}}, neighbors=1
         )
@@ -203,8 +167,6 @@ class TestBuild:
         assert len(nodes["alpha"]["centroid"]) == 3
 
     def test_centroids_live_in_centred_space(self, isolated_config):
-        """The corpus mean is stored so a reader can move a query into
-        the same space; a centroid must therefore be centred, not raw."""
         topic_set, vectors = self.prepare()
         result = topic_graph.build(topic_set, vectors, p_value=0.9, neighbors=2)
         alpha = next(t for t in result["topics"] if t["label"] == "alpha")
@@ -213,8 +175,6 @@ class TestBuild:
         assert alpha["centroid"] == pytest.approx([r - m for r, m in zip(raw, mean)])
 
     def test_a_member_without_a_vector_still_counts_for_overlap(self, isolated_config):
-        """Overlap edges are set arithmetic on the ledger's citekeys;
-        a paper that never parsed has no vector but is still a member."""
         topic_set, vectors = self.prepare()
         del vectors["p2"]
         result = topic_graph.build(topic_set, vectors, p_value=0.9, neighbors=2)
@@ -222,9 +182,6 @@ class TestBuild:
         assert overlap and overlap[0]["shared"] == ["p2"]
 
     def test_a_topic_with_no_vectored_member_gets_no_centroid(self, isolated_config):
-        """A seed topic whose every member failed to parse still appears
-        as a node (its overlap edges are set arithmetic), but it has no
-        centroid, joins no semantic edge, and sits outside the tree."""
         topic_set, vectors = self.prepare()
         del vectors["p1"], vectors["p2"]
         result = topic_graph.build(topic_set, vectors, p_value=0.9, neighbors=2)
@@ -242,9 +199,6 @@ class TestBuild:
             assert "jaccard" not in edge
 
     def test_the_gate_s_refusals_travel_with_the_artefact(self, isolated_config):
-        """One scan, two lists: at a strict threshold the alpha/beta
-        pair moves from edges_overlap to edges_withheld, same shared
-        citekeys, same p."""
         topic_set, vectors = self.prepare()
         loose = topic_graph.build(topic_set, vectors, p_value=0.9, neighbors=2)
         assert [e["shared"] for e in loose["edges_overlap"]] == [["p2"]]
@@ -255,8 +209,6 @@ class TestBuild:
         assert strict["edges_withheld"][0]["p_value"] == loose["edges_overlap"][0]["p_value"]
 
     def test_every_topic_gets_a_per_family_analysis(self, isolated_config):
-        """#713: alpha and beta share p2 and are mutual semantic
-        neighbours, so both families report one alter each."""
         topic_set, vectors = self.prepare()
         result = topic_graph.build(topic_set, vectors, p_value=0.9, neighbors=2)
         for topic in result["topics"]:
@@ -358,9 +310,6 @@ class TestRunTopicGraph:
             topic_graph.run_topic_graph([])
 
     def test_a_different_pooling_method_refuses_too(self, isolated_config, monkeypatch):
-        """The model name alone does not identify the embedding space --
-        a topic set pooled under another method (or from before the
-        stamp existed, which reads the same way) must also refuse."""
         self.prepare(
             isolated_config,
             monkeypatch,

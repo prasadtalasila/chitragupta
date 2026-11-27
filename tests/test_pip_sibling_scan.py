@@ -1,19 +1,7 @@
-"""#985's class: `pip` reached as a binary beside the interpreter.
-
-On Windows the binary is `Scripts\\pip.exe`, so a path built by putting
-`pip` next to `python` names nothing there. Every pip call under
-chitragupta/ and scripts/ goes through `<python> -m pip` instead, which
-needs only the interpreter that is already known to exist and is always
-that interpreter's own pip.
-"""
-
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# `bin_dir / "pip"` in Python and `"$bin_dir/pip"` in a shell script;
-# a cache directory such as `~/.cache/pip/` is not a binary, so a `pip`
-# followed by another path segment does not match.
 SIBLING_PIP = re.compile(r"""/\s*["']pip(\.exe)?["']|/pip(\.exe)?["'\s]""")
 
 

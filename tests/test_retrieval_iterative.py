@@ -1,7 +1,3 @@
-"""chitragupta/retrieval_iterative.py: ITER-RETGEN (Shao et al., Findings
-of EMNLP 2023) with a human's own hand-edited prose standing in for the
-model generation the paper calls y_{t-1} -- FEATURE-ROADMAP.md's E4."""
-
 from chitragupta import ledger, retrieval, retrieval_iterative
 
 from tests.conftest import add_citable, make_reference, parsed_file
@@ -52,9 +48,6 @@ class TestSearchIterative:
         assert truncated is False
 
     def test_empty_query_with_y_prev_still_returns_nothing(self, ledger_con):
-        """A query with no terms must not fall through to a round-2
-        search on y_prev alone -- that would be prose-only retrieval
-        with no sub-theme anchor, not what E4 describes."""
         add_citable(ledger_con, "a2024", title="Digital Twin")
         found, truncated = retrieval_iterative.search_iterative("", "digital twin prose")
         assert found == []
@@ -91,10 +84,6 @@ class TestSearchIterative:
         assert truncated is True
 
     def test_a_shared_citekey_keeps_its_higher_score(self, ledger_con, tmp_path):
-        """The merge keeps max(round1_score, round2_score) for a citekey
-        that scored in both rounds -- exercised here by a citekey whose
-        parsed text matches both the plain query and the appended prose,
-        so round 2's score for it is strictly higher than round 1's."""
         parsed = parsed_file("a2024")
         parsed.write_text("digital twin " * 3 + "greenhouse actuator " * 20)
         add_citable(ledger_con, "a2024", title="Twin Paper")
@@ -112,10 +101,6 @@ class TestSearchIterative:
     def test_a_shared_citekey_does_not_regress_when_round_two_scores_no_higher(
         self, ledger_con, tmp_path
     ):
-        """The False leg of the merge's score comparison: a citekey that
-        scores identically in both rounds (round 2's extra query terms
-        don't appear in its text at all, so its score is unchanged) must
-        not be dropped or corrupted by the second, non-improving pass."""
         parsed = parsed_file("a2024")
         parsed.write_text("digital twin architecture patterns")
         add_citable(ledger_con, "a2024", title="Twin Paper")
@@ -130,10 +115,6 @@ class TestSearchIterative:
 
 
 class TestYPrevIsNeverCorrected:
-    """With spelling correction on, round 2 ranks on the query's own
-    correction but never corrects the appended prose: `earns` is in no
-    paper and one slip from `learns`, which is in two."""
-
     def test_round_two_corrects_the_query_and_not_the_prose(self, ledger_con, monkeypatch):
         from chitragupta import config, retrieval_scoring
 

@@ -1,13 +1,3 @@
-"""chitragupta/passages.py: where a citekey's supporting text comes from, and
-whether it may be quoted.
-
-These cases moved here from tests/test_citation_provenance.py when the
-ladder was extracted -- they were never really about provenance
-reporting, and chitragupta/retrieval.py is about to become the second consumer.
-The invariant they exist to pin is the one the whole module is for: a
-source with no reading order yields a page number and never a quotation.
-"""
-
 import json
 import subprocess
 import sys
@@ -32,8 +22,6 @@ class TestQuotable:
         assert passages.Passage(page=1, words={"a"}, text="Real paragraph.").quotable
 
     def test_a_passage_without_text_is_not(self, isolated_config):
-        """`text is None` is the whole guarantee: a page-level passage
-        cannot be quoted because there is nothing there to quote."""
         assert not passages.Passage(page=1, words={"a"}).quotable
 
 
@@ -72,12 +60,6 @@ class TestSourcePassages:
         )
 
     def test_a_traversal_citekey_never_reaches_the_filesystem(self, isolated_config):
-        """#638: a caller-supplied citekey (the review layer extracts them
-        from a draft, and the LaTeX regex accepts nearly anything inside
-        `\\cite{...}`) was used as a path stem unvalidated, so
-        `../escape` read files outside the content tree -- the exact
-        traversal `bib_reader.citekey_problem` exists to stop, enforced
-        until now only on the bib-sync side."""
         outside = (config.DOCLING_DIR / ".." / ".." / "private.passages.json").resolve()
         outside.parent.mkdir(parents=True, exist_ok=True)
         outside.write_text(
@@ -102,9 +84,6 @@ class TestSourcePassages:
         assert reason == "not found in the corpus"
 
     def test_a_key_that_left_the_corpus_is_not_read_from_its_sidecar(self, isolated_config):
-        """#1153: a key removed from the .bib loses its row on sync, but
-        its sidecars stay on disk; reading them quoted a paper the corpus
-        no longer holds."""
         plant_sidecar("gone_2024", [{"text": "Left behind.", "label": "text", "page": 1}])
         con = ledger.connect()
         try:
@@ -116,9 +95,6 @@ class TestSourcePassages:
 
     @pytest.mark.parametrize("docling", [True, False])
     def test_a_row_that_stopped_being_parsed_yields_no_passages(self, isolated_config, docling):
-        """#1153, the #490 class: a re-parse that failed leaves the old
-        parse's text and sidecar on disk, and they are not the paper's
-        current wording."""
         add_item("a_2024", parsed_text="old page one\fold page two")
         plant_sidecar(
             "a_2024", [{"text": "Old wording.", "label": "text", "page": 1}], docling=docling
@@ -155,8 +131,6 @@ class TestSourcePassages:
         assert len(found) == 2  # fell back to pages
 
     def test_blank_pages_are_dropped(self, isolated_config):
-        """A trailing form feed would otherwise contribute an empty page
-        that matches nothing and shifts no numbering."""
         add_item("a_2024", parsed_text="first page\f   \fthird page")
         con = ledger.connect()
         try:
@@ -169,14 +143,6 @@ class TestSourcePassages:
 
 
 class TestPassageRecords:
-    """The one definition of "what is a passage", shared by both writers.
-
-    Read entirely through getattr, so these fakes stand in for a real
-    DoclingDocument without this module ever importing docling -- which
-    is what lets a stdlib-only module describe a document only a venv can
-    build.
-    """
-
     @staticmethod
     def _item(text, label="text", page=1, bbox=None):
         prov = types.SimpleNamespace(page_no=page, bbox=bbox)
@@ -189,8 +155,6 @@ class TestPassageRecords:
         ]
 
     def test_drops_labels_that_are_not_prose(self, isolated_config):
-        """A running head repeated on every page would otherwise let a
-        claim "match" the journal's name seventeen times."""
         doc = types.SimpleNamespace(
             texts=[
                 self._item("Journal of Things, Vol 3", label="page_header"),
@@ -201,7 +165,6 @@ class TestPassageRecords:
         assert [r["text"] for r in passages.passage_records(doc)] == ["Real prose."]
 
     def test_accepts_a_dotted_enum_label(self, isolated_config):
-        """Docling's labels stringify as `DocItemLabel.TEXT`, not `text`."""
         doc = types.SimpleNamespace(texts=[self._item("Prose.", label="DocItemLabel.TEXT")])
         assert [r["label"] for r in passages.passage_records(doc)] == ["text"]
 
@@ -219,10 +182,6 @@ class TestPassageRecords:
 
 
 class TestTableAndFormulaRecords:
-    """#627: a table is a retrievable unit with its own page anchor, not
-    just the caption the prose loop already dropped. Same duck-typed
-    fakes as above -- passages.py never imports docling."""
-
     @staticmethod
     def _table(markdown, caption="", page=2, bbox=None):
         prov = types.SimpleNamespace(page_no=page, bbox=bbox)
@@ -242,9 +201,6 @@ class TestTableAndFormulaRecords:
         ]
 
     def test_a_caption_already_in_the_export_is_not_repeated(self, isolated_config):
-        """Real docling includes the caption in export_to_markdown()'s
-        own output (measured on a real IEEE paper); prepending it again
-        produced 'TABLE I: ...' twice on every table."""
         doc = types.SimpleNamespace(
             texts=[],
             tables=[self._table("Table 1. Results.\n| a | b |", caption="Table 1. Results.")],
@@ -271,9 +227,6 @@ class TestTableAndFormulaRecords:
         assert [r["label"] for r in passages.passage_records(doc)] == ["text"]
 
     def test_a_decoded_formula_is_kept(self, isolated_config):
-        """Docling's formula-enrichment model writes the LaTeX into the
-        item's text; with content there, the formula is exactly the kind
-        of thing a quantitative claim rests on."""
         doc = types.SimpleNamespace(
             texts=[TestPassageRecords._item("T(t) = T_0 e^{-kt}", label="formula", page=3)]
         )
@@ -282,8 +235,6 @@ class TestTableAndFormulaRecords:
         ]
 
     def test_an_undecoded_formula_contributes_nothing(self, isolated_config):
-        """Without the enrichment model, Docling leaves the formula
-        item's text empty -- the existing empty-text guard covers it."""
         doc = types.SimpleNamespace(texts=[TestPassageRecords._item("", label="formula")])
         assert passages.passage_records(doc) == []
 
@@ -300,8 +251,6 @@ class TestTableAndFormulaRecords:
 
 
 class TestCorpusLayerSidecar:
-    """Rung 2: the sidecar the corpus layer writes beside its parsed text."""
-
     def test_is_used_when_the_enrichment_layer_has_not_run(self, isolated_config):
         add_item("smith_2024", parsed_text="page one\fpage two")
         passages.write_sidecar(
@@ -321,8 +270,6 @@ class TestCorpusLayerSidecar:
         ]
 
     def test_the_enrichment_sidecar_still_wins_when_both_exist(self, isolated_config):
-        """Rung 1 is a second, independent parse under its own OCR and
-        figure settings, so it outranks the corpus layer's."""
         add_item("smith_2024", parsed_text="page one\fpage two")
         plant_sidecar("smith_2024", [{"text": "From the enrichment layer.", "page": 1}])
         passages.write_sidecar("smith_2024", [{"text": "From the corpus layer.", "page": 1}])
@@ -353,15 +300,10 @@ class TestCorpusLayerSidecar:
         passages.clear_sidecar("smith_2024")  # second call must not raise
 
     def test_lives_beside_the_parsed_text_not_in_the_enrichment_directory(self, isolated_config):
-        """The two writers must not share a path: the corpus layer
-        invalidates its own sidecar on every re-parse, and doing that to
-        an enrichment sidecar would delete a parse it cannot reproduce."""
         assert passages.sidecar_path("k").parent == config.PARSED_DIR
         assert passages.sidecar_path("k") != config.DOCLING_DIR / "k.passages.json"
 
     def test_a_write_replaces_the_old_file_whole_and_leaves_no_temp(self, isolated_config):
-        """Issue 844: written through a temp file and `os.replace`, so a
-        reader sees the old sidecar or the new one, never half of one."""
         passages.write_sidecar("smith_2024", [{"text": "Old.", "page": 1}])
         passages.write_sidecar("smith_2024", [{"text": "New.", "page": 2}])
         assert json.loads(passages.sidecar_path("smith_2024").read_text()) == [
@@ -372,9 +314,6 @@ class TestCorpusLayerSidecar:
     def test_a_failed_write_keeps_the_old_file_and_removes_its_temp(
         self, isolated_config, monkeypatch
     ):
-        """The OSError still reaches the caller unchanged --
-        `pdf_text.extract_text` turns it into a transient failure -- and
-        the sidecar already there is untouched rather than truncated."""
         passages.write_sidecar("smith_2024", [{"text": "Old.", "page": 1}])
 
         def full_disk(src, dst):
@@ -398,9 +337,6 @@ class TestCorpusLayerSidecar:
         ],
     )
     def test_state_tells_absent_from_unreadable(self, isolated_config, content, expected):
-        """`_from_sidecar` answers None for all three of absent, empty and
-        torn, which is right for a reader and wrong for `sync`: only a
-        torn one needs a re-parse, and an empty one must not get one."""
         path = passages.sidecar_path("smith_2024")
         if content is not None:
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -414,8 +350,6 @@ class TestCorpusLayerSidecar:
 
 
 class TestSidecarRobustness:
-    """A hand-edited or partially-written sidecar must degrade, not crash."""
-
     @pytest.mark.parametrize(
         "payload",
         [
@@ -440,11 +374,8 @@ class TestSidecarRobustness:
         assert [p.page for p in found] == [1, 2]
 
     def test_truncated_utf8_sidecar_falls_through_instead_of_raising(self, isolated_config):
-        """A process killed mid-write can split a multi-byte character,
-        which fails to decode before json ever sees it."""
         add_item("a_2024", parsed_text="page one\fpage two")
         config.DOCLING_DIR.mkdir(parents=True, exist_ok=True)
-        # Valid JSON prefix, then a lone UTF-8 continuation byte.
         (config.DOCLING_DIR / "a_2024.passages.json").write_bytes(
             b'[{"text": "Real paragraph ' + b"\xe2\x82"
         )
@@ -469,11 +400,6 @@ class TestSidecarRobustness:
 
     @pytest.mark.parametrize("bad_page", ["seven", 3.5, 0, -2, True, None, [1]])
     def test_a_page_that_is_not_a_page_number_is_dropped(self, isolated_config, bad_page):
-        """`Passage.page` is typed `int | None` and gets rendered straight
-        into "p.{page}" and (soon) into an INTEGER column. JSON permits
-        anything here, and this sidecar may have been hand-edited -- so a
-        value that isn't a 1-based page number becomes None rather than
-        propagating as one."""
         add_item("a_2024", parsed_text="ignored\fignored")
         plant_sidecar("a_2024", [{"text": "Real paragraph.", "page": bad_page}])
         con = ledger.connect()
@@ -510,8 +436,6 @@ class TestPdfFallback:
     def test_parsed_text_without_page_breaks_falls_through_to_the_pdf(
         self, isolated_config, monkeypatch, tmp_path
     ):
-        """A docling-parsed .txt has no form feeds, so page numbers would
-        all be 1 -- go back to the PDF rather than report that."""
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
         add_item("a_2024", parsed_text="one continuous document, no form feeds", pdf_path=str(pdf))
@@ -544,9 +468,6 @@ class TestPdfFallback:
         finally:
             con.close()
 
-        # The parsed text is form-feed-free, so rung 3 held one page. With
-        # rung 4 unable to run, that held page is the best answer there is
-        # -- returning `[]` here threw away real parsed text (#509/m-42).
         assert [p.page for p in found] == [1]
         assert "feeds" in {word for p in found for word in p.words}
         assert reason is None
@@ -554,10 +475,6 @@ class TestPdfFallback:
     def test_a_pdftotext_timeout_falls_back_like_any_other_failure(
         self, isolated_config, monkeypatch, tmp_path
     ):
-        """#824: a malformed PDF can hang poppler, and rung 4 had no
-        timeout, so the report wedged indefinitely. The call now carries
-        `[parser].document_timeout` -- the one the sync backend already
-        enforces -- and a timeout takes the same fallback as a failure."""
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
         add_item("a_2024", parsed_text="no form feeds here", pdf_path=str(pdf))
@@ -600,10 +517,6 @@ class TestPdfFallback:
         assert "pdftotext" in reason
 
     def test_an_empty_pdftotext_result_gets_a_reason(self, isolated_config, monkeypatch, tmp_path):
-        """m-42 (#509): an empty rung 4 used to return `([], None)` -- no
-        passages and no reason, which every caller renders as a blank
-        where an explanation belongs. pdftotext exiting 0 on a scanned PDF
-        with no text layer is the ordinary way to get here."""
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
         add_item("a_2024", parsed_text=None, pdf_path=str(pdf))
@@ -640,9 +553,6 @@ class TestPdfFallback:
         assert reason is None
 
     def test_no_pdf_at_all_still_returns_the_held_page(self, isolated_config):
-        """The other half: rung 3 held one page and there is no rung 4 to
-        try, so returning `[]` reported "no parsed text with page breaks
-        and no readable PDF" -- false about the first half."""
         add_item("a_2024", parsed_text="no form feeds here", pdf_path=None)
         con = ledger.connect()
         try:
@@ -655,27 +565,11 @@ class TestPdfFallback:
     def test_undecodable_pdftotext_output_does_not_take_down_the_report(
         self, isolated_config, monkeypatch, tmp_path
     ):
-        """A single oddly-encoded PDF must not raise.
-
-        `subprocess.run(text=True)` decodes with the *platform* encoding
-        under strict error handling, so on a `C`/POSIX-locale host -- a CI
-        runner, a slim container -- any non-ASCII byte in pdftotext's
-        output raises UnicodeDecodeError, which is not in the except
-        clause below it. The sibling parsed-text path already guards this
-        with `errors="replace"`; this one has to match.
-
-        Rather than assert on the kwargs (which would just restate the
-        implementation), the fake re-dispatches to the *real*
-        subprocess.run with whatever kwargs the module passed, running a
-        command that emits bytes that are not valid UTF-8. If those
-        kwargs can't survive it, this raises for real.
-        """
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
         add_item("a_2024", parsed_text="no form feeds here", pdf_path=str(pdf))
 
         real_run = subprocess.run
-        # \xff\xfe is not valid UTF-8 in any position; \f is the page break.
         emit = r"import sys; sys.stdout.buffer.write(b'first \xff\xfe page\fsecond page')"
 
         def fake_run(cmd, **kwargs):
@@ -697,8 +591,6 @@ class TestPdfFallback:
     def test_missing_parsed_file_falls_through_to_the_pdf(
         self, isolated_config, monkeypatch, tmp_path
     ):
-        """The ledger records a parsed_path; the file behind it can still
-        be gone (a cleaned content/ against a kept ledger)."""
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
         add_item("a_2024", parsed_text="page one\fpage two", pdf_path=str(pdf))
@@ -720,9 +612,6 @@ class TestPdfFallback:
 
 class TestSeamWithCitationProvenance:
     def test_citation_provenance_re_exports_the_ladder(self, isolated_config):
-        """`citation_provenance` is a consumer of this module now, not the
-        owner -- but it stays the import site its own callers already use,
-        so the extraction isn't a breaking change for them."""
         from chitragupta.review import citation_provenance as cp
 
         assert cp.source_passages is passages.source_passages

@@ -1,6 +1,3 @@
-"""chitragupta/bib_reader.py: the only module that reads bibliography.bib, and
-the only place a citekey should ever originate from (AGENTS.md)."""
-
 import pytest
 
 from chitragupta import bib_escapes, bib_integrity, bib_reader
@@ -34,9 +31,6 @@ class TestParseAuthors:
         ]
 
     def test_separator_split_across_a_wrapped_line(self):
-        # bibtexparser preserves an author field's original line wrapping;
-        # the separator itself can fall on a line break rather than being
-        # a plain " and ".
         assert bib_reader._parse_authors("Smith, Jane\n  and Doe, John") == [
             ("Jane", "Smith"),
             ("John", "Doe"),
@@ -62,14 +56,6 @@ class TestResolvePdfPath:
         assert bib_reader._resolve_pdf_path(field, tmp_path) == (str(pdf), bib_reader.PDF_RESOLVED)
 
     def test_absolute_path_inside_the_bib_directory(self, tmp_path):
-        """An absolute `file` path is ordinary -- several exporters
-        write one -- and still resolves, provided it lands beside the
-        bib file that claims it.
-
-        This used to be asserted against a `bib_dir` the PDF was *not*
-        under, which is the hole issue 821 closed: an absolute path was
-        accepted wherever on the host it pointed. See
-        `tests/test_path_confinement.py` for the refusal."""
         pdf = tmp_path / "files" / "paper.pdf"
         pdf.parent.mkdir()
         pdf.write_bytes(b"%PDF-1.4")
@@ -84,11 +70,6 @@ class TestResolvePdfPath:
         assert bib_reader._resolve_pdf_path(field, tmp_path) == (None, bib_reader.PDF_PATH_GONE)
 
     def test_path_pointing_at_a_directory_reports_pdf_path_gone(self, tmp_path):
-        # Regression (PR #6 review): Path.exists() is also true for
-        # directories, not just files -- a bib export with an
-        # empty/incorrect path that happens to resolve to an existing
-        # directory must not be classified as PDF_RESOLVED (sync would
-        # then try to run pdftotext on a directory).
         a_dir = tmp_path / "not_a_file.pdf"
         a_dir.mkdir()
         field = "paper.pdf:not_a_file.pdf:application/pdf"
@@ -104,10 +85,6 @@ class TestResolvePdfPath:
         )
 
     def test_non_html_non_pdf_mime_also_reports_non_pdf_attachment(self, tmp_path):
-        # Regression (PR #6 review): detection only ever checked for the
-        # *absence* of a pdf-mime entry, never the presence of text/html
-        # specifically -- any other non-PDF mime (plain text here) must
-        # land in the same bucket, not be silently unclassified.
         note = tmp_path / "notes.txt"
         note.write_text("some notes")
         field = "notes.txt:notes.txt:text/plain"
@@ -131,32 +108,12 @@ class TestResolvePdfPath:
         )
 
     def test_pdf_mime_but_missing_file_wins_over_non_pdf_attachment(self, tmp_path):
-        # A pdf-mime attachment whose file has since moved/been deleted is
-        # a more actionable signal (this item once had a real PDF) than
-        # "only ever had a non-PDF attachment" -- when both are present,
-        # report the former.
         html = tmp_path / "page.html"
         html.write_text("<html></html>")
         field = "page.html:page.html:text/html;paper.pdf:missing.pdf:application/pdf"
         assert bib_reader._resolve_pdf_path(field, tmp_path) == (None, bib_reader.PDF_PATH_GONE)
 
     def test_path_containing_colons_is_reassembled(self, tmp_path):
-        """Windows-style or otherwise colon-bearing paths: the middle
-        segment must be rejoined with ":", not just taken as `parts[1]`.
-
-        Asked of `bib_escapes.attachments`, which does the rejoining
-        since #964, and `_attachment_pdf`, rather than of
-        `_resolve_pdf_path`. No file named
-        `a:b.pdf` can be created to prove it against -- a bare colon in
-        a filename is illegal on Windows, being reserved for the
-        drive-letter and ADS syntax -- and since issue 821 the two
-        platforms legitimately disagree about the *result*: `tmp_path /
-        "a:b.pdf"` is a file in `tmp_path` on POSIX and the
-        drive-relative path `a:b.pdf`, outside it, on Windows, where
-        confinement then refuses it. Both sides of this assertion are
-        spelled the same way, so it pins the rejoin on either platform
-        without pinning a resolution that differs between them.
-        """
         (attachment,) = bib_escapes.attachments("desc:a:b.pdf:application/pdf")
         assert bib_reader._attachment_pdf(attachment, tmp_path) == (
             True,
@@ -196,11 +153,6 @@ class TestCountRawEntries:
         assert bib_integrity.count_raw_entries(text) == 1
 
     def test_counts_paren_delimited_entries_too(self):
-        # Regression (PR #8 review): BibTeX allows `@type(...)` as well as
-        # `@type{...}` -- bibtexparser accepts both -- so a brace-only
-        # pattern would under-count a file using the paren form, which
-        # could hide a genuine drop instead of just risking a
-        # false-positive on a good file.
         text = "@article(paren_2024,\n  title = {Paren Form},\n)\n"
         assert bib_integrity.count_raw_entries(text) == 1
 
@@ -208,8 +160,6 @@ class TestCountRawEntries:
         assert bib_integrity.count_raw_entries("") == 0
 
     def test_counts_only_the_types_the_parser_keeps_when_told_them(self):
-        # Issue 888: an entry type the parser ignores by design is not an
-        # entry it lost, so it must not be on the raw side of the count.
         text = (
             "@software{tool_2024,\n  title = {A Tool},\n}\n"
             "@Online(site_2024,\n  title = {A Site},\n)\n"
@@ -220,16 +170,6 @@ class TestCountRawEntries:
 
 
 class TestContentlessStubsAreNotCounted:
-    """A Zotero export writes `@misc{key,\\n}` for an attachment with no
-    metadata. bibtexparser drops it -- correctly: there is no title,
-    author or year to lose -- so counting it here made the dropped-entry
-    warning fire on every sync against a healthy library. The
-    maintainer's own bibliography carries two.
-
-    The distinction drawn is bibtexparser's own: a block with no field
-    between the citekey and the close is not an entry.
-    """
-
     def test_a_contentless_misc_stub_is_not_counted(self):
         assert bib_integrity.count_raw_entries("@misc{stub_2024,\n}\n") == 0
 
@@ -240,23 +180,12 @@ class TestContentlessStubsAreNotCounted:
         assert bib_integrity.count_raw_entries("@misc(stub_2024,\n)\n") == 0
 
     def test_one_field_is_enough_to_count(self):
-        """The bar is "has a field", not "has the fields sync wants" --
-        anything stricter would start dropping entries bibtexparser
-        keeps, and the two have to agree."""
         assert bib_integrity.count_raw_entries("@misc{thin_2024,\n  title = {T},\n}\n") == 1
 
     def test_a_real_entry_whose_last_field_ends_in_a_brace_still_counts(self):
-        # The close-delimiter strip takes exactly one character, so a
-        # trailing `title = {T}` is not mistaken for the block's own end.
         assert bib_integrity.count_raw_entries("@article{k_2024,\n  title = {T}\n}\n") == 1
 
     def test_a_stub_does_not_hide_an_unbalanced_entry_after_it(self):
-        """The case the warning exists for, with the stub first.
-
-        A forward brace-matcher would run to EOF from the unbalanced
-        entry; bounding each block at the *next* `@` is what keeps this
-        counting two rather than one.
-        """
         text = (
             "@misc{stub_2024,\n}\n\n"
             "@article{bad_2024,\n  title = {Unclosed,\n  author = {A, One},\n\n"
@@ -265,9 +194,6 @@ class TestContentlessStubsAreNotCounted:
         assert bib_integrity.count_raw_entries(text) == 2
 
     def test_a_stub_does_not_hide_an_unbalanced_entry_before_it(self):
-        """The same file with the order reversed. Order-dependence is how
-        a bug in the bounding would hide: with the malformed entry last
-        it is bounded by EOF either way."""
         text = (
             "@article{bad_2024,\n  title = {Unclosed,\n  author = {A, One},\n\n"
             "@misc{stub_2024,\n}\n\n"
@@ -277,10 +203,6 @@ class TestContentlessStubsAreNotCounted:
 
 
 class TestTheDroppedEntryWarningAndTheStub:
-    """End to end, through `read_library`: the two halves of #235 in one
-    file. The stub is silently dropped by bibtexparser and must not be
-    reported; the unbalanced entry is silently dropped and must be."""
-
     _STUB = "@misc{stub_2024,\n}\n"
     _GOOD = "@article{good_2024,\n  title = {Good},\n  author = {A, One},\n  year = {2024},\n}\n"
     _BAD = "@article{bad_2024,\n  title = {Unclosed,\n  author = {B, Two},\n  year = {2024},\n"
@@ -300,8 +222,6 @@ class TestTheDroppedEntryWarningAndTheStub:
         assert "silently dropped" in out
 
     def test_the_stub_does_not_inflate_the_warning_it_appears_beside(self, isolated_config, capsys):
-        """The number in the message is what a reader acts on. With both
-        in the file it must say 1 -- the unbalanced entry -- not 2."""
         write_bib(
             isolated_config.BIB_FILE_PATH,
             self._STUB + "\n" + self._BAD + "\n" + self._GOOD,
@@ -312,10 +232,6 @@ class TestTheDroppedEntryWarningAndTheStub:
 
 
 class TestCitekeyProblem:
-    """A citekey becomes a filename stem (content/parsed/<citekey>.txt and
-    the enrichment layer's own outputs), so one that can't be a filename
-    has to be caught here -- at the only boundary both layers share."""
-
     @pytest.mark.parametrize(
         "citekey",
         [
@@ -362,8 +278,6 @@ class TestCitekeyProblem:
 
     @pytest.mark.parametrize("citekey", ["trailing.", "trailing "])
     def test_rejects_a_trailing_dot_or_space(self, citekey):
-        """Windows strips both, so two citekeys differing only by one
-        would collide on disk there and not here."""
         assert "Windows strips" in bib_reader.citekey_problem(citekey)
 
     @pytest.mark.parametrize("citekey", ["CON", "con", "NUL", "COM1", "LPT9", "aux.txt"])
@@ -390,17 +304,13 @@ class TestReadLibrarySkipsUnusableCitekeys:
         )
         refs = bib_reader.read_library().references
 
-        # The good entry survives: one bad citekey must not cost the run.
         assert [r.citekey for r in refs] == ["good_2024"]
         out = capsys.readouterr().out
         assert "smith/2024" in out
         assert "cannot appear in a filename" in out
-        # It has to say what to do about it -- this project never renames
-        # a citekey itself, so the fix is only ever in the bib file.
         assert "reference manager" in out
 
     def test_a_traversing_citekey_never_becomes_a_reference(self, isolated_config, capsys):
-        """The case that would have written outside content/."""
         write_bib(
             isolated_config.BIB_FILE_PATH,
             """
@@ -435,14 +345,10 @@ DUPLICATED_KEY_BIB = """
 
 
 class TestReadLibraryRefusesDuplicatedCitekeys:
-    """Issue 840: bibtexparser returns both entries under one key, and the
-    later one used to overwrite the earlier's ledger row silently."""
-
     def test_neither_entry_under_a_duplicated_key_is_returned(self, isolated_config, capsys):
         write_bib(isolated_config.BIB_FILE_PATH, DUPLICATED_KEY_BIB)
         library = bib_reader.read_library()
 
-        # Never pick one: the pipeline does not guess which paper a key means.
         assert [r.citekey for r in library.references] == ["good_2024"]
         assert library.duplicate_citekeys == ("smith_example_2024",)
         out = capsys.readouterr().out
@@ -481,9 +387,6 @@ UNBALANCED_BIB = """
 
 
 class TestReadLibraryCountsWhatItLost:
-    """Issue 841: a dropped entry and a skipped citekey travel with the
-    references, so a caller can refuse to act on a read that lost some."""
-
     def test_a_dropped_entry_is_counted(self, isolated_config):
         write_bib(isolated_config.BIB_FILE_PATH, UNBALANCED_BIB)
         library = bib_reader.read_library()
@@ -499,7 +402,6 @@ class TestReadLibraryCountsWhatItLost:
         )
         library = bib_reader.read_library()
         assert library.unfilenameable_citekeys == ("smith/2024",)
-        # Still named by the bib file, so its row must not read as stale.
         assert library.seen_citekeys == {"smith/2024", "good_2024"}
         assert library.integrity_problems == {"citekey skipped as unusable as a filename": 1}
 
@@ -510,7 +412,6 @@ class TestReadLibraryCountsWhatItLost:
         assert library.duplicate_citekeys == ("a/b",)
         assert library.unfilenameable_citekeys == ()
         assert library.integrity_problems == {"citekey shared by more than one entry": 1}
-        # In seen_citekeys, so it cannot make another row look stale.
         assert library.unread == {}
 
     def test_counts_pluralise(self, isolated_config):
@@ -526,10 +427,6 @@ class TestReadLibraryCountsWhatItLost:
     def test_an_ignored_entry_type_is_silently_skipped_not_counted_dropped(
         self, isolated_config, capsys
     ):
-        # Issue 888: bibtexparser ignores types outside its standard list
-        # (@software, @online, ...), and that is the intended behaviour --
-        # but since issue 841 each one also counted as a lost entry, with a
-        # warning blaming unbalanced braces. It is skipped, silently.
         write_bib(
             isolated_config.BIB_FILE_PATH,
             "@software{tool_2024,\n  title = {A Tool},\n  year = {2024},\n}\n"
@@ -656,8 +553,6 @@ class TestReadLibrary:
         assert refs[0].pdf_resolution == bib_reader.PDF_NON_PDF_ATTACHMENT
 
     def test_entry_with_pdf_path_gone_reports_pdf_path_gone(self, isolated_config):
-        # bib file references a PDF that isn't actually on disk (moved,
-        # deleted, or synced from a different machine's file layout).
         write_bib(
             isolated_config.BIB_FILE_PATH,
             """
@@ -716,11 +611,6 @@ class TestReadLibrary:
         assert "WARNING" not in out
 
     def test_no_warning_for_a_real_export_using_string_abbreviations(self, isolated_config, capsys):
-        # read_library predefines the month strings, so a real export
-        # legitimately using @string (a journal-name abbreviation, say)
-        # is plausible -- it must not be miscounted as a dropped entry
-        # just because _count_raw_entries and bibtexparser need to agree
-        # on what "an entry" is.
         write_bib(
             isolated_config.BIB_FILE_PATH,
             """
@@ -746,10 +636,6 @@ class TestReadLibrary:
         assert "WARNING" not in out
 
     def test_warns_when_a_malformed_entry_is_silently_dropped(self, isolated_config, capsys):
-        # Regression: bibtexparser drops an entry it can't parse (here,
-        # unbalanced braces in the title) with no exception and no trace
-        # in bib_database.entries -- read_library must notice the raw
-        # @entry count doesn't match what actually got parsed.
         write_bib(
             isolated_config.BIB_FILE_PATH,
             """
@@ -789,9 +675,6 @@ class TestReadLibrary:
 
 
 class TestImporterCollectionsAndRenames:
-    """chitragupta-importer's `cg-collections` field and its two @comment
-    tables (plans/1211-cg-collections-and-renames.md, D2, D5, D6)."""
-
     TABLE = (
         "@comment{cg-collections v1\n"
         "digital-twin\tDigital Twin\n"

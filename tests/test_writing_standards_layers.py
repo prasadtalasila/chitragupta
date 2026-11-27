@@ -1,22 +1,3 @@
-"""The writing standards are one core file and a folder of layer files,
-and every citation into them still lands.
-
-Issue 1197 (part of #1091) split `docs/WRITING-STANDARDS.md` into a core
-and `docs/writing-standards/`: one file per element a draft contains
-(figures, mathematics, tables, the page), a folder for genres and one
-for house styles. Section numbers stay global, so `§12` names the same
-rules wherever they live, and the core keeps a stub heading for every
-section that moved.
-
-What the split can break is invisible in the file it changes. Skills
-cite `WRITING-STANDARDS.md` §N well over a hundred times across their
-three harness copies, `chitragupta/style_*` prints §N in every finding,
-and other documents link to headings by anchor. A section moved with no
-stub, a number reused by a new layer file, or a layer file nobody can
-find from the core would each leave those citations pointing at nothing,
-and no other test reads them. These four do.
-"""
-
 import re
 from pathlib import Path
 
@@ -25,9 +6,6 @@ DOCS = REPO_ROOT / "docs"
 CORE = DOCS / "WRITING-STANDARDS.md"
 LAYERS = DOCS / "writing-standards"
 
-# Where a citation can come from: every tree a model, a user or a
-# finding message reads. `.claude/worktrees/` holds whole nested
-# checkouts of this repository and is never scanned.
 _SCANNED_ROOTS = (".claude", ".agents", ".opencode", "docs", "chitragupta")
 _SCANNED_FILES = ("AGENTS.md", "SOUL.md")
 _TEXT_SUFFIXES = {".md", ".py", ".toml", ".yml", ".yaml", ".txt", ".tex", ".sh"}
@@ -37,9 +15,6 @@ _HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$", re.MULTILINE)
 _NUMBERED = re.compile(r"^#{2,3}\s+(?:\S+\s+)?(\d+)\.\s", re.MULTILINE)
 _SECTION_HEAD = re.compile(r"^## ", re.MULTILINE)
 
-# A path into the standards, then one or more sections: "§12",
-# "§10, §12 and §13", "section 8". Backticks, a link's closing bracket
-# and a comma may sit between the path and the first section.
 _PATH = r"(?P<path>WRITING-STANDARDS(?:\.md)?|writing-standards/(?:[\w-]+/)*[\w-]+\.md)"
 _CITATION = re.compile(
     _PATH + r"[`)\]]*[,:]?\s*(?P<sections>(?:§\s?|section\s)\d+"
@@ -49,8 +24,6 @@ _ANCHOR = re.compile(r"\]\((?P<target>[^)\s#]*)#(?P<anchor>[^)\s]+)\)")
 
 
 def _without_fences(text: str) -> str:
-    """`text` with fenced blocks blanked: an example `## Symbols` inside a
-    fence is content, not a heading."""
     return _FENCE.sub(lambda match: "\n" * match.group(0).count("\n"), text)
 
 
@@ -63,8 +36,6 @@ def _layer_files() -> "list[Path]":
 
 
 def _numbered_files() -> "list[Path]":
-    """The files that may hold a numbered section: the core and every
-    layer file but the folder READMEs."""
     return [CORE] + [path for path in _layer_files() if path.name != "README.md"]
 
 
@@ -83,14 +54,10 @@ def _numbers(path: Path) -> "list[int]":
 
 
 def _slug(heading: str) -> str:
-    """GitHub's anchor for a heading, which `mkdocs.yml` also uses: lower
-    case, punctuation and emoji dropped, each space a hyphen."""
     return re.sub(r"[^\w\- ]", "", heading.lower()).replace(" ", "-")
 
 
 def _anchors(path: Path) -> "set[str]":
-    """Every anchor `path`'s headings produce, with GitHub's `-1`, `-2`
-    suffix on a repeated one."""
     seen: "dict[str, int]" = {}
     anchors = set()
     for _, heading in _HEADING.findall(_without_fences(_read(path))):
@@ -101,15 +68,12 @@ def _anchors(path: Path) -> "set[str]":
 
 
 def _resolve(cited: str) -> Path:
-    """The file a cited path names: the core, or a layer file."""
     if cited.startswith("WRITING-STANDARDS"):
         return CORE
     return DOCS / cited
 
 
 def _index_targets() -> "set[Path]":
-    """The files the core's index table links to, or an empty set when
-    the core has no index section."""
     sections = _SECTION_HEAD.split(_without_fences(_read(CORE)))
     index = [body for body in sections if "index" in body.split("\n", 1)[0].lower()]
     assert index, "docs/WRITING-STANDARDS.md has no `## ... index` section"
@@ -140,9 +104,6 @@ def test_every_cited_section_resolves():
 
 
 def test_every_anchor_resolves():
-    """A link to `WRITING-STANDARDS.md#<anchor>` from anywhere, and a
-    same-file `#<anchor>` link inside the core or a layer file, lands on
-    a heading."""
     broken = []
     for source in _scanned():
         for match in _ANCHOR.finditer(_read(source)):
@@ -161,7 +122,6 @@ def test_every_anchor_resolves():
 
 
 def _stubbed(number: int, holder: Path) -> bool:
-    """Whether the core's section `number` is a stub pointing at `holder`."""
     for body in _SECTION_HEAD.split(_without_fences(_read(CORE))):
         heading = body.split("\n", 1)[0]
         if re.match(rf"(?:\S+\s+)?{number}\.\s", heading):
@@ -170,8 +130,6 @@ def _stubbed(number: int, holder: Path) -> bool:
 
 
 def test_section_numbers_are_unique():
-    """No number heads two sections, except the core's stub for a section
-    that moved, which must point at the one file holding it now."""
     core = _numbers(CORE)
     clashes = sorted({number for number in core if core.count(number) > 1})
     holders: "dict[int, list[Path]]" = {}

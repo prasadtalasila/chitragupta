@@ -1,19 +1,8 @@
-"""The spec artifact: parsing, the sign-off record, and the four commands.
-
-The behaviours worth pinning are the ones a later session would
-otherwise re-derive from the prose: an id is required rather than
-derived from the heading text, the sign-off digest is taken over
-`spec.md` alone (so signing cannot invalidate its own record), and
-`status` is the one command whose exit code answers a question --
-"may prose be generated from this outline yet?".
-"""
-
 import pytest
 
 from chitragupta import spec
 
 
-# A spec that parses cleanly: one part, one chapter, two sections.
 GOOD = """# Composable Digital Twins
 
 - reader: MSc students
@@ -35,8 +24,6 @@ Establish the link, and why it is the hard half.
 
 @pytest.fixture
 def book(book_dir):
-    """conftest's bare `book_dir` under the name these tests use: the
-    outline is written before any prose, so they start from nothing."""
     return book_dir
 
 
@@ -45,9 +32,6 @@ def write_spec(book, text=GOOD):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     return path
-
-
-# --- paths ---------------------------------------------------------------
 
 
 def test_a_spec_mirrors_its_book_directory_under_content_specs(book, isolated_config):
@@ -71,9 +55,6 @@ def test_a_symlinked_topic_directory_that_leaves_content_specs_is_refused(
         spec.spec_dir(book)
 
 
-# --- parsing -------------------------------------------------------------
-
-
 def test_parsing_reads_the_title_and_every_unit_in_order():
     parsed = spec.parse(GOOD)
     assert parsed["title"] == "Composable Digital Twins"
@@ -94,9 +75,6 @@ def test_a_unit_carries_its_brief_and_its_ancestors():
 
 
 def test_a_hash_inside_a_fenced_block_is_not_a_heading():
-    """A brief in a book about software will hold a code fence sooner or
-    later. A `#` comment inside one read as a heading would refuse the
-    whole outline over a unit that does not exist."""
     fenced = GOOD + "\n```python\n# not a heading\n```\n"
     parsed = spec.parse(fenced)
     assert parsed["problems"] == []
@@ -104,8 +82,6 @@ def test_a_hash_inside_a_fenced_block_is_not_a_heading():
 
 
 def test_prose_before_the_first_heading_belongs_to_no_unit():
-    """A spec's preamble is for whoever opens the file. Nothing generates
-    from it, so it must not silently become the first unit's brief."""
     parsed = spec.parse("A note to the reader.\n\n" + GOOD)
     assert parsed["problems"] == []
     assert all("note to the reader" not in unit["brief"] for unit in parsed["units"])
@@ -150,9 +126,6 @@ def test_the_digest_is_twelve_hex_characters_over_the_spec_text():
     assert first != spec.digest(GOOD + "\n")
 
 
-# --- init ----------------------------------------------------------------
-
-
 def test_init_writes_a_template_that_parses_and_reports_its_own_problems(book, capsys):
     assert spec.main(["init", str(book)]) == 0
     parsed = spec.parse(spec.spec_path(book).read_text(encoding="utf-8"))
@@ -178,9 +151,6 @@ def test_init_refuses_to_overwrite_an_existing_spec(book, capsys):
 def test_a_book_outside_content_drafts_is_refused_by_the_cli(tmp_path, isolated_config, capsys):
     assert spec.main(["init", str(tmp_path / "elsewhere")]) == 1
     assert "not under" in capsys.readouterr().err
-
-
-# --- show ----------------------------------------------------------------
 
 
 def test_show_prints_the_outline_as_a_tree(book, capsys):
@@ -228,9 +198,6 @@ def test_a_missing_spec_is_refused_by_name(book, capsys):
     assert "spec init" in err
 
 
-# --- sign ----------------------------------------------------------------
-
-
 def test_sign_records_the_digest_of_the_spec_it_signed(book, capsys):
     text = write_spec(book).read_text(encoding="utf-8")
     assert spec.main(["sign", str(book)]) == 0
@@ -241,9 +208,6 @@ def test_sign_records_the_digest_of_the_spec_it_signed(book, capsys):
 
 
 def test_sign_counts_what_status_counts_not_units(book, capsys):
-    """`sign` said "Signed off 10 unit(s)" for an outline whose `unit
-    status` later read "1 of 2 unit(s)": one word, two counts (#1165).
-    It names the same breakdown `status` prints instead."""
     write_spec(book)
     spec.main(["sign", str(book)])
     signed = capsys.readouterr().out
@@ -272,9 +236,6 @@ def test_sign_refuses_a_spec_that_does_not_parse(book, capsys):
     assert spec.main(["sign", str(book)]) == 1
     assert not spec.signoff_path(book).exists()
     assert "{#id}" in capsys.readouterr().err
-
-
-# --- status --------------------------------------------------------------
 
 
 def test_status_refuses_an_outline_nobody_has_signed_off(book, capsys):
@@ -316,11 +277,6 @@ def test_a_signoff_file_nothing_wrote_a_digest_into_reads_as_unsigned(book, caps
     assert "not signed off" in capsys.readouterr().out
 
 
-# --- per-chapter sign-off ------------------------------------------------
-
-# Two chapters, so "did *this* chapter move?" is a question with a wrong
-# answer available. A single-chapter spec cannot tell a per-chapter digest
-# apart from a whole-book one.
 TWO_CHAPTERS = """# Composable Digital Twins
 
 ## Part I: Foundations {#part-foundations}
@@ -340,7 +296,6 @@ Establish who pays, and for which half.
 
 
 def edit_one_chapter(text):
-    """Revise chapter 2's brief and nothing else."""
     return text.replace("Establish who pays", "Establish precisely who pays")
 
 
@@ -359,7 +314,6 @@ def test_sign_records_a_digest_for_every_chapter(book):
 
 
 def test_a_signoff_without_chapter_lines_records_nothing_per_chapter(book):
-    """The retrofitted books already on disk: signed before this existed."""
     write_spec(book, TWO_CHAPTERS)
     spec.signoff_path(book).write_text(
         f"# Sign-off\n\n- spec digest: `{spec.digest(TWO_CHAPTERS)}`\n", encoding="utf-8"
@@ -368,8 +322,6 @@ def test_a_signoff_without_chapter_lines_records_nothing_per_chapter(book):
 
 
 def test_a_part_after_the_last_chapter_closes_that_chapters_span():
-    """A part heading ends the chapter above it, so the last chapter is
-    recorded even when nothing follows it but a `##`."""
     digests = spec.chapter_digests(TWO_CHAPTERS + "\n## Part II: Later {#part-later}\n")
     assert sorted(digests) == ["ch-cost", "ch-what"]
     assert digests["ch-what"] == spec.chapter_digests(TWO_CHAPTERS)["ch-what"]
@@ -385,9 +337,6 @@ def test_status_says_which_chapter_left_the_outline(book, capsys):
 
 
 def test_status_says_so_when_the_edit_is_outside_every_chapter(book, capsys):
-    """A preamble edit moves the file's digest but no chapter's. Saying
-    that is the difference between "re-read fifteen chapters" and
-    "re-approve; nothing you wrote has moved"."""
     write_spec(book, TWO_CHAPTERS)
     spec.main(["sign", str(book)])
     write_spec(book, TWO_CHAPTERS.replace("# Composable Digital Twins", "# Composable Twins"))
@@ -407,8 +356,6 @@ def test_status_names_no_chapters_for_a_signoff_written_before_they_existed(book
     assert spec.main(["status", str(book)]) == 1
     out = capsys.readouterr().out
     assert "changed since sign-off" in out
-    # Nothing per-chapter is claimed either way: the file on disk records
-    # no chapter digests, so there is no finer answer to give.
     assert "chapters changed:" not in out
     assert "no chapter changed" not in out
 
@@ -422,9 +369,6 @@ def test_status_names_only_the_chapter_that_moved(book, capsys):
     out = capsys.readouterr().out
     assert "ch-cost" in out
     assert "ch-what" not in out
-
-
-# --- #506: what the digest covers, and what the sign-off can be read back as
 
 
 FENCED_CHAPTER = """# Composable Digital Twins
@@ -445,21 +389,12 @@ model + live link
 
 
 def test_an_edit_inside_a_fenced_block_moves_its_chapters_digest():
-    """M-27: the digest is taken over the raw slice, fences included.
-
-    Digesting the prose-only view left an edit inside a brief's fenced
-    example invisible, so `unit accept` went ahead against outline text
-    nobody signed.
-    """
     before = spec.chapter_digests(FENCED_CHAPTER)
     after = spec.chapter_digests(FENCED_CHAPTER.replace("model + live link", "model + a link"))
     assert before["ch-what"] != after["ch-what"]
 
 
 def test_a_heading_inside_a_fence_still_does_not_open_a_chapter():
-    """The other half of M-27: headings are found through the prose-only
-    view even though the span digested is the raw one, so the `###` line
-    inside the fenced block above is text, not a second chapter."""
     assert sorted(spec.chapter_digests(FENCED_CHAPTER)) == ["ch-what"]
 
 
@@ -467,18 +402,12 @@ COLON_ID = TWO_CHAPTERS.replace("{#ch-what}", "{#ch:what}")
 
 
 def test_a_chapter_id_with_a_colon_is_refused_as_a_filename(book):
-    """Was m-63's "a colon in an id signs off and reads back". Issue 820
-    withdraws it: the id becomes `ch:what.json` under content/specs/, and
-    on the Windows leg that names an alternate data stream on a file
-    called `ch` rather than the record anybody meant to write."""
     write_spec(book, COLON_ID)
     assert any("ch:what" in problem for problem in spec.parse(COLON_ID)["problems"])
     assert spec.main(["sign", str(book)]) == 1
 
 
 def test_a_hand_written_chapter_line_without_backticks_is_still_read(book):
-    """The bare alternative the reader keeps: a hand-edited signoff.md is
-    a supported input, and there a colon is the field separator."""
     write_spec(book, TWO_CHAPTERS)
     digests = spec.chapter_digests(TWO_CHAPTERS)
     spec.signoff_path(book).write_text(
@@ -490,15 +419,6 @@ def test_a_hand_written_chapter_line_without_backticks_is_still_read(book):
     assert spec.recorded_chapter_digests(book) == {"ch-what": digests["ch-what"]}
 
 
-# --- Issue 820: an id is a path component --------------------------------
-
-
-# Every way a `{#id}` stops being one safe filename stem. The escapes
-# (`..`, a separator, an absolute path) are the defect; the rest are the
-# rest of the class the shared citekey rule already covers, including the
-# two -- a backslash and a drive letter -- that only bite on the Windows
-# leg. Empty ids are absent, not hostile: `{#}` does not match the id
-# group at all, so they are the "has no `{#id}`" problem and stay there.
 HOSTILE_IDS = [
     "..",
     ".",
@@ -517,31 +437,18 @@ HOSTILE_IDS = [
 
 @pytest.mark.parametrize("hostile", HOSTILE_IDS)
 def test_an_id_that_cannot_be_a_filename_is_named_as_a_problem(hostile):
-    """Issue 820: `unit accept` joins the id into a path under
-    content/specs/, so `{#../../../../victimdir/pwned}` wrote its
-    acceptance record outside the content tree. The id rule is now the
-    citekey rule -- the other identifier this project turns into a
-    filename -- and a bad one is reported by name, the way a missing one
-    is, rather than sanitised into something nobody wrote."""
     text = GOOD.replace("{#sec-model}", "{#" + hostile + "}")
     problems = spec.parse(text)["problems"]
-    # Backticked, so `.` does not match every sentence with a full stop
-    # and `con` does not match "cannot": the id has to be *named*.
     assert any(f"`{hostile}`" in problem for problem in problems), problems
 
 
 def test_a_refused_id_contributes_no_unit_but_the_rest_of_the_spec_still_parses():
-    """The collect-every-problem shape is kept: one unusable id does not
-    cost the reader the other problems, or the units that are fine."""
     parsed = spec.parse(GOOD.replace("{#sec-model}", "{#../x}"))
     assert [unit["id"] for unit in parsed["units"]] == [
         "part-foundations",
         "ch-what",
         "sec-data",
     ]
-
-
-# --- the entry point -----------------------------------------------------
 
 
 def test_the_verb_is_reachable_through_the_drafting_layers_front_door(book, capsys):

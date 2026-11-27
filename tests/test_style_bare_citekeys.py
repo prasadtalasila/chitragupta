@@ -1,11 +1,3 @@
-"""chitragupta/style_bare_citekeys.py: a ledger citekey printed raw (#1119).
-
-The negatives are the measured ones: over 77 real drafts a plain token
-match found 786 bare keys and 785 were the References section's
-`` [n] entry `key` `` labels or keys inside `<!-- single-source -->`
-comments, neither of which a reader ever sees.
-"""
-
 import pytest
 
 from chitragupta import ledger, style_bare_citekeys
@@ -86,8 +78,6 @@ class TestWhatAReaderNeverSees:
         assert found(draft) == [(1, "doe_2024-1", "edit")]
 
     def test_an_emphasised_key_is_still_reported(self, corpus, tmp_path):
-        # PANDOC_KEY may open with `*`, so `*doe_2024*` matched as
-        # `*doe_2024` and was never looked up (final review).
         draft = draft_with("Emphasis *doe_2024* and **gil_survey_2024**.\n", tmp_path)
         assert found(draft) == [(1, "doe_2024", "edit"), (1, "gil_survey_2024", "edit")]
 

@@ -1,10 +1,3 @@
-"""Tests for chitragupta/draft_diff's change report as Markdown and JSON.
-
-Every report here is built by hand from `SectionChange`s and
-`FigureChange`s, so each test states exactly what the writer is given
-and reads only what it writes.
-"""
-
 import json
 import re
 
@@ -47,7 +40,6 @@ def _report(**fields):
 
 
 def _summary(markdown):
-    """The summary paragraph as it renders: its soft line breaks as spaces."""
     lines = markdown.splitlines()
     return " ".join(lines[2 : lines.index("", 2)])
 
@@ -60,8 +52,6 @@ def test_markdown_sections_in_order_and_summary_counts():
     markdown = to_markdown(_report())
     lines = markdown.splitlines()
     assert lines[0] == "# Changes since 004 · shorten §4 · 2026-11-12 — review copy"
-    # 82 words; of the new draft's 5 sections 3 differ, and the removed
-    # one is counted on its own.
     summary = (
         "82 words changed in 3 of 5 sections, 1 removed"
         " · citekeys +1 −1 · figures 1 redrawn, 1 added"
@@ -89,7 +79,6 @@ def test_markdown_sections_in_order_and_summary_counts():
     assert "- `pipeline`: redrawn (tikz only)" in lines
     assert "- `loop`: added" in lines
     assert "- `ghost`: missing in new" in lines
-    # Needs a log entry: added and moved sections no entry names, in order.
     tail = lines[lines.index("## Needs a log entry") :]
     assert tail == ["## Needs a log entry", "", "- added: 3. Results", "- moved: 4. Discussion"]
     assert markdown.endswith("\n") and not markdown.endswith("\n\n")
@@ -256,7 +245,6 @@ def test_markdown_with_no_sections_says_so():
     assert lines[lines.index("## Sections") :][:3] == ["## Sections", "", "No sections."]
 
 
-# Every report shape the tests above build, for the blank-line check.
 _SHAPES = [
     {},
     {"figures": None},
@@ -278,12 +266,9 @@ _SHAPES = [
 
 @pytest.mark.parametrize("fields", _SHAPES)
 def test_markdown_never_has_two_blank_lines_in_a_row(fields):
-    # markdownlint's MD012; a section with an empty body is how it slips in.
     assert "\n\n\n" not in to_markdown(_report(**fields))
 
 
 @pytest.mark.parametrize("fields", _SHAPES)
 def test_markdown_summary_and_rows_fit_80_columns(fields):
-    # markdownlint's MD013, for every line the writer itself composes; a
-    # long heading title in the draft is the one thing it cannot shorten.
     assert max(map(len, to_markdown(_report(**fields)).splitlines())) <= 80

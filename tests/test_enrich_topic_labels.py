@@ -1,10 +1,3 @@
-"""chitragupta/enrich/topic_labels.py: what a topic is called.
-
-The distinction these tests exist to hold: this module changes *labels*
-and never *clustering*. Topics are formed from document embeddings, which
-never see the author-name list.
-"""
-
 import json
 
 
@@ -15,8 +8,6 @@ from chitragupta.enrich import topic_labels
 
 
 def add_item(con, citekey, author=None, bib_fields=...):
-    """One ledger row. `last_synced` is NOT NULL, so it is supplied here
-    rather than left to the caller of every test below."""
     if bib_fields is ...:
         bib_fields = json.dumps({"author": author}) if author is not None else None
     con.execute(
@@ -29,15 +20,11 @@ def add_item(con, citekey, author=None, bib_fields=...):
 
 class TestAuthorNames:
     def test_surname_and_given_name_both_excluded(self, ledger_con):
-        """Excluding only surnames would leave `werner` free to label a
-        topic, and `werner kritzinger` is the label that motivated this."""
         add_item(ledger_con, "a_2020", "Kritzinger, Werner")
         names = topic_labels.author_names(ledger_con)
         assert {"kritzinger", "werner"} <= names
 
     def test_both_bibtex_name_orders_are_read(self, ledger_con):
-        """`Kritzinger, Werner` and `Werner Kritzinger` both occur in real
-        .bib files, sometimes in the same file."""
         add_item(ledger_con, "a_2020", "Kritzinger, Werner")
         add_item(ledger_con, "b_2021", "Rainer Drath")
         names = topic_labels.author_names(ledger_con)
@@ -51,8 +38,6 @@ class TestAuthorNames:
         assert {"kapteyn", "knezevic", "willcox", "karen"} <= names
 
     def test_initials_are_not_names(self, ledger_con):
-        """`G.` and `J.` carry no person and would only shrink the label
-        vocabulary."""
         add_item(ledger_con, "a_2020", "Kapteyn, Michael G.")
         assert "g" not in topic_labels.author_names(ledger_con)
 
@@ -63,8 +48,6 @@ class TestAuthorNames:
         assert not any("{" in n or "." in n for n in names)
 
     def test_a_ledger_with_no_bib_fields_yields_nothing(self, ledger_con):
-        """The honest answer for a corpus synced before that column
-        existed: leave labelling as it was rather than degrade it."""
         add_item(ledger_con, "a_2020", None)
         assert topic_labels.author_names(ledger_con) == frozenset()
 
@@ -80,10 +63,6 @@ class TestAuthorNames:
 
 class TestStopWords:
     def test_function_words_and_author_names_are_one_list(self, ledger_con):
-        """`CountVectorizer.stop_words` drops tokens *before* n-grams are
-        assembled, so excluding both halves of a name also prevents the
-        bigram from forming. Filtering finished labels instead would have
-        to catch every n-gram the pair appears in."""
         add_item(ledger_con, "a_2020", "Kritzinger, Werner")
         words = set(topic_labels.stop_words(ledger_con))
         assert "the" in words
@@ -103,9 +82,6 @@ class TestStopWords:
         assert "kritzinger" not in words
 
     def test_the_list_is_sorted_so_runs_are_reproducible(self, ledger_con):
-        """A set's iteration order is not stable across processes, and a
-        vectorizer built from an unstable list is a topic model whose
-        labels can move without its inputs moving."""
         add_item(ledger_con, "a_2020", "Kritzinger, Werner")
         words = topic_labels.stop_words(ledger_con)
         assert words == sorted(words)
@@ -113,9 +89,6 @@ class TestStopWords:
 
 class TestVectorizer:
     def test_it_reads_two_word_terms(self, ledger_con):
-        """The terms that name a topic here are largely two words --
-        `digital twin`, `mqtt v5` -- and a unigram vocabulary describes
-        them with halves."""
         assert topic_labels.vectorizer(ledger_con).ngram_range == (1, 2)
 
     def test_single_document_terms_are_dropped(self, ledger_con):
@@ -126,8 +99,6 @@ class TestVectorizer:
         assert "kritzinger" in set(topic_labels.vectorizer(ledger_con).stop_words)
 
     def test_a_name_cannot_become_a_label(self, ledger_con):
-        """End to end through sklearn, not just the configuration: the
-        bigram must be absent from the fitted vocabulary."""
         add_item(ledger_con, "a_2020", "Kritzinger, Werner")
         vec = topic_labels.vectorizer(ledger_con)
         vec.fit(
@@ -142,33 +113,21 @@ class TestVectorizer:
 
 
 class TestCitationNoise:
-    """Scaffolding that survives `content_text()` because it appears
-    mid-sentence. Measured: it named two of this corpus's twenty largest
-    topics -- `et al` and a DOI fragment -- before this list existed."""
-
     def test_citation_scaffolding_cannot_label_a_topic(self, ledger_con):
         words = set(topic_labels.stop_words(ledger_con))
         assert {"et", "al", "doi", "www", "arxiv"} <= words
 
     def test_real_terms_that_look_like_scaffolding_survive(self, ledger_con):
-        """`table` is a real term in a database paper and `figure` in a
-        rendering one, so neither is on the list."""
         words = set(topic_labels.stop_words(ledger_con))
         for term in ("table", "figure", "section", "model"):
             assert term not in words
 
     def test_it_applies_even_with_author_exclusion_off(self, ledger_con, monkeypatch):
-        """The two lists answer different questions: one is about this
-        corpus's people, the other about every corpus's boilerplate."""
         monkeypatch.setattr(config, "TOPIC_EXCLUDE_AUTHOR_NAMES", False)
         assert "et" in set(topic_labels.stop_words(ledger_con))
 
 
 class TestTheConnectionIsClosedWhenItIsOwned:
-    """m-80 (#511): `con = ledger.connect() if con is None else con`
-    opened a connection this function owned and never closed it, so every
-    call without one passed in leaked a handle."""
-
     def test_a_connection_opened_here_is_closed_here(self, ledger_con, monkeypatch):
         from chitragupta import ledger
 
@@ -187,7 +146,5 @@ class TestTheConnectionIsClosedWhenItIsOwned:
             opened[0].execute("SELECT 1")
 
     def test_a_connection_passed_in_is_left_open(self, ledger_con):
-        """The caller owns what the caller opened, so this must not close
-        a connection it was handed."""
         topic_labels.author_names(ledger_con)
         assert ledger_con.execute("SELECT 1").fetchone() == (1,)

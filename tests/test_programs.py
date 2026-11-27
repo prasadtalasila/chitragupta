@@ -1,17 +1,3 @@
-"""`chitragupta/programs.py`: a launched program comes from PATH, never cwd (#974).
-
-The class this closes is program resolution that can pick up the current
-directory. On Windows `shutil.which` prepends `.` to the search, and
-`CreateProcess`, which `subprocess.run([name, ...])` uses, searches the
-current directory before PATH; on any host a relative or empty PATH
-entry does the same. Either way a `python.exe` planted in a cloned
-project ran with the user's privileges. The cases below plant programs
-in a temporary cwd. `tests/test_bare_launch_scan.py` is the other half:
-it enumerates every launch in the package and the hooks, so a new one
-that hands `subprocess.run` a bare name fails there rather than in a
-review.
-"""
-
 import os
 import shutil
 import stat
@@ -23,8 +9,6 @@ import pytest
 from chitragupta import programs
 
 
-# Every spelling a Windows lookup tries for `python` (PATHEXT), plus the
-# bare one a POSIX lookup tries.
 _PLANTED = ("python", "python.exe", "python.bat", "python.cmd")
 
 
@@ -36,8 +20,6 @@ def _executable(path: Path) -> Path:
 
 @pytest.fixture
 def planted(tmp_path, monkeypatch):
-    """A cwd holding every spelling of `python`, and a PATH that names the
-    cwd both ways a relative entry can: `.` and an empty entry."""
     project = tmp_path / "project"
     project.mkdir()
     for name in _PLANTED:
@@ -53,8 +35,6 @@ class TestResolveProgram:
         assert found is None or not Path(found).resolve().is_relative_to(planted)
 
     def test_the_planted_shape_is_what_shutil_which_returns(self, planted):
-        """The guard is tested against the shape it was blind to: the
-        plain lookup this replaced does pick the planted file."""
         assert Path(shutil.which("python")).resolve().is_relative_to(planted)
 
     def test_an_absolute_path_entry_is_searched(self, tmp_path, monkeypatch):
@@ -68,8 +48,6 @@ class TestResolveProgram:
         assert Path(found).is_absolute()
 
     def test_windows_looks_for_the_exe_createprocess_would_run(self, monkeypatch):
-        """Not the first PATHEXT match: a `.bat` would run through
-        cmd.exe, which re-parses the arguments."""
         monkeypatch.setattr(programs.sys, "platform", "win32")
         monkeypatch.setenv("PATH", os.path.abspath(os.sep))
         searched = []
@@ -110,9 +88,6 @@ class TestRequireProgram:
         assert programs.require_program("pdftotext") == "/usr/bin/pdftotext"
 
     def test_a_missing_program_raises_what_subprocess_would_have(self, monkeypatch):
-        """FileNotFoundError, as `subprocess.run(["pdftotext", ...])`
-        raises for a missing program, so every caller's existing
-        `except OSError` keeps its meaning."""
         monkeypatch.setattr(programs, "resolve_program", lambda name: None)
         with pytest.raises(FileNotFoundError, match="pdftotext"):
             programs.require_program("pdftotext")

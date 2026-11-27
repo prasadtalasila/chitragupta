@@ -1,6 +1,3 @@
-"""chitragupta/references.py: auto-generated References sections, built only
-from citekeys a draft already cites (never inventing one)."""
-
 import sys
 
 import pytest
@@ -19,10 +16,6 @@ from tests.conftest import content_draft, make_reference, run_python
 
 class TestUsedCitekeys:
     def test_dedupes_and_keeps_first_appearance_order(self):
-        # Not sorted: the numbers this list gets have to match the ones
-        # pandoc's citeproc assigns, and citeproc numbers by first
-        # appearance. Sorted order would put apple2024 first here and
-        # disagree with the rendered PDF.
         text = "[@zebra2024] and \\citep{apple2024} and [@zebra2024] again"
         assert references.used_citekeys(text) == ["zebra2024", "apple2024"]
 
@@ -30,14 +23,11 @@ class TestUsedCitekeys:
         assert references.used_citekeys("just prose") == []
 
     def test_a_commented_out_latex_citation_is_not_used(self):
-        """#873: `%` opens a comment in LaTeX, and is prose in Markdown."""
         text = "\\citep{zebra2024}\n% Dropped: \\citep{apple2024}\n"
         assert references.used_citekeys(text, latex=True) == ["zebra2024"]
         assert references.used_citekeys("30% [@apple2024]") == ["apple2024"]
 
     def test_ignores_a_citekey_inside_a_code_span(self):
-        # This is what lets build_section label each entry with `key`
-        # without those labels reading back as citations on a re-run.
         assert references.used_citekeys("[1] A Paper, 2024. `ghost2024`") == []
 
 
@@ -63,9 +53,6 @@ class TestHasSection:
         assert not references_section.has_section("See the references cited above.\n")
 
     def test_no_match_for_a_heading_inside_a_code_fence(self):
-        # A tutorial that shows a "## References" line in an example
-        # would otherwise have everything below it replaced by apply()
-        # and stripped from the render.
         draft = "# Lesson\n\n```markdown\n## References\n- an example\n```\n\nMore lesson.\n"
         assert not references_section.has_section(draft)
 
@@ -89,16 +76,9 @@ class TestHasSection:
             "###### References",
             "## 6. References",
             "## 6) References",
-            # A book numbers headings per chapter, so every chapter of a
-            # book-length draft ends in one of these. Before multi-level
-            # numbers were matched, section_start returned None for all of
-            # them and the whole bibliography stayed in the draft.
             "## 1.14 References",
             "### 12.14 References",
             "## 1.2.3.4 References",
-            # #951: the claims and typeset readers already took these, so a
-            # draft headed `## Bibliography` kept its hand-built entries
-            # beside citeproc's and had its bibliography verbatim-scanned.
             "## Bibliography",
             "## Works cited",
             "## Works Cited",
@@ -114,9 +94,6 @@ class TestHasSection:
         "heading",
         [
             "## Introduction",
-            # Ends in the word but is not the bibliography. apply() replaces
-            # everything below the index and render_output strips it, so an
-            # over-matching pattern silently truncates a document.
             "## 3.5 The published reference architectures",
             "## Further References",
             "## References and notes",
@@ -132,11 +109,6 @@ class TestHasSection:
 
 
 class TestSectionEnd:
-    # M-8/m-33/m-34: three consumers used to treat "the References
-    # heading" as "to end of file" -- an appendix or acknowledgments
-    # section introduced by its own heading after References is not part
-    # of it and must not be truncated, masked, or overwritten along with
-    # it.
     def test_runs_to_the_next_heading_of_any_level(self):
         draft = "## References\n\n[1] X. `k`\n\n## Appendix\n\nmore\n"
         lines = draft.splitlines(keepends=True)
@@ -146,9 +118,6 @@ class TestSectionEnd:
         assert lines[end] == "## Appendix\n"
 
     def test_a_deeper_heading_still_ends_the_section(self):
-        # References is never itself subsectioned in this project's
-        # output, so any heading after it -- even a nominally "nested"
-        # one -- belongs to whatever follows, not to References.
         draft = "## References\n\n[1] X. `k`\n\n### Acknowledgments\n\nthanks\n"
         lines = draft.splitlines(keepends=True)
         start = references_section.section_start(lines)
@@ -178,8 +147,6 @@ class TestFormatEntry:
             "2024",
             {"author": "Doe, Jane", "journal": "J. Things", "volume": "2", "pages": "1--9"},
         )
-        # One comma between title and journal, not two -- IEEE's comma
-        # lives inside the closing quote.
         assert entry == 'J. Doe, "A Study," *J. Things*, vol. 2, pp. 1–9, 2024.'
 
     def test_work_with_no_container_is_italic_and_unquoted(self):
@@ -200,11 +167,9 @@ class TestFormatEntry:
             ("Doe, Jane", "J. Doe"),
             ("Jane Doe", "J. Doe"),
             ("Doe, Jane Mary", "J. M. Doe"),
-            # IEEE initializes both halves of a hyphenated given name.
             ("Smith, Jean-Paul", "J.-P. Smith"),
             ("A, X and B, Y", "X. A and Y. B"),
             ("A, X and B, Y and C, Z", "X. A, Y. B, and Z. C"),
-            # A braced corporate author is one unit, never initialized.
             ("{IEEE Standards Association}", "IEEE Standards Association"),
         ],
     )
@@ -219,17 +184,12 @@ class TestFormatEntry:
         assert entry.startswith("F. Last0 et al.,")
 
     def test_bibtex_and_others_truncation_renders_as_et_al(self):
-        # BibTeX's own truncation marker is a literal trailing "others"
-        # name, not a real author -- it must not render as one.
         entry = references_ieee.format_entry(
             "k", "T", "2024", {"author": "Doe, Jane and others", "journal": "J"}
         )
         assert entry.startswith("J. Doe et al.,")
 
     def test_author_separator_split_across_a_wrapped_line(self):
-        # bibtexparser preserves an author field's original line wrapping
-        # in the ledger's bib_fields column, so the separator itself can
-        # fall on a line break rather than being a plain " and ".
         entry = references_ieee.format_entry(
             "k", "T", "2024", {"author": "Smith, Jane\n  and Doe, John", "journal": "J"}
         )
@@ -248,8 +208,6 @@ class TestFormatEntry:
         assert "*A Study*" in entry
 
     def test_booktitle_wins_over_journal_for_a_dual_field_entry(self):
-        # An @inbook entry can carry both; the journal-shaped field is the
-        # wrong one for it, so the container title comes from booktitle.
         entry = references_ieee.format_entry(
             "k", "A Chapter", "2024", {"journal": "J. Stray", "booktitle": "Proc. Conf."}
         )
@@ -268,8 +226,6 @@ class TestFormatEntry:
         )
 
     def test_markdown_emphasis_in_a_value_is_escaped(self):
-        # An unescaped underscore or asterisk would italicize part of the
-        # reference list, making the rendered entry differ from the bib.
         entry = references_ieee.format_entry("k", "The C_str_ and A*B Problem", "2024", {})
         assert r"C\_str\_" in entry
         assert r"A\*B" in entry
@@ -283,14 +239,10 @@ class TestFormatNumbers:
         "numbers,expected",
         [
             ([1], "[1]"),
-            # A run of two is NOT contracted -- IEEE, and the CSL style's own
-            # collapse, only contract three or more. This is what keeps the
-            # numbered Markdown byte-identical to the PDF's markers.
             ([1, 2], "[1], [2]"),
             ([3, 4, 5], "[3]–[5]"),
             ([3, 4, 5, 6], "[3]–[6]"),
             ([1, 3, 4, 5, 7], "[1], [3]–[5], [7]"),
-            # Out of order and duplicated in the source, sorted and deduped here.
             ([5, 3, 4, 3], "[3]–[5]"),
             ([9, 1], "[1], [9]"),
         ],
@@ -309,15 +261,9 @@ class TestRenumber:
             ("Pair [@a; @b].", "Pair [1], [2]."),
             ("Run [@c; @d; @e].", "Run [3]–[5]."),
             ("Mixed [@a; @c; @d; @e; @g].", "Mixed [1], [3]–[5], [7]."),
-            # Suppressed-author and bare forms are still citations.
             ("Suppressed [-@a].", "Suppressed [1]."),
             ("Bare @a here.", "Bare [1] here."),
-            # A group carrying a prefix or locator keeps its words: only the
-            # key itself is replaced, because collapsing the whole bracket
-            # would silently delete "see" and "p. 33".
             ("Locator [see @a, p. 33].", "Locator [see [1], p. 33]."),
-            # A single key with a preserved locator and no prefix word
-            # renumbers without nesting a second bracket around it.
             ("Locator [@a, p. 33].", "Locator [1, p. 33]."),
             ("Spaces [ @a ; @b ].", "Spaces [1], [2]."),
         ],
@@ -326,10 +272,6 @@ class TestRenumber:
         assert references.renumber(text, self.NUMBERS) == expected
 
     def test_a_group_holding_a_punctuated_key_renumbers_whole(self):
-        # The group regex reads citekeys with the gate's own grammar, so a
-        # key carrying internal punctuation collapses to its number rather
-        # than falling through to the per-key pass, which would leave the
-        # brackets in place and nest a second pair inside them.
         assert references.renumber("[@smith:2020]", {"smith:2020": 1}) == "[1]"
 
     def test_a_locator_group_holding_a_punctuated_key_renumbers_whole(self):
@@ -338,15 +280,8 @@ class TestRenumber:
     @pytest.mark.parametrize(
         "text,numbers,expected",
         [
-            # The gate accepts a key starting with a digit or an underscore
-            # -- `[@3dprinting_2020]` was a real one -- and the group regex
-            # now reads the same grammar, so the whole bracket collapses to
-            # the number instead of the per-key pass running inside it and
-            # nesting a second pair (`[[2]]`).
             ("[@3dprinting_2020]", {"3dprinting_2020": 2}, "[2]"),
             ("[@_internal2020]", {"_internal2020": 2}, "[2]"),
-            # The repeated `; @key` arm of the same regex, which a
-            # single-key group does not exercise.
             ("[@3dprinting_2020; @a]", {"3dprinting_2020": 2, "a": 1}, "[1], [2]"),
         ],
     )
@@ -361,10 +296,6 @@ class TestRenumber:
         )
 
     def test_a_digit_first_key_beside_an_unnumbered_punctuated_one(self):
-        # Issue 833's reproducer, whole: the digit-first group collapses to
-        # its number, and the key carrying an internal ":" is read as one
-        # key -- absent from the map, so left exactly as written rather
-        # than truncated at the colon.
         assert references.renumber(
             "[@3dprinting_2020] [@smith:2020]", {"3dprinting_2020": 2, "smith": 1}
         ) == ("[2] [@smith:2020]")
@@ -376,9 +307,6 @@ class TestRenumber:
         assert references.renumber("Bare @zzz here.", self.NUMBERS) == "Bare @zzz here."
 
     def test_an_email_address_is_not_a_citation(self):
-        # This project's own tutorial draft carries an author's email, and
-        # a citekey *could* be named `gmail`. renumber() shares the gate's
-        # regex precisely so it can never rewrite the address.
         numbers = dict(self.NUMBERS, gmail=9, example=8)
         text = "Write to <prasad.talasila@gmail.com> or name@example.com about [@a]."
         assert (
@@ -387,8 +315,6 @@ class TestRenumber:
         )
 
     def test_renumbers_exactly_what_the_gate_counts(self):
-        # The two must agree: a marker the gate verified but this left
-        # un-numbered would ship a raw citekey in the numbered copy.
         text = "A [@a]. B [-@b]. C @c. Code `[@d]`. Mail x@e.com."
         numbers = {k: i for i, k in enumerate("abcde", start=1)}
         out = references.renumber(text, numbers)
@@ -401,8 +327,6 @@ class TestRenumber:
         assert references.renumber("[@zzz, p. 33]", self.NUMBERS) == "[@zzz, p. 33]"
 
     def test_a_citation_inside_a_code_fence_is_untouched(self):
-        # A tutorial showing `[@citekey]` in an example is teaching the
-        # syntax; the gate ignores it, and so must this.
         text = "Write:\n\n```markdown\n[@a]\n```\n\nReal [@b].\n"
         assert (
             references.renumber(text, self.NUMBERS)
@@ -418,13 +342,10 @@ class TestRenumber:
     @pytest.mark.parametrize(
         "text,expected",
         [
-            # #1021: the braced form and Unicode keys read as the gate reads
-            # them, alone, mixed with a bare key and with a locator.
             ("[@{brace.one}] and @{brace_two}.", "[1] and [2]."),
             ("[@plain; @{brace.one}]", "[1], [3]"),
             ("[@{brace.one}, p. 3]", "[1, p. 3]"),
             ("[@müller_2020] and pre-@plain", "[4] and pre-[3]"),
-            # A defined example label is no citation outside brackets.
             ("(@ex) An example.\n\nSee @ex and [@ex].", "(@ex) An example.\n\nSee @ex and [5]."),
         ],
     )
@@ -433,15 +354,9 @@ class TestRenumber:
         assert references.renumber(text, numbers) == expected
 
     def test_a_comment_inside_a_group_is_kept(self):
-        # The group's shape is read from the draft, not the blanked copy,
-        # where the comment is spaces and the bracket would collapse.
         assert references.renumber("[@a <!-- n --> ]", self.NUMBERS) == "[[1] <!-- n --> ]"
 
     def test_a_locator_carrying_a_code_span_keeps_it_verbatim(self):
-        # The locator is rewritten from a code-blanked copy that has
-        # replaced every code span with spaces, purely to locate the
-        # citation -- the replacement text itself must come from the
-        # real draft, or the code span silently disappears.
         assert (
             references.renumber("See [@a, see `x`] for the flag.", self.NUMBERS)
             == "See [1, see `x`] for the flag."
@@ -467,8 +382,6 @@ class TestNumberedMarkdown:
 
         assert "One [1]. Two [2]." in out
         assert '[1] J. Doe, "B Paper," *J. Things*, 2024.' in out
-        # No citekey labels: the numbers already index the list, and the
-        # inline markers are no longer keys, so a label would be noise.
         assert "`b2024`" not in out
         assert "[@" not in out
 
@@ -510,9 +423,6 @@ class TestNumberedMarkdown:
         )
 
     def test_an_uncited_draft_keeps_a_references_section_it_already_had(self, ledger_con):
-        # Nothing to number means nothing to rebuild. Stripping the
-        # section first would silently delete a hand-written list of URLs
-        # from a document this function was asked only to renumber.
         draft = "# T\n\nJust prose.\n\n## References\n\n- A hand-written pointer\n"
         assert references.numbered_markdown(draft, ledger_con) == draft
 
@@ -523,10 +433,6 @@ class TestNumberedMarkdown:
         assert out.index("A Paper") < out.index("B Paper")
 
     def test_content_after_an_existing_section_survives(self, ledger_con):
-        # M-8: an appendix or acknowledgments introduced by its own
-        # heading after References used to vanish along with the old
-        # section -- both the md path and every pandoc render disagreed
-        # about whether it still existed.
         self._seed(ledger_con)
         draft = "One [@b2024].\n\n## References\n\n[1] old entry\n\n## Appendix\n\nSupplementary.\n"
         out = references.numbered_markdown(draft, ledger_con)
@@ -535,11 +441,6 @@ class TestNumberedMarkdown:
         assert out.index("## References") < out.index("## Appendix")
 
     def test_a_citekey_cited_only_in_the_surviving_tail_is_still_numbered(self, ledger_con):
-        # The tail is preserved verbatim by section splicing alone, but a
-        # `[@citekey]` marker there still needs the same renumbering pass
-        # the body gets -- otherwise a citekey cited only in an appendix
-        # would come back as a bare, unresolved `[@key]` in an otherwise
-        # fully numbered document.
         self._seed(ledger_con)
         draft = (
             "Body cites [@b2024].\n\n## References\n\n[1] old\n\n"
@@ -605,7 +506,6 @@ class TestBuildSection:
         assert lines[0] == "## References"
         assert "[1] *B Paper*, 2024. `b2024`" in section
         assert "[2] *A Paper*, 2023. `a2024`" in section
-        # order follows the input list, not alphabetical
         assert section.index("b2024") < section.index("a2024")
 
     def test_entry_uses_the_full_bib_fields_when_the_ledger_has_them(self, ledger_con):
@@ -621,7 +521,6 @@ class TestBuildSection:
                     "volume": "3",
                     "number": "2",
                     "pages": "11--20",
-                    # Dropped by ledger_bib_fields._BIB_FIELDS_KEPT rather than formatted.
                     "abstract": "Not part of a reference entry.",
                 },
             ),
@@ -634,8 +533,6 @@ class TestBuildSection:
         assert "abstract" not in section.lower()
 
     def test_entry_falls_back_to_title_and_year_without_bib_fields(self, ledger_con):
-        # A row synced before the bib_fields column existed: thinner, but
-        # still a true entry, and the next sync fills it in.
         ledger.upsert_reference(
             ledger_con, make_reference(citekey="bare2024", title="A Paper", year="2024")
         )
@@ -662,9 +559,6 @@ class TestBuildSection:
             references.build_section(["a2024", "fabricated2024"], ledger_con)
 
     def test_missing_citekey_raises_the_dedicated_subclass(self, ledger_con):
-        # m-60: a caller that wants to catch *this* refusal specifically
-        # (render_output._cli.main, so a genuine bug elsewhere doesn't get
-        # misreported as it) needs a type narrower than bare KeyError.
         with pytest.raises(reference_entries.MissingCitekey):
             references.build_section(["fabricated2024"], ledger_con)
 
@@ -673,9 +567,6 @@ class TestApply:
     def test_a_hand_built_bibliography_is_replaced_not_followed_by_a_second_list(
         self, isolated_config
     ):
-        # #951 / #699: section_start knew only "References", so apply()
-        # appended a fresh `## References` after a tutorial's hand-built
-        # `## Bibliography`, and the draft carried two reference lists.
         con = ledger.connect()
         ledger.upsert_reference(
             con, make_reference(citekey="smith2024", title="A Paper", year="2024")
@@ -731,16 +622,12 @@ class TestApply:
         assert first_pass.count("## References") == 1
         assert "stale entry" not in first_pass
 
-        # Re-running is idempotent: still exactly one section, same content.
         references.apply(draft)
         second_pass = draft.read_text()
         assert second_pass.count("## References") == 1
         assert second_pass == first_pass
 
     def test_content_after_an_existing_section_survives(self, isolated_config, tmp_path):
-        # M-8: apply() used to delete everything from the References
-        # heading to end of file -- an appendix introduced by its own
-        # heading right after References was not part of it.
         con = ledger.connect()
         ledger.upsert_reference(
             con, make_reference(citekey="smith2024", title="A Paper", year="2024")

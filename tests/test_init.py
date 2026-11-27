@@ -1,15 +1,3 @@
-"""`chitragupta init`: scaffold a project directory from a small, controlled
-fixture rather than this repository's own ever-growing `.claude/`/`docs/`
-tree -- the same reasoning tests/test_release.py gives for building a
-throwaway git repo instead of asserting against the real one. Two classes
-at the bottom are the exceptions: they read the real repository, because
-that is the actual thing each guards against drift -- the manifest-agreement
-test reads the pair of lists (`scripts/release.py`'s denylist, this
-module's allowlist) it exists to keep honest, and the link-resolution test
-(#352) reads the real prose, because a synthetic fixture would not contain
-the dangling links it exists to catch.
-"""
-
 from pathlib import Path
 import re
 
@@ -21,10 +9,6 @@ from tests.conftest import run_python
 
 
 def make_source(tmp_path: Path) -> Path:
-    """A tiny stand-in for SOURCE_ROOT, with one file under each of
-    init's COPY_VERBATIM entries plus the config example -- enough to
-    exercise "file", "directory with one file" and "directory with
-    nested files" without the real tree's size."""
     src = tmp_path / "source"
     (src / ".claude" / "skills" / "survey-writer").mkdir(parents=True)
     (src / ".claude" / "skills" / "survey-writer" / "SKILL.md").write_text(
@@ -53,7 +37,6 @@ def make_source(tmp_path: Path) -> Path:
 
 
 def make_agent_trees(src: Path) -> None:
-    """One file under each harness tree `init --agent` adds (#812, #900)."""
     files = {
         ".codex/hooks.json": '{"hooks": {}}',
         ".agents/skills/survey-writer/SKILL.md": "# survey, Codex wording",
@@ -90,12 +73,6 @@ class TestScaffold:
         }
 
     def test_the_acronyms_example_seeds_the_projects_own_vocabulary(self, source, tmp_path):
-        """`[style].acronyms` ships pointing at `content/acronyms.toml`
-        and `[retrieval].acronym_expansion` ships on, so the file has to
-        be there: a live setting reading a path that does not exist is
-        discoverable only by someone who reads config.toml's comments.
-        Seeded from the same example a checkout user is told to copy by
-        hand, so both routes start from one file."""
         dest = tmp_path / "project"
         init.scaffold(dest)
         assert (dest / "content" / "acronyms.toml").read_text(encoding="utf-8") == (
@@ -103,9 +80,6 @@ class TestScaffold:
         ).read_text(encoding="utf-8")
 
     def test_a_projects_acronyms_file_survives_a_rerun(self, source, tmp_path):
-        """The file a user has since grown -- by hand or through
-        `acronyms-suggest --apply` -- is their data, and `init` is
-        re-runnable by design."""
         dest = tmp_path / "project"
         init.scaffold(dest)
         (dest / "content" / "acronyms.toml").write_text('MINE = "my own"\n', encoding="utf-8")
@@ -130,11 +104,6 @@ class TestScaffold:
         assert got.read_text(encoding="utf-8") == "# survey"
 
     def test_pycache_is_never_copied(self, source, tmp_path):
-        """Not disk cruft from a checkout -- `pip install` byte-compiles
-        every `.py` file it installs, including `.claude/hooks/*.py`
-        (site-packages data, not part of the `chitragupta` package), so
-        an installed SOURCE_ROOT can carry a fresh `__pycache__` the very
-        first time `init` runs (#263, measured against a real wheel)."""
         pycache = source / ".claude" / "hooks" / "__pycache__"
         pycache.mkdir()
         (pycache / "session_start_hook.cpython-313.pyc").write_bytes(b"\x00")
@@ -168,9 +137,6 @@ class TestScaffold:
         assert any("overwrote" in line and "AGENTS.md" in line for line in report)
 
     def test_force_never_deletes_a_file_the_manifest_does_not_own(self, source, tmp_path):
-        """Never destroys: `--force` overwrites what it ships, and must
-        not touch a skill the user added themselves under the same
-        directory it is also writing into."""
         dest = tmp_path / "project"
         init.scaffold(dest)
         mine = dest / ".claude" / "skills" / "my-own-skill" / "SKILL.md"
@@ -186,8 +152,6 @@ class TestScaffold:
         assert any("would create" in line for line in report)
 
     def test_dry_run_reports_the_same_tree_a_real_run_writes(self, source, tmp_path):
-        """From the same manifest, not a second, hand-maintained listing
-        of it -- so the two cannot drift apart from each other."""
         dry_dest = tmp_path / "dry"
         real_dest = tmp_path / "real"
         dry_report = init.scaffold(dry_dest, dry_run=True)
@@ -243,11 +207,6 @@ class TestMain:
 
 
 class TestManifestAgreesWithTheReleaseZip:
-    """The pin the module docstring describes: `scripts/release.py`'s
-    `EXCLUDE_TOP_LEVEL` denylist and this module's `TOP_LEVEL` allowlist
-    must agree, modulo `DELIBERATE_DIFFERENCES` -- read against the real
-    repository, which is the actual pair of lists at risk of drifting."""
-
     def test_the_named_differences_are_exactly_the_gap(self):
         zip_top_level = {
             p.split("/", 1)[0] for p in release.tracked_files()
@@ -258,18 +217,6 @@ class TestManifestAgreesWithTheReleaseZip:
 
 
 class TestScaffoldedDocLinksResolve:
-    """#352: `init` copies `docs/`, `AGENTS.md`, `CLAUDE.md`, `SOUL.md`,
-    `README.md` and `DOCKER.md` verbatim, and those documents
-    cross-reference each other by relative Markdown link. Four targets
-    in `DELIBERATE_DIFFERENCES` -- `DEVELOPER-AGENTS.md`, `DEVELOPER.md`,
-    `DOCKER-DEVELOPER.md`, `plans/` -- are deliberately not copied, so a
-    link to any of them from something that *is* copied dangles in a
-    scaffolded project even though it resolves fine in this checkout.
-    Reads the real `SOURCE_ROOT` rather than the `source` fixture's tiny
-    tree, because a synthetic fixture would not contain the prose this
-    exists to check."""
-
-    # Same shape as scripts/release.py's own `_rewrite_link` pattern.
     LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
     def test_every_relative_markdown_link_resolves(self, tmp_path):
@@ -302,12 +249,6 @@ class TestScaffoldedDocLinksResolve:
 
 
 class TestAnIncompleteInstallationRefuses:
-    """m-37 (#509). `_write_tree` on an absent source `rglob`s nothing and
-    returns `[]`, so a wheel built without `.claude/` scaffolded a project
-    with **no citation-gate hook**, printed a report that simply did not
-    mention it, and exited 0. A partial scaffold is worse than none: the
-    user has no reason to look."""
-
     def test_a_missing_source_refuses_before_writing_anything(self, tmp_path, monkeypatch):
         monkeypatch.setattr(init, "SOURCE_ROOT", tmp_path / "nowhere")
         dest = tmp_path / "project"
@@ -328,8 +269,6 @@ class TestAnIncompleteInstallationRefuses:
         assert ".claude" not in message
 
     def test_dry_run_refuses_too(self, tmp_path, monkeypatch):
-        """A `--dry-run` that printed a tree the real run could not write
-        would be the same lie one step earlier."""
         monkeypatch.setattr(init, "SOURCE_ROOT", tmp_path / "nowhere")
         with pytest.raises(init.ScaffoldSourceMissing):
             init.scaffold(tmp_path / "project", dry_run=True)
@@ -341,13 +280,6 @@ class TestAnIncompleteInstallationRefuses:
 
 
 class TestADirectoryThatWouldShadowThePackageRefuses:
-    """#822. A hook's children put the project root first on `sys.path`,
-    so a `chitragupta/` or `chitragupta.py` there would be imported in
-    place of the installed package. `init` scaffolds neither, so one
-    already present was put there by someone else -- and scaffolding the
-    hooks around it would arm it. The hooks refuse it at launch too; this
-    is the earlier, louder half."""
-
     @pytest.mark.parametrize("name", ["chitragupta", "chitragupta.py"])
     def test_refuses_before_writing_anything(self, source, tmp_path, name):
         dest = tmp_path / "project"
@@ -363,9 +295,6 @@ class TestADirectoryThatWouldShadowThePackageRefuses:
 
     @pytest.mark.parametrize("flags", [{"force": True}, {"dry_run": True}])
     def test_neither_force_nor_dry_run_gets_past_it(self, source, tmp_path, flags):
-        """`--force` is exactly what someone reaches for over an existing
-        tree, and a dry run that printed a tree the real run refuses would
-        be the same lie one step earlier."""
         dest = tmp_path / "project"
         (dest / "chitragupta").mkdir(parents=True)
         with pytest.raises(init.ScaffoldTargetUnsafe):
@@ -379,18 +308,10 @@ class TestADirectoryThatWouldShadowThePackageRefuses:
         assert "chitragupta.py" in capsys.readouterr().err
 
 
-# A run of the package, or any `-c` snippet, not already preceded by `-P`.
 UNSAFE_RUN = re.compile(r"(?<!-P)\s(-m\s+chitragupta\b|-c\s)")
 
 
 class TestScaffoldedProseSaysDashP:
-    """#891. A `chitragupta/` committed to a scaffolded project *after*
-    `init` is beyond the refusal above, and a skill's `python -m
-    chitragupta.draft gate` would import it from the project directory.
-    So the prose `init` writes says `python -P`, which keeps that
-    directory off `sys.path` -- a property of the text the install
-    wrote, so it holds whatever the plant's age or contents."""
-
     COMMANDS = (
         "Run `python -m chitragupta.draft gate x.md`, then `python\n"
         "  -m chitragupta.corpus sync`, or `.venv-full/bin/python -m chitragupta.review`"
@@ -430,9 +351,6 @@ class TestScaffoldedProseSaysDashP:
             assert (dest / rel).read_text(encoding="utf-8") == self.COMMANDS, rel
 
     def test_force_overwrites_with_the_same_rewrite(self, commands, tmp_path):
-        """A file edited back to plain `-m` is rewritten again on
-        `--force`, and text already carrying `-P` (the last clause of
-        `COMMANDS`) is not given a second one."""
         dest = tmp_path / "project"
         init.scaffold(dest)
         skill = dest / self.REWRITTEN[0]
@@ -450,9 +368,6 @@ class TestScaffoldedProseSaysDashP:
         )
 
     def test_no_real_scaffolded_prose_keeps_a_plain_run(self, tmp_path):
-        """Against the real tree, every harness: catches an invocation
-        shape `MODULE_FORM` does not know (`"$PY" -m chitragupta...`)
-        the day the prose first uses one."""
         dest = tmp_path / "project"
         init.scaffold(dest, agents=tuple(init.AGENT_TREES))
         unsafe = [
@@ -464,11 +379,6 @@ class TestScaffoldedProseSaysDashP:
         assert not unsafe, "\n".join(unsafe)
 
     def test_a_package_planted_after_init_is_not_what_a_skill_runs(self, tmp_path):
-        """End to end, the shape #891 names: scaffold, then commit a
-        `chitragupta/` to the project, then run a skill's command from
-        the project root, exactly as the scaffolded survey skill words
-        it. Plain `-m` would import the plant (the control below); the
-        skill's own `-P` form imports the real package."""
         dest = tmp_path / "project"
         init.scaffold(dest)
         skill = (dest / ".claude/skills/survey-writer/SKILL.md").read_text(encoding="utf-8")
@@ -487,9 +397,6 @@ class TestScaffoldedProseSaysDashP:
 
 
 class TestAgents:
-    """`--agent claude|codex|opencode` (#812, #900): the shared core for
-    every harness, plus each named harness's launcher."""
-
     def test_the_default_is_claude_and_unchanged(self, source, tmp_path):
         assert init.scaffold(tmp_path / "a") == [
             line.replace(str(tmp_path / "b"), str(tmp_path / "a"))
@@ -497,8 +404,6 @@ class TestAgents:
         ]
 
     def test_codex_gets_its_own_skills_where_it_reads_them(self, source, tmp_path):
-        """Codex reads `.agents/skills/` only; without that tree a Codex
-        project offers the model no skill at all (measured, #812)."""
         init.scaffold(tmp_path, agents=("codex",))
         copied = tmp_path / ".agents" / "skills" / "survey-writer" / "SKILL.md"
         assert copied.read_text(encoding="utf-8") == "# survey, Codex wording"
@@ -509,8 +414,6 @@ class TestAgents:
         assert (tmp_path / ".opencode" / "opencode.json").is_file()
 
     def test_no_harness_gets_a_developer_only_skill(self, source, tmp_path):
-        """#1188: in an editable install SOURCE_ROOT is the checkout, so
-        the wheel leaving the skill out does not keep it out of a project."""
         marked = "---\nname: {}\nmetadata:\n  audience: developer\n---\n"
         for rel in (
             ".claude/skills/demo-recorder",
@@ -527,9 +430,6 @@ class TestAgents:
         assert (project / ".agents" / "skills" / "survey-writer" / "SKILL.md").is_file()
 
     def test_a_checkouts_worktrees_are_never_scaffolded(self, source, tmp_path):
-        """#1188: Claude Code keeps a checkout's worktrees under
-        `.claude/worktrees/`, each a whole checkout with its own copy of
-        the developer-only skill, which the marker scan does not reach."""
         nested = source / ".claude" / "worktrees" / "wt" / ".claude" / "skills" / "x"
         nested.mkdir(parents=True)
         (nested / "SKILL.md").write_text("# x", encoding="utf-8")
@@ -574,8 +474,6 @@ class TestAgents:
         assert not (tmp_path / "p").exists()
 
     def test_a_source_missing_an_agent_tree_is_refused(self, source, tmp_path):
-        """#509's lesson for a harness: a wheel built without `.codex/`
-        must not scaffold a Codex project with no gate launcher."""
         import shutil
 
         shutil.rmtree(source / ".codex")
@@ -585,11 +483,6 @@ class TestAgents:
 
 
 class TestSkillReferencesReachEveryHarness:
-    """#997. A skill's references exist once, under `.claude/`, and the
-    Codex and OpenCode copies of `SKILL.md` point there by path. That
-    holds only while `.claude/` is scaffolded for every `--agent`, so
-    pin it against the real tree, one agent at a time."""
-
     REFERENCES = (
         ".claude/skills/deep-research/references/report.md",
         ".claude/skills/figure-drawer/references/figures.md",

@@ -1,13 +1,3 @@
-"""chitragupta/_json_cache.py: the memoised, versioned JSON file both
-retrieval caches keep their per-item stats in (#851).
-
-The retrieval-specific halves -- what an item's fingerprint is, and how
-an entry is rebuilt -- stay in `retrieval_cache.py` and
-`retrieval_passages_cache.py` and are tested there. This file pins the
-shared plumbing: the per-process memo, its stamp, the version check and
-the atomic write.
-"""
-
 import json
 
 from chitragupta._json_cache import MemoisedJson
@@ -70,10 +60,6 @@ class TestTheMemo:
         assert cache.load() == {"c": 3}
 
     def test_the_path_is_part_of_the_stamp(self, tmp_path):
-        """A path getter, not a path: the retrieval caches' paths are
-        `config` attributes that move between test trees, and a memo
-        keyed on size and mtime alone could carry one tree's index into
-        another's."""
         where = {"path": tmp_path / "one.json"}
         cache = MemoisedJson(lambda: where["path"], 1)
         cache.save({"a": 1})

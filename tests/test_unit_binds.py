@@ -1,11 +1,3 @@
-"""What `unit accept` refuses once alignment exists, and what `status` says.
-
-Now that a chapter is both the authored document and the acceptance unit,
-the chapter being accepted is the very file `spec align` reads -- so
-"these headings drifted" and "this is what you are accepting" are two
-statements about one artifact rather than two.
-"""
-
 import json
 
 
@@ -48,7 +40,6 @@ More prose.
 """
 
 
-# conftest's `book` writes this as the outline.
 BOOK_SPEC = SPEC
 
 
@@ -58,9 +49,6 @@ def write(book, name, text):
 
 def accept(book, unit_id):
     return unit.main(["accept", str(book), unit_id, "--source", "smith_example_2024"])
-
-
-# --- alignment binds acceptance ------------------------------------------
 
 
 def test_accept_refuses_a_chapter_whose_headings_drifted(book, example_ledger, capsys):
@@ -81,8 +69,6 @@ def test_accept_takes_a_chapter_that_aligns(book, example_ledger, capsys):
 
 
 def test_another_chapter_being_unwritten_does_not_block_this_one(book, example_ledger, capsys):
-    """A book is drafted chapter by chapter. `align` reports `ch-cost` as
-    not written yet, and that must not hold up the chapter that is."""
     spec.main(["sign", str(book)])
     write(book, "ch-what", CHAPTER)
     capsys.readouterr()
@@ -100,9 +86,6 @@ def test_reordered_sections_are_named_in_the_refusal(book, example_ledger, capsy
     capsys.readouterr()
     assert accept(book, "ch-what") == 1
     assert "out of order" in capsys.readouterr().err
-
-
-# --- status cross-reports the dossier ------------------------------------
 
 
 def test_status_names_what_the_dossier_says_about_the_same_prose(book, example_ledger, capsys):

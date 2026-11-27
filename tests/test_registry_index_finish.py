@@ -1,12 +1,3 @@
-"""`registry index`'s finishing step (#1168): read the typeset book's
-`book.idx` and the chapters' sidecars, write `book-index.idx` with every
-id turned into a printed entry, and run `upmendex` on it.
-
-The `.idx` lines are the shape installed hyperref writes
-(`|hyperpage`, `|hyperxindexformat{\\textbf}`); the parser never names
-the macro, so these are fixtures, not a contract on hyperref.
-"""
-
 import json
 import shutil
 
@@ -39,8 +30,6 @@ def term(key, glossary, **extra):
 
 
 def book(tmp_path, idx, sidecars=None, **table):
-    """A rendered book directory: `index-terms.json`, `book.idx` and one
-    sidecar per unit carrying the table's digest."""
     data = {
         "min_mentions": 2,
         "skip_sections": [],
@@ -74,9 +63,6 @@ IDX = (
 
 
 class Ran:
-    """A stand-in for `subprocess.run` that records the argv and, when it
-    succeeds, leaves the `.ind` upmendex would have written."""
-
     def __init__(self, returncode=0, writes=True):
         self.returncode, self.writes, self.argv, self.cwd = returncode, writes, None, None
         self.stderr = "refused\n"
@@ -222,7 +208,6 @@ def test_the_real_upmendex_sorts_quotes_and_nests(tmp_path):
 
 
 def test_upmendex_exiting_zero_without_an_ind_is_a_failure(tmp_path):
-    """What TeX Live's `openout_any = p` does to an output path it refuses."""
     result = finish.finish(book(tmp_path, IDX), UNITS, identity, run=Ran(writes=False))
     assert any(
         "upmendex failed (0)" in problem and "refused" in problem for problem in result.problems
@@ -236,8 +221,6 @@ def test_no_upmendex_is_a_missing_binary(tmp_path, monkeypatch):
 
 
 def test_no_entries_skips_upmendex_and_leaves_an_empty_ind(tmp_path):
-    """upmendex exits 255 on an empty .idx ("Nothing written"), which read
-    as a failure on a book whose terms all fell below the threshold."""
     ran = Ran()
     result = finish.finish(book(tmp_path, "", see={}), UNITS, identity, run=ran)
     assert result.problems == [] and result.entries == 0

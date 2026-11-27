@@ -1,21 +1,3 @@
-"""chitragupta/_code_regions.py: code-region pairing by linear scan (#824).
-
-The three scanners replaced three DOTALL regexes whose lazy `.*?` ran to
-the end of the file for every opener with no closer -- O(N x L) on a
-draft of N unclosed fences, enough to take the citation gate hook past
-the harness's 30 s kill. The replaced regexes are kept below as
-**oracles**: the scanners must agree with them on every input, unclosed
-and malformed ones included, so the change is to the cost and nothing
-else. The generated documents are small on purpose -- the oracle is the
-quadratic thing -- and are built from the constructs whose pairing is
-subtle: marker lengths that make the fence regex backtrack, indents,
-tildes, info strings, `\\begin`/`\\end` mid-line and at line start,
-starred environments, form feeds, and openers left unclosed.
-
-The cost half is asserted by counting the scanners' own probes, never by
-wall clock: a 20k-line draft must cost a small multiple of its length.
-"""
-
 import random
 import re
 
@@ -24,13 +6,10 @@ import pytest
 from chitragupta import _code_regions, citation_gate, style_typeset
 from chitragupta.render_output._tables import line_of
 
-# citation_gate._LATEX_VERBATIM_RE, as it was.
 GATE_ORACLE = re.compile(r"\\begin\{(verbatim|lstlisting|minted)\*?\}.*?\\end\{\1\*?\}", re.DOTALL)
-# style_typeset._FENCE_RE, as it was; the body is group 3.
 FENCE_ORACLE = re.compile(
     r"^([ \t]*)(`{3,}|~{3,})[^\n]*\n(.*?)^[ \t]*\2[^\n]*$", re.MULTILINE | re.DOTALL
 )
-# style_typeset._LATEX_VERBATIM_RE, as it was; the body is group 2.
 TEX_ORACLE = re.compile(
     r"\\begin\{(verbatim|lstlisting|minted)\*?\}[^\n]*\n(.*?)^[ \t]*\\end\{\1\*?\}",
     re.MULTILINE | re.DOTALL,
@@ -126,13 +105,6 @@ class TestAgreesWithTheReplacedRegexes:
 
 
 class TestLinearCost:
-    """The probe counts that make the fix checkable without a stopwatch.
-
-    Each scanner does its per-candidate work through one small function,
-    so counting that function's calls counts the work. The replaced
-    regexes re-scanned to the end of the file per unclosed opener; these
-    must stay within a constant multiple of the draft's size."""
-
     LINES = 20_000
 
     @staticmethod
@@ -148,10 +120,6 @@ class TestLinearCost:
         return calls
 
     def test_unclosed_verbatim_costs_one_lookup_per_opener(self, monkeypatch, tmp_path):
-        """check_text on 20k unclosed `\\begin{verbatim}` lines: the gate
-        runs the verbatim pass on Markdown and LaTeX alike, and before
-        #824 this input took it O(N x L). An unclosed opener is still
-        not blanked, so the citation after them stays checked."""
         lookups = self.counting(monkeypatch, "_next_closer")
         text = "\\begin{verbatim}\n" * self.LINES + "A claim [@nope_2026].\n"
         for suffix in (".md", ".tex"):
@@ -164,9 +132,6 @@ class TestLinearCost:
                 assert result.unknown == [(self.LINES + 1, "nope_2026")]
 
     def test_an_unclosed_markdown_draft_is_linear(self, monkeypatch, tmp_path):
-        """typeset findings on a 20k-line Markdown draft: an unclosed fence
-        on top, then 20k unclosed `\\begin{verbatim}` lines, which the
-        gate's blanking pass inside `findings` also scans."""
         lookups = self.counting(monkeypatch, "_next_closer")
         marks = self.counting(monkeypatch, "_fence")
         probes = self.counting(monkeypatch, "_closes")
@@ -178,17 +143,11 @@ class TestLinearCost:
         assert probes == []  # no closer anywhere, so nothing was searched for
 
     def test_a_descending_fence_run_is_linear(self, monkeypatch, tmp_path):
-        """A strictly descending run of fence lengths is the fence regex's
-        worst case: every opener fails at its own length, scans to the end
-        of the file, and only then backtracks to a shorter one. Here no
-        line is probed more than once."""
         probes = self.counting(monkeypatch, "_closes")
         count = 2_000
         lines = ["`" * (3 + count - i) for i in range(count)]
         draft = tmp_path / "descending.md"
         draft.write_text("\n".join(lines) + "\n")
-        # Each line pairs with the next, shortened to its length: 1000
-        # empty blocks, and a delimiter line is never measured for width.
         assert style_typeset.findings(draft) == []
         assert len(_code_regions.fenced_bodies(draft.read_text())) == count // 2
         assert len(probes) <= 2 * len(lines)  # findings, then the direct call

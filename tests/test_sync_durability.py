@@ -1,25 +1,3 @@
-"""Finished work survives an interruption, and one bad document fails
-only itself (#961, folding in #962, #978 and #970).
-
-Two properties, each tested over every path that has to hold it:
-
-- **Durability.** A document whose parse finished is `parsed` in the
-  ledger before anything else happens, on the serial path and on the
-  pool path alike. Before #961 the pool path drained every future and
-  only then wrote the ledger, so Ctrl+C or a pool failure left every
-  finished `.txt` on disk with its row still `discovered`, and the next
-  run parsed it again.
-- **One boundary per document.** An exception no backend promised
-  (`RuntimeError`, a pydantic error, a `UnicodeEncodeError`) is that
-  document's recorded failure, never the batch's traceback.
-
-The process-pool executor is not a parameter here. A real
-`ProcessPoolExecutor` runs its work in a child interpreter where this
-process's fakes do not exist (`tests/conftest.py::thread_executor`), and
-the code under test, `sync_pool._drain_pool`, does not branch on which
-executor it was handed.
-"""
-
 import subprocess
 import time
 from pathlib import Path
@@ -47,8 +25,6 @@ BAD = "doc_3_2024"
 
 @pytest.fixture(autouse=True)
 def _pdftotext_present(monkeypatch):
-    """As in `tests/test_sync.py`: extraction is faked, so the up-front
-    backend probe must not depend on poppler being on this host."""
     monkeypatch.setattr(pdf_text, "is_available", lambda: True)
 
 
@@ -63,9 +39,6 @@ def corpus(isolated_config):
 
 @pytest.fixture(params=["serial", "thread_pool"])
 def path(request, monkeypatch, thread_executor):
-    """Both executors sync can run, by name. The pool is pdftotext's
-    thread pool, so a fake parse needs no docling passages sidecar to
-    count as finished on the next run."""
     if request.param == "thread_pool":
         monkeypatch.setattr(config, "PARSER", "pdftotext")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
@@ -77,8 +50,6 @@ def path(request, monkeypatch, thread_executor):
 
 
 def _finishing_first(path: str) -> list[str]:
-    """The documents that finish before `BAD` is reached: the ones before
-    it in bib order on the serial path, every other one in the pool."""
     if path == "serial":
         return CITEKEYS[: CITEKEYS.index(BAD)]
     return [c for c in CITEKEYS if c != BAD]
@@ -104,9 +75,6 @@ def _write_parse(citekey: str) -> Path:
 
 
 def _install(monkeypatch, document):
-    """Route every document through `document(citekey)`, which returns the
-    parse's path or raises, on both entry points: a run with one document
-    left takes the serial path whatever `[parser].workers` says."""
     monkeypatch.setattr(pdf_text, "extract_text", lambda _pdf, citekey: document(citekey))
 
     def extract_one(job):
@@ -120,14 +88,6 @@ def _install(monkeypatch, document):
 
 
 def _after_the_others_commit(path: str, failure: BaseException):
-    """A document function that parses every document but `BAD`, which
-    waits until `_finishing_first(path)` are `parsed` in the ledger and
-    then raises `failure`.
-
-    Waiting on the ledger rather than on the other workers is what makes
-    the interleaving deterministic: it is exactly the state the fix has
-    to produce. Bounded, so the pre-fix pool path, which never committed
-    before the pool drained, raises after the bound instead of hanging."""
     expected = len(_finishing_first(path))
 
     def document(citekey: str) -> Path:
@@ -171,10 +131,6 @@ class TestOneBadDocumentFailsOnlyItself:
     def test_an_unexpected_exception_is_that_documents_failure(
         self, corpus, path, monkeypatch, failure
     ):
-        """#962: only `ExtractionError`/`BackendUnavailable` were caught,
-        so anything else aborted the batch and, on the pool path,
-        discarded every collected result."""
-
         def document(citekey):
             if citekey == BAD:
                 raise failure
@@ -213,21 +169,12 @@ class TestOneBadDocumentFailsOnlyItself:
         ids=["OSError", "MemoryError"],
     )
     def test_a_failure_of_the_machine_is_retried_next_run(self, failure):
-        """The #842 rule `write_failed` already applies: an `OSError` (a
-        busy thread pool running out of descriptors) or a `MemoryError`
-        is the machine, not the PDF, so the document comes back next run
-        instead of being written off for good."""
         assert pdf_text.document_failure(failure).transient is True
 
     def test_anything_else_is_the_documents_own_failure(self):
         assert not getattr(pdf_text.document_failure(RuntimeError("x")), "transient", False)
 
     def test_the_pool_entry_point_returns_rather_than_raises(self, monkeypatch):
-        """The boundary itself, below the fakes the tests above install:
-        `extract_one` hands back an unexpected exception as the
-        document's failure, and it survives pickling across a process
-        boundary because it is an `ExtractionError` holding a string."""
-
         def explode(_pdf, _citekey, _threads=None):
             raise RuntimeError("docling choked")
 
@@ -240,9 +187,6 @@ class TestOneBadDocumentFailsOnlyItself:
     def test_a_future_that_raises_is_charged_to_its_own_document(
         self, corpus, monkeypatch, thread_executor
     ):
-        """`future.result()` can still raise -- a result the worker
-        could not pickle, or a stand-in `extract_one` -- and it used to
-        escape `_drain_pool` and discard every result."""
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         monkeypatch.setattr(sync_pool, "_executor_for", thread_executor)
@@ -262,9 +206,6 @@ class TestOneBadDocumentFailsOnlyItself:
 
 @pytest.mark.usefixtures("programs_on_path")
 class TestEnrichmentTextFallback:
-    """#978: `embed_text.get_text` is reached for exactly the documents
-    a parse already failed on, and every topic stage reads it."""
-
     @pytest.mark.parametrize(
         "failure",
         [
@@ -290,14 +231,7 @@ class TestEnrichmentTextFallback:
 
 
 class TestStaleReportSurvivesItsArtefacts:
-    """#970: `sync_residue` runs after every upsert has committed and
-    before the stale list prints, so an exception there hid the one
-    thing the person needed to see."""
-
     def test_a_dossier_is_never_read(self, isolated_config, monkeypatch):
-        """Dossiers are the drafting layer's, reported by `dossier status`
-        (plans/1211); the corpus layer's scan does not open one, so an
-        unreadable one cannot even produce a note."""
         evidence = isolated_config.DOSSIERS_DIR / "dt" / "survey" / "evidence.md"
         evidence.parent.mkdir(parents=True)
         evidence.write_text("## `gone_2020`\n", encoding="utf-8")

@@ -1,5 +1,3 @@
-"""chitragupta/ledger_citable.py: which ledger rows a draft may cite (#1118)."""
-
 from chitragupta import ledger, ledger_citable
 
 from tests.conftest import add_parsed_item, make_reference

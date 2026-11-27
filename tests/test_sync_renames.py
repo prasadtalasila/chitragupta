@@ -1,7 +1,3 @@
-"""Renamed citekeys: detected during sync, recorded before any prune,
-reported beside the stale line (plans/1211-cg-collections-and-renames.md,
-D6, D7). Nothing here edits a draft -- that is the drafting layer's job."""
-
 import pytest
 
 from chitragupta import config, ledger, ledger_tables, pdf_text, sync, sync_renames
@@ -85,9 +81,6 @@ class TestDetect:
 
 
 class TestChainsInsideTheBlock:
-    """A `cg-renames` block may chain within itself (`a -> b`, `b -> c`,
-    only `c` in the bib); the chain is followed to the key that is."""
-
     def test_a_chain_is_followed_to_the_key_in_the_bib(self, ledger_con):
         _row(ledger_con, "a_2020", "h1")
         _row(ledger_con, "c_2020", "h2")
@@ -116,10 +109,6 @@ class TestChainsInsideTheBlock:
 
 
 class TestSharedPdfIsNotGuessed:
-    """Final review (Fable), #3: two entries that already shared a PDF --
-    a book and its chapter -- are not a rename when one is deleted. A hash
-    match names a rename only for a key new to the ledger this sync."""
-
     def test_a_key_already_in_the_ledger_is_reported_not_renamed(self, ledger_con):
         _row(ledger_con, "chapter_2020", "h1")
         _row(ledger_con, "book_2020", "h1")
@@ -262,8 +251,6 @@ class TestSyncRun:
             con.close()
 
     def test_an_empty_bib_records_no_stale_keys_and_keeps_names(self, renamed_corpus, capsys):
-        """Final review (Fable), #1: a bib read that yields nothing is
-        SUSPICIOUS, not "everything was removed"."""
         bib = renamed_corpus.BIB_FILE_PATH
         table = "@comment{cg-collections v1\nshelf\tShelf\n}\n"
         bib.write_text(table + _bib([("lehner_pattern_2023-1", "a.pdf")]))

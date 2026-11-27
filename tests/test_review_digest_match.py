@@ -1,18 +1,3 @@
-"""chitragupta/review/_digest_match.py: is this run really in the source,
-and what is each sentence that is not?
-
-Four outcomes per run, in the order the module tries them: found whole
-(one span), every sentence found separately (one span, "assembled"),
-some sentences found (spans for those, findings for the rest), and a
-source that cannot be checked at all. The three finding classes are the
-discussion's: `copy-mismatch` for a sentence most of whose words are on
-one page, `unquoted-text` for everything else the drafter wrote, and
-`unsupported-text` on top of that where the cited source does not
-lexically support it, or nothing cites it. The headline is the
-unsupported fraction: words in sentences carrying any finding, a
-sentence counted once, over all words.
-"""
-
 import pytest
 
 from chitragupta import config
@@ -80,8 +65,6 @@ def test_sentences_found_in_different_places_are_one_assembled_span():
         "Each layer exposes one interface to the next.",
         "Operators can start developing against the interface alone.",
     )
-    # A passage between the two, or `locate`'s adjacent-pair window would
-    # find the run contiguous and report `exact-pair` -- correctly.
     between = passage(5, "An unrelated paragraph about something else entirely.")
     match.check_run(run, a_lookup(passage(4, SOURCE_P4), between, passage(7, SOURCE_P7)), checked)
     assert checked.findings == []
@@ -92,9 +75,6 @@ def test_sentences_found_in_different_places_are_one_assembled_span():
 
 
 def test_an_assembled_span_keeps_the_page_note_and_says_within_for_one_page():
-    """Both sentences on one page but not adjacent: the note says so in
-    words that make sense for one place, and the page hint's
-    disagreement travels with it rather than being lost."""
     checked = match.Checked()
     run = a_run(
         "Each layer exposes one interface to the next.",
@@ -119,8 +99,6 @@ def test_findings_carry_each_sentences_own_line():
 
 
 def test_a_sentence_exactly_at_the_mismatch_share_is_a_copy_mismatch():
-    """`share < MISMATCH_SHARE` is the drafter's-own side, so a share of
-    exactly 0.8 is a mismatch: pinned so a later `<=` cannot slip in."""
     words = "alpha bravo charlie delta echo foxtrot golf hotel india juliet"
     on_page = passage(2, words.replace("india juliet", "kilo lima"))
     checked = match.Checked()
@@ -145,7 +123,6 @@ def test_a_nearly_matching_sentence_is_a_copy_mismatch_naming_the_missing_words(
 
 def test_the_drafters_own_supported_sentence_is_unquoted_only():
     checked = match.Checked()
-    # Mostly the source's words, but below MISMATCH_SHARE: a paraphrase.
     run = a_run("Twins that are layered keep the physical entity apart from models of it.")
     match.check_run(run, a_lookup(passage(4, SOURCE_P4)), checked)
     assert [f.cls for f in checked.findings] == ["unquoted-text"]
@@ -156,7 +133,6 @@ def test_an_unsupported_sentence_carries_both_classes_and_is_counted_once():
     run = a_run("Pelicans migrate in autumn along the coast.")
     match.check_run(run, a_lookup(passage(4, SOURCE_P4)), checked)
     assert [f.cls for f in checked.findings] == ["unquoted-text", "unsupported-text"]
-    # No word of it is on the page, so it is weak at the real default too.
     assert checked.findings[1].detail["support_score"] < config.PROVENANCE_WEAK_SCORE
     assert checked.words_flagged == run.words
 
@@ -226,9 +202,6 @@ def test_two_citekeys_pool_their_passages():
 
 
 def test_a_run_with_one_unreadable_source_is_not_checkable_as_a_whole():
-    """`[@a; @b]` where only `a` has reading-ordered passages: matching
-    against `a` alone would report text copied from `b` as the drafter's
-    own. The run is not checkable, and the reason names `b`."""
     checked = match.Checked()
 
     def lookup(citekey):
@@ -284,9 +257,6 @@ def an_own_run(*sentences: str, citekeys=(KEY,), line=3) -> Run:
 
 
 class TestOwnRuns:
-    """#1172: the drafter's own words are checked for support, never for
-    copying, and never raise `unquoted-text`."""
-
     def test_a_supported_own_sentence_raises_nothing_and_counts_as_own(self):
         checked = match.Checked()
         run = an_own_run(
@@ -377,9 +347,6 @@ def test_a_weakly_supported_own_sentence_names_the_nearest_page():
 
 
 def test_the_same_sentence_twice_on_one_line_counts_twice():
-    """#1172 review: the fraction keyed a sentence on (line, text), so a
-    repeated sentence on one line was counted once and the four shares
-    no longer summed to the total."""
     checked = match.Checked()
     run = Run(3, (3, 3), ("Yes it is.", "Yes it is."), (), None)
     match.check_run(run, a_lookup(), checked)
@@ -388,7 +355,6 @@ def test_the_same_sentence_twice_on_one_line_counts_twice():
 
 
 def test_a_mapped_symbol_in_a_copied_run_matches_the_math_italic_source():
-    """The parse prints `𝑇 ℎ`; the digest writes `T_h`, mapped in math.md."""
     from chitragupta.review import _digest_runs
 
     source = "The value 𝑇 ℎ is the temperature of the heater (measured in ◦ C )."

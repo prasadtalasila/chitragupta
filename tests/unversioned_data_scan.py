@@ -1,20 +1,8 @@
-"""Detector library for `test_unversioned_data_scan.py` (#358).
-
-Split out from the test module so both stay under 250 lines -- the test
-module's own docstring carries the full reasoning for what counts as a
-risky read, what a pin looks like, and why the register holds one entry.
-This file is the AST walk that reasoning compiles to.
-"""
-
 import ast
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# Keyed `path::Class` (every test method in that class is exempt) or
-# `path::Class.method` / `path::function` (only that one is). See
-# test_unversioned_data_scan.py's module docstring for why
-# TestRealConfigToml is class-granularity.
 REGISTER = {
     "tests/test_config.py::TestRealConfigToml": (
         "Sanity-checks the constants config.py actually computed from this "
@@ -30,15 +18,10 @@ def _relative(path):
 
 
 def _references_tmp_path(node):
-    """True if the pytest `tmp_path` fixture appears anywhere in this
-    expression -- the discriminator between an isolated read and an
-    ambient one."""
     return any(isinstance(n, ast.Name) and n.id == "tmp_path" for n in ast.walk(node))
 
 
 def _tmp_path_aliases(func_node):
-    """Local names assigned a `tmp_path`-derived value, one hop deep --
-    e.g. `empty_toml = tmp_path / "config.toml"`."""
     aliases = set()
     for node in ast.walk(func_node):
         if isinstance(node, ast.Assign) and _references_tmp_path(node.value):
@@ -47,7 +30,6 @@ def _tmp_path_aliases(func_node):
 
 
 def _resolves_to_tmp_path(value_node, aliases):
-    """`value_node` is `tmp_path`, an alias of it, or `str()` of either."""
     if _references_tmp_path(value_node):
         return True
     if isinstance(value_node, ast.Name):
@@ -79,9 +61,6 @@ def _string_arg(node, index):
 
 
 def _pins_config_path_directly(func_node):
-    """`monkeypatch.setenv("CONFIG_PATH", ...)` or `.setattr(config,
-    "CONFIG_PATH", ...)`, value resolving to a `tmp_path` file, anywhere
-    in this function's own body."""
     aliases = _tmp_path_aliases(func_node)
     for node in ast.walk(func_node):
         if _is_monkeypatch_call(node, "setenv") and _string_arg(node, 0) == "CONFIG_PATH":
@@ -94,8 +73,6 @@ def _pins_config_path_directly(func_node):
 
 
 def fixture_defs(tree):
-    """`{name: FunctionDef}` for every `@pytest.fixture`-decorated
-    function or method in this module."""
     defs = {}
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -112,8 +89,6 @@ def _requested_fixture_names(func_node):
 
 
 def _pins_config_path(func_node, fixtures, seen=None):
-    """Recurses into requested fixtures defined in the same module, so a
-    pin factored into a fixture still counts."""
     seen = seen if seen is not None else set()
     if func_node.name in seen:
         return False
@@ -127,8 +102,6 @@ def _pins_config_path(func_node, fixtures, seen=None):
 
 
 def _is_bib_literal_join(node):
-    """`<expr> / "papers" / "bibliography.bib"` -- the real bib path,
-    constructed by hand rather than via `config.BIB_FILE_PATH`."""
     return (
         isinstance(node, ast.BinOp)
         and isinstance(node.op, ast.Div)
@@ -169,14 +142,10 @@ def _is_home_call(node):
 
 
 def _has_ambient_config_trigger(func_node):
-    """CONFIG_PATH-driven reads -- safe once CONFIG_PATH is pinned to a
-    tmp_path file, since everything they compute flows through it."""
     return any(_is_config_path_read(n) or _is_reload_config_call(n) for n in ast.walk(func_node))
 
 
 def _has_unconditional_trigger(func_node):
-    """Reads no CONFIG_PATH pin makes safe: the real bib path built by
-    hand, and `Path.home()` -- a different per-host root."""
     return any(_is_bib_literal_join(n) or _is_home_call(n) for n in ast.walk(func_node))
 
 
@@ -185,7 +154,6 @@ def _has_assert(func_node):
 
 
 def offense_reason(func_node, fixtures):
-    """Why this test function reads un-versioned data, or None."""
     if not _has_assert(func_node):
         return None
     if _has_unconditional_trigger(func_node):
@@ -196,8 +164,6 @@ def offense_reason(func_node, fixtures):
 
 
 def test_functions(tree):
-    """`(qualified_name, class_name_or_None, FunctionDef)` for every
-    `def test_*`/`async def test_*`, one level of class nesting deep."""
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith(
             "test_"
@@ -216,8 +182,6 @@ def python_test_files():
 
 
 def unversioned_reads(paths):
-    """`{"path::qualified_name": reason}` for every offender not covered
-    by REGISTER."""
     found = {}
     for path in paths:
         tree = ast.parse(path.read_text(encoding="utf-8"))

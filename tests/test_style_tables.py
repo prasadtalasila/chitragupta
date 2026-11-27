@@ -1,16 +1,3 @@
-"""chitragupta/style_tables.py: the table findings `draft style` reports.
-
-Beside `tests/test_style_acronym_drift.py`, the other finding in that
-command computed in Python rather than by Vale.
-
-The discriminating tests are `TestUnreferenced` and
-`TestReferencedOutsideItsSection`: they are what issue 395's second half
-asks for -- a table the prose never reads -- and they are the reason
-this module exists rather than the renderer's own `warnings()` being
-enough. The renderer sees a marker that cannot resolve; only this sees a
-table nobody explains.
-"""
-
 from chitragupta import style_tables
 from tests.conftest import draft_with
 
@@ -25,7 +12,6 @@ def rules(findings: list[dict]) -> list[str]:
 
 class TestNoCaption:
     def test_a_bare_pipe_table_is_reported(self, tmp_path):
-        # The state every draft in content/drafts/ is in today.
         found = style_tables.findings(draft_with(f"# S\n\n{TABLE}", tmp_path))
         assert rules(found) == ["chitragupta.TableNoCaption"]
         assert found[0]["line"] == 3
@@ -38,9 +24,6 @@ class TestNoCaption:
         assert style_tables.findings(draft_with("# S\n\nJust prose.\n", tmp_path)) == []
 
     def test_a_bare_table_above_a_captioned_one_is_still_reported(self, tmp_path):
-        # The caption search is bounded by the next table: unbounded, the
-        # bare table would borrow the second table's caption and this
-        # draft would report nothing at all.
         body = f"# S\n\n{TABLE}\nAs <!-- tableref: start-here --> shows.\n\n{TABLE}\n{CAPTION}"
         found = style_tables.findings(draft_with(body, tmp_path))
         assert rules(found) == ["chitragupta.TableNoCaption"]
@@ -48,15 +31,6 @@ class TestNoCaption:
 
 
 class TestFencedExamplesAreNotTables:
-    """A draft showing a table as an example is not a draft with a table.
-
-    `tutorial-writer` and `textbook-chapter-writer` both put Markdown
-    source in fences, and this section's own markup is the likeliest
-    thing a draft about this pipeline would show. Reported, it is one
-    false finding per example on a report whose whole value is its
-    signal-to-noise ratio.
-    """
-
     def test_a_fenced_table_example_reports_nothing(self, tmp_path):
         body = f"# S\n\nLike this:\n\n```markdown\n{TABLE}```\n"
         assert style_tables.findings(draft_with(body, tmp_path)) == []
@@ -70,9 +44,6 @@ class TestFencedExamplesAreNotTables:
 
 class TestNoId:
     def test_a_caption_without_a_marker_is_a_different_finding(self, tmp_path):
-        # Narrower than NoCaption, and reported instead of it: the author
-        # wrote the caption and stopped, so "add a caption" is the wrong
-        # thing to tell them.
         body = f"# S\n\n{TABLE}\n: Where to start.\n"
         found = style_tables.findings(draft_with(body, tmp_path))
         assert rules(found) == ["chitragupta.TableNoId"]
@@ -142,8 +113,6 @@ class TestFindingShape:
         assert found[0]["severity"] == "suggestion"
 
     def test_a_latex_fragment_is_left_to_its_own_numbering(self, tmp_path):
-        # WRITING-STANDARDS.md §13's carve-out: a .tex fragment writes a
-        # real \\begin{table} the consuming thesis numbers.
         fragment = tmp_path / "chapter.tex"
         fragment.write_text(
             "\\begin{table}\n\\caption{X}\\label{tab:x}\n\\end{table}\n", encoding="utf-8"
@@ -152,10 +121,6 @@ class TestFindingShape:
 
 
 class TestMessagesCiteTheTablesFile:
-    """§13 moved to `docs/writing-standards/tables.md` (#1212) and the
-    core keeps only a stub. Every message that cites §13 names the file
-    it lives in now, in the form `style_equations` prints."""
-
     def test_every_cited_section_names_the_tables_file(self, tmp_path):
         body = f"# S\n\n{TABLE}\nProse.\n\n{TABLE}\n: No id here.\n\nProse.\n\n{TABLE}\n{CAPTION}"
         found = style_tables.findings(draft_with(body, tmp_path))
@@ -169,11 +134,6 @@ class TestMessagesCiteTheTablesFile:
 
 
 class TestManyTablesReportTheSameAsFew:
-    """m-77 (#511) was a hoisting change, so what needs pinning is that
-    the *answer* did not move: `text.splitlines()` was called twice inside
-    the per-table loop -- O(document) per table on the 178k-word book this
-    module was tuned against -- and is now called once above it."""
-
     def test_every_bare_table_in_a_long_draft_is_still_reported_at_its_own_line(self, tmp_path):
         body = "# S\n\n" + "\n".join(f"{TABLE}\nParagraph {n}.\n" for n in range(20))
         found = style_tables.findings(draft_with(body, tmp_path))
@@ -182,8 +142,6 @@ class TestManyTablesReportTheSameAsFew:
         assert len({f["line"] for f in found}) == 20
 
     def test_the_last_table_is_still_bounded_by_the_end_of_the_document(self, tmp_path):
-        """The `len(lines) + 1` sentinel: the final table has no next
-        table, so its caption search runs to the end of the file."""
         body = f"# S\n\n{TABLE}\nAs <!-- tableref: start-here --> shows.\n\n{TABLE}\n{CAPTION}"
         found = style_tables.findings(draft_with(body, tmp_path))
         assert rules(found) == ["chitragupta.TableNoCaption"]

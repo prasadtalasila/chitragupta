@@ -1,28 +1,3 @@
-""".claude/hooks/session_start_hook.py: the SessionStart hook that reports
-what is not yet ready, and says nothing when everything is.
-
-Modelled on tests/test_citation_gate_hook.py, and for the same reason: the
-hook is a script the harness runs, not a module the suite imports, so
-`.claude/` is outside `[tool.coverage.run].source` and these tests earn
-their keep behaviourally rather than by covering lines.
-
-The hook derives its repo root from its own on-disk location, so each test
-gives it one -- a `PreflightRepo` copies the hook into a tmp_path
-`.claude/hooks/` and writes that root's own `.claude/settings.json`. The
-hook's two child processes run with `cwd` set to that same temp root, so
-`python -m chitragupta.draft` resolves through PYTHONPATH to this checkout's real
-code -- unless a test deliberately shadows it with a stub package in the
-temp root, which `-m` picks up from cwd first. That is how a dead gate is
-simulated without breaking the real one.
-
-The one behaviour worth stating separately, because it is the reason this
-hook can exist at all: **it must work before `python -m chitragupta.corpus sync`
-has ever run.** A fresh clone has no ledger, and reporting that as a
-failure would fire on every first session. So an empty ledger is reported
-as a stage in a normal sequence, and only a launcher that cannot start or
-a gate that no longer refuses a fabricated citekey is a fault.
-"""
-
 import json
 import os
 import shutil
@@ -57,8 +32,6 @@ def settings(*hooks) -> dict:
 
 
 class PreflightRepo:
-    """A throwaway repo root the preflight hook can call its own."""
-
     def __init__(self, root: Path, cfg):
         self.root = root
         self.hook = root / ".claude" / "hooks" / "session_start_hook.py"
@@ -78,16 +51,6 @@ class PreflightRepo:
         path.write_text(data if isinstance(data, str) else json.dumps(data, indent=2))
 
     def stub(self, module: str, body: str) -> None:
-        """Replace `chitragupta.<module>` with `body`, in a checkout shape.
-
-        Before #822 this planted a bare `chitragupta/` in the temp root and
-        relied on `python -m` putting the child's cwd ahead of the real
-        package on PYTHONPATH -- which is exactly the shadowing a scaffolded
-        project now refuses. So the temp root is made a checkout instead:
-        its `chitragupta/` extends `__path__` to this checkout's real
-        package, so every other submodule is the real one, and PYTHONPATH
-        points at the root, so the package resolves inside it.
-        """
         plant_package(self.root, self.root / ".stub-imported", checkout=True)
         (self.root / "chitragupta" / f"{module}.py").write_text(body)
         self.env["PYTHONPATH"] = str(self.root)
@@ -104,7 +67,6 @@ class PreflightRepo:
 
     @staticmethod
     def context(result) -> str:
-        """The advisory text the hook delivered, or "" when it stayed silent."""
         if not result.stdout.strip():
             return ""
         payload = json.loads(result.stdout)
@@ -118,7 +80,6 @@ def preflight(isolated_config, tmp_path):
 
 @pytest.fixture
 def synced(preflight, ledger_con):
-    """A repo whose corpus layer has been synced, i.e. the ready state."""
     ledger.upsert_reference(
         ledger_con, make_reference(citekey="smith_real_2024", title="A Real Paper")
     )
@@ -126,9 +87,6 @@ def synced(preflight, ledger_con):
 
 
 class TestItNeverBreaksTheSession:
-    """The advisory contract. A preflight that can break a session is a
-    worse bug than any it reports, so every one of these asserts exit 0."""
-
     def test_exits_zero_when_everything_is_ready(self, synced):
         assert synced.run().returncode == 0
 
@@ -157,32 +115,21 @@ class TestItNeverBreaksTheSession:
 
 
 class TestSilenceWhenReady:
-    """A clean run says nothing. The channel is for what needs attention."""
-
     def test_says_nothing_when_synced_and_launchers_are_sound(self, synced):
         assert synced.run().stdout.strip() == ""
 
     def test_output_is_one_json_document_when_it_does_speak(self, preflight):
-        """The rule a stray print() breaks invisibly: stdout parses, whole."""
         result = preflight.run()
         assert json.loads(result.stdout)["hookSpecificOutput"]["hookEventName"] == "SessionStart"
 
 
 class TestCorpusStageIsNotAFault:
-    """The case this hook was nearly wrong about: a user who has cloned the
-    repo and not yet run `python -m chitragupta.corpus sync` has done nothing
-    wrong, and must not be told they have."""
-
     def test_absent_ledger_is_reported_with_the_next_command(self, preflight):
         context = PreflightRepo.context(preflight.run())
         assert "before a first sync" in context
         assert "python -m chitragupta.corpus sync" in context
 
     def test_present_but_empty_ledger_is_reported_too(self, preflight, ledger_con):
-        """The two pre-sync states print different sentences -- "No ledger
-        at ..." when the file is absent, "... is empty" when it exists with
-        no rows. Both are pre-sync, and an earlier draft of this hook
-        matched only the second and stayed silent on a fresh clone."""
         assert "before a first sync" in PreflightRepo.context(preflight.run())
 
     def test_a_pre_sync_corpus_is_not_called_broken(self, preflight):
@@ -196,9 +143,6 @@ class TestCorpusStageIsNotAFault:
 
 
 class TestGateLiveness:
-    """The check that makes the hook worth its startup cost: it is the only
-    thing that notices the citation gate has stopped refusing anything."""
-
     def test_a_live_gate_is_not_reported(self, synced):
         assert "fabricated citekey" not in PreflightRepo.context(synced.run())
 
@@ -209,10 +153,6 @@ class TestGateLiveness:
         assert "fabricated citekey" in context
 
     def test_a_gate_that_fails_for_the_wrong_reason_is_not_called_live(self, synced):
-        """Exit status alone is not enough. A gate that rejects the probe
-        for its *location* would also exit non-zero, and reporting that as
-        a working gate is a false reassurance -- the failure mode this
-        check exists to prevent."""
         synced.stub("draft", "import sys\nsys.exit(1)\n")
         context = PreflightRepo.context(synced.run())
         assert "fabricated citekey" in context
@@ -225,9 +165,6 @@ class TestGateLiveness:
         ],
     )
     def test_a_gate_that_could_not_run_is_not_said_to_accept(self, synced, code, said):
-        """#1066: three answers, not two. A crash, or the gate's own "could
-        not read the ledger", is reported as that, with what it printed --
-        not as a gate that let a fabricated citekey through."""
         synced.stub("draft", f"import sys\nsys.stderr.write({said!r})\nsys.exit({code})\n")
         context = PreflightRepo.context(synced.run())
         assert f"could not run its self-test (exit {code})" in context
@@ -237,9 +174,6 @@ class TestGateLiveness:
 
 class TestAnUnreadableLedger:
     def test_is_reported_as_that_not_as_a_missing_config(self, synced, ledger_con, isolated_config):
-        """#1066: `corpus ledger` exits 3 on a hot journal, and the stage
-        report carries its diagnosis rather than the fresh-clone advice
-        every other non-zero exit gets."""
         ledger_con.close()
         journal = leave_hot_journal(isolated_config.LEDGER_PATH)
         context = PreflightRepo.context(synced.run())
@@ -249,16 +183,6 @@ class TestAnUnreadableLedger:
 
 
 class TestLauncherFaults:
-    """Static checks over settings.json, end to end through the real hook.
-
-    One of two detectors, not the only one. A hook that fails to start
-    cannot report anything itself, and this hook is started by the same
-    interpreter name it vets -- so it is silent on precisely the host where
-    the gate's launcher is missing. `python -m chitragupta.draft gate` makes the
-    same report from the other side of that gap (#197); the check they
-    share is `chitragupta/hook_launchers.py`.
-    """
-
     def test_exec_form_with_a_braced_placeholder_is_clean(self, synced):
         assert synced.run().stdout.strip() == ""
 
@@ -299,18 +223,6 @@ class TestLauncherFaults:
 
 
 class TestImportProbeFault:
-    """A launcher that resolves on PATH and still cannot import the
-    package -- the failure mode a venv install adds, once `python` no
-    longer guarantees `chitragupta` is on its `sys.path` (#264).
-
-    A `python` first on PATH that fails every invocation stands in for that
-    host. The settings file names the bare `python`, so that is what the
-    probe runs; the hook itself and its children run on `sys.executable`
-    and are untouched. (This used to be a raising `chitragupta/__init__.py`
-    in the temp root, found through the probe's cwd -- the shadowing #822
-    closed, so it no longer reaches the probe at all.)
-    """
-
     @pytest.mark.skipif(sys.platform == "win32", reason="a shell-script interpreter")
     def test_is_reported_through_the_real_hook(self, synced, tmp_path):
         fake_bin = tmp_path / "fake-bin"
@@ -324,11 +236,6 @@ class TestImportProbeFault:
 
 
 class TestAPlantedPackageIsNeverImported:
-    """#822, at SessionStart: the one hook that runs before anything is
-    typed. Every launch it makes -- the import probe, the gate liveness
-    probe, the corpus stage -- must reach the installed package in a
-    scaffolded project, and the checkout's own in a checkout."""
-
     def test_a_scaffolded_project_ignores_a_planted_package(self, synced, tmp_path):
         sentinel = tmp_path / "planted-ran"
         plant_package(synced.root, sentinel)
@@ -346,24 +253,6 @@ class TestAPlantedPackageIsNeverImported:
 
 
 class TestNoInstalledPackageVisibleAtAll:
-    """#891 gap 2: the unactivated-venv shape #563 names -- this hook's
-    *own* interpreter has no `chitragupta` visible to it, cwd fallback
-    included. Before this fix the module-level `from chitragupta import
-    launcher_configs` crashed with an uncaught `ModuleNotFoundError` --
-    exit nonzero, no JSON on stdout, nothing a reader could act on. Now
-    it is caught and named through the hook's own advisory channel, like
-    every other fault here.
-
-    `-S` (skip `site.py`), not merely an absent `PYTHONPATH`, is what
-    actually hides `chitragupta` here: on a host whose venv registers the
-    package through an editable install's `.pth` file -- CI's, not only
-    this checkout's hand-built one that leans on `PYTHONPATH` instead --
-    the package stays visible without `PYTHONPATH` at all, and the first
-    version of this test passed locally and failed on CI for exactly that
-    reason. `synced.root` is not a checkout either, so
-    `sys.path.append(REPO)` supplies nothing to fall back on.
-    """
-
     def test_reports_by_name_instead_of_crashing(self, synced):
         del synced.env["PYTHONPATH"]
         result = synced.run("-S")

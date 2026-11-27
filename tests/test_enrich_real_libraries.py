@@ -1,44 +1,3 @@
-"""The enrich stack against the libraries themselves, not against fakes.
-
-`tests/test_enrich_embed_index.py` and `tests/test_enrich_topic_model.py`
-put `sys.modules` fakes in front of `chromadb`, `sentence_transformers`
-and `bertopic` on both CI legs, where `uv sync --extra enrich` has
-already installed the real ones. Those fakes
-are unusually faithful -- `FakeChromaClient`'s docstring models
-`PersistentClient`'s cross-instance persistence deliberately, because
-`build_index()` and `search()` each call `get_client_and_model()`
-independently -- and that faithfulness is exactly what makes the day they
-quietly stop matching expensive (#514, m-88). Until now the only thing
-standing between a fake and the real library was the manual smoke test
-DEVELOPER-AGENTS.md mandates, which nothing automates.
-
-**What this module does and does not exercise, and why.** It drives the
-real `chromadb` end to end: `PersistentClient`, `get_or_create_collection`,
-and the `upsert`/`get`/`update`/`delete`/`query` surface the fake models,
-through `build_index()` and `search()` themselves. It does **not**
-download a real embedding model. `config.EMBEDDING_MODEL` is
-`sentence-transformers/all-mpnet-base-v2`, ~420 MB from HuggingFace, and
-this host has no cached copy -- so a test that constructed it would make
-every CI run depend on a network fetch and turn an unrelated HuggingFace
-outage into a red build. The model half is checked a different way, by
-`TestTheFakesStillMatchTheRealApi` below, which asks the real classes
-whether they still accept what the fakes accept without instantiating
-anything.
-
-That split is the honest one rather than a convenient one: the chromadb
-half is where the subtle semantics live (persistence across client
-instances, `where=` filtering, metadata update without re-embedding), and
-it costs nothing to run for real. The sentence-transformers and bertopic
-halves are a constructor and a method call each, and their risk is a
-rename or a dropped keyword -- which a signature check catches and a
-download would only catch more expensively.
-
-`FakeBERTopic` is the sharpest case for that check: it takes `**kwargs`
-and records them, so it accepts *anything*, and its own suite therefore
-cannot notice a keyword BERTopic has dropped. `BERTopic.__init__` has no
-`**kwargs`, so asking it directly is a real question.
-"""
-
 import importlib.util
 import inspect
 import sys
@@ -57,41 +16,17 @@ bertopic_available = importlib.util.find_spec("bertopic") is not None
 
 
 class CountingModel:
-    """A deterministic stand-in for the *model* only, so the chromadb
-    half runs for real.
-
-    Not a fake of `sentence_transformers` in the sense this module exists
-    to distrust: nothing here asserts anything about what a real model
-    returns. It exists to make `build_index`'s embeddings cheap and its
-    re-embed decisions countable, which is what the chromadb-side
-    invariants below are actually about.
-    """
-
     def __init__(self, model_name):
         self.model_name = model_name
         self.calls = []
 
     def encode(self, texts, show_progress_bar=False):
         self.calls.append(list(texts))
-        # A numpy array, because that is what a real `SentenceTransformer`
-        # returns and `embed_index` calls `.tolist()` on the result -- a
-        # plain list would make this stand-in *less* faithful than the
-        # fake it is meant to be less than, and hide a real contract.
-        # Two dimensions varying with content, so two different chunks are
-        # not the same point: a query against identical vectors says
-        # nothing about ordering.
         return numpy.array([[float(len(text)), float(sum(map(ord, text[:8])))] for text in texts])
 
 
 @pytest.fixture
 def real_chromadb(monkeypatch, isolated_config):
-    """The real `chromadb`, with only the model stubbed out.
-
-    Patched at `sys.modules["sentence_transformers"]` rather than by
-    replacing `get_client_and_model`, so the `import chromadb` and
-    `chromadb.PersistentClient(path=...)` inside that function are the
-    real ones and the code path under test is the shipped one.
-    """
     model = CountingModel(config.EMBEDDING_MODEL)
     fake_st = types.ModuleType("sentence_transformers")
     fake_st.SentenceTransformer = lambda name: model
@@ -107,10 +42,6 @@ def doc_with_text(tmp_path, citekey, text, title="A Paper"):
 
 @pytest.mark.skipif(not chromadb_available, reason="chromadb not installed")
 class TestBuildIndexAgainstRealChromadb:
-    """Each of these has a counterpart in `test_enrich_embed_index.py`
-    that runs against `FakeChromaClient`. That is the point: if the fake
-    and the library ever disagree, one of the pair goes red."""
-
     def test_a_document_is_indexed_and_readable_back_through_search(
         self, real_chromadb, isolated_config, tmp_path
     ):
@@ -125,10 +56,6 @@ class TestBuildIndexAgainstRealChromadb:
     def test_a_second_client_instance_sees_the_first_ones_writes(
         self, real_chromadb, isolated_config, tmp_path
     ):
-        """`FakeChromaClient`'s docstring calls this out as the semantics
-        it models, because `build_index()` and `search()` each call
-        `get_client_and_model()` independently. Here it is against the
-        real `PersistentClient`."""
         embed_index.build_index([doc_with_text(tmp_path, "a2024", " ".join(["twin"] * 40))])
         client, _model = embed_index.get_client_and_model()
         collection = client.get_or_create_collection(embed_index.collection_name())
@@ -144,10 +71,6 @@ class TestBuildIndexAgainstRealChromadb:
     def test_a_corrected_title_updates_metadata_without_re_embedding(
         self, real_chromadb, isolated_config, tmp_path
     ):
-        """#503/m-48's invariant, against the real `collection.update`:
-        the staleness check compares `text_hash`, so a title-only bib
-        correction must reach `search()`'s output without paying
-        `model.encode()` again."""
         text = " ".join(["twin"] * 40)
         embed_index.build_index([doc_with_text(tmp_path, "a2024", text, title="Old Title")])
         before = len(real_chromadb.calls)
@@ -163,9 +86,6 @@ class TestBuildIndexAgainstRealChromadb:
     def test_a_departed_citekey_stops_being_searchable(
         self, real_chromadb, isolated_config, tmp_path
     ):
-        """#503/M-23, against the real `collection.delete`: `search()`
-        promises a returned citekey always resolves against the ledger,
-        so a citekey dropped from the corpus must lose its chunks."""
         kept = doc_with_text(tmp_path, "a2024", " ".join(["twin"] * 40))
         departing = doc_with_text(tmp_path, "b2024", " ".join(["shadow"] * 40))
         embed_index.build_index([kept, departing])
@@ -179,19 +99,6 @@ class TestBuildIndexAgainstRealChromadb:
     def test_the_prune_reads_a_collection_that_spans_several_pages(
         self, real_chromadb, isolated_config, tmp_path, monkeypatch
     ):
-        """#581, against the real `limit`/`offset`: the prune reads the
-        whole collection, and a single `get` cannot return more rows than
-        SQLite has bound variables for (32766, against a real corpus of
-        41050 chunks).
-
-        A page size of 1 rather than a collection of 32767 chunks: what
-        the fake-backed suite cannot check is whether *chromadb* pages the
-        way `chroma_paging.all_rows` assumes, and three rows over three
-        pages asks that question for the price of three chunks. The size
-        the real limit sits at is not a property of this code, and
-        building a collection past it would put a minute of upserts into
-        every CI run to test SQLite rather than us.
-        """
         monkeypatch.setattr(chroma_paging, "PAGE_SIZE", 1)
         kept = doc_with_text(tmp_path, "a2024", " ".join(["twin"] * 40))
         first = doc_with_text(tmp_path, "b2024", " ".join(["shadow"] * 40))
@@ -202,8 +109,6 @@ class TestBuildIndexAgainstRealChromadb:
 
         client, _model = embed_index.get_client_and_model()
         collection = client.get_or_create_collection(embed_index.collection_name())
-        # Every departed chunk found, including the ones no first page
-        # would have reached -- and the one current document untouched.
         assert collection.get(where={"citekey": "b2024"})["ids"] == []
         assert collection.get(where={"citekey": "c2024"})["ids"] == []
         assert collection.get(where={"citekey": "a2024"})["ids"] == ["a2024::0"]
@@ -211,16 +116,7 @@ class TestBuildIndexAgainstRealChromadb:
 
 @pytest.mark.skipif(not chromadb_available, reason="chromadb not installed")
 class TestShortlistAgainstRealChromadb:
-    """#954 against the real `query`: a source owning more near chunks
-    than the cap must not keep the others out of the ranking, and a
-    source owning none must come back as empty rows rather than raise.
-    Both are claims about chromadb, which `ChunkCollection` in
-    `test_overlap_embed.py` can only assume."""
-
     class PointEmbedder:
-        """Every section chunk lands on the origin, so a chunk's distance
-        is fixed by where it was placed below and nothing else."""
-
         def encode_lists(self, texts):
             return [[0.0, 0.0] for _ in texts]
 
@@ -241,7 +137,6 @@ class TestShortlistAgainstRealChromadb:
             "One sentence of section prose.",
             3,
         )
-        # `d2024` owns no chunk; before #954 it took b2024's slot.
         assert found == ["a2024", "b2024", "c2024"]
 
 
@@ -250,32 +145,8 @@ class TestShortlistAgainstRealChromadb:
     reason="the enrich extra is not installed",
 )
 class TestTheFakesStillMatchTheRealApi:
-    """The drift check the fakes have never had.
-
-    Every call the shipped code makes into these two libraries, asked of
-    the real class: does the method still exist, and does it still accept
-    the keyword arguments the fakes accept? A rename or a dropped keyword
-    is how a faithful fake stops being faithful, and it is silent -- the
-    fake-backed suite stays green while the pipeline breaks on a host
-    that has the real thing.
-
-    Signatures, not calls: nothing here instantiates a model (see the
-    module docstring) or a client, so this costs nothing and cannot flake.
-    """
-
     @staticmethod
     def _accepts(func, keyword: str) -> bool:
-        """A *named* parameter, and deliberately not satisfied by a
-        `**kwargs` in the signature.
-
-        `SentenceTransformer.encode` has both `show_progress_bar` and a
-        `kwargs`, so a lenient check would pass whether or not the
-        keyword still existed -- and a renamed keyword swallowed by
-        `**kwargs` is precisely the silent drift this class exists to
-        catch. If a library legitimately moves one of these into
-        `**kwargs`, this goes red and a human re-reads the call site,
-        which is the right outcome rather than a false alarm.
-        """
         return keyword in inspect.signature(func).parameters
 
     def test_persistent_client_still_takes_path(self):
@@ -324,19 +195,11 @@ class TestTheFakesStillMatchTheRealApi:
         ],
     )
     def test_bertopic_still_takes_every_keyword_topic_model_passes(self, keyword):
-        """`FakeBERTopic` in `tests/test_enrich_topic_model.py` takes
-        `**kwargs` and records them, so it accepts anything -- which means
-        that suite cannot notice a keyword BERTopic has dropped. This can.
-        `BERTopic.__init__` has no `**kwargs` of its own, so each of these
-        is a real named parameter or a real failure."""
         from bertopic import BERTopic
 
         assert self._accepts(BERTopic.__init__, keyword)
 
     def test_bertopic_still_fits_from_texts_and_precomputed_embeddings(self):
-        """`topic_model._fit` calls `fit_transform(texts, embeddings)`
-        positionally, and reads `hdbscan_model` back off the fitted model
-        for soft memberships -- both of which the fake models."""
         from bertopic import BERTopic
 
         parameters = list(inspect.signature(BERTopic.fit_transform).parameters)
@@ -345,21 +208,6 @@ class TestTheFakesStillMatchTheRealApi:
 
 
 class TestCropsAgainstTheRealRenderer:
-    """`_docling_crops` against real pypdfium2 and a real docling
-    `BoundingBox`, not the doubles in
-    `tests/conftest.py` and `tests/test_enrich_docling_crops.py`.
-
-    Those doubles carry more than a signature: `FakePdfiumPage.render`
-    reimplements pdfium's crop arithmetic, and `FakeBBox` reimplements
-    docling's origin conversion. Both would keep a green suite while
-    producing crops of the wrong region on a host with the real
-    libraries -- the exact failure mode #600's own benchmark had to rule
-    out by eye, and the one this class automates.
-
-    Cheap and flake-free: pdfium builds its own blank PDF in a tmp dir,
-    so there is no fixture file and no network.
-    """
-
     @staticmethod
     def _blank_pdf(path, width=200, height=100, pages=2):
         pdfium = pytest.importorskip("pypdfium2")
@@ -370,10 +218,6 @@ class TestCropsAgainstTheRealRenderer:
         return path
 
     def test_real_crop_arithmetic_matches_what_the_fake_models(self, tmp_path):
-        """`render(scale=, crop=)` insets shrink the page from each edge,
-        then scale multiplies -- which is what `FakePdfiumPage.render`
-        computes. If pdfium ever redefines `crop`, every crop this
-        pipeline writes silently shifts."""
         pdfium = pytest.importorskip("pypdfium2")
         pdf = pdfium.PdfDocument(str(self._blank_pdf(tmp_path / "blank.pdf")))
         page = pdf[0]
@@ -385,11 +229,6 @@ class TestCropsAgainstTheRealRenderer:
     @pytest.mark.parametrize(
         "origin,top,bottom",
         [
-            # Both describe the *same* region on a 100pt-high page -- a
-            # box 10 down from the top and 40 up from the bottom -- once
-            # measured from the bottom edge and once from the top. So
-            # both must yield the same insets, and an implementation that
-            # ignored `coord_origin` would get exactly one of them right.
             ("BOTTOMLEFT", 90, 40),
             ("TOPLEFT", 10, 60),
         ],
@@ -405,9 +244,6 @@ class TestCropsAgainstTheRealRenderer:
         assert _docling_crops.crop_insets(box, 200.0, 100.0) == (10.0, 40.0, 140.0, 10.0)
 
     def test_write_picture_crops_end_to_end(self, tmp_path):
-        """The whole unit against both real libraries: a real bbox, a real
-        PDF, a real render, a real PNG on disk at the size the geometry
-        implies."""
         pytest.importorskip("pypdfium2")
         doc_types = pytest.importorskip("docling_core.types.doc")
         from PIL import Image
@@ -428,5 +264,4 @@ class TestCropsAgainstTheRealRenderer:
         assert names == ["paper_artifacts/picture_000000.png"]
         written = art / "picture_000000.png"
         assert written.exists()
-        # 50pt wide (60-10) and 50pt tall (90-40), at scale 2.
         assert Image.open(written).size == (100, 100)

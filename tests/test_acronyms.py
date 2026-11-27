@@ -1,23 +1,10 @@
-"""load_vocabulary() merges the vendored acronym floor with a user's own
-file, additively -- the user's expansion wins on a shared key, and every
-vendored entry the user doesn't redefine still applies. See
-assets/style/README.md and GitHub issue #190.
-"""
-
 import pytest
 
 from chitragupta import acronyms, config
 
 
 class TestLoadDegradesCleanly:
-    """#504, m-31: a malformed acronyms file used to propagate a raw
-    tomllib.TOMLDecodeError, and a non-string expansion crashed
-    stale_expansions() with AttributeError on the first .strip() call."""
-
     def test_an_unparseable_user_file_is_skipped_as_if_absent(self, monkeypatch, tmp_path, capsys):
-        """#1023: skipped with a note rather than raised, and only that
-        file -- the vendored floor still applies, exactly as it does when
-        the user file does not exist."""
         vendored = tmp_path / "vendored.toml"
         vendored.write_text('PDF = "Portable Document Format"\n', encoding="utf-8")
         bad = tmp_path / "bad.toml"
@@ -59,9 +46,6 @@ class TestLoadDegradesCleanly:
         monkeypatch.setattr(config, "ACRONYMS_DEFAULT_PATH", vendored)
         monkeypatch.setattr(config, "ACRONYMS_PATH", vendored)
 
-        # "COUNT" was filtered out of the vocabulary entirely, so no
-        # glossary entry can be compared against it -- the crash this
-        # guards against never gets the chance to happen.
         assert acronyms.stale_expansions({"COUNT (COUNT)": "Count"}) == {}
 
 
@@ -113,10 +97,6 @@ def test_a_user_file_that_does_not_exist_yet_is_treated_as_empty(monkeypatch, tm
 
 
 class TestRealVendoredFile:
-    """No monkeypatching -- the actual assets/style/acronyms.toml this
-    repo ships, matching test_config.py's TestRealConfigToml pattern for
-    CSL_STYLE_PATH."""
-
     def test_has_the_issues_five_named_examples(self):
         vocab = acronyms.load_vocabulary()
         for term in ("PDF", "CPU", "URL", "API", "HTML"):
@@ -124,12 +104,6 @@ class TestRealVendoredFile:
 
 
 class TestSuggest:
-    """suggest() -- which glossary entries look like an acronym and
-    aren't in the vocabulary yet. Takes a plain dict, not a draft path:
-    `dossier.glossary_terms()` supplies the glossary, so this module
-    never needs to import `chitragupta.dossier` (that module already imports
-    this one for load_vocabulary(), and a two-way import would cycle)."""
-
     def test_suggests_an_acronym_shaped_term_not_in_the_vocabulary(self, monkeypatch):
         monkeypatch.setattr(
             acronyms,
@@ -154,9 +128,6 @@ class TestSuggest:
         assert acronyms.suggest(glossary) == {}
 
     def test_suggests_a_parenthetical_acronym_by_the_name_before_the_paren(self, monkeypatch):
-        # The real shape content/dossiers/books/digital-twins-for-software-
-        # engineers/02-twin-shadow-model-simulation/scope.md uses -- none of
-        # this project's own 155 real glossary terms are a bare acronym.
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
         glossary = {
             "Digital twin (DT)": (
@@ -175,11 +146,6 @@ class TestSuggest:
 
 
 class TestStaleExpansions:
-    """stale_expansions() -- glossary acronyms whose recorded expansion no
-    longer agrees with the current vocabulary. Same shape-recognition as
-    suggest(), the opposite direction: only terms already in the
-    vocabulary are worth comparing."""
-
     def test_no_findings_when_a_parenthetical_expansion_still_agrees(self, monkeypatch):
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "Digital twin"})
         glossary = {"Digital twin (DT)": "was, in Chapter 1: a model kept in step."}
@@ -213,14 +179,6 @@ class TestStaleExpansions:
 
 
 class TestBodyCandidates:
-    """body_candidates() -- acronyms defined inline in a draft's own
-    prose via "Name (ACRONYM)", the same shape a glossary bullet's
-    parenthetical form uses. Both fixes below are measured against the
-    real 15-chapter book at
-    content/dossiers/books/digital-twins-for-software-engineers, not
-    assumed -- see the function's own docstring.
-    """
-
     def test_extracts_a_simple_inline_definition(self):
         text = "The **Digital Twin Prototype (DTP)**, describing the artefact."
         assert acronyms.body_candidates(text) == {
@@ -248,19 +206,12 @@ class TestBodyCandidates:
         assert found == {"Digital Twin Prototype (DTP)": "Digital Twin Prototype"}
 
     def test_a_hyphenated_word_stays_in_the_expansion(self):
-        """Measured against the real book: chapter 6 defines "**Functional
-        Mock-up Interface (FMI)**", and a name pattern that could not carry
-        the hyphenated "Mock-up" captured only "Interface" -- which is what
-        `acronyms-suggest --apply` would then have written into the author's
-        own vocabulary, as a wrong expansion nobody typed."""
         text = "The **Functional\nMock-up Interface (FMI)** is the standard."
         assert acronyms.body_candidates(text) == {
             "Functional Mock-up Interface (FMI)": "Functional Mock-up Interface"
         }
 
     def test_reflows_a_hard_line_wrap_inside_one_phrase(self):
-        # The real shape: markdown wraps prose at a fixed column, so a
-        # bolded phrase can be split across two physical lines on disk.
         text = "the **Digital Twin\nAggregate (DTA)**, the aggregation of many."
         assert acronyms.body_candidates(text) == {
             "Digital Twin Aggregate (DTA)": "Digital Twin Aggregate"

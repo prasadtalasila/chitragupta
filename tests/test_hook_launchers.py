@@ -1,17 +1,3 @@
-"""`chitragupta/hook_launchers.py`: can each registered hook's launcher start?
-
-These cases were `tests/test_hook_modules.py::TestLauncherFaults` until the
-check moved out of `.claude/hooks/session_start_hook.py` and into `chitragupta/`,
-so that a command the working interpreter runs -- `python -m chitragupta.draft
-gate` -- can report a launcher the preflight is unable to report, because
-the preflight is started by the same interpreter name it vets (#197).
-
-Most of them are shape cases, and they matter more than they look. A raise
-anywhere in reading a settings file reaches the preflight's catch-all and
-takes the *whole* report down with it, so the check must find nothing
-rather than raise on a file it merely finds odd.
-"""
-
 import json
 import os
 import stat
@@ -30,21 +16,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 @pytest.fixture(autouse=True)
 def installed_package_on_pythonpath(monkeypatch):
-    """PYTHONPATH as the stand-in for site-packages, for every probe here.
-
-    The settings files below live in `tmp_path`, outside this checkout, so
-    to `probe_env` they are an installed-package project and the import
-    probe runs safe-path (#822): no cwd entry, so it no longer finds this
-    checkout by the accident of pytest's working directory. PYTHONPATH is
-    how the tests' children already reach the real package.
-    """
     monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT))
 
 
 @pytest.fixture
 def settings(tmp_path):
-    """Write a settings file, get its path back."""
-
     def write(data) -> Path:
         path = tmp_path / "settings.json"
         path.write_text(data if isinstance(data, str) else json.dumps(data), encoding="utf-8")
@@ -116,9 +92,6 @@ class TestFaults:
         assert "not on an absolute PATH entry" in found[0]
 
     def test_one_missing_interpreter_is_reported_once(self, settings):
-        """Both hooks are launched the same way, so the naive version said
-        the same sentence twice -- which reads as a defect in the reporter
-        rather than in the launcher."""
         dead = {"command": "python4.2", "args": ["${CLAUDE_PROJECT_DIR}/x.py"]}
         found = hook_launchers.faults(
             settings(
@@ -164,8 +137,6 @@ class TestFaults:
         assert "unbraced" in found[0]
 
     def test_a_braced_placeholder_in_shell_form_is_clean(self, settings):
-        """The replace-then-search is what separates these two, and getting
-        it backwards would flag every correct launcher."""
         assert (
             hook_launchers.faults(
                 settings(
@@ -182,8 +153,6 @@ class TestFaults:
         )
 
     def test_a_default_settings_path_is_this_repositorys_own(self):
-        """`faults()` takes a path so a caller can point it at a throwaway
-        tree; called bare it reads the settings file next to this code."""
         assert hook_launchers.SETTINGS == (
             Path(__file__).resolve().parent.parent / ".claude" / "settings.json"
         )
@@ -212,9 +181,6 @@ class TestFaults:
 
 
 class TestOneLauncher:
-    """`_launcher_fault` directly, for the two cases a whole settings file
-    would only reach the long way round."""
-
     def test_an_unbraced_placeholder_inside_args_is_a_fault(self):
         found = hook_launchers._launcher_fault(
             {"command": "python", "args": ["$CLAUDE_PROJECT_DIR/x.py"]}
@@ -232,15 +198,6 @@ class TestOneLauncher:
 
 
 class TestProjectRoot:
-    """Where this module looks for `.claude/settings.json`.
-
-    It cannot ask `chitragupta.config`, and the module docstring says why: that
-    import raises without a `config.toml`, which would break both
-    docs/CLI.md's tier-1 promise and the preflight's ability to run in a
-    fresh clone. So the marker walk is deliberately duplicated here, and
-    these tests pin the copy rather than trusting the original's.
-    """
-
     def test_walks_up_to_the_marker(self, tmp_path, monkeypatch):
         (tmp_path / "config.toml").write_text("", encoding="utf-8")
         deep = tmp_path / "content" / "drafts"
@@ -249,14 +206,6 @@ class TestProjectRoot:
         assert hook_launchers._project_root() == tmp_path.resolve()
 
     def test_falls_back_beside_the_package_when_there_is_no_marker(self, tmp_path, monkeypatch):
-        """Not a guess at some unrelated directory: the checkout it is in.
-
-        `.claude/` belongs to the user's project, so once this code is
-        installed the `__file__`-derived answer is wrong -- it would look
-        inside site-packages. It stays the fallback because a checkout
-        with no config.toml yet is exactly when the preflight most needs
-        to run.
-        """
         bare = tmp_path / "bare"
         bare.mkdir()
         monkeypatch.chdir(bare)
@@ -265,13 +214,7 @@ class TestProjectRoot:
 
 
 class TestImportFaultDirectly:
-    """`import_fault` on its own, for the shapes a whole settings file
-    would only reach by first resolving the program -- which is the
-    caller's job, not this function's."""
-
     def test_a_program_that_cannot_be_spawned_at_all_is_not_a_fault(self):
-        """A program that does not resolve is the PATH check's to report,
-        so the probe neither runs it nor reports it a second time."""
         assert import_probe.import_fault("nowhere-abcx") is None
 
     def test_an_interpreter_that_can_import_the_package_is_clean(self, monkeypatch):
@@ -281,24 +224,12 @@ class TestImportFaultDirectly:
     def test_a_program_that_resolves_but_cannot_be_spawned_is_not_a_fault(
         self, tmp_path, monkeypatch
     ):
-        """`OSError` from the spawn itself, e.g. a file with the execute
-        bit and no format the OS can run."""
         monkeypatch.setattr(hook_launchers.programs, "resolve_program", lambda name: str(tmp_path))
         assert import_probe.import_fault("python3") is None
 
 
 @pytest.fixture
 def fake_interpreter(tmp_path):
-    """A throwaway program that ignores its arguments and exits with a
-    chosen code, optionally after a delay -- stands in for a `python` that
-    starts but cannot import `chitragupta`, or one too slow to answer.
-
-    Named `python3`, and that is load-bearing since #509/m-38: the import
-    probe now only runs against a program whose basename looks like a
-    Python interpreter, so a stand-in called anything else would not be
-    probed at all and these tests would pass vacuously.
-    """
-
     def make(code: int, sleep: float = 0) -> str:
         script = tmp_path / "python3"
         script.write_text(
@@ -311,22 +242,16 @@ def fake_interpreter(tmp_path):
 
 
 def _plant(stem: Path, marker: Path) -> Path:
-    """A program at `stem` that leaves `marker` behind if it ever runs: a
-    shell script on POSIX, and on Windows a batch file, the PATHEXT
-    spelling a lookup of the bare stem finds."""
     if sys.platform == "win32":
         path = stem.with_name(stem.name + ".bat")
         path.write_text(f'@echo off\r\ntype nul > "{marker}"\r\nexit /b 1\r\n', encoding="utf-8")
         return path
-    # A builtin redirect, not `touch`: the PATH a test sets may hold no /usr/bin.
     stem.write_text(f'#!/bin/sh\n: > "{marker}"\nexit 1\n', encoding="utf-8")
     stem.chmod(stem.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
     return stem
 
 
 def _inert(stem: Path) -> Path:
-    """An empty executable `stem` (`.exe` on Windows) that PATH lookup
-    finds and no OS can spawn, so a probe of it is OSError, not a run."""
     path = stem.with_name(stem.name + ".exe") if sys.platform == "win32" else stem
     path.write_text("", encoding="utf-8")
     path.chmod(path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
@@ -334,7 +259,6 @@ def _inert(stem: Path) -> Path:
 
 
 def entry_for(program: str) -> dict:
-    """One PostToolUse settings payload naming `program` as its launcher."""
     return {
         "hooks": {
             "PostToolUse": [
@@ -348,15 +272,6 @@ def entry_for(program: str) -> dict:
     sys.platform == "win32", reason="a shebang script is not directly executable on Windows"
 )
 class TestImportProbeThroughFaults:
-    """`faults()`'s new check, end to end through a settings file: once a
-    launcher resolves on PATH, can it import `chitragupta`?
-
-    Every case reaches its stand-in interpreter by putting its directory
-    first on PATH and naming it bare, never by path -- since #637 that is
-    the only route the probe will take (see
-    TestTheImportProbeOnlyRunsAgainstABareName), so a path-qualified
-    stand-in would make these pass vacuously."""
-
     def test_an_interpreter_that_cannot_import_the_package_is_a_fault(
         self, settings, fake_interpreter, monkeypatch
     ):
@@ -375,9 +290,6 @@ class TestImportProbeThroughFaults:
         assert "did not respond" in found[0]
 
     def test_a_working_interpreter_adds_no_fault(self, settings, tmp_path, monkeypatch):
-        # A bare-named shim onto the suite's own interpreter: the probe
-        # only takes bare names now, and this interpreter is the one
-        # guaranteed to import chitragupta.
         shim = tmp_path / "python3"
         shim.write_text(f'#!/bin/sh\nexec "{sys.executable}" "$@"\n', encoding="utf-8")
         shim.chmod(shim.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
@@ -387,41 +299,20 @@ class TestImportProbeThroughFaults:
 
 
 class TestTheImportProbeOnlyRunsAgainstABareName:
-    """#637. The probe executes whatever program the settings file names,
-    and that file was found by walking cwd's ancestors for a config.toml
-    -- so inside an untrusted tree (a cloned project, /tmp), a planted
-    settings.json naming `/that/tree/python3` handed an attacker's binary
-    to subprocess.run with the user's privileges:
-    `is_python_interpreter` checks only the basename, and `shutil.which`
-    resolves a path-qualified program as-is rather than via PATH. Only a
-    bare name -- resolved against PATH, the user's own environment, which
-    the walked-to directory cannot rewrite -- may be probed."""
-
     def test_a_path_qualified_interpreter_is_never_executed(self, settings, tmp_path):
         marker = tmp_path / "ran"
         _plant(tmp_path / "python3", marker)
         found = hook_launchers.faults(settings(entry_for(str(tmp_path / "python3"))))
         assert not marker.exists(), "the planted binary was executed"
-        # It resolves and is not probed, so it contributes no fault at
-        # all -- reporting less is the accepted price of not executing a
-        # file merely because a directory we walked into named it.
         assert found == []
 
     def test_a_python_planted_in_the_project_is_never_executed(
         self, settings, tmp_path, monkeypatch
     ):
-        """#974. The premise above, that a bare name resolves against PATH
-        alone, is false on Windows, where `shutil.which` and
-        `CreateProcess` both search cwd first, and on any host whose PATH
-        has a relative or empty entry. A cloned project holding `python`
-        was then what the probe ran."""
         marker = tmp_path / "ran"
         project = tmp_path / "project"
         project.mkdir()
         _plant(project / "python", marker)
-        # What PATH should resolve instead: a file that cannot be spawned,
-        # not a real interpreter, whose child would write coverage data
-        # from outside the repository and break the combine.
         (tmp_path / "bin").mkdir()
         _inert(tmp_path / "bin" / "python")
         monkeypatch.chdir(project)
@@ -432,11 +323,6 @@ class TestTheImportProbeOnlyRunsAgainstABareName:
     def test_a_launcher_only_a_relative_path_entry_finds_is_reported_missing(
         self, settings, tmp_path, monkeypatch
     ):
-        """#1025. The existence check used `shutil.which`, which follows a
-        relative entry, and the probe used `resolve_program`, which does
-        not: `PATH=relbin:$PATH` made the launcher pass the one and be
-        skipped by the other, so it was reported neither missing nor
-        dead. Now both agree, and it is reported missing."""
         marker = tmp_path / "ran"
         (tmp_path / "relbin").mkdir()
         _plant(tmp_path / "relbin" / "python", marker)
@@ -449,10 +335,6 @@ class TestTheImportProbeOnlyRunsAgainstABareName:
     def test_the_probe_is_handed_the_absolute_path_path_resolved(
         self, settings, tmp_path, monkeypatch
     ):
-        """The other half: not the bare name, which `CreateProcess` would
-        look up in cwd again, but the absolute path found on PATH. Every
-        spelling a Windows lookup tries is planted, so this is red there
-        as well as here."""
         project = tmp_path / "project"
         project.mkdir()
         for name in ("python", "python.exe", "python.bat", "python.cmd"):
@@ -497,10 +379,6 @@ class TestTheImportProbeOnlyRunsAgainstABareName:
 
 
 class TestImportProbeIsPerDistinctProgram:
-    """The probe is one subprocess per distinct launcher, not one per hook
-    entry -- both because two entries naming the same program is one
-    problem, not two, and because a slow probe should not multiply."""
-
     def test_runs_once_for_a_program_two_entries_share(self, settings, monkeypatch):
         calls = []
         monkeypatch.setattr(
@@ -509,7 +387,6 @@ class TestImportProbeIsPerDistinctProgram:
         monkeypatch.setattr(
             hook_launchers.programs, "resolve_program", lambda program: "/usr/bin/python3"
         )
-        # Bare-named, since #637 made that the only shape the probe takes.
         same = {"command": "python3", "args": ["${CLAUDE_PROJECT_DIR}/x.py"]}
         hook_launchers.faults(
             settings(
@@ -539,18 +416,10 @@ class TestImportProbeIsPerDistinctProgram:
             )
         )
         assert calls == []
-        # Reported once, by the PATH check, not a second time by the probe.
         assert found == ["`python4.2` is not on an absolute PATH entry, so a hook cannot start."]
 
 
 class TestTheImportProbeOnlyRunsAgainstAPython:
-    """m-38 (#509). `import_fault` runs `<program> -c "import
-    chitragupta"`, which is a Python invocation and nothing else. Against
-    a non-Python launcher -- `bash`, `uv`, `node` -- the program either
-    rejects `-c` or runs something unrelated, exits non-zero, and gets
-    reported as "cannot import chitragupta" every single session: a fault
-    about the probe, not about the hook."""
-
     @pytest.mark.parametrize(
         "program",
         [
@@ -580,8 +449,6 @@ class TestTheImportProbeOnlyRunsAgainstAPython:
         ),
     )
     def test_a_bash_launcher_produces_no_import_fault(self, settings, tmp_path):
-        """End to end, and genuinely red before the fix: `bash -c "import
-        chitragupta"` exits non-zero on any host."""
         program = tmp_path / "bash"
         program.write_text("#!/bin/sh\nexit 2\n", encoding="utf-8")
         program.chmod(program.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
@@ -607,37 +474,13 @@ class TestTheImportProbeOnlyRunsAgainstAPython:
 
 
 class TestTheInstallScriptProvidesTheLauncher:
-    """The other half of a launcher fault: who is supposed to *fix* it.
-
-    `.claude/settings.json` names `python`, and docs/HOOKS.md records why
-    that name rather than `python3` -- but on a Debian-family host without
-    `python-is-python3` the name does not exist outside an activated venv,
-    so every hook this repository registers fails in the one way this
-    module exists to notice: silently. `faults()` above can only report
-    it. `scripts/install_full_pipeline.sh` is the only thing in the tree
-    positioned to prevent it, and these cases pin both halves of how it
-    does so.
-
-    Read as text rather than run: `os-deps` needs apt and root, and the
-    package list is a fact about the file, not about this host.
-    """
-
     def _script(self) -> str:
         return (REPO_ROOT / "scripts" / "install_full_pipeline.sh").read_text(encoding="utf-8")
 
     def test_os_deps_installs_the_launcher_name(self):
-        """The direct fix, in the stage that is allowed to touch apt."""
         assert "python-is-python3" in self._script()
 
     def test_the_package_is_probed_before_it_is_installed(self):
-        """The `libglib2.0-0t64` precedent, for the same reason it exists
-        there: `apt-get install` takes no alternatives, so naming a
-        package a release does not carry fails the whole stage rather
-        than the one line.
-
-        Through the *shared* `apt_has_candidate`, not a second copy of
-        the probe -- adding the second caller is what turned that idiom
-        into something with one home."""
         script = self._script()
         probe = script.index('apt_has_candidate "$launcher_pkg"')
         install = script.index("sudo_if_needed apt-get install")
@@ -645,9 +488,6 @@ class TestTheInstallScriptProvidesTheLauncher:
         assert script.count("apt-cache policy") == 1, "one probe, two callers"
 
     def test_python_deps_reports_launcher_faults(self):
-        """The load-bearing half. `os-deps` is apt/root-only and opt-in,
-        so a host that ran only `python-deps` still has the fault and no
-        way to hear about it."""
         script = self._script()
         assert "report_launcher_faults" in script
         assert script.index("report_launcher_faults()") < script.index("install_python_deps()"), (
@@ -655,16 +495,9 @@ class TestTheInstallScriptProvidesTheLauncher:
         )
 
     def test_the_report_calls_hook_launchers_rather_than_copying_it(self):
-        """`faults()` already answers both halves -- on PATH, and able to
-        import the package. A second copy in shell is a second place for
-        the answer to drift, which is the invariant DEVELOPER-AGENTS.md
-        states for the install script generally."""
         assert "hook_launchers" in self._script()
 
     def test_a_launcher_fault_does_not_fail_the_install(self):
-        """It is a warning about the *harness*, not about the install,
-        which by that point has already succeeded. Failing here would
-        make a working venv look like a broken one."""
         script = self._script()
         body = script[script.index("report_launcher_faults()") :]
         body = body[: body.index("\n}\n")]
@@ -672,12 +505,7 @@ class TestTheInstallScriptProvidesTheLauncher:
 
 
 class TestTheProbeNeverImportsAPlantedPackage:
-    """#822. `-c` puts cwd first on `sys.path`, and this probe runs from
-    wherever the preflight or `draft gate` was started -- a scaffolded
-    project's root, which may hold a `chitragupta/` nobody installed."""
-
     def test_a_checkout_keeps_its_cwd_entry(self):
-        """The checkout finds its own package through cwd, with no install."""
         assert import_probe.probe_env(REPO_ROOT / ".claude" / "settings.json") is None
 
     def test_an_installed_package_project_is_probed_safe_path(self, tmp_path):
@@ -698,9 +526,6 @@ class TestTheProbeNeverImportsAPlantedPackage:
             f"open({str(sentinel)!r}, 'w').close()\n", encoding="utf-8"
         )
         monkeypatch.setenv("PATH", f"{Path(sys.executable).parent}{os.pathsep}{os.environ['PATH']}")
-        # The probe inherits this environment and runs from tmp_path, where
-        # a coverage bootstrap finds no config and records statement-only
-        # data the parent's branch data cannot combine with.
         for name in [k for k in os.environ if _IS_COVERAGE_BOOTSTRAP(k)]:
             monkeypatch.delenv(name)
         monkeypatch.chdir(tmp_path)

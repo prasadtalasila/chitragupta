@@ -1,10 +1,3 @@
-"""Collecting the TikZ libraries a draft's figures ask for (#781).
-
-Every test here reads figure *source* and compiles nothing, which is what
-keeps them running on a host with no TeX Live -- the real-compile side of
-the same fix is `tests/test_tikz_library_scope.py`, which skips there.
-"""
-
 from chitragupta.render_output import _tikz_libraries as tl
 
 
@@ -30,9 +23,6 @@ class TestLibrariesIn:
         assert tl.libraries_in(source) == ["fit"]
 
     def test_a_commented_out_load_is_not_collected(self):
-        # A commented load is inert in TeX, so collecting it would put a
-        # library in the preamble the figure does not use -- and, if it
-        # is misspelled, fail the whole render over a comment.
         assert tl.libraries_in("% \\usetikzlibrary{positioning}") == []
 
     def test_an_escaped_percent_does_not_start_a_comment(self):
@@ -40,8 +30,6 @@ class TestLibrariesIn:
         assert tl.libraries_in(source) == ["fit"]
 
     def test_an_empty_call_yields_nothing(self):
-        # `\usetikzlibrary{}` is fatal in TeX; it must not become an
-        # empty name that we then re-emit.
         assert tl.libraries_in(r"\usetikzlibrary{}") == []
 
     def test_a_figure_with_no_load(self):
@@ -64,9 +52,6 @@ class TestLibraryUnion:
         ]
 
     def test_the_result_is_sorted(self, tmp_path):
-        # Sorted rather than first-seen: a set iterates in hash order,
-        # Python randomises string hashing per process, and this string
-        # lands in the preamble of every render.
         self._figure(tmp_path, "a.tex", r"\usetikzlibrary{positioning,arrows.meta,fit}")
         assert tl.library_union(["figures/a.tex"], tmp_path) == [
             "arrows.meta",
@@ -75,14 +60,9 @@ class TestLibraryUnion:
         ]
 
     def test_a_missing_figure_is_skipped(self, tmp_path):
-        # `_figure_warnings` is what tells the user about a missing
-        # figure; this must not be a second, fatal report of the same
-        # thing.
         assert tl.library_union(["figures/absent.tex"], tmp_path) == []
 
     def test_an_escaping_reference_is_not_read(self, tmp_path):
-        # `_resolve_sibling`'s rule: a draft's own text is never a reason
-        # to read outside its directory.
         assert tl.library_union(["../secrets.tex"], tmp_path) == []
 
     def test_no_figures_at_all(self, tmp_path):
@@ -97,22 +77,15 @@ class TestLibraryUnion:
 
 class TestHeaderInclude:
     def test_no_library_loads_tikz_alone(self):
-        # `\usetikzlibrary{}` fails fatally on the comma list rather than
-        # skipping, so an empty union must emit no call at all.
         assert tl.header_include([]) == r"\usepackage{tikz}"
 
     def test_libraries_follow_the_package(self):
-        # Order is load-bearing: \usetikzlibrary needs tikz loaded.
         assert tl.header_include(["fit", "positioning"]) == (
             r"\usepackage{tikz}\usetikzlibrary{fit,positioning}"
         )
 
 
 class TestStripComments:
-    """Moved here from `review/figure_layout/_source.py`, which now
-    imports it -- the dependency runs review -> render_output and never
-    back, and the preamble collector needs the same stripper."""
-
     def test_a_comment_goes(self):
         assert tl.strip_comments("\\node (a) {A}; % a note\n") == "\\node (a) {A}; \n"
 

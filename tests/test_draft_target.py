@@ -1,19 +1,3 @@
-"""`.claude/hooks/draft_target.py`: the one decision both PostToolUse hooks
-share, and therefore the one place a disagreement between them could start.
-
-These cases were the citation gate's own tests until the helper was
-extracted. They are here rather than there because both hooks now depend on
-them, and because the failure this file guards against is not "the gate
-broke" but "the two hooks stopped covering the same writes" -- which no
-test of either hook alone can see.
-
-Every case below is a *negative* one bar two, and that is the shape of the
-problem: a helper that says "yes, a draft" too readily makes the advisory
-hook noisy, and one that says "no" too readily makes the gate silently stop
-enforcing CLAUDE.md's one invariant. The second failure is invisible, which
-is why the containment and suffix cases are pinned this hard.
-"""
-
 import importlib.util
 import io
 import json
@@ -30,7 +14,6 @@ FIXTURES = REPO_ROOT / "tests" / "fixtures" / "harness_payloads"
 
 @pytest.fixture
 def dt():
-    """A fresh module, so a monkeypatched REPO_ROOT cannot leak between tests."""
     if str(HOOKS) not in sys.path:
         sys.path.insert(0, str(HOOKS))
     spec = importlib.util.spec_from_file_location("draft_target", HOOKS / "draft_target.py")
@@ -50,10 +33,6 @@ def stdin_of(payload) -> io.StringIO:
 
 
 class TestMalformedStdinFailsOpen:
-    """Three shapes, all of which have been hit in production. Each means
-    "no file path was given", and a helper that raises on one is a hook
-    that stops reporting -- for the gate, that is enforcement lost."""
-
     @pytest.mark.parametrize(
         "payload,why",
         [
@@ -74,15 +53,11 @@ class TestMalformedStdinFailsOpen:
 
 
 class TestContainment:
-    """`is_relative_to` on resolved paths, not a substring match."""
-
     def test_a_draft_under_content_drafts_is_the_target(self, dt, root):
         draft = root / "content" / "drafts" / "survey.md"
         assert dt.target(str(draft), root) == draft.resolve()
 
     def test_a_nested_draft_is_the_target(self, dt, root):
-        """Book chapters live in subdirectories, so containment is not a
-        parent check."""
         nested = root / "content" / "drafts" / "books" / "ch01.md"
         nested.parent.mkdir(parents=True)
         assert dt.target(str(nested), root) == nested.resolve()
@@ -101,14 +76,6 @@ class TestContainment:
         assert dt.target(relative, root) is None, why
 
     def test_a_substring_match_would_have_passed_the_escape(self, dt, root):
-        """The case that makes this `is_relative_to` and not `in`: the raw
-        string contains the drafts directory and the resolved path does not.
-
-        The needle is built with `os.sep` rather than written as
-        "/content/drafts/", because the separator is "\\" on Windows and a
-        literal would make this test assert something true only on POSIX --
-        which is what it did until CI's Windows leg said so.
-        """
         escape = "content/drafts/../../outside.md"
         needle = f"{os.sep}content{os.sep}drafts{os.sep}"
         assert needle in str(root / escape)
@@ -117,8 +84,6 @@ class TestContainment:
 
 class TestNoPath:
     def test_an_empty_path_is_not_a_draft(self, dt, root):
-        """Reached only by a direct caller: the payload readers never hand
-        `target` an empty string, but a caller with its own path might."""
         assert dt.target("", root) is None
 
 
@@ -138,20 +103,10 @@ class TestSuffixes:
         ],
     )
     def test_anything_else_is_ignored(self, dt, root, name):
-        """Including `.MD`: the suffix check is exact, and a case-insensitive
-        one would be a guess about a filesystem rather than about this
-        pipeline, which only ever writes lowercase."""
         assert dt.target(f"content/drafts/{name}", root) is None
 
 
 class TestPathsTheFilesystemRefuses:
-    """Found by an OpenCodeReview pass, and the more serious of the two it
-    found: `citation_gate_hook.main()` runs straight off
-    `raise SystemExit(main())` with no catch-all, so an exception raised in
-    here exits non-zero *without* the blocking decision -- and the write
-    lands ungated. A hook that crashes on a malformed payload is a gate
-    that has stopped being one."""
-
     def test_an_embedded_null_byte_is_not_a_draft(self, dt, root):
         assert dt.target("content/drafts/a\0b.md", root) is None
 
@@ -161,38 +116,27 @@ class TestPathsTheFilesystemRefuses:
         assert dt.targets_from_stdin(stdin_of(payload)) == []
 
     def test_a_very_long_path_is_judged_on_its_location_like_any_other(self, dt, root):
-        """Not an error case, and worth pinning as such: `resolve()` does
-        not stat, so a path past the OS length limit raises nothing here.
-        `OSError` stays in the guard for the platforms where it would."""
         assert dt.target("content/drafts/" + "x" * 5000 + ".md", root) is not None
 
 
 class TestPathResolution:
     def test_a_relative_path_resolves_against_the_repo_root(self, dt, root):
-        """The near-miss `citation_gate_hook.py`'s docstring records: a
-        substring match on "/content/drafts/" silently skips a relative
-        path, because there is no leading slash to match."""
         draft = root / "content" / "drafts" / "rel.md"
         assert dt.target("content/drafts/rel.md", root) == draft.resolve()
 
     def test_the_root_is_not_taken_from_the_working_directory(
         self, dt, root, tmp_path, monkeypatch
     ):
-        """A hook runs from wherever the harness happens to be."""
         elsewhere = tmp_path / "cwd"
         elsewhere.mkdir()
         monkeypatch.chdir(elsewhere)
         assert dt.target("content/drafts/rel.md", root) is not None
 
     def test_the_default_root_is_this_checkout(self, dt):
-        """With no root passed, the helper uses its own on-disk location --
-        which is what production does, and the reason both hooks agree."""
         assert dt.REPO_ROOT == REPO_ROOT
         assert dt.target("content/drafts/anything.md") is not None
 
     def test_a_patched_root_is_read_at_call_time(self, dt, root, monkeypatch):
-        """Both hooks read `REPO_ROOT` through the module rather than
-        copying it at import, which is what lets one patch relocate both."""
         monkeypatch.setattr(dt, "REPO_ROOT", root)
         assert (
             dt.target("content/drafts/rel.md") == (root / "content" / "drafts" / "rel.md").resolve()
@@ -219,9 +163,6 @@ PATCH = (
 
 
 class TestPatchPayloads:
-    """Codex's `apply_patch`, and OpenCode's through its plugin (#812, #900):
-    no `file_path`, the targets named in the patch text instead."""
-
     def test_every_draft_in_a_patch_is_returned(self, dt, root):
         payload = {"tool_name": "apply_patch", "tool_input": {"command": PATCH}}
         got = dt.targets_from_stdin(stdin_of(payload), root)
@@ -264,7 +205,6 @@ class TestPatchPayloads:
         assert dt.targets_from_stdin(stdin_of({"tool_input": {"command": patch}}), root) == []
 
     def test_a_shell_command_with_no_envelope_is_not_our_business(self, dt, root):
-        # The documented gap: a shell write is outside every file-tool hook.
         payload = {"tool_input": {"command": "echo x > content/drafts/a.md"}}
         assert dt.targets_from_stdin(stdin_of(payload), root) == []
 
@@ -272,9 +212,6 @@ class TestPatchPayloads:
         assert dt.targets_from_stdin(stdin_of({"tool_input": {"command": 7}}), root) == []
 
     def test_the_recorded_codex_payload_resolves_against_its_cwd(self, dt, root):
-        """The payload Codex 0.159.0 sent from a session started in
-        `content/`, with `/project` standing for the root: `drafts/sub.md`
-        is only a draft once it is resolved against that `cwd`."""
         payload = json.loads((FIXTURES / "codex_apply_patch.json").read_text("utf-8"))
         payload["cwd"] = payload["cwd"].replace("/project", str(root))
         assert dt.targets_from_stdin(stdin_of(payload), root) == [

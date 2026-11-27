@@ -1,14 +1,3 @@
-"""No message chitragupta prints the path `scripts/install_full_pipeline.sh`
-(#1022 item 3).
-
-A `chitragupta init` project has no `scripts/` (docs/PACKAGING.md), so a
-remedy naming it sends the reader to a file they do not have.
-`chitragupta install <stage>` runs the same script from either shape
-(`chitragupta.install.remedy`). install.py is exempt: it is the module
-that runs the script. Docstrings and comments are not messages and stay
-free to explain where a stage lives.
-"""
-
 import ast
 from pathlib import Path
 
@@ -42,14 +31,10 @@ def test_no_printed_string_names_the_install_script():
     assert offenders == []
 
 
-# `.claude/skills-common/` too: a passage moved out of a `SKILL.md` into a
-# shared reference is still read by a drafting model (#1091).
 SKILL_TREES = (".claude/skills", ".claude/skills-common", ".agents/skills", ".opencode/skills")
 
 
 def test_no_skill_sends_a_drafting_reader_to_the_install_script():
-    # The skills are scaffolded into a `chitragupta init` project too,
-    # which has no scripts/ to run (#1022 review).
     root = PACKAGE.parent
     offenders = [
         f"{path.relative_to(root)}"

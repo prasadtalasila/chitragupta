@@ -1,31 +1,3 @@
-"""Every skill's `SKILL.md` stays under a byte budget that only falls (#1091).
-
-The whole file loads when a skill triggers, in each of three harness
-copies, and a model skims a long one. Nothing else stops a file from
-growing: every feature adds a paragraph and none takes one out. So each
-skill has a cap, checked against all three copies, and the cap moves
-with the file:
-
-- a copy over its cap fails, so growth needs a visible cap raise;
-- a cap more than `SLACK` bytes above the largest copy fails, so a PR
-  that shrinks a skill lowers its cap in the same commit;
-- a cap above the skill's target carries the reason it is still there.
-
-Bytes, not lines: a line limit is dodged by re-wrapping, and bytes are
-what a context window spends. A raise cannot be detected from the tree
-alone; the reason column is what makes one visible in review.
-
-What a shrink may move is prose: rationale and detail go to the skill's
-`references/` or `.claude/skills-common/references/`, behind a pointer
-that says when to read them. Every `python -m chitragupta...` command, every
-marker a draft must carry and every phrase a test reads from the raw file
-stay in `SKILL.md` (plans/1091-skill-shrink.md, Decision 2), except where
-a step was measured holding as a pointer: the render step
-(`render-and-references.md`) and the critique loop (`critique.md`, for the
-skills in tests/test_skill_pregate_feedback_step.py's `_POINTER_FORM`;
-docs/HARNESS.md has both measurements).
-"""
-
 import pytest
 
 from tests.test_skill_harness_copies import ROOTS, SKILLS, folder
@@ -42,7 +14,6 @@ GENRES = {
 }
 _LATER = "#1091: shrinks to its target in its own PR"
 
-# skill: (cap in bytes, why the cap is above the target, or None)
 BUDGET = {
     "agenda-reviser": (
         19_500,

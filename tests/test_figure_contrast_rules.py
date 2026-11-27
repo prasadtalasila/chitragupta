@@ -1,11 +1,3 @@
-"""`k1-stroke` and `k2-text` (#1055), over synthetic drawn figures.
-
-The colours are the house block's hues: `cgAccent` text on its own 10%
-tint is 3.4:1 and fails 4.5:1; `cgAux` on white is 2.3:1 and fails
-3:1; their `Text` and `Line` shades clear both. The probe's own colours
-are checked against a real compile in tests/test_figure_drawn.py.
-"""
-
 from chitragupta.figure._colour import mix
 from chitragupta.figure._connectors import MM
 from chitragupta.figure._contrast import colour_names, contrast_rules
@@ -56,15 +48,12 @@ class TestText:
         )
 
     def test_large_bold_text_needs_only_3(self):
-        """The same colour at 12pt fails: the size is measured, not read
-        from `\\large`."""
         large = _box("a", fill=Paint(ACCENT_TINT, "t"), runs=[_run(ACCENT, 14.4, bold=True)])
         body = _box("b", fill=Paint(ACCENT_TINT, "t"), runs=[_run(ACCENT, 12.0, bold=True)])
 
         assert [f[1] for f in _findings(large, body)] == ["b"]
 
     def test_one_colour_at_two_sizes_reports_once_at_its_worst(self):
-        """The regular run is short by more than the large bold one."""
         found = _findings(
             _box(
                 "a",
@@ -86,7 +75,6 @@ class TestText:
         assert found[0][1] == "(5.0,5.0)"
 
     def test_a_node_tikz_named_itself_is_named_by_its_centre(self):
-        """An unnamed `fit` is `tikz@f@1` inside TikZ."""
         found = _findings(_box("tikz@f@1", box=(0, 0, 28.45, 28.45), stroke=Paint(AUX, "cgAux")))
 
         assert found[0][1] == "(5.0,5.0)"
@@ -99,8 +87,6 @@ class TestText:
 
 class TestGround:
     def test_an_unfilled_box_in_a_zone_is_measured_on_the_zone(self):
-        """cgAccent text clears 3.87:1 on white, under 4.5 either way, but
-        the zone's tint is what the reader sees it on."""
         zone = _box("zone", box=(-10, -10, 100, 50), fill=Paint(ACCENT_TINT, "cgAccent!10"))
         found = _findings(zone, _box("a", runs=[_run(ACCENT)]))
 
@@ -109,7 +95,6 @@ class TestGround:
         ]
 
     def test_the_innermost_filled_holder_is_the_ground(self):
-        """cgAccentText is 2.47:1 on solid cgAux, 5.69:1 on white."""
         outer = _box("outer", box=(-20, -20, 200, 100), fill=Paint(AUX, "cgAux"))
         inner = _box("inner", box=(-10, -10, 100, 50), fill=Paint(WHITE, "white"))
         found = _findings(outer, inner, _box("a", runs=[_run(ACCENT_TEXT)]))
@@ -117,14 +102,12 @@ class TestGround:
         assert found == []
 
     def test_a_holder_tikz_named_itself_is_named_by_its_centre(self):
-        """An unnamed `fit` behind a box is `tikz@f@1` inside TikZ (#1087)."""
         zone = _box("tikz@f@1", box=(-10, -10, 100, 50), fill=Paint(ACCENT_TINT, "cgAccent!10"))
         ((_, _, measurement),) = _findings(zone, _box("a", runs=[_run(ACCENT)]))
 
         assert measurement.startswith(f"text cgAccent on ({45 / MM:.1f},{20 / MM:.1f})'s fill")
 
     def test_a_tag_holds_no_ground(self):
-        """An unnamed node is a label, never a card behind anything."""
         tag = _box("cgu-1", box=(-10, -10, 100, 50), fill=Paint(ACCENT, "cgAccent"))
         assert _findings(tag, _box("a", runs=[_run(INK)])) == []
 
@@ -144,7 +127,6 @@ class TestBorder:
 
 class TestBadge:
     def test_a_border_in_its_own_fill_colour_is_not_measured(self):
-        """`cgbadge` draws and fills its disc in one Text shade."""
         flow_text = mix((0.0, 0x72 / 255, 0xB2 / 255), INK, 0.95)
         disc = _box(
             "cgu-1", fill=Paint(flow_text, "cgFlowText"), stroke=Paint(flow_text, "cgFlowText")

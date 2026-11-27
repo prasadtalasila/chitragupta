@@ -1,29 +1,3 @@
-"""docs/DIAGRAMS.md's fenced blocks against the standalone exports beside
-them.
-
-DIAGRAMS.md states the invariant itself: the fenced block is the source of
-truth, `docs/diagrams/<name>.mmd` and `docs/diagrams/svg/<name>.svg` are
-exports, and *"Edit the fenced block first, then re-render, or the two
-drift apart."* Nothing enforced that, and they had drifted -- caught while
-auditing the diagrams for the same PR that added this file, and caused by
-that PR's own earlier commit, which updated two fenced blocks and left
-their `.mmd` exports behind.
-
-That is the failure worth automating: it is silent, it is invisible in
-review (the fenced block in the diff looks right), and the stale artefact
-is the one a reader drops into a slide deck.
-
-**What this checks, and what it cannot.** Fenced block against `.mmd` is
-exact and cheap, so that is enforced strictly. SVG freshness is checked
-through `docs/diagrams/svg/sources.json` (#850), which
-`scripts/render_diagrams.py` writes as it renders: the fingerprint of the
-`.mmd` each export was rendered from. An `.mmd` edited without a
-re-render fails here, naming the command to run. Rendering itself is not
-done here -- it needs `mermaid-cli` plus a browser, which a unit suite
-does not install -- so the manifest is the render's own record, and the
-label-text check below remains as a second line for the aid names.
-"""
-
 import json
 import re
 from pathlib import Path
@@ -44,8 +18,6 @@ NAMES = render_diagrams.export_names(DIAGRAMS_TEXT)
 _TITLE = re.compile(r"\A---\ntitle:.*?\n---\n", re.DOTALL)
 BLOCKS = render_diagrams.blocks(DIAGRAMS_TEXT)
 
-# Every diagram in the docs, DIAGRAMS.md's first: `(doc, name, block)`. A
-# block outside DIAGRAMS.md is named by the marker line above it.
 ALL = [
     (path.relative_to(REPO_ROOT).as_posix(), name, block)
     for path, names in render_diagrams.sources()
@@ -55,8 +27,6 @@ ALL_NAMES = [name for _, name, _ in ALL]
 
 
 def _body(name: str) -> str:
-    """A `.mmd` export's Mermaid, without the title front matter the
-    fenced block does not carry."""
     return _TITLE.sub("", (DIAGRAMS_DIR / f"{name}.mmd").read_text(encoding="utf-8")).strip()
 
 
@@ -93,9 +63,6 @@ class TestTheNameListReadsTheTable:
 
 
 class TestEveryDiagramWearsTheHouseTheme:
-    """#1017: one theme, held in one place, in every diagram in the docs. The test for
-    the `.mmd` side is the block comparison below; this is the block side."""
-
     STYLE_TEXT = render_diagrams.STYLE_DOC.read_text(encoding="utf-8")
     THEME = render_diagrams.house_theme(render_diagrams.palette(STYLE_TEXT))
 
@@ -109,8 +76,6 @@ class TestEveryDiagramWearsTheHouseTheme:
 
     @pytest.mark.parametrize("doc,name,block", ALL, ids=ALL_NAMES)
     def test_its_classes_are_the_four_roles(self, doc, name, block):
-        """A diagram-local classDef brings back a hue the palette does not
-        have; a `class` line naming anything else styles nothing."""
         defined = set(re.findall(r"^\s*classDef (\w+)", block, re.MULTILINE))
         used = set(re.findall(r"^\s*class [\w,]+ (\w+)\s*$", block, re.MULTILINE))
         used |= set(re.findall(r":::(\w+)", block))
@@ -126,15 +91,11 @@ class TestEveryDiagramWearsTheHouseTheme:
         )
 
     def test_no_block_types_a_hex_of_its_own(self):
-        """The palette hexes come from docs/TIKZ-STYLE.md and nowhere else:
-        every colour a block names is one the generated theme holds."""
         allowed = set(re.findall(r"#[0-9A-F]{6}", "\n".join(self.THEME)))
         typed = {h.upper() for _, _, b in ALL for h in re.findall(r"#[0-9A-Fa-f]{6}\b", b)}
         assert typed <= allowed, f"hexes outside the house theme: {sorted(typed - allowed)}"
 
     def test_the_sites_stylesheet_is_the_palette(self):
-        """mkdocs-material's own Mermaid colours beat the init directive;
-        docs/stylesheets/mermaid.css sets them from the same palette."""
         css = REPO_ROOT / "docs" / "stylesheets" / "mermaid.css"
         expected = render_diagrams.mermaid_css(render_diagrams.palette(self.STYLE_TEXT))
         assert css.read_text(encoding="utf-8") == expected, (
@@ -145,8 +106,6 @@ class TestEveryDiagramWearsTheHouseTheme:
         assert "- docs/stylesheets/mermaid.css" in mkdocs
 
     def test_the_theme_is_the_tikz_palette(self):
-        """Read the palette again, independently of the script's parser, so
-        a parser that silently found the wrong colours is caught too."""
         defined = dict(
             re.findall(r"\\definecolor\{(cg\w+)\}\{HTML\}\{([0-9A-F]{6})\}", self.STYLE_TEXT)
         )
@@ -159,9 +118,6 @@ class TestEveryDiagramWearsTheHouseTheme:
 
 
 class TestEachSvgWasRenderedFromItsCurrentSource:
-    """#850: a stale SVG fails with the source to re-render, not only when
-    an aid name happens to be missing from it."""
-
     MANIFEST = json.loads((DIAGRAMS_DIR / "svg" / "sources.json").read_text(encoding="utf-8"))
 
     def test_every_export_is_in_the_manifest(self):
@@ -188,8 +144,6 @@ class TestEachExportMatchesItsFencedBlock:
     @pytest.mark.parametrize("fmt", render_diagrams.FORMATS)
     @pytest.mark.parametrize("name", ALL_NAMES)
     def test_every_export_exists(self, name, fmt):
-        """An SVG for the web, a PDF for papers and slides: the SVG's labels
-        are HTML only a browser draws (docs/DIAGRAMS.md)."""
         assert (DIAGRAMS_DIR / fmt / f"{name}.{fmt}").is_file(), (
             f"docs/diagrams/{fmt}/{name}.{fmt} is missing. Render it:\n"
             f"    python scripts/render_diagrams.py {name}"
@@ -197,19 +151,6 @@ class TestEachExportMatchesItsFencedBlock:
 
 
 class TestTheReviewLayerIsDrawnCompletely:
-    """The specific staleness that keeps recurring.
-
-    One diagram enumerates the review aids and presents the enumeration
-    as complete -- "REVIEW AIDS: you run these", "Layer 4, the review
-    layer". Each listed three of six until this PR. A diagram that merely
-    *mentions* one aid is not making a claim about the set and is not
-    checked here; these three are.
-    """
-
-    # g1-corpus-led, v3-artifacts and extra-sequence no longer list the
-    # aids: each was redrawn narrow enough to read on the docs site (#1229),
-    # which left no room for eleven names in one label. 00-main-workflow
-    # still names them all in its REVIEW AIDS node.
     ENUMERATING = ("00-main-workflow",)
 
     @pytest.mark.parametrize("name", ENUMERATING)
@@ -225,9 +166,6 @@ class TestTheReviewLayerIsDrawnCompletely:
 
     @pytest.mark.parametrize("name", ENUMERATING)
     def test_the_svg_carries_the_same_aids(self, name):
-        # The label-text half of SVG freshness: an export re-rendered
-        # before the aid landed still says so, and this is what a reader
-        # pasting it into a paper would ship.
         svg = (DIAGRAMS_DIR / "svg" / f"{name}.svg").read_text(encoding="utf-8")
         missing = [aid for aid in sorted(review.AIDS) if aid not in svg]
         assert not missing, (

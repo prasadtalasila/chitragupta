@@ -1,13 +1,3 @@
-"""The OpenCode plugin, through the real Python hook (#900).
-
-`tests/opencode/gate.test.mjs` covers the plugin's helpers with stub hooks;
-this runs those tests from pytest, so a local run cannot skip them, and
-adds the one case they cannot: the plugin as OpenCode would load it,
-driving the real `.claude/hooks/citation_gate_hook.py` in a throwaway
-project, on a draft citing a key no ledger holds. Skipped where `node`
-is absent, the way pandoc-dependent tests are skipped without pandoc.
-"""
-
 import json
 import os
 import shutil
@@ -50,7 +40,6 @@ def test_the_helper_unit_tests_pass():
 
 @pytest.fixture
 def project(tmp_path, isolated_config):
-    """A throwaway project: this checkout's hooks and plugin, and a drafts dir."""
     shutil.copytree(REPO_ROOT / ".claude" / "hooks", tmp_path / ".claude" / "hooks")
     shutil.copytree(REPO_ROOT / ".opencode", tmp_path / ".opencode")
     drafts = tmp_path / "content" / "drafts"
@@ -85,8 +74,6 @@ def drive(project, tool, args) -> dict:
 
 
 def test_a_fabricated_key_in_a_written_draft_is_refused(project):
-    # isolated_config's CONTENT_DIR is this same tmp_path/content, so the
-    # gate the hook runs reads the draft the plugin names.
     root, _ = project
     draft = root / "content" / "drafts" / "bad.md"
     draft.write_text("A claim [@not_a_real_citekey_2026].\n", encoding="utf-8")

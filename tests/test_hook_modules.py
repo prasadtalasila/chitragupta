@@ -1,36 +1,3 @@
-"""The two hooks in `.claude/hooks/`, exercised as modules rather than as
-scripts, so their branches are measured.
-
-**Why this file exists beside the two subprocess test files.** A hook is
-run by the harness as `python <path>`, and testing it the way it is really
-run means spawning it -- which is what `tests/test_citation_gate_hook.py`
-and `tests/test_session_start_hook.py` do. Those tests prove the contract:
-given this stdin, the process exits 0 and writes that. What they cannot do
-is report coverage. Measured before this file was written, 22 passing
-subprocess tests left `session_start_hook.py` at **0.00%**, and
-`citation_gate_hook.py` sat at an accidental 76.74% -- accidental because
-it depended on which tests happened to inherit pytest-cov's subprocess
-bootstrap rather than strip it, so the number measured the test harness
-and not the hook.
-
-Instrumenting the children instead was the obvious alternative and is
-ruled out on the record: `tests/test_citation_gate_hook.py`'s
-`_IS_COVERAGE_BOOTSTRAP` documents that coverage started in a child with a
-different cwd records statement-only data while the parent records branch
-data, and the run then dies at combine time *after* every test has passed.
-
-So the split is deliberate, and each half does what only it can:
-
-| | subprocess tests | this file |
-|---|---|---|
-| Proves | the harness contract | every branch |
-| Runs the hook as | the harness does | an imported module |
-| Contributes coverage | no | yes |
-
-Neither is redundant. A refactor that broke the stdin envelope would pass
-this file and fail the other two.
-"""
-
 import io
 import json
 import subprocess
@@ -71,22 +38,8 @@ def emitted(capsys) -> dict | None:
 
 
 class TestCitationGateHookModule:
-    """`citation_gate_hook.main()`, branch by branch.
-
-    Since the draft-detection branches moved to `draft_target.py` this
-    class covers what is left: the gate call itself and the block. The
-    detection cases live in `tests/test_draft_target.py`, and are reached
-    here only through the two that survive at this level -- a payload that
-    names no draft, and one that does."""
-
     @pytest.fixture
     def rooted(self, gate, tmp_path, monkeypatch):
-        """The hook, believing it lives in `tmp_path/.claude/hooks/`.
-
-        The root now comes from `draft_target.REPO_ROOT`, so that is what
-        moves. Both the hook and the helper read it at call time, which is
-        what makes one patch enough.
-        """
         monkeypatch.setattr(gate.draft_target, "REPO_ROOT", tmp_path)
         (tmp_path / "content" / "drafts").mkdir(parents=True)
         return gate, tmp_path
@@ -117,8 +70,6 @@ class TestCitationGateHookModule:
     )
 
     def test_every_draft_in_a_patch_is_gated_in_one_call(self, rooted, monkeypatch, capsys):
-        # Codex's apply_patch, or OpenCode's through its plugin (#812, #900):
-        # one write, several drafts, and every one of them is gated.
         hook, root = rooted
         drafts = root / "content" / "drafts"
         (drafts / "a.md").write_text("x\n")
@@ -149,8 +100,6 @@ class TestCitationGateHookModule:
         assert "could not be read" in response["reason"]
 
     def test_the_line_bound_is_the_total_over_every_draft(self, rooted, monkeypatch, capsys):
-        # Each half is under the bound; together they are over it, and it is
-        # the one gate call over both that has to fit the harness's limit.
         hook, root = rooted
         drafts = root / "content" / "drafts"
         half = "x\n" * (hook.MAX_GATED_LINES // 2 + 1)
@@ -177,8 +126,6 @@ class TestCitationGateHookModule:
         assert emitted(capsys) is None
 
     def test_a_relative_path_resolves_against_the_hooks_own_root(self, rooted, monkeypatch, capsys):
-        """The near-miss the hook's docstring records: a substring match on
-        "/content/drafts/" would skip a relative path entirely."""
         hook, root = rooted
         (root / "content" / "drafts" / "rel.md").write_text("no citations\n")
         monkeypatch.setattr(hook.subprocess, "run", lambda *a, **k: completed(0))
@@ -197,12 +144,6 @@ class TestCitationGateHookModule:
 
     @staticmethod
     def gate_and_probe(gate_result, probe_result=None, probe_error=None):
-        """A `subprocess.run` stand-in that tells the gate call (`-m
-        chitragupta.draft gate ...`) apart from `_environment_is_broken`'s
-        probe (`-c "import chitragupta"`) by inspecting argv -- the two
-        calls need independent results to exercise the two branches #563
-        added, and a single lambda answering both the same way cannot."""
-
         def run(args, **kwargs):
             if "-c" in args:
                 if probe_error is not None:
@@ -231,8 +172,6 @@ class TestCitationGateHookModule:
     def test_a_gate_that_could_not_read_the_ledger_blocks_without_blaming_a_citekey(
         self, rooted, monkeypatch, capsys
     ):
-        # #1066: no import probe either -- the gate ran, so the
-        # environment is not what failed.
         hook, root = rooted
         draft = root / "content" / "drafts" / "bad.md"
         draft.write_text("A claim [@nope_2026].\n")
@@ -254,9 +193,6 @@ class TestCitationGateHookModule:
     def test_an_interpreter_that_cannot_import_chitragupta_is_named_not_blamed_on_the_citekey(
         self, rooted, monkeypatch, capsys
     ):
-        """#563: a `ModuleNotFoundError` from a wrong/unactivated interpreter
-        also makes the gate exit non-zero, and must not be reported as a bad
-        citekey -- nothing was actually checked."""
         hook, root = rooted
         draft = root / "content" / "drafts" / "bad.md"
         draft.write_text("A claim [@nope_2026].\n")
@@ -279,9 +215,6 @@ class TestCitationGateHookModule:
     def test_a_hung_import_probe_is_treated_as_a_broken_environment(
         self, rooted, monkeypatch, capsys
     ):
-        """A probe that never returns is not a working interpreter either --
-        `_environment_is_broken` must not raise `TimeoutExpired` uncaught,
-        which would crash the hook process instead of blocking."""
         hook, root = rooted
         draft = root / "content" / "drafts" / "bad.md"
         draft.write_text("A claim [@nope_2026].\n")
@@ -302,9 +235,6 @@ class TestCitationGateHookModule:
 
     @staticmethod
     def recording(calls: list, result=None, error=None):
-        """A `subprocess.run` stand-in that records each call's argv and
-        kwargs, then answers with `result` or raises `error`."""
-
         def run(args, **kwargs):
             calls.append((args, kwargs))
             if error is not None:
@@ -314,10 +244,6 @@ class TestCitationGateHookModule:
         return run
 
     def test_an_oversize_draft_blocks_without_running_the_gate(self, rooted, monkeypatch, capsys):
-        """#824: past the size the gate is known to finish on inside the
-        harness's 30 s, the hook blocks and says why rather than starting
-        a gate the harness may kill -- a killed hook prints nothing, and
-        the draft lands ungated."""
         hook, root = rooted
         monkeypatch.setattr(hook, "MAX_GATED_LINES", 3)
         draft = root / "content" / "drafts" / "huge.md"
@@ -346,9 +272,6 @@ class TestCitationGateHookModule:
         assert calls[0][1]["timeout"] == hook.GATE_TIMEOUT
 
     def test_an_unreadable_draft_is_left_to_the_gate(self, rooted, monkeypatch, capsys):
-        """A draft the hook cannot count -- gone by the time it looks --
-        is not a reason to skip the gate: the gate reads it too, and its
-        own failure is what blocks."""
         hook, root = rooted
         missing = root / "content" / "drafts" / "gone.md"
         calls = []
@@ -369,11 +292,6 @@ class TestCitationGateHookModule:
         assert gate._line_count(tmp_path / "two.md") == 2  # counted, not decoded
 
     def test_a_gate_that_runs_out_of_time_blocks(self, rooted, monkeypatch, capsys):
-        """#824: a gate still running at `GATE_TIMEOUT` is stopped by the
-        hook itself, early enough to block before the harness's own
-        30 s kill would silence it. No import probe after it: the probe's
-        own 5 s is what the margin was left for, and a hung gate says
-        nothing about whether the interpreter imports."""
         hook, root = rooted
         draft = root / "content" / "drafts" / "slow.md"
         draft.write_text("A claim [@nope_2026].\n")
@@ -391,12 +309,6 @@ class TestCitationGateHookModule:
         assert gate.GATE_TIMEOUT + gate.IMPORT_PROBE_TIMEOUT < 30
 
     def test_the_import_probe_uses_the_gate_calls_own_cwd(self, rooted, monkeypatch, capsys):
-        """Found by Copilot review on #563's PR: `python -c` also puts an
-        empty-string cwd entry on `sys.path`, so a probe launched without
-        `cwd=draft_target.REPO_ROOT` -- unlike the gate call right above it
-        -- would say the environment is broken in a checkout whose only
-        route to `chitragupta` is that same cwd trick, misreporting a real
-        citekey failure as an environment fault."""
         hook, root = rooted
         draft = root / "content" / "drafts" / "bad.md"
         draft.write_text("A claim [@nope_2026].\n")
@@ -415,16 +327,6 @@ class TestCitationGateHookModule:
 
 
 class TestLauncherFaults:
-    """`session_start_hook.launcher_faults()`, which is now a delegation.
-
-    The cases live in `tests/test_hook_launchers.py` and
-    `tests/test_launcher_configs.py`, beside the code that moved to
-    `chitragupta/` (#197, #812). What is left to check here is
-    the seam: that the preflight passes *its own* repo root -- the one it
-    derived from the hook file's on-disk location, not the one baked into
-    the module default -- and reports what comes back as a fault.
-    """
-
     def test_the_configs_read_are_under_the_hooks_own_root(self, preflight, tmp_path, monkeypatch):
         monkeypatch.setattr(preflight, "REPO", tmp_path)
         seen = []
@@ -447,10 +349,6 @@ class TestLauncherFaults:
         assert "BROKEN: `python` is not on an absolute PATH entry" in context
 
     def test_no_installed_chitragupta_is_named_rather_than_silent(self, preflight, monkeypatch):
-        """#891 gap 2, at the `launcher_configs is None` branch
-        `launcher_faults()` takes when the module-level import itself
-        failed -- see `TestModuleImportFailsCleanly` below for that
-        branch, which this one assumes already happened."""
         monkeypatch.setattr(preflight, "launcher_configs", None)
         monkeypatch.setattr(preflight.sys, "executable", "/fake/python3")
         faults = preflight.launcher_faults()
@@ -459,17 +357,6 @@ class TestLauncherFaults:
 
 
 class TestModuleImportFailsCleanly:
-    """#891 gap 2: the module-level `from chitragupta import
-    launcher_configs` is wrapped in `try/except ModuleNotFoundError`, so
-    the unactivated-venv shape (#563) -- this interpreter has no
-    `chitragupta` visible to it at all -- leaves `launcher_configs` as
-    `None` instead of crashing the whole hook before it can report
-    anything. Narrowed to `exc.name == "chitragupta"` rather than every
-    `ImportError`, so a real breakage inside an otherwise-installed
-    `chitragupta` -- a broken `hook_launchers.py`, one of its own missing
-    dependencies -- still crashes loudly instead of being misreported as
-    "nothing installed"."""
-
     def test_chitragupta_itself_missing_leaves_launcher_configs_none(self, monkeypatch):
         real_import = __import__
 
@@ -483,27 +370,10 @@ class TestModuleImportFailsCleanly:
         assert preflight.launcher_configs is None
 
     def test_a_different_missing_module_still_crashes(self, monkeypatch):
-        """`chitragupta` itself imports fine; one of its own dependencies
-        does not -- `exc.name` names that other module
-        (`chitragupta.hook_launchers`), not `chitragupta`, so this is not
-        the case the except clause exists to swallow. `sys.modules[name]
-        = None` is the standard-library way to make the next `import
-        name` raise `ModuleNotFoundError` deterministically, rather than
-        patching `__import__` -- the nested `from chitragupta import
-        launcher_configs` resolves its submodule through
-        `importlib._bootstrap` directly, not through a second call to the
-        patched `builtins.__import__`."""
         import chitragupta  # pylint: disable=import-outside-toplevel
 
         monkeypatch.setitem(sys.modules, "chitragupta.hook_launchers", None)
         monkeypatch.delitem(sys.modules, "chitragupta.launcher_configs", raising=False)
-        # `chitragupta` already carries both as cached attributes from
-        # earlier imports elsewhere in the suite; the `sys.modules`
-        # deletion above is not enough on its own -- `from chitragupta
-        # import launcher_configs`, and that module's own `from
-        # chitragupta import hook_launchers`, would each find a cached
-        # attribute first and never re-trigger the import this test needs
-        # to fail.
         monkeypatch.delattr(chitragupta, "launcher_configs", raising=False)
         monkeypatch.delattr(chitragupta, "hook_launchers", raising=False)
         with pytest.raises(ModuleNotFoundError, match="chitragupta.hook_launchers"):
@@ -511,9 +381,6 @@ class TestModuleImportFailsCleanly:
 
 
 class TestCorpusStage:
-    """`session_start_hook.corpus_stage()`: three answers, one of which is
-    not a fault."""
-
     def test_a_corpus_layer_that_will_not_start_is_reported(self, preflight, monkeypatch):
         monkeypatch.setattr(
             preflight, "_run", lambda *a, **k: completed(1, stderr="No config file")
@@ -521,7 +388,6 @@ class TestCorpusStage:
         assert "corpus layer will not start" in preflight.corpus_stage()
 
     def test_a_ledger_it_cannot_read_is_reported_with_its_cause(self, preflight, monkeypatch):
-        # #1066: exit 3 is not a missing config, so not that advice.
         monkeypatch.setattr(
             preflight, "_run", lambda *a, **k: completed(3, stderr="ledger.sqlite-journal ...")
         )
@@ -531,7 +397,6 @@ class TestCorpusStage:
         assert "config.toml" not in stage
 
     def test_its_unreadable_code_is_the_package_s(self, preflight):
-        # Spelled in the hook, which may not be able to import chitragupta.
         assert preflight.LEDGER_UNREADABLE == ledger.EXIT_UNREADABLE
 
     @pytest.mark.parametrize(
@@ -542,9 +407,6 @@ class TestCorpusStage:
         ],
     )
     def test_both_pre_sync_states_are_reported_as_a_stage(self, preflight, monkeypatch, stdout):
-        """An absent ledger and an empty one print different sentences. The
-        first implementation matched only the second and stayed silent on a
-        fresh clone, which is the case the hook exists to handle."""
         monkeypatch.setattr(preflight, "_run", lambda *a, **k: completed(0, stdout=stdout))
         stage = preflight.corpus_stage()
         assert "before a first sync" in stage
@@ -577,8 +439,6 @@ class TestGateLiveness:
         assert "did not refuse a fabricated citekey" in preflight.gate_fault()
 
     def test_a_failure_that_never_names_the_key_is_not_live(self, preflight, monkeypatch):
-        """A gate rejecting the probe for its *location* also exits
-        non-zero. Counting that as a working gate is a false reassurance."""
         monkeypatch.setattr(
             preflight,
             "_run",
@@ -591,8 +451,6 @@ class TestGateLiveness:
     def test_a_gate_that_could_not_read_its_ledger_is_not_said_to_accept(
         self, preflight, monkeypatch
     ):
-        """#1066: exit 3 said nothing about the key, so it is reported as
-        a gate that could not run, never as one that let the key through."""
         monkeypatch.setattr(
             preflight,
             "_run",
@@ -603,9 +461,6 @@ class TestGateLiveness:
         assert "did not refuse" not in fault
 
     def test_the_probe_writes_nothing_that_outlives_it(self, preflight, monkeypatch):
-        """The temporary tree is the point: a probe that left a draft with a
-        fabricated citekey under content/ would be the one thing this
-        project forbids."""
         seen = {}
 
         def capture(module, *args, **overrides):
@@ -621,8 +476,6 @@ class TestGateLiveness:
 
 class TestRunAndMain:
     def test_run_really_starts_a_child(self, preflight):
-        """`_run` is the only place a subprocess is actually spawned, so one
-        real call keeps the mocking above honest."""
         result = preflight._run("chitragupta.corpus", "ledger")
         assert result.returncode == 0
 
@@ -647,14 +500,6 @@ class TestRunAndMain:
 
 
 class TestStyleCheckHookModule:
-    """`style_check_hook`, the advisory half of the PostToolUse pair.
-
-    Every case here is about *not* speaking. An advisory hook that reports
-    on every write is one the reader learns to skip -- and it shares a
-    matcher with the citation gate, so the attention it spends is spent on
-    the gate's channel too.
-    """
-
     @pytest.fixture
     def rooted(self, style, tmp_path, monkeypatch):
         monkeypatch.setattr(style.draft_target, "REPO_ROOT", tmp_path)
@@ -735,7 +580,6 @@ class TestStyleCheckHookModule:
         assert [Path(p).name for p in calls[0][-2:]] == ["a.md", "b.md"]
 
     def test_an_unreadable_patch_is_left_to_the_gate(self, rooted, monkeypatch, capsys):
-        # The gate blocks this one; an advisory hook says nothing at all.
         hook, _ = rooted
         patch = "*** Begin Patch\n*** Frobnicate: content/drafts/a.md\n*** End Patch\n"
         monkeypatch.setattr(
@@ -745,7 +589,6 @@ class TestStyleCheckHookModule:
         assert emitted(capsys) is None
 
     def test_it_never_emits_a_blocking_decision(self, rooted, monkeypatch, capsys):
-        """The rule that separates this hook from the one beside it."""
         hook, root = rooted
         draft = root / "content" / "drafts" / "b.md"
         draft.write_text("x\n")
@@ -799,8 +642,6 @@ class TestStyleCheckHookModule:
     def test_an_unrecorded_dialect_is_flagged_beside_the_findings(
         self, rooted, monkeypatch, capsys
     ):
-        """With no `language:` line no dialect rule runs, so the list is not
-        the whole picture -- the same trap the verbatim caveat prevents."""
         hook, root = rooted
         draft = root / "content" / "drafts" / "d.md"
         draft.write_text("x\n")
@@ -878,10 +719,6 @@ class TestStyleCheckHookModule:
     def test_a_malformed_count_costs_one_line_not_the_whole_report(
         self, rooted, monkeypatch, capsys, count
     ):
-        """Found by an OpenCodeReview pass. `None > 1` raises, and that
-        exception is caught at the module tail -- so a single bad count in
-        another command's output would silently cost the entire report
-        rather than the one line it belongs to."""
         hook, root = rooted
         draft = root / "content" / "drafts" / "g.md"
         draft.write_text("x\n")
@@ -927,10 +764,6 @@ class TestStyleCheckHookModule:
         assert capsys.readouterr().out == ""
 
     def test_a_draft_that_vanished_is_not_reported_as_clean(self, rooted, monkeypatch, capsys):
-        """The measured trap: `chitragupta.draft style` returns zero findings for a
-        path that does not exist, because it never inspects vale's return
-        code. Reporting that as a clean draft is the one thing an advisory
-        check must never fake, so the hook stats the file itself."""
         hook, root = rooted
         gone = root / "content" / "drafts" / "gone.md"
 

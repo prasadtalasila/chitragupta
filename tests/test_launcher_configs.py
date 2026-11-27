@@ -1,5 +1,3 @@
-"""chitragupta/launcher_configs.py: dead-launcher faults across every harness's config (#812)."""
-
 import json
 
 from chitragupta import launcher_configs

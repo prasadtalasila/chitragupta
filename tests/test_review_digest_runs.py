@@ -1,13 +1,3 @@
-"""chitragupta/review/_digest_runs.py: a verbatim digest read as runs.
-
-The draft format has no markup: copied text is ordinary prose and a
-citation ends each copied run (discussion #991). The attribution rule is
-that a citation covers every sentence back to the previous citation, or
-to the start of the block. These tests pin that rule, and the two
-shapes it has to survive: a block that ends in a citation with nothing
-after it, and a bracket that only looks like a citation.
-"""
-
 from chitragupta.review import _digest_runs as runs_mod
 
 KEY = "shao_analysis_2023"
@@ -56,15 +46,11 @@ def test_a_bracket_without_a_citekey_does_not_close_a_run():
 
 
 def test_an_at_sign_in_a_bracket_is_not_a_citation_unless_the_extractor_says_so():
-    """`[@ 3]` has the `@` the bracket pattern looks for and no citekey
-    pandoc would read; the extractor, not the pattern, decides."""
     found = runs_mod.runs(f"Shown [@ 3] earlier. Copied. [@{KEY}]\n")
     assert [r.sentences for r in found] == [("Shown [@ 3] earlier.", "Copied.")]
 
 
 def test_a_citation_before_the_full_stop_leaves_no_bare_punctuation_run():
-    """`... text [@key].` is pandoc's and the survey's convention; the
-    stop after the bracket must not become a one-word uncited run."""
     found = runs_mod.runs(f"Copied sentence [@{KEY}]. Another one [@{OTHER}].\n")
     assert [(r.sentences, r.citekeys) for r in found] == [
         (("Copied sentence",), (KEY,)),
@@ -88,9 +74,6 @@ def test_lines_are_the_drafts_own():
 
 
 def test_each_sentence_of_a_wrapped_paragraph_keeps_its_own_line():
-    """Hard-wrapped Markdown is the normal shape of a draft: a sentence
-    that spans a line break is joined with a space, and every sentence
-    carries the line it starts on (#496), not the block's first line."""
     text = (
         "# Title\n\n"
         "First sentence here.\n"
@@ -136,8 +119,6 @@ class TestCitedPages:
 
 
 class TestOwnRuns:
-    """#1172: three ways a run is declared the drafter's own words."""
-
     def test_a_see_prefixed_citation_closes_an_own_run(self):
         found = runs_mod.runs(f"Copied. [@{KEY}] Both agree on this. [see @{KEY}; @{OTHER}]\n")
         assert [(r.sentences, r.own) for r in found] == [
@@ -207,8 +188,6 @@ def test_shown_figures_reads_the_digests_captions():
 
 
 def test_a_table_rows_citekey_cell_attributes_the_cells_after_it():
-    """#1172 review: with the citekey column first, the remaining cells
-    used to arrive as an uncited tail and skip the support check."""
     text = f"| Key | Idea |\n|---|---|\n| [@{KEY}] | lumped parameter model |\n"
     (run,) = runs_mod.runs(text)
     assert run.own and run.citekeys == (KEY,)
@@ -221,9 +200,6 @@ def test_an_uncited_table_row_stays_uncited():
 
 
 class TestInlineCode:
-    """#1172: a copied run carries a symbol in the house form, `T_h`,
-    and `_claims` blanks code -- so the symbol vanished from the run."""
-
     def test_a_symbol_span_is_read_as_its_text(self):
         (run,) = runs_mod.runs(f"where `T_h` is the heater temperature. [@{KEY}, p. 4]\n")
         assert run.sentences == ("where  T_h  is the heater temperature.",)

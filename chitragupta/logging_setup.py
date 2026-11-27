@@ -1,36 +1,16 @@
 """One log file for everything that holds the pipeline write lock.
 
-`logs/pipeline.log`, shared by `python -m chitragupta.corpus sync` and
-`python -m chitragupta.enrich`. One file rather than one per entrypoint, for a
-reason that is structural rather than a matter of taste:
-`RotatingFileHandler` is not safe for two processes to hold open on the
-same file at once (a rotation from one can land mid-write from the
-other), so a shared rotating file is only sound if the writers are
-already mutually exclusive. They are -- both take
-`runlock.pipeline_lock()` -- so **the log file's scope is deliberately
-the same set as the lock's scope**. Anything that does not hold the
-lock does not write here; see `configure()` on why that boundary is
-load-bearing rather than incidental.
+`logs/pipeline.log`, shared by `corpus sync` and `enrich`.
+`RotatingFileHandler` is not safe for two processes on one file, so the
+file is sound only because its writers already take
+`runlock.pipeline_lock()`: **the log file's scope is the lock's scope.**
+The read-only drafting CLIs (`retrieval`, `citation_gate`, ...) skip the
+lock to run concurrently, so they must not write here; their stdout is
+the contract the skills parse.
 
-That is also the answer to "why isn't `chitragupta.retrieval` logged?" -- it,
-`chitragupta.citation_gate`, `chitragupta.references`, `chitragupta.dossier` and the rest of the
-drafting-layer CLIs are read-only, are invoked ad hoc by the genre
-skills, and deliberately do *not* take the lock, so several can run at
-once. Giving them a rotating handler would put concurrent processes on
-one file, and giving each its own file would not help (two
-`chitragupta.retrieval` calls still collide on `retrieval.log`). Their stdout is
-a documented contract those skills parse, so it stays stdout. Logging
-them would mean adding a channel alongside it, under a scheme that does
-not depend on the lock -- not reusing this one.
-
-The alternative, `sync.log`/`enrich.log`/..., would split what is one
-causal story: `chitragupta/enrich/docling_parse.py` reuses the corpus layer's
-parse, so "sync parsed X" and "docling reused X's parse" belong on
-adjacent lines. The file formatter already carries `%(name)s`, so
-`grep 'src\\.sync'` recovers the split view at any time -- no filter
-recovers the merged one. Rotation also stays one on-disk budget --
-5 MB of active file plus 5 backups of the same, so ~30 MB at the
-ceiling -- instead of that much again for every component.
+One file rather than one per entrypoint keeps one causal story ("sync
+parsed X", "docling reused X's parse") on adjacent lines; `%(name)s`
+recovers the split view with grep, and rotation stays one ~30 MB budget.
 """
 
 import logging
@@ -41,53 +21,28 @@ import sys
 from chitragupta import config
 
 
-# The root of this project's own logger tree. One tree, because every
-# entrypoint lives inside the `chitragupta` package -- the enrichment layer's is
-# chitragupta/enrich/__main__.py, and logs as `chitragupta.enrich`. Kept as a tuple: see
-# _from_our_trees below for why a second root stays cheap to add.
+# Every entrypoint lives in the `chitragupta` package. A tuple, so a
+# second root costs one entry.
 _TREES = ("chitragupta",)
 
-# Silence the stdlib's `logging.lastResort` fallback for these trees.
-#
-# Without this, a WARNING+ record logged before configure() has run --
-# or in a process that never calls it -- finds no handler anywhere up
-# the chain, so `Logger.callHandlers` falls back to `lastResort`, a
-# stderr handler fixed at WARNING. `say()` would then print its message
-# to stdout *and* have the logging machinery repeat it on stderr, which
-# is both a duplicate and a direct contradiction of say()'s documented
-# "no-op beyond the bare print when configure() has not run". The same
-# applies to `chitragupta/sync.py`'s own logger.warning calls when `run()` is
-# driven in-process, which this project explicitly supports.
-#
-# A NullHandler is the idiom the stdlib's own logging documentation
-# prescribes for exactly this. It emits nothing and creates nothing --
-# no file, no directory -- so it does not weaken the entrypoint-only
-# invariant configure() carries; it only makes `callHandlers` stop
-# looking. Records still propagate to whatever real handlers are
-# attached later, so configure() and pytest's caplog both work
-# unchanged.
+# Without a handler, a WARNING+ record logged before configure() falls
+# back to `logging.lastResort` and repeats on stderr what `say()` already
+# printed. The NullHandler creates no file, and records still propagate
+# to handlers attached later (configure(), pytest's caplog).
 for _tree in _TREES:
     logging.getLogger(_tree).addHandler(logging.NullHandler())
 
 
-# Marks the handlers configure() attached, so a later call can take
-# exactly those back off again. An attribute on the handler rather than
-# a module-level list: it survives this module being re-imported, it
-# cannot drift out of sync with what is actually on the root logger, and
-# it can never match a handler some other library attached -- which a
-# "remove every RotatingFileHandler" sweep would.
+# An attribute on the handler, not a module-level list: it survives a
+# re-import and never matches a handler another library attached.
 _OURS = "_chitragupta_pipeline_log_handler"
 
 
 def _detach_ours() -> None:
     """Remove and close the handlers a previous configure() attached.
 
-    Only reached when LOGS_DIR has moved, since the same-target case
-    returns before this. Closing rather than merely detaching matters:
-    the old RotatingFileHandler holds an open file descriptor, and on
-    Windows a still-open handle blocks the file from being replaced or
-    removed -- a real case here, since CI runs the suite on
-    windows-latest.
+    Closed, not just detached: an open handle blocks replacing the file
+    on Windows, which CI runs on.
     """
     root = logging.getLogger()
     for handler in root.handlers[:]:
@@ -99,24 +54,13 @@ def _detach_ours() -> None:
 def _already_attached(path) -> bool:
     """True if this process already has a rotating handler on `path`.
 
-    The actual condition, rather than a module-level "configured yet?"
-    flag: the hazard being guarded against is two handlers open on one
-    file, so asking whether that is the case cannot go stale the way a
-    bookkeeping boolean can. It also keeps the guard honest about
-    scope. A second call with a *different* LOGS_DIR is a real
-    reconfiguration and is allowed through -- a flag would have
-    swallowed it silently and sent those records to the first call's
-    file, which is the confusing failure this project would rather not
-    have. A second call with the same target is the no-op case that
-    matters: two entrypoints share this module, and the enrichment
-    layer runs several stages in one process, so an unguarded repeat would
-    duplicate every subsequent line in both the file and the console --
-    output that reads as corruption rather than as a config bug.
+    Checks the real condition rather than a "configured yet?" flag: a
+    flag would also swallow a legitimate reconfiguration to a different
+    LOGS_DIR. A repeat with the same target must be a no-op, or every
+    line is duplicated in file and console.
     """
-    # os.path.abspath, not Path.resolve(): this has to match what
-    # logging.FileHandler stored, and that is exactly what it uses. On a
-    # host where the log directory sits behind a symlink, resolve()
-    # would produce a different string and the guard would never fire.
+    # os.path.abspath, not Path.resolve(): it must match what FileHandler
+    # stored, and resolve() differs behind a symlink.
     resolved = os.path.abspath(path)
     return any(
         isinstance(handler, logging.handlers.RotatingFileHandler)
@@ -128,17 +72,10 @@ def _already_attached(path) -> bool:
 class _OneLineFormatter(logging.Formatter):
     """The file's one-record-one-line shape, enforced at the handler.
 
-    `say()` collapses newlines in what it mirrors, but a direct
-    `logger.warning(...)` interpolating an untrusted string -- a bib
-    title, a parser's error text -- had no such guard, so a value
-    carrying `\\n2026-... ERROR ...` wrote what reads as a second,
-    forged record into logs/pipeline.log (#640): the file the bug-report
-    template asks users to paste, split into lines only the first of
-    which is real. Collapsing here, once, covers every call site instead
-    of trusting each to remember; `say()`'s own collapse stays, since it
-    also shapes what the *terminal* mirror logs. No caller logs
-    `exc_info` tracebacks (they would be the one legitimate multi-line
-    record), so nothing is lost to the collapse.
+    A logged untrusted string (a bib title, a parser error) containing
+    `\\n2026-... ERROR ...` otherwise forges a second record in the log
+    users paste into bug reports (#640). No caller logs `exc_info`, so
+    no legitimate multi-line record is lost.
     """
 
     def format(self, record: logging.LogRecord) -> str:
@@ -147,28 +84,16 @@ class _OneLineFormatter(logging.Formatter):
 
 
 def _not_file_only(record: logging.LogRecord) -> bool:
-    """False for a record logged with extra={"file_only": True} -- the
-    summary line, which is already printed to stdout and would otherwise
-    print a second time via the console handler below."""
+    """False for a record logged with extra={"file_only": True}: stdout
+    already carried it."""
     return not getattr(record, "file_only", False)
 
 
 def _this_project_only(record: logging.LogRecord) -> bool:
-    """False for a record from outside this project's own logger trees --
-    a third party already using stdlib logging (docling, torch; see the
-    [n/N] progress comment in chitragupta/sync.py about their own chatter).
-    Their WARNING+ still reaches logs/pipeline.log via file_handler
-    below, "for free" -- this filter only keeps their chatter off the
-    console, which is the one thing this project's own output was never
-    supposed to include.
+    """False for a record from outside `_TREES`.
 
-    One tree, because every entrypoint lives in the `chitragupta` package. That
-    has not always been true: an entry point under `scripts/` logged as
-    `scripts.<name>`, and matching only `chitragupta*` would have sent its every
-    line to the file while silently dropping it from the console -- a
-    half-failure much harder to notice than no logging at all. `_TREES`
-    is therefore still a tuple and this still loops, so a second root
-    outside `chitragupta` costs one entry rather than a rewrite.
+    Keeps third-party chatter (docling, torch) off the console; their
+    WARNING+ still reaches the file.
     """
     return any(record.name == root or record.name.startswith(root + ".") for root in _TREES)
 
@@ -180,59 +105,23 @@ def say(
     level: int = logging.INFO,
     log_as: str | None = None,
 ) -> None:
-    """Report one line to stdout, and mirror it into logs/pipeline.log.
+    """Print one line to stdout and mirror it into logs/pipeline.log.
 
-    Printed *and* logged, rather than logged alone, for callers whose
-    stdout is a human-facing report or a documented CLI contract --
-    `chitragupta/enrich/__main__.py`'s stage table, the enrichment stages' summary
-    lines. The console handler writes to stderr, so a plain
-    `logger.info` would move those lines to a different stream and
-    break both the tests that assert on them and anything piping the
-    output.
+    For output that is a report or a CLI contract: a plain `logger.info`
+    would move it to stderr and break callers that parse stdout.
+    `file_only` stops the console handler printing it twice. A plain
+    print when `configure()` has not run.
 
-    `extra={"file_only": True}` is what makes the pairing safe: it is
-    the flag `_not_file_only` above drops, so the console handler does
-    not print a second copy of a line stdout already carried. Same
-    mechanism `chitragupta/sync.py` uses for its own summary block.
+    Flushed because stdout is block-buffered under redirection, and the
+    tail of an interrupted run is the part worth keeping.
 
-    A no-op beyond the bare print when `configure()` has not run --
-    there is simply no handler attached -- so a library caller in a
-    test still behaves exactly as it did before logging existed.
+    Whole lines only: an incremental `print(..., end="")` line would
+    become several records. Pass `log_as` when the file wants a
+    different rendering (one-line JSON) from the terminal (indented).
 
-    Flushed, because it replaces calls that already were: stdout is
-    block-buffered when it isn't a terminal (a cron job's redirect, a
-    Docker log), and the tail of an interrupted run is exactly the part
-    worth keeping. See chitragupta/enrich/embed_index.py's build_index
-    docstring, which measured this.
-
-    Only for whole lines. A caller building one line from several
-    writes (`print(..., end="")`) cannot use this: a log record is a
-    line by construction, so the pieces would arrive in the file as
-    separate records, and the "which document is it on right now"
-    property of an incremental line would be lost from the terminal.
-    Those callers stay bare prints.
-
-    `log_as` is for when the terminal and the file genuinely want
-    different renderings of the same thing. The motivating case is
-    `chitragupta/enrich/__main__.py`'s stage detail: a human reading the terminal
-    wants `json.dumps(..., indent=2)`, and a person grepping the log
-    wants that same object on one line. Pass the compact form here and
-    the pretty one as `message`; the alternative -- picking one -- makes
-    either the terminal unreadable or the log unparseable.
-
-    **The record is always exactly one line.** Leading and trailing
-    newlines are stripped (callers use them to space sections apart on a
-    terminal, `say(f"\\n=== {stage} ===")`, where in the file they
-    produce a record whose first line is empty and whose text sits on
-    the next). Any newline left *inside* the text collapses along with
-    the whitespace around it. That collapse is a structural backstop,
-    not the intended path: a multi-line record breaks the
-    one-line-per-entry shape `grep`, `tail` and every log parser assume,
-    turning one event into several with only the first timestamped. Use
-    `log_as` to control what the single line says; the backstop only
-    guarantees that it *is* single. Indentation survives when there is
-    no internal newline to collapse -- the summary table is indented and
-    stays that way.
+    **The record is always one line.** Surrounding newlines are
+    stripped; an inner newline collapses with its whitespace, because a
+    multi-line record breaks grep and tail.
     """
     print(message, flush=True)
     record = (log_as if log_as is not None else message).strip("\n")
@@ -244,43 +133,18 @@ def say(
 def configure() -> None:
     """Attach a rotating file handler (logs/pipeline.log) and a stderr handler.
 
-    **CLI-entrypoint-only, and only from inside the pipeline lock.**
-    Deliberately not called from `run()` or any library function --
-    same split as `runlock.pipeline_lock()` itself, and for two
-    reasons. First, `run()` stays callable in-process (the tests do
-    that) without a handler side effect or a `logs/` directory
-    appearing as an import-time surprise. Second, and the harder
-    constraint: `RotatingFileHandler` isn't safe for two processes to
-    hold open on the same file at once, so two overlapping scheduled
-    invocations must not both attach one. Calling this inside the lock
-    makes the lock serialize handler creation as well as the actual
-    work, so at most one process ever has a live handler on the file.
-    A caller that does not hold the lock must not call this -- see this
-    module's docstring on why the file's scope is the lock's scope.
+    **CLI-entrypoint-only, and only from inside the pipeline lock**, so
+    that at most one process has a handler on the file and `run()` stays
+    callable in-process without side effects. 5 MB x 5 is fixed; see
+    config.LOGGING_LEVEL for why only the level is a setting.
 
-    5 MB x 5 backups is fixed rather than configurable -- see
-    config.LOGGING_LEVEL's own comment for why only the level is a
-    setting here.
+    The level goes on file_handler, not on the loggers: a logger's
+    level gates record creation before any handler, so it would also
+    hide the INFO [n/N] progress line on the console. The trees are
+    pinned at DEBUG so each handler decides for itself.
 
-    config.LOGGING_LEVEL is applied to file_handler alone (via
-    setLevel), not to any logger. Setting it on this project's logger
-    trees instead -- an earlier version of this function did -- silently
-    gated the console too: a logger only creates a record at all if the
-    *logger's* effective level allows it, before any handler is even
-    reached, so a level of WARNING would have suppressed the [n/N]
-    progress line (INFO) everywhere, not just in the file, contradicting
-    the "only affects the file" this project documents for this
-    setting. The trees below are instead pinned permissive (DEBUG) so
-    every record this project's own code logs always reaches both
-    handlers; each handler then decides for itself what it keeps.
-
-    Calling this twice in one process, with the same LOGS_DIR, is a
-    no-op rather than a second pair of handlers -- see
-    `_already_attached` for why the guard is that condition and not a
-    flag. Calling it again after LOGS_DIR has changed *replaces* the
-    previous pair rather than adding to it: without the detach below,
-    "reconfigure" would mean every subsequent record landing in the old
-    file as well as the new one, and every console line printing twice.
+    A repeat with the same LOGS_DIR is a no-op; a changed LOGS_DIR
+    replaces the old handlers rather than adding to them.
     """
     target = config.LOGS_DIR / "pipeline.log"
     if _already_attached(target):

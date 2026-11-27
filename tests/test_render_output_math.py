@@ -1,15 +1,3 @@
-"""chitragupta/render_output/_math.py: the dossier mapping and the per-format swap.
-
-Split per module the way `tests/test_render_output_figures.py` is, mirroring
-`chitragupta/render_output/`'s own split.
-
-The discriminating test here is `TestConvergesOnTheDollarConvention`: a draft
-written as ASCII plus a mapping, and the same document written with `$...$`
-under `§12`, must hand pandoc byte-identical text. That is the design's whole
-claim -- same pdf, different Markdown -- and it tests it without going near
-pdf bytes.
-"""
-
 import ast
 from pathlib import Path
 
@@ -56,7 +44,6 @@ Fitted, $\\tau = 48$ hours, from $W_0 = 400$ ml. The field `as_of` is code.
 
 
 def _draft(mapping: "str | None" = MAPPING, text: str = ASCII_DRAFT) -> Path:
-    """A draft under the patched `content/drafts/`, with an optional mapping."""
     draft = config.DRAFTS_DIR / "dt" / "tank.md"
     draft.parent.mkdir(parents=True, exist_ok=True)
     draft.write_text(text, encoding="utf-8")
@@ -73,15 +60,11 @@ class TestMappingPath:
         assert _math.mapping_path(draft) == config.DOSSIERS_DIR / "dt" / "tank" / "math.md"
 
     def test_a_draft_outside_drafts_dir_can_have_no_mapping(self, isolated_config):
-        # A review report renders through the same function and is not a
-        # draft; answering None is what keeps it out of the dossier tree.
         assert _math.mapping_path(config.REVIEW_DIR / "report.md") is None
 
     def test_a_symlinked_topic_directory_out_of_the_tree_is_refused(
         self, isolated_config, tmp_path
     ):
-        # Same guard dossier_dir makes: otherwise a render could read a
-        # mapping from anywhere on disk.
         outside = tmp_path / "elsewhere"
         outside.mkdir()
         config.DOSSIERS_DIR.mkdir(parents=True, exist_ok=True)
@@ -97,15 +80,12 @@ class TestLoadMapping:
         assert len(mapping) == 5
 
     def test_absent_file_is_an_empty_mapping_not_an_error(self, isolated_config):
-        # The ordinary state of every draft written before this existed.
         assert _math.load_mapping(_draft(mapping=None)) == {}
 
     def test_a_draft_with_no_possible_mapping_is_empty(self, isolated_config):
         assert _math.load_mapping(config.REVIEW_DIR / "report.md") == {}
 
     def test_the_header_row_is_not_a_mapping_row(self, isolated_config):
-        # "| ASCII in the draft | LaTeX |" has no backticks, so it cannot
-        # match -- but a header that did would silently map prose.
         assert "ASCII in the draft" not in _math.load_mapping(_draft())
 
 
@@ -122,8 +102,6 @@ class TestSubstitute:
         assert _math.substitute(text, {"dW/dt = -W/tau": "X"}) == "$$\nX\n$$\n"
 
     def test_an_unmarked_fence_is_never_touched(self, isolated_config):
-        # Every other fence holds code. This is the whole reason the
-        # marker exists rather than a ```math tag.
         text = "```\ntau = 48\n```\n"
         assert _math.substitute(text, {"tau = 48": "\\tau = 48"}) == text
 
@@ -132,15 +110,11 @@ class TestSubstitute:
         assert _math.substitute(text, {}) == text
 
     def test_a_block_inside_a_blockquote_keeps_its_indent(self, isolated_config):
-        # #406's real-world shape: the fence was nested in a blockquote.
         text = "> <!-- math -->\n> ```\n> C x I > F\n> ```\n"
         out = _math.substitute(text, {"C x I > F": "C \\times I > F"})
         assert out == "> $$\n> C \\times I > F\n> $$\n"
 
     def test_blocks_substitute_before_spans(self, isolated_config):
-        # Order is load-bearing: span-first walks into the fence body and
-        # rewrites `W` there, corrupting the block before the display rule
-        # sees it.
         text = "<!-- math -->\n```\nW\n```\n"
         out = _math.substitute(text, {"W": "W_{\\text{tank}}", "\nW\n": "wrong"})
         assert out == "$$\nW_{\\text{tank}}\n$$\n"
@@ -149,17 +123,11 @@ class TestSubstitute:
         assert _math.substitute("``tau``", {"tau": "\\tau"}) == "``tau``"
 
     def test_a_backtick_span_inside_an_ordinary_fence_is_not_touched(self, isolated_config):
-        # m-56: only marked math blocks were masked before the inline-span
-        # pass ran, so a fence showing Markdown source -- e.g. a tutorial's
-        # own example -- had its `tau` rewritten to $\tau$ even though it
-        # is a code example, not draft prose.
         text = "```markdown\nThe gain is `tau` here.\n```\n"
         assert _math.substitute(text, {"tau": "\\tau"}) == text
 
 
 class TestConvergesOnTheDollarConvention:
-    """The design's central claim, and the cheapest way to test it."""
-
     def test_ascii_plus_mapping_equals_the_dollar_spelling(self, isolated_config):
         draft = _draft()
         substituted = _math.substitute(draft.read_text(encoding="utf-8"), _math.load_mapping(draft))
@@ -172,8 +140,6 @@ class TestWarnings:
         assert found == ["`h = 9` looks like a quantity (relation) but has no row in math.md"]
 
     def test_a_bare_symbol_the_equations_use_is_a_gap(self, isolated_config):
-        # The case the operator heuristic cannot see, and the dominant
-        # shape in the corpus this was measured against.
         found = _math_findings.warnings("predicts `W` now", {"x": "W + 1"}, False)
         assert found == [
             "`W` is a symbol this draft's own equations use, but has no row in math.md"
@@ -184,7 +150,6 @@ class TestWarnings:
         assert "`tau` is a symbol" in found[0]
 
     def test_a_non_greek_control_word_is_not_a_symbol(self, isolated_config):
-        # \frac must not make `frac` a symbol worth warning about.
         assert _math_findings.warnings("the `frac` here", {"x": "\\frac{1}{2}"}, False) == []
 
     def test_a_plain_identifier_is_not_a_gap(self, isolated_config):
@@ -205,38 +170,19 @@ class TestWarnings:
         assert _math_findings.warnings(text, {"dW/dt": "X"}, True) == []
 
     def test_orphans_are_not_reported_when_there_is_no_mapping_file(self, isolated_config):
-        # Without a file there is nothing to have gone stale, and every
-        # row would be reported against a draft that never had one.
         assert _math_findings.warnings("no maths here", {"tau": "\\tau"}, False) == []
 
     def test_a_span_inside_a_marked_block_is_not_scanned_as_inline(self, isolated_config):
-        # The block is handled by check(); scanning its body as spans too
-        # would double-report.
         text = "<!-- math -->\n```\nh = 9\n```\n"
         assert _math_findings.warnings(text, {"h = 9": "h = 9"}, True) == []
 
     def test_a_span_inside_an_ordinary_fence_is_not_scanned_as_inline(self, isolated_config):
-        # m-56: only marked math blocks were masked before the span scan,
-        # so a `tau`-shaped token shown inside a code example (a tutorial's
-        # own Markdown source, say) was flagged as a gap even though it is
-        # not draft prose at all.
         text = "```markdown\nThe gain is `tau` here.\n```\n"
         assert _math_findings.warnings(text, {"x": "\\tau + 1"}, False) == []
 
 
 class TestAnUnmarkedFenceHoldingAnEquation:
-    """#406: the shape all three of §12's checks agreed was clean.
-
-    The converter blanks every fence before scanning for spans, and the
-    post-render grep looked for math-shaped `\\texttt{}` -- which a fence
-    never becomes, since pandoc sets it as `\\begin{verbatim}`. So a
-    displayed relation written as ASCII in a fence passed every one of
-    them, and reached the pdf as upright monospace between two inline
-    equations.
-    """
-
     def test_an_untagged_fence_holding_a_relation_is_a_gap(self, isolated_config):
-        # Verbatim from the chapter that reported it, blockquote and all.
         text = "> Call it `C`. Adopt when\n>\n> ```\n> C x I  >  F\n> ```\n>\n> where `I`\n"
         assert _math_findings.warnings(text, {}, False)[0] == (
             "`C x I  >  F` looks like a displayed equation but its fence has no "
@@ -248,16 +194,10 @@ class TestAnUnmarkedFenceHoldingAnEquation:
         assert _math_findings.warnings(text, {"C x I > F": "C \\times I > F"}, True) == []
 
     def test_a_tagged_fence_is_code(self, isolated_config):
-        # A tag is the author saying "code", so it settles the question
-        # a bare fence leaves open. `python`-tagged constants were the
-        # only other candidates the corpus scan turned up.
         text = "```python\nDRY_THRESHOLD = 35.0\n```\n"
         assert _math_findings.warnings(text, {}, False) == []
 
     def test_a_fence_of_program_output_is_code(self, isolated_config):
-        # An underscore identifier is code and never a quantity -- the
-        # same distinction `as_of` draws for spans. This is what keeps a
-        # tutorial's captured output quiet.
         text = "```\nhour 11  sensor= 38.2  predicted_next= 35.0\n```\n"
         assert _math_findings.warnings(text, {}, False) == []
 
@@ -265,10 +205,6 @@ class TestAnUnmarkedFenceHoldingAnEquation:
         assert _math_findings.warnings("```\nchitragupta draft render\n```\n", {}, False) == []
 
     def test_an_ascii_figure_is_not_an_equation(self, isolated_config):
-        # The other inhabitant of a bare fence (§10). No box border is
-        # math-shaped, but one `->` anywhere in the diagram is, so length
-        # is what separates the two -- this is the largest class of false
-        # positive the corpus turned up.
         figure = "\n".join(["+------+", "| twin | -> readings", "+------+", "", "|", "v"])
         assert _math_findings.warnings(f"```\n{figure}\n```\n", {}, False) == []
 
@@ -276,9 +212,6 @@ class TestAnUnmarkedFenceHoldingAnEquation:
         assert _math_findings.warnings("```\n```\n", {}, False) == []
 
     def test_a_tagged_fence_does_not_hide_the_untagged_one_after_it(self, isolated_config):
-        # Fence delimiters pair in order. Matching an opener without its
-        # info string would pair a tagged block's *closer* with the next
-        # block's opener, swallowing the equation between them.
         text = "```sql\nselect 1\n```\n\ntext\n\n```\nC x I > F\n```\n"
         assert _math_findings.warnings(text, {}, False) == [
             "`C x I > F` looks like a displayed equation but its fence has no "
@@ -286,8 +219,6 @@ class TestAnUnmarkedFenceHoldingAnEquation:
         ]
 
     def test_the_first_line_names_a_multi_line_equation(self, isolated_config):
-        # The whole body in a warning would be a paragraph; the first
-        # line is enough to find the fence.
         text = "```\n-8 = -24k + g\ng = 24k - 8\n```\n"
         assert _math_findings.warnings(text, {}, False) == [
             "`-8 = -24k + g` looks like a displayed equation but its fence has no "
@@ -320,20 +251,11 @@ class TestCheckRefusesOnlyTheCertainCases:
         _math.check(draft.read_text(encoding="utf-8"), draft, _math.load_mapping(draft))
 
     def test_a_heuristic_gap_is_never_fatal(self, isolated_config):
-        # A wrong guess about an inline span must not stop a render; only
-        # a marker the author wrote deliberately is certain enough.
         draft = _draft(mapping=None, text="a `h = 9` gap and nothing else\n")
         _math.check(draft.read_text(encoding="utf-8"), draft, {})
 
 
 class TestCheckedMathMapping:
-    """`render`'s own wrapper: load, refuse the certain, warn the rest.
-
-    Extracted from `render` because the four statements pushed it over
-    docs/CODE-STANDARDS.md's 25-statement limit, and tested here rather
-    than through `render` so a host without pandoc still exercises it.
-    """
-
     def test_returns_the_mapping_and_prints_gaps_to_stderr(self, isolated_config, capsys):
         draft = _draft(text="a mapped `tau` and an unmapped `h = 9`\n")
         mapping = render_output._checked_math_mapping(draft.read_text(encoding="utf-8"), draft)
@@ -342,9 +264,6 @@ class TestCheckedMathMapping:
         assert "[math] `h = 9` looks like a quantity" in err
 
     def test_a_clean_draft_says_nothing(self, isolated_config, capsys):
-        # Every row used, no unmapped quantity: the quiet path. Needs a
-        # mapping matching this text exactly -- the fuller MAPPING would
-        # report four orphans here, which is the orphan check being right.
         draft = _draft(
             mapping="| ASCII | LaTeX |\n| --- | --- |\n| `tau` | `\\tau` |\n"
             "\n## Symbols\n\n| `tau` | time constant |\n",
@@ -354,23 +273,12 @@ class TestCheckedMathMapping:
         assert "[math]" not in capsys.readouterr().err
 
     def test_it_raises_before_warning_on_an_unresolvable_marker(self, isolated_config):
-        # check() runs first, so a certain failure is not buried under a
-        # list of heuristic warnings.
         draft = _draft(mapping=None)
         with pytest.raises(_math.MathMappingError):
             render_output._checked_math_mapping(draft.read_text(encoding="utf-8"), draft)
 
 
 class TestTheMarkdownPathLeavesTheAsciiAlone:
-    """§12's whole point, and now also a load-bearing equivalence.
-
-    `render`'s Markdown-to-Markdown path composes the same substitution
-    chain as the pandoc path (`_substituted`) and passes an **empty**
-    mapping, so the two have one definition rather than two. That is only
-    correct because an empty mapping substitutes nothing -- this is what
-    says so, rather than leaving it to a reader of `_math.substitute`.
-    """
-
     def test_an_empty_mapping_changes_nothing(self):
         assert _math.substitute(ASCII_DRAFT, {}) == ASCII_DRAFT
 
@@ -383,22 +291,12 @@ class TestTheMarkdownPathLeavesTheAsciiAlone:
 
 
 class TestImportBoundary:
-    """`render_output` renders under bare `python`; `_math` must not widen that.
-
-    `_paths.py` commits the package to stdlib plus `config`/`citation_gate`/
-    `references` so a genre skill can render without the project installed.
-    Importing `chitragupta.dossier` for `dossier_dir()` is the obvious
-    "simplification" and would break exactly that.
-    """
-
     def test_imports_stay_inside_the_bare_python_set(self):
         allowed = {"chitragupta.config", "chitragupta.citation_gate", "chitragupta.references"}
         source = Path(_math.__file__).read_text(encoding="utf-8")
         self._assert_imports_within(source, allowed, "chitragupta.config", "_math.py")
 
     def test_the_shape_rules_import_only_math(self):
-        # #1115/#1116: the shapes judge, `_math` resolves; the dependency
-        # runs one way, and adds nothing to the bare-python set.
         source = Path(_math_shapes.__file__).read_text(encoding="utf-8")
         allowed = {"chitragupta.render_output._math"}
         self._assert_imports_within(
@@ -416,8 +314,6 @@ class TestImportBoundary:
                     f"{node.module}.{a.name}" if node.module == "chitragupta" else node.module
                     for a in node.names
                 )
-        # Non-vacuous guard: an AST walk that matched nothing would make
-        # the assertion below pass forever, for the wrong reason.
         assert expected in imported, (
             "the import scan found no chitragupta imports at all, so it is not "
             f"checking anything -- has {name}'s import style changed?"
@@ -429,13 +325,6 @@ class TestImportBoundary:
         )
 
     def test_the_duplicated_path_rule_still_agrees_with_dossier_dir(self, isolated_config):
-        """`mapping_path` re-derives what `dossier.dossier_dir` already knows.
-
-        That duplication is deliberate -- importing the dossier package would
-        break bare-`python` rendering -- but a duplicate only stays correct
-        while nobody moves the original. A test may import what the module
-        may not, so this is where the two are held together.
-        """
         from chitragupta import dossier
 
         draft = config.DRAFTS_DIR / "dt" / "tank.md"
@@ -443,13 +332,6 @@ class TestImportBoundary:
 
 
 class TestFindingsCarryTheirKind:
-    """m-66 (#506). `dossier._draft_fingerprint._math_desync` selected
-    the orphans by testing whether a warning's *text* ended in "appears
-    nowhere in the draft" -- this module's prose, not its contract. A
-    reworded sentence would have emptied that check silently, with every
-    test in `TestWarnings` above still green, because they assert the
-    message and never the selection."""
-
     def test_every_kind_is_reported_under_its_own_name(self, isolated_config):
         text = "the value `h = 9` and `W` here\n\n```\nC x I > F\n```\n"
         kinds = [
@@ -463,12 +345,6 @@ class TestFindingsCarryTheirKind:
         assert _math_findings.warnings(text, {"tau": "\\tau"}, True) == [f.message for f in found]
 
     def test_the_orphan_filter_survives_a_reworded_message(self, isolated_config, monkeypatch):
-        """The regression proper. `findings` is stubbed to return one
-        orphan whose message no longer ends in the phrase the old filter
-        matched on. Pre-fix `_math_desync` returns `[]` -- the staleness
-        check silently reporting no desynced math at all; post-fix it
-        returns the orphan, because the selection is on `kind`.
-        """
         from chitragupta.dossier import _draft_fingerprint
 
         monkeypatch.setattr(
@@ -486,10 +362,6 @@ class TestFindingsCarryTheirKind:
 
 
 class TestShapeRules:
-    """#1116: quantities the single operator regex could not see, and the
-    near misses each new rule must leave alone. One rule per case, so a
-    false alarm names the rule to fix."""
-
     @pytest.mark.parametrize(
         "span, rule",
         [
@@ -541,9 +413,7 @@ class TestShapeRules:
             "sleep(5)",
             "N(118.5, 9.25)",
             "pip install -e .",
-            # An undated citekey: `_CITEKEY_RE` wants a four-digit year.
             "noauthor_digital_nodate-1",
-            # A thousands separator, a reference number, snake_case code.
             "1,000",
             "[1]",
             "plant_id+1",
@@ -554,9 +424,6 @@ class TestShapeRules:
 
 
 class TestNotMathematicsIsBlankedFirst:
-    """#1115: a token that is plainly a path, a file name, a URL query, a
-    placeholder, a date or a version is not read as arithmetic."""
-
     @pytest.mark.parametrize(
         "span",
         [
@@ -580,13 +447,10 @@ class TestNotMathematicsIsBlankedFirst:
         assert _math_shapes.rule_for("x = 02-01-a.md", frozenset(), False) == "relation"
 
     def test_a_derivative_is_judged_before_it_could_be_blanked(self):
-        # `dV/dSoC` is path-shaped (a slash and a three-letter run).
         assert _math_shapes.rule_for("dV/dSoC", frozenset(), False) == "derivative"
 
 
 class TestTheDraftsOwnMathematics:
-    """Context rules: decided on what the draft's `math.md` declares."""
-
     def test_single_letters_bare_numbers_and_greek_need_a_mapping_file(self):
         for span, rule in (("t", "single-letter"), ("0.5", "bare-number"), ("Pi", "greek")):
             assert _math_shapes.rule_for(span, frozenset(), True) == rule
@@ -706,9 +570,6 @@ DUPLICATE_ROWS = """\
 
 
 class TestDuplicateRows:
-    """#1116: `load_mapping` builds a dict, so a repeated key's last row
-    wins with nothing said."""
-
     def test_rows_keep_file_order_and_the_last_row_still_wins(self, isolated_config):
         draft = _draft(mapping=DUPLICATE_ROWS)
         assert len(_math.mapping_rows(_math.mapping_text(draft))) == 4
@@ -738,10 +599,6 @@ class TestDuplicateRows:
 
 
 class TestWhereNoMappingCanExist:
-    """#1115: a review report is rendered through `render` too, and its
-    header quotes the draft's path and the command line. It can have no
-    `math.md`, so a gap there asks for a row nobody can add."""
-
     def test_a_review_report_prints_no_math_findings(self, isolated_config, capsys):
         from chitragupta.render_output import _substitution
 
@@ -771,10 +628,6 @@ class TestWhereNoMappingCanExist:
 
 
 class TestAMappingNamedByTheCaller:
-    """#1194: `draft diff` renders each side of a redline from
-    `content/review/`, where no `math.md` mirrors. It names the draft's
-    own mapping instead, and that file resolves the side's equations."""
-
     def test_a_review_copy_takes_the_mapping_it_is_given(self, isolated_config, capsys):
         from chitragupta.render_output import _substitution
 
@@ -782,7 +635,6 @@ class TestAMappingNamedByTheCaller:
         side = config.REVIEW_DIR / "dt" / "tank.diff" / "new" / "tank.md"
         mapped = _substitution._checked_math_mapping(ASCII_DRAFT, side, mapping)
         assert mapped["dW/dt = -W/tau"] == "\\frac{dW}{dt} = -\\frac{W}{\\tau}"
-        # The draft's own render reports a gap; its review copy stays quiet.
         assert "[math]" not in capsys.readouterr().err
 
     def test_without_it_the_review_copy_is_refused(self, isolated_config):
@@ -861,5 +713,4 @@ class TestTheIssuesReproductions:
 
 
 def test_a_citekey_shaped_key_contributes_no_names():
-    # Lowercase throughout, so the symbol-like filter drops it whole.
     assert _math._symbols_of({"zech_digital-twins-as--service_2024": "12"}) == frozenset()

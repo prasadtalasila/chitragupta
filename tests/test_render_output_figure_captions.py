@@ -1,12 +1,3 @@
-"""chitragupta/render_output/_figure_captions.py: issue 411's caption,
-numbering and `figureref` contract.
-
-Split from `tests/test_render_output_figures.py` to mirror
-`chitragupta/render_output/`'s own split (the ASCII/TikZ pair versus the
-caption that wraps around it), the way `tests/test_enrich_*.py` mirrors
-`chitragupta/enrich/`.
-"""
-
 import re
 import subprocess
 from pathlib import Path
@@ -37,8 +28,6 @@ class TestFigures:
         assert figure.number == 1
 
     def test_numbering_skips_uncaptioned_markers_between_captioned_ones(self):
-        # The middle marker is uncaptioned (blank line follows it), so it
-        # must not be counted.
         text = (
             CAPTIONED_MD
             + "\n<!-- figure: figures/fig2 -->\n\n"
@@ -49,8 +38,6 @@ class TestFigures:
         assert [f.number for f in figures] == [1, 2]
 
     def test_a_caption_line_that_is_itself_a_marker_is_not_swallowed(self):
-        # Two figures back to back, no blank line between them: the second
-        # marker must not be read as the first figure's caption.
         text = "<!-- figure: figures/fig1 -->\n<!-- figure: figures/fig2 -->\nReal caption.\n"
         figures = render_output._figure_captions.figures(text)
         assert [f.id for f in figures] == ["fig2"]
@@ -74,30 +61,12 @@ class TestSubstituteCaptions:
         out = render_output._figure_captions.substitute_captions(CAPTIONED_MD, "pdf")
         assert "\\begin{figure}" in out
         assert "<!-- figure: figures/fig1 -->" in out
-        # The caption is pandoc-visible text sandwiched between raw
-        # `\caption{`/`}\label{fig:...}` spans -- not interpolated straight
-        # into a raw `\caption{...}` block (issue 494), which is why the
-        # substrings are checked separately rather than as one literal
-        # `\caption{One reading path.}`.
         assert "`\\caption{`{=latex}One reading path." in out
         assert "`}\\label{fig:fig1}`{=latex}" in out
         assert "\\end{figure}" in out
-        # The original caption paragraph is consumed into \caption{}, not
-        # left behind as a second copy of the sentence.
         assert out.count("One reading path.") == 1
 
     def test_latex_bound_leaves_the_caption_pandoc_visible_not_raw_interpolated(self):
-        # Issue 494 / whole-tree review M-26: `_caption_wrap_for` used to
-        # interpolate the caption straight into a raw `\begin{figure}...
-        # \end{figure}` block, which pandoc's raw-TeX passthrough reads as
-        # one opaque span -- so a caption with `&` broke pdflatex ("Misplaced
-        # alignment tab"), a caption with `%` silently truncated the rest of
-        # the line (including the `\label`), and a caption citing
-        # `[@citekey]` reached the PDF as literal, unresolved text. None of
-        # that special-casing may resurface: the caption text lands in the
-        # output byte-identical to what the draft wrote, exactly as
-        # `_tables._caption_for` already does it, with only the float
-        # wrapper injected around it.
         caption = "Throughput [@doe2020] rose 5% & fell"
         text = f"<!-- figure: figures/fig1 -->\n{caption}\n"
 
@@ -110,23 +79,11 @@ class TestSubstituteCaptions:
         assert "`}\\label{fig:fig1}`{=latex}" in out
 
     def test_the_begin_and_end_are_each_their_own_raw_block(self):
-        # The fix's whole point: `\begin{figure}` and `\end{figure}` must
-        # not sit inside the same raw span pandoc's `\begin{env}...
-        # \end{env}` passthrough would read as one opaque block -- each is
-        # its own fenced `{=latex}` raw block instead.
         out = render_output._figure_captions.substitute_captions(CAPTIONED_MD, "pdf")
         assert "```{=latex}\n\\begin{figure}\n```" in out
         assert "```{=latex}\n\\end{figure}\n```" in out
 
     def test_a_captioned_figures_new_fences_do_not_confuse_later_math(self):
-        # `_substitution.py`'s own comment says equation numbering runs
-        # last "because a figure substitution can also introduce a fenced
-        # ASCII block, and `_math`'s own display rule reads fences" --
-        # this fix adds two more ` ```{=latex} ` fences per captioned
-        # figure where before there were none. Each is a self-contained,
-        # balanced open/close pair (`_math._FENCE_RE` matches greedily
-        # paired, not by toggling a running parity), so a `<!-- math -->`
-        # block after a captioned figure must still resolve.
         draft_text = (
             "# Title\n\n" + CAPTIONED_MD + "\nWriting `W` for water, the model is:\n\n"
             "<!-- math -->\n```\ndW/dt = -W/tau\n```\n"
@@ -198,9 +155,6 @@ class TestWarnings:
         assert render_output._figure_captions.warnings(CAPTIONED_MD) == []
 
     def test_a_caption_with_no_trailing_newline_at_all_is_not_flagged(self):
-        # The caption is the very last line of the file -- no `\n` after
-        # it at all, not even a blank one, so there is no next line to
-        # read as a continuation.
         text = "<!-- figure: figures/fig1 -->\nOne reading path."
         warnings = render_output._figure_captions.warnings(text)
         assert not any("non-blank line" in w for w in warnings)
@@ -221,10 +175,6 @@ class TestWarnings:
 )
 @pytest.mark.parametrize("caption", ["One node.\n", ""], ids=["captioned", "uncaptioned"])
 def test_a_figure_is_centred_on_the_text_block(isolated_config, caption):
-    """#1085: nothing set `\\centering`, so a figure sat at the left margin,
-    and a captioned one under a caption LaTeX had centred on its own.
-    Measured on the printed page: a one-node picture's label is centred on
-    the text block, with a caption and without one."""
     isolated_config.BIB_FILE_PATH.write_text("")
     draft = content_draft(isolated_config, "drafts/rag/survey.md")
     (draft.parent / "figures").mkdir()
@@ -238,6 +188,4 @@ def test_a_figure_is_centred_on_the_text_block(isolated_config, caption):
     ).stdout
     words = re.findall(r'xMin="([\d.]+)" yMin="[\d.]+" xMax="([\d.]+)" yMax="[\d.]+">(\w+)<', html)
     [label] = [(float(x0), float(x1)) for x0, x1, word in words if word == "CENTREME"]
-    # A4 is 595.28bp wide with 1in (72bp) margins, so the text block's
-    # centre is half the page; the label's own centre is the picture's.
     assert (label[0] + label[1]) / 2 == pytest.approx(595.28 / 2, abs=1.0)

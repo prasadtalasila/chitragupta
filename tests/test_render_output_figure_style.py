@@ -1,5 +1,3 @@
-"""The renderer reports a figure's house block and never rewrites it (#1013)."""
-
 from pathlib import Path
 
 from chitragupta import figure
@@ -76,8 +74,6 @@ class TestWarnings:
         assert _figure_style.warnings("No figure.\n", draft(tmp_path, "d.md", "x")) == []
 
     def test_a_hand_edited_v2_block_still_warns(self, tmp_path):
-        """The hand-edit warning survives the v3 bump (#1047): an edited
-        copy of the real v2 block matches no released digest."""
         figure_pair(tmp_path)
         v2 = Path(__file__).parent / "fixtures" / "figure" / "cg-figstyle-v2.tex"
         edited = v2.read_text(encoding="utf-8").replace("0.95pt", "0.9pt", 1)

@@ -1,18 +1,8 @@
-"""The terminology registry and the unnumbered matter (#1137).
-
-A preface is written by hand and has no dossier, so "has no ## Glossary"
-about it is noise rather than a finding. The opposite case is a real
-one: a glossary definition ends with `\\Cref{<unit-id>}`, and a chapter
-under `\\frontmatter` or `\\backmatter` carries no number for that to
-print, so a term defined there has to move to a numbered chapter.
-"""
-
 import pytest
 
 from chitragupta import registry
 from tests.test_registry import MODEL_GLOSSARY, accept
 
-# conftest's `signed_book` writes and signs this as the outline.
 BOOK_SPEC = """# Composable Twins
 
 ## Front matter {#front}

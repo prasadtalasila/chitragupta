@@ -1,12 +1,3 @@
-"""Every diagram export is narrow enough to read where the docs show it.
-
-The docs site's content column, beside the navigation and the table of
-contents, is about 690px wide, and a browser scales a wider diagram down
-to fit it, labels included (#1229). Mermaid writes a diagram's own width
-into its SVG as `max-width`. At 920px a 14px label still reads at about
-10.5px; past it, a label shrinks towards the size the issue reported.
-"""
-
 import re
 from pathlib import Path
 

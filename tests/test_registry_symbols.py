@@ -1,12 +1,3 @@
-"""chitragupta/registry/_symbols.py: each accepted unit's `math.md`
-`## Symbols`, resolved across the book (#1143).
-
-A bold link resolves to a glossary term in any accepted unit; `see
-<unit>` resolves to that unit's row for the same symbol; the meaning key
-(term or words, plus the note) is what `[notation]` and the List of
-Symbols both group by.
-"""
-
 import pytest
 
 from chitragupta import registry
@@ -23,9 +14,6 @@ def notation(book) -> "list[str]":
 
 
 RESIDUAL = "- **Residual** -- the difference between reading and prediction"
-
-
-# --- links ---------------------------------------------------------------
 
 
 def test_a_link_resolves_to_a_term_another_unit_defines(book):
@@ -81,9 +69,6 @@ def test_two_notes_on_one_symbol_are_two_meanings(book):
     assert any("`m_lo` names different things" in text for text in notation(book))
 
 
-# --- pointers --------------------------------------------------------------
-
-
 def test_a_pointer_takes_its_targets_meaning(book):
     accept(
         book,
@@ -125,9 +110,6 @@ def test_a_pointer_to_a_unit_not_accepted_is_a_finding(book):
     assert notation(book) == [
         "ch-model math.md `T_c` points at ch-data, which is not an accepted unit"
     ]
-
-
-# --- what one unit's math.md says, and its glossary ------------------------
 
 
 def test_a_units_math_findings_are_prefixed_with_the_unit(book):
@@ -203,9 +185,6 @@ def test_an_excerpt_leaves_out_a_row_that_settled_nothing(book, capsys):
     capsys.readouterr()
     registry.main(["excerpt", str(book), "ch-data"])
     assert "`k`" not in capsys.readouterr().out
-
-
-# --- what build refuses ------------------------------------------------------
 
 
 @pytest.fixture

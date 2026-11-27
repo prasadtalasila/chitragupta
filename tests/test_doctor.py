@@ -1,6 +1,3 @@
-"""`chitragupta doctor`: probes the environment and reports -- never
-installs, never exits non-zero (SOUL.md's aid-not-gate rule)."""
-
 import importlib.metadata
 import json
 from pathlib import Path
@@ -40,35 +37,20 @@ class TestCheckBinaries:
         assert len(lines) == len(doctor.BINARIES)
 
     def test_pdflatex_is_not_required_once_every_compile_is_lualatex(self):
-        """#1037: the figure-layout probe was the pipeline's last pdflatex
-        compile. A thesis author whose template forces pdflatex runs it
-        themselves; the pipeline no longer does."""
         assert "pdflatex" not in doctor.BINARIES
         assert "lualatex" in doctor.BINARIES
 
     def test_the_tools_figure_look_needs_are_checked(self):
-        """#1052: `figure look` rasterizes with pdftoppm, and a pdf render
-        finds each figure's page with pdfinfo; both are poppler-utils,
-        beside the pdftotext already here."""
         assert {"pdftotext", "pdftoppm", "pdfinfo"} <= set(doctor.BINARIES)
 
     def test_the_book_builds_tools_are_checked(self):
-        """A book's build runs `bibtexu` for its bibliography and, since
-        #1168, `upmendex` for its index; both ship in texlive-binaries."""
         assert {"bibtexu", "upmendex"} <= set(doctor.BINARIES)
 
     def test_the_redlines_differ_is_checked(self):
-        """`draft diff --format pdf` builds its redline with `latexdiff`;
-        without it only the Markdown change report is written."""
         assert "latexdiff" in doctor.BINARIES
 
 
 class TestCheckOptionalPdflatex:
-    """pdflatex is no longer the pipeline's, but a thesis author whose
-    template forces it still needs it, with chitragupta-unicode.sty
-    (#1037). Doctor says which case this host is in, without calling an
-    absent pdflatex a problem."""
-
     def test_an_absent_pdflatex_is_optional_not_missing(self, monkeypatch):
         monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: None)
         line = doctor._check_optional_pdflatex()
@@ -98,9 +80,6 @@ class TestCheckOptionalPdflatex:
 
 
 class TestCheckPdfFonts:
-    """#996: every family chitragupta/pdf_fonts.py names, looked up the
-    way LuaLaTeX will look it up."""
-
     def test_no_font_loader_is_one_missing_binary_line(self, monkeypatch):
         monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: None)
         lines = doctor._check_pdf_fonts()
@@ -114,7 +93,6 @@ class TestCheckPdfFonts:
 
         def fake_run(cmd, **kwargs):
             name = cmd[1].removeprefix("--find=")
-            # luaotfload-tool exits 0 either way; only the message differs.
             message = (
                 f'luaotfload | resolve : Font "{name}" found!'
                 if name in present
@@ -132,8 +110,6 @@ class TestCheckPdfFonts:
         assert all("chitragupta install os-deps" in line for line in missing)
 
     def test_a_missing_required_font_says_no_pdf_renders(self, monkeypatch):
-        # #1022: a missing STIX Two stops every render, not only a draft
-        # with an unusual character, and the line said the latter.
         monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: f"/usr/bin/{b}")
         monkeypatch.setattr(doctor.pdf_fonts, "font_installed", lambda name: False)
         lines = dict(zip(doctor.pdf_fonts.all_families(), doctor._check_pdf_fonts()))
@@ -141,7 +117,6 @@ class TestCheckPdfFonts:
         assert "a draft with a character only it has" in lines["Noto Serif"]
 
     def test_no_line_names_a_scripts_path(self, monkeypatch):
-        # A `chitragupta init` project has no scripts/ directory (#1022).
         monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: None)
         assert not any("scripts/" in line for line in doctor._check_pdf_fonts())
 
@@ -152,11 +127,6 @@ class TestCheckEnrichExtra:
         assert "[ok]" in doctor._check_enrich_extra()
 
     def test_not_importable_names_the_command_that_fixes_it(self, monkeypatch):
-        """Names `chitragupta install enrich`, not the pip line it used
-        to print. `doctor` is most often read inside
-        docker/Dockerfile.claude, where the CLI is all there is and the
-        pip incantation was the one thing a user had to know that the
-        tool would not do for them."""
         monkeypatch.setattr(doctor.importlib.util, "find_spec", lambda name: None)
         result = doctor._check_enrich_extra()
         assert "[missing]" in result
@@ -164,10 +134,6 @@ class TestCheckEnrichExtra:
         assert "incomplete" not in result
 
     def test_a_partial_install_is_reported_and_names_what_is_missing(self, monkeypatch):
-        """m-35 (#509): probing `sentence_transformers` alone reported the
-        whole tier ok on a host that had it and nothing else, so `doctor`
-        passed and the run failed at the first stage reaching for
-        `docling` -- the opposite of what a preflight is for."""
         monkeypatch.setattr(
             doctor.importlib.util,
             "find_spec",
@@ -180,9 +146,6 @@ class TestCheckEnrichExtra:
         assert "sentence_transformers" not in result
 
     def test_every_module_the_extra_installs_is_probed(self):
-        """The list is `pyproject.toml`'s, read from it rather than
-        restated here -- a package added to the extra and not to
-        `ENRICH_MODULES` would otherwise go unprobed forever."""
         import re
         import tomllib
 
@@ -297,8 +260,6 @@ class TestMain:
 
 
 class TestCheckLaunchers:
-    """#812: a dead launcher on any harness, by name, and never fatal."""
-
     @staticmethod
     def codex(root, program):
         (root / ".codex").mkdir()
@@ -333,9 +294,6 @@ class TestCheckLaunchers:
 
 
 class TestCheckOpencodeSkills:
-    """#900: OpenCode keys skills by name, so its deny list is what keeps it
-    on its own copies."""
-
     @staticmethod
     def project(root, rules):
         (root / ".opencode" / "skills" / "survey-writer-opencode").mkdir(parents=True)

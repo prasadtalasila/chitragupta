@@ -1,12 +1,3 @@
-"""chitragupta/enrich/doc_vectors.py's on-disk topic-embed cache.
-
-Scoped to the #504 (M-24) fix -- degrading cleanly on a torn or
-unreadable cache file -- rather than the whole module, which the rest
-of the enrichment suite (test_enrich_topic_model.py,
-test_enrich_topic_seeding.py) already exercises indirectly through
-document_embeddings().
-"""
-
 import os
 
 from chitragupta.enrich import doc_vectors

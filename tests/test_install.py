@@ -1,12 +1,3 @@
-"""`chitragupta install os-deps|gpu-torch`: reaches
-scripts/install_full_pipeline.sh's two host-only stages without ever
-actually invoking apt-get or reinstalling torch in this suite -- every
-subprocess call is mocked, so what is pinned here is the *dispatch*
-(which stage runs what, what gets refused, what environment a real
-invocation would see), not the shell script's own behaviour, which has
-no test of its own -- `shellcheck scripts/*.sh` in `ci.yml`'s lint job,
-added in 6.1.0, is the whole of its automated checking."""
-
 import pytest
 
 import chitragupta.install as install
@@ -69,23 +60,7 @@ class TestOsDeps:
 
 
 class TestEnrich:
-    """`chitragupta install enrich` -- the one stage that is not a
-    `scripts/install_full_pipeline.sh` stage.
-
-    It exists for `docker/Dockerfile.claude`, which ships the CLI and
-    nothing else and deliberately leaves the enrich extra out of the
-    image because it is torch. Without this, that container's user had
-    to know a pip incantation the tool would not run for them.
-    """
-
     def test_pip_installs_the_extra_at_the_running_version(self, monkeypatch, capsys):
-        """Pinned to what is installed, not left open.
-
-        An unpinned `pip install chitragupta-cli[enrich]` is free to
-        upgrade chitragupta itself, so asking for an extra would swap
-        the tool underneath the command that asked -- which is not what
-        "install the enrich extra" means.
-        """
         monkeypatch.setattr(install.importlib.metadata, "version", lambda _dist: "6.75.1")
         monkeypatch.setattr(install.sys, "executable", "/venv/bin/python")
         recorded = RecordedRun()
@@ -107,10 +82,6 @@ class TestEnrich:
         assert install.main(["enrich"]) == 1
 
     def test_a_checkout_is_refused_with_the_install_script_equivalent(self, monkeypatch, capsys):
-        """There is no `chitragupta-cli` on an index to add an extra to
-        when running from a source tree, and the install script's
-        python-deps stage is what the operation means there."""
-
         def not_installed(_dist):
             raise install.importlib.metadata.PackageNotFoundError
 
@@ -121,10 +92,6 @@ class TestEnrich:
 
 class TestGpuTorch:
     def test_targets_the_running_interpreters_own_venv(self, monkeypatch, tmp_path):
-        # tmp_path, not a hardcoded POSIX string: a resolved path on
-        # Windows turns "/opt/some-venv/bin/python" into a drive-letter
-        # path, which a literal "/opt/..." assertion on the other side
-        # can never match -- caught on the Windows CI leg.
         fake_python = tmp_path / "some-venv" / "bin" / "python"
         monkeypatch.setattr(install.programs, "resolve_program", lambda b: "/usr/bin/bash")
         monkeypatch.setattr(install.sys, "executable", str(fake_python))
@@ -133,20 +100,10 @@ class TestGpuTorch:
         assert install.main(["gpu-torch"]) == 0
         ((command, kwargs),) = recorded.calls
         assert command == ["/usr/bin/bash", str(install.SCRIPT), "gpu-torch"]
-        # #985: the interpreter itself, which runs pip as `-m pip`. A
-        # `pip` built beside it is `Scripts\\pip.exe` on Windows, so the
-        # path named nothing there.
         assert kwargs["env"]["CHITRAGUPTA_PYTHON"] == str(fake_python)
         assert "CHITRAGUPTA_PIP" not in kwargs["env"]
 
     def test_stays_inside_the_venv_when_python_is_a_symlink(self, monkeypatch, tmp_path):
-        # `python3 -m venv` always makes bin/python a symlink to the base
-        # interpreter (tests/conftest.py's system_python fixture notes the
-        # same thing). Resolving that symlink walks straight out of the
-        # venv to the base interpreter's own directory -- issue #369: this
-        # is why `chitragupta install gpu-torch` reinstalled torch against
-        # the system pip (`error: externally-managed-environment`) instead
-        # of the venv chitragupta was actually installed into.
         base_python = tmp_path / "usr" / "bin" / "python3.13"
         base_python.parent.mkdir(parents=True)
         base_python.touch()
@@ -186,11 +143,6 @@ class TestMain:
         assert "\n\n" not in install.DESCRIPTION
 
     def test_help_says_which_stages_actually_run(self, capsys):
-        # #369: the usage line alone lists all five choices with no way
-        # to tell that three of them (REFUSED) refuse by name instead of
-        # running install_full_pipeline.sh -- a reader who tried
-        # python-deps off that line alone had no reason to expect an
-        # immediate refusal.
         with pytest.raises(SystemExit):
             install.main(["--help"])
         out = capsys.readouterr().out
@@ -200,11 +152,6 @@ class TestMain:
 
 
 class TestRemedy:
-    """#1022: the one spelling a message uses to say how to install
-    something. A `chitragupta init` project has no `scripts/`, and the
-    wheel ships the script `chitragupta install` runs, so this command
-    is right in both project shapes."""
-
     def test_names_the_shipped_command(self):
         assert install.remedy("os-deps") == "`chitragupta install os-deps`"
 
@@ -215,12 +162,6 @@ class TestRemedy:
 
 
 class TestEnrichRemedy:
-    """The enrich stack is the one install that is spelled differently in
-    the two project shapes: `chitragupta install enrich` refuses in a
-    checkout, and a `chitragupta init` project has no `scripts/`. So a
-    message names both, rather than whichever one its author had in
-    front of them."""
-
     def test_names_the_command_for_each_project_shape(self):
         text = install.enrich_remedy()
         assert "in a git checkout, `bash scripts/install_full_pipeline.sh python-deps`" in text

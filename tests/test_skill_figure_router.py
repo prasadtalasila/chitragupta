@@ -1,15 +1,3 @@
-"""`figure-drawer` is a router with a taste gate before drawing (#1048).
-
-Each copy of its `SKILL.md` is a short list of steps, each a command or
-a check. The detail lives once, in
-`.claude/skills/figure-drawer/references/`, and a section that moved
-there is text no model reads unless every copy still cites it. This
-scan pins the citations both ways, more strictly than
-tests/test_skill_references.py does for every skill (here every copy
-cites every section), and the gate's place and questions. The byte cap
-is tests/test_skill_size.py's (#1091). It exercises no behaviour.
-"""
-
 import re
 from pathlib import Path
 
@@ -35,18 +23,15 @@ def _text(path: Path) -> str:
 
 
 def _numbered_sections() -> list[tuple[str, str]]:
-    """Every `## N.` section of a figure-drawer reference, as (path, N)."""
     return [s for path in sorted(REFERENCES.rglob("*.md")) for s in numbered_sections(path)]
 
 
 def test_some_reference_has_numbered_sections():
-    # Guards the two tests below against passing on an empty list.
     assert len(_numbered_sections()) >= 7
 
 
 @pytest.mark.parametrize("copy", COPIES, ids=_ids)
 def test_every_numbered_section_is_cited(copy):
-    """A section moved out of `SKILL.md` keeps its link (#1048)."""
     found = cited(_text(copy))
     lost = [f"{path} §{n}" for path, n in _numbered_sections() if (path, n) not in found]
     assert not lost, lost
@@ -115,8 +100,6 @@ def test_the_return_reports_the_gate(copy):
 
 @pytest.mark.parametrize("copy", COPIES, ids=_ids)
 def test_no_hand_built_probe_comes_back(copy):
-    # #1048: `figure check` compiles the figure in the render's engine and
-    # fonts, so a probe document assembled by hand is a second, weaker copy.
     text = _text(copy)
     for phrase in ("lualatex probe", "run `lualatex` on it", "\\documentclass"):
         assert phrase not in text, phrase

@@ -1,12 +1,3 @@
-"""Tests for `python -m chitragupta.draft diff`: the change report and the
-redline, tied together.
-
-Run through `draft.main`, the route a person and a reviser both take, so
-the dispatch and the `[error]` lines are what is tested. The PDF path is
-tested with `render` and `redline` faked -- no pandoc, TeX or latexdiff
-runs here; the real end to end is a slow test of its own.
-"""
-
 import json
 from pathlib import Path
 
@@ -46,7 +37,6 @@ def _seed(con):
 
 
 def _snapshotted(con, *, label=""):
-    """A draft with one snapshot of `_OLD`, then edited to `_NEW`."""
     _seed(con)
     path = _draft()
     if label:
@@ -220,7 +210,6 @@ def test_diff_no_changes_exits_0_writes_no_pdf(isolated_config, ledger_con, monk
     _seed(ledger_con)
     path = _draft()
     _versions.take(path, trigger="mark-revision")
-    # A redline from an earlier run, of a state the draft no longer has.
     _review_dir().mkdir(parents=True)
     for stale in ("survey.diff.pdf", "survey.diff.tex"):
         (_review_dir() / stale).write_text("old", encoding="utf-8")
@@ -258,8 +247,6 @@ def test_diff_pdf_renders_both_sides_and_redlines(isolated_config, ledger_con, m
     ]
     assert calls[0][0] == str(work / "old" / "survey.md")
     assert calls[1][0] == str(work / "new" / "survey.md")
-    # Neither side sits where its `math.md` mirrors to, so both are
-    # handed the draft's own (#1194).
     mapping = dossier.dossier_dir(path) / "math.md"
     assert [c[4] for c in calls] == [mapping, mapping]
     assert redlined == [
@@ -272,8 +259,6 @@ def test_diff_pdf_renders_both_sides_and_redlines(isolated_config, ledger_con, m
 def test_diff_pdf_gives_both_sides_the_drafts_preamble(
     isolated_config, ledger_con, monkeypatch, capsys
 ):
-    """The sides sit in the review directory, so the preamble file a
-    `.tex` preview loads is copied beside each, named for its side."""
     path = _snapshotted(ledger_con)
     path.with_name("survey.preamble.tex").write_text("\\newcommand{\\x}{}\n", encoding="utf-8")
     monkeypatch.setattr(render_output, "render", _fake_render([]))
@@ -337,15 +322,12 @@ def test_diff_pdf_reports_a_failed_redline(isolated_config, ledger_con, monkeypa
     assert capsys.readouterr().err == "[error] The redline did not compile.\n"
 
 
-# The old side renders first and gates clean, so without pandoc it stops
-# at the toolchain check before the new side's gate can refuse anything.
 @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
 def test_diff_pdf_refuses_a_draft_citing_an_uncitable_key(
     isolated_config, ledger_con, monkeypatch, capsys
 ):
     path = _snapshotted(ledger_con)
     path.write_text(_NEW + "\nSee [@sample_ml_anomaly_2023].\n", encoding="utf-8")
-    # The real render, which gates each side before any pandoc runs.
     monkeypatch.setattr(_redline, "redline", lambda *args: pytest.fail("redline reached"))
 
     assert _diff(path, "--format", "pdf") == 1
@@ -377,8 +359,6 @@ _UNCITED = "# Lab\n\n## Setup\n\nInstall the tools.\n"
 
 @pytest.mark.parametrize("output_format", ["md", "pdf"])
 def test_diff_an_uncited_draft_needs_no_ledger(isolated_config, monkeypatch, capsys, output_format):
-    # No ledger exists: the gate's own test finds no key on either side,
-    # so the diff never opens one, as `render()` would not.
     path = _draft(_UNCITED)
     _versions.take(path, trigger="mark-revision")
     path.write_text(_UNCITED.replace("the tools", "the tools first"), encoding="utf-8")
@@ -400,7 +380,6 @@ def test_diff_a_cited_draft_without_a_ledger_says_so(isolated_config, capsys):
 
     assert _diff(path) == 1
 
-    # `draft.py`'s own `NoLedger` line, which names the sync to run.
     err = capsys.readouterr().err
     assert err.startswith("[error] No ledger")
     assert "corpus sync" in err

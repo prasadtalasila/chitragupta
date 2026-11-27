@@ -1,5 +1,3 @@
-"""`chitragupta figure sync`: the walk, the writes, and the exit codes."""
-
 import os
 import shutil
 import subprocess
@@ -92,8 +90,6 @@ class TestSync:
     @pytest.mark.skipif(os.name == "nt" or os.geteuid() == 0, reason="chmod is not enforced")
     def test_an_unwritable_file_is_reported_not_raised(self, figures, house):
         path = write(figures / "a.tex", PICTURE)
-        # write_atomically creates a temp sibling, so the *directory* is
-        # what has to refuse the write.
         figures.chmod(0o500)
         try:
             [outcome] = figure.run([figures], house, check=False)
@@ -149,8 +145,6 @@ class TestSync:
 
 class TestFigureFiles:
     def test_a_directory_contributes_only_its_figures_dirs(self, tmp_path):
-        """A draft's own `.tex` under a named directory is not a figure: a
-        `tikzpicture` inside its `verbatim` would otherwise be an anchor."""
         for rel in ["t/figures/a.tex", "t/t.tex", "t/figures/sub/b.tex"]:
             (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
             (tmp_path / rel).write_text("x", encoding="utf-8")
@@ -226,7 +220,6 @@ class TestThisRepositorysOwnFigures:
 @needs_tikz
 class TestRoundTrip:
     def test_a_stamped_figure_compiles_under_tikz_alone(self, figures, house, tmp_path):
-        """The property the travel rule exists for (#1013's acceptance)."""
         path = write(figures / "a.tex", PICTURE)
         figure.run([figures], house, check=False)
         doc = tmp_path / "probe.tex"

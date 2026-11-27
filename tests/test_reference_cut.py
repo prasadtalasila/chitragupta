@@ -1,6 +1,3 @@
-"""chitragupta/_reference_cut.py: a paper's own bibliography kept out of
-what BM25 indexes and out of what it quotes back (#768)."""
-
 import json
 
 import pytest
@@ -33,7 +30,6 @@ def refs_sidecar(header: str = "References", citekey: str = "a2024"):
 
 
 def seeded(con, text: str, citekey: str = "a2024", title: str = "An Incubator Study"):
-    """A ledger row whose parsed text is `text`."""
     path = parsed_text(citekey, text)
     ledger.upsert_reference(con, make_reference(citekey=citekey, title=title))
     ledger.mark_parsed(con, citekey, path)
@@ -54,8 +50,6 @@ class TestStripReferences:
         assert _reference_cut.strip_references(BODY, str(path)) == BODY
 
     def test_no_sidecar_leaves_the_text_unchanged(self, isolated_config):
-        # A `pdftotext` parse writes no sidecar, so there is no reading
-        # order to cut on and the item keeps today's behaviour.
         path = parsed_text("a2024", BODY + REFS)
 
         assert _reference_cut.strip_references(BODY + REFS, str(path)) == BODY + REFS
@@ -67,10 +61,6 @@ class TestStripReferences:
         assert _reference_cut.strip_references(BODY + REFS, str(path)) == BODY + REFS
 
     def test_the_last_matching_header_is_the_cut_point(self, isolated_config):
-        # A per-chapter book has one bibliography per chapter. The rule is
-        # the last of them to the end of the document, so an earlier
-        # chapter's references stay indexed -- stated by a test rather
-        # than left as an assumption about the corpus.
         text = BODY + REFS + "chapter two on calibration\n\n" + REFS
         path = parsed_text("a2024", text)
         plant_sidecar(
@@ -108,8 +98,6 @@ class TestStripReferences:
     def test_a_reference_marker_that_is_not_a_section_header_is_not_a_cut_point(
         self, isolated_config
     ):
-        # Position after a *heading* is what carries the signal. A
-        # running-head or a caption reading "References" is not one.
         text = BODY + "References\n\nsee the incubator's own manual\n"
         path = parsed_text("a2024", text)
         plant_sidecar(
@@ -126,9 +114,6 @@ class TestStripReferences:
     def test_a_header_the_flattened_text_does_not_contain_leaves_it_unchanged(
         self, isolated_config
     ):
-        # The sidecar and the .txt come from one parse, so this should not
-        # happen -- but a hand-edited sidecar must not silently truncate a
-        # document at position zero.
         path = parsed_text("a2024", BODY)
         refs_sidecar()
 
@@ -139,10 +124,6 @@ class TestStripReferences:
 
 
 class TestReferenceCutIndex:
-    """The same rule, reported as a position in the passage list rather
-    than applied to flattened text -- what a passage-level index needs so
-    it cuts on the same boundary rather than re-deriving one (#769)."""
-
     def body(self, text: str, label: str = "text"):
         return passages.Passage(page=1, words=set(), text=text, label=label)
 
@@ -191,8 +172,6 @@ class TestReferencesAreNotIndexed:
         assert retrieval.search("blockchain") == []
 
     def test_the_same_query_still_finds_it_without_a_sidecar(self, ledger_con):
-        # The control for the case above: it is the cut that drops the
-        # hit, not the fixture failing to contain the word.
         seeded(ledger_con, BODY + REFS)
 
         assert [r.citekey for r in retrieval.search("blockchain")] == ["a2024"]
@@ -204,9 +183,6 @@ class TestReferencesAreNotIndexed:
         assert [r.citekey for r in retrieval.search("incubator")] == ["a2024"]
 
     def test_the_indexed_length_reflects_the_cut(self, ledger_con):
-        # BM25 normalizes by document length, so a bibliography left in
-        # the count penalises the paper that carries it even for a query
-        # none of its references match.
         seeded(ledger_con, BODY + REFS)
         refs_sidecar()
         row = ledger.all_items(ledger_con)[0]
@@ -216,8 +192,6 @@ class TestReferencesAreNotIndexed:
         assert entry["length"] == len(retrieval._tokenize(f"{row['title']}\n{BODY}"))
 
     def test_a_snippet_cannot_be_drawn_from_a_reference_list(self, ledger_con):
-        # The bibliography is the only place the query's term appears
-        # *near*, so a snippet chosen from uncut text would show it.
         seeded(ledger_con, BODY + REFS)
         refs_sidecar()
 
@@ -232,12 +206,6 @@ class TestReferencesAreNotIndexed:
         assert windows == []
 
     def test_the_enrichment_layers_sidecar_does_not_change_what_is_indexed(self, ledger_con):
-        # chitragupta/retrieval.py's docstring promises that running the
-        # enrichment layer's Docling stage does not change what BM25
-        # ranks. Rung 1 (content/docling/) is that layer's own parse, so
-        # this reads rung 2 alone -- and this test is what stops a later
-        # refactor reaching for `passages.structural_passages`, which
-        # tries rung 1 first.
         seeded(ledger_con, BODY + REFS)
         config.DOCLING_DIR.mkdir(parents=True, exist_ok=True)
         (config.DOCLING_DIR / "a2024.passages.json").write_text(
@@ -255,10 +223,6 @@ class TestReferencesAreNotIndexed:
 
 class TestCacheMigration:
     def test_an_index_cached_before_the_cut_is_not_reused(self, ledger_con):
-        # Every entry written before #768 counted the bibliography's
-        # tokens, and the parsed file's own stat -- which is what the
-        # fingerprint carries -- has not moved. Only the schema version
-        # says the entry is from a different indexing rule.
         seeded(ledger_con, BODY + REFS)
         refs_sidecar()
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)

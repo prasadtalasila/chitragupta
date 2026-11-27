@@ -1,6 +1,3 @@
-"""chitragupta/review/__init__.py: the review layer's shared output contract -- where a
-report goes, what it opens with, and what it must never contain."""
-
 import subprocess
 from pathlib import Path
 
@@ -42,9 +39,6 @@ class TestReportPath:
         )
 
     def test_a_draft_outside_drafts_dir_falls_back_flat(self, isolated_config):
-        """render_output._output_dir's policy, not dossier_dir's raise: a
-        review aid that refuses to run is a worse answer than one that
-        writes flat, and nothing later looks the report up by its path."""
         draft = config.CONTENT_DIR / "loose.md"
         assert review.report_path(draft, "provenance") == (
             config.REVIEW_DIR / "loose.provenance.md"
@@ -64,7 +58,6 @@ class TestReportPath:
             review.report_path(config.DRAFTS_DIR / "survey.md", "provenance")
 
     def test_a_topic_directory_symlinked_out_of_review_is_refused(self, isolated_config, tmp_path):
-        """A draft's own path is never a reason to write outside content/."""
         outside = tmp_path / "outside"
         outside.mkdir()
         (config.REVIEW_DIR).mkdir(parents=True, exist_ok=True)
@@ -113,12 +106,6 @@ class TestHeader:
         assert "chitragupta " in text
 
     def test_a_draft_path_with_a_space_stays_re_runnable(self, isolated_config, ledger_con):
-        """The header claims to record the invocation, so it has to be
-        one. Two ways it stopped being one: an unquoted path with a space
-        names two arguments, and a bare filename names no directory at
-        all -- so two drafts called `survey.md` in different topics wrote
-        headers that read identically, the confusion the mirrored path
-        exists to prevent, reintroduced inside the file."""
         from chitragupta.review import _citation_provenance_render, citation_provenance
 
         draft = config.DRAFTS_DIR / "my topic" / "survey.md"
@@ -131,19 +118,12 @@ class TestHeader:
         assert f"'{draft}'" in body, "the command has to be shlex-quoted"
 
     def test_carries_no_date(self, isolated_config):
-        """The reason to write a report at all is that it diffs across
-        revisions; a wall-clock line defeats that for no gain. Asserted
-        against the shape of a date rather than today's value, so this
-        cannot pass by accident on the day it was written."""
         import re
 
         text = "\n".join(review.header(config.DRAFTS_DIR / "s.md", "verbatim", "cmd"))
         assert not re.search(r"\d{4}-\d{2}-\d{2}", text)
 
     def test_the_banner_names_its_sources_rather_than_linking(self, isolated_config):
-        """A report's depth under content/review/ varies with the draft's
-        topic path, so a relative link would be right for one report and
-        broken for the next."""
         assert "](" not in review.BANNER
 
 
@@ -156,9 +136,6 @@ class TestWrite:
         assert written["md"].read_text() == "# body\n"
 
     def test_renders_beside_the_report_not_into_rendered(self, isolated_config, monkeypatch):
-        """The whole point of the output contract: a report's .tex/.pdf
-        belong with the report, not in the drafting layer's publish
-        output. Before 4.0.0 they landed in content/rendered/."""
         from chitragupta import render_output
 
         seen = {}
@@ -193,9 +170,6 @@ class TestWrite:
     def test_every_render_failure_degrades_to_the_md(
         self, isolated_config, monkeypatch, capsys, failure
     ):
-        """#949: `write` catches the one tuple `render()` publishes, so a
-        failure `render()` gains later is not a traceback here."""
-
         def refuse(*a, **k):
             if failure is subprocess.CalledProcessError:
                 raise failure(1, ["pandoc"], stderr="pandoc said no")
@@ -212,9 +186,6 @@ class TestWrite:
     def test_a_report_quoting_an_unknown_key_still_writes_its_md(
         self, isolated_config, ledger_con, capsys
     ):
-        """#949's reproduction, unpatched: a verbatim excerpt carrying a
-        `[@key]` the ledger does not hold is refused by the render gate,
-        and that refusal is a skipped format, not a crash."""
         ledger.upsert_reference(ledger_con, make_reference(citekey="smith2024"))
         ledger_con.commit()
 
@@ -229,10 +200,6 @@ class TestWrite:
         assert "not_a_real_citekey_2026" in capsys.readouterr().err
 
     def test_json_is_never_rendered(self, isolated_config, monkeypatch):
-        """`json` in `--formats` names the payload's own path, and pandoc
-        accepts `json` as a real output format -- so passing it on would
-        spend a subprocess writing pandoc's document AST over the payload
-        (or under it, depending on which ran last)."""
         from chitragupta import render_output
 
         def fail(*a, **k):  # never called: that is the point
@@ -256,9 +223,6 @@ class TestWrite:
         assert first == second
 
     def test_a_private_use_character_is_written_as_a_marker(self, isolated_config, capsys):
-        """#1125: the character comes from a source's text layer, and no
-        font in the render chain has it, so LuaLaTeX stopped and the
-        report had no PDF. The marker reaches the .md the renders read."""
         body = "> updated at every step \ue230 and the gain follows.\n"
 
         written = review.write(config.DRAFTS_DIR / "survey.md", "provenance", body, ["md"])
@@ -277,8 +241,6 @@ class TestWrite:
         not (pandoc_available and lualatex_available), reason="pandoc/lualatex not installed"
     )
     def test_the_issues_report_now_renders_a_pdf(self, isolated_config):
-        """#1125's reproduction, unpatched: before the marker the pdf was
-        skipped with LuaLaTeX's `Missing character`."""
         isolated_config.BIB_FILE_PATH.write_text("")
         body = (
             "# Provenance\n\nClosest passage in the source:\n\n"
@@ -291,9 +253,6 @@ class TestWrite:
 
 
 class TestEnvelope:
-    """The JSON payload's counterpart to `header()`: the same provenance
-    as data, so a payload found on disk names the run that produced it."""
-
     def test_carries_the_notice_the_aid_the_draft_and_the_command(self, isolated_config):
         draft = config.DRAFTS_DIR / "dt" / "survey.md"
 
@@ -308,14 +267,10 @@ class TestEnvelope:
         assert "Review aid, not a gate" in envelope["notice"]
 
     def test_the_notice_leads(self, isolated_config):
-        """A payload whose likeliest reader is an agent acting on it says
-        what it is before it says what it found."""
         envelope = review.envelope(config.DRAFTS_DIR / "survey.md", "verbatim", "cmd")
         assert next(iter(envelope)) == "notice"
 
     def test_the_notice_is_the_banner_without_its_markdown(self, isolated_config):
-        """Derived, not restated: the two cannot drift into saying
-        different things about the same report."""
         envelope = review.envelope(config.DRAFTS_DIR / "survey.md", "verbatim", "cmd")
 
         assert not envelope["notice"].startswith(">")
@@ -323,8 +278,6 @@ class TestEnvelope:
         assert envelope["notice"] in review.BANNER.replace("**", "")
 
     def test_carries_no_date(self, isolated_config):
-        """The layer's rule, and the reason a payload diffs cleanly
-        across revisions -- same as the Markdown header."""
         import re
 
         envelope = review.envelope(config.DRAFTS_DIR / "survey.md", "verbatim", "cmd")
@@ -332,8 +285,6 @@ class TestEnvelope:
         assert not re.search(r"\d{4}-\d{2}-\d{2}", str(envelope))
 
     def test_each_call_returns_a_fresh_dict(self, isolated_config):
-        """Callers add their findings to it; a shared dict would leak one
-        run's findings into the next one's payload."""
         draft = config.DRAFTS_DIR / "survey.md"
         first = review.envelope(draft, "verbatim", "cmd")
         first["findings"] = ["mine"]
@@ -362,8 +313,6 @@ class TestWriteJson:
         assert text.endswith("}\n")
 
     def test_two_writes_of_the_same_payload_are_byte_identical(self, isolated_config):
-        """Same rule as the Markdown: no wall-clock anywhere, so a
-        payload diffs cleanly against the next revision's."""
         draft = config.DRAFTS_DIR / "survey.md"
         payload = review.envelope(draft, "verbatim", "cmd") | {"findings": []}
 
@@ -373,16 +322,12 @@ class TestWriteJson:
         assert first == second
 
     def test_an_unknown_aid_is_rejected(self, isolated_config):
-        """The same guard `report_path` gives the Markdown: a caller
-        cannot invent a fourth report kind by typo."""
         with pytest.raises(ValueError, match="Unknown review aid"):
             review.write_json(config.DRAFTS_DIR / "survey.md", "bogus", {})
 
 
 class TestPrintWritten:
     def test_lists_the_json_sibling_too(self, isolated_config, capsys):
-        """A written file the caller isn't told about is one they will
-        not know to look for."""
         review.print_written({"md": Path("a.md"), "json": Path("a.json")})
 
         out = capsys.readouterr().out
@@ -399,8 +344,6 @@ class TestPrintWritten:
     def test_a_caller_whose_stdout_is_a_payload_can_route_it_to_stderr(
         self, isolated_config, capsys
     ):
-        """`verbatim scan --json --write`: this summary is a note to a
-        person, and stdout has become machine-readable."""
         import sys
 
         review.print_written({"md": Path("a.md"), "json": Path("a.json")}, stream=sys.stderr)
@@ -421,11 +364,5 @@ class TestVersion:
         assert review.version() == expected
 
     def test_an_unreadable_pyproject_is_not_fatal(self, monkeypatch, tmp_path):
-        """A report that cannot name its version is still a useful
-        report."""
-        # `shipped` rather than a root constant: the version comes from
-        # distribution metadata that sits beside the *code*, so pointing
-        # the seam at an empty directory is what "no pyproject here" now
-        # means. This is also the shape an installed package really has.
         monkeypatch.setattr(config, "shipped", lambda *parts: tmp_path.joinpath(*parts))
         assert review.version() == "unknown"

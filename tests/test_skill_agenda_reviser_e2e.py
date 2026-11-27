@@ -1,50 +1,3 @@
-"""End-to-end proof of the `agenda-reviser` repair loop's machinery --
-driven the way the skill drives it: `agenda --json` for a baseline (no
-`--write` flag exists on this aid -- the report files unconditionally),
-a scripted edit shaped like the skill's own `Edit` call, then `agenda
---baseline ... --json` to decide accept, revert or persist.
-
-Nine tests, matching `plans/f3-agenda-reviser.md`'s "PR 2's tests, to the
-100% bar" section: the issue's original five, plus three this plan adds
-(cross-class coupling, the `missing-citekey` repair shape, and
-`pass_bound` read from the payload rather than a literal).
-
-Own module rather than a class in tests/test_feature_workflows.py (see
-that file's TestOverlapRemediationEndToEnd for the narrower loop this
-one supersedes): that file already covers a different loop end to end,
-and one shared loop belongs in one file read on its own, the same
-reasoning tests/test_skill_verbatim_scan_step.py and
-tests/test_skill_pregate_feedback_step.py already follow.
-
-**Three mechanics this suite exists to pin, discovered writing it rather
-than assumed from the spec:**
-
-The fixture's `prose` finding is an uncaptioned figure marker
-(`chitragupta.FigureNoCaption`), not an unexpanded acronym
-(`chitragupta.Acronyms`) -- deliberately. `Acronyms` is a Vale rule
-(`assets/vale/`), and Vale is an optional binary this repo's own Windows
-CI leg does not install (`docs/CLI.md`'s tier-1 contract); a fixture
-built on it passes on a host with Vale on PATH and silently finds zero
-`prose` items -- and every assertion downstream of that count -- on one
-that lacks it. `FigureNoCaption`/`FigureUnreferenced`
-(`chitragupta/style_figures.py`) are computed in plain Python and run
-identically everywhere, which is what this module actually needs to pin.
-
-`missing-citekey` is detected off the dossier's own record of what it
-cites (`evidence.md`/`sections.md` via `dossier._citekeys.cited_citekeys`),
-not off the draft's live `[@citekey]` markers -- so a repair that only
-edits the draft text leaves the item unresolved on the next agenda. The
-fixture's repair helper updates both.
-
-`--baseline`'s target path is also what every `agenda` call refiles on
-exit, a failed attempt included. A second attempt that reuses the same
-path without an intervening bare (`agenda --json`, no `--baseline`)
-refile after a revert compares against the first attempt's inflated
-count rather than the pass's real starting point -- silently reporting a
-retry as progress it never made. `_retry_agenda` below re-files before
-every attempt after the first for exactly this reason.
-"""
-
 import contextlib
 import io
 import json
@@ -65,11 +18,6 @@ ORIGINAL = (
     "## Monitoring\n\nSensors report drift on a fixed schedule.\n"
 )
 
-# Captions and references `deployment-diagram` -- the marker's `prose`
-# finding (FigureNoCaption) resolves and, since referencing it means it
-# is now "declared", no FigureUnreferenced appears to replace it. Both
-# halves are load-bearing: captioning alone swaps one finding for the
-# other net zero (verified empirically before this fixture was written).
 REPAIRED_FIGURE = (
     "# Deployment\n\n"
     "As <!-- figureref: deployment-diagram --> shows, a system tracks the "
@@ -81,12 +29,6 @@ REPAIRED_FIGURE = (
 
 
 def _run_agenda(draft, *extra):
-    """`review agenda <draft> --json`, plus whatever extra flags the
-    caller passes, run in-process and parsed. Mirrors this repo's own
-    `chitragupta/review/agenda/__init__.py::main` contract: exit 0
-    always, JSON on stdout when `--json` is passed. No `--write` flag
-    exists on this aid -- the `.md`/`.json` report files unconditionally
-    on every run, unlike `verbatim scan`."""
     argv = [str(draft), "--json", *extra]
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
@@ -96,35 +38,11 @@ def _run_agenda(draft, *extra):
 
 
 def _new_figure(marker_id):
-    """A fresh, unrelated, uncaptioned figure marker -- one new `prose`
-    finding, independent of the deployment-diagram one, for tests that
-    need to introduce a problem without touching anything else."""
     return f"\n\n<!-- figure: figures/{marker_id} -->\n"
 
 
 @pytest.fixture
 def draft(isolated_config):
-    """`content/drafts/agenda-reviser-e2e.md`, carrying three findings in
-    three different classes, all computed live so no other aid's `.json`
-    has to be pre-seeded on disk:
-
-    - an uncaptioned figure marker -- `prose`, unattended
-      (`chitragupta.style_check` runs live on every agenda build).
-    - `[@twin_ref_2024]` -- cited while the paper existed, then the
-      paper is dropped from the corpus -- `missing-citekey`, unattended
-      (`dossier.drift`, computed live from the dossier's own files).
-    - `twin_candidate_2025` -- a second paper the dossier's own
-      `evidence.md` records as kept, which the draft never cites --
-      `recorded-but-uncited`, surfaced, also dossier-based and live.
-
-    That third bullet used to be a `candidate` item (a paper the draft's
-    recorded query surfaces but never cites), until that class was
-    removed from the agenda for being noise. It is replaced rather than
-    dropped because this module needs *some* surfaced class to pin the
-    surfaced/unattended partition with, and `recorded-but-uncited` is
-    the one that is likewise computed live from the dossier -- keeping
-    the fixture's "no aid `.json` pre-seeded on disk" property intact.
-    """
     _add_paper(
         "twin_ref_2024",
         "Digital twin tracking",
@@ -164,19 +82,11 @@ def _baseline(draft):
 
 
 def _decite(draft):
-    """The unattended `missing-citekey` repair: drop the marker from the
-    draft *and* drop the citekey from the dossier's own record, since
-    `missing-citekey` is detected off the latter, not the former."""
     draft.write_text(
         draft.read_text(encoding="utf-8").replace(" [@twin_ref_2024]", ""),
         encoding="utf-8",
     )
     target = dossier.dossier_dir(draft)
-    # `twin_candidate_2025` stays: it is the fixture's surfaced
-    # `recorded-but-uncited` item and has nothing to do with the
-    # `missing-citekey` repair this helper performs. Dropping it here
-    # would quietly resolve a second item in a different class and make
-    # this repair look larger than it is.
     (target / "evidence.md").write_text(
         "# Kept evidence\n\n## `twin_candidate_2025`\n\nKept, but never worked into the draft.\n"
     )
@@ -187,16 +97,6 @@ def _decite(draft):
 
 
 def _retry_agenda(draft, path, marker_ids):
-    """One item's R7 loop, up to `len(marker_ids)` attempts: introduce a
-    fresh uncaptioned figure (named by each id in turn) over the
-    *original* draft, `--baseline` against `path`, and revert if
-    `objective_delta` is positive. Between a revert and the next
-    attempt, re-files `path` with a bare `agenda` call against the true
-    reverted draft first -- see the module docstring for why that refile
-    is load-bearing rather than defensive. Returns the list of deltas
-    observed, one per attempt made (stops early on a non-positive delta,
-    i.e. an accepted repair).
-    """
     deltas = []
     for marker_id in marker_ids:
         draft.write_text(ORIGINAL + _new_figure(marker_id), encoding="utf-8")
@@ -221,10 +121,6 @@ def test_repairing_one_unattended_item_falls_the_objective_count(draft):
 
 
 def test_a_repair_that_raises_the_count_is_not_accepted(draft):
-    """A "repair" that fixes nothing and introduces a fresh, uncaptioned
-    figure raises the total -- the accept condition (`objective_delta`
-    not positive) fails, so a caller following R4 must revert rather
-    than keep it."""
     path, before = _baseline(draft)
 
     draft.write_text(ORIGINAL + _new_figure("monitoring-diagram"), encoding="utf-8")
@@ -246,13 +142,6 @@ def test_a_repair_that_raises_the_count_is_not_accepted(draft):
 
 
 def test_two_failed_attempts_then_the_item_is_escalated(draft):
-    """Not a property of the CLI (it has no attempt counter -- that
-    discipline is the skill's own R7 loop). This proves the signal the
-    skill relies on to know an attempt failed: two consecutive
-    `--baseline` cycles against the pass's true starting point, each
-    with a non-improving edit, both report `objective_delta > 0` -- the
-    caller's cue to stop trying this item and escalate rather than a
-    third signal from the CLI itself."""
     path, before = _baseline(draft)
 
     deltas = _retry_agenda(draft, path, ["imu-diagram", "gps-diagram"])
@@ -277,10 +166,6 @@ def test_a_pass_that_keeps_falling_terminates_before_the_bound(draft):
     draft.write_text(REPAIRED_FIGURE, encoding="utf-8")
     comparison = _run_agenda(draft, "--baseline", str(path))
 
-    # One pass resolved the only prose finding; the count fell to 1
-    # (missing-citekey remains), below pass_bound's 3 -- the loop's own
-    # terminator (strictly falls) would stop here, before ever reaching
-    # the backstop.
     assert comparison["objective_after"] < before["pass_bound"]
     assert comparison["objective_delta"] < 0
 
@@ -296,19 +181,11 @@ def test_a_pass_that_never_falls_stops_at_the_bound(draft):
         draft.write_text(ORIGINAL, encoding="utf-8")
         _run_agenda(draft)
 
-    # Every attempt was non-improving -- the loop's terminator (count
-    # strictly falls) never fires, so a caller following the skill's own
-    # rule stops only because it hit pass_bound attempts, not because
-    # progress was made.
     assert all(delta > 0 for delta in deltas)
     assert len(deltas) == before["pass_bound"]
 
 
 def test_a_repair_in_one_class_that_raises_another_classs_count_reverts(draft):
-    """Decision 4's cross-class coupling: repairing missing-citekey
-    (-1) while the same edit introduces two fresh uncaptioned figures
-    (+2) nets positive even though the targeted item resolved -- R4
-    reads the total, not the targeted item's own delta."""
     path, before = _baseline(draft)
     missing_item = next(i for i in before["items"] if i["class"] == "missing-citekey")
 
@@ -332,8 +209,6 @@ def test_missing_citekey_repair_removes_only_the_marker(draft):
     comparison = _run_agenda(draft, "--baseline", str(path))
 
     assert item["id"] in [i["id"] for i in comparison["resolved"]]
-    # The sentence survives -- it becomes an uncited-claim, a surfaced
-    # class, on the next agenda rather than vanishing.
     sentence = "A system tracks the physical asset across its life."
     assert sentence in draft.read_text(encoding="utf-8")
     new_uncited_summaries = {
@@ -343,12 +218,6 @@ def test_missing_citekey_repair_removes_only_the_marker(draft):
 
 
 def test_pass_bound_is_read_from_the_payload_not_hardcoded(draft):
-    """Not a test of the skill's own prose (that is
-    tests/test_skill_verbatim_scan_step.py's style of check, not this
-    module's) -- a test that the field this requirement depends on
-    actually exists on the payload and is the same value the
-    `PASS_BOUND` module constant carries, so a skill reading it gets the
-    real backstop rather than a stale copy."""
     _, payload = _baseline(draft)
     assert payload["pass_bound"] == agenda.PASS_BOUND
     assert isinstance(payload["objective_class_count"], int)

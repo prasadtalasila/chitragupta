@@ -1,22 +1,3 @@
-"""corpus-reviser says what a whole-corpus pass costs as the loop's first act.
-
-The skill has always asked for one cost sentence "before the first
-search", in a section above its procedure. Its procedure then begins
-"Follow draft-reviser's loop, steps 1 through 7", and a model following
-steps went straight to step 1: in six benched runs the sentence came
-before the first search in three, and in the closing summary in the
-rest, where the user can no longer stop the pass (#1204, the bench
-recorded in plans/1091-ledger-corpus-reviser.md). The instruction now
-sits inside the loop, ahead of the sentence that sends the model to
-draft-reviser's steps, in every harness copy.
-
-Placement alone was not enough. With it, six runs of six formed the
-sentence at the right moment and all six left it in their reasoning,
-where no user reads it. So the loop also has the sentence written into
-`revisions.md` before the first search: a record a person sees whichever
-way the reply is shown, and one a bench can check.
-"""
-
 import re
 from pathlib import Path
 

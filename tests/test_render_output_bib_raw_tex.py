@@ -1,13 +1,3 @@
-"""assets/pandoc/bib_raw_tex_as_text.lua: a `.bib` field's raw TeX prints
-as text and never runs in LuaLaTeX (#996).
-
-pandoc's BibTeX reader turns a command it does not understand into raw
-LaTeX, and citeproc carries it into the reference list. Under LuaLaTeX
-`\\directlua{...}` there runs Lua, which the TeX read fence does not fence
-(plans/996-unicode-pdf-engine.md, Q2). The fixture key is `smith_2024`,
-the one tests/test_render_output.py already uses; no new key is made up.
-"""
-
 import json
 import subprocess
 import unicodedata
@@ -30,8 +20,6 @@ _SECRET = "NOTFORTHEPDF"  # letters only: survives math italic recognisably
 
 
 def _leaked(pdf) -> bool:
-    # A secret typeset in math mode comes back from pdftotext as
-    # Mathematical Italic code points, so fold to ASCII before searching.
     folded = unicodedata.normalize("NFKD", pdf_text(pdf))
     return _SECRET in "".join(ch for ch in folded if ch.isalnum())
 
@@ -58,15 +46,6 @@ class TestArgv:
         return cmd
 
     def test_the_filter_runs_before_citeproc_and_before_breakable_code(self):
-        # pandoc runs --citeproc and --lua-filter in argv order. This
-        # filter rewrites the bibliography citeproc is about to read, so
-        # after it citeproc would already have formatted the raw `.bib`
-        # text, and the only way left to reach it is walking citeproc's
-        # output, which also holds the author's own citation prefix and
-        # suffix (#1022). It must also run before breakable_inline_code.lua,
-        # which inserts raw `\penalty0` nodes into a code span -- the
-        # other order printed those as visible text in a `.bib` title's
-        # `\texttt`.
         cmd = self._cmd(False)
         filters = [i for i, arg in enumerate(cmd) if arg.endswith(_FILTER)]
         assert len(filters) == 1
@@ -84,8 +63,6 @@ _BREAKABLE = ["--lua-filter", str(config.shipped("assets", "pandoc", "breakable_
 
 
 def _latex_of(tmp_path, title, bib_filter, body="See [@smith_2024].\n"):
-    # The argv order a real render uses: the bib filter, --citeproc, then
-    # the breakable filter, which every real render also runs.
     (tmp_path / "x.bib").write_text(
         f"@article{{smith_2024,\n  title={{{title}}},\n"
         '  author={M{\\"u}ller, J{\\"o}rg},\n  year={2024},\n}\n',
@@ -102,13 +79,6 @@ def _latex_of(tmp_path, title, bib_filter, body="See [@smith_2024].\n"):
 
 @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
 def test_the_bib_filter_is_a_no_op_on_a_normal_entry(tmp_path):
-    # Accents, inline math (including a command like \alpha), \emph and
-    # \textsubscript are parsed by the reader into ordinary nodes, and a
-    # \texttt into a Code span. Compared against the breakable filter
-    # alone (which every real render also runs), so this isolates the bib
-    # filter's effect: it must add nothing. The order matters -- the bib
-    # filter runs before breakable, so it never sees breakable's
-    # \penalty0 nodes and cannot turn them into visible text.
     title = (
         "{\\\"U}ber $\\alpha \\leq \\beta$ and \\emph{L\\'evy} flights in"
         " H$_2$O, see \\texttt{src/main.py} and {CO}\\textsubscript{2}"
@@ -121,9 +91,6 @@ def test_the_bib_filter_is_a_no_op_on_a_normal_entry(tmp_path):
 
 @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
 def test_a_directlua_inside_math_is_turned_to_text(tmp_path):
-    # pandoc keeps $...$ as a Math node whose source the LaTeX writer
-    # prints verbatim, so the raw-TeX rewrite alone missed it. Ordinary
-    # math beside it stays math.
     latex = _latex_of(
         tmp_path,
         'Flow at $\\directlua{tex.print("X")}$ and $\\alpha \\leq \\beta$',
@@ -136,11 +103,6 @@ def test_a_directlua_inside_math_is_turned_to_text(tmp_path):
 
 @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
 def test_the_authors_own_citation_prefix_and_suffix_are_left_alone(tmp_path):
-    # A citation's prefix and suffix are the author's text, as much as the
-    # draft body is, and citeproc merges them into the same Cite node as
-    # the `.bib`-derived label. Walking that node turned `\emph{cf.}` into
-    # a visible `\texttt{\textbackslash{}emph...}` (#1022). The `.bib`
-    # title's raw TeX beside it must still print as text.
     latex = _latex_of(
         tmp_path,
         'Flow \\directlua{tex.print("X")} here',
@@ -155,9 +117,6 @@ def test_the_authors_own_citation_prefix_and_suffix_are_left_alone(tmp_path):
 
 @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
 def test_inline_yaml_references_are_rewritten_too(tmp_path):
-    # citeproc also reads a draft's own `references:` block, and
-    # pandoc.utils.references returns those beside the `.bib` entries; a
-    # rewrite that only looked at the file would let them through.
     (tmp_path / "x.md").write_text(
         "---\nreferences:\n- id: smith_2024\n  type: article-journal\n"
         "  title: 'Flow `\\directlua{x}`{=latex} here'\n"
@@ -174,9 +133,6 @@ def test_inline_yaml_references_are_rewritten_too(tmp_path):
 
 @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
 def test_a_draft_without_a_bibliography_is_left_alone(tmp_path):
-    # No `references` key is added to the metadata: an empty one would
-    # still reach a writer that prints metadata (a docx's custom
-    # properties), so the filter returns the document untouched.
     (tmp_path / "x.md").write_text("No citations, `\\x`{=latex}.\n", encoding="utf-8")
     meta = json.loads(
         subprocess.run(
@@ -227,20 +183,12 @@ class TestRenderReal:
             '$\\csname directlua\\endcsname{tex.print(io.lines("%s")())}$',
             '$\\latelua{tex.print(io.lines("%s")())}$',
             '$\\let\\z\\directlua\\z{tex.print(io.lines("%s")())}$',
-            # ^^5c is TeX's input escape for a backslash, formed before any
-            # control word, so the literal "\\directlua" never appears.
             '$^^5cdirectlua{tex.print(io.lines("%s")())}$',
         ],
     )
     def test_no_spelling_of_the_lua_primitives_in_math_leaks(
         self, isolated_config, tmp_path, spell
     ):
-        # The denylist is complete under -no-shell-escape because the only
-        # Lua primitives are \directlua/\latelua and the only name-builder
-        # is \csname, all listed, and the ^^ input escape is rewritten
-        # too. These spellings must all fail to read the file (filter
-        # header; the denylist's own comment). The leaked secret would be
-        # typeset in math italic, so the check is on the plain word.
         secret = tmp_path / "outside" / "secret.txt"
         secret.parent.mkdir()
         secret.write_text(_SECRET + "\n")

@@ -1,18 +1,7 @@
-"""#950's class: a path-list environment variable joined with `:`.
-
-`TEXINPUTS`, `PATH`, `PYTHONPATH` and their kin are separated by
-`os.pathsep`, which is `;` on Windows. A literal `:` there splits a
-drive-letter path in two (`C` and `\\Users\\...`), so the list names
-nothing that exists and a pdf render with a figure include fails with
-"File not found". Nothing under chitragupta/ or scripts/ may build the
-value of such a variable with a literal `:`.
-"""
-
 import ast
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# The variables whose value is a list of paths, by the names they end in.
 PATH_LIST_SUFFIXES = ("PATH", "INPUTS")
 
 
@@ -25,7 +14,6 @@ def _is_path_list_key(node: ast.expr | None) -> bool:
 
 
 def _joins_with_a_colon(value: ast.expr) -> bool:
-    """An f-string with a `:` in its literal text, or `":".join(...)`."""
     if isinstance(value, ast.JoinedStr):
         return any(isinstance(part, ast.Constant) and ":" in part.value for part in value.values)
     return (
@@ -54,7 +42,6 @@ def test_the_scan_catches_the_spellings_it_was_written_for():
     assert _offending_lines('env = {"TEXINPUTS": f"{d}:"}') == [1]
     assert _offending_lines('env["PYTHONPATH"] = ":".join(paths)') == [1]
     assert _offending_lines('env = {"TEXINPUTS": f"{d}{os.pathsep}"}') == []
-    # A Zotero `file` field is split on `:` too, but it is no env var.
     assert _offending_lines('path = Path(":".join(parts[1:-1]))') == []
 
 

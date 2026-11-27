@@ -1,6 +1,3 @@
-"""`chitragupta figure look`: one figure, set as the render sets it,
-cropped to itself and rasterized (#1052)."""
-
 import json
 import math
 import re
@@ -20,8 +17,6 @@ from tests.conftest import needs_tikz
 FIXTURES = Path(__file__).parent / "fixtures" / "figure" / "check"
 NARROW = (FIXTURES / "narrow.tex").read_text(encoding="utf-8")
 WIDE = (FIXTURES / "wide.tex").read_text(encoding="utf-8")
-# #1127's figure: two house cards whose soft shadow falls outside TikZ's
-# bounding box, below and to the right.
 _PIPELINE = config.shipped("assets", "tikz", "pipeline.tex").read_text(encoding="utf-8")
 SHADOWED = _PIPELINE[: re.search(r"^\\usetikzlibrary\{[^}]*\}%\n", _PIPELINE, re.M).end()] + (
     "\\begin{tikzpicture}[cg]\n"
@@ -38,15 +33,10 @@ needs_poppler = pytest.mark.skipif(
 
 
 def png_bytes(width: int, height: int) -> bytes:
-    """Just enough of a PNG for its size to be read back: the signature
-    and the IHDR chunk's width and height."""
     return b"\x89PNG\r\n\x1a\n" + struct.pack(">I4sII", 13, b"IHDR", width, height)
 
 
 class FakeTeX:
-    """`_look._run` without a toolchain: lualatex prints the measurement
-    line and writes a PDF, pdftoppm writes a PNG of the matching size."""
-
     def __init__(self, width=431.0, height=150.0, depth=30.0, failure=None):
         self.width, self.height, self.depth, self.failure = width, height, depth, failure
         self.calls: list[list[str]] = []
@@ -235,10 +225,6 @@ class TestLook:
 class TestCli:
     @pytest.fixture(autouse=True)
     def toolchain(self, monkeypatch):
-        """The CLI's own check for the tools, passed, so these run where
-        there is no TeX at all (CI's Windows leg): `_run` is faked, and
-        the check is the one thing that would still see the host. The
-        missing-tool test below sets its own."""
         monkeypatch.setattr(cli, "_require", lambda binary: None)
         monkeypatch.setattr(cli, "_require_tikz", lambda: None)
 
@@ -291,8 +277,6 @@ class TestCli:
     def test_a_figure_outside_the_drafts_needs_an_output_dir(
         self, fake, isolated_config, tmp_path, capsys, where
     ):
-        # #1123: it wrote loose into content/rendered/, where two scratch
-        # figures named alike overwrote each other.
         base = config.CONTENT_DIR if where == "content" else tmp_path / "scratch"
         loose = base / "figures" / "flow.tex"
         loose.parent.mkdir(parents=True)
@@ -330,8 +314,6 @@ class TestCli:
 
 
 def ink_gaps(pdf: Path, tmp: Path) -> dict[str, int]:
-    """White pixels between the ink and each edge of `pdf` at 300 dpi,
-    read from a greyscale PGM so no image library is needed."""
     root = tmp / "page"
     subprocess.run(
         ["pdftoppm", "-r", "300", "-gray", "-singlefile", str(pdf), str(root)], check=True
@@ -354,9 +336,6 @@ def ink_gaps(pdf: Path, tmp: Path) -> dict[str, int]:
 @needs_tikz
 @needs_poppler
 class TestRealCompile:
-    """The crop and the pixel size, measured on what LuaLaTeX and
-    pdftoppm actually wrote."""
-
     def page_size(self, pdf: Path) -> tuple[float, float]:
         out = subprocess.run(["pdfinfo", str(pdf)], capture_output=True, text=True, check=True)
         [line] = [ln for ln in out.stdout.splitlines() if ln.startswith("Page size:")]
@@ -369,14 +348,11 @@ class TestRealCompile:
         result = _look.look(flow)
         assert result.action == "wrote", result.detail
         width_bp, height_bp = self.page_size(result.pdf)
-        # pdfinfo reports PostScript points (1/72in); TeX's pt is 1/72.27in.
         assert width_bp * 72.27 / 72 == pytest.approx(result.width + 20, abs=0.05)
         assert height_bp * 72.27 / 72 == pytest.approx(result.height + 20, abs=0.05)
         assert result.past_text_width == (source is WIDE)
 
     def test_a_soft_shadow_is_inside_the_picture(self, flow, tmp_path):
-        # #1127: at a 1pt border the `cgsoft` shadow was cut at the
-        # bottom and right edges, its ink touching both.
         flow.write_text(SHADOWED, encoding="utf-8")
         result = _look.look(flow)
         assert result.action == "wrote", result.detail
@@ -386,7 +362,6 @@ class TestRealCompile:
     def test_the_png_is_the_page_at_300_dpi(self, flow):
         result = _look.look(flow)
         width_bp, height_bp = self.page_size(result.pdf)
-        # pdftoppm rounds a page's pixel size up, never to nearest.
         assert result.pixels == (math.ceil(width_bp / 72 * 300), math.ceil(height_bp / 72 * 300))
 
     def test_the_text_width_is_the_renders(self, flow):

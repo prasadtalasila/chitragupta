@@ -1,13 +1,3 @@
-"""chitragupta/enrich/embed_index.py: sentence-transformers + Chroma, the
-embeddings-based retrieval upgrade path for chitragupta/retrieval.py.
-
-chromadb/sentence_transformers are mocked via sys.modules for fast,
-deterministic unit tests -- they're imported lazily inside functions
-(not at module top), so patching sys.modules before calling those
-functions shadows the real packages for the duration of the test
-without needing them uninstalled.
-"""
-
 import io
 import re
 import subprocess
@@ -23,8 +13,6 @@ from chitragupta.enrich.corpus import CorpusDoc
 from tests.conftest import add_citable
 
 
-# SQLite's SQLITE_MAX_VARIABLE_NUMBER on 3.32+, and so the ceiling on
-# how many rows one Chroma `get` may return -- see FakeCollection.get.
 SQLITE_VARIABLE_LIMIT = 32766
 
 
@@ -41,27 +29,10 @@ class FakeSentenceTransformer:
         FakeSentenceTransformer.instances.append(self)
 
     def encode(self, texts, show_progress_bar=False):
-        # Deterministic "embedding": length of each text as a 1-d vector.
         return FakeArray([FakeArray([float(len(t))]) for t in texts])
 
 
 class FakeCollection:
-    """Models enough of a real chromadb.Collection's get/upsert/delete
-    persistence semantics for build_index()'s incremental skip logic to
-    exercise for real, not just record calls.
-
-    Including the one limit that only shows up on a real corpus (#581):
-    Chroma's SQLite backend resolves a `get` by re-fetching the matching
-    rows with an `IN (?, ?, ...)` list, one bound variable per *returned*
-    row, so a `get` whose result set passes SQLITE_VARIABLE_LIMIT is
-    rejected by SQLite rather than truncated. Measured against the real
-    chromadb 1.5.9 / SQLite 3.46.1 before being modelled here: 32766 rows
-    come back, 32767 raise `chromadb.errors.InternalError: ... too many
-    SQL variables`. The message is reproduced; the exception type is not,
-    because importing chromadb's real error class here would defeat the
-    point of a fake, and nothing in the shipped code catches it.
-    """
-
     def __init__(self):
         self.upserted = []
         self.query_response = None
@@ -114,14 +85,6 @@ class FakeCollection:
 
 
 class FakeChromaClient:
-    """Models chromadb.PersistentClient's actual persistence semantics:
-    two client instances constructed with the same `path` see the same
-    collections (backed by files on disk, in the real thing) -- which
-    matters here because build_index()/search() each call
-    get_client_and_model() independently, so a test that pre-seeds a
-    collection via one client instance needs a later instance (same
-    path) to see it too."""
-
     instances = []
     _stores_by_path = {}
 
@@ -134,7 +97,6 @@ class FakeChromaClient:
         return self.collections.setdefault(name, FakeCollection())
 
     def list_collections(self):
-        # chromadb 1.x lists bare names; `overlap_chroma` handles both shapes.
         return list(self.collections)
 
     def get_collection(self, name):
@@ -146,8 +108,6 @@ def fake_enrich_deps(monkeypatch):
     FakeSentenceTransformer.instances.clear()
     FakeChromaClient.instances.clear()
     FakeChromaClient._stores_by_path.clear()
-    # search() caches its client and model; a handle built over the last
-    # test's fakes must not be served to this one.
     _index_reader._handles.cache_clear()
 
     fake_st_module = types.ModuleType("sentence_transformers")
@@ -189,8 +149,6 @@ class TestStripImageRefs:
 
         assert "![Image]" not in out
         assert ".png" not in out
-        # The caption is a separate docling text item, not the image's alt
-        # text -- it's real prose about the figure and must survive.
         assert "Figure 3. Sensor placement on the test article." in out
         assert "The sensors were placed as shown." in out
 
@@ -205,8 +163,6 @@ class TestStripImageRefs:
         assert "\n\n\n" not in out
 
     def test_leaves_inline_bang_bracket_text_alone(self):
-        """Only whole-line image references are markers; a bracket
-        sequence mid-sentence is prose and must not be eaten."""
         prose = "The result was surprising![1] and worth noting.\n"
         assert embed_index.strip_image_refs(prose) == prose
 
@@ -252,11 +208,6 @@ class TestGetText:
     def test_a_pdftotext_timeout_is_no_text_not_a_hang(
         self, isolated_config, monkeypatch, tmp_path
     ):
-        """#824: the on-the-fly pdftotext had no timeout, so one PDF that
-        hangs poppler wedged the whole embed run. Bounded now by
-        `[parser].document_timeout`; a document that runs out of it has
-        no text to embed, reported as such by the caller, and its
-        temporary file is still removed."""
         monkeypatch.setattr(isolated_config, "PARSER_DOCUMENT_TIMEOUT", 7.0)
         seen = {}
 
@@ -329,15 +280,6 @@ class TestBuildIndexIncremental:
     def test_a_pre_57_collection_is_not_re_embedded(
         self, isolated_config, fake_enrich_deps, tmp_path
     ):
-        """Collections written before #57 carry a `doc_id` metadata key
-        that build_index no longer writes or queries. They must still hit
-        the unchanged-text skip: re-embedding an existing corpus because
-        of a field rename would cost a full encode pass for nothing.
-
-        This works because `citekey` was always written alongside `doc_id`
-        with the same value, which is what makes the query switch safe --
-        the claim is load-bearing, so it is tested rather than asserted.
-        """
         doc = self.make_doc(tmp_path, "word " * 10)
         text = embed_index.get_text(doc)
 
@@ -385,7 +327,6 @@ class TestBuildIndexIncremental:
         doc = self.make_doc(tmp_path, "word " * 10)
         embed_index.build_index([doc])
 
-        # Same citekey, different (longer) text -> different hash, different chunk count.
         doc2 = self.make_doc(tmp_path, "different word " * 300, citekey="a2024")
         counts = embed_index.build_index([doc2])
 
@@ -394,7 +335,6 @@ class TestBuildIndexIncremental:
         remaining = collection.get(where={"citekey": "a2024"})
 
         assert counts["a2024"] == len(remaining["ids"]) > 1
-        # No stale chunks left over from the first, shorter version.
         assert all(
             m["text_hash"] == embed_index.hash_text("different word " * 300)
             for m in remaining["metadatas"]
@@ -418,12 +358,6 @@ class TestBuildIndexIncremental:
 
 
 class TestBuildIndexPrunesDepartedCitekeys:
-    """#503, M-23: build_index only ever upserts, so a citekey dropped
-    from the bib (and, after re-export + sync, the ledger) kept its
-    chunks in Chroma forever -- contradicting search()'s own documented
-    invariant that a returned citekey always resolves against the
-    ledger."""
-
     def make_doc(self, tmp_path, text, citekey="a2024"):
         parsed = tmp_path / f"{citekey}.txt"
         parsed.write_text(text)
@@ -459,7 +393,6 @@ class TestBuildIndexPrunesDepartedCitekeys:
 
         client = FakeChromaClient.instances[-1]
         collection = client.collections[embed_index.collection_name()]
-        # A partial pass says nothing about who departed -- must not prune.
         assert len(collection.get(where={"citekey": "departed_2024"})["ids"]) == 1
 
     def test_nothing_departed_leaves_the_collection_untouched(
@@ -475,12 +408,6 @@ class TestBuildIndexPrunesDepartedCitekeys:
         assert len(collection.get(where={"citekey": "a2024"})["ids"]) == 1
 
     def test_an_empty_corpus_prunes_nothing(self, isolated_config, fake_enrich_deps, tmp_path):
-        # An empty `docs` is the maximal partial pass, not proof every
-        # document departed -- build_corpus() returns [] for an empty or
-        # freshly-recreated ledger, and the far more likely cause is a
-        # wrong-project CHITRAGUPTA_PROJECT/cwd than a corpus that
-        # actually went to zero. Emptying a real index over that would
-        # cost a full re-embed to recover.
         doc = self.make_doc(tmp_path, "word " * 10)
         embed_index.build_index([doc])
         client = FakeChromaClient.instances[-1]
@@ -492,34 +419,12 @@ class TestBuildIndexPrunesDepartedCitekeys:
 
 
 class TestBuildIndexPrunesPastTheSqliteVariableLimit:
-    """#581: the prune above read the whole collection in one `get`, and
-    Chroma's SQLite backend cannot return more than
-    `SQLITE_VARIABLE_LIMIT` rows from one call -- so every `corpus
-    enrich` run on a corpus past that size died at the prune, after all
-    the embedding work was already done.
-
-    Note where the failure sat: on the *read*, before a single orphan had
-    been identified, which is why the run that reported it failed
-    identically with zero departed citekeys to remove. The delete is not
-    the problem -- the real chromadb 1.5.9 takes 41050 ids in one
-    `delete` call without complaint -- so a test that only counted
-    deletions would have gone green on the unfixed code.
-    """
-
     def make_doc(self, tmp_path, text, citekey="a2024"):
-        # `encoding` named where the sibling helpers in this module leave
-        # it to the locale: those predate the encoding sweep, and CI's
-        # Windows leg is why new writes state it.
         parsed = tmp_path / f"{citekey}.txt"
         parsed.write_text(text, encoding="utf-8")
         return CorpusDoc(citekey=citekey, title="A", pdf_path=None, text_path=str(parsed))
 
     def seed_departed_chunks(self, collection, count):
-        """`count` chunks of a citekey no corpus will claim, written
-        straight into the collection rather than embedded: this test
-        needs a collection larger than the variable limit, and reaching
-        that through build_index() would mean chunking 32767 chunks of
-        real text for a size check."""
         collection.upsert(
             ids=[f"departed_2024::{i}" for i in range(count)],
             documents=["word" for _ in range(count)],
@@ -543,10 +448,6 @@ class TestBuildIndexPrunesPastTheSqliteVariableLimit:
     def test_a_chunk_past_the_first_page_is_not_missed(
         self, isolated_config, fake_enrich_deps, tmp_path, monkeypatch
     ):
-        """The page size is what decides which orphans are seen, so it is
-        tested at a size the test controls rather than only at the real
-        one -- a paging loop that stopped after its first page would pass
-        the test above only because 32767 happens to exceed one page."""
         monkeypatch.setattr(chroma_paging, "PAGE_SIZE", 2)
         staying = self.make_doc(tmp_path, "word " * 10, citekey="staying_2024")
         client, _ = embed_index.get_client_and_model()
@@ -559,10 +460,6 @@ class TestBuildIndexPrunesPastTheSqliteVariableLimit:
 
 
 class TestBuildIndexRefreshesStaleTitle:
-    """#503, m-48: the unchanged-text skip compared only text_hash, so a
-    bib correction to a document's title never reached the stored
-    metadata -- search() would serve the old title indefinitely."""
-
     def make_doc(self, tmp_path, text, title, citekey="a2024"):
         parsed = tmp_path / f"{citekey}.txt"
         parsed.write_text(text)
@@ -601,10 +498,6 @@ class TestBuildIndexRefreshesStaleTitle:
 
 
 class TestBuildIndexReporting:
-    """Issue #50: the stage printed nothing between its header and its
-    return, so a run over a real corpus was indistinguishable from a hung
-    one, and the one that prompted the issue was Ctrl-C'd partway."""
-
     def make_doc(self, tmp_path, text, citekey="a2024"):
         parsed = tmp_path / f"{citekey}.txt"
         parsed.write_text(text)
@@ -627,10 +520,6 @@ class TestBuildIndexReporting:
     def test_names_the_document_before_embedding_it(
         self, isolated_config, fake_enrich_deps, tmp_path, monkeypatch
     ):
-        """The name has to be on the terminal *before* model.encode(), not
-        after it returns: a line printed on completion still leaves the
-        slowest document in the corpus looking like a hang for as long as
-        it takes, which is the whole complaint in issue #50."""
         stream = io.StringIO()
         monkeypatch.setattr(sys, "stdout", stream)
         printed_when_encode_ran = []
@@ -714,9 +603,6 @@ class TestBuildIndexReporting:
         out = capsys.readouterr().out
         assert "interrupted after 1/2 document(s)" in out
         assert "re-run to continue" in out
-        # The first document's chunks are already in Chroma, and the next
-        # run's text-hash check will skip them -- so the run is worth
-        # something and the message has to say so.
         collection = FakeChromaClient.instances[-1].collections[embed_index.collection_name()]
         assert collection.get(where={"citekey": "a2024"})["ids"]
 
@@ -747,12 +633,6 @@ class TestBuildIndexModelChange:
     def test_model_swap_re_embeds_into_a_separate_collection_despite_unchanged_text(
         self, isolated_config, fake_enrich_deps, tmp_path, monkeypatch
     ):
-        # Regression test: build_index()'s incremental skip previously keyed
-        # only off the doc's text hash, so swapping config.toml's
-        # embedding_model (e.g. MiniLM-L6-v2 -> mpnet-base-v2, a real change
-        # made in this repo) on a doc whose *text* hadn't changed would skip
-        # re-embedding and keep serving the old model's now-wrong-dimension
-        # vectors under the new model.
         monkeypatch.setattr(config, "EMBEDDING_MODEL", "model-a")
         doc = self.make_doc(tmp_path, "word " * 10)
         embed_index.build_index([doc])
@@ -791,10 +671,6 @@ class TestSearch:
 
 
 class TestSearchDropsUnparsedRows:
-    """#1118: a row whose PDF never parsed is not citable. Its chunks can
-    sit in an index built before its status changed -- `build_corpus`
-    reads text whatever the status -- so `search` drops them."""
-
     def test_a_parse_failed_rows_chunk_is_not_returned(
         self, isolated_config, fake_enrich_deps, ledger_con
     ):
@@ -813,9 +689,6 @@ class TestSearchDropsUnparsedRows:
 
 
 class TestSearchIsAReader:
-    """#853: `search()` loads its client and model once per
-    (`CHROMA_DIR`, `EMBEDDING_MODEL`) and never creates what it reads."""
-
     def seed(self):
         client, _ = embed_index.get_client_and_model()
         collection = client.get_or_create_collection(embed_index.collection_name())
@@ -826,8 +699,6 @@ class TestSearchIsAReader:
         }
 
     def test_repeated_searches_load_the_model_once(self, isolated_config, fake_enrich_deps):
-        """`review coverage` calls search() once per claim; a model load
-        each time is seconds, plus a torch import, per claim."""
         self.seed()
         before = len(fake_enrich_deps.model_cls.instances)
         for _ in range(3):
@@ -863,11 +734,7 @@ class TestSearchIsAReader:
 
 
 class TestSearchCapsPerSource:
-    """Issue #305: one paper's chunks must not own every slot in the top k."""
-
     def make_response(self, hits):
-        """`hits`: `[(citekey, title, snippet_text, distance), ...]`, in the
-        distance-ranked order Chroma would return them."""
         return {
             "documents": [[text for _, _, text, _ in hits]],
             "metadatas": [[{"citekey": citekey, "title": title} for citekey, title, _, _ in hits]],
@@ -892,8 +759,6 @@ class TestSearchCapsPerSource:
 
         results = embed_index.search("query", k=3)
 
-        # Truncate-then-cap would have returned three a2024 chunks and
-        # never reached b2024 at all; cap-then-truncate promotes it in.
         assert [r["citekey"] for r in results] == ["a2024", "a2024", "b2024"]
 
     def test_cap_of_three_admits_exactly_three_not_four(
@@ -911,9 +776,6 @@ class TestSearchCapsPerSource:
             ]
         )
 
-        # k is deliberately not the binding constraint here -- only the
-        # cap is -- so a 0-based-counter-with-`>` bug (admits 4) is
-        # distinguishable from the fix (admits 3).
         results = embed_index.search("query", k=10)
 
         assert [r["citekey"] for r in results] == ["a2024", "a2024", "a2024"]
@@ -933,8 +795,6 @@ class TestSearchCapsPerSource:
 
         results = embed_index.search("query", k=10)
 
-        # A title-keyed cap (OpenScholar's bug) would bucket both under
-        # "" and drop the second even though they're different papers.
         assert [r["citekey"] for r in results] == ["a2024", "b2024"]
 
     def test_over_fetch_is_bounded_by_a_multiple_of_k_not_by_collection_size(
@@ -951,9 +811,6 @@ class TestSearchCapsPerSource:
 
 
 class TestSearchIsSizedByConfig:
-    """#380 moved all three of search()'s sizes into `config.toml`.
-    Each test here fails if one of them is read from a literal again."""
-
     def make_response(self, hits):
         return TestSearchCapsPerSource.make_response(self, hits)
 
@@ -973,8 +830,6 @@ class TestSearchIsSizedByConfig:
     def test_an_explicit_k_still_wins_over_the_configured_default(
         self, isolated_config, fake_enrich_deps, monkeypatch
     ):
-        """The setting is a default, not a ceiling -- the CLI's --k and
-        every skill that names a k must still be honoured."""
         monkeypatch.setattr(config, "EMBED_TOP_K", 2)
         monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 9)
         client, _ = embed_index.get_client_and_model()
@@ -999,31 +854,16 @@ class TestSearchIsSizedByConfig:
 
 
 class TestSearchReranks:
-    """Issue #380: a cross-encoder reorders the over-fetched passages
-    **before** the per-citekey cap, never after.
-
-    Every test here drives a **stub scorer** rather than a model. That is
-    the point, not a shortcut: what is under test is the position of the
-    rerank relative to the cap, and a real cross-encoder's judgement
-    would make the assertions depend on a downloaded model's opinion
-    instead of on the ordering this module controls.
-    """
-
     def make_response(self, hits):
         return TestSearchCapsPerSource.make_response(self, hits)
 
     def stub_scorer(self, monkeypatch, by_snippet):
-        """Substitute a scorer whose ranking is known: `by_snippet` maps a
-        passage's text to the score the cross-encoder is to return."""
         scorer = types.SimpleNamespace(
             predict=lambda pairs: [by_snippet[snippet] for _query, snippet in pairs]
         )
         monkeypatch.setattr(reranker, "load_reranker", lambda _model_id: scorer)
         return scorer
 
-    # The pool below is the one bench/bench_rerank_position.py's own
-    # self_check() plants, so the shipped behaviour and the benchmark
-    # that measured it are pinned against the same fixture.
     POOL = [
         ("a2024", "A", "chunk a1", 0.1),
         ("a2024", "A", "chunk a2", 0.2),
@@ -1042,9 +882,6 @@ class TestSearchReranks:
     def test_a_promotion_changes_which_document_survives_the_cap(
         self, isolated_config, fake_enrich_deps, monkeypatch
     ):
-        """The whole reason the rerank sits before the cap. Reranking
-        after it could only ever permute {A, A, B}; reranking before it
-        puts C in and pushes B out."""
         monkeypatch.setattr(config, "RERANK", True)
         monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 2)
         self.stub_scorer(monkeypatch, self.PROMOTES_C)
@@ -1059,10 +896,6 @@ class TestSearchReranks:
     def test_the_rejected_order_is_not_what_ships(
         self, isolated_config, fake_enrich_deps, monkeypatch
     ):
-        """Cap-then-rerank is the plausible mistake, and it is
-        distinguishable from the shipped order by the *set* of papers it
-        returns, not merely by their order -- which is why this asserts
-        on membership rather than on a permutation."""
         monkeypatch.setattr(config, "RERANK", True)
         monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 2)
         self.stub_scorer(monkeypatch, self.PROMOTES_C)
@@ -1094,10 +927,6 @@ class TestSearchReranks:
 
         results = embed_index.search("query", k=3)
 
-        # Asserts the loader was never *called*, not merely that the
-        # output looks unchanged: keeping the suite free of a model
-        # download is the property, and it survives only if this fails
-        # loudly when someone makes the load eager.
         assert [r["citekey"] for r in results] == ["a2024", "a2024", "b2024"]
 
     def test_an_empty_pool_is_returned_untouched(self, isolated_config, monkeypatch):
@@ -1109,13 +938,8 @@ class TestSearchReranks:
 
 
 class TestLoadReranker:
-    """The loader itself, which every test above substitutes."""
-
     @pytest.fixture(autouse=True)
     def clear_cache(self):
-        """`load_reranker` is `lru_cache`d, so a model loaded (or a
-        failure raised) in one test would otherwise be served to the
-        next."""
         reranker.load_reranker.cache_clear()
         yield
         reranker.load_reranker.cache_clear()
@@ -1131,9 +955,6 @@ class TestLoadReranker:
         with pytest.raises(RuntimeError) as excinfo:
             reranker.load_reranker("nonexistent/model")
 
-        # Naming both is the whole point: silently falling back to
-        # un-reranked results would be invisible, since they look
-        # entirely normal.
         assert "nonexistent/model" in str(excinfo.value)
         assert "[enrich].rerank_model" in str(excinfo.value)
         assert isinstance(excinfo.value.__cause__, OSError)
@@ -1152,6 +973,4 @@ class TestLoadReranker:
         reranker.load_reranker("some/model")
         reranker.load_reranker("some/model")
 
-        # A reranked drafting session makes many search() calls; paying
-        # the ~2s construction on each one would dwarf the rerank itself.
         assert calls == ["some/model"]

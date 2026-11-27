@@ -1,19 +1,3 @@
-"""Every artefact the enrichment layer adopts or caches is read by its own
-reader before it is trusted (#967, #979).
-
-The class is one bug in three places: a file taken on trust because it
-exists, and then either stamped with a fingerprint that watches something
-else, or subscripted by a caller that assumed the loader had checked its
-shape. Each artefact here is damaged the same four ways a real one gets
-damaged -- a write killed mid-character, a write killed between
-characters, a file of the wrong shape, an entry missing a field -- and
-each must be declined rather than adopted, and repaired by the next run
-rather than served from then on.
-
-The intact case runs beside the four for every artefact. Without it, a
-"declined" assertion would also pass for code that declines everything.
-"""
-
 import json
 
 import pytest
@@ -23,10 +7,6 @@ from chitragupta.enrich import _docling_cache, doc_vectors, docling_parse
 from chitragupta.enrich.corpus import CorpusDoc
 from tests.test_enrich_docling_parse import FakeDocumentConverter, fake_docling  # noqa: F401
 
-# Both "truncated" cases cut at the first non-ASCII character, which every
-# good payload below carries, so the two differ by exactly one byte: at a
-# byte boundary the cut splits that character and the file no longer
-# decodes; at a character boundary it decodes and is not JSON.
 CORRUPTIONS = [
     "truncated at a byte boundary",
     "truncated at a character boundary",
@@ -54,21 +34,11 @@ def _pdf_doc(tmp_path, citekey="a2024", text_path=None) -> CorpusDoc:
 
 @pytest.mark.usefixtures("isolated_config", "fake_docling")
 class TestTheCorpusPassageSidecarIsReadBeforeItIsAdopted:
-    """`_reuse_corpus_parse` copied the corpus layer's sidecar byte for
-    byte, and `parse_doc` then stamped it with the PDF's fingerprint, which
-    a later `sync` repairing the corpus copy does not move (#967)."""
-
     GOOD = '[{"text": "Un café, s\'il vous plaît.", "label": "text", "page": 1}]'
     WRONG_SHAPE = '{"text": "not a list of records"}'
-    # No "missing key" row: the sidecar's reader requires no key of a
-    # record, and a record without "text" is one its caller skips
-    # (`passages._from_sidecar`), so it is readable rather than damaged.
     DAMAGE = [kind for kind in CORRUPTIONS if kind != "missing key"]
 
     def _corpus_parsed(self, tmp_path, sidecar: bytes) -> CorpusDoc:
-        # The PDF first: reuse requires both corpus artefacts to be no
-        # older than it, and written the other way round they are older
-        # whenever the clock ticks between the writes.
         text_path = config.PARSED_DIR / "a2024.txt"
         doc = _pdf_doc(tmp_path, text_path=str(text_path))
         config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
@@ -92,9 +62,6 @@ class TestTheCorpusPassageSidecarIsReadBeforeItIsAdopted:
 
     @pytest.mark.parametrize("kind", DAMAGE)
     def test_a_damaged_sidecar_already_stamped_is_repaired(self, tmp_path, kind):
-        """What a version before this fix left behind: the damaged copy
-        under `content/docling/`, and a cache entry saying it is current.
-        The fingerprint has not moved, so only reading the copy finds it."""
         doc = _pdf_doc(tmp_path)
         docling_parse.parse_doc(doc)
         stamped = config.DOCLING_DIR / "a2024.passages.json"
@@ -106,9 +73,6 @@ class TestTheCorpusPassageSidecarIsReadBeforeItIsAdopted:
         assert passages.sidecar_state(stamped) == "ok"
 
     def test_a_sidecar_gone_between_the_check_and_the_read_is_declined(self, tmp_path, monkeypatch):
-        """`_corpus_parse_available` stats the sidecar and `read_records`
-        opens it, and a concurrent `sync` clears sidecars before every
-        re-parse; no sidecar at that point means nothing to adopt."""
         doc = self._corpus_parsed(tmp_path, self.GOOD.encode("utf-8"))
         monkeypatch.setattr(passages, "read_records", lambda path: None)
         docling_parse.parse_doc(doc)
@@ -116,9 +80,6 @@ class TestTheCorpusPassageSidecarIsReadBeforeItIsAdopted:
 
 
 class _OneDimensionModel:
-    """Each chunk's vector is its length, like the topic suite's FakeModel,
-    and every call is counted so a cache hit can be told from a miss."""
-
     calls = 0
 
     def encode(self, chunks, show_progress_bar=False):
@@ -128,11 +89,6 @@ class _OneDimensionModel:
 
 @pytest.mark.usefixtures("isolated_config")
 class TestTheEmbedCacheIsReadBeforeItIsUsed:
-    """`_load_embed_cache` checked only that the file held a dict, and
-    `document_embeddings` subscripted every entry's `["hash"]`, so one
-    malformed entry failed every topic stage (#979). A file cut inside a
-    character raised past the loader too, which caught only JSON errors."""
-
     TEXTS = {"müller2024": "a paper about digital twins " * 5}
 
     def _good(self) -> str:
@@ -179,7 +135,6 @@ class TestTheEmbedCacheIsReadBeforeItIsUsed:
         ids=["not a dict", "no embedding", "hash not a string", "embedding not a list"],
     )
     def test_a_malformed_entry_is_a_miss_and_its_neighbours_survive(self, entry):
-        """One bad entry costs one re-embed, not the whole cache."""
         good = json.loads(self._good())
         self._write(json.dumps({**good, "other2024": entry}).encode("utf-8"))
         assert doc_vectors._load_embed_cache() == good
@@ -187,10 +142,6 @@ class TestTheEmbedCacheIsReadBeforeItIsUsed:
 
 @pytest.mark.usefixtures("isolated_config", "fake_docling")
 class TestTheDoclingCacheIsReadBeforeItIsTrusted:
-    """The fingerprint cache that stamps both of the above. Its loader
-    already declined every damaged shape but one: a file cut inside a
-    character raised `UnicodeDecodeError` out of every `parse_corpus`."""
-
     def _good(self, doc: CorpusDoc) -> str:
         payload = {
             "version": _docling_cache._CACHE_VERSION,

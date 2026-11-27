@@ -1,14 +1,3 @@
-"""`install_full_pipeline.sh os-deps` installs what a book's index needs
-(#1168), and says so loudly if it did not.
-
-`upmendex` ships in texlive-binaries and `imakeidx.sty` in
-texlive-latex-extra, both already on the stage's apt line for other
-reasons. They arrive by accident unless something checks: a later trim
-of that line would break every book index silently. So the stage ends by
-checking for them by name, and these tests run that check for real, in
-bash, against a PATH holding fakes or nothing.
-"""
-
 import re
 import shutil
 import subprocess

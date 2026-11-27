@@ -1,18 +1,3 @@
-"""chitragupta/_tokens.py: the one word rule, its named settings, and the
-vocabulary digest both BM25 caches are versioned by (issue 845).
-
-Two promises are pinned here. The first is that every consumer that
-reads a word list off the same text agrees on where its words begin and
-end, and differs only by a setting that has a name. The second is the
-one the hand-bumped version could not keep: a stopword or floor edit
-invalidates both retrieval caches with nobody remembering to bump
-anything. That second one is tested against an edited *copy of the
-source*, in a fresh interpreter, because an edit to a module constant is
-the exact shape the old arrangement was blind to -- patching the
-imported object would leave the import-time version untouched and pass
-for the wrong reason.
-"""
-
 import json
 import os
 import shutil
@@ -27,10 +12,6 @@ from tests.conftest import run_python
 
 REPO = Path(__file__).resolve().parent.parent
 
-# Strings chosen for where a word boundary could plausibly fall either
-# way: two-character content words, digits fused to letters, hyphens,
-# apostrophes, non-ASCII letters and ligatures (which `[a-z0-9]+` splits
-# on), a form feed, and stopwords at both sides of the floor.
 EDGE_STRINGS = [
     "",
     "AI and DT for 5G networks",
@@ -61,9 +42,6 @@ class TestTheRuleItself:
         assert _tokens.words("a twin the model", rule) == ["twin", "model"]
 
     def test_index_is_the_rule_bm25_shipped_with_before_the_split(self):
-        """Pinned against literals, not against another reading of the
-        rule: a behaviour-preserving refactor is the claim, so the
-        expected output is what `retrieval._tokenize` returned at 6.126.11."""
         assert _tokens.words("AI and DT for 5G networks", _tokens.INDEX) == [
             "ai",
             "dt",
@@ -83,9 +61,6 @@ class TestTheRuleItself:
         assert _tokens.words("it can also be seen", _tokens.DISTINCTIVE) == ["seen"]
 
     def test_distinctive_is_index_with_more_dropped_never_less(self):
-        """The one direction the two settings may differ in. A claim word
-        that `distinctive` keeps and BM25 never indexed would be a passage
-        match on a word retrieval can never have ranked the document by."""
         assert _tokens.DISTINCTIVE.floor >= _tokens.INDEX.floor
         assert _tokens.DISTINCTIVE.stopwords >= _tokens.INDEX.stopwords
 
@@ -101,18 +76,12 @@ class TestEveryConsumerAgreesOnTheWords:
 
     @pytest.mark.parametrize("text", EDGE_STRINGS)
     def test_every_word_list_is_a_filter_of_one_split(self, text):
-        """The verbatim tier keeps every word and carries its own
-        `_TOKENIZER_VERSION` for its own caches, so it is not a setting
-        here -- but it must split where the other two split, or an n-gram
-        match and a BM25 hit would be about different words."""
         split = overlap_index._norm(text)
         assert split == _tokens.WORD.findall(text.lower())
         assert set(retrieval._tokenize(text)) <= set(split)
         assert passages.distinctive(text) <= set(retrieval._tokenize(text))
 
     def test_short_query_terms_names_exactly_what_the_index_floor_drops(self):
-        """`short_query_terms` and the floor used to be "two readings of
-        one number" that had to move together by hand."""
         query = "a x 5G digital twin of y"
         kept = set(retrieval._tokenize(query))
         short = retrieval.short_query_terms(query)
@@ -131,8 +100,6 @@ class TestTheVocabularyDigest:
         assert _tokens.vocabulary_digest(higher) != _tokens.vocabulary_digest(_tokens.INDEX)
 
     def test_it_does_not_depend_on_set_iteration_order(self):
-        """A frozenset's iteration order varies with PYTHONHASHSEED, so a
-        digest of its `repr` would invalidate the cache on every run."""
         forward = _tokens.Rule(floor=2, stopwords=frozenset(["of", "the", "and"]))
         backward = _tokens.Rule(floor=2, stopwords=frozenset(["and", "the", "of"]))
         assert _tokens.vocabulary_digest(forward) == _tokens.vocabulary_digest(backward)
@@ -143,10 +110,6 @@ class TestTheVocabularyDigest:
         assert retrieval_passages_cache._INDEX_SCHEMA_VERSION == f"2-{digest}"
 
 
-# What a fresh interpreter reports as the two caches' versions. Run under
-# a copy of the package so the copy can be edited without touching this
-# checkout; CHITRAGUPTA_PROJECT points `config` at this repository's own
-# config.toml, which is all the import needs.
 _PROBE = (
     "import json\n"
     "from chitragupta import retrieval_cache, retrieval_passages_cache\n"
@@ -164,9 +127,6 @@ def _versions_under(tmp_path: Path, edit) -> list[str]:
     edited = edit(original)
     assert edited != original or edit is _unchanged, "the edit did not apply"
     source.write_text(edited, encoding="utf-8")
-    # tmp_path ahead of the checkout on the child's path, so the edited
-    # copy is the one imported; run_python appends the checkout after it,
-    # and drops coverage's variables because this cwd is not the root.
     env = {**os.environ, "PYTHONPATH": str(tmp_path), "CHITRAGUPTA_PROJECT": str(REPO)}
     out = run_python("-c", _PROBE, cwd=tmp_path, env=env, encoding="utf-8", check=True)
     return json.loads(out.stdout)
@@ -178,8 +138,6 @@ def _unchanged(source: str) -> str:
 
 class TestEditingTheSourceInvalidatesTheCaches:
     def test_an_unedited_copy_reports_this_process_versions(self, tmp_path):
-        """The control: without it, the two tests below would pass for any
-        probe that merely ran in a different interpreter."""
         assert _versions_under(tmp_path, _unchanged) == [
             retrieval_cache._INDEX_SCHEMA_VERSION,
             retrieval_passages_cache._INDEX_SCHEMA_VERSION,
@@ -200,9 +158,6 @@ class TestEditingTheSourceInvalidatesTheCaches:
         assert versions[1] != retrieval_passages_cache._INDEX_SCHEMA_VERSION
 
     def test_a_distinctive_only_stopword_leaves_both_caches_valid(self, tmp_path):
-        """The extras feed no index, so editing them must not cost a
-        rebuild -- the freedom `_passage_words.py` used to promise in a
-        comment, now a property of what the digest reads."""
         versions = _versions_under(
             tmp_path, lambda s: s.replace('"also",', '"also",\n        "twin",', 1)
         )

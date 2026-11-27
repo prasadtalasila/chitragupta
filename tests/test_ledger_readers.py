@@ -1,18 +1,3 @@
-"""Every reader of the ledger, with no ledger to read (issue #843).
-
-Each used to open it through `ledger.connect()`, the writer, and so
-*created* it: a genre skill's first `search()` before any sync left an
-empty `content/ledger.sqlite` behind, and `corpus ledger` then reported
-"Ledger ... is empty" instead of "No ledger", which is the distinction
-the skills refuse on. Now every reader goes through
-`ledger.read_connection`, which refuses by name and creates nothing.
-
-Two absent-ledger behaviours are deliberately kept rather than turned
-into refusals, and are pinned here: the gate still runs (failing closed,
-and passing a citation-free draft, which the session-start hook's probe
-relies on), and a draft with nothing to cite still renders.
-"""
-
 import json
 import sqlite3
 import sys
@@ -42,7 +27,6 @@ from tests.ledger_faults import damage_past_the_header, leave_hot_journal
 
 @pytest.fixture
 def stale_ledger(isolated_config):
-    """A ledger at schema version 0: the original table, no migrations."""
     isolated_config.CONTENT_DIR.mkdir(parents=True, exist_ok=True)
     raw = sqlite3.connect(isolated_config.LEDGER_PATH)
     raw.execute(
@@ -60,7 +44,6 @@ class TestLibraryReaders:
         with pytest.raises(ledger.NoLedger):
             retrieval.search("digital twin")
         assert not isolated_config.LEDGER_PATH.exists()
-        # The skills' refusal trigger survives the search.
         assert ledger_cli.main([]) == 0
         assert "No ledger at" in capsys.readouterr().out
 
@@ -68,8 +51,6 @@ class TestLibraryReaders:
         assert dossier._corpus_rows() is None
 
     def test_corpus_rows_is_none_for_a_current_ledger_it_cannot_query(self, isolated_config):
-        # Opens (the version is current) but the read itself fails -- the
-        # same "no readable ledger" answer a busy or damaged one gets.
         isolated_config.CONTENT_DIR.mkdir(parents=True)
         raw = sqlite3.connect(isolated_config.LEDGER_PATH)
         raw.execute(f"PRAGMA user_version = {len(ledger._MIGRATIONS)}")
@@ -91,14 +72,11 @@ class TestLibraryReaders:
         monkeypatch.setattr(sqlite3, "connect", tracked)
         with pytest.raises(ledger.UnreadableLedger):
             ledger.read_connection()
-        # Closed on the way out, not leaked with the exception.
         with pytest.raises(sqlite3.ProgrammingError):
             opened[0].execute("SELECT 1")
         assert dossier._corpus_rows() is None
 
     def test_the_overlap_index_raises_a_ledger_needing_sync(self, stale_ledger):
-        # Not folded into "nothing fingerprintable": that would be a
-        # silent pass on the verbatim check against a corpus never read.
         with pytest.raises(ledger.StaleLedger):
             overlap_index_ledger.ledger_item("smith_2024")
 
@@ -144,9 +122,6 @@ class TestCommandsRefuseByName:
     def test_an_agenda_recheck_refuses_rather_than_filing_a_partial_agenda(
         self, isolated_config, capsys
     ):
-        # `--baseline` re-runs every aid; the refusal must stop the run,
-        # not leave an agenda counted over whichever aids did not need
-        # the ledger.
         path = config.DRAFTS_DIR / "topic" / "survey.md"
         path.parent.mkdir(parents=True)
         path.write_text("A claim [@smith_2024].\n", encoding="utf-8")
@@ -167,8 +142,6 @@ class TestCommandsRefuseByName:
         assert "predates this version's schema" in capsys.readouterr().err
 
     def test_corpus_ledger_exits_0_for_a_ledger_needing_sync(self, stale_ledger, capsys):
-        # Zero, and the instruction on stdout: the session-start hook reads
-        # a non-zero exit here as "the corpus layer will not start".
         assert ledger_cli.main([]) == 0
         assert "chitragupta.corpus sync" in capsys.readouterr().out
 
@@ -198,19 +171,11 @@ class TestRenderingNeedsALedgerOnlyToCite:
 
 @pytest.fixture
 def hot_ledger(isolated_config):
-    """A synced ledger with an interrupted write's journal beside it (#1066)."""
     ledger.connect().close()
     return leave_hot_journal(isolated_config.LEDGER_PATH)
 
 
 class TestAnUnreadableLedgerIsRefusedNotATraceback:
-    """#1066's follow-up: every reader above, against a ledger SQLite will
-    not read. `UnreadableLedger` is a `NoLedger`, so each command's
-    existing refusal reports it -- with its cause, where it used to be a
-    raw `sqlite3.OperationalError` -- and the readers that fold
-    `NoLedger` into "nothing there" are each pinned to do what they
-    should with a ledger that *is* there."""
-
     def test_the_gate_exits_3_through_the_draft_dispatch(self, hot_ledger, isolated_config, capsys):
         path = content_draft(isolated_config, "drafts/cited.md")
         path.write_text("Claim [@smith_2024].\n", encoding="utf-8")
@@ -260,27 +225,20 @@ class TestAnUnreadableLedgerIsRefusedNotATraceback:
             retrieval.search("digital twin")
 
     def test_corpus_ledger_exits_3_on_stderr(self, hot_ledger, capsys):
-        # Not the 0 a missing or stale ledger gets: that is a position in
-        # clone -> sync, this is a fault, and the session-start hook
-        # reports it by this code.
         assert ledger_cli.main([]) == ledger.EXIT_UNREADABLE
         captured = capsys.readouterr()
         assert captured.out == ""
         assert hot_ledger.name in captured.err
 
     def test_corpus_ledger_exits_3_on_damage_its_first_read_missed(self, isolated_config, capsys):
-        # The schema version reads; the summary query is what fails.
         ledger.connect().close()
         damage_past_the_header(isolated_config.LEDGER_PATH)
         assert ledger_cli.main([]) == ledger.EXIT_UNREADABLE
         assert "or it is damaged" in capsys.readouterr().err
 
     def test_the_overlap_index_raises_it(self, hot_ledger):
-        # Not folded into "nothing fingerprintable", for the reason a
-        # stale ledger is not: a silent pass on the verbatim check.
         with pytest.raises(ledger.UnreadableLedger):
             overlap_index_ledger.ledger_item("smith_2024")
 
     def test_the_dossier_drift_scan_is_skipped(self, hot_ledger):
-        # Unchanged, and right: it already skips on any sqlite3.Error.
         assert dossier._corpus_rows() is None

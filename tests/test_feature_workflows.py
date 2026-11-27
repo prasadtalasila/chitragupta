@@ -1,11 +1,3 @@
-"""Feature tests: the actual chains a user runs, exercised with real
-binaries (pdftotext/pandoc/pdflatex) and no mocking of the seams between
-modules -- as distinct from the unit tests elsewhere, which mock those
-seams deliberately for speed/determinism. These are slower but catch
-integration regressions the unit tests structurally can't (e.g. sync's
-real handoff to pdf_text, or a regression in the real bibliography.bib
-export itself)."""
-
 import json
 import os
 import re
@@ -44,10 +36,6 @@ def make_real_pdf(md_path, pdf_path, body):
     reason="pandoc/pdflatex/pdftotext not installed",
 )
 class TestFullPipelineNoMocks:
-    """bib -> sync (real pdftotext) -> draft -> citation_gate -> references
-    -> render_output.render, with nothing mocked -- the real workflow
-    AGENTS.md describes, end to end."""
-
     def test_full_chain_with_real_binaries(self, isolated_config, tmp_path):
         pdf_md = tmp_path / "source.md"
         pdf_path = tmp_path / "paper.pdf"
@@ -97,8 +85,6 @@ class TestFullPipelineNoMocks:
         assert out_path.read_text().strip()
 
     def test_fabricated_citation_is_blocked_before_render(self, isolated_config, tmp_path):
-        """The hard invariant (AGENTS.md): a citekey not in the ledger
-        must fail the gate, not silently make it to a rendered draft."""
         isolated_config.BIB_FILE_PATH.write_text(
             "@article{real_key_2024,\n  title = {Real},\n  author = {A, B},\n  year = {2024},\n}\n"
         )
@@ -112,8 +98,6 @@ class TestFullPipelineNoMocks:
         rc = citation_gate.run([str(draft)])
         assert rc == 1  # must fail -- @invented_2024 was never synced from the bib file
 
-        # references.apply would itself hard-error on the fabricated key,
-        # which is the second line of defense if the gate is skipped.
         with pytest.raises(KeyError, match="invented_2024"):
             references.apply(draft)
 
@@ -127,37 +111,12 @@ real_bib_available = real_bibliography_path().exists()
     "absent on a fresh clone/CI checkout until someone exports their own",
 )
 class TestRealBibliographySmoke:
-    """Parses this repo's actual bibliography.bib (read-only) -- catches
-    a regression against real export data that a synthetic 1-3 entry
-    fixture can't, which is exactly the failure class AGENTS.md's hard
-    invariant exists to prevent."""
-
     def test_real_bib_file_parses_without_error(self, isolated_config, monkeypatch):
         real_bib = real_bibliography_path()
         monkeypatch.setattr(config, "BIB_FILE_PATH", real_bib)
 
         refs = bib_reader.read_library().references
 
-        # Asserted against the file rather than against a number written
-        # here. A hardcoded count (it was 646) is a claim about how many
-        # papers this developer happens to have catalogued, on a file
-        # that is gitignored per-host data -- so it failed on the
-        # ordinary act of adding a paper, and could only ever fail on a
-        # maintainer's own machine, since the class self-skips wherever
-        # the file is absent.
-        #
-        # What is worth asserting is the thing a count was standing in
-        # for: bibtexparser skips an entry it cannot parse (unbalanced
-        # braces or quotes) without raising, so a paper can leave the
-        # corpus silently. Every entry that carries fields must survive.
-        #
-        # "Carries fields" is the discriminator, and it is not pedantry:
-        # Zotero exports a contentless `@misc{key,\n}` stub for an
-        # attachment with no metadata, and this library has two. Dropping
-        # those is correct -- they have no title, author or year to lose
-        # -- so counting every `@` block instead would assert that a real
-        # export is broken. `chitragupta/bib_reader.py`'s own warning counts them,
-        # which is why it reports 2 dropped on a library that is fine.
         raw = real_bib.read_text(encoding="utf-8")
         blocks = re.split(r"^@", raw, flags=re.M)[1:]
         with_fields = [b for b in blocks if "=" in b]
@@ -172,17 +131,10 @@ class TestRealBibliographySmoke:
         citekeys = {r.citekey for r in refs}
         assert len(citekeys) == len(refs), "citekeys must be unique"
 
-        # Known awkward real entries this pipeline's design explicitly
-        # accounts for: a no-author webpage export, and a citekey
-        # containing "--" (render_output.py's alias workaround exists
-        # because of exactly this key).
         assert "noauthor_digital_nodate" in citekeys
         assert "zech_digital-twins-as--service_2024" in citekeys
 
     def test_real_bib_citekeys_all_pass_citation_gate(self, isolated_config, monkeypatch):
-        """Every real citekey, cited in Pandoc form, must be recognized
-        as known once synced -- the gate's regex must not choke on any
-        real citekey shape (hyphens, underscores, digits, "--")."""
         real_bib = real_bibliography_path()
         monkeypatch.setattr(config, "BIB_FILE_PATH", real_bib)
 
@@ -213,24 +165,6 @@ class TestRealBibliographySmoke:
     reason="pandoc/pdflatex/pdftotext not installed",
 )
 class TestReparseReproducibility:
-    """The ledger half of the reproducibility contract, pinned.
-
-    docs/ARCHITECTURE.md's "What is reproducible, and what is not" makes
-    two claims about a re-parse of unchanged input: every ledger column
-    comes back byte-identical *except* `last_synced`, and `pdftotext`
-    output is byte-identical. Both are the kind of promise that rots
-    silently -- a new column defaulting to a timestamp, or a backend flag
-    that reorders output, would break it with nothing failing.
-
-    Real `pdftotext` on a real PDF rather than a mocked extractor,
-    because a fake that returns a constant string would pass this test
-    while proving nothing about the backend the claim is actually about.
-
-    `last_synced` is asserted to **change** rather than quietly excluded.
-    Excluding it would leave a test that passes whatever the contract
-    says; asserting it encodes the exception as part of the promise.
-    """
-
     def _rows(self):
         con = ledger.connect()
         try:
@@ -257,9 +191,6 @@ class TestReparseReproducibility:
         first = self._rows()
         first_text = (config.PARSED_DIR / "roe_stable_2024.txt").read_bytes()
 
-        # --reparse, not a plain re-run: a second sync would skip the
-        # document on its unchanged hash and compare the parse against
-        # itself, which tests the skip logic rather than the parser.
         assert sync.run(reparse=True) == 0
         second = self._rows()
         second_text = (config.PARSED_DIR / "roe_stable_2024.txt").read_bytes()
@@ -271,10 +202,6 @@ class TestReparseReproducibility:
             "last_synced must change -- it is wall-clock, and the contract "
             "names it as the one column that does"
         )
-        # Every other column, whatever the schema grows to. Written as a
-        # difference rather than a fixed list so a column added later is
-        # covered by this test on the day it lands, not the day someone
-        # remembers to add it here.
         unstable = {k for k in row_a if row_a[k] != row_b[k]}
         assert unstable == {"last_synced"}, (
             f"columns changed across a re-parse of unchanged input: {sorted(unstable)}"
@@ -282,12 +209,6 @@ class TestReparseReproducibility:
 
 
 def _add_paper(citekey, title, body):
-    """One parsed paper in the ledger, with the text a query ranks against.
-
-    Raw SQL for the same reason `tests/test_dossier.py` uses it:
-    `upsert_reference` takes a `bib_reader.Reference` and would drag
-    bibtexparser into a chain that is otherwise stdlib-only.
-    """
     config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
     parsed = config.PARSED_DIR / f"{citekey}.txt"
     parsed.write_text(body, encoding="utf-8")
@@ -304,7 +225,6 @@ def _add_paper(citekey, title, body):
 
 
 def _drop_paper(citekey):
-    """What `sync --remove-stale` does to a paper dropped from the bib."""
     con = ledger.connect()
     try:
         con.execute("DELETE FROM items WHERE citekey = ?", (citekey,))
@@ -315,26 +235,8 @@ def _drop_paper(citekey):
 
 
 class TestReGroundingAfterTheCorpusMoves:
-    """The chain `draft-reviser`'s re-grounding mode runs: a corpus that
-    moved -> `dossier status --json` -> a scoped edit -> `citation_gate`.
-
-    Characterisation rather than test-first: the mode itself lives in
-    `.claude/skills/draft-reviser/SKILL.md`, which no test can assert on.
-    What these pin is the composition underneath it -- the three findings
-    the skill branches on, and the fact that acting on them needs no new
-    machinery. A change in `chitragupta/` that broke the mode would otherwise
-    break nothing that fails.
-
-    No binaries: the seams here are dossier <-> ledger <-> citation_gate,
-    all pure Python, so this runs everywhere rather than skipping wherever
-    pandoc is absent.
-    """
-
     @pytest.fixture
     def grounded(self, isolated_config):
-        """A draft that cites one paper, turned another down, and logged
-        the query that found both -- written against the corpus as it
-        stood at the time, so `scope.md` records that fingerprint."""
         _add_paper(
             "kept_paper_2024",
             "Digital twin architectures",
@@ -374,8 +276,6 @@ class TestReGroundingAfterTheCorpusMoves:
         return draft
 
     def test_a_moved_corpus_produces_the_three_findings_and_a_failing_gate(self, grounded):
-        """`missing` is a defect the gate agrees with; `candidates` are new;
-        a paper already turned down is held back in `reconsider`."""
         _drop_paper("kept_paper_2024")
         _add_paper(
             "fresh_twin_2026",
@@ -385,28 +285,20 @@ class TestReGroundingAfterTheCorpusMoves:
 
         report = dossier.drift(dossier.dossier_dir(grounded))
 
-        # A defect: the draft stands on a paper the corpus no longer has,
-        # carried with the section that cites it so the edit stays scoped.
         assert report.missing == {"kept_paper_2024": ["1. First"]}
         assert citation_gate.run([str(grounded)]) == 1, (
             "the gate is the exit criterion, and it must already disagree "
             "with a draft the drift report calls broken"
         )
 
-        # An opportunity, and a separate kind of thing.
         assert [c.citekey for c in report.candidates] == ["fresh_twin_2026"]
 
-        # Already judged once. `rejected.md` was subtracted from
-        # `candidates`, and the reason is carried so the skill can weigh
-        # it without re-retrieving and re-judging the paper.
         assert [r.citekey for r in report.reconsider] == ["turned_down_2023"]
         assert report.reconsider[0].reason == "out of scope: adoption economics"
 
         assert report.drifted, "the recorded fingerprint no longer matches"
 
     def test_the_json_the_skill_reads_carries_all_three(self, grounded, capsys):
-        """One envelope, one element, exit 0 -- the contract #85 added for
-        this mode. The skill branches on the payload, never the code."""
         _drop_paper("kept_paper_2024")
         _add_paper(
             "fresh_twin_2026",
@@ -424,9 +316,6 @@ class TestReGroundingAfterTheCorpusMoves:
         assert entry["current"] is not None, "the values a re-stamp writes back"
 
     def test_a_scoped_re_grounding_clears_the_defect_and_passes_the_gate(self, grounded):
-        """Swapping the citation and recording the swap drives `missing`
-        empty and the gate back to OK -- with nothing in `chitragupta/` beyond the
-        files the skill already writes, and no fingerprint change."""
         _drop_paper("kept_paper_2024")
         _add_paper(
             "fresh_twin_2026",
@@ -436,8 +325,6 @@ class TestReGroundingAfterTheCorpusMoves:
         target = dossier.dossier_dir(grounded)
         before = dossier.recorded_corpus(target)
 
-        # Exactly what the skill does: edit inside the one section the
-        # report named, then write the dossier back.
         grounded.write_text(grounded.read_text().replace("@kept_paper_2024", "@fresh_twin_2026"))
         (target / "evidence.md").write_text(
             "# Kept evidence\n\n## `fresh_twin_2026`\n\nHow twins are structured.\n"
@@ -461,15 +348,6 @@ class TestReGroundingAfterTheCorpusMoves:
         )
 
     def test_re_stamping_the_fingerprint_clears_drifted_and_still_parses(self, grounded):
-        """The one step of the mode with a silent failure mode.
-
-        `scope.md`'s corpus line is written once by `init` and rewritten
-        only here. Reshaping it rather than rewriting it makes
-        `recorded_corpus()` return `None`, and the dossier downgrades to
-        "records no corpus fingerprint" instead of erroring -- so the
-        skill is told to rewrite the line in place, and this is what says
-        that the line it writes is one the parser accepts.
-        """
         _drop_paper("kept_paper_2024")
         _add_paper(
             "fresh_twin_2026",
@@ -494,16 +372,6 @@ class TestReGroundingAfterTheCorpusMoves:
         assert not dossier.drift(target).drifted
 
     def test_an_unpursued_candidate_keeps_the_dossier_unclean(self, grounded):
-        """The limit of the claim above, pinned deliberately.
-
-        `Drift.clean` is `not missing and not candidates`, so a dossier
-        with any candidate left unpursued still shows in the sweep -- and
-        on a real corpus that is the normal outcome, since a query returns
-        fifteen hits and a revision accepts one or two. Driving `clean`
-        true would mean writing the rest into `rejected.md` on nothing but
-        a title, which is the judgment `docs/REJECTION.md` refuses to make
-        cheaply. Re-grounding therefore promises `missing`, not `clean`.
-        """
         _drop_paper("kept_paper_2024")
         _add_paper(
             "fresh_twin_2026",
@@ -534,19 +402,6 @@ class TestReGroundingAfterTheCorpusMoves:
         )
 
 
-# --- The whole-draft x whole-corpus verbatim scan, end to end -------------
-#
-# tests/test_verbatim_check.py drives `cmd_scan()` in process, with capsys
-# and a hand-built index, and covers the finding logic. These drive the
-# command a reviewer actually types -- a child process, over a real
-# mini-ledger with real pdf_hash values and real form-feed page breaks --
-# and assert on what the user sees. Four things that reaches which the
-# unit tests structurally cannot: the CONTENT_DIR override the command is
-# configured through, the index artifacts appearing on disk, their reuse
-# on a second run, and invalidation after the corpus moves underneath.
-
-# Planted verbatim runs. Each is well above the n=8 index floor, so a
-# finding is unambiguous rather than borderline.
 SCAN_RUN_CITED = (
     "the composable architecture of a digital twin separates its "
     "simulation core from its data ingestion layer"
@@ -559,15 +414,11 @@ SCAN_RUN_CONNECTIVE = (
     "recalibration must be triggered whenever the residual between "
     "measured and predicted behaviour exceeds a fixed threshold"
 )
-# What the corpus says after a re-sync replaces the first source's text.
 SCAN_RUN_AFTER_RESYNC = (
     "the revised architecture note now describes a scheduler that "
     "batches ingestion jobs by priority"
 )
 
-# The negative control. The draft form swaps a synonym at exactly every
-# fourth word of the source form -- see the test that uses it for why
-# that spacing is the point rather than an arbitrary choice.
 SCAN_PARAPHRASE_IN_SOURCE = (
     "the validation of a digital twin requires continuous comparison "
     "against measurements taken from the physical asset"
@@ -579,23 +430,10 @@ SCAN_PARAPHRASE_IN_DRAFT = (
 
 
 def _scan_source_text(page_one, page_two):
-    """Parsed text with a real form-feed page break in it.
-
-    `overlap_index` splits source text on form feeds to number pages, so
-    putting every planted run on page two is what lets these tests assert
-    a literal `pdf p.2` instead of settling for "some plausible page".
-    """
     return f"{page_one}\n\f{page_two}\n"
 
 
 def _add_scan_paper(citekey, text, pdf_bytes=b"%PDF-1.4 fixture"):
-    """One parsed ledger row, left the way `sync` leaves one.
-
-    Both calls matter. `upsert_reference` hashes the PDF bytes for real,
-    and that hash is half of the key the corpus index caches per
-    document; `mark_parsed` is what moves the row to `status='parsed'`,
-    which is the only status `overlap_index._ledger_items()` selects.
-    """
     config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
     pdf = config.CONTENT_DIR / f"{citekey}.pdf"
     pdf.write_bytes(pdf_bytes)
@@ -612,32 +450,12 @@ def _add_scan_paper(citekey, text, pdf_bytes=b"%PDF-1.4 fixture"):
 
 _FINDING_RE = re.compile(
     r"\s+\[(?P<span>\d+) words(?:, (?P<matched>\d+) matched)?, "
-    # `[\w-]+`, not `\w+`: a tier name can carry a hyphen ("skip-gram"),
-    # which `\w` never matches -- with `\w+` this line simply fails to
-    # match at all, and the finding silently vanishes from _findings()'s
-    # result instead of raising anywhere near the mistake.
-    # The draft-side locator is optional in the pattern and not in the
-    # output: a finding whose report predates those fields has no line or
-    # paragraph to print, and matching only the long form would make such
-    # a finding vanish from this parser rather than fail an assertion.
     r"pdf p\.(?P<page>\d+)(?:, draft (?P<position>[^\]]+))?\] "
     r"(?P<citekey>\S+) \(tier=(?P<tier>[\w-]+)\)(?P<flags>.*)"
 )
 
 
 def _findings(stdout):
-    """`scan`'s per-finding output, parsed back into dicts.
-
-    Asserting through the printed form rather than around it is
-    deliberate: the printed line *is* the product here, and a change that
-    dropped the page number or the UNCITED SOURCE flag would leave every
-    in-process assertion on the findings list passing.
-
-    Three lines per finding on the exact tier and four on the other two,
-    which print the source passage under the draft's own and label both.
-    `fragment` is the draft side either way, so a caller comparing it
-    against a planted run does not have to know which tier reported it.
-    """
     lines = stdout.splitlines()
     parsed = []
     for i, line in enumerate(lines):
@@ -658,48 +476,18 @@ def _findings(stdout):
 
 
 def _run_scan(draft, *args):
-    """`scan`, in a child process, against this test's throwaway corpus.
-
-    The coverage variables are stripped rather than inherited. Under
-    pytest-cov 6.x, pinned here until 6.179, a .pth file auto-instrumented
-    every spawned child, and a child that inherits the parent's coverage
-    settings without the config those settings assume can fail at the *combine*
-    step -- long after every test has passed, with a message
-    (`Can't combine statement coverage data with branch data`) that names
-    nothing connected to the test that caused it. That happened for real
-    on PR #114. `chitragupta/review/verbatim_check.py` is covered in process by
-    tests/test_verbatim_check.py, so nothing is lost by not measuring
-    these children. The environment itself -- coverage variables
-    stripped, `CONTENT_DIR` set -- is `_run_verbatim`'s job; this just
-    names the mode.
-    """
     return _run_verbatim("scan", str(draft), *args)
 
 
 def _run_verbatim(mode, *args):
-    """Any `verbatim` mode in a child process, with `_run_scan`'s
-    environment discipline (see its docstring for why the coverage
-    variables are stripped)."""
     env = {k: v for k, v in os.environ.items() if not _IS_COVERAGE_BOOTSTRAP(k)}
     env["CONTENT_DIR"] = str(config.CONTENT_DIR)
     return run_python("-m", "chitragupta.review", "verbatim", mode, *args, env=env)
 
 
 class TestVerbatimScanEndToEnd:
-    """`python -m chitragupta.review verbatim scan <draft>` over a real
-    mini-ledger: index build -> disk cache -> findings, through the entry
-    point README's step 7 and the seven skills now point at.
-
-    No `skipif`. The whole scan path is stdlib-only and never opens the
-    PDF -- only its bytes' hash reaches the index -- so unlike the
-    render-chain tests above there is no binary to be missing, and
-    `TestReGroundingAfterTheCorpusMoves`'s reasoning applies: run
-    everywhere rather than skip wherever pandoc is absent.
-    """
-
     @pytest.fixture
     def corpus(self, isolated_config):
-        """Three parsed sources, each with its planted run on page 2."""
         _add_scan_paper(
             "dt_arch_2024",
             _scan_source_text(
@@ -727,53 +515,27 @@ class TestVerbatimScanEndToEnd:
 
     @pytest.fixture
     def planted_draft(self, corpus):
-        """A draft carrying all four planted cases at once.
-
-        Written as one plausible document rather than four minimal ones,
-        because three of the four only exist relative to their
-        surroundings: whether a run's paragraph cites the source it
-        borrowed from is the thing under test.
-        """
         draft = content_draft(corpus, "drafts/scan-e2e.md")
         draft.write_text(
             "# Architecture of digital twins\n\n"
             "## 1. Structure\n\n"
-            # (a) verbatim, in a paragraph that does cite this source.
             f"Recent work sets out the shape of these systems: {SCAN_RUN_CITED} "
             "[@dt_arch_2024].\n\n"
             "## 2. Deployment\n\n"
-            # (b) verbatim from a source this paragraph never cites --
-            # it cites a different one, which is what makes the borrowed
-            # wording invisible to a per-citekey `overlap` run.
             "Most twins are deployed on rented infrastructure [@dt_arch_2024]. "
             f"{SCAN_RUN_UNCITED}.\n\n"
             "## 3. Keeping a twin honest\n\n"
-            # (c) verbatim, in connective prose that cites nothing at all,
-            # so no `overlap` invocation would ever examine it.
             f"{SCAN_RUN_CONNECTIVE}. That question is taken up below.\n\n"
             "## 4. Validation\n\n"
-            # (d) the negative control.
             f"{SCAN_PARAPHRASE_IN_DRAFT}, which is by now a familiar demand.\n",
             encoding="utf-8",
         )
         return draft
 
     def test_planted_runs_from_cited_uncited_and_connective_prose_all_report(self, planted_draft):
-        """The three cases the scan exists for, through the real CLI.
-
-        The `UNCITED SOURCE` flag is the discriminator a reviewer acts
-        on, so each case is asserted on the flag and not merely on having
-        produced some finding.
-        """
         result = _run_scan(planted_draft)
 
         assert result.returncode == 0, result.stderr
-        # Keyed by (citekey, page), not citekey alone: dt_arch_2024 now
-        # carries two findings -- this one on page 2, plus the
-        # skip-gram tier's paraphrase finding on page 1 (see
-        # test_lightly_paraphrased_run_is_reported_by_the_skipgram_tier)
-        # -- and a citekey-only dict would let the second overwrite the
-        # first.
         findings = {(f["citekey"], f["page"]): f for f in _findings(result.stdout)}
         assert {citekey for citekey, _page in findings} == {
             "dt_arch_2024",
@@ -781,61 +543,23 @@ class TestVerbatimScanEndToEnd:
             "calib_2025",
         }
 
-        # (a) The paragraph cites the source it borrowed from: reported,
-        # with the page it came from, and deliberately not flagged.
         cited = findings["dt_arch_2024", 2]
         assert cited["fragment"] == SCAN_RUN_CITED
         assert cited["page"] == 2, "the run was planted on the source's second page"
         assert cited["tier"] == "exact"
         assert "UNCITED SOURCE" not in cited["flags"]
 
-        # (b) Borrowed from a source the paragraph never names.
         uncited = findings["cloud_infra_2023", 2]
         assert uncited["fragment"] == SCAN_RUN_UNCITED
         assert uncited["page"] == 2
         assert "UNCITED SOURCE" in uncited["flags"]
 
-        # (c) Borrowed into prose that cites nothing whatsoever.
         connective = findings["calib_2025", 2]
         assert connective["fragment"] == SCAN_RUN_CONNECTIVE
         assert connective["page"] == 2
         assert "UNCITED SOURCE" in connective["flags"]
 
     def test_lightly_paraphrased_run_is_missed_by_the_exact_tier_alone(self, planted_draft):
-        """The exact tier's own boundary, still pinned after #133: taken
-        on its own, `_exact_tier_findings` cannot see this passage.
-
-        `SCAN_PARAPHRASE_IN_DRAFT` is `SCAN_PARAPHRASE_IN_SOURCE` with a
-        synonym swapped at every fourth word -- the signature of an LLM
-        paraphrasing a passage it has drifted too close to. The spacing
-        is the whole construction: swapping every fourth word leaves no
-        unbroken run longer than three words, so no 8-gram survives and
-        the exact tier cannot fire. Swap every tenth word instead and an
-        8-gram does survive, this test fails, and it fails for a reason
-        that has nothing to do with the behaviour being pinned.
-
-        This is not a duplicate of
-        `test_clean_paraphrase_does_not_flag` in
-        tests/test_verbatim_check.py: that fixture is a clean rewrite,
-        which nobody expects an n-gram index to catch. This one is
-        near-verbatim and still missed *by this one tier*, which is the
-        documented boundary of exact matching and the reason README,
-        docs/CLI.md and all seven skills say a clean *exact-tier* scan
-        is not a clean bill of health.
-
-        Originally named
-        `test_lightly_paraphrased_run_is_not_reported_by_the_exact_tier`
-        and asserted on `scan`'s whole output, back when the exact tier
-        was the only one built; its docstring said this fixture must
-        flip from missed to caught once the skip-gram tier landed
-        (discussion #115) -- see
-        `test_lightly_paraphrased_run_is_reported_by_the_skipgram_tier`,
-        below, for that flip. This half survives, narrowed to the one
-        tier it was always really pinning, because "the exact tier
-        cannot see a paraphrase" is still true and still worth a test on
-        its own -- `scan`'s combined output moving on is not evidence
-        that claim stopped holding.
-        """
         result = _run_scan(planted_draft)
 
         assert result.returncode == 0, result.stderr
@@ -846,19 +570,6 @@ class TestVerbatimScanEndToEnd:
         ], "the exact tier reported the paraphrased passage on the source's first page"
 
     def test_lightly_paraphrased_run_is_reported_by_the_skipgram_tier(self, planted_draft):
-        """The flip discussion #115 and #133 promised: the deterministic
-        skip-gram tier (`chitragupta/overlap_skipgram.py`) catches the same
-        every-fourth-word paraphrase the test above shows the exact tier
-        missing.
-
-        An every-fourth-word substitution always lands on words at the
-        same original-index parity (4 is even, so every swapped index
-        shares one parity class) -- see `overlap_skipgram`'s module
-        docstring for why splitting into even/odd families *before*
-        stemming and stopword-filtering, rather than after, is what
-        makes the untouched family's skip-grams survive every
-        substitution intact.
-        """
         result = _run_scan(planted_draft)
 
         assert result.returncode == 0, result.stderr
@@ -870,7 +581,6 @@ class TestVerbatimScanEndToEnd:
         assert "validation" in result.stdout
 
     def test_clean_draft_reports_nothing_and_still_exits_zero(self, corpus):
-        """A review aid, so "found nothing" is a successful run."""
         draft = content_draft(corpus, "drafts/scan-clean.md")
         draft.write_text(
             "# A clean chapter\n\n"
@@ -886,20 +596,6 @@ class TestVerbatimScanEndToEnd:
         assert _findings(result.stdout) == []
 
     def test_the_embedding_tier_says_it_did_not_run_rather_than_going_quiet(self, planted_draft):
-        """The end-to-end half of tier 3's availability contract (#134).
-
-        This corpus has no `content/chroma/`, no Docling sidecars and no
-        dossier -- which is the state of most checkouts, and exactly the
-        state in which "found nothing" and "never looked" are
-        indistinguishable unless something says which. The in-process
-        tests in tests/test_verbatim_check.py pin the wording; this pins
-        that it survives the real CLI, into the payload a consumer reads.
-
-        Asserted through `--json` rather than the printed form because
-        the payload is the half a remediation loop consumes, and a
-        report that told a person the truth while telling a program
-        nothing would be the more dangerous of the two failures.
-        """
         result = _run_scan(planted_draft, "--json")
 
         assert result.returncode == 0, result.stderr
@@ -909,13 +605,6 @@ class TestVerbatimScanEndToEnd:
         assert not_run[0]["reason"], "a tier that did not run must say why"
 
     def test_every_finding_carries_the_score_field_even_where_it_is_null(self, planted_draft):
-        """`published()` projects `_PAYLOAD_FIELDS` with a hard
-        `KeyError`, so a field added for one tier has to be carried by
-        all of them. `score` is `None` on the two deterministic tiers
-        rather than absent or `0.0` -- absent breaks the projection, and
-        zero would read as "aligned, badly", which is a different claim
-        from "this tier does not measure that".
-        """
         result = _run_scan(planted_draft, "--json")
 
         assert result.returncode == 0, result.stderr
@@ -925,12 +614,6 @@ class TestVerbatimScanEndToEnd:
         assert all(f["score"] is None for f in findings if f["tier"] != "embedding")
 
     def test_first_scan_builds_the_index_on_disk(self, planted_draft):
-        """The command builds the real index, not a stand-in for one.
-
-        Asserting the artifacts exist is what makes the rest of this
-        class a test of the cached index path rather than of whatever a
-        mock would have returned.
-        """
         assert not config.OVERLAP_DIR.exists(), "the fixture starts with no cache"
 
         assert _run_scan(planted_draft).returncode == 0
@@ -941,15 +624,6 @@ class TestVerbatimScanEndToEnd:
             assert (config.OVERLAP_DIR / "docs" / f"{citekey}.fpr").is_file()
 
     def test_rescanning_an_unchanged_corpus_reuses_the_merged_index(self, planted_draft):
-        """The "re-scans are near-instant" contract docs/CLI.md states.
-
-        `index.bin` is the artifact to watch, and the `.fpr` files are
-        not: on a cache hit `build_corpus_index` returns from
-        `_load_corpus_index` before it ever reaches `fingerprint_document`,
-        so "the .fpr files were not rewritten" would be trivially true and
-        would pass even if the merged index were rebuilt from scratch
-        every run.
-        """
         first = _run_scan(planted_draft)
         assert first.returncode == 0, first.stderr
         index_bin = config.OVERLAP_DIR / "index.bin"
@@ -964,15 +638,6 @@ class TestVerbatimScanEndToEnd:
         assert second.stdout == first.stdout, "a cache hit changed the findings"
 
     def test_a_resynced_source_is_refingerprinted_before_the_next_scan(self, corpus):
-        """The user-visible command never serves a stale index.
-
-        What this proves is the workflow-level half: `scan` re-fingerprints
-        and re-merges when the corpus moves under it. It does *not*
-        isolate `pdf_hash` from the `(size, mtime_ns)` half of
-        `_fingerprint_key` -- rewriting a source's text moves both at once,
-        which is exactly what a real re-sync does.
-        tests/test_overlap_index.py pins each half separately.
-        """
         draft = content_draft(corpus, "drafts/scan-resync.md")
         draft.write_text(
             f"One claim [@dt_arch_2024]. {SCAN_RUN_CITED}.\n\n"
@@ -983,8 +648,6 @@ class TestVerbatimScanEndToEnd:
         assert [f["fragment"] for f in _findings(before.stdout)] == [SCAN_RUN_CITED]
         key_before = json.loads((config.OVERLAP_DIR / "index.json").read_text())["key"]
 
-        # What `sync` does to a paper whose PDF was replaced: new bytes,
-        # so a new pdf_hash, and new parsed text alongside it.
         _add_scan_paper(
             "dt_arch_2024",
             _scan_source_text(
@@ -1003,13 +666,6 @@ class TestVerbatimScanEndToEnd:
         assert json.loads((config.OVERLAP_DIR / "index.json").read_text())["key"] != key_before
 
     def test_scan_runs_on_the_bare_system_interpreter(self, planted_draft, system_python):
-        """docs/CLI.md files `scan` in interpreter tier 1 -- bare
-        `python`, stdlib only, no venv. Everything above runs it on
-        `sys.executable`, which is the venv's interpreter and so cannot
-        tell that claim from a false one. This is the same check
-        `citation_gate`/`references`/`render_output` already get, applied
-        to the command this change is adding to that list.
-        """
         env = {k: v for k, v in os.environ.items() if not _IS_COVERAGE_BOOTSTRAP(k)}
         env["CONTENT_DIR"] = str(config.CONTENT_DIR)
 
@@ -1032,18 +688,6 @@ class TestVerbatimScanEndToEnd:
 
 
 class TestOverlapRemediationEndToEnd:
-    """The loop #129 exists for, driven the way the `agenda-reviser`
-    skill drives it: `scan --write --json` to take a baseline, an `Edit`
-    built from a finding's own `draft_text`, then `recheck` to decide
-    whether the repair may be accepted.
-
-    The point is the seam no unit test covers -- that `draft_text` read
-    out of the *filed* payload still matches the draft on disk, so the
-    edit the skill would make actually applies. A skill that has to
-    reconstruct the passage by searching for it is the design this
-    replaced.
-    """
-
     @pytest.fixture
     def corpus(self, isolated_config):
         _add_scan_paper(
@@ -1094,8 +738,6 @@ class TestOverlapRemediationEndToEnd:
         target = next(f for f in payload["findings"] if f["citekey"] == "cloud_infra_2023")
         other = next(f for f in payload["findings"] if f["citekey"] == "calib_2025")
 
-        # The constrained rewrite, applied exactly as the skill would: the
-        # finding's own draft_text replaced in place, nothing else touched.
         draft.write_text(
             draft.read_text(encoding="utf-8").replace(
                 target["draft_text"],
@@ -1113,8 +755,6 @@ class TestOverlapRemediationEndToEnd:
         assert comparison["objective_delta"] == -1
 
     def test_an_untouched_draft_is_reported_as_no_progress_not_as_success(self, draft):
-        """The acceptance test has to be able to say "nothing changed", or
-        a skill that silently failed to edit would read as a repair."""
         path, _ = self._baseline(draft)
 
         result = _run_verbatim("recheck", str(draft), "--baseline", str(path), "--json")
@@ -1125,15 +765,11 @@ class TestOverlapRemediationEndToEnd:
         assert comparison["objective_delta"] == 0
 
     def test_recheck_exits_zero_on_a_draft_it_could_not_improve(self, draft):
-        """Still a review aid: the comparison is evidence, and the only
-        gate in the pipeline is `python -m chitragupta.draft gate`."""
         path, _ = self._baseline(draft)
 
         assert _run_verbatim("recheck", str(draft), "--baseline", str(path)).returncode == 0
 
     def test_recheck_runs_on_the_bare_system_interpreter(self, draft, system_python):
-        """docs/CLI.md files the whole verbatim aid in interpreter tier 1,
-        and a mode added to it inherits that claim."""
         path, _ = self._baseline(draft)
         env = {k: v for k, v in os.environ.items() if not _IS_COVERAGE_BOOTSTRAP(k)}
         env["CONTENT_DIR"] = str(config.CONTENT_DIR)
@@ -1155,21 +791,6 @@ class TestOverlapRemediationEndToEnd:
 
 
 class TestOneDraftsReviewArtefactsLandTogether:
-    """The property #121 exists to provide: a draft, and the evidence
-    behind it, findable from the draft's own path.
-
-    Every other test in the review layer checks one command. This checks
-    the thing none of them can -- that all three, run independently and
-    knowing nothing about each other, converge on one directory. Getting
-    that wrong is not a crash; it is three reports scattered across two
-    directories with nothing complaining, which is exactly what the layer
-    was introduced to stop.
-
-    No `skipif`: the `.md` half of every report is stdlib-only, and the
-    formats are pinned to `md` so a host without pandoc runs the same
-    assertions as one with it.
-    """
-
     def _draft(self, isolated_config):
         _add_scan_paper(
             "dt_arch_2024",
@@ -1200,12 +821,6 @@ class TestOneDraftsReviewArtefactsLandTogether:
 
         review_dir = config.REVIEW_DIR / "dt"
         assert sorted(p.name for p in review_dir.iterdir()) == [
-            # The machine-readable siblings land in the same mirrored
-            # directory as the reports they serialise, not somewhere a
-            # consumer would have to be told about separately (#127, #309).
-            # `provenance` writes only through its CLI's `run()`, not
-            # through `write_report()` called directly above, so it has
-            # no `.json` here.
             "survey.coverage.json",
             "survey.coverage.md",
             "survey.provenance.md",
@@ -1214,9 +829,6 @@ class TestOneDraftsReviewArtefactsLandTogether:
         ]
 
     def test_nothing_lands_in_the_drafting_layers_output(self, isolated_config, capsys):
-        """A review artefact in `content/rendered/` is the layer smear
-        this issue removed -- 3.19.2 rendered a report's `.tex`/`.pdf`
-        there, because `render()` had no way to be told otherwise."""
         from chitragupta.review import citation_provenance
 
         draft = self._draft(isolated_config)
@@ -1227,9 +839,6 @@ class TestOneDraftsReviewArtefactsLandTogether:
         )
 
     def test_every_report_says_it_is_not_a_verdict(self, isolated_config, capsys):
-        """The banner has to be in the file, not only in the docs: a
-        report found on disk months later is the case the docs can't
-        reach."""
         from chitragupta.review import verbatim_check as vc
         from chitragupta.review import citation_coverage, citation_provenance
 
@@ -1244,8 +853,6 @@ class TestOneDraftsReviewArtefactsLandTogether:
             assert "Review aid, not a gate" in report.read_text(), report.name
 
     def test_the_bundle_carries_them_and_restores_them(self, isolated_config, tmp_path, capsys):
-        """`dossier export` is the tool the findability property is *for*
-        -- #114's own rationale for confining everything to `content/`."""
         from chitragupta.review import verbatim_check as vc
         from chitragupta.review import citation_provenance
 
@@ -1262,9 +869,6 @@ class TestOneDraftsReviewArtefactsLandTogether:
         assert plan.performed
         assert sorted(p.name for p in (config.REVIEW_DIR / "dt").iterdir()) == [
             "survey.provenance.md",
-            # The payload travels with the report it serialises: a
-            # restored draft whose findings only a person can read would
-            # be a bundle that lost half of what it carried (#127).
             "survey.verbatim.json",
             "survey.verbatim.md",
         ]

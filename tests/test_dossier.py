@@ -1,18 +1,3 @@
-"""Tests for chitragupta/dossier/ (#219 split it out of one chitragupta/dossier.py).
-
-Three things carry most of the weight here, because they are the three
-that can lose someone's work or waste the tokens the module exists to
-save:
-
-- the mirroring rule (`content/drafts/x/y.md` <-> `content/dossiers/x/y/`),
-  since nothing else ties a draft to its dossier;
-- outline extraction, since a wrong line range hands a reviser a slice
-  that cuts a section in half -- and a tutorial is mostly fenced code,
-  whose `#` comments read as headings to anything that ignores fences;
-- restore, the one destructive operation, which must refuse an unsafe
-  archive outright and must not write at all without --force.
-"""
-
 import tarfile
 import tomllib
 from pathlib import Path
@@ -39,8 +24,6 @@ from tests.conftest import WRITE_LOCK_HOLD, read_under_a_held_write_lock, retrie
 
 @pytest.fixture
 def draft(isolated_config):
-    """A draft where a genre skill would save one, in the nested layout
-    the shipped example content uses."""
     path = config.DRAFTS_DIR / "dt-for-engineers" / "survey.md"
     path.parent.mkdir(parents=True)
     path.write_text("# A survey\n\n## 1. First\n\ntext\n\n## 2. Second\n\nmore\n")
@@ -48,12 +31,6 @@ def draft(isolated_config):
 
 
 def _seed_ledger(citekeys):
-    """A ledger holding just these citekeys.
-
-    Inserted with raw SQL rather than through `upsert_reference`, which
-    takes a `bib_reader.Reference` and so would drag bibtexparser into a
-    module that is deliberately stdlib-only.
-    """
     from chitragupta import ledger
 
     con = ledger.connect()
@@ -92,18 +69,6 @@ class TestDossierDir:
     def test_a_dossier_dir_that_escapes_the_content_tree_is_refused(
         self, isolated_config, tmp_path
     ):
-        """A symlinked topic directory under `content/dossiers/` must not
-        become a licence to write outside `content/`.
-
-        `relative` is computed from resolved paths, so no *argument* can
-        smuggle a `..` past this -- the way out is configuration or a
-        symlink on the target side, which is why the check is on the
-        result rather than on the input. `render_output._output_dir` and
-        `citation_provenance.write_report` already made it; this was the
-        one consumer of the shared mirroring rule that didn't, so a
-        dossier could be written where nothing else in the pipeline looks
-        and no backup of `content/` would carry it.
-        """
         config.DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
         config.DOSSIERS_DIR.mkdir(parents=True, exist_ok=True)
         outside = tmp_path / "elsewhere"
@@ -201,12 +166,6 @@ class TestSections:
         assert dossier.sections("just prose\nover two lines\n") == []
 
     def test_a_fence_heavy_tutorial_outlines_cleanly(self):
-        """Regression guard against the fence bug on real-shaped content:
-        the shipped sample tutorial, frozen, with a `#` line (a shebang, a
-        `# Step N` comment) added at the top of each of its twelve fenced
-        blocks. The sample itself has none, so pointing at it guarded
-        nothing; a copy also means revising the sample cannot redden this
-        test for a content reason (#868)."""
         fixture = Path(__file__).parent / "fixtures" / "dossier" / "fence-heavy-tutorial.md"
         titles = [s.title for s in dossier.sections(fixture.read_text(encoding="utf-8"))]
         assert titles == [
@@ -260,8 +219,6 @@ class TestInit:
         assert "genre: thesis-chapter" in (dossier.dossier_dir(draft) / "scope.md").read_text()
 
     def test_digest_is_a_genre_init_records(self, isolated_config):
-        """A digest is a draft named like any other; the genre line in
-        scope.md is what makes it one (#991)."""
         draft = config.DRAFTS_DIR / "t" / "notes.md"
         draft.parent.mkdir(parents=True)
         draft.write_text("x\n", encoding="utf-8")
@@ -271,23 +228,12 @@ class TestInit:
         assert "- genre: digest" in scope
 
     def test_scope_carries_a_language_line_marked_unsettled(self, draft):
-        """The dialect field #104 adds, and the fact that `init` cannot know it.
-
-        A placeholder that looked like a value would be worse than no
-        field: `draft-reviser` reads `scope.md` before every edit and
-        would apply an en-US default nobody chose. So the line ships
-        saying it is not settled, the same way the corpus fingerprint
-        says "not recorded" rather than inventing a digest.
-        """
         dossier.init(draft, "survey")
         scope = (dossier.dossier_dir(draft) / "scope.md").read_text()
         assert "- language: not settled" in scope
         assert "en-GB" in scope
 
     def test_outline_is_opt_in(self, draft):
-        """Most dossiers have no outline.md -- confirming the plain
-        `test_writes_every_dossier_file` case above stays true, and that
-        the file only appears when asked for."""
         dossier.init(draft, "survey")
         assert not (dossier.dossier_dir(draft) / "outline.md").exists()
 
@@ -305,10 +251,6 @@ class TestInit:
 
 
 def _write_glossary(draft, body):
-    """Replace the shipped `## Glossary` placeholder with real bullets.
-
-    Shared by TestGlossaryTerms and TestSuggestAcronyms.
-    """
     scope = dossier.dossier_dir(draft) / "scope.md"
     text = scope.read_text()
     head, heading, _ = text.partition("## Glossary\n")
@@ -317,15 +259,6 @@ def _write_glossary(draft, body):
 
 
 class TestGlossaryTerms:
-    """`## Glossary`'s `- **Term** -- definition` bullets, read back out.
-
-    The shape is the one #190's resolving comment found a real 15-chapter
-    book already converged on with no schema in force -- a forgiving
-    parser, not a schema, so a hand-typed line that doesn't match is
-    skipped rather than an error (docs/DRAFT-ITERATION.md's "degrades to
-    unavailable" policy).
-    """
-
     def test_returns_empty_dict_without_a_dossier(self, draft):
         assert dossier.glossary_terms(draft) == {}
 
@@ -382,9 +315,6 @@ class TestGlossaryTerms:
         assert dossier.glossary_terms(draft) == {}
 
     def test_stops_at_the_next_heading(self, draft):
-        # ## Glossary is the last section _scope() writes, so appending
-        # a further heading is what exercises the "don't read past
-        # Glossary" branch.
         dossier.init(draft, "survey")
         scope = dossier.dossier_dir(draft) / "scope.md"
         _write_glossary(draft, "- **DTaaS** -- Digital Twin as a Service.")
@@ -395,20 +325,6 @@ class TestGlossaryTerms:
 
 
 class TestSuggestAcronyms:
-    """suggest_acronyms() proposes; it never writes anything -- #190's
-    own rule, restated in docs/HOUSE-STYLE.md: this class of feature
-    proposes and the human accepts.
-
-    The acronym-shape and already-in-vocabulary matching itself is
-    `acronyms.suggest()`, tested directly in
-    tests/test_acronyms.py::TestSuggest -- these tests only cover this
-    module's own part: turning a draft path into the merged
-    glossary-and-body-prose dict `acronyms.suggest()` needs, and the CLI
-    wrapper around it. `acronyms.body_candidates()`'s own extraction
-    rules (references excluded, hard-wraps reflowed) are tested directly
-    in tests/test_acronyms.py::TestBodyCandidates.
-    """
-
     def test_returns_empty_without_a_dossier(self, draft):
         assert _acronyms.suggest_acronyms(draft) == {}
 
@@ -423,8 +339,6 @@ class TestSuggestAcronyms:
         assert _acronyms.suggest_acronyms(draft) == {"DTaaS": "Digital Twin as a Service."}
 
     def test_finds_a_candidate_only_present_in_the_drafts_own_prose(self, draft, monkeypatch):
-        # The real gap this closes: DTP/DTI/DTA are defined inline in
-        # the real book's chapter 2 but glossaried nowhere at all.
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
         dossier.init(draft, "survey")
         draft.write_text(
@@ -468,20 +382,7 @@ class TestSuggestAcronyms:
 
 
 class TestApplySuggestions:
-    """apply_suggestions()/`--apply` -- the one path in this feature that
-    writes. Guarded against the one way that write can go wrong: with
-    `[style].acronyms` unset, `config.ACRONYMS_PATH` *is*
-    `config.ACRONYMS_DEFAULT_PATH`, the vendored, git-tracked file, and
-    writing there would commit one user's domain vocabulary into what
-    every clone shares (#190)."""
-
     def test_refuses_to_write_when_the_user_path_is_unset(self, draft, tmp_path, monkeypatch):
-        # The "unset" condition -- ACRONYMS_PATH is ACRONYMS_DEFAULT_PATH --
-        # is established here, in tmp_path, rather than assumed of the
-        # host's own config.toml: isolated_config does not patch either
-        # constant (they are read once at import time), so a host that
-        # followed docs/CONFIG.md and set [style].acronyms would otherwise
-        # make this test assert something false about its own machine.
         vendored = tmp_path / "vendored.toml"
         monkeypatch.setattr(config, "ACRONYMS_DEFAULT_PATH", vendored)
         monkeypatch.setattr(config, "ACRONYMS_PATH", vendored)
@@ -495,10 +396,6 @@ class TestApplySuggestions:
     def test_cli_apply_refuses_and_writes_nothing_when_unset(
         self, draft, tmp_path, capsys, monkeypatch
     ):
-        # Same reason as the test above: without pinning both constants to
-        # the same tmp_path file, a host with [style].acronyms set would
-        # take the *write* branch instead and mutate that host's real
-        # content/acronyms.toml as a side effect of running this suite.
         vendored = tmp_path / "vendored.toml"
         vendored.write_text('PDF = "Portable Document Format"\n', encoding="utf-8")
         monkeypatch.setattr(config, "ACRONYMS_DEFAULT_PATH", vendored)
@@ -577,10 +474,6 @@ class TestApplySuggestions:
         assert not user_path.exists()
 
     def test_escapes_a_quote_or_backslash_in_the_expansion(self, draft, tmp_path, monkeypatch):
-        """A written entry must round-trip through tomllib -- apply_suggestions
-        checks this itself, but only a definition containing the two
-        characters a TOML basic string cannot hold unescaped actually
-        exercises the escaping, rather than just its line coverage."""
         user_path = tmp_path / "content" / "acronyms.toml"
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {})
         monkeypatch.setattr(config, "ACRONYMS_PATH", user_path)
@@ -623,14 +516,6 @@ class TestKnownCitekeys:
         assert dossier.known_citekeys() == set()
 
     def test_it_waits_out_a_writers_commit_window(self, isolated_config):
-        """Issue #552: `_corpus_rows` opened the ledger with `timeout=0`,
-        and wrapped its query in `except sqlite3.DatabaseError` -- so a
-        read landing inside a sync's commit window returned `None`, which
-        every caller reads as "there is no readable ledger". A `dossier
-        status` run that happened to overlap a commit therefore reported a
-        drift scan against no corpus at all, indistinguishable from a
-        machine that has none. Worse than the CLI's version of m-72,
-        which at least failed loudly."""
         _seed_ledger(["a_one_2020", "b_two_2021"])
 
         citekeys, waited = read_under_a_held_write_lock(dossier.known_citekeys)
@@ -664,8 +549,6 @@ class TestStatus:
         assert by_name["rejected.md"].entries == 1
 
     def test_a_prose_file_reports_filled_in_rather_than_a_count(self, draft, capsys):
-        """A count is information for the list-shaped files and noise for
-        the prose ones -- "scope.md: 40 entries" is a number dressed up."""
         dossier.init(draft, "survey")
         (dossier.dossier_dir(draft) / "steering.md").write_text(
             "# Steering\n\n## 2026-08-06 -- shorter\n\nCut the platform section.\n"
@@ -728,8 +611,6 @@ class TestStatus:
         assert _citekeys.cited_citekeys(dossier.dossier_dir(draft)) == set()
 
     def test_a_separator_is_what_distinguishes_a_citekey_from_prose(self, draft):
-        """Pins the rule `_CITEKEY_TOKEN`'s comment states: a letter start
-        plus at least one separator-then-alphanumeric segment."""
         dossier.init(draft, "survey")
         (dossier.dossier_dir(draft) / "evidence.md").write_text(
             "# Kept\n\n"
@@ -795,10 +676,6 @@ class TestExport:
         )
 
     def test_a_name_selects_the_rendered_output_of_a_nested_draft(self, draft):
-        # Rendering mirrors the draft's own path (chitragupta/render_output.py's
-        # _output_dir), which is what makes this match: while every format
-        # wrote flat, `export dt-for-engineers --with-rendered` produced a
-        # bundle with no PDFs in it and said nothing about it.
         rendered = config.RENDERED_DIR / "dt-for-engineers"
         rendered.mkdir(parents=True)
         (rendered / "survey.pdf").write_bytes(b"%PDF")
@@ -808,12 +685,6 @@ class TestExport:
         assert "rendered/dt-for-engineers/survey.pdf" in names
 
     def test_a_name_selects_a_drafts_evidence_sidecar(self, draft):
-        # `survey.evidence.pdf` reduces to `dt-for-engineers/survey.evidence`
-        # under _matches' with_suffix(""), which does not equal the draft
-        # name `dt-for-engineers/survey` -- so without the aid-suffix
-        # strip this file is silently absent from an archive whose whole
-        # purpose is to be the complete record. Exactly the problem
-        # `survey.provenance.md` had first.
         rendered = config.RENDERED_DIR / "dt-for-engineers"
         rendered.mkdir(parents=True)
         (rendered / "survey.evidence.pdf").write_bytes(b"%PDF")
@@ -826,10 +697,6 @@ class TestExport:
         assert "rendered/dt-for-engineers/survey.evidence.md" in names
 
     def test_a_rendered_draft_whose_stem_merely_contains_a_dot_still_matches_itself(self, draft):
-        # The strip is exactly `.evidence`, not "one more suffix": a draft
-        # named `survey.v2.md` renders to `survey.v2.pdf` and must go on
-        # matching `dt-for-engineers/survey.v2`, not be double-stripped to
-        # `dt-for-engineers/survey`.
         rendered = config.RENDERED_DIR / "dt-for-engineers"
         rendered.mkdir(parents=True)
         (rendered / "survey.v2.pdf").write_bytes(b"%PDF")
@@ -869,17 +736,12 @@ class TestExport:
         return directory
 
     def test_review_reports_are_bundled_by_default(self, draft):
-        """The review layer gave its reports a mirrored path so a draft's
-        evidence is findable from the draft. A bundle that dropped them
-        would falsify that quietly."""
         self._review_reports()
         names = {name for _, name in _archive.bundle_members([], with_rendered=False)}
         assert "review/dt-for-engineers/survey.provenance.md" in names
         assert "review/dt-for-engineers/survey.verbatim.md" in names
 
     def test_their_renders_are_opt_in_like_every_other_pdf(self, draft):
-        """--with-rendered gates PDFs, not text -- so the .md reports
-        ship by default and their renders ride with the rest."""
         self._review_reports()
         default = {name for _, name in _archive.bundle_members([], with_rendered=False)}
         opted_in = {name for _, name in _archive.bundle_members([], with_rendered=True)}
@@ -887,9 +749,6 @@ class TestExport:
         assert "review/dt-for-engineers/survey.provenance.pdf" in opted_in
 
     def test_a_versioned_draft_name_survives_the_aid_suffix_strip(self, isolated_config):
-        """`survey.v2.md` matches as `survey.v2`, so its reports have to
-        as well. Stripping two suffixes blindly would take them down to
-        `survey` and quietly leave them out of the bundle."""
         config.DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
         (config.DRAFTS_DIR / "survey.v2.md").write_text("# s\n")
         config.REVIEW_DIR.mkdir(parents=True, exist_ok=True)
@@ -902,12 +761,6 @@ class TestExport:
     def test_a_file_in_review_that_is_not_a_report_is_still_matched_by_topic(
         self, draft, isolated_config
     ):
-        """Not everything under `content/review/` is `<stem>.<aid>.<ext>`.
-        `render_output._copy_local_images` copies a report's images in
-        beside it, so the aid-suffix strip has to leave a name it does not
-        recognise alone rather than mangling it -- the file is still that
-        topic's, and a bundle that dropped it would leave a `.tex` that no
-        longer compiles."""
         directory = self._review_reports()
         (directory / "figure.png").write_bytes(b"\x89PNG")
 
@@ -918,9 +771,6 @@ class TestExport:
         assert "review/dt-for-engineers/figure.png" in names
 
     def test_a_name_selects_one_drafts_reports(self, draft, isolated_config):
-        """A report's name carries the aid as well as the draft's stem
-        (`survey.provenance.md`), so matching has to strip both suffixes
-        to see the draft named `dt-for-engineers/survey`."""
         self._review_reports()
         self._review_reports(topic="unrelated-topic")
         names = {
@@ -967,11 +817,6 @@ class TestRestore:
         assert (target / "scope.md").is_file()
 
     def test_a_bundle_carrying_review_reports_round_trips(self, draft, tmp_path):
-        """`bundle_members` gained a `review/` root; `ARCHIVE_ROOTS` is the
-        allowlist `restore` checks members against, and `_checked_members`
-        refuses the *whole* archive on an unlisted root. Miss one and
-        export/restore stops being a round trip -- not by dropping a file,
-        but by producing a bundle that cannot be restored at all."""
         dossier.init(draft, "survey")
         report = config.REVIEW_DIR / "dt-for-engineers" / "survey.provenance.md"
         report.parent.mkdir(parents=True, exist_ok=True)
@@ -998,18 +843,6 @@ class TestRestore:
         assert draft.read_text() == original
 
     def test_a_path_too_long_for_a_tar_header_round_trips(self, isolated_config, tmp_path):
-        """`_checked_members` refuses anything that isn't a regular file or
-        directory, which raises the question of whether the extended
-        headers tar uses for a >100-character path survive that check.
-
-        They do, and not by luck: Python's `tarfile` consumes GNU longname
-        (`L`/`K`) and PAX (`x`/`g`) header blocks while reading and folds
-        them into the member they describe, so `getmembers()` only ever
-        yields the real entry. Pinned here rather than argued, because the
-        failure it would cause -- `export` producing a bundle its own
-        `restore` refuses -- is exactly the kind a backup tool must not
-        have.
-        """
         deep = config.DRAFTS_DIR / ("topic-" + "x" * 90) / ("sub-" + "y" * 90)
         deep.mkdir(parents=True)
         draft = deep / ("survey-" + "z" * 80 + ".md")
@@ -1091,11 +924,6 @@ class TestCli:
         assert "init" in capsys.readouterr().out
 
     def test_status_without_a_ledger_still_exits_zero(self, draft, capsys):
-        """The two "missing" cases are deliberately different exit codes,
-        and docs/CLI.md documents the difference: no dossier is actionable
-        ("run init"), no ledger just means one section of the report is
-        unavailable. A machine with no corpus built must still be able to
-        see what it has."""
         dossier.init(draft, "survey")
         assert dossier.main(["status", str(draft)]) == 0
         assert "unavailable" in capsys.readouterr().out
@@ -1189,23 +1017,10 @@ class TestRetrievalLog:
         assert "call(s) returned" not in capsys.readouterr().out
 
     def test_a_stale_existence_check_cannot_truncate_another_writers_row(self, draft, monkeypatch):
-        """Two writers reaching this function at once both see the file
-        as absent; the one that loses the create must not destroy the
-        winner's row.
-
-        The window is real -- `--log` is a flag on the retrieval CLI, and
-        a skill that dispatched parallel subagents could hand it to all
-        of them. It is reproduced here by making the second call's
-        existence check stale, which is exactly what the loser of the
-        race observes, rather than by racing real processes and hoping
-        the interleaving lands.
-        """
         dossier.init(draft, "survey")
         (dossier.dossier_dir(draft) / "retrieval.md").unlink()
         dossier.log_retrieval(draft, "search", "first", 15, 15, 100)
 
-        # A nested context, not monkeypatch.undo(): undo() would also
-        # revert `isolated_config`'s patches, which share this fixture.
         with monkeypatch.context() as stale:
             stale.setattr(Path, "exists", lambda self: False)
             dossier.log_retrieval(draft, "search", "second", 15, 15, 200)
@@ -1215,20 +1030,6 @@ class TestRetrievalLog:
     def test_a_row_appended_while_the_file_is_being_created_is_not_overwritten(
         self, draft, monkeypatch
     ):
-        """The narrower race inside the create itself.
-
-        Making the file exist and filling it in are two steps, and a
-        second writer can append between them -- it finds the file
-        already there, so it skips creation and appends to what is still
-        an empty file. If the creating writer then writes the template
-        from offset 0, it writes straight over that row.
-
-        Reproduced by injecting a second writer at the moment
-        `retrieval.md` is first opened for writing, rather than by racing
-        real processes: the window is microseconds wide and process
-        startup dwarfs it, so eight concurrent processes hit it
-        essentially never and prove nothing.
-        """
         dossier.init(draft, "survey")
         path = dossier.dossier_dir(draft) / "retrieval.md"
         path.unlink()
@@ -1251,9 +1052,6 @@ class TestRetrievalLog:
         assert retrieval_cost(dossier.dossier_dir(draft)) == (2, 300)
 
     def test_status_flags_a_run_that_searched_and_recorded_nothing(self, draft, capsys):
-        """The signature of a run that closed without transcribing what
-        it found. Nothing else reports it: the packets are gone, and the
-        draft itself looks finished."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 2400)
         dossier.main(["status", str(draft)])
@@ -1271,9 +1069,6 @@ class TestRetrievalLog:
         assert "searched and recorded nothing" not in out
 
     def test_a_newline_in_the_query_does_not_split_the_row(self, draft):
-        """`retrieval_cost` reads rows positionally, so a query carrying a
-        newline would not error -- it would quietly become two rows, one
-        of which parses and one of which doesn't."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "digital twin\narchitecture", 15, 15, 100)
         text = (dossier.dossier_dir(draft) / "retrieval.md").read_text()
@@ -1292,25 +1087,12 @@ class TestRetrievalLog:
         assert "| Digital twins |" in text
 
     def test_a_row_written_before_the_collection_column_still_parses(self, draft):
-        """A six-cell row -- what every `retrieval.md` on disk before #254
-        looks like -- must keep costing exactly what it always has."""
         dossier.init(draft, "survey")
         path = dossier.dossier_dir(draft) / "retrieval.md"
         path.write_text(path.read_text() + "| 2026-01-01 | search | q | 15 | 15 | 100 |\n")
         assert retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
 
     def test_the_bm25_settings_in_force_are_recorded(self, draft, monkeypatch):
-        """#788's two settings land in the row, read from config at write
-        time rather than passed in.
-
-        Not a parameter like `collection` and `origin`, deliberately: those
-        describe what the *caller* asked for and only the caller knows
-        them, while these describe the ranker that actually ran and are
-        the same for every call in the process. A parameter a caller can
-        forget writes an empty cell, and an empty cell here is
-        indistinguishable from a row logged before the column existed --
-        which is exactly the ambiguity the column exists to remove.
-        """
         dossier.init(draft, "survey")
         monkeypatch.setattr(config, "RETRIEVAL_K1", 8.0)
         monkeypatch.setattr(config, "RETRIEVAL_B", 0.5)
@@ -1319,10 +1101,6 @@ class TestRetrievalLog:
         assert "| 8.0 | 0.5 |" in text
 
     def test_the_shipped_defaults_are_recorded_rather_than_left_blank(self, draft, monkeypatch):
-        """A default run writes the numbers too. "Blank means default" is
-        the one encoding that cannot work: blank already means "logged
-        before this column existed", and a default that moves later would
-        retroactively change what every old blank row claimed."""
         dossier.init(draft, "survey")
         monkeypatch.setattr(config, "RETRIEVAL_K1", 1.5)
         monkeypatch.setattr(config, "RETRIEVAL_B", 0.75)
@@ -1331,8 +1109,6 @@ class TestRetrievalLog:
         assert "| 1.5 | 0.75 |" in text
 
     def test_a_row_written_before_the_bm25_columns_still_parses(self, draft):
-        """An eight-cell row -- every `retrieval.md` on disk between #455
-        and #788 -- must keep costing exactly what it always has."""
         dossier.init(draft, "survey")
         path = dossier.dossier_dir(draft) / "retrieval.md"
         path.write_text(
@@ -1341,9 +1117,6 @@ class TestRetrievalLog:
         assert retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
 
     def test_the_bm25_columns_do_not_disturb_the_older_ones(self, draft, monkeypatch):
-        """The two new cells go on the end, so `collection` and `origin`
-        stay at their own indices for every reader that took them
-        positionally."""
         dossier.init(draft, "survey")
         monkeypatch.setattr(config, "RETRIEVAL_K1", 3.0)
         monkeypatch.setattr(config, "RETRIEVAL_B", 0.6)
@@ -1358,14 +1131,6 @@ class TestRetrievalLog:
 
 
 class TestRevisionMarker:
-    """`mark_revision` and `retrieval_cost_by_revision`.
-
-    `retrieval.md` rows carry only a date, so two revisions logged on the
-    same day are otherwise indistinguishable -- that is the gap this
-    machinery closes, and it is the thing worth testing directly rather
-    than through `status`'s printed text.
-    """
-
     def test_calls_before_any_marker_are_the_initial_draft_segment(self, draft):
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
@@ -1384,8 +1149,6 @@ class TestRevisionMarker:
         ]
 
     def test_same_day_revisions_are_kept_separate(self, draft):
-        """The whole point: a bare date column can't tell these apart,
-        but two markers can, regardless of what `date.today()` writes."""
         dossier.init(draft, "survey")
         _retrieval.mark_revision(draft, "morning pass")
         dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
@@ -1405,9 +1168,6 @@ class TestRevisionMarker:
         assert [s.label for s in segments] == ["revision 1", "revision 2"]
 
     def test_a_revision_that_logged_nothing_is_dropped_not_zeroed(self, draft):
-        """`mark-revision` costs nothing to call even when draft-reviser
-        step 4 decides no search is needed -- that must not show up as a
-        reported zero-cost revision cluttering the breakdown."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
         _retrieval.mark_revision(draft, "no search needed")
@@ -1417,9 +1177,6 @@ class TestRevisionMarker:
         assert [s.label for s in segments] == ["initial draft", "this one searched"]
 
     def test_marker_numbering_stays_stable_across_a_dropped_revision(self, draft):
-        """The second *displayed* segment is still called "revision 2",
-        not "revision 1" renumbered after the empty one between them was
-        dropped -- numbering tracks marker order, not display order."""
         dossier.init(draft, "survey")
         _retrieval.mark_revision(draft)
         dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
@@ -1430,9 +1187,6 @@ class TestRevisionMarker:
         assert [s.label for s in segments] == ["revision 1", "revision 3"]
 
     def test_no_markers_at_all_is_one_initial_draft_segment(self, draft):
-        """A dossier revised before this existed, or without
-        draft-reviser's loop calling it -- must not error and must not
-        silently drop the only retrieval this draft has."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
         dossier.log_retrieval(draft, "evidence", "q", 1, 3, 50)
@@ -1447,8 +1201,6 @@ class TestRevisionMarker:
         assert [s.label for s in segments] == ["initial draft"]
 
     def test_marker_rows_are_excluded_from_retrieval_cost(self, draft):
-        """A marker records zero retrieval work by construction; counting
-        it as a call would inflate the aggregate by one per revision."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
         _retrieval.mark_revision(draft, "pass two")
@@ -1459,11 +1211,6 @@ class TestRevisionMarker:
         assert (dossier.dossier_dir(draft) / "retrieval.md").is_file()
 
     def test_a_pipe_in_the_label_does_not_break_the_row(self, draft):
-        """Escaped the same way `log_retrieval` escapes a query -- the
-        row must still parse to six cells and split into its own
-        segment, not merge with the next one -- and unescaped back on
-        the way out, so `dossier status` prints what the user wrote
-        rather than the markdown-safe form."""
         dossier.init(draft, "survey")
         _retrieval.mark_revision(draft, "shorten | tighten")
         dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
@@ -1485,8 +1232,6 @@ class TestRevisionMarker:
         assert "1 call(s), 200 characters" in out
 
     def test_status_omits_the_breakdown_with_only_one_segment(self, draft, capsys):
-        """One segment would just repeat the total line under a
-        different label -- not worth the extra output."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
         dossier.main(["status", str(draft)])
@@ -1497,18 +1242,12 @@ class TestRevisionMarker:
         dossier.init(draft, "survey")
         assert dossier.main(["mark-revision", str(draft), "--label", "cli pass"]) == 0
         segments = _retrieval.retrieval_cost_by_revision(dossier.dossier_dir(draft))
-        # No calls logged yet, so the marker alone produces no segment --
-        # confirmed via the row itself instead.
         assert segments == []
         text = (dossier.dossier_dir(draft) / "retrieval.md").read_text()
         assert "| revision | cli pass | 0 | 0 | 0 |" in text
         assert "cli pass" in capsys.readouterr().out
 
     def test_status_lifetime_totals_match_retrieval_cost(self, draft):
-        """`status()` derives its lifetime totals from
-        `retrieval_cost_by_revision`'s segments rather than parsing
-        `retrieval.md` a second time via `retrieval_cost` -- this pins
-        the two to agree regardless of which one changes first."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q1", 15, 15, 100)
         _retrieval.mark_revision(draft, "shorten intro")
@@ -1520,24 +1259,7 @@ class TestRevisionMarker:
         assert (report.retrieval_calls, report.retrieval_chars) == (calls, chars) == (2, 300)
 
 
-# ---------------------------------------------------------------------
-# Corpus drift across every dossier (`status --all`)
-# ---------------------------------------------------------------------
-
-
 def _seed_corpus(entries):
-    """A ledger holding these citekeys, each with a real parsed text file.
-
-    `_seed_ledger` above is enough for the fingerprint tests, which only
-    need citekeys to exist. Query matching needs the text those citekeys
-    rank against, so this writes `content/parsed/<citekey>.txt` and points
-    the ledger's `parsed_path` at it -- the same shape `sync` produces.
-
-    An entry is `(citekey, title, body)`, or `(citekey, title, body,
-    collections)` for a drift-scoping test that needs a citekey inside or
-    outside a Zotero collection -- `collections` a tuple of paths, stored
-    the same way `chitragupta.ledger` stores them (JSON, or NULL for none).
-    """
     import json
 
     from chitragupta import ledger
@@ -1567,9 +1289,6 @@ def _seed_corpus(entries):
 
 @pytest.fixture
 def grounded(draft):
-    """A dossier that cites one paper, rejected another, and logged the
-    query that found them -- the state every drift finding is computed
-    against."""
     dossier.init(draft, "survey")
     target = dossier.dossier_dir(draft)
     (target / "evidence.md").write_text(
@@ -1629,11 +1348,6 @@ class TestRecordedQueries:
         assert _retrieval.recorded_queries(dossier.dossier_dir(draft)) == []
 
     def test_a_revision_label_is_never_reported_as_a_query(self, draft):
-        """A marker's third cell holds `mark_revision`'s `--label` text,
-        not a query -- without this exclusion it would be ranked against
-        the corpus as if someone had searched for it (both here and in
-        every caller: corpus-reviser's sub-theme list, `status --all`'s
-        candidate matching)."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
         _retrieval.mark_revision(draft, "shorten the introduction")
@@ -1651,10 +1365,6 @@ class TestRecordedQueries:
 
 
 class TestRecordedQueriesWithCollection:
-    """`recorded_queries`'s sibling (#254): pairs each query with the
-    collection its call actually ran against, so a caller can honour the
-    scope instead of losing it the way `recorded_queries` alone does."""
-
     def test_an_unscoped_call_pairs_with_an_empty_collection(self, draft):
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
@@ -1720,11 +1430,6 @@ class TestRecordedQueriesWithCollection:
 
 
 class TestRecordedQueriesWithEvidence:
-    """#480: `retrieval.md`'s `results` cell, read back as the binary
-    "did this call return anything" -- the fourth sibling in the family
-    above, and the one `declared_vs_actual` needs to tell a declared
-    query that found nothing from one that found twelve."""
-
     def test_a_call_that_returned_rows_reports_evidence(self, draft):
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100, origin="declared")
@@ -1740,9 +1445,6 @@ class TestRecordedQueriesWithEvidence:
         ]
 
     def test_rows_are_folded_together_before_the_pair_is_deduplicated(self, draft):
-        """The ordering rule: dedupe first and the later row's count is
-        gone, so a query searched twice reports whichever row happened
-        to come first."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "digital twin", 15, 0, 0, origin="declared")
         dossier.log_retrieval(draft, "search", "digital twin", 15, 4, 900, origin="declared")
@@ -1768,10 +1470,6 @@ class TestRecordedQueriesWithEvidence:
         ]
 
     def test_an_unreadable_results_cell_is_not_read_as_empty(self, draft):
-        """A hand-edited row whose `results` cell is not a number says
-        nothing about what came back. Reading it as zero would
-        manufacture a gap out of a typo, which is the one direction this
-        report must not fail in."""
         dossier.init(draft, "survey")
         path = dossier.dossier_dir(draft) / "retrieval.md"
         row = "| 2026-01-01 | search | hand edited | 15 | some | 100 | | declared |\n"
@@ -1787,33 +1485,18 @@ class TestRecordedQueriesWithEvidence:
 
 
 class TestTheExpandedColumn:
-    """`expanded` (#789): what acronym expansion added to the query
-    before it was ranked. The column has no reader of its own -- it is
-    there so a person reading the log can see why a result surfaced on a
-    word they never typed -- so these are about the row surviving, which
-    every existing reader depends on."""
-
     def test_the_expansion_is_written_as_the_ninth_cell(self, draft):
         dossier.init(draft, "survey")
         path = dossier.log_retrieval(
             draft, "search", "DT fidelity", 5, 5, 100, expanded="dt -> digital twin"
         )
         row = path.read_text().splitlines()[-1]
-        # Checked by position rather than by `endswith`, which is what
-        # this test's own name always meant: #788 appended `k1` and `b`
-        # after this cell, so "ninth" and "last" stopped being the same
-        # claim. Every column so far has landed at the end, so this
-        # assertion would have gone stale again on the next one.
         assert [c.strip() for c in row.strip().strip("|").split("|")][8] == "dt -> digital twin"
         assert row.count("|") == 12
 
     def test_a_call_that_expanded_nothing_writes_an_empty_cell(self, draft):
-        """Every call at the shipped default, so this is the ordinary
-        row, not the exceptional one."""
         dossier.init(draft, "survey")
         path = dossier.log_retrieval(draft, "search", "digital twin", 5, 5, 100)
-        # The three caller-supplied cells are empty; the two #788 added
-        # after them are not, because they record the ranker that ran.
         assert path.read_text().splitlines()[-1].endswith("| 100 |  |  |  | 1.5 | 0.75 |")
 
     def test_a_pipe_in_an_expansion_cannot_split_the_row(self, draft):
@@ -1822,19 +1505,12 @@ class TestTheExpandedColumn:
         assert _retrieval.recorded_queries(dossier.dossier_dir(draft)) == ["q"]
 
     def test_a_row_with_an_expansion_still_costs_what_it_cost(self, draft):
-        """The landmine this column had to avoid: `_retrieval_rows`
-        rejected any row that was not 6, 7 or 8 cells, so a nine-cell row
-        would have been *skipped* -- silently dropping the call from
-        every cost total and from `dossier status`'s drift check."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q", 5, 5, 700, expanded="dt -> digital twin")
         segments = _retrieval.retrieval_cost_by_revision(dossier.dossier_dir(draft))
         assert [(s.calls, s.chars) for s in segments] == [(1, 700)]
 
     def test_a_row_written_before_this_column_still_parses(self, draft):
-        """An eight-cell row -- every row logged between #455 and #789 --
-        reads as a call that expanded nothing, which is exactly what it
-        was: there was no expansion to do."""
         dossier.init(draft, "survey")
         path = dossier.dossier_dir(draft) / "retrieval.md"
         row = "| 2026-01-01 | search | old query | 15 | 15 | 100 | | declared |\n"
@@ -1845,10 +1521,6 @@ class TestTheExpandedColumn:
 
 
 class TestRecordedQueriesWithOrigin:
-    """`origin` (#455): a scoped/declared call and a corpus-wide/invented
-    one otherwise wrote byte-identical rows, and nothing downstream could
-    tell a draft that followed its `outline.md` from one that didn't."""
-
     def test_a_declared_call_pairs_with_declared(self, draft):
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100, origin="declared")
@@ -1864,10 +1536,6 @@ class TestRecordedQueriesWithOrigin:
         ]
 
     def test_a_call_with_no_origin_pairs_with_empty(self, draft):
-        """Unlike `collection`, an unset `origin` has no safe default
-        reading -- a pre-outline.md call was neither declared nor
-        extended, so it stays a third, unspecified state rather than
-        silently reading as either."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
         assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
@@ -1875,10 +1543,6 @@ class TestRecordedQueriesWithOrigin:
         ]
 
     def test_a_row_written_before_the_origin_column_pairs_with_empty(self, draft):
-        """The landmine: a pre-#455 seven-cell row (date, mode, query,
-        asked, results, chars, collection) must still parse -- and must
-        not be silently skipped, which is what an unwidened `(6, 7)`
-        guard would do to it."""
         dossier.init(draft, "survey")
         path = dossier.dossier_dir(draft) / "retrieval.md"
         row = "| 2026-01-01 | search | old query | 15 | 15 | 100 | |\n"
@@ -1888,8 +1552,6 @@ class TestRecordedQueriesWithOrigin:
         ]
 
     def test_a_row_written_before_the_collection_column_pairs_with_empty_origin_too(self, draft):
-        """A six-cell row -- pre-#254 -- pads all the way to eight, not
-        just to seven."""
         dossier.init(draft, "survey")
         path = dossier.dossier_dir(draft) / "retrieval.md"
         row = "| 2026-01-01 | search | ancient query | 15 | 15 | 100 |\n"
@@ -1918,16 +1580,11 @@ class TestRecordedQueriesWithOrigin:
         ]
 
     def test_the_landmine_also_costs_correctly_not_only_undercounts_queries(self, draft):
-        """The bug report's other half: an eighth cell must not make the
-        whole row invisible to the cost reader, not only to
-        `recorded_queries`."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 2400, origin="declared")
         assert retrieval_cost(dossier.dossier_dir(draft)) == (1, 2400)
 
     def test_a_row_with_an_empty_query_contributes_no_pair(self, draft):
-        """Skipped the same way `recorded_queries` skips it -- an empty
-        query cell is not a call anyone declared or extended."""
         dossier.init(draft, "survey")
         path = dossier.dossier_dir(draft) / "retrieval.md"
         row = "| 2026-01-01 | search |  | 15 | 15 | 100 | | declared |\n"
@@ -1957,13 +1614,6 @@ class TestSectionCitekeys:
         assert _citekeys.section_citekeys(grounded) == {}
 
     def test_the_at_form_a_draft_uses_is_read_too(self, grounded):
-        """`@key` as well as `` `key` ``.
-
-        The templates show neither, and the skills wrote `sections.md`
-        the way a draft cites -- so the shipped example dossier is all
-        `@key`, and reading only the backticked form silently lost every
-        section mapping it had.
-        """
         (grounded / "sections.md").write_text(
             "# Sections and their citekeys\n\n| section | citekeys |\n|---|---|\n"
             "| 1. First | @a_one_2024, @b_two_2024 |\n"
@@ -1975,8 +1625,6 @@ class TestSectionCitekeys:
         }
 
     def test_an_at_word_with_no_separator_is_not_a_citekey(self, grounded):
-        """The separator requirement is what keeps prose out, and it has
-        to keep doing so now that a bare `@` opens a match."""
         (grounded / "sections.md").write_text(
             "# Sections\n\n| section | citekeys |\n|---|---|\n| 1. First | ask @someone, see @2 |\n"
         )
@@ -2007,13 +1655,6 @@ class TestDrift:
         assert report.candidates[0].queries == ["digital twin"]
 
     def test_a_recorded_question_form_query_finds_what_search_would(self, draft):
-        """DriftIndex.matches() replays a recorded query outside search()
-        -- it must strip interrogatives the same way search() does, or
-        drift reporting silently disagrees with what search() itself
-        would return for the same human-typed query. `what_only_2026`
-        matches nothing but the literal word "what", so it is a false
-        candidate pre-fix and no candidate at all post-fix -- genuinely
-        red before the fix, not vacuously green."""
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         (target / "evidence.md").write_text(
@@ -2061,8 +1702,6 @@ class TestDrift:
         assert report.candidates == []
 
     def test_no_recorded_fingerprint_still_reports_missing_citations(self, grounded):
-        """The fingerprint answers "did the corpus move"; a cited key
-        vanishing is a finding whether or not the dossier recorded one."""
         (grounded / "scope.md").write_text("# Scope\n\n- genre: survey\n")
         _seed_corpus([("other_paper_2025", "Other", "text")])
         report = _drift.drift(grounded)
@@ -2085,13 +1724,6 @@ class TestDrift:
 
 
 class TestSeparatorFreeCitekeys:
-    """M-28 (#506). `_KEY` requires a `_`/`:`/`-` run, so a citekey
-    spelled the way several reference managers spell one by default --
-    `Doe2024`, no separator anywhere -- was invisible to every dossier
-    parse. The dossier contributed nothing, and a cited paper that left
-    the corpus was never reported in `drift().missing`.
-    """
-
     @pytest.fixture
     def separator_free(self, draft):
         dossier.init(draft, "survey")
@@ -2114,16 +1746,10 @@ class TestSeparatorFreeCitekeys:
         assert report.missing == {}
 
     def test_a_separator_free_key_in_the_ledger_counts_as_considered(self, separator_free):
-        """The other direction: `unconsidered` is the ledger minus what the
-        dossier mentions, so a key the parse could not see made a paper the
-        draft actually cites look like one nobody had looked at."""
         _seed_corpus([("Doe2024", "Doe", "text")])
         assert _drift.drift(separator_free).unconsidered == 0
 
     def test_a_prose_word_that_is_not_in_the_ledger_is_still_not_a_citekey(self, separator_free):
-        """What the separator requirement was holding, and still holds: a
-        shapeless token is admitted only by *equalling* a real ledger
-        citekey, so `@someone` cannot become a broken-citation finding."""
         target = separator_free
         (target / "evidence.md").write_text(
             "# Kept evidence\n\n## `Doe2024`\n\nAs @someone put it.\n"
@@ -2133,7 +1759,6 @@ class TestSeparatorFreeCitekeys:
 
 
 def _seed_unparsed(citekey, status="no_pdf"):
-    """One ledger row that is in the .bib but whose PDF never parsed."""
     from chitragupta import ledger
 
     con = ledger.connect()
@@ -2148,9 +1773,6 @@ def _seed_unparsed(citekey, status="no_pdf"):
 
 
 class TestTheCorpusIsParsedRows:
-    """#1118: a row whose PDF never parsed is not citable, so it is not
-    part of the corpus a dossier is measured against either."""
-
     def test_the_corpus_fingerprint_counts_only_parsed_rows(self, isolated_config):
         _seed_ledger(["a_paper_2024", "b_paper_2024"])
         _seed_unparsed("web_page_2024")
@@ -2163,10 +1785,6 @@ class TestTheCorpusIsParsedRows:
 
 
 class TestOnlyADeclaredKeyCanGoMissing:
-    """#1117: prose in `evidence.md` is not a citation. A backticked word
-    such as the skill's name is reported missing only if the dossier
-    declares it -- an `evidence.md` heading or a `sections.md` cell."""
-
     def test_a_backticked_word_in_the_evidence_preamble_is_not_missing(self, draft):
         dossier.init(draft, "tutorial")
         target = dossier.dossier_dir(draft)
@@ -2191,9 +1809,6 @@ class TestOnlyADeclaredKeyCanGoMissing:
         assert _drift.drift(target).missing == {"gone_paper_2024": ["1. First"]}
 
     def test_a_key_cited_only_in_an_evidence_body_is_not_missing(self, draft):
-        """The accepted cost of the fix (plans/1117-1119-citable-means-parsed.md):
-        a key named only in the body of a block whose heading does not open
-        with it is the same shape as the prose #1117 reported."""
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         (target / "evidence.md").write_text(
@@ -2204,12 +1819,6 @@ class TestOnlyADeclaredKeyCanGoMissing:
 
 
 class TestDuplicateEvidenceBlocks:
-    """m-65 (#506). Two `## `key`` blocks for one citekey silently kept
-    the *last*, so a second block -- appended by a later retrieval pass,
-    or by a hand edit that pasted a heading twice -- displaced the
-    evidence a drafting run had already been handed, with nothing
-    anywhere saying so."""
-
     @pytest.fixture
     def doubled(self, draft):
         dossier.init(draft, "survey")
@@ -2239,10 +1848,6 @@ class TestDuplicateEvidenceBlocks:
 
 
 class TestDriftCollectionScoping:
-    """#254: a query scoped with `--collection` must rank candidates over
-    that shelf only, not the whole corpus -- the false-drift bug a
-    collection-scoped draft hit once #229 made scoping reachable."""
-
     def test_a_scoped_query_does_not_surface_a_candidate_outside_its_collection(self, draft):
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
@@ -2304,8 +1909,6 @@ class TestDriftCollectionScoping:
         }
 
     def test_an_unresolvable_recorded_collection_is_reported_not_clean(self, draft, capsys):
-        """A scope recorded before slug paths (`Digital twins > Modelling`)
-        would otherwise filter every candidate away and read as clean."""
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         dossier.log_retrieval(
@@ -2327,9 +1930,6 @@ class TestDriftCollectionScoping:
         assert "Digital twins > Modelling" in out
 
     def test_a_ported_scope_md_covers_old_log_rows(self, draft):
-        """retrieval.md is an append-only log, so an old `groups` value in it
-        is never rewritten; once scope.md records a slug, queries whose
-        logged collection no longer resolves run against that slug."""
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         dossier.log_retrieval(
@@ -2393,15 +1993,6 @@ class TestDriftCollectionScoping:
 
 
 class TestEphemeralIndex:
-    """The drift scan must leave the corpus layer exactly as it found it.
-
-    `chitragupta.retrieval.search()` cannot be called here: it goes through
-    `ledger.connect()`, which creates `content/`, executes the schema and
-    runs migrations, and through `_load_index`, which rewrites
-    `retrieval_index.json` whenever a fingerprint moved -- both of which a
-    read-only report must not do.
-    """
-
     def test_no_retrieval_index_is_written(self, grounded):
         _seed_corpus(
             [
@@ -2425,9 +2016,6 @@ class TestEphemeralIndex:
         assert config.RETRIEVAL_INDEX_PATH.read_bytes() == before
 
     def test_a_warm_cache_entry_is_reused_rather_than_re_tokenized(self, grounded):
-        """Seeding the on-disk cache with a *wrong* term count for a paper
-        proves the cache was read: the match can only come from the cache,
-        since the parsed text says something else entirely."""
         _seed_corpus([("cached_paper_2026", "Cached", "sourdough starter")])
         from chitragupta import retrieval_cache
 
@@ -2439,10 +2027,6 @@ class TestEphemeralIndex:
         config.RETRIEVAL_INDEX_PATH.write_text(
             __import__("json").dumps(
                 {
-                    # The live version, not a literal: this case is about
-                    # a *warm* entry being reused, so an entry written
-                    # under a superseded indexing rule (#768 bumped it to
-                    # 2) would be discarded before the reuse under test.
                     "version": retrieval_cache._INDEX_SCHEMA_VERSION,
                     "items": {
                         "cached_paper_2026": {
@@ -2495,8 +2079,6 @@ class TestDriftAll:
         assert dossier.drift_all() == []
 
     def test_the_ledger_is_read_once_for_the_whole_sweep(self, isolated_config, monkeypatch):
-        """Per-dossier ledger reads made `--all` cost O(dossiers) full
-        table scans plus one corpus tokenization each."""
         for name in ("alpha", "beta", "gamma"):
             path = config.DRAFTS_DIR / f"{name}.md"
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -2506,10 +2088,6 @@ class TestDriftAll:
         _seed_corpus([("fresh_twin_2026", "Fresh", "digital twin")])
 
         calls = []
-        # Patched on _drift, not on dossier: drift_all() calls _corpus_rows()
-        # through _drift.py's own `from chitragupta.dossier import _corpus_rows`,
-        # which is its own name binding to the same function object --
-        # patching chitragupta.dossier's copy doesn't reach it (#219).
         real = _drift._corpus_rows
         monkeypatch.setattr(_drift, "_corpus_rows", lambda: calls.append(1) or real())
         dossier.drift_all()
@@ -2539,8 +2117,6 @@ class TestStatusAllCLI:
         assert "unavailable" in capsys.readouterr().out
 
     def test_an_uncheckable_dossier_is_not_reported_as_current(self, grounded, capsys):
-        """No findings is not the same as nothing to find. Calling an
-        unchecked dossier current is the one way this could mislead."""
         assert dossier.main(["status", "--all"]) == 0
         out = capsys.readouterr().out
         assert "could not be checked" in out
@@ -2548,8 +2124,6 @@ class TestStatusAllCLI:
         assert "Every dossier is current" not in out
 
     def test_a_mixed_sweep_reports_both_the_drift_and_the_unknown(self, grounded, capsys):
-        """One dossier under a readable ledger, one that predates it --
-        the summary has to carry both facts, not just the louder one."""
         stray = config.DOSSIERS_DIR / "orphan"
         stray.mkdir(parents=True)
         (stray / "scope.md").write_text("# Scope\n")
@@ -2585,11 +2159,6 @@ class TestStatusAllCLI:
         assert len(payload["dossiers"]) == 1
 
     def test_json_reports_a_missing_dossier_rather_than_exiting_1(self, draft, capsys):
-        """`--json` returns before the `is_dir()` check the text path
-        exits 1 on, so a draft with no dossier still produces an envelope
-        and a 0. `draft-reviser` therefore has to branch on the payload
-        rather than the status code -- pinned so the contract cannot
-        change under it silently."""
         _seed_corpus([("fresh_twin_2026", "Fresh", "digital twin")])
         assert dossier.main(["status", str(draft), "--json"]) == 0
         (entry,) = __import__("json").loads(capsys.readouterr().out)["dossiers"]
@@ -2627,14 +2196,10 @@ class TestStatusAllCLI:
         _seed_corpus([("survivor_2026", "Survivor", "sourdough")])
         dossier.main(["status", "--all"])
         out = capsys.readouterr().out
-        # 12 from sections.md, plus `kept_paper_2024` from evidence.md --
-        # a citekey counts as cited from either file.
         assert "13 cited citekey(s) no longer in the ledger" in out
         assert "... and 3 more" in out
 
     def test_missing_citations_are_reported_without_any_candidates(self, grounded, capsys):
-        """The two findings are independent: a draft can cite a paper that
-        left without the corpus having gained anything it would want."""
         _seed_corpus([("survivor_2026", "Survivor", "sourdough bread")])
         dossier.main(["status", "--all"])
         out = capsys.readouterr().out
@@ -2652,8 +2217,6 @@ class TestDriftEdges:
         assert _citekeys.section_citekeys(grounded) == {"also_kept_2024": ["2. Second"]}
 
     def test_a_query_of_nothing_but_stopwords_ranks_nothing(self, grounded):
-        """`_tokenize` drops stopwords, so "the and of" reduces to no terms
-        at all -- scoring it would rank the whole corpus by an empty query."""
         (grounded / "retrieval.md").write_text(
             "# Retrieval calls\n\n| date | mode | query | asked | results | chars |\n"
             "|---|---|---|---|---|---|\n| 2026-01-01 | search | the and of | 5 | 5 | 100 |\n"
@@ -2687,11 +2250,6 @@ class TestRejectedReasons:
 
 
 class TestReconsider:
-    """A paper this draft already read and declined, which its queries
-    still reach. Not drift -- it was declined against a corpus that
-    contained it -- but the reason is what a re-grounding pass needs in
-    order to decide whether the decision still holds."""
-
     def test_a_still_matching_rejection_is_offered_back_with_its_reason(self, grounded):
         _seed_corpus(
             [
@@ -2733,10 +2291,6 @@ class TestReconsider:
         assert _drift.drift(grounded).reconsider == []
 
     def test_it_does_not_by_itself_make_a_dossier_drifted(self, grounded, capsys):
-        """A rejection that still matches is true on every sweep forever.
-        Counting it as drift would mark every dossier that ever declined a
-        paper permanently stale, which is the signal this command exists
-        to give."""
         _seed_corpus(
             [
                 ("kept_paper_2024", "Kept", "digital twin"),
@@ -2796,8 +2350,6 @@ class TestReconsider:
         assert "... and 2 more" in out
 
     def test_the_trailer_does_not_contradict_the_reconsider_list(self, grounded, capsys):
-        """ "nothing here was turned down before" is false the moment a
-        reconsider list is on screen."""
         _seed_corpus(
             [
                 ("turned_down_2023", "Turned down", "digital twin"),
@@ -2808,19 +2360,6 @@ class TestReconsider:
         out = capsys.readouterr().out
         assert "turned down before" not in out
         assert "the reconsider list is" in out
-
-
-# ---------------------------------------------------------------------
-# The reporting CLI's own output
-#
-# `status`, `list`, `sections` and `restore` are read by a human deciding
-# what to do next, and most of what they print is a branch: a dossier
-# whose draft is gone, a file that was never created, a corpus that moved
-# by more than fits on a screen. Those branches were reachable only
-# through `main()`, so they went unexercised while the functions beneath
-# them were fully covered -- which is the shape of gap that lets a report
-# say something untrue without any test noticing.
-# ---------------------------------------------------------------------
 
 
 class TestPathsOutsideTheContentTree:
@@ -2838,9 +2377,6 @@ class TestPathsOutsideTheContentTree:
 
 class TestUnreadableLedger:
     def test_a_ledger_that_cannot_be_opened_reports_unavailable(self, isolated_config, monkeypatch):
-        """`exists()` is not `openable()`. A directory where the ledger
-        should be is the cheap way to prove the difference, and the scan
-        has to survive it rather than raise into a report."""
         fake = config.CONTENT_DIR / "ledger.sqlite"
         fake.mkdir(parents=True)
         monkeypatch.setattr(config, "LEDGER_PATH", fake)
@@ -2912,8 +2448,6 @@ class TestStatusCLIOutput:
         assert "extended  'surrogate model'" in out
 
     def test_outline_block_names_a_declared_query_that_returned_nothing(self, draft, capsys):
-        """#480: the call ran, so it stays in the `run` count -- and the
-        block says how many of those came back with nothing, and which."""
         dossier.init(draft, "survey", outline=True)
         (dossier.dossier_dir(draft) / "outline.md").write_text(
             "## Failure modes\n\nbrief: text\n\nqueries:\n- timestep mismatch\n"
@@ -3017,10 +2551,6 @@ class TestRestoreCLIOutput:
     def test_a_directory_member_is_carried_but_not_counted_as_a_file(
         self, isolated_config, tmp_path, capsys
     ):
-        """`export` only ever adds files, but a hand-rolled or
-        hand-edited bundle can carry directory entries, and the plan
-        counts files -- an empty directory is not something to warn about
-        overwriting."""
         archive = tmp_path / "with-dir.tar.gz"
         staging = tmp_path / "drafts"
         staging.mkdir()
@@ -3046,10 +2576,6 @@ class TestRestoreCLIOutput:
         assert "... and 2 more" in out
 
     def test_a_corpus_that_only_shrank_reports_drift_with_nothing_to_look_at(self, draft, capsys):
-        """Drift is a digest comparison, so losing a paper moves it just
-        as gaining one does -- but there is then nothing "never
-        considered" to list, and the report must not print an empty
-        heading."""
         _seed_ledger(["a_paper_2024", "b_paper_2024"])
         dossier.init(draft, "survey")
         (dossier.dossier_dir(draft) / "evidence.md").write_text(
@@ -3068,22 +2594,7 @@ class TestRestoreCLIOutput:
         assert "appear nowhere in this dossier" not in out
 
 
-# ---------------------------------------------------------------------
-# Dispatching from the dossier (`brief`)
-# ---------------------------------------------------------------------
-#
-# The reason these exist is a token bill rather than a correctness one.
-# A skill that fans out to parallel section writers has to hand each one
-# its source material, and pasting that material into the dispatch prompt
-# spends it in the *output* pool -- the expensive direction. `brief` is
-# what a dispatch prompt points at instead, so the tests that matter are
-# the ones about resolving the right rows and about saying so loudly when
-# there are none: a subagent handed a pointer to nothing writes an
-# ungrounded section, and nothing downstream would report why.
-
-
 def _fill_dossier(draft, evidence="", sections_rows=""):
-    """A dossier whose evidence.md and sections.md hold real rows."""
     dossier.init(draft, "deep-research")
     target = dossier.dossier_dir(draft)
     if evidence:
@@ -3120,9 +2631,6 @@ class TestEvidenceBlocks:
         assert "ferko_architecting_2022" in _citekeys.evidence_blocks(target)
 
     def test_a_heading_without_backticks_keys_on_its_text(self, draft):
-        """A hand-written dossier is a supported input everywhere else
-        here, and a block nobody can address is a block that gets
-        re-retrieved."""
         target = _fill_dossier(draft, evidence="## ferko_architecting_2022\n\nbody\n")
         assert "ferko_architecting_2022" in _citekeys.evidence_blocks(target)
 
@@ -3147,9 +2655,6 @@ class TestCitekeysBySection:
         }
 
     def test_a_planned_section_with_no_citekeys_yet_is_still_a_section(self, draft):
-        """Phase 4 writes the plan before Phase 5 dispatches, and a
-        section it has not assigned evidence to must be reported as empty
-        rather than as unknown -- the two want opposite fixes."""
         target = _fill_dossier(draft, sections_rows="| 4. Open questions |  |\n")
         assert _citekeys.citekeys_by_section(target) == {"4. Open questions": []}
 
@@ -3210,8 +2715,6 @@ class TestBrief:
         assert report.section == "2. Failure modes"
 
     def test_an_ambiguous_section_matches_nothing_and_offers_the_candidates(self, draft):
-        """Guessing between two sections would hand a writer someone
-        else's evidence, which reads as a plausible section and is wrong."""
         target = _fill_dossier(
             draft,
             evidence=_TWO_BLOCKS,
@@ -3258,9 +2761,6 @@ class TestBriefCli:
         assert "composition rule" not in out
 
     def test_check_reports_the_count_without_the_bodies(self, draft, capsys):
-        """What the orchestrator runs before dispatching: it needs to know
-        the rows are there, and reading them into its own context is the
-        cost the whole mechanism exists to avoid."""
         _fill_dossier(draft, evidence=_TWO_BLOCKS)
         assert dossier.main(["brief", str(draft), "ferko_architecting_2022", "--check"]) == 0
         captured = capsys.readouterr()
@@ -3299,8 +2799,6 @@ class TestBriefCli:
         assert "sections.md" in capsys.readouterr().err
 
     def test_nothing_transcribed_exits_nonzero_and_names_the_cause(self, draft, capsys):
-        """The failure this makes loud. Before it, an orchestrator that
-        skipped its transcription lost six packets and nothing said so."""
         _fill_dossier(draft)
         assert dossier.main(["brief", str(draft), "ferko_architecting_2022"]) == 1
         err = capsys.readouterr().err
@@ -3317,9 +2815,6 @@ class TestBriefCli:
         assert "never_seen_2020" in captured.err
 
     def test_no_selector_at_all_is_an_error_rather_than_the_whole_file(self, draft, capsys):
-        """Defaulting to "print everything" would put the whole of
-        evidence.md into the reader's context, which is what a caller
-        reaching for `brief` is trying not to do."""
         _fill_dossier(draft, evidence=_TWO_BLOCKS)
         assert dossier.main(["brief", str(draft)]) == 1
         assert "--section" in capsys.readouterr().err
@@ -3329,8 +2824,6 @@ class TestBriefCli:
         assert "init" in capsys.readouterr().err
 
     def test_a_planned_section_with_no_evidence_assigned_says_which_gap(self, draft, capsys):
-        """Distinct from a section name that matched nothing: this row
-        exists, and it is Phase 4's plan that is incomplete."""
         _fill_dossier(draft, evidence=_TWO_BLOCKS, sections_rows="| 4. Open questions |  |\n")
         assert dossier.main(["brief", str(draft), "--section", "Open questions"]) == 1
         assert "planned but has no citekeys" in capsys.readouterr().err
@@ -3338,14 +2831,6 @@ class TestBriefCli:
     def test_a_mistyped_dossier_path_gets_the_mirroring_rule_not_init(
         self, isolated_config, capsys
     ):
-        """`brief` takes either a draft path or a dossier directory, and
-        the two wrong-path cases have to say different things. A draft
-        with no dossier yet gets `init <that draft>`, which is the right
-        command. A dossier path that resolves to nothing never reaches
-        that suggestion -- `dossier_dir` refuses it first, because
-        `init` would not accept it -- and says which rule was broken
-        instead. `status` behaves the same way; this pins that they
-        agree."""
         config.DRAFTS_DIR.mkdir(parents=True)
         assert dossier.main(["brief", "content/dossiers/nope", "a_b_2024"]) == 1
         err = capsys.readouterr().err
@@ -3354,16 +2839,6 @@ class TestBriefCli:
 
 
 class TestAttributeCitekeys:
-    """Deriving `sections.md` from the draft (#89).
-
-    The relation is mechanical -- heading line range x citekey line
-    number -- and a `sections.md` that disagrees with the draft hands a
-    reviser a wrong answer about which section owns a citation. So what
-    is pinned here is the join itself, both syntaxes, and the two cases
-    that have no obvious right answer: a key cited above every heading,
-    and a heading containing the character the table is delimited by.
-    """
-
     MD = (
         "Opening prose citing [@early_2020].\n"
         "\n"
@@ -3384,9 +2859,6 @@ class TestAttributeCitekeys:
     )
 
     def test_latex_mode_keeps_a_citation_between_latex_quotes(self):
-        # In a .tex draft a backtick is an open quote; without LaTeX-aware
-        # blanking the span between two ``quoted'' phrases read as inline
-        # code and the citation inside it vanished from the derived table.
         text = (
             "## 1. Background\n"
             "\n"
@@ -3412,10 +2884,6 @@ class TestAttributeCitekeys:
         assert background.count("a_one_2024") == 1
 
     def test_a_citekey_inside_a_fence_is_not_attributed(self):
-        """`sections()` already skips fenced code for line ranges, and
-        `extract_citekeys` skips it for keys -- so a `[@key]` printed by
-        the shipped example tutorial's own Python must not become
-        evidence."""
         per_section, unattributed = _sections.attribute_citekeys(self.MD)
         every = [key for _, keys in per_section for key in keys] + unattributed
         assert "fenced_9999" not in every
@@ -3458,9 +2926,6 @@ class TestSectionsMarkdown:
         assert "| Title |  |" in table
 
     def test_it_round_trips_through_the_reader(self, tmp_path):
-        """The file has one parser (`citekeys_by_section`), and this is
-        the other end of it: what is derived here must read back as the
-        same relation, or a reviser and a writer disagree."""
         (tmp_path / "sections.md").write_text(
             _sections.sections_markdown(TestAttributeCitekeys.MD), encoding="utf-8"
         )
@@ -3471,9 +2936,6 @@ class TestSectionsMarkdown:
         }
 
     def test_a_pipe_in_a_heading_survives_the_round_trip(self, tmp_path):
-        """A `|` in a heading would otherwise cut the row in two. It is
-        escaped on the way out and unescaped on the way back, so the
-        section name matches what `sections()` reports for the draft."""
         text = "## Results | caveats\n\nA claim [@a_one_2024].\n"
         (tmp_path / "sections.md").write_text(_sections.sections_markdown(text), encoding="utf-8")
         assert r"| Results \| caveats |" in (tmp_path / "sections.md").read_text()
@@ -3521,26 +2983,7 @@ class TestSectionsCitekeysCli:
         assert "No headings" in capsys.readouterr().err
 
 
-# ---------------------------------------------------------------------
-# A2 (#306): evidence.md's claim:/quote: split, and its self-check
-# (chitragupta/dossier/_evidence_check.py, plans/a2-claim-quote-split.md).
-#
-# `evidence_blocks()` is unchanged by A2 -- it was already shape-agnostic
-# (its own docstring says so) -- so the two round-trip tests below are
-# characterization tests pinning that pre-existing coexistence guarantee,
-# not TDD red-then-green: they pass before this module exists too. What
-# is new is `_evidence_check`, tested below them.
-# ---------------------------------------------------------------------
-
-
 class TestEvidenceBlockSpans:
-    """Line spans, not reconstructed text -- the substring a block
-    reconstructs to is not in general present in the file it came from
-    (#701). `evidence_blocks` rejoins with `\\n` after `.rstrip()`, so
-    the three shapes below each break a substring match while the
-    span stays exact.
-    """
-
     def _spans(self, draft, text):
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
@@ -3548,13 +2991,6 @@ class TestEvidenceBlockSpans:
         return target, _citekeys.evidence_block_spans(target)
 
     def test_crlf_endings_still_span_exactly(self, draft):
-        """The case that falsified the first design: with CRLF every
-        block's reconstruction fails a substring match, so a
-        substring-matching prune silently did nothing at all.
-
-        The span covers the blank separator line too -- the residue
-        rule -- so joining it back yields the block *and* the blank
-        line, with the file's own `\\r\\n` endings intact."""
         text = "## `a_2024`\r\nrelevance: one\r\n\r\n## `b_2024`\r\nrelevance: two\r\n"
         target, spans = self._spans(draft, text)
         assert spans == {"a_2024": (0, 3), "b_2024": (3, 5)}
@@ -3563,8 +2999,6 @@ class TestEvidenceBlockSpans:
         lines = raw.splitlines(keepends=True)
         start, end = spans["a_2024"]
         assert "".join(lines[start:end]) == "## `a_2024`\r\nrelevance: one\r\n\r\n"
-        # And what survives a delete keeps CRLF rather than being
-        # rewritten to LF, which a rebuild from "\n".join would do.
         assert "".join(lines[:start] + lines[end:]) == ("## `b_2024`\r\nrelevance: two\r\n")
 
     def test_no_trailing_newline_spans_the_last_block(self, draft):
@@ -3605,8 +3039,6 @@ _PRUNE_EVIDENCE = (
 
 
 def _prune_fixture(draft):
-    """A dossier where `cut_2023` is recorded and uncited, and
-    `kept_2024` is recorded and still cited."""
     dossier.init(draft, "survey")
     target = dossier.dossier_dir(draft)
     (target / "evidence.md").write_text(_PRUNE_EVIDENCE, encoding="utf-8")
@@ -3615,10 +3047,6 @@ def _prune_fixture(draft):
 
 
 class TestPruneEvidence:
-    """`dossier prune`: the removal primitive #701's sub-defect 2 asked
-    for. Dry run by default, `evidence.md` only, and refusing rather
-    than half-doing anything ambiguous."""
-
     def test_a_dry_run_writes_nothing_at_all(self, draft):
         target = _prune_fixture(draft)
         path = target / "evidence.md"
@@ -3652,11 +3080,6 @@ class TestPruneEvidence:
         assert report == {"never_heard_of_2019": "not recorded in this dossier"}
 
     def test_apply_preserves_crlf_endings_in_the_surviving_text(self, draft):
-        """Through `prune_evidence` itself, not a hand join: the first
-        version read with universal newlines, which rewrites CRLF to
-        `\\n` *before* `keepends` sees it, so pruning one block silently
-        converted the whole file to LF. A test that joined raw lines
-        itself passed on that; only reading the file back catches it."""
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         path = target / "evidence.md"
@@ -3676,9 +3099,6 @@ class TestPruneEvidence:
         assert "\r\n" in raw, "the file's own endings must survive a prune"
 
     def test_a_cited_sections_only_citekey_is_not_called_unrecorded(self, draft):
-        """It has no `evidence.md` span, so inferring "not recorded"
-        from the absence of one would call a recorded, cited citekey
-        unrecorded -- and that message is one a person acts on."""
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         (target / "sections.md").write_text(
@@ -3689,8 +3109,6 @@ class TestPruneEvidence:
         assert report == {"cited_2024": "still cited -- not an orphan"}
 
     def test_a_sections_only_orphan_names_the_other_command(self, draft):
-        """`sections.md` has a working regeneration primitive already,
-        so prune points at it rather than growing a second writer."""
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         (target / "sections.md").write_text(
@@ -3700,9 +3118,6 @@ class TestPruneEvidence:
         assert "sections --citekeys --write" in report["row_only_2021"]
 
     def test_a_duplicated_block_is_refused_not_half_pruned(self, draft):
-        """Removing one of two leaves the key recorded and uncited while
-        reporting success -- the orphan survives and the next run still
-        names it."""
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         path = target / "evidence.md"
@@ -3791,24 +3206,6 @@ class TestEvidenceBlocksCoexistence:
 
 
 class TestOverlapScore:
-    """chitragupta/dossier/_evidence_check.py::overlap_score -- the pure
-    stemmed-bigram comparison the self-check is built on. Fixture pairs
-    and their measured scores (n=2, this repo's own corpus tooling):
-
-    - a quote reworded (clauses swapped, no new words) scores 0.5-0.75
-    - a genuine restatement (same topic, different structure and words)
-      scores ~0.08
-    - a quote too short to form one bigram has nothing to compare
-
-    n=2 rather than overlap_skipgram's own DEFAULT_N=5: a claim/quote
-    pair is a sentence, not a document, and at n=5 a short pair never
-    reaches one gram at all. n=2 was checked against these same fixtures
-    before n=3 was ruled out: n=3 still separates the two long fixtures
-    but collapses the short reworded one to 0.33, under a threshold that
-    catches the long case -- n=2 is the one width that separates every
-    fixture tried.
-    """
-
     QUOTE = (
         "digital twins for software engineers require continuous "
         "synchronization between the physical system and its virtual "
@@ -3838,10 +3235,6 @@ class TestOverlapScore:
         assert _evidence_check.overlap_score("the twins compose from parts", "twins") is None
 
     def test_a_short_quote_quantizes_to_whole_steps(self):
-        # Two stemmed content words is exactly one bigram, so the only
-        # scores possible are 0.0 and 1.0 -- never a fraction. A
-        # one-clause quote is a realistic input, not an edge case to
-        # special-case away.
         assert _evidence_check.overlap_score("the twins compose from parts", "twins compose") == 1.0
         assert _evidence_check.overlap_score("a reusable module design", "twins compose") == 0.0
 
@@ -3878,9 +3271,6 @@ class TestRewordedClaims:
         assert _evidence_check.reworded_claims(target) == {}
 
     def test_a_legacy_support_only_block_has_nothing_to_check(self, draft):
-        """No `claim:` field means nothing to compare it against -- the
-        self-check only ever applies to a block the new contract wrote,
-        per the plan's migration rule."""
         target = _fill_dossier(draft, evidence=_LEGACY_SUPPORT_ONLY_BLOCK)
         assert _evidence_check.reworded_claims(target) == {}
 
@@ -3889,10 +3279,6 @@ class TestRewordedClaims:
         assert _evidence_check.reworded_claims(target) == {}
 
     def test_a_field_typed_with_no_value_is_dropped_not_recorded_empty(self, draft):
-        """A blank `claim:` (nothing typed after the colon) is dropped
-        rather than kept as an empty string that happens to be falsy --
-        so a block with a blank claim: has nothing to compare its
-        quote: against, the same as a block with no claim: line at all."""
         target = _fill_dossier(
             draft,
             evidence=(
@@ -3933,10 +3319,6 @@ class TestCheckEvidenceCommand:
 
 
 class TestSeveralQuotes:
-    """#1174: `quote:` may repeat, and `quotes()` reads every one,
-    normalised. The other fields stay single-valued, and a repeat of one
-    is warned about rather than dropped without a word."""
-
     def test_every_quote_is_read_in_file_order_and_a_repeat_counted_once(self):
         block = "claim: c\nquote: first span\nrelevance: r\nquote: second span\nquote: first span\n"
         assert _evidence_check.quotes(block) == ["first span", "second span"]
@@ -4019,10 +3401,6 @@ class TestSeveralQuotes:
 
 
 class TestAValueEndsAtTheNextFieldLine:
-    """A line shaped like a field this parser does not read ends the value
-    above it. Before, a `used in:` note under a `quote:` was checked, and
-    printed in the sidecar, as part of the quotation."""
-
     def test_a_bulleted_note_under_a_wrapped_quote_is_not_quoted(self):
         block = (
             "- claim: c\n"
@@ -4070,8 +3448,6 @@ class TestAValueEndsAtTheNextFieldLine:
 
 
 class TestRecordedDraftDigest:
-    """`scope.md`'s `- draft digest:` line -- #454, FEATURE-ROADMAP.md's E3."""
-
     def test_a_freshly_initialised_dossier_has_none_recorded(self, draft):
         dossier.init(draft, "survey")
         assert _draft_fingerprint.recorded_draft_digest(dossier.dossier_dir(draft)) is None
@@ -4117,11 +3493,6 @@ class TestStamp:
             _draft_fingerprint.stamp(draft)
 
     def test_refuses_a_draft_file_that_does_not_exist(self, draft):
-        """A dossier that outlived its draft (the draft was moved or
-        deleted) must not be misreported as "no dossier" -- the two want
-        different fixes, and `stamp()` is the one place a caller could
-        otherwise silently write a fingerprint for a file that isn't
-        there to fingerprint."""
         dossier.init(draft, "survey")
         draft.unlink()
         with pytest.raises(FileNotFoundError, match="No draft at"):
@@ -4129,10 +3500,6 @@ class TestStamp:
 
 
 class TestDraftStaleness:
-    """The four classes are computed only once the fingerprint says the
-    draft moved -- gated so `status` stays quiet on a healthy, unedited
-    draft rather than reporting them unconditionally on every run."""
-
     def test_never_stamped_reports_no_findings(self, draft):
         dossier.init(draft, "survey")
         report = _draft_fingerprint.staleness(draft)
@@ -4198,9 +3565,6 @@ class TestDraftStaleness:
         assert "appears nowhere in the draft" in report.desynced_math[0]
 
     def test_a_math_gap_is_not_reported_as_desync(self, draft):
-        """A span with no row at all is a *gap*, not a desync -- it never
-        had a row to fall out of sync with. Conflating the two would
-        misreport ordinary unmapped mathematics as "the draft moved"."""
         dossier.init(draft, "survey")
         draft.write_text(draft.read_text(encoding="utf-8") + "\nSpeed `k = 4`.\n")
         (dossier.dossier_dir(draft) / "math.md").write_text("| `k = 4` | `k = 4` |\n")
@@ -4211,16 +3575,7 @@ class TestDraftStaleness:
 
 
 class TestRecordedButUncited:
-    """The stamp-independent half of the same question `staleness`'s
-    `orphaned_evidence` answers -- see issue #701. Computed without a
-    baseline, and over `sections.md` as well as `evidence.md`, because
-    the review agenda has to report this on a dossier nobody stamped.
-    """
-
     def test_an_unstamped_dossier_still_reports(self, draft):
-        """The whole point of the new function: `staleness` returns
-        nothing at all without a prior `dossier stamp`, so a draft
-        written before stamping existed can never answer this."""
         target = _fill_dossier(draft, evidence=_TWO_BLOCKS)
         assert _draft_fingerprint.recorded_draft_digest(target) is None
         assert _draft_fingerprint.staleness(draft).orphaned_evidence == []
@@ -4241,9 +3596,6 @@ class TestRecordedButUncited:
         assert found["talasila_composable_2025"] == ["evidence"]
 
     def test_a_sections_row_is_reported_too(self, draft):
-        """Sub-defect 1: `staleness` differences `evidence.md` alone, so
-        a citekey surviving only in a `sections.md` row went unreported
-        on every surface."""
         _fill_dossier(draft, sections_rows="| 1. First | `ferko_architecting_2022` |\n")
         assert _draft_fingerprint.recorded_but_uncited(draft) == {
             "ferko_architecting_2022": ["sections"]
@@ -4330,10 +3682,6 @@ class TestStampCLI:
 
 
 class TestWhatCountsAsDeclared:
-    """The line `declared_citekeys` holds: an `evidence.md` heading is a
-    structural declaration and may carry a shape `_KEY` refuses, but only
-    where the heading *opens* with the delimited token."""
-
     def test_a_heading_with_a_trailing_note_still_declares(self, draft):
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
@@ -4358,18 +3706,6 @@ class TestWhatCountsAsDeclared:
 
 
 class TestPassingKnownOnlyEverAdds:
-    """The invariant that makes M-28's widening safe, and the one a
-    filtered single scan quietly broke: `known` is a *union* with the
-    strict scan, never a substitution for it.
-
-    The loose scan reads the gate's own citekey grammar, so
-    `@smith_x_2024.v2` tokenises loosely as `smith_x_2024.v2` -- neither
-    in any ledger nor strictly key-shaped, while the strict scan finds
-    `smith_x_2024` inside it. Read through a filtered loose scan, a key
-    the strict pattern had always found disappeared the moment a caller
-    passed `known`, which is a false negative on `drift().missing`.
-    """
-
     @pytest.mark.parametrize(
         "text",
         [

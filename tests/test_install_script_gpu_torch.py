@@ -1,15 +1,3 @@
-"""`install_full_pipeline.sh gpu-torch` run for real, up to the point
-where it would reinstall torch, against a venv with no pip module.
-
-`chitragupta install gpu-torch` points the stage at `sys.executable`,
-and the stage runs pip as `<python> -m pip` (#985). A venv made by
-`uv venv` without `--seed`, or by `python -m venv --without-pip`, has no
-pip module for that to run, and the stage used to fail there on "No
-module named pip" without saying why. A fake `nvidia-smi` reporting a
-CUDA ceiling is enough to reach that point: the venv has no torch, so
-torch cannot see the GPU and the stage goes on to pick a wheel tag.
-"""
-
 import os
 import shutil
 import subprocess
@@ -36,11 +24,6 @@ def test_a_venv_with_no_pip_module_is_named_before_any_reinstall(tmp_path):
     nvidia_smi = fake_bin / "nvidia-smi"
     nvidia_smi.write_text("#!/bin/sh\necho 'CUDA Version: 12.4'\n", encoding="utf-8")
     nvidia_smi.chmod(0o755)
-    # Never the real one. Past the check, the stage's restore fallback runs
-    # `uv sync --extra enrich` from this checkout into whatever venv it is
-    # pointed at -- which, with Poetry in uv's place, once wrote the whole
-    # enrich stack into the user's site-packages when this test ran
-    # against the unfixed script.
     uv = fake_bin / "uv"
     uv.write_text("#!/bin/sh\necho 'fake uv: not installing' >&2\nexit 1\n", encoding="utf-8")
     uv.chmod(0o755)

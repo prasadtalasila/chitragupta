@@ -1,10 +1,3 @@
-"""Twin agreement (#1056): what `figure check` reads from a figure's
-source to compare against its ASCII twin, and the four rules it reports.
-
-Source only, so nothing here needs TeX. The pairs under
-tests/fixtures/figure/twin/ are the rules' both polarities as files.
-"""
-
 from pathlib import Path
 
 import pytest
@@ -80,8 +73,6 @@ class TestWords:
         }
 
     def test_a_word_no_ascii_twin_can_spell_is_not_required(self):
-        """WRITING-STANDARDS §10 holds the twin to 7-bit, so `µs` and
-        `Δt` are words it could never carry."""
         assert _twin.words("5 µs, Δt and café") == {"5", "and"}
 
 
@@ -130,8 +121,6 @@ class TestNames:
         assert _twin.names(_picture(r"\node at ($(a)+(1,0)$) {X};")) == [Text("X", "X")]
 
     def test_a_label_carrying_a_loop_variable_is_not_compared(self):
-        """Each pass sets a different label (`e1`, `e2`), so the text in
-        the source is none of them."""
         source = _picture(
             "\\foreach \\n/\\x in {1/0, 2/1} {\\node (s\\n) at (\\x,0) {e\\n};}\n\\node (k) {Kept};"
         )

@@ -1,11 +1,3 @@
-"""Tests for chitragupta/draft_diff's revision-log linking and hand-edit flag.
-
-`entries()` and `attach()` are pure, so most tests build a short
-`revisions.md` and a `ChangeReport` with hand-made `SectionChange`s. The
-two `hand_edited()` tests need a real dossier, since the stamp lives in
-its `scope.md`.
-"""
-
 from chitragupta import config, dossier
 from chitragupta.dossier import _create, _draft_fingerprint
 from chitragupta.draft_diff._compare import ChangeReport, SectionChange
@@ -86,7 +78,6 @@ def test_attach_matches_by_heading_number_too():
     by_title = {c.title: c.log for c in report.sections}
     assert by_title["4. Integrating with everything else"] == ["2026-11-12 rework"]
     assert by_title["5a. A worked estimate"] == ["2026-11-12 rework"]
-    # Named but unchanged: matched, so not reported, and nothing to attach.
     assert by_title["1. Background"] == []
     assert report.unmatched_log_sections == []
 
@@ -95,7 +86,6 @@ def test_attach_reports_names_matching_no_heading():
     report = _report(*_sections())
     log = [LogEntry("2026-11-12", "rework", ["9", "Conclusions", "7. Old notes", "9"])]
     attach(report, log, "2026-11-01")
-    # A removed section's title is matched; it just has nowhere to attach.
     assert report.unmatched_log_sections == ["9", "Conclusions"]
     assert all(not c.log for c in report.sections)
 
@@ -155,5 +145,4 @@ def test_revisions_template_names_the_sections_line():
         "section it changed; draft diff links entries to sections through it."
     )
     assert sentence in " ".join(_create._REVISIONS_TEMPLATE.split())
-    # The template itself parses to no entries.
     assert entries(_create._REVISIONS_TEMPLATE) == []

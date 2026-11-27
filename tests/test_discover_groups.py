@@ -1,12 +1,3 @@
-"""`discover --groups N`: the merge-tree cut's terminal twin (#709).
-
-The property under test: the terminal cuts the same stored `hierarchy`
-the app cuts, with the same union-find, the same id-collision
-hardening, the same labels and the same nearest-cut honesty --
-`tests/webapp/cut_cases.json` is the contract, asserted from node by
-tests/webapp/groups.test.js and from here by this module.
-"""
-
 import json
 from pathlib import Path
 
@@ -39,8 +30,6 @@ class TestSharedCases:
             assert got == row["expected_threshold"], row["name"]
 
 
-# The standard fixture's graph, given the hierarchy the app's own group
-# tests use: the two topics merge at 0.31.
 def grouped_graph() -> dict:
     graph = json.loads(json.dumps(GRAPH))
     graph["topics"][0]["size"] = 2

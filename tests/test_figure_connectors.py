@@ -1,9 +1,3 @@
-"""Connectors: the drawn lines that run between two nodes (#1054).
-
-Synthetic `Drawn` figures, in pt, so the geometry is checked without
-TeX. `tests/figure_drawn_fixtures.py` builds them.
-"""
-
 import pytest
 
 from chitragupta.figure._connectors import (
@@ -30,9 +24,6 @@ def test_a_line_between_two_boxes_is_a_connector():
 
 
 def test_a_node_tikz_named_itself_still_connects_and_is_shown_by_position():
-    """`\\node {A} edge (b);` makes TikZ name `A` `tikz@f@1`. It is still
-    the line's end, but no source says that name, so a finding names it
-    by its centre, as an unnamed node is (#1087)."""
     figure = drawn(
         [node("tikz@f@1", (0, 0, 20, 10)), node("b", (60, 0, 80, 10))],
         [line((20, 5), (60, 5))],
@@ -68,7 +59,6 @@ def test_a_line_to_a_coordinate_is_not_a_connector():
 
 
 def test_a_label_is_not_an_end():
-    """A tag on the line is a node too, but nothing connects to it."""
     figure = drawn(
         [node("a", (0, 0, 20, 10)), node("cgu-1", (55, 0, 70, 10))],
         [line((20, 5), (60, 5))],
@@ -113,14 +103,10 @@ def test_the_gap_past_a_corner_is_the_corner_distance():
 
 
 def test_the_gap_from_a_zero_length_segment_is_its_point_distance():
-    """A path can repeat a point; pgf logs it as a segment of length 0."""
     assert segment_box_gap((23, 14), (23, 14), (0, 0, 20, 10)) == pytest.approx(5.0)
 
 
 def test_a_title_covering_a_coordinate_is_not_a_zone():
-    """A point inside a box does not make the box a group: a title that
-    happened to cover the `band` coordinate was taken for a zone card,
-    and `node-overlap` then skipped it (#1064)."""
     title = node(
         "busy-t",
         (-18.7, -37.1, 55.7, -23.2),

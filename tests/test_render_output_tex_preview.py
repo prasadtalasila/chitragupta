@@ -1,11 +1,3 @@
-"""A `.tex` draft's own preview shows what the thesis will show (#1164,
-#1120): its figures, its table widths, numbered headings for `\\ref`, a
-references heading, and the author's preamble file.
-
-The rewrite and the pandoc arguments are tested here without pandoc; the
-renders that need it are skipped where it is missing.
-"""
-
 import re
 import subprocess
 
@@ -40,7 +32,6 @@ FIGURE = (
     "\\section{A}\n\\begin{figure}[t]\\centering\n\\input{figures/fig1.tex}\n"
     "\\caption{C.}\\label{fig:c}\n\\end{figure}\n"
 )
-# Issue 1120's reproduction, without its citation.
 CHAPTER = (
     "\\chapter{Background}\\label{ch:bg}\n\n\\section{Framing}\\label{sec:framing}\n"
     "Prior surveys group the frameworks by purpose.\n\n"
@@ -54,7 +45,6 @@ TABLE = (
 
 
 def _draft(cfg, name, text):
-    """A draft under `content/drafts/`, with an empty bibliography."""
     if not cfg.BIB_FILE_PATH.exists():
         cfg.BIB_FILE_PATH.write_text("", encoding="utf-8")
     cfg.DRAFTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -94,9 +84,6 @@ class TestWidths:
         )
 
     def test_a_spec_mixing_in_an_unsized_column_is_left_alone(self):
-        """pandoc gives an `l`, `c` or `r` column zero width once any other
-        column has one, so `lp{6cm}` would print its first column a
-        letter wide (measured); left as `ll`, it stays readable."""
         for spec in ("{lp{6cm}}", "{|p{2cm}|>{\\raggedright\\arraybackslash}p{3cm}|c|}"):
             text = f"\\begin{{tabular}}{spec}\\end{{tabular}}"
             assert widths_as_fractions(text, 452.97) == text
@@ -116,8 +103,6 @@ class TestWidths:
         assert widths_as_fractions(text, 452.97) == text
 
     def test_em_and_ex_widths_are_left_alone(self):
-        """Their size depends on the thesis's font, which the preview
-        does not know."""
         text = "\\begin{tabular}{p{10em}p{4ex}}\\end{tabular}"
 
         assert widths_as_fractions(text, 452.97) == text
@@ -137,12 +122,6 @@ class TestWidths:
 
 
 class TestDeclarations:
-    """Under `raw_tex` an alignment or size declaration pandoc does not
-    keep inside its group reaches the page bare and changes every later
-    paragraph; one inside a figure splits it into half-width minipages
-    (all measured, pandoc 3.1.11). Only grouped ones go: a top-level one
-    changes the rest of the thesis too, so the preview keeps it."""
-
     def test_a_floats_centering_and_size_are_dropped(self):
         text = (
             "\\begin{figure}[t]\\centering\n\\input{figures/f.tex}\n\\end{figure}\n"
@@ -168,8 +147,6 @@ class TestDeclarations:
         assert without_grouped_declarations(text) == text
 
     def test_a_commented_declaration_is_left_and_the_next_line_kept(self):
-        """A `% \\centering` once ate its newline and commented out the
-        `\\input` below it, so the figure vanished again."""
         text = "\\begin{figure}\n% \\centering\n\\input{figures/fig1.tex}\n\\end{figure}"
 
         assert without_grouped_declarations(text) == text
@@ -212,9 +189,6 @@ class TestPreambleFile:
         assert preamble_file(draft) == tmp_path / "ch.preamble.tex"
 
     def test_a_preamble_symlinked_out_of_the_drafts_directory_is_refused(self, tmp_path):
-        """pandoc reads the file it is handed with no fence, and inlines it
-        into the preview's preamble, so `ch.preamble.tex -> ~/.netrc`
-        would carry that file into the pdf (the figures' #823 rule)."""
         outside = tmp_path / "outside.tex"
         outside.write_text("NOT-FOR-THE-PDF\n", encoding="utf-8")
         drafts = tmp_path / "drafts"
@@ -245,8 +219,6 @@ class TestPandocArgs:
         assert args == [*TITLE, "-f", "latex+raw_tex", "--number-sections"]
 
     def test_the_preamble_file_is_included_and_named(self, tmp_path, capsys):
-        """Named, so a shared `preamble.tex` the draft never asked for
-        is not loaded silently."""
         (tmp_path / "ch.preamble.tex").write_text("", encoding="utf-8")
 
         args = pandoc_args(tmp_path / "ch.tex", "tex", False)
@@ -257,8 +229,6 @@ class TestPandocArgs:
 
 @needs_pandoc
 class TestTheTexRender:
-    """The rendered `.tex` of a `.tex` draft, read directly (#1164, #1120)."""
-
     def test_a_tex_drafts_figure_reaches_the_tex_output(self, isolated_config):
         figure_pair(isolated_config.DRAFTS_DIR)
 
@@ -335,13 +305,7 @@ class TestThePdfRender:
 
 
 class TestUndefinedCommandHint:
-    """A `.tex` preview reads raw TeX, so a command only the thesis's
-    preamble defines stops the pdf; the hint names the command and the
-    file that would define it. The logs are LuaLaTeX's own."""
-
     _TODO = "! Undefined control sequence.\nl.4 Plain \\todo\n                       {} here.\n"
-    # `\todo` defined, `\citep` not: TeX shows the argument's context
-    # first, before the `l.` line.
     _CITE = (
         "! Undefined control sequence.\n<argument> see \\citep \n           {k}\n"
         "l.2 Text \\todo{see \\citep{k}}\n                            more.\n"

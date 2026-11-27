@@ -1,6 +1,3 @@
-"""chitragupta/overlap_index.py: the disk-cached corpus-wide n-gram fingerprint
-index that chitragupta/review/verbatim_check.py's `overlap` mode is ported onto."""
-
 import json
 from pathlib import Path
 
@@ -42,10 +39,6 @@ class TestGramHashes:
         assert a != b
 
     def test_n_zero_raises_instead_of_hashing_every_position_the_same(self):
-        # Regression: n=0 doesn't trip the `len(words) < n` short-circuit
-        # (every word count is >= 0), so every zero-word "window" used to
-        # hash to the same constant -- a corpus-wide lookup would then
-        # treat every draft position as a match against everything.
         with pytest.raises(ValueError, match="n must be >= 1"):
             overlap_index.gram_hashes(["alpha", "beta"], 0)
 
@@ -56,11 +49,6 @@ class TestGramHashes:
 
 class TestFingerprintDocument:
     def test_builds_postings_with_page_and_position(self, isolated_config, tmp_path):
-        # Global token position (#131): the document is tokenized as one
-        # continuous stream, not page by page, so the two grams that
-        # straddle the page1/page2 boundary ("too short" alone is too
-        # short to start a gram of its own at n=4) are hashed too --
-        # attributed to page 1, the page their first word falls on.
         parsed = tmp_path / "smith_2024.txt"
         parsed.write_text("alpha beta gamma delta\ftoo short")
         fp = overlap_index.fingerprint_document("smith_2024", "hash1", str(parsed), n=4)
@@ -207,8 +195,6 @@ class TestLedgerItem:
         assert overlap_index.ledger_item("smith_2024") is None
 
     def test_recorded_but_missing_file_returns_none(self, ledger_con, tmp_path):
-        # The stored value is relative to PARSED_DIR (#966): unlink the
-        # file the helper wrote, not the raw column.
         add_parsed_item(ledger_con, tmp_path, "smith_2024", "some text").unlink()
         assert overlap_index.ledger_item("smith_2024") is None
 
@@ -223,12 +209,6 @@ class TestLedgerItem:
 
 class TestLedgerItemUnderAWriteLock:
     def test_it_waits_out_a_writers_commit_window(self, ledger_con, tmp_path):
-        """Issue #552, the other half: `_ledger_connect_ro` opened the
-        ledger with `timeout=0` too, so a read landing inside a sync's
-        commit window raised `SQLITE_BUSY` out of whichever query it was
-        in the middle of -- the same loud failure `ledger_cli` had before
-        m-72, on a path a review aid reaches while a sync may well be
-        running."""
         parsed = add_parsed_item(ledger_con, tmp_path, "smith_2024", "some text")
 
         result, waited = read_under_a_held_write_lock(
@@ -282,9 +262,6 @@ class TestBuildCorpusIndex:
         overlap_index.build_corpus_index(n=4)
 
         parsed_a.write_text("alpha beta gamma delta changed content now")
-        # Force a distinct mtime so the (size, mtime_ns) half of the cache
-        # key is guaranteed to change even on a filesystem with coarse
-        # mtime resolution.
         import os
 
         st = parsed_a.stat()
@@ -359,8 +336,6 @@ class TestPagesForGram:
         assert overlap_index.pages_for_gram(index, 0xDEADBEEF) == []
 
     def test_a_gram_repeated_on_one_page_is_not_duplicated(self, ledger_con, tmp_path):
-        # "alpha beta gamma delta" occurs twice on page 1 -- two postings,
-        # same page, must collapse to one entry.
         add_parsed_item(
             ledger_con,
             tmp_path,
@@ -372,11 +347,6 @@ class TestPagesForGram:
         assert overlap_index.pages_for_gram(index, shared_hash) == [1]
 
     def test_pages_are_returned_in_ascending_order(self, ledger_con, tmp_path):
-        # doe_2023 sorts before smith_2024, so its posting for the shared
-        # gram is merged in first -- but it's on page 2, while
-        # smith_2024's (merged in second) is on page 1. Insertion order
-        # alone would come back [2, 1]; pages_for_gram must still return
-        # [1, 2].
         add_parsed_item(ledger_con, tmp_path, "doe_2023", "zzz filler\falpha beta gamma delta")
         add_parsed_item(
             ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta\funrelated content here"
@@ -406,9 +376,6 @@ class TestPostingsForGram:
     def test_repeated_gram_on_one_page_yields_one_posting_per_occurrence(
         self, ledger_con, tmp_path
     ):
-        # Unlike pages_for_gram, nothing here is deduplicated: scan mode
-        # needs every occurrence (and its own token_position) to align a
-        # run, not just "this page has a match".
         add_parsed_item(
             ledger_con,
             tmp_path,

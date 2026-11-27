@@ -1,18 +1,3 @@
-"""Two layer boundaries, pinned by what the modules actually import (#853).
-
-- **Only `chitragupta/enrich/` reaches an underscore-private enrich
-  module.** `discover` imported `enrich._rerank` and called its private
-  `_load_reranker`, so a rename inside the enrichment layer broke a corpus
-  command. The shared loader now lives in the corpus-layer
-  `chitragupta/reranker.py`, which both import.
-- **`discover` does not import the drafting layer's `references`.** It
-  only needs formatted entries, which `chitragupta/reference_entries.py`
-  provides beneath both.
-
-Read with `ast`, not by importing, so a module whose optional
-dependencies are missing is still scanned.
-"""
-
 import ast
 from pathlib import Path
 
@@ -21,9 +6,6 @@ PACKAGE = REPO_ROOT / "chitragupta"
 
 
 def _imported_modules(path: Path) -> set[str]:
-    """Every module name `path` imports, as a dotted name -- including a
-    `from package import name`, which is recorded as `package.name` since
-    that is how `from chitragupta.enrich import _rerank` reaches a module."""
     names = set()
     for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
         if isinstance(node, ast.Import):
@@ -36,7 +18,6 @@ def _imported_modules(path: Path) -> set[str]:
 
 def _modules(root: Path) -> list[Path]:
     found = sorted(root.rglob("*.py"))
-    # Non-vacuous: a glob that matched nothing would pass every assertion.
     assert found, f"no Python modules under {root}"
     return found
 

@@ -1,14 +1,3 @@
-"""Developer-only skills reach no distribution (#1188).
-
-A skill marked `audience: developer` in its frontmatter sits beside the
-genre skills in every harness folder, so a checkout sees it, but neither
-`chitragupta init`, the release zip nor the wheel carries it. The first
-two skip what `chitragupta/developer_skills.py` finds; the wheel cannot,
-because Poetry's `exclude` does not reach inside an `include`d folder,
-so the last class pins `pyproject.toml`'s `include` list against this
-repository's own tracked files.
-"""
-
 import subprocess
 import tomllib
 from pathlib import Path
@@ -70,8 +59,6 @@ class TestTheMarker:
         assert developer_skills(tmp_path) == {".claude/skills/x"}
 
     def test_crlf_line_endings_still_mark(self, tmp_path):
-        """A Windows checkout with `core.autocrlf` hands the file over
-        with `\\r\\n`, and the skill must not start shipping there."""
         (tmp_path / ".claude/skills/rec").mkdir(parents=True)
         crlf = MARKED.format(name="rec").replace("\n", "\r\n").encode("utf-8")
         (tmp_path / ".claude/skills/rec/SKILL.md").write_bytes(crlf)
@@ -115,10 +102,6 @@ class TestThisRepository:
         }
 
     def test_pyproject_ships_every_harness_file_but_the_developer_skills(self):
-        """Poetry ships a file when an `include` path is the file or one
-        of its folders. Measured with poetry-core 2.3.1: an `exclude`
-        does not take a file back out of an `include`d folder, so a
-        folder-wide `.claude` entry would ship the skill."""
         with open(REPO_ROOT / "pyproject.toml", "rb") as f:
             entries = tomllib.load(f)["tool"]["poetry"]["include"]
         paths = [entry["path"] for entry in entries]
@@ -129,7 +112,6 @@ class TestThisRepository:
 
     @pytest.mark.parametrize("tree", [".claude", ".agents", ".opencode"])
     def test_no_include_names_a_whole_harness_tree(self, tree):
-        """The shape that ships everything, named so its failure says why."""
         with open(REPO_ROOT / "pyproject.toml", "rb") as f:
             entries = tomllib.load(f)["tool"]["poetry"]["include"]
         assert tree not in [entry["path"] for entry in entries]

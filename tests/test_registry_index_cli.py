@@ -1,6 +1,3 @@
-"""`registry build --index` over a real accepted book (#1168): the term
-table it writes, and the `index.toml` it refuses without writing."""
-
 import json
 
 import pytest
@@ -8,7 +5,6 @@ import pytest
 from chitragupta import registry, spec
 from chitragupta.registry._index_terms import term_id
 
-# conftest's `signed_book` reads this module's BOOK_SPEC as the outline.
 from tests.test_registry import BOOK_SPEC, accept  # noqa: F401
 
 
@@ -67,9 +63,6 @@ def test_a_misshapen_index_toml_refuses_before_reading_terms(book, tmp_path, cap
     assert "wrong shape" in capsys.readouterr().err
 
 
-# --- `registry index` ------------------------------------------------------
-
-
 class FakeUpmendex:
     returncode, stderr = 0, ""
 
@@ -80,8 +73,6 @@ class FakeUpmendex:
 
 @pytest.fixture
 def typeset(book, tmp_path, monkeypatch):
-    """A book with one accepted chapter, its term table built, its sidecar
-    written and a `book.idx` holding one entry, as a typeset book would."""
     from chitragupta.registry import _index_finish
 
     monkeypatch.setattr(
@@ -153,8 +144,6 @@ def test_index_with_a_failing_conversion_says_so(typeset, monkeypatch, capsys):
 
 
 def test_index_warns_about_an_index_toml_edited_since_the_build(typeset, capsys):
-    """The report reads `index.toml` again; a problem there is said, not
-    swallowed, though the build already refused or accepted the table."""
     book, idx = typeset
     (spec.spec_dir(book) / "index.toml").write_text("[variant]\n", encoding="utf-8")
     assert registry.main(["index", str(book), "--idx", str(idx)]) == 0

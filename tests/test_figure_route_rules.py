@@ -1,10 +1,3 @@
-"""Routing rules c1, c3, c4 and c7 over synthetic drawn figures (#1054).
-
-Coordinates are pt; 1mm is about 2.85pt. Most tests are must-not-fire
-cases, because a rule that fires on a sound figure teaches an author to
-allow it rather than read it.
-"""
-
 from pathlib import Path
 
 import pytest
@@ -69,8 +62,6 @@ class TestCoincident:
     D = node("d", (60, -50, 80, -30))
 
     def _crossing(self, run, *, repeat=False):
-        """`c->d`, down onto `a->b`'s line, along it for `run` pt, then
-        on down."""
         middle = [(60, 10), (60, 10)] if repeat else [(60, 10)]
         return line((60, 40), *middle, (60 + run, 10), (60 + run, -30), index=2)
 
@@ -104,7 +95,6 @@ class TestCoincident:
         assert coincident(cons) == []
 
     def test_c3_ignores_a_zero_length_segment(self):
-        """pgf can log a repeated point; it shares nothing with anything."""
         cons = _cons(
             [A, B, self.C, self.D],
             [line((40, 10), (100, 10)), self._crossing(3 * MM, repeat=True)],
@@ -115,9 +105,6 @@ class TestCoincident:
         assert finding.measurement == "share 3.0mm"
 
     def test_c3_measures_a_short_edge_listed_before_the_long_one(self):
-        """The overlap of two segments is one length whichever comes
-        first: a short edge listed before the long edge it lies on
-        measured 0 (#1163)."""
         assert _overlap(((0, 0), (10, 0)), ((0, 0), (100, 0))) == 10.0
         assert _overlap(((0, 0), (100, 0)), ((0, 0), (10, 0))) == 10.0
 
@@ -149,7 +136,6 @@ class TestCoincident:
 
 class TestAttach:
     def test_c4_fires_on_a_lone_end_off_centre(self):
-        """`b`'s west side runs from y=0 to y=20; its midpoint is 10."""
         cons = _cons([A, B], [line((40, 10), (70, 10), (70, 10 + 2 * MM), (100, 10 + 2 * MM))])
 
         findings, round_nodes = attach_points(cons, drawn([A, B], []).nodes)
@@ -206,7 +192,6 @@ class TestAttach:
         assert findings == [] and round_nodes == ["b"]
 
     def test_c4_names_a_node_tikz_named_itself_by_position(self):
-        """A `child` of an unnamed tree root is `tikz@f@<n>` (#1087)."""
         b = node("tikz@f@1", (100, 0, 140, 20))
         cons = _cons([A, b], [line((40, 10), (70, 10), (70, 10 + 2 * MM), (100, 10 + 2 * MM))])
 
@@ -226,8 +211,6 @@ class TestAttach:
 
 class TestDangling:
     def test_c7_fires_on_a_tip_ending_in_empty_space(self):
-        """`paper-twin-loop.tex`'s defect: the arrow stops at `b`'s height
-        but well to its side."""
         figure = drawn([A, HIGH_B], [line((20, 20), (20, 60), end_tip=True)])
 
         (finding,) = dangling(figure)
@@ -250,7 +233,6 @@ class TestDangling:
         assert dangling(figure) == []
 
     def test_c7_holds_on_a_tip_on_a_label(self):
-        """An arrow pointing at a note: the note is a node, unnamed."""
         note = node("cgu-1", (20, 58, 60, 70))
         figure = drawn([A, note], [line((20, 20), (20, 58), end_tip=True)])
 
@@ -269,7 +251,6 @@ class TestDangling:
 
 class TestEdgeCases:
     def test_c4_measures_an_end_on_a_top_side_along_x(self):
-        """`b`'s south side runs from x=100 to x=140; its midpoint is 120."""
         cons = _cons([A, HIGH_B], [line((20, 20), (20, 40), (110, 40), (110, 60))])
 
         findings, _ = attach_points(cons, drawn([A, HIGH_B], []).nodes)
@@ -296,11 +277,7 @@ class TestEdgeCases:
 
 
 class TestBenchedShapes:
-    """Must-not-fire shapes the bench over the repository's figures found
-    (bench/RESULTS.md, 2026-10-29), each read in the rendered figure."""
-
     def test_c3_holds_on_a_fork_from_one_point(self):
-        """`retrieval.tex`: one trunk leaves the query and splits."""
         C = node("c", (100, 40, 140, 60))
         cons = _cons(
             [A, B, C],
@@ -313,7 +290,6 @@ class TestBenchedShapes:
         assert coincident(cons) == []
 
     def test_c3_holds_on_a_fork_with_a_long_trunk(self):
-        """A bus fan-out: a 30mm trunk, then two branches."""
         far_b = node("b", (200, -20, 240, 0))
         far_c = node("c", (200, 40, 240, 60))
         x = 40 + 30 * MM
@@ -328,8 +304,6 @@ class TestBenchedShapes:
         assert coincident(cons) == []
 
     def test_c3_holds_on_a_t_fork(self):
-        """One branch runs straight on past the trunk, the other turns
-        off it."""
         far_b = node("b", (200, 0, 240, 20))
         far_c = node("c", (100, 40, 140, 60))
         cons = _cons(
@@ -354,8 +328,6 @@ class TestBenchedShapes:
         assert [f for f in findings if f.target == "a.east"] == []
 
     def test_c4_holds_on_a_diagonal_end(self):
-        """An edge arriving at an angle lands off the midpoint by
-        geometry; that is c1's finding, not a second one."""
         cons = _cons([A, HIGH_B], [line((40, 10), (110, 60))])
 
         findings, _ = attach_points(cons, drawn([A, HIGH_B], []).nodes)
@@ -363,8 +335,6 @@ class TestBenchedShapes:
         assert [f.target for f in findings] == []
 
     def test_c4_holds_on_a_bent_end(self):
-        """`control-loop.tex`: a `bend` leaves its side off-centre by
-        construction."""
         bent = line((40, 6), (70, 0), (100, 6), curved=True)
         cons = _cons([A, B], [bent])
 
@@ -376,9 +346,6 @@ class TestBenchedShapes:
         assert attach_points(cons, drawn([A, B], []).nodes, "hub-and-spoke-network") == ([], [])
 
     def test_c4_holds_on_lifelines_in_a_sequence(self):
-        """`sequence.tex`: messages meet a lifeline at heights time sets,
-        not at even spacing along its side. The same lines in a pipeline
-        fire on both lifelines."""
         lifelines = [node("one", (0, 0, 6, 200)), node("two", (100, 0, 106, 200))]
         messages = [line((6, y), (100, y)) for y in (150, 160, 185)]
         cons = _cons(lifelines, messages)
@@ -391,20 +358,16 @@ class TestBenchedShapes:
         ]
 
     def test_c7_holds_on_an_axis_arrow(self):
-        """`value-ladder.tex`: an axis points along itself, at nothing."""
         figure = drawn([A], [line((0, -20), (0, 100), end_tip=True)])
 
         assert dangling(figure) == []
 
     def test_c7_holds_on_a_dimension_arrow(self):
-        """`four-timestamps.tex`: a two-headed measurement line."""
         figure = drawn([A], [line((0, -30), (140, -30), start_tip=True, end_tip=True)])
 
         assert dangling(figure) == []
 
     def test_c7_holds_on_an_arrow_pointing_at_a_line_from_under_1mm(self):
-        """`residual-doses.tex`: a node's arrow stops just short of the
-        axis it points at."""
         axis = line((0, 50), (140, 50), index=2)
         figure = drawn([A], [line((20, 20), (20, 50 - 0.9 * MM), end_tip=True), axis])
 
@@ -413,24 +376,18 @@ class TestBenchedShapes:
 
 class TestBenchedTolerances:
     def test_c4_holds_on_a_bend_whose_last_piece_is_nearly_square(self):
-        """A flattened curve's last piece is short, and can sit within
-        1mm of square to its side while the bend still lands off-centre."""
         bent = line((40, 3), (50, 0.5), (90, 0.5), (100, 3), curved=True)
         cons = _cons([A, B], [bent])
 
         assert attach_points(cons, drawn([A, B], []).nodes) == ([], [])
 
     def test_c4_holds_on_a_lone_end_under_1mm_off_centre(self):
-        """c1 accepts a line up to 1mm off level, which lands up to 1mm
-        off one midpoint; c4 must not report what c1 accepts."""
         cons = _cons([A, B], [line((40, 10), (100, 10 + 0.9 * MM))])
 
         assert attach_points(cons, drawn([A, B], []).nodes) == ([], [])
 
 
 def test_c4_does_not_measure_a_zone():
-    """`pctrl-blocks.tex`: a line into a group ends on its card, not on a
-    node's side."""
     zone = node("zone", (90, -20, 160, 40))
     inner = node("b", (100, 0, 140, 20))
     cons = _cons([A, zone, inner], [line((40, 10), (70, 10), (70, 35), (90, 35))])
@@ -440,8 +397,6 @@ def test_c4_does_not_measure_a_zone():
     assert findings == []
 
 
-# A doc example figure carries the house block; the reproductions below
-# keep its block and replace its picture.
 _BLOCK_SOURCE = (
     Path(__file__).resolve().parent.parent
     / "docs"
@@ -470,9 +425,6 @@ def _compiled(tmp_path: Path, picture: str):
 @pytest.mark.slow
 @needs_tikz
 class TestCoincidentCompiled:
-    """#1163's reproductions, compiled: the probe's own ends, not
-    synthetic ones."""
-
     def test_c3_fires_on_a_return_edge_drawn_over_its_forward_edge(self, tmp_path):
         picture = r"""
   \node[cgbox, text width=22mm] (draft) at (0,0) {\cglab{Draft}{cite keys}};

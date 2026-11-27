@@ -1,10 +1,3 @@
-"""The lines and nodes `figure check`'s probe reports from TeX (#1054).
-
-`assets/latex/cg-figure-probe.tex` logs what TikZ drew; `parse_drawn`
-reads it. The parse tests feed the log grammar directly, so they run
-without TeX; the ones marked `needs_tikz` compile a real figure.
-"""
-
 import pytest
 
 from chitragupta.review import figure_layout
@@ -32,7 +25,6 @@ class TestParse:
         assert (line.start_tip, line.end_tip, line.curved) == (False, True, False)
 
     def test_a_lines_width_and_heads_are_read(self):
-        """#1113: `CGLW` and `CGTIP`, numbered per tip, ride on the path."""
         drawn = parse_drawn(
             _log(
                 "CGPATH 1 E 1 1 draw,",
@@ -96,8 +88,6 @@ class TestParse:
         assert drawn.lines == []
 
     def test_a_rectangle_in_a_drawn_path_is_not_a_line(self):
-        """`\\draw (0,0) rectangle (1,1)` is a frame or a zone, never a
-        connector."""
         drawn = parse_drawn(
             _log("CGPATH 1 E 0 0 draw,", "CGSEG 1 R 0.0 0.0", "CGSEG 1 S 10.0 10.0")
         )
@@ -110,8 +100,6 @@ class TestParse:
         assert drawn.lines == []
 
     def test_each_subpath_is_its_own_line_with_the_tips_at_the_ends(self):
-        """pgf draws a path's start tip on its first subpath and its end
-        tip on its last."""
         drawn = parse_drawn(
             _log(
                 "CGPATH 1 E 1 1 draw,",
@@ -153,8 +141,6 @@ class TestParse:
         assert drawn.lines[0].labels == ("cgu-1",)
 
     def test_a_standalone_node_is_no_ones_label(self):
-        """A `\\node` statement is a path of its own, empty, which
-        consumes it; the `\\draw` after it gets no label."""
         drawn = parse_drawn(
             _log(
                 "CGNODE 10.0pt 5.0pt 1.0pt rectangle/a",
@@ -168,9 +154,6 @@ class TestParse:
         assert drawn.lines[0].labels == ()
 
     def test_a_text_box_comes_from_the_text_anchor(self):
-        """A label with neither fill nor draw has no frame to read, so
-        its text box comes from where TikZ set the text: the `text`
-        anchor, at the left end of the baseline."""
         drawn = parse_drawn(
             _log(
                 "CGNODE 20.0pt 6.0pt 2.0pt rectangle/cgu-1",
@@ -195,8 +178,6 @@ class TestParse:
         [("1.0 -1.0", (-6.0, 0.0, 2.0, 20.0)), ("-1.0 1.0", (-2.0, -20.0, 6.0, 0.0))],
     )
     def test_a_quarter_turned_text_box_is_turned_about_its_anchor(self, turn, text_box):
-        """`rotate=90` reads bottom to top and `rotate=-90` top to bottom;
-        both are measured, and neither is set aside (#1064)."""
         drawn = parse_drawn(
             _log(
                 "CGNODE 20.0pt 6.0pt 2.0pt rectangle/e3-n",
@@ -228,8 +209,6 @@ class TestScaffold:
         assert "\\let\\cgoldusepath\\pgfusepath" in scaffold
 
     def test_the_unboxed_probe_carries_no_hook(self):
-        """`review figure`'s compile is not instrumented: wrapping two
-        pgf internals is `figure check`'s risk to carry, not its."""
         scaffold = figure_layout.scaffold("\\node (a) {A};", ["a"])
 
         assert "\\cgdumpnodes" not in scaffold
@@ -237,8 +216,6 @@ class TestScaffold:
 
 
 class TestColours:
-    """`CGPAINT`, `CGTEXT` and `CGTEXTCOLOR` (#1055), `_paint.py`'s."""
-
     def test_a_line_carries_what_it_was_stroked_in(self):
         drawn = parse_drawn(
             _log(
@@ -267,7 +244,6 @@ class TestColours:
         assert node.fill == Paint((0.9, 0.9, 0.9), "cgAux!10")
 
     def test_the_last_painted_node_path_is_the_frame(self):
-        """`cgsoft`'s shadow paths come first, in greys."""
         drawn = parse_drawn(
             _log(
                 "CGNODE 0.0pt 0.0pt 0.0pt rectangle/a",
@@ -314,7 +290,6 @@ class TestColours:
         assert (drawn.nodes["a"].stroke, drawn.nodes["a"].fill) == (None, None)
 
     def test_a_log_without_paint_leaves_a_frame_uncoloured(self):
-        """#1054's grammar alone, as a fixture written before #1055."""
         drawn = parse_drawn(
             _log(
                 "CGNODE 0.0pt 0.0pt 0.0pt rectangle/a",
@@ -326,8 +301,6 @@ class TestColours:
         assert drawn.nodes["a"].fill is None and drawn.nodes["a"].framed
 
     def test_text_runs_and_the_text_key_reach_their_node(self):
-        """A name with a space survives: it comes last. A run from a math
-        font says so (#1016)."""
         drawn = parse_drawn(
             _log(
                 "CGTEXT 0.1,0.1,0.1 12.00 1 0 12 data store",
@@ -350,8 +323,6 @@ class TestColours:
 @needs_tikz
 class TestAgainstRealLualatex:
     def test_the_boxed_probe_reports_drawn_lines(self, tmp_path):
-        """An elbow from `a`'s top to `b`'s left, with a tag: the end
-        TikZ computed comes back exact, and the tag is the line's."""
         path = tmp_path / "fig.tex"
         path.write_text(
             "\\begin{tikzpicture}\n"
@@ -373,9 +344,6 @@ class TestAgainstRealLualatex:
         assert drawn.nodes[label].text_box is not None
 
     def test_a_lines_width_and_arrowhead_outline_come_back(self, tmp_path):
-        """#1113: a 2.1mm-wide `Latex` head on a 0.85pt line, read from
-        the hull pgf keeps for the bounding box. If pgf renames
-        `\\pgf@arrows@rigid@hull`, the hook stops the compile instead."""
         path = tmp_path / "fig.tex"
         path.write_text(
             "\\usetikzlibrary{arrows.meta}%\n"
@@ -422,10 +390,6 @@ class TestAgainstRealLualatex:
 
 
 class TestVisibilityAndRotation:
-    """What the connector rules need to know about a node beyond its box
-    (#1054's bench): whether a reader can see it, and whether it is
-    turned."""
-
     def test_a_node_with_a_drawn_frame_is_framed(self):
         drawn = parse_drawn(
             _log(
@@ -506,10 +470,6 @@ class TestVisibilityAndRotationAgainstRealLualatex:
 
 
 class TestNamesWithSpaces:
-    """Fable review, #1054: a shape or node name with a space in it
-    (`circle split`, `regular polygon`, `(data store)`) shifted every
-    field after it, and `figure check` crashed. Names now come last."""
-
     def test_a_shape_name_with_a_space_parses(self):
         drawn = parse_drawn(
             _log(
@@ -554,9 +514,6 @@ def test_spaced_shape_and_node_names_compile_and_measure(tmp_path):
     assert "data store" in drawn.nodes and len(drawn.lines) == 2
 
     def test_the_probe_reports_colours_as_xcolor_resolves_them(self, tmp_path):
-        """#1055. pgf's own stroke colour goes stale under `[draw, red]`,
-        so the frame must come out red; the text's runs must see
-        `text=`, `\\textcolor` inside a macro, and `\\textbf`."""
         path = tmp_path / "fig.tex"
         path.write_text(
             "\\definecolor{hot}{HTML}{D55E00}%\n"

@@ -1,6 +1,3 @@
-"""Schema version 5: the importer's collection names and recorded renames
-(plans/1211-cg-collections-and-renames.md, Task 3)."""
-
 import sqlite3
 
 import pytest
@@ -15,7 +12,6 @@ def _tables(con) -> set[str]:
 
 
 def _v4_ledger(path) -> None:
-    """A ledger as 6.x left it: version 4, a `groups` path in a row."""
     path.parent.mkdir(parents=True, exist_ok=True)
     con = ledger.connect()
     con.close()
@@ -51,7 +47,6 @@ class TestMigration:
             con.close()
 
     def test_a_migrated_ledger_keeps_new_collections_on_reconnect(self, ledger_con):
-        """The clearing step runs on the v4 -> v5 move only, never again."""
         ledger.upsert_reference(ledger_con, make_reference(citekey="k_2024", collections=("a.b",)))
         ledger_con.commit()
         again = ledger.connect()
@@ -70,8 +65,6 @@ class TestCollectionNames:
         assert ledger_tables.collection_names(ledger_con) == {"a": "Renamed"}
 
     def test_a_renamed_collection_keeps_its_slug_working(self, ledger_con):
-        """#1211: renaming `Plants DT` in the reference manager changes the
-        name row, never the slug a `scope.md` recorded."""
         ledger.upsert_reference(
             ledger_con, make_reference(citekey="k_2024", collections=("plants-dt",))
         )
@@ -120,9 +113,6 @@ class TestStale:
 
 
 class TestWithoutTheTables:
-    """A connection to a database without v5's tables -- a caller's own
-    sqlite3 handle, say -- reads as "nothing recorded", like `of_row`."""
-
     @pytest.mark.parametrize(
         "reader", [ledger_tables.collection_names, ledger_tables.renames, ledger_tables.stale]
     )

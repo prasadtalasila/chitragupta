@@ -1,13 +1,3 @@
-"""Collection membership: slug paths, the name table, and the places
-they are read.
-
-chitragupta-importer writes each entry's collections as slug paths in
-`cg-collections` and one `@comment{cg-collections v1 ...}` table mapping
-each slug path to the collection's own name. A library written any other
-way carries no collections, and every command keeps working without them,
-which is why the no-collections cases are tested at every layer.
-"""
-
 import json
 import sqlite3
 
@@ -72,8 +62,6 @@ class TestParse:
         assert parse(value) == expected
 
     def test_order_is_preserved(self):
-        """The ledger writes this as JSON, so a stable order is what keeps
-        a re-sync of an unchanged entry from rewriting the row."""
         assert parse("z, a, m") == ("z", "a", "m")
 
 
@@ -128,8 +116,6 @@ class TestResolve:
         )
 
     def test_a_slug_is_read_only_in_lower_case(self):
-        """A slug is lower case by construction; anything else is a display
-        path, so `Medical` cannot silently become the slug `medical`."""
         assert resolve(" digital-twins ", DEPTH_FOUR, []) == "digital-twins"
         with pytest.raises(UnknownCollection):
             resolve("Digital-Twins", DEPTH_FOUR, [])
@@ -142,8 +128,6 @@ class TestResolve:
         assert resolve("medical-1", names, []) == "medical-1"
 
     def test_a_renamed_collection_does_not_capture_its_old_name(self):
-        """`old` renamed to New, then a new collection called Old: the name
-        means the new one."""
         assert resolve("Old", {"old": "New", "old-1": "Old"}, []) == "old-1"
 
     def test_slug_path_known_only_from_an_entry(self):
@@ -180,8 +164,6 @@ class TestResolve:
         assert e.value.old_syntax is False
 
     def test_a_scope_md_value_with_its_note_resolves_to_the_slug(self):
-        """`scope.md` records `- collection: <slug>   # <display path>`; an
-        agent that passes the whole value still gets the slug."""
         value = "digital-twins.platforms   # Digital Twins / Platforms"
         assert resolve(value, DEPTH_FOUR, []) == "digital-twins.platforms"
 
@@ -236,9 +218,6 @@ class TestReport:
 class TestTheLedgerColumn:
     @pytest.fixture(autouse=True)
     def _rows_by_name(self, ledger_con):
-        """`ledger.connect()` leaves the default tuple row factory in
-        place; `all_items` sets `sqlite3.Row` per query. These tests query
-        directly, so they have to ask for it themselves."""
         ledger_con.row_factory = sqlite3.Row
         yield
         ledger_con.row_factory = None
@@ -250,9 +229,6 @@ class TestTheLedgerColumn:
         assert bib_collections.of_row(row) == ("x.y",)
 
     def test_no_collections_is_stored_as_null_not_an_empty_array(self, ledger_con):
-        """Most libraries have no such field at all. NULL is what a
-        pre-migration row already holds, and writing "[]" into every row
-        instead would churn the ledger for no reader's benefit."""
         ledger.upsert_reference(ledger_con, make_reference(citekey="b_2024"))
         row = ledger_con.execute("SELECT * FROM items WHERE citekey = 'b_2024'").fetchone()
         assert row["collections"] is None
@@ -266,25 +242,18 @@ class TestTheLedgerColumn:
 
     @pytest.mark.parametrize("stored", ["not json", "{}", '"a string"', "7"])
     def test_an_unreadable_value_narrows_a_filter_rather_than_raising(self, ledger_con, stored):
-        """A ledger is not a place to raise from. A row written by a future
-        version, or hand-edited, should cost a search some candidates
-        rather than stop it."""
         ledger.upsert_reference(ledger_con, make_reference(citekey="d_2024"))
         ledger_con.execute("UPDATE items SET collections = ? WHERE citekey = 'd_2024'", (stored,))
         row = ledger_con.execute("SELECT * FROM items WHERE citekey = 'd_2024'").fetchone()
         assert bib_collections.of_row(row) == ()
 
     def test_a_tuple_row_reads_as_none_rather_than_raising(self, ledger_con):
-        """`collections_of` is public, and the connection this project
-        hands around does not set a row factory by default."""
         ledger.upsert_reference(ledger_con, make_reference(citekey="e_2024"))
         ledger_con.row_factory = None
         row = ledger_con.execute("SELECT * FROM items").fetchone()
         assert bib_collections.of_row(row) == ()
 
     def test_a_row_from_before_the_column_existed_reads_as_none(self):
-        """`collections_of` is handed rows from `SELECT *` on a ledger that
-        may predate the migration entirely."""
         con = sqlite3.connect(":memory:")
         con.row_factory = sqlite3.Row
         con.execute("CREATE TABLE items (citekey TEXT)")
@@ -295,9 +264,6 @@ class TestTheLedgerColumn:
 
 
 class TestRetrievalFilter:
-    """`search(..., collection=...)` -- #195's actual ask: a chapter on
-    modelling retrieving only from the modelling shelf."""
-
     @pytest.fixture
     def corpus(self, isolated_config, ledger_con):
         for citekey, collections in (
@@ -401,17 +367,12 @@ class TestRetrievalFilter:
         assert "uncollected_2024" not in {r.citekey for r in found}
 
     def test_scores_do_not_change_when_a_filter_is_applied(self, corpus):
-        """Scoring stays corpus-wide on purpose: narrowing the index would
-        change every IDF, so the same query would rank differently
-        depending on the filter, and the cached index could not be shared."""
         unfiltered = {r.citekey: r.score for r in retrieval.search("modelling", k=10)}
         filtered = retrieval.search("modelling", k=10, collection="digital-twins")
         assert filtered[0].score == unfiltered["in_sub_2024"]
 
 
 class TestTheLedgerCLI:
-    """`--collections` and `--collection`, the read-only half of #195."""
-
     @pytest.fixture
     def corpus(self, isolated_config, ledger_con):
         for citekey, collections in (
@@ -436,8 +397,6 @@ class TestTheLedgerCLI:
     def test_collections_on_a_corpus_without_any_explains_why(
         self, isolated_config, ledger_con, capsys
     ):
-        """The likeliest cause of an empty list is the export, not the
-        library, so the empty case is guidance rather than a result."""
         ledger.upsert_reference(ledger_con, make_reference(citekey="none_2024"))
         ledger_con.commit()
         assert ledger_cli.main(["--collections"]) == 0
@@ -459,8 +418,6 @@ class TestTheLedgerCLI:
         assert "slug paths" not in err
 
     def test_an_empty_named_collection_says_so(self, corpus, capsys):
-        """A collection the table names but no paper is in: listed with 0
-        by --collections, and empty rather than refused here."""
         con = ledger.connect()
         try:
             ledger_tables.replace_collection_names(con, {"empty-shelf": "Empty shelf"})

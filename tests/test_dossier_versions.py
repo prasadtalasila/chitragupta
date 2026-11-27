@@ -1,13 +1,3 @@
-"""Tests for chitragupta/dossier/_versions.py, the snapshot store.
-
-A snapshot is what a later `draft diff` compares against, and nothing
-else keeps the earlier text: `content/` is outside git on purpose. So
-the weight here is on the two ways a snapshot can be wrong without
-anyone noticing -- missing a figure the draft names, or being taken
-under a number or label that `--against` would resolve to the wrong
-one.
-"""
-
 import json
 import shutil
 
@@ -53,9 +43,6 @@ def test_first_snapshot_is_001_and_holds_draft_figures_and_manifest(isolated_con
     assert (figures / "estimator-loop.tex").read_text() == "figures/estimator-loop.tex body\n"
     assert (figures / "estimator-loop.txt").read_text() == "figures/estimator-loop.txt body\n"
     manifest = json.loads((snap.path / "snapshot.json").read_text())
-    # Every field but `path`, which is where the manifest sits and so is
-    # never written into it: an absolute path would not survive
-    # `dossier export` onto another machine.
     assert set(manifest) == {
         "number",
         "label",
@@ -226,10 +213,6 @@ def test_tex_fragment_snapshot_copies_its_figures(isolated_config):
     ],
 )
 def test_a_crlf_draft_keeps_its_figures_and_stamps_fingerprint(isolated_config, name, text):
-    # Written as bytes so the CRLF is there on every OS, not only where
-    # `write_text` puts it (Windows): a `\r` before each `\n` must not
-    # hide a figure marker, and the fingerprint must be the one `dossier
-    # stamp` computes from the same draft.
     draft = _draft(name, "")
     draft.write_bytes(text.replace("\n", "\r\n").encode("utf-8"))
     _figure(draft, "figures/estimator-loop")
@@ -307,9 +290,6 @@ def test_mark_revision_on_a_missing_draft_writes_row_but_no_snapshot(isolated_co
 
 
 def test_a_corrupt_snapshot_warns_but_still_marks_the_revision(isolated_config, capsys):
-    """A broken manifest must not stop a revision pass: the boundary row
-    is what retrieval cost accounting reads, and it does not need the
-    snapshot to be right."""
     draft = _draft()
     snap = _versions.take(draft, trigger="mark-revision")
     (snap.path / _versions.SNAPSHOT_JSON).write_text("{not json", encoding="utf-8")

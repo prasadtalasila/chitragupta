@@ -1,15 +1,3 @@
-"""The ai-images skill's `gen.py`.
-
-It sends one prompt to a diffusers text-to-image model and saves a PNG.
-torch and diffusers are not imported by the test run: `main` imports
-them late, so a pair of stand-ins in `sys.modules` exercise every branch
-without a GPU or a download. What the stand-ins cannot show, that a real
-klein 4B run writes a real image, is the hand-run smoke test in the PR
-that added the skill.
-
-Loaded by path: the skill folder's name has a hyphen.
-"""
-
 import importlib.util
 import sys
 import types
@@ -57,8 +45,6 @@ class FakeImage:
 
 
 class FakePipe:
-    """Records what `from_pretrained` and the call were given."""
-
     loaded = {}
     called = {}
 
@@ -78,7 +64,6 @@ class FakePipe:
 
 @pytest.fixture(name="stand_ins")
 def _stand_ins(monkeypatch):
-    """torch and diffusers as `main` imports them, on a CUDA host."""
     FakePipe.loaded, FakePipe.called = {}, {}
     monkeypatch.setitem(sys.modules, "torch", fake_torch())
     monkeypatch.setitem(sys.modules, "diffusers", types.SimpleNamespace(DiffusionPipeline=FakePipe))

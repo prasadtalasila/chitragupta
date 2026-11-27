@@ -1,10 +1,3 @@
-"""Clearance rules c2, c5 and c6 over synthetic drawn figures (#1054).
-
-Coordinates are pt; 1mm is about 2.85pt. A tag is an unnamed node on a
-connector's path, and its text box is what a reader sees, so the tests
-give one explicitly.
-"""
-
 from dataclasses import replace
 
 from chitragupta.figure._clearance_rules import tag_clearance, tag_covered, transit
@@ -16,7 +9,6 @@ B = node("b", (100, 0, 140, 20))
 
 
 def _tag(name, text_box, *, frame=None):
-    """A tag whose node box is its text box padded by 1pt."""
     x1, y1, x2, y2 = text_box
     return node(name, frame or (x1 - 1, y1 - 1, x2 + 1, y2 + 1), text_box=text_box)
 
@@ -29,8 +21,6 @@ def _figure(*extra_nodes, tags=("cgu-1",), points=((40, 10), (100, 10))):
 
 class TestTagClearance:
     def test_c2_fires_on_a_tag_touching_its_line(self):
-        """TikZ's `above` puts the node box on the line; the text sits a
-        point clear, which a reader reads as touching."""
         figure, cons = _figure(_tag("cgu-1", (60, 11, 80, 18)))
 
         (finding,) = tag_clearance(cons, figure)
@@ -56,8 +46,6 @@ class TestTagClearance:
         assert tag_clearance(cons, figure) == []
 
     def test_c2_holds_on_a_named_node_made_on_the_path(self):
-        """A `child` node, or `\\draw ... node (m) {}`, is a node, not a
-        tag: the tree's edge touches it by design."""
         figure, cons = _figure(_tag("m", (60, 8, 80, 12)), tags=("m",))
 
         assert tag_clearance(cons, figure) == []
@@ -71,17 +59,12 @@ class TestTagClearance:
 
 
 class TestTagClearanceFromTheInk:
-    """#1113: from the stroke's edge and the arrowheads, not the
-    centreline."""
-
     def _inked(self, tag, **ink):
         figure, _ = _figure(tag)
         figure.lines[0] = replace(figure.lines[0], **ink)
         return figure, connectors(figure)[0]
 
     def test_c2_measures_from_the_strokes_edge(self):
-        """1.2mm off the centre of a 1.2mm-wide stroke is 0.6mm off its
-        ink, and fires."""
         figure, cons = self._inked(_tag("cgu-1", (60, 10 + 1.2 * MM, 80, 25)), width=1.2 * MM)
 
         (finding,) = tag_clearance(cons, figure)
@@ -89,8 +72,6 @@ class TestTagClearanceFromTheInk:
         assert finding.measurement == "tag 0.6mm from its line"
 
     def test_c2_measures_from_an_arrowhead_beside_the_tag(self):
-        """1.55mm clear of the shaft, but above a head 2.1mm wide. The
-        hull is logged out of order, with a repeat and an inner point."""
         head = ((97, 10), (90, 10 + 1.05 * MM), (93, 10), (90, 10 - 1.05 * MM), (97, 10))
         figure, cons = self._inked(_tag("cgu-1", (85, 10 + 1.55 * MM, 95, 25)), heads=(head,))
 
@@ -105,8 +86,6 @@ class TestTagClearanceFromTheInk:
         assert tag_clearance(cons, figure) == []
 
     def test_c2_holds_where_a_tags_corner_only_nears_a_heads_barb(self):
-        """A midway tag on a short edge ends just before the head starts:
-        near its barb, not beside it, so the shaft is what is measured."""
         head = ((97, 10), (90, 10 + 1.05 * MM), (90, 10 - 1.05 * MM))
         figure, cons = self._inked(_tag("cgu-1", (60, 10 + 1.5 * MM, 89, 25)), heads=(head,))
 
@@ -145,8 +124,6 @@ class TestTransit:
         assert transit(cons, figure) == []
 
     def test_c5_holds_across_a_lifeline_in_a_sequence(self):
-        """A message that skips the middle lifeline is the diagram's
-        grammar, not a line through a box."""
         figure, cons = _figure(node("c", (68, 0, 74, 20)), tags=())
 
         assert transit(cons, figure, "sequence") == []
@@ -157,7 +134,6 @@ class TestTransit:
         assert transit(cons, figure) == []
 
     def test_c5_names_a_crossed_node_tikz_named_itself_by_position(self):
-        """A pin or an `alias` makes TikZ name a node `tikz@f@<n>` (#1087)."""
         figure, cons = _figure(node("tikz@f@1", (60, 0, 80, 20)), tags=())
 
         (finding,) = transit(cons, figure)
@@ -190,7 +166,6 @@ class TestTagCovered:
         assert tag_covered(cons, figure) == []
 
     def test_c6_fires_on_a_tag_inside_a_card(self):
-        """A card wide enough to hold the whole tag hides it (#1163)."""
         figure, cons = _figure(node("card", (55, 8, 95, 25)), _tag("cgu-1", (60, 13, 80, 18)))
 
         (finding,) = tag_covered(cons, figure)
@@ -198,8 +173,6 @@ class TestTagCovered:
         assert (finding.target, finding.measurement) == ("a->b", "tag under card")
 
     def test_c6_holds_on_a_tag_inside_a_framed_fit_group(self):
-        """A framed group holding a member is a zone, and a tag inside
-        one is where it belongs (`pctrl-blocks.tex`)."""
         group = node("group", (55, 8, 95, 40))
         member = node("q", (75, 25, 85, 35))
         figure, cons = _figure(group, member, _tag("cgu-1", (60, 13, 80, 18)))
@@ -213,14 +186,12 @@ class TestTagCovered:
 
 
 def test_c5_holds_through_a_marker_dot():
-    """`gain-as-fraction.tex`: a dot placed on a number line is on it."""
     figure, cons = _figure(node("dot", (68, 8, 72, 12), shape="circle"), tags=())
 
     assert transit(cons, figure) == []
 
 
 def test_c5_holds_through_an_unframed_group():
-    """An undrawn `fit` around a node hides nothing a line could cross."""
     group = node("group", (60, 0, 80, 35), framed=False)
     member = node("m", (65, 25, 75, 30))
     figure, cons = _figure(group, member, tags=())
@@ -229,14 +200,12 @@ def test_c5_holds_through_an_unframed_group():
 
 
 def test_c5_fires_through_an_unframed_node_with_text():
-    """An unframed annotation is still words a line would run through."""
     figure, cons = _figure(node("note", (60, 0, 80, 20), framed=False), tags=())
 
     assert [f.measurement for f in transit(cons, figure)] == ["crosses note"]
 
 
 def test_c6_holds_under_an_unframed_group():
-    """`data-flow-test.tex`: a tag past the edge of an undrawn `fit`."""
     panel = node("panel", (70, 12, 90, 30), framed=False)
     member = node("q", (75, 22, 85, 28))
     figure, cons = _figure(panel, member, _tag("cgu-1", (60, 13, 80, 18)))
@@ -245,8 +214,6 @@ def test_c6_holds_under_an_unframed_group():
 
 
 def test_c2_and_c6_skip_a_sloped_tag():
-    """`twin-pgm.tex`: a sloped tag's unrotated text box is not where it
-    was set."""
     tag = node("cgu-1", (60, 9, 80, 18), text_box=(60, 9, 80, 18), rotated=True)
     figure, cons = _figure(node("c", (70, 12, 90, 30)), tag)
 

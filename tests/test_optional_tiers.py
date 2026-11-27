@@ -1,21 +1,3 @@
-"""Every optional model tier degrades, under every way it can be absent
-(#977).
-
-Three ways a tier is absent, and each has to leave the command working
-with the tier below it:
-
-- **flag off:** the user turned it off, so it is never loaded;
-- **`ImportError`:** the enrich extra is not installed;
-- **load failure:** the extra is there but the model is not, the usual
-  case being a host with no cached checkpoint and no network.
-  `reranker.load_reranker` wraps every such failure in `RuntimeError`;
-  `SentenceTransformer` raises `OSError` itself.
-
-Before #977 the cross-encoder was loaded whatever `[enrich].rerank`
-said, and only `ImportError` was caught, so a plain `corpus discover` on
-such a host died with a traceback blaming a setting that was off.
-"""
-
 import sys
 import types
 
@@ -42,7 +24,6 @@ def _raising(failure):
 
 
 def _place(monkeypatch) -> None:
-    """A semantic rung that works, near the digital-twin centroid."""
     FakeModel.VECTORS = {PHRASE: [1.0, 0.0]}
     monkeypatch.setattr(_resolve, "_load_model", lambda: FakeModel())
 
@@ -69,9 +50,6 @@ class TestTheSemanticRung:
 
 class TestTheRerankRung:
     def test_it_is_never_loaded_with_the_flag_off(self, topics, monkeypatch, capsys):
-        """The reported bug: `_rescored` loaded the cross-encoder
-        unconditionally, contradicting docs/CONFIG.md's "read only when
-        `rerank` is on"."""
         _place(monkeypatch)
 
         def refuse():
@@ -118,11 +96,6 @@ class TestTheOverviewSnippets:
 
 
 class TestTheEntailmentAid:
-    """The review layer's optional tier, under the same three cases. It
-    has no flag of its own: `review support` is run by hand, so asking
-    for it is the switch. The model still loads at the first claim
-    scored, so a draft with nothing to score pays nothing."""
-
     def _cross_encoder(self, monkeypatch, failure):
         def construct(_model_id):
             raise failure
@@ -162,9 +135,6 @@ class TestTheEntailmentAid:
 
 
 class TestTheNoteIsOneLine:
-    """huggingface's load errors run to several lines; a degradation
-    note is one line of a printed view."""
-
     def test_only_the_first_line_of_the_failure_is_kept(self):
         _model, note = _resolve.optional_model(
             _raising(OSError("We couldn't connect.\nCheck your internet connection.")), "tier"

@@ -1,17 +1,3 @@
-"""The interactive graph app (`corpus discover --app DIR`): a directory
-a reader can download whole and open from file://.
-
-The properties under test: the builder is a pure renderer of the same
-artefacts every other view reads (it derives no edge and no membership),
-the written directory is self-contained (static files copied verbatim
-from assets/webapp/, data as a JS assignment because fetch() is blocked
-under file://), each topic is annotated with where its phrase came from
-(hand-written seed file, extracted keywords file, both -- `corroborated`
--- or neither, the definition living in `_origin`), and
-a hostile label cannot break out of the data script -- `<` is escaped
-exactly as the --html page escapes it.
-"""
-
 import json
 import re
 
@@ -24,9 +10,6 @@ from tests.test_discover import GRAPH, TOPIC_SET, prepare
 
 
 def write_phrase_files(hand=(), extracted=()):
-    """The two TOML files `_seed_phrases()` unions, in the shape
-    `seed_topics.load()` reads. Either may be absent in a real project,
-    which is why both default to "do not write it"."""
     if hand:
         lines = ", ".join(f'"{phrase}"' for phrase in hand)
         config.SEED_TOPICS_PATH.write_text(f"topics = [{lines}]\n", encoding="utf-8")
@@ -59,13 +42,6 @@ class TestOrigins:
         assert origins["digital twin"] == "keyword"
 
     def test_a_phrase_in_both_files_says_so(self, isolated_config):
-        """Case-insensitively, matching `_seed_phrases()`'s dedup rule:
-        the hand-written spelling won the union, so the label in the
-        artefacts may differ in case from the keywords.toml entry.
-
-        `corroborated` rather than `both` (#742): the reader is looking
-        at two independent sources agreeing on a topic, not at a set
-        operation over two files."""
         origins = self.origin(isolated_config, hand=("digital twin",), extracted=("Digital TWIN",))
         assert origins["digital twin"] == "corroborated"
 
@@ -74,9 +50,6 @@ class TestOrigins:
         assert origins["machine learning"] == "emergent"
 
     def test_a_seed_topic_in_neither_file_defaults_to_seed(self, isolated_config):
-        """The files can move after the stages ran (a deleted phrase, a
-        regenerated keywords.toml); the graph's own provenance is still
-        true, so the annotation degrades to it rather than refusing."""
         origins = self.origin(isolated_config)
         assert origins["digital twin"] == "seed"
 
@@ -101,47 +74,23 @@ class TestWriteApp:
         assert copied.read_bytes() == source.read_bytes()
 
     def test_every_script_the_page_loads_is_a_file_the_builder_copies(self):
-        """The interaction code is several files, so the copy list and
-        the page's <script> tags are now two places that must agree. A
-        module added to one and not the other is a directory that opens
-        to a blank canvas -- and, under file://, to a silent 404 rather
-        than an error anyone would see."""
         page = config.shipped("assets", "webapp", "index.html").read_text(encoding="utf-8")
         loaded = set(re.findall(r'<script src="\./([^"]+)"></script>', page))
-        # data.js is written per corpus rather than copied, so it is the
-        # one script the page loads that APP_FILES does not name.
         assert loaded - {"data.js"} <= set(_app.APP_FILES)
         assert {"graph.js", "panel.js", "app.js"} <= loaded
 
     def test_the_uncovered_panel_names_papers_not_seed_phrases(self):
-        """`uncovered` is the citekeys of papers no topic holds
-        (`topic_converge.build`), but the panel was titled "Uncovered
-        seeds" and described seed phrases (#1165)."""
         page = config.shipped("assets", "webapp", "index.html").read_text(encoding="utf-8")
         panel = re.search(r'<details id="uncovered">(.*?)</details>', page, re.DOTALL).group(1)
         assert "<summary>Uncovered papers</summary>" in panel
         assert "seed" not in panel.lower()
 
     def test_the_page_loads_the_modules_before_the_wiring_that_uses_them(self):
-        """app.js reads window.CHITRAGUPTA_APP at once, and data.js has
-        to have assigned the payload by then: classic scripts run in
-        document order, so the order in the file is the contract."""
         order = self.script_order()
         assert order.index("data.js") < order.index("app.js")
         assert order.index("app.js") == len(order) - 1, "the wiring must load last"
 
     def test_the_page_loads_each_module_after_the_ones_it_requires(self):
-        """The same contract for the modules themselves, derived from
-        their own `require()` calls rather than listed here.
-
-        Each module publishes into one shared global and reads its
-        dependencies out of that global at load, so a module loaded
-        before something it requires gets `undefined` and the exported
-        directory opens to a blank canvas. Listing the pairs by hand is
-        what let this test fall behind: it pinned graph -> panel while
-        two later modules quietly added dependencies of their own, and
-        reordering the page would have broken the app with nothing red.
-        """
         order = self.script_order()
         checked = 0
         for name in order:
@@ -154,8 +103,6 @@ class TestWriteApp:
                     f"{name} loads before {required}, which it requires"
                 )
                 checked += 1
-        # Non-vacuity: a regex that matched nothing would pass over an
-        # empty set of dependencies.
         assert checked >= 3, f"only {checked} module dependencies found"
 
     @staticmethod
@@ -166,9 +113,6 @@ class TestWriteApp:
         return order
 
     def test_the_data_script_round_trips_and_escapes(self, isolated_config, tmp_path):
-        """`<` must not survive raw: a title like `</script><script>`
-        would otherwise close the data script early, the one injection
-        route a static JS island has."""
         prepare(isolated_config)
         hostile = json.loads(json.dumps(TOPIC_SET))
         hostile["topics"][0]["members"][0]["citekey"] = "p1"
@@ -198,17 +142,6 @@ class TestWriteApp:
 
 
 class TestPayloadContract:
-    """The exporter and the app's own check name the same keys (#855).
-
-    `payload.js` refuses a data.js missing any of its `REQUIRED_KEYS`
-    and says so in the panel, instead of throwing before a handler is
-    wired. That list is only right while it matches what the exporter
-    cannot do without -- a key it reads with `.get` is one an older
-    artefact may lack, and the app has to cope with its absence, not
-    refuse it. So the exporter's side is measured rather than listed:
-    every graph key whose deletion makes `build_app_payload` raise, and
-    which then travels into the payload under the same name."""
-
     @staticmethod
     def app_required() -> list:
         source = config.shipped("assets", "webapp", "payload.js").read_text(encoding="utf-8")
@@ -226,31 +159,12 @@ class TestPayloadContract:
                 _app.build_app_payload(partial, TOPIC_SET, {})
             except KeyError:
                 required.add(key)
-        # Non-vacuity: a fixture the builder never subscripted would
-        # find nothing and agree with an empty list.
         assert len(required) >= 4, required
         assert required <= set(exported), "a required graph key is renamed in the payload"
         assert sorted(self.app_required()) == sorted(required)
 
 
 class TestShippedAppScriptHardening:
-    """Source tripwires on the shipped interaction code (#636).
-
-    `tests/webapp/*.test.js` now exercises the two properties below on
-    the real functions under `node --test`, which is the better test --
-    but it runs on a host that has node, and this suite is what CI's
-    coverage leg and every developer runs unconditionally. These stay as
-    the source-level tripwire, the same way other non-Python artefacts
-    in this repo are pinned, and they read *all* the shipped scripts:
-    the escaping lives in panel.js and the null-prototype tables in
-    graph.js, and a tripwire naming one file would have been silently
-    satisfied by the module split that moved them.
-
-    The hazard, unchanged: a PDF-controlled keyword phrase survives
-    `keyword_extract._clean()` with quotes intact and can become a
-    seeded topic label.
-    """
-
     @staticmethod
     def app_js() -> str:
         scripts = [name for name in _app.APP_FILES if name.endswith(".js") and "/" not in name]
@@ -260,28 +174,15 @@ class TestShippedAppScriptHardening:
         )
 
     def test_escape_html_covers_attribute_contexts(self):
-        # The old div.textContent -> div.innerHTML trick never escapes
-        # quotes, and escapeHtml's output lands inside double-quoted
-        # data-goto/data-label attributes: a label containing `"` closed
-        # the attribute and injected event-handler attributes (stored
-        # XSS in the exported page). The explicit replace chain must
-        # cover all five significant characters.
         src = self.app_js()
         for entity in ("&amp;", "&lt;", "&gt;", "&quot;", "&#39;"):
             assert entity in src, f"escapeHtml no longer escapes {entity}"
         assert "div.innerHTML" not in src, "the quote-blind textContent trick is back"
 
     def test_label_keyed_tables_are_null_prototype(self):
-        # A topic literally labelled __proto__ made `neighbours[label]`
-        # return Object.prototype (truthy, no .add) and crashed the app;
-        # every table keyed by a free-text label or an origin string must
-        # be created with a null prototype.
         assert self.app_js().count("Object.create(null)") >= 4
 
     def test_page_template_label_keyed_tables_are_null_prototype(self):
-        # Same __proto__ hazard in the --html page's inline script: both
-        # the position table and the hierarchy's children table are keyed
-        # by free-text labels.
         import inspect
 
         from chitragupta.discover import _page_template
@@ -289,9 +190,6 @@ class TestShippedAppScriptHardening:
         assert inspect.getsource(_page_template).count("Object.create(null)") >= 2
 
     def test_page_template_escaper_covers_attribute_contexts(self):
-        # The --html page's esc() escaped & < > only. Every call site is
-        # in text position today, which is exactly what panel.js's was
-        # before #636 put a label inside an attribute (#856).
         from chitragupta.discover import _page_template
 
         esc = re.search(r"function esc\(text\) \{.*?\n\}", _page_template.TEMPLATE, re.S)
@@ -301,30 +199,11 @@ class TestShippedAppScriptHardening:
 
 
 class TestContentSecurityPolicy:
-    """The exported index.html declares a CSP (#856).
-
-    Without one, panel.js's escaping is the only layer between a
-    corpus-derived string and script execution in a file a reader opens
-    from disk and shares on: one concatenation into an attribute, which
-    is what #636 was, and the page runs whatever the label says. With
-    `script-src 'self'` and no `'unsafe-inline'`, markup injected into the
-    panel cannot run an inline handler -- checked in Chrome 154 and
-    Firefox 153 against the exported directory from file://, where
-    `'self'` admits the page's own scripts in both.
-
-    `'unsafe-inline'` stays on style, and not only for panel.js's three
-    `style="..."` attributes: cytoscape injects a <style> element of its
-    own, which the same browser check showed blocked without it.
-    """
-
     POLICY = {
         "default-src": ["'none'"],
         "script-src": ["'self'"],
         "style-src": ["'self'", "'unsafe-inline'"],
         "img-src": ["data:"],
-        # Neither falls back to default-src, so without them an injected
-        # <base> re-points the page's relative URLs and an injected <form>
-        # can post what it holds anywhere.
         "base-uri": ["'none'"],
         "form-action": ["'none'"],
     }
@@ -341,28 +220,17 @@ class TestContentSecurityPolicy:
         return {name: values for name, *values in directives}
 
     def test_the_page_declares_exactly_the_policy(self):
-        """Pinned whole, so loosening it -- an `'unsafe-inline'` on
-        script to make one handler work -- is a red test and a decision
-        rather than a one-word diff."""
         assert self.policy_of(self.page()) == self.POLICY
 
     def test_the_policy_precedes_everything_it_governs(self):
-        """A <meta> policy applies only to what the parser meets after
-        it: a stylesheet or script above it loads unchecked."""
         page = self.page()
         meta = page.index('http-equiv="Content-Security-Policy"')
         assert meta < page.index("<link")
         assert meta < page.index("<script")
 
     def test_the_shipped_code_needs_nothing_the_policy_forbids(self):
-        """The failure the policy would cause is silent -- a blocked
-        script is a console line and a blank canvas -- so the forbidden
-        shapes are pinned at the source: no inline <script> and no
-        inline handler in the page, and no handler, `javascript:` URL or
-        eval in the strings the scripts build."""
         page = self.page()
         assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>", page), "inline <script>"
-        # `onclick="` with no space is markup; `only = "` is a JS assignment.
         assert not re.search(r"\son[a-z]+=", page), "inline event handler in index.html"
         scripts = TestShippedAppScriptHardening.app_js()
         assert not re.search(r"\son[a-z]+=", scripts), "handler in built markup"

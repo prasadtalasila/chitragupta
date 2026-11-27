@@ -1,11 +1,3 @@
-"""The `research-paper` genre and the `paper.md` its dossier is given.
-
-See plans/1179-research-paper-genre.md: a research paper's paper-level inputs
-(the software, the venue, the message, the contributions) have no home
-in `outline.md`, whose parser takes only `brief:`/`claim:`/`queries:`
-per section, so `init` writes them a file of their own.
-"""
-
 import pytest
 
 from chitragupta import config, dossier
@@ -55,8 +47,6 @@ def test_init_never_overwrites_a_filled_paper_md(paper):
 
 
 def test_the_template_declares_no_query_a_skill_would_run():
-    """A skill runs declared queries verbatim, so the template's example
-    must sit inside a comment rather than ship as a real query."""
     from chitragupta.dossier._paper import PAPER_TEMPLATE
 
     assert not any(s.queries for s in _outline.parse(PAPER_TEMPLATE).sections.values())

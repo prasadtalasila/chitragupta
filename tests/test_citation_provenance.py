@@ -1,16 +1,3 @@
-"""chitragupta/review/citation_provenance.py: what in a cited source supports the claim
-citing it.
-
-The interesting cases here are the ones a synthetic fixture makes easy to
-get wrong: hard-wrapped prose (every draft this project writes), and a
-claim that scores against nothing.
-
-Where the passages themselves come from -- sidecar, form-feed pages, or
-`pdftotext` -- is tests/test_passages.py's, since chitragupta/passages.py owns
-that ladder. What stays here is what this module still decides: which
-sentence carries a citation, how it scores, and how the report reads.
-"""
-
 import json
 
 import pytest
@@ -23,9 +10,6 @@ from tests.conftest import add_item, plant_sidecar
 
 class TestClaims:
     def test_reconstructs_a_sentence_across_wrapped_lines(self, isolated_config):
-        """The regression that made the first build useless: drafts are
-        hard-wrapped, so reading only the citation's own line yields a
-        fragment that matches nothing."""
         draft = (
             "Simulation has become a cornerstone of developing\n"
             "and validating these systems\n"
@@ -61,27 +45,17 @@ class TestClaims:
         assert claim == "Digital twins close the loop."
 
     def test_closes_the_gap_the_marker_leaves(self, isolated_config):
-        """This text is quoted back to a reviewer, so "processes , or"
-        reads as sloppiness in the draft rather than in this tool."""
         draft = "Systems integrate computation [@a_2024], or so it is claimed.\n"
         ((_, _, claim),) = cp.claims(draft)
         assert claim == "Systems integrate computation, or so it is claimed."
         assert "  " not in claim
 
     def test_a_narrative_citet_leaves_a_placeholder_in_the_grammar(self, isolated_config):
-        """#570: `\\citet` is a noun phrase *inside* the sentence, so
-        deleting it wholesale left "The vocabulary of sharpens the
-        claim" -- a dangling "of", quoted back at a reviewer as though
-        the draft had written it."""
         draft = "The vocabulary of \\citet{a_2024} sharpens the claim.\n"
         ((_, _, claim),) = cp.claims(draft)
         assert claim == "The vocabulary of [...] sharpens the claim."
 
     def test_parenthetical_forms_are_still_removed_entirely(self, isolated_config):
-        """The other half of #570, and the reason the fix is two patterns
-        rather than a different single one: a parenthetical marker stands
-        *outside* the grammar, so the sentence is only grammatical with
-        it gone."""
         assert cp.claims("The loop closes \\citep{a_2024}, as measured.\n") == [
             (1, "a_2024", "The loop closes, as measured.")
         ]
@@ -90,18 +64,6 @@ class TestClaims:
         ]
 
     def test_the_placeholder_contributes_no_word_to_the_score(self, isolated_config):
-        """The claim text is scored by overlap against the source's own
-        words, so a placeholder carrying any word of its own would move a
-        narrative citation's support band for a reason that has nothing
-        to do with what the draft claims. This is what rules out
-        substituting the author-year text: a paper's text contains its
-        own authors' names, so every narrative citation would score a
-        free hit.
-
-        Scored off the claim `claims()` actually produced, not off a
-        typed-in `[...]`: asserting on the placeholder this test chose
-        would keep passing if the code started substituting a surname,
-        which is the one thing it exists to prevent."""
         ((_, _, claim),) = cp.claims("The vocabulary of \\citet{a_2024} sharpens.\n")
         assert passages.distinctive(claim) == passages.distinctive("The vocabulary of sharpens.")
 
@@ -112,8 +74,6 @@ class TestClaims:
         assert [k for _, k, _ in cp.claims("Accuracy rose 30% [@a_2024].\n")] == ["a_2024"]
 
     def test_a_commented_out_citation_in_a_tex_draft_is_not_a_claim(self, isolated_config):
-        """#873: the report read `.tex` with Markdown rules, so a key after
-        `%` was reported as cited when the prose cites nothing of it."""
         add_item("a_2024")
         path = config.CONTENT_DIR / "d.tex"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -123,14 +83,6 @@ class TestClaims:
 
 
 class TestBlockShapedClaims:
-    """A citation inside a table or a list is not inside a sentence.
-
-    Both are one blank-line-separated block, so the paragraph reading
-    that fixed hard-wrapped prose quoted the *entire* table back as the
-    claim -- once per citekey in it -- and scored every row against the
-    whole table's vocabulary (GitHub issue #19).
-    """
-
     TABLE = (
         "Models fall into three families.\n"
         "\n"
@@ -159,15 +111,10 @@ class TestBlockShapedClaims:
         assert "---" not in found["b_2024"], "the |---|---| separator row is not content"
 
     def test_two_citations_in_one_table_are_told_apart(self, isolated_config):
-        """The whole point of scoring a sentence rather than a paragraph:
-        a reviewer has to see *which* citation is the weak one."""
         found = {k: c for _, k, c in cp.claims(self.TABLE)}
         assert found["a_2024"] != found["b_2024"]
 
     def test_a_row_scores_on_its_own_words(self, isolated_config):
-        """Whole-table claims inflate the denominator -- measured at ~4x on
-        a real draft -- pushing a genuinely supported citation under the
-        band thresholds."""
         add_item(
             "a_2024", parsed_text="known structural equations simulating a bridge deck\fpage two"
         )
@@ -197,9 +144,6 @@ class TestBlockShapedClaims:
         assert not any("|" in line for line in quoted)
 
     def test_a_list_item_is_the_claim_not_the_whole_list(self, isolated_config):
-        """Bullets carry no sentence boundary the splitter recognises --
-        a marker is not a capital letter -- so the list collapsed the same
-        way a table did, with or without terminal punctuation."""
         draft = (
             "The building blocks are:\n"
             "\n"
@@ -213,8 +157,6 @@ class TestBlockShapedClaims:
         assert "models" not in found["a_2024"]
 
     def test_a_wrapped_list_item_keeps_its_continuation_lines(self, isolated_config):
-        """The hard-wrap fix still applies *within* a block: an item that
-        runs over two lines is one claim, not a fragment."""
         draft = (
             "- data, gathered from sensors placed on the asset itself and\n"
             "  sampled continuously [@a_2024]\n"
@@ -252,8 +194,6 @@ class TestBlockShapedClaims:
         assert claim == "Notation -- a \\| b means either"
 
     def test_prose_paragraphs_are_untouched_by_block_splitting(self, isolated_config):
-        """The regression guard for the fix itself: ordinary hard-wrapped
-        prose must still be read a whole paragraph at a time."""
         draft = (
             "Simulation has become a cornerstone of developing\n"
             "and validating these systems\n"
@@ -267,16 +207,6 @@ class TestBlockShapedClaims:
 
 
 class TestLatexBlockShapedClaims:
-    """The same defect in the other syntax every skill also exports.
-
-    A `tabular` row ends at `\\\\`, not at a newline, and `\\item` opens a
-    list item -- neither is a sentence boundary, so a LaTeX draft
-    collapsed exactly as a markdown one did. It was worse in one way:
-    `\\begin{tabular}{lll}`, `\\toprule` and `\\midrule` reached the score
-    as though `begin`, `tabular`, `lll` and `toprule` were content words
-    the source ought to contain.
-    """
-
     TABULAR = (
         "Approaches differ in how they compose twins.\n"
         "\n"
@@ -307,8 +237,6 @@ class TestLatexBlockShapedClaims:
         )
 
     def test_a_row_wrapped_across_lines_is_one_claim(self, isolated_config):
-        """A LaTeX row ends at `\\\\`, so unlike a markdown row it can span
-        source lines -- and the hard-wrap fix has to keep applying."""
         draft = (
             "\\begin{tabular}{ll}\n"
             "Ontology-driven & Shared semantic model with an agreed\n"
@@ -366,12 +294,6 @@ class TestLatexBlockShapedClaims:
     def test_prose_running_straight_into_a_tabular_does_not_leak_into_the_first_row(
         self, isolated_config
     ):
-        """A lead-in ending in a colon is the normal way to introduce a
-        table, and `\\begin{tabular}` after it has no blank line before it.
-        Unlike a markdown `|` row, the environment line is not itself a
-        row, so it has to open the block explicitly or the lead-in is
-        still attached when the first row closes it.
-        """
         draft = (
             "The model families are as follows:\n"
             "\\begin{tabular}{ll}\n"
@@ -392,8 +314,6 @@ class TestLatexBlockShapedClaims:
         assert "\\section" not in claim, "the command is markup, not part of the heading"
 
     def test_latex_prose_is_untouched_by_block_splitting(self, isolated_config):
-        """The regression guard on the other side: a hard-wrapped LaTeX
-        paragraph is still read whole, then split into sentences."""
         draft = (
             "Simulation has become a cornerstone of developing\n"
             "and validating these systems \\citep{a_2024}. A second\n"
@@ -408,9 +328,6 @@ class TestLatexBlockShapedClaims:
 
 class TestScoring:
     def test_overlap_survives_paraphrase(self, isolated_config):
-        """The reason this uses overlap rather than verbatim n-grams:
-        a paraphrase keeps content words while changing order and
-        function words, and would score zero under exact matching."""
         passage = cp.Passage(
             page=1,
             words=cp.distinctive(
@@ -543,11 +460,6 @@ class TestWriteReportAndCli:
     def test_an_escaping_render_target_warns_and_still_returns_md(
         self, isolated_config, monkeypatch, capsys
     ):
-        """render_output refuses to write outside the content directory when
-        content/rendered or content/drafts is symlinked out of it. That is a
-        layout fault, not this report's -- the md above is already written to
-        content/review/, so it must degrade like a missing binary rather
-        than taking the run out with a traceback."""
         from chitragupta import render_output
 
         def raise_outside(*a, **k):
@@ -566,10 +478,6 @@ class TestWriteReportAndCli:
         assert "resolves to /elsewhere" in capsys.readouterr().err
 
     def test_pandoc_failure_warns_and_still_returns_md(self, isolated_config, monkeypatch, capsys):
-        """A quoted excerpt can carry a glyph (e.g. a circled digit lifted
-        verbatim from the source PDF) that pdflatex's default fonts can't
-        set -- render() raises CalledProcessError, not MissingBinary, and
-        that must degrade the same way rather than crashing the CLI."""
         import subprocess
 
         from chitragupta import render_output
@@ -602,9 +510,6 @@ class TestWriteReportAndCli:
         monkeypatch,
         capsys,
     ):
-        """capture_output=True always sets .stderr on the CalledProcessError
-        render() raises, but the `exc.stderr or exc` fallback exists for a
-        reason -- exercise it directly so it can't silently print `None`."""
         import subprocess
 
         from chitragupta import render_output
@@ -639,13 +544,7 @@ class TestWriteReportAndCli:
 
 
 class TestJsonPayload:
-    """`--json` on `citation_provenance`, widening #127's plumbing from
-    `verbatim scan` to the rest of the review layer (#309)."""
-
     def test_json_sibling_is_written_even_without_the_json_flag(self, isolated_config):
-        """Provenance already writes its Markdown unconditionally -- the
-        `.json` sibling follows the same policy, so `agenda` never finds
-        it missing just because nobody happened to pass `--json`."""
         add_item("a_2024", parsed_text="hysteresis band\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -713,8 +612,6 @@ class TestJsonPayload:
         assert first == second
 
     def test_json_flag_moves_the_written_summary_to_stderr(self, isolated_config, capsys):
-        """So `provenance --json > findings.json` stays a valid JSON file,
-        the same discipline `verbatim scan --json` already follows."""
         add_item("a_2024", parsed_text="hysteresis band\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -750,8 +647,6 @@ class TestBands:
 
 class TestEdgeShapes:
     def test_draft_ending_without_a_trailing_blank_line(self, isolated_config):
-        """The last paragraph has no blank line closing it, so the span
-        builder has to flush what it is still holding."""
         add_item("a_2024", parsed_text="hysteresis relay\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -761,19 +656,12 @@ class TestEdgeShapes:
         assert claim == "The hysteresis relay matters."
 
     def test_citekey_not_in_any_sentence_falls_back_to_the_paragraph(self, isolated_config):
-        """extract_citekeys found it, but sentence splitting put it in no
-        part -- return the tidied paragraph rather than nothing."""
         assert (
             _claim_sentence.sentence_around("no marker here at all", "ghost_2024")
             == "no marker here at all"
         )
 
     def test_a_suffixed_sibling_does_not_match_the_bare_key(self, isolated_config):
-        """#497: bare substring matching made `smith2020` match text
-        citing only `smith2020a` -- a BibTeX disambiguation suffix, which
-        real exports use routinely. The first sentence here cites only
-        the suffixed sibling and must not win over the second, which
-        cites the bare key."""
         text = "First one [@smith2020a]. Second one [@smith2020]."
         assert _claim_sentence.sentence_around(text, "smith2020") == "Second one."
 
@@ -812,8 +700,6 @@ class TestEdgeShapes:
         assert written["tex"] == out
 
     def test_blank_lines_between_paragraphs_close_each_span(self, isolated_config):
-        """Exercises the span builder's blank-line branch with content on
-        both sides, not just a trailing flush."""
         spans = _blocks.paragraph_spans(["one", "", "two", "", "three"])
         assert spans == [(1, 1, "one"), (3, 3, "two"), (5, 5, "three")]
 
@@ -824,8 +710,6 @@ class TestEdgeShapes:
         assert _blocks.paragraph_spans(["body", ""]) == [(1, 1, "body")]
 
     def test_same_citekey_cited_twice_reads_the_source_once(self, isolated_config, monkeypatch):
-        """The passage cache: re-reading a 40-page source per citation
-        would make a heavily-cited draft needlessly slow."""
         add_item("a_2024", parsed_text="hysteresis relay chatter\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -846,18 +730,6 @@ class TestEdgeShapes:
 
 
 class TestReportPathMirrorsTheDraft:
-    """`content/drafts/<topic>/survey.md` must report to
-    `content/review/<topic>/survey.provenance.md`.
-
-    Before 3.19.2 the report path was `<dir> / f"{stem}.provenance.md"`
-    -- flat, keyed on the filename alone -- while `content/rendered/` and
-    `content/dossiers/` both mirrored the draft's path. Two drafts named
-    `survey.md` in different topic directories wrote the same file, and the
-    second silently destroyed the first. A wrong-but-plausible provenance
-    report is worse than a missing one: both drafts draw on the same corpus,
-    so the surviving file's citekeys look right for either.
-    """
-
     def test_two_drafts_sharing_a_filename_write_separate_reports(self, isolated_config):
         add_item("a_2024", parsed_text="hysteresis band\fpage two")
         paths = {}
@@ -876,9 +748,6 @@ class TestReportPathMirrorsTheDraft:
         assert "topic-b" in paths["topic-b"].read_text()
 
     def test_a_flat_draft_keeps_the_path_it_always_had(self, isolated_config):
-        """The mirrored part is only what sits *below* `DRAFTS_DIR`, so a
-        draft directly in `content/drafts/` is unchanged by this -- which is
-        what keeps the fix from moving anyone's existing output."""
         add_item("a_2024", parsed_text="hysteresis band\fpage two")
         draft = config.DRAFTS_DIR / "survey.md"
         draft.parent.mkdir(parents=True, exist_ok=True)
@@ -889,9 +758,6 @@ class TestReportPathMirrorsTheDraft:
         assert written["md"] == config.REVIEW_DIR / "survey.provenance.md"
 
     def test_a_draft_outside_drafts_dir_has_no_path_to_mirror(self, isolated_config):
-        """Same fallback `render_output._output_dir` documents: nothing under
-        `DRAFTS_DIR` to be relative to, so the flat directory stands rather
-        than the command refusing a draft it is allowed to read."""
         add_item("a_2024", parsed_text="hysteresis band\fpage two")
         draft = config.CONTENT_DIR / "loose.md"
         draft.parent.mkdir(parents=True, exist_ok=True)

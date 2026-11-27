@@ -1,14 +1,3 @@
-"""`python -m chitragupta.draft style`: which rules apply, and what it reports.
-
-What Vale itself matches is Vale's business and is not re-tested here --
-that is what `assets/vale/` and the bench entry are for. What *is* tested
-is everything this repository decides: which dialect rule a draft gets,
-what happens when nobody chose one, how repeated findings collapse, and
-that the command exits 0 whatever it finds. The last one is the load-bearing
-test: docs/ARCHITECTURE.md's "Layer 4" and DEVELOPER-AGENTS.md both turn on
-this check never becoming a gate, and an exit code is how that would slip.
-"""
-
 import json
 import shutil
 import subprocess
@@ -28,7 +17,6 @@ def draft(isolated_config):
 
 
 def write_scope(draft, line):
-    """Put one `- language:` line into this draft's dossier scope.md."""
     scope_dir = dossier.dossier_dir(draft)
     scope_dir.mkdir(parents=True, exist_ok=True)
     (scope_dir / dossier.SCOPE_MD).write_text(
@@ -37,8 +25,6 @@ def write_scope(draft, line):
 
 
 def fake_run(payload, stdout=None):
-    """A `subprocess.run` returning `payload` as Vale's JSON on stdout."""
-
     def _run(argv, **kwargs):  # pylint: disable=unused-argument
         text = json.dumps(payload) if stdout is None else stdout
         return subprocess.CompletedProcess(argv, 0, stdout=text, stderr="")
@@ -61,23 +47,14 @@ class TestLanguageOf:
         assert style_language.language_of(draft) is None
 
     def test_a_dossier_without_a_language_line_reads_as_unset(self, draft):
-        """Every dossier written before 5.12.0 is this case, including the
-        fifteen restored with the example book -- so it is the common one,
-        not an edge."""
         write_scope(draft, "- draft: x")
         assert style_language.language_of(draft) is None
 
     def test_the_shipped_not_settled_placeholder_reads_as_unset(self, draft):
-        """The placeholder *contains* real tags, to tell a human what shape
-        to write. Taking the first word is what stops "not settled -- a
-        BCP-47 tag (`en-GB`, ...)" being read as en-GB."""
         write_scope(draft, "- language: not settled -- a BCP-47 tag (`en-GB`, `en-IN`, `en-US`)")
         assert style_language.language_of(draft) is None
 
     def test_an_unrecognised_tag_is_still_reported_as_recorded(self, draft):
-        """ "Recorded fr-FR, nothing here can check it" and "nobody chose
-        one" are different states, and only the second is worth prompting
-        about."""
         write_scope(draft, "- language: fr-FR")
         assert style_language.language_of(draft) == "fr-FR"
 
@@ -91,9 +68,6 @@ class TestLanguageOf:
         assert style_language.language_of(draft) == tag
 
     def test_a_draft_outside_content_has_no_dossier_to_read(self, isolated_config, tmp_path):
-        """dossier_dir refuses a path outside content/. That is a fine
-        reason to skip the dialect rules and no reason to crash: the rest
-        of the check still applies to the prose."""
         assert style_language.language_of(tmp_path / "loose.md") is None
 
 
@@ -109,16 +83,11 @@ class TestRuleFilter:
         assert "DialectUS" in expression and "DialectIN" in expression
 
     def test_en_in_keeps_both_gb_and_in(self):
-        """en-IN is en-GB plus the -ize check, not an alias for either:
-        British English accepts Oxford -ize and Indian English does not."""
         expression = style_language.rule_filter("en-IN")
         assert "DialectGB" not in expression and "DialectIN" not in expression
         assert "DialectUS" in expression
 
     def test_the_filter_names_exclusions_so_a_new_rule_is_on_by_default(self):
-        """A rule added to assets/vale/ later must be enabled without
-        touching this module. An inclusion list would silently disable it,
-        and a report of zero findings is where that hides."""
         assert style_language.rule_filter("en-GB").count("!=") == 2
 
 
@@ -134,10 +103,6 @@ class TestRunVale:
         assert style_check.run_vale(draft, "en-GB")[0]["Match"] == "simply"
 
     def test_the_launch_goes_through_the_modules_own_seam(self, draft, monkeypatch):
-        """#854: `style_check._run` is the one patch point for the Vale
-        launch, so a test fakes this module's subprocess and nobody
-        else's -- patching the global `subprocess.run` reached every
-        launch in the process for the duration of the test."""
         monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
         monkeypatch.setattr(style_check, "_run", fake_run({str(draft): [finding()]}))
         assert style_check.run_vale(draft, None)[0]["Match"] == "simply"
@@ -148,8 +113,6 @@ class TestRunVale:
         assert style_check.run_vale(draft, None) == []
 
     def test_unreadable_output_blames_the_config_not_the_draft(self, draft, monkeypatch):
-        """A parse failure means the vendored style is broken. Swallowing
-        it would report zero findings, which reads as a clean draft."""
         monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
         monkeypatch.setattr(style_check, "_run", fake_run(None, stdout="not json"))
         with pytest.raises(style_check.MissingBinary, match="could not read"):
@@ -165,9 +128,6 @@ class TestRunVale:
     def test_a_latex_draft_reaches_vale_on_stdin_with_its_quotes_rewritten(
         self, tmp_path, monkeypatch
     ):
-        """A `.tex` draft is handed over as text, its LaTeX markup blanked
-        first (style_latex.for_vale); the format still comes from the
-        extension, so vale.ini's `tex = md` mapping applies."""
         draft = tmp_path / "c.tex"
         draft.write_text("They wrote ``a quote''.\n", encoding="utf-8")
         calls = []
@@ -185,17 +145,11 @@ class TestRunVale:
         assert encoding == "utf-8", "the locale's codec would refuse a non-ASCII draft"
 
     def test_the_draft_path_is_resolved_not_passed_as_typed(self, draft, monkeypatch):
-        """cwd=config.PROJECT_ROOT below means a relative path is relative
-        to the *caller's* cwd, not vale's -- so vale must always be handed
-        an absolute one, regardless of what the caller passed in (#495)."""
         monkeypatch.chdir(draft.parent)
         argv = style_check._vale_argv("/usr/bin/vale", Path(draft.name), None)
         assert argv[-1] == str(draft.resolve())
 
     def test_a_nonzero_exit_with_empty_stdout_is_reported_not_swallowed(self, draft, monkeypatch):
-        """Vale's own errors -- a broken filter, a missing file, a bad
-        config -- write to stderr and leave stdout empty. Read as "{}"
-        that would report a clean draft vale never actually opened (#495)."""
         monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
 
         def _run(argv, **kwargs):  # pylint: disable=unused-argument
@@ -208,9 +162,6 @@ class TestRunVale:
     def test_a_nonzero_exit_with_findings_on_stdout_is_not_treated_as_an_error(
         self, draft, monkeypatch
     ):
-        """`--no-exit` is meant to make findings not affect the exit code,
-        but if a future vale release breaks that contract this must still
-        prefer the findings it did produce over discarding them."""
         monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
         payload = {str(draft): [finding()]}
 
@@ -223,8 +174,6 @@ class TestRunVale:
 
 class TestCollapse:
     def test_repeats_of_one_token_become_one_finding_with_a_count(self):
-        """Measured: a chapter that never expands "AI" produced 45
-        identical findings. That is one thing to fix, not 45."""
         collapsed = style_check.collapse([finding(match="AI", line=n) for n in (5, 9, 20)])
         assert len(collapsed) == 1
         assert collapsed[0]["count"] == 3
@@ -250,8 +199,6 @@ class TestCollapse:
         assert collapsed[0]["match"] == "often"
 
     def test_a_finding_missing_every_optional_key_does_not_crash(self):
-        """Vale's JSON is a contract this repo does not own. A key that
-        moves in a later release should degrade, not raise."""
         assert style_check.collapse([{}])[0]["count"] == 1
 
 
@@ -262,9 +209,6 @@ class TestResolveLanguage:
         assert style_language.resolve_language(draft, "en-GB") == ("en-GB", "--language")
 
     def test_the_draft_wins_over_the_host_default(self, draft, monkeypatch):
-        """A thesis at an Indian university and an IEEE submission
-        legitimately differ, and only the per-draft record knows which
-        this is."""
         monkeypatch.setattr(config, "STYLE_LANGUAGE", "en-US")
         write_scope(draft, "- language: en-GB")
         assert style_language.resolve_language(draft) == ("en-GB", "scope.md")
@@ -291,16 +235,10 @@ class TestProposeLanguage:
         assert style_check.propose_language(draft)[0] == "en-GB"
 
     def test_a_tie_proposes_nothing(self, draft, monkeypatch):
-        """The honest answer for a short draft with no dialect-bearing
-        word in it, and better than naming one at random."""
         self._counts(monkeypatch, gb=0, us=0)
         assert style_check.propose_language(draft) is None
 
     def test_only_dialect_findings_are_counted(self, draft, monkeypatch):
-        """Every other rule fires identically whichever dialect is
-        assumed, so counting them adds the same number to both sides and
-        buries the signal -- measured as 18 vs 31 rather than 0 vs 26."""
-
         def _run(draft_, language):  # pylint: disable=unused-argument
             noise = [finding(check="chitragupta.Acronyms", match="ISO")] * 18
             return noise + (
@@ -323,14 +261,10 @@ class TestReport:
         }
 
     def test_an_unset_dialect_is_stated_not_silently_skipped(self, draft):
-        """A report that omits dialect findings because nobody set a
-        target looks exactly like a draft that has none."""
         lines = style_check.report(draft, self._payload(draft))
         assert any("not checked" in line for line in lines)
 
     def test_a_recorded_dialect_names_where_it_came_from(self, draft):
-        """A draft checked against a host-wide default must not read like
-        a draft that declared one."""
         lines = style_check.report(draft, self._payload(draft, "en-GB", "config.toml"))
         assert any("en-GB (from config.toml)" in line for line in lines)
 
@@ -339,8 +273,6 @@ class TestReport:
         assert any("no rules for that tag" in line for line in lines)
 
     def test_a_proposal_prints_the_command_that_records_it(self, draft):
-        """Proposes and never writes: docs/HOUSE-STYLE.md's rule is that
-        the machine offers and the human accepts."""
         proposal = {"language": "en-GB", "findings_by_language": {"en-GB": 0, "en-US": 13}}
         lines = style_check.report(draft, self._payload(draft, proposal=proposal))
         assert any("dossier set-language en-GB" in line for line in lines)
@@ -368,9 +300,6 @@ class TestReport:
 
 class TestMain:
     def test_it_exits_zero_with_findings(self, draft, monkeypatch, capsys):
-        """The single most important assertion in this file. SOUL.md and
-        DEVELOPER-AGENTS.md both turn on this check never gating, and a
-        non-zero exit is exactly how it would become one."""
         monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
         monkeypatch.setattr(style_check, "_run", fake_run({str(draft): [finding()] * 3}))
         assert style_check.main([str(draft)]) == 0
@@ -383,15 +312,11 @@ class TestMain:
         assert "no findings" in capsys.readouterr().out
 
     def test_a_missing_binary_warns_and_still_exits_zero(self, draft, monkeypatch, capsys):
-        """render_output's bargain: an absent optional tool costs you this
-        report and nothing else."""
         monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: None)
         assert style_check.main([str(draft)]) == 0
         assert "WARNING" in capsys.readouterr().out
 
     def test_a_missing_binary_stops_after_the_first_draft(self, draft, monkeypatch, capsys):
-        """It will not appear between two drafts, so repeating the same
-        warning once per draft is noise."""
         monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: None)
         style_check.main([str(draft), str(draft)])
         assert capsys.readouterr().out.count("WARNING") == 1
@@ -411,9 +336,6 @@ class TestMain:
     def test_a_broken_exceptions_file_is_a_usage_error_not_a_finding(
         self, draft, monkeypatch, capsys
     ):
-        """#1187: a malformed `style_exceptions.toml` must stop the run
-        with its reason on stderr and exit 2, like the allowlist; loading
-        it as empty would silently re-raise every declared term."""
         monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
         monkeypatch.setattr(style_check, "_run", fake_run({}))
 
@@ -429,8 +351,6 @@ class TestMain:
     def test_json_carries_the_findings_and_the_not_a_verdict_notice(
         self, draft, monkeypatch, capsys
     ):
-        """The hook and docs/AUTO-IMPROVEMENT.md's agenda both read this
-        rather than the printed form."""
         monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
         monkeypatch.setattr(style_check, "_run", fake_run({str(draft): [finding()]}))
         assert style_check.main([str(draft), "--json"]) == 0
@@ -457,28 +377,13 @@ vale_available = shutil.which("vale") is not None
 
 @pytest.mark.skipif(not vale_available, reason="vale not installed")
 class TestAgainstRealVale:
-    """The only place the vendored style is exercised by the real binary.
-
-    Skipped where Vale is absent, exactly as tests/test_render_output.py
-    skips where pandoc is -- and the same reason CI's Windows leg holds a
-    95 coverage floor rather than the full 100. CI's lint job runs the
-    same fixtures through the same command.
-    """
-
     FIXTURES = Path(__file__).resolve().parent / "fixtures" / "style"
 
     @pytest.mark.parametrize("name", ["exemptions.md", "exemptions.tex"])
     def test_every_marker_inside_an_exemption_is_ignored(self, name):
-        """Both fixtures are wall-to-wall defect markers and en-US
-        spellings, every one inside a code fence, an inline span, a block
-        quote, a references section or a LaTeX verbatim block. A finding
-        here is an exemption that has broken."""
         assert style_check.check(self.FIXTURES / name)["findings"] == []
 
     def test_prose_outside_an_exemption_is_still_reported(self, tmp_path):
-        """The complement of the test above, and the one that stops it
-        passing for the wrong reason: a config that exempted everything
-        would satisfy the fixtures too."""
         draft = tmp_path / "loose.md"
         draft.write_text("This is simply wrong.\n", encoding="utf-8")
         matches = [f["match"] for f in style_check.check(draft)["findings"]]
@@ -492,15 +397,11 @@ class TestAgainstRealVale:
 
     @staticmethod
     def _empty_vocabulary(tmp_path, monkeypatch, body=""):
-        """config.ACRONYMS_PATH is not isolated by conftest."""
         vocab = tmp_path / "acronyms.toml"
         vocab.write_text(body, encoding="utf-8")
         monkeypatch.setattr(config, "ACRONYMS_PATH", vocab)
 
     def test_latex_command_names_are_not_prose(self, tmp_path):
-        """#1187: `\\center` and `\\centering` are commands, not the word.
-        The prose between them is still checked, which is the control
-        that stops someone splitting the one alternation in vale.ini."""
         text = "\\begin{center}\n\\centering\nInside, this is simply the center.\n\\end{center}\n"
         assert self._matches(tmp_path, "c.tex", text) == ["simply", "center"]
 
@@ -512,7 +413,6 @@ class TestAgainstRealVale:
         assert self._matches(tmp_path, "x.md", text) == []
 
     def test_other_words_in_a_bold_exercise_heading_are_still_prose(self, tmp_path):
-        """#1187 control: only the documented label is skipped."""
         text = "**Exercise 3: why this is obviously wrong**\n"
         assert "obviously" in self._matches(tmp_path, "z.md", text)
 
@@ -535,8 +435,6 @@ class TestAgainstRealVale:
         assert [f for f in found if f["rule"] == "chitragupta.Acronyms"]
 
     def test_declared_term_is_exempt_under_en_gb(self, tmp_path, monkeypatch):
-        """#1187: a proper name carrying an en-US spelling is not a
-        dialect slip. The control is the same word outside the term."""
         self._empty_vocabulary(tmp_path, monkeypatch, 'UML = "Unified Modeling Language"\n')
         text = "The Unified Modeling Language is used.\n"
         assert self._matches(tmp_path, "t.md", text) == []
@@ -544,10 +442,6 @@ class TestAgainstRealVale:
 
 
 class TestSetLanguageRoundTrip:
-    """`dossier set-language` writes what `style` then reads. The two are
-    separate modules, so nothing but a test keeps the line they agree on
-    from drifting."""
-
     def test_setting_a_language_makes_style_check_read_it(self, draft):
         dossier.init(draft, "survey")
         dossier.set_language(draft, "en-IN")
@@ -560,8 +454,6 @@ class TestSetLanguageRoundTrip:
         assert scope.count("- language:") == 1
 
     def test_it_inserts_the_line_into_a_dossier_that_predates_it(self, draft):
-        """Every dossier written before 5.12.0 is this case, so the insert
-        path is the common one rather than the edge."""
         write_scope(draft, "- draft: x")
         dossier.set_language(draft, "en-GB")
         assert style_language.language_of(draft) == "en-GB"
@@ -587,13 +479,7 @@ class TestSetLanguageRoundTrip:
 
 
 class TestTheRuleRegistry:
-    """#852: a Python-side style rule is a module with a `findings(draft)`
-    function, registered once in `style_rules.PYTHON_CHECKS`. Adding one
-    used to mean editing the sum in `check()`, a registered C2 offender."""
-
     def test_every_style_module_with_findings_is_registered(self):
-        """An unregistered rule would run nowhere and report nothing --
-        the silent half of forgetting it."""
         package = Path(style_check.__file__).parent
         modules = sorted(
             f"chitragupta.{path.stem}"
@@ -624,8 +510,6 @@ class TestCheckWiring:
         assert style_check.check(draft)["proposed_language"]["language"] == "en-GB"
 
     def test_a_draft_with_a_dialect_gets_no_proposal(self, draft, monkeypatch):
-        """Two extra Vale runs are the cost of proposing, so they happen
-        only where there is a question to answer."""
         write_scope(draft, "- language: en-GB")
         monkeypatch.setattr(style_check, "run_vale", lambda d, lang: [])
         assert style_check.check(draft)["proposed_language"] is None
@@ -636,10 +520,6 @@ class TestCheckWiring:
         assert style_check.check(draft)["proposed_language"] is None
 
     def test_propose_false_skips_the_extra_vale_runs_even_when_unset(self, draft, monkeypatch):
-        """The agenda's `_read_style` never reads `proposed_language`
-        (#495, m-73), so `propose=False` must stop `propose_language`
-        (two more Vale runs) from being called at all -- not just discard
-        its result."""
         monkeypatch.setattr(config, "STYLE_LANGUAGE", "")
         calls = []
 
@@ -653,13 +533,9 @@ class TestCheckWiring:
         assert calls == [None]  # only the main check's run, no en-GB/en-US probes
 
     def test_findings_include_acronym_drift_alongside_vales_own(self, draft, monkeypatch):
-        """The one chitragupta.style_check finding not sourced from Vale still
-        ends up in the same `findings` list run_vale's own populate --
-        see chitragupta/style_acronym_drift.py."""
         write_scope(draft, "- language: en-GB")
         monkeypatch.setattr(style_check, "run_vale", lambda d, lang: [finding()])
 
-        # The acronym-drift check stood in for, the rest of the registry kept (#852).
         def drift(_draft):
             return [
                 {
@@ -681,17 +557,12 @@ class TestCheckWiring:
 
 
 class TestWithRepair:
-    """How each Vale finding may be repaired: `"edit"` lets the review
-    agenda fix it unattended, `"review"` lists it for a person."""
-
     @staticmethod
     def _repair(rule: str, source: str = "scope.md", match: str = "x") -> str:
         found = {"rule": rule, "match": match, "line": 1, "count": 1}
         return style_rules.with_repair([found], source)[0]["repair"]
 
     def test_just_is_left_for_a_person(self):
-        """Vale cannot tell the filler adverb ("just run it") from the
-        adjective ("a just outcome"), so no pass may rewrite it unseen."""
         assert self._repair("chitragupta.Just") == "review"
 
     def test_a_defect_marker_is_still_repaired_unattended(self):
@@ -704,8 +575,6 @@ class TestWithRepair:
         assert self._repair("chitragupta.DialectGB", "scope.md") == "edit"
 
     def test_a_capitalised_dialect_match_is_left_for_a_person(self):
-        """A capitalised match may be a proper name ("Unified Modeling
-        Language"), which no dialect re-spelling should touch (#1187)."""
         assert self._repair("chitragupta.DialectGB", "scope.md", "Modeling") == "review"
 
     def test_a_lower_case_dialect_match_is_still_repaired(self):

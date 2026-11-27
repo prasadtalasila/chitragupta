@@ -1,19 +1,9 @@
-"""#1144: a Markdown render drops the draft's raw LaTeX.
-
-`--format md` on a Markdown draft never reaches pandoc, so nothing
-dropped a ```` ```{=latex} ```` block or a `` `...`{=latex} `` span the
-way pandoc's own non-LaTeX writers do: both reached the rendered `.md`
-verbatim, where every Markdown viewer shows them as code.
-"""
-
 import shutil
 
 from chitragupta import _markdown_inert, render_output
 from chitragupta.render_output import _raw_tex
 from tests.conftest import content_draft
 
-# The issue's reproduction, plus a fenced ```{=latex} shown *inside* a
-# longer ````markdown fence, which is an example and must survive.
 _DRAFT = """# Demo
 
 Some text with an inline span `\\hfill`{=latex} here.
@@ -76,8 +66,6 @@ def test_a_markdown_render_drops_raw_latex_and_keeps_code(isolated_config, monke
 
 
 class TestDropped:
-    """`_raw_tex.dropped` on its own: what is cut, and what is left."""
-
     def test_a_block_at_either_end_leaves_no_stray_blank_line(self):
         text = "```{=latex}\n\\a\n```\n\nBody.\n\n```{=latex}\n\\b\n```\n"
         assert _raw_tex.dropped(text) == "Body.\n"
@@ -94,7 +82,6 @@ class TestDropped:
         assert _raw_tex.dropped(text) == "A.\n\nB.\n"
 
     def test_an_unclosed_raw_fence_is_left_alone(self):
-        # Pandoc reads it as a paragraph, not a raw block.
         text = "A.\n\n```{=latex}\n\\a\n"
         assert _raw_tex.dropped(text) == text
 
@@ -103,7 +90,6 @@ class TestDropped:
         assert _raw_tex.dropped(text) == "> A.\n>\n> B.\n"
 
     def test_a_raw_block_on_a_list_marker_line_is_left_alone(self):
-        # Cutting the line would cut the item's marker with it.
         text = "- ```{=latex}\n  \\a\n  ```\n"
         assert _raw_tex.dropped(text) == text
 
@@ -120,7 +106,6 @@ class TestDropped:
         assert _raw_tex.dropped("One\n`\\newline`{=latex}\ntwo.\n") == "One\ntwo.\n"
 
     def test_inline_code_and_other_raw_formats_are_kept(self):
-        # `{=html}` is passed through: a Markdown viewer renders raw HTML.
         text = "Run `make` and `<br>`{=html} here.\n\n```{=html}\n<hr>\n```\n"
         assert _raw_tex.dropped(text) == text
 
