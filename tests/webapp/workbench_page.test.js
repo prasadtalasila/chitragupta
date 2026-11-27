@@ -1,9 +1,3 @@
-/* assets/webapp/workbench/: the page loads only its own files, by src,
-   and none of them builds markup from strings (#1262).
-
-   Loading every script index.html names except the DOM wiring (main.js)
-   is also what puts each module in node's coverage report -- the same
-   reason tests/webapp/browser_load.test.js exists for the topic graph. */
 "use strict";
 
 const test = require("node:test");

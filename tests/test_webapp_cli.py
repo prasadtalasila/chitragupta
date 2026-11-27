@@ -53,7 +53,6 @@ def test_the_command_and_the_cli_never_import_the_web_stack():
 
 @pytest.fixture
 def served(isolated_config, monkeypatch):
-    """`main` with `serve` replaced: records the app and the socket's port."""
     calls = {"opened": []}
 
     def fake_serve(app, sock, on_started=None):

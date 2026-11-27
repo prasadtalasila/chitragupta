@@ -178,7 +178,6 @@ def test_on_started_is_skipped_when_the_server_never_starts(monkeypatch):
 
 @pytest.fixture(scope="module")
 def live():
-    """A real uvicorn on a loopback port, for requests the test client would rewrite."""
     sock = _server.bind_socket(0)
     port = sock.getsockname()[1]
     server = _server.make_server(build_app(port=port, token=TOKEN))
@@ -194,7 +193,6 @@ def live():
 
 
 def _raw(port, head, body=b""):
-    """Send exactly these bytes; return the status code uvicorn answered with."""
     with socket.create_connection(("127.0.0.1", port), timeout=5) as conn:
         conn.sendall(head.replace("\n", "\r\n").encode("latin-1") + b"\r\n" + body)
         reply = b""

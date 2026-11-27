@@ -1,5 +1,3 @@
-/* assets/webapp/workbench/token.js: the launch token moves from the URL
-   fragment into sessionStorage and out of the address bar (#1262). */
 "use strict";
 
 const test = require("node:test");

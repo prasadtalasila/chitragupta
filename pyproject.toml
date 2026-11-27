@@ -49,7 +49,6 @@ images = [
     "accelerate>=1.16,<2.0",
 ]
 webapp = [
-    # `chitragupta webapp` only (#1262); imported nowhere else.
     "fastapi>=0.165,<0.166",
     "uvicorn>=0.54,<0.55",
 ]
@@ -59,9 +58,7 @@ dev = [
     "pytest-cov>=7.1,<8.0",
     "pytest-xdist>=3.8,<4.0",
     "pyyaml>=6.0,<7.0",
-    # TestClient for the webapp's FastAPI app. Starlette now prefers `httpx2`;
-    # plain httpx (already in the lock through chromadb, and in starlette's own
-    # `full` extra at this range) adds no new package name to the supply chain.
+    # Not httpx2: plain httpx is already locked and adds no new package name.
     "httpx>=0.28,<0.29",
 ]
 docs = [
@@ -156,7 +153,6 @@ markers = [
     "real_resolver_loaders: run discover's real model loaders instead of tests/conftest.py's refusal",
     "slow: compiles with a real TeX engine; CI's Linux leg deselects it, a local run keeps it",
 ]
-# The webapp's TestClient runs on plain httpx on purpose (see `dev` above).
 filterwarnings = ["ignore:Using `httpx` with `starlette.testclient` is deprecated"]
 
 [tool.coverage.run]

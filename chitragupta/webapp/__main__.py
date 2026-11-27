@@ -1,9 +1,4 @@
-"""`chitragupta webapp [--port N] [--no-browser]`.
-
-Refuses (exit 2) outside a chitragupta project and without the `webapp`
-extra. Imports nothing from FastAPI or uvicorn at module level, so asking
-for `--help`, or the CLI importing this module, never loads them.
-"""
+"""Imports nothing from FastAPI or uvicorn at module level: the CLI imports this."""
 
 import argparse
 import importlib.util
@@ -29,7 +24,6 @@ DESCRIPTION = (
 
 
 def port_arg(value: str) -> int:
-    """A TCP port the user asked for: 1-65535, never 0 (0 is the default's job)."""
     try:
         port = int(value)
     except ValueError:
@@ -56,7 +50,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def missing_extra() -> list[str]:
-    """The modules of the `webapp` extra that cannot be imported here."""
     return [name for name in REQUIRED_MODULES if importlib.util.find_spec(name) is None]
 
 
@@ -85,7 +78,7 @@ def _already_running(directory) -> int:
 
 
 def _run(args) -> int:
-    """One server per project: its own lock, never the corpus writer lock."""
+    # Its own lock, never the corpus writer lock, so `corpus sync` still runs.
     directory = _launch.runtime_dir()
     try:
         with pipeline_lock(directory / "server.lock"):

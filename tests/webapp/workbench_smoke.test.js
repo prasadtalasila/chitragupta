@@ -1,13 +1,3 @@
-/* The webapp workbench in a real headless browser, against a real
-   `chitragupta webapp` (#1262).
-
-   Proves what node cannot: main.js takes the token from the fragment,
-   the address bar ends without it, no cookie is ever set, the page talks
-   to /api/status under the server's own Content-Security-Policy, and a
-   reload still works from sessionStorage.
-
-   Skips in GitHub Actions and without a browser, like browser_smoke.test.js;
-   scripts/check_local.sh runs it on a host that has one. */
 "use strict";
 
 const { describe, it, before, after } = require("node:test");

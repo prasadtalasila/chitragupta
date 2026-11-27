@@ -1,8 +1,4 @@
-/* The workbench page's DOM wiring (#1262): take the token, ask the
-   server for its status, show the answer.
-
-   Runs only in a browser; node never loads it. The headless-browser
-   smoke test (tests/webapp/workbench_smoke.test.js) is what runs it. */
+/* DOM wiring: node never loads it; workbench_smoke.test.js runs it. */
 "use strict";
 (function () {
   var api = window.CHITRAGUPTA_WORKBENCH;

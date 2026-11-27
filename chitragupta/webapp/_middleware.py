@@ -1,13 +1,6 @@
-"""The one place every request is checked (#1262, approach B).
+"""Plain ASGI around the whole app, so no route can skip a check.
 
-A plain ASGI middleware wrapping the whole FastAPI app -- routers and the
-static mount alike -- so a route added later cannot skip a check: it only
-exists behind this. Routes never authenticate. Not `BaseHTTPMiddleware`,
-which mishandles streamed responses, and WA-1's agent reply is one.
-
-Every response, refusals included, carries the security headers. A
-WebSocket handshake is closed before the app sees it: nothing here
-speaks WebSocket, and an open door nobody uses is still a door.
+Not BaseHTTPMiddleware, which mishandles streamed responses.
 """
 
 import logging
@@ -32,7 +25,7 @@ POLICY_VIOLATION = 1008
 
 
 def _headers_for(path: str, existing: list) -> list:
-    """Ours replace any the app set, so a route cannot weaken them."""
+    # Ours replace any the app set, so a route cannot weaken them.
     ours = list(SECURITY_HEADERS) + ([NO_STORE] if is_api(path) else [])
     names = {name for name, _ in ours}
     return [h for h in existing if h[0].lower() not in names] + ours

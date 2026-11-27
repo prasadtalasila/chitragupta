@@ -1,14 +1,6 @@
-/* The launch token: from the URL fragment into sessionStorage, and out
-   of the address bar (#1262).
-
-   `chitragupta webapp` prints http://127.0.0.1:PORT/#token=... A fragment
-   is never sent to the server, so the token stays out of its logs and of
-   any Referer. On load the page keeps it in sessionStorage, which is
-   scoped to this scheme, host *and port* -- unlike a cookie on
-   127.0.0.1, which every port on the host would receive -- and removes it
-   from the address bar so it is not left in history or a screenshot.
-
-   Tested without a DOM by tests/webapp/workbench_token.test.js. */
+/* The token arrives in the URL fragment, which no server receives. It is
+   kept in sessionStorage, scoped to this port, never in a cookie, which
+   every port on 127.0.0.1 would receive. */
 "use strict";
 
 (function (root, factory) {
@@ -30,7 +22,7 @@
     try {
       storage.setItem(STORAGE_KEY, value);
     } catch (e) {
-      /* Private mode: this page load still has the token. */
+      return;
     }
   }
 

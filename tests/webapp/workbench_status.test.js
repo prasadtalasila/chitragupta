@@ -1,5 +1,3 @@
-/* assets/webapp/workbench/status.js: what the placeholder page shows,
-   built from text nodes only, so a hostile project name stays text. */
 "use strict";
 
 const test = require("node:test");

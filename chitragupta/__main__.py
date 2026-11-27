@@ -67,8 +67,7 @@ COMMANDS = {
     }.items()
 }
 
-# Reachable but left out of the `--help` tree until the workbench has
-# panes to offer (WA-1, #1261); the server alone is a foundation (#1262).
+# Reachable but out of the `--help` tree until WA-1 (#1261) adds panes.
 HIDDEN = frozenset({"webapp"})
 
 CHOICES = {**LAYERS, **COMMANDS}

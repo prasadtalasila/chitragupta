@@ -1,16 +1,9 @@
-/* Headless Chrome over the DevTools protocol, shared by the two browser
-   smoke tests: the exported topic-graph page (browser_smoke.test.js)
-   and the webapp workbench (workbench_smoke.test.js). Not a test file:
-   node --test's glob is *.test.js. */
 "use strict";
 
 const childProcess = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
-// CHROME_PATH first, so a host whose browser is not on PATH (puppeteer's
-// cache, a chrome-headless-shell) can still run this; then the names the
-// Linux packages and GitHub's ubuntu runner image install under.
 const CANDIDATES = ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"];
 
 function onPath(name) {
@@ -43,14 +36,9 @@ function withDeadline(promise, what) {
   return Promise.race([promise, expired]).finally(() => clearTimeout(timer));
 }
 
-/* The DevTools protocol over --remote-debugging-pipe: JSON messages, each
-   ended by a NUL byte, written to the browser's fd 3 and read from its
-   fd 4. One session, attached to one page, is all this file needs. */
 function launch(BROWSER, userDataDir) {
   const proc = childProcess.spawn(BROWSER, [
     "--headless",
-    // CI's runner and this project's container both refuse the sandbox's
-    // user namespace, and the page is a local file this test wrote.
     "--no-sandbox",
     "--remote-debugging-pipe",
     "--no-first-run",
@@ -65,9 +53,6 @@ function launch(BROWSER, userDataDir) {
   let sessionId;
   let gone = null;
 
-  // A browser that died, or a CHROME_PATH that names nothing runnable,
-  // fails whatever was waiting on it, and whatever is sent after, instead
-  // of hanging the run.
   function abandon(error) {
     gone = gone || error;
     for (const waiting of pending.values()) { waiting.reject(error); }
@@ -76,8 +61,6 @@ function launch(BROWSER, userDataDir) {
   proc.on("error", abandon);
   proc.stdio[3].on("error", abandon);
   proc.stdio[4].on("error", abandon);
-  // A decoder, not chunk.toString(): a read can end inside a multi-byte
-  // character, and the panel text the cases match on has an em dash.
   proc.stdio[4].setEncoding("utf8");
   proc.on("exit", (code) => abandon(new Error("the browser exited (" + code + ")")));
 
@@ -118,18 +101,14 @@ function launch(BROWSER, userDataDir) {
     if (initScript) {
       await send("Page.addScriptToEvaluateOnNewDocument", { source: initScript });
     }
-    // Wide enough that the panel sits beside the canvas, as on a laptop.
     await send("Emulation.setDeviceMetricsOverride", {
       width: 1280, height: 900, deviceScaleFactor: 1, mobile: false,
     });
   }
 
   async function close() {
-    // No pid is a browser that never started, which will never exit.
     if (!proc.pid || proc.exitCode !== null || proc.signalCode !== null) { return; }
     const exited = new Promise((resolve) => { proc.once("exit", resolve); });
-    // Asked first; killed if it did not answer, since one that has gone
-    // silent will not exit on its own.
     await send("Browser.close", {}, false).catch(() => proc.kill("SIGKILL"));
     await exited;
   }
@@ -137,10 +116,6 @@ function launch(BROWSER, userDataDir) {
   return { send, attach, close, on: (listener) => listeners.push(listener) };
 }
 
-/* Anything the page says went wrong: an uncaught exception, a console
-   error or warning (DROPPED_ELEMENTS above reports through one), and
-   the browser's own log, which is where a Content-Security-Policy
-   refusal and a missing file under file:// are reported. */
 function problemsOf(method, params) {
   if (method === "Runtime.exceptionThrown") {
     const details = params.exceptionDetails;

@@ -1,15 +1,7 @@
-"""The token, the launch URL and the two runtime files (#1262).
+"""The token travels only in the URL fragment, which no server receives.
 
-The token rides in the URL fragment, which a browser never sends to the
-server. The browser is opened on `open.html`, a private file that
-redirects to that URL, so the token is never on a process's command line
-where another user's `ps` would show it (Jupyter's approach).
-`server.json` records the port for a second start's refusal; it never
-holds the token.
-
-Both files live in `content/.webapp/` (0700) as 0600 files. On Windows
-those modes are no-ops and the user-profile ACLs are what protect them
-(docs/SECURITY.md, "Local web workbench").
+The browser opens open.html (0600) rather than the URL, so the token is
+never on a command line; server.json never holds it.
 """
 
 import html
@@ -43,7 +35,7 @@ def runtime_dir() -> Path:
 
 
 def _write_private(path: Path, text: str) -> Path:
-    """Created 0600 from the first byte, then moved into place whole."""
+    # 0600 from the first byte, then moved into place whole.
     tmp = temp_sibling(path)
     try:
         fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)

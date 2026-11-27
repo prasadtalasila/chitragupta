@@ -1,14 +1,6 @@
-"""The checks every request passes before any route sees it (#1262).
-
-Pure functions over a method, a path and the request headers, so they
-test without FastAPI. `run_checks` fixes the order: Host first (it closes
-DNS rebinding and runs for static files too), then the method, then --
-for `/api/` only -- Origin, the bearer token and the body size.
-
-Headers arrive as `{lower-case name: [values]}`, every value decoded as
-latin-1 the way the bytes came off the wire. A security header sent more
-than once is refused outright: picking "the first one" is how two parsers
-in a chain come to disagree about which value they checked.
+"""Checks in a fixed order: Host first (DNS rebinding, static files too),
+then method, then for /api/ only Origin, token and body size. A security
+header sent twice is refused, never resolved to one value.
 """
 
 import hmac
@@ -39,7 +31,6 @@ def is_api(path: str) -> bool:
 
 
 def _single(headers: Headers, name: str) -> "str | None | Refusal":
-    """The one value of `name`, `None` when absent, a 400 when repeated."""
     values = headers.get(name, [])
     if len(values) > 1:
         return Refusal(400, f"{name} header sent more than once")
@@ -73,7 +64,7 @@ def check_origin(method: str, headers: Headers, port: int) -> Refusal | None:
 
 
 def check_token(headers: Headers, token: str) -> Refusal | None:
-    """Compared as bytes: `hmac.compare_digest` raises on non-ASCII `str`."""
+    # Bytes: hmac.compare_digest raises on a non-ASCII str.
     value = _single(headers, "authorization")
     if isinstance(value, Refusal):
         return value
@@ -87,8 +78,7 @@ def check_body_size(method: str, headers: Headers) -> Refusal | None:
     if method != "POST":
         return None
     if "transfer-encoding" in headers:
-        # A chunked body is framed by the parser, not by Content-Length,
-        # so the limit below could not hold; the page never sends one.
+        # A chunked body is not bound by Content-Length, so the limit could not hold.
         return Refusal(400, "Transfer-Encoding not accepted")
     length = _single(headers, "content-length")
     if isinstance(length, Refusal):

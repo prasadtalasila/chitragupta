@@ -1,9 +1,5 @@
-/* What the placeholder workbench shows (#1262): the project and version
-   from GET /api/status, or how to get a working URL.
-
-   Built from elements and textContent only, never from markup strings:
-   a project directory named `<img onerror=...>` must show as those
-   characters. Tested without a DOM by tests/webapp/workbench_status.test.js. */
+/* Elements and textContent only: a project named `<img onerror=...>` must
+   show as those characters. */
 "use strict";
 
 (function (root, factory) {
