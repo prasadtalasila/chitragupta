@@ -111,9 +111,8 @@ def _serve_locked(args, directory) -> int:
         _launch.write_server_file(directory, port, os.getpid())
         page = _launch.write_open_file(directory, url)
         print(f"chitragupta workbench: {url}\nStop it with Ctrl-C.", flush=True)
-        if not args.no_browser:
-            _launch.open_browser(page)
-        _server.serve(build_app(port=port, token=token), sock)
+        opener = None if args.no_browser else (lambda: _launch.open_browser(page))
+        _server.serve(build_app(port=port, token=token), sock, on_started=opener)
     except KeyboardInterrupt:
         pass
     finally:

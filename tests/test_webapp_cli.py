@@ -56,9 +56,12 @@ def served(isolated_config, monkeypatch):
     """`main` with `serve` replaced: records the app and the socket's port."""
     calls = {"opened": []}
 
-    def fake_serve(app, sock):
+    def fake_serve(app, sock, on_started=None):
         calls["port"] = sock.getsockname()[1]
         calls["files"] = sorted(p.name for p in _launch.runtime_dir().iterdir())
+        calls["opened_before_serving"] = list(calls["opened"])
+        if on_started:
+            on_started()
         hook = calls.get("during")
         if hook:
             hook()
@@ -81,6 +84,11 @@ def test_clean_run_prints_url_and_cleans_up(served, capsys):
 def test_the_browser_is_opened_on_the_launch_file(served):
     assert webapp.main([]) == 0
     assert served["opened"] == [_launch.runtime_dir() / "open.html"]
+
+
+def test_the_browser_is_opened_only_once_the_server_is_serving(served):
+    assert webapp.main([]) == 0
+    assert served["opened_before_serving"] == []
 
 
 def test_the_requested_port_is_used(served):

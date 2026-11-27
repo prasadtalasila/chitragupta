@@ -170,3 +170,9 @@ def test_an_oversized_api_post_is_refused_after_auth():
         "content-length": [str(g.MAX_BODY + 1)],
     }
     assert g.run_checks("POST", "/api/x", headers, PORT, TOKEN).status == 413
+
+
+@pytest.mark.parametrize("encoding", [["chunked"], ["gzip, chunked"], ["identity"]])
+def test_transfer_encoding_on_a_post_is_refused(encoding):
+    headers = {"content-length": ["5"], "transfer-encoding": encoding}
+    assert g.check_body_size("POST", headers).status == 400

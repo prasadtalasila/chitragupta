@@ -330,9 +330,10 @@ printed for them:
   `127.0.0.1:PORT` or `localhost:PORT` (this closes DNS rebinding, and
   runs for static files too); only `GET` and `POST`; under `/api/`, an
   `Origin` of this server (required on `POST`), the bearer token, and a
-  1 MiB body limit. A security header sent twice is refused. Routes never
-  authenticate, and a test walks every route to prove a tokenless request
-  cannot reach one.
+  1 MiB body limit (a `POST` with `Transfer-Encoding` is refused, since
+  a chunked body is not bound by `Content-Length`). A security header
+  sent twice is refused. Routes never authenticate, and a test walks
+  every route to prove a tokenless request cannot reach one.
 - **A bearer token, never a cookie.** `secrets.token_urlsafe(32)`, new on
   every start, carried in the URL fragment (`/#token=...`), which a
   browser never sends to a server. The page moves it to `sessionStorage`
@@ -341,16 +342,20 @@ printed for them:
   private redirect file (`content/.webapp/open.html`, mode 0600), so the
   token is never on a process command line that `ps` would show another
   user.
-- **The page treats every served string as untrusted.** Every response,
-  refusals included, carries `Content-Security-Policy: default-src
+- **The page treats every served string as untrusted.** Every response
+  the app sends, refusals included, carries `Content-Security-Policy: default-src
   'self'; script-src 'self'; style-src 'self'; connect-src 'self';
   img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action
   'none'; frame-ancestors 'none'`, plus `nosniff` and `no-referrer`; a
   route cannot weaken them. No response carries a CORS header. The page
   has no inline script and builds its text with `textContent` only.
-- **No unused doors.** FastAPI's generated `/docs`, `/redoc` and
-  `/openapi.json` are off, WebSocket handshakes are closed before the
-  app, and uvicorn's access log is off.
+- **No unused doors, and no guessing about the parser.** FastAPI's
+  generated `/docs`, `/redoc` and `/openapi.json` are off. uvicorn is
+  pinned to the `h11` parser whatever else is installed, runs with no
+  WebSocket stack (and the middleware closes any handshake that reaches
+  the app), trusts no `X-Forwarded-*` header, and keeps its access log
+  off. A malformed request that uvicorn itself rejects gets its own
+  fixed-text 400, without the headers above.
 - **One server per project.** A lock in `content/.webapp/` refuses a
   second start. It is not the corpus writer lock, so `corpus sync` keeps
   working alongside.

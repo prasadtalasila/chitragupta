@@ -86,6 +86,10 @@ def check_token(headers: Headers, token: str) -> Refusal | None:
 def check_body_size(method: str, headers: Headers) -> Refusal | None:
     if method != "POST":
         return None
+    if "transfer-encoding" in headers:
+        # A chunked body is framed by the parser, not by Content-Length,
+        # so the limit below could not hold; the page never sends one.
+        return Refusal(400, "Transfer-Encoding not accepted")
     length = _single(headers, "content-length")
     if isinstance(length, Refusal):
         return length
