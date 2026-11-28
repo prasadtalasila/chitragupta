@@ -374,7 +374,7 @@ worse.
 
 | Looks like | Actually |
 | --- | --- |
-| Very long comments; `.github/workflows/ci.yml` roughly half prose | Required. [The comment rules](CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid): *why*-comments are mandatory here, and the size rules count statements precisely so that explaining yourself is free |
+| Very long comments; `.github/workflows/ci.yml` roughly half prose | Debt, paid down deliberately. [The comment rules](CODE-STANDARDS.md#-the-comment-rules-record-only-what-binds) keep only constraints that still bind; the rest is trimmed when a change touches it or in a dedicated PR (#1259), never as a drive-by |
 | Long developer documents (`DEVELOPER-AGENTS.md`, this directory) | Length is not the defect. Shorten by turning a late-firing rule into a command or a check, never by deleting rationale. A word budget is a continuous score, which [R3](AUTO-IMPROVEMENT.md#-the-requirements) rules out |
 | `con.execute(f"PRAGMA user_version = {target}")` (`chitragupta/ledger.py:98`) | Not SQL injection. `PRAGMA` does not accept `?` binding, and `target` is `len(_MIGRATIONS)`, this module's own constant. The comment above it says exactly that |
 | `_load_cache`/`_save_cache` duplicated in `retrieval_cache.py` and `enrich/_docling_cache.py` | Different requirements, and each docstring names them: retrieval needs a per-writer-unique temp name for concurrent subagents and a per-process memo on the index file's `(path, size, mtime_ns)`, because its payload is 14 MB and is read many times per run. Docling's is neither, and says why |

@@ -309,6 +309,57 @@ submit a form. The single-file `--html` page carries no policy: its
 script is inline by design, so `script-src 'self'` would block the page
 itself.
 
+### Local web workbench
+
+`chitragupta webapp` (#1262, from the optional `webapp` extra) serves a
+browser workbench that will later run the project's coding agent
+(WA-1, #1261). Anyone who can send it an authenticated request could prompt
+that agent, so the server is built to be reachable only from the
+author's own browser, on the author's own machine, with a secret it
+printed for them:
+
+- **Loopback only, with no override.** `chitragupta/webapp/_server.py`
+  binds the constant `127.0.0.1` itself and refuses to serve if the
+  bound address is not loopback. There is no flag, `config.toml` key or
+  environment variable for another address. To reach it from another
+  machine, use your own SSH tunnel:
+  `ssh -L PORT:127.0.0.1:PORT HOST`.
+- **One check point.** A single ASGI middleware
+  (`chitragupta/webapp/_middleware.py`) wraps the whole app and runs every
+  check before routing, in a fixed order: `Host` must be exactly
+  `127.0.0.1:PORT` or `localhost:PORT` (this closes DNS rebinding, and
+  runs for static files too); only `GET` and `POST`; under `/api/`, an
+  `Origin` of this server (required on `POST`), the bearer token, and a
+  1 MiB body limit (a `POST` with `Transfer-Encoding` is refused, since
+  a chunked body is not bound by `Content-Length`). A security header
+  sent twice is refused. Routes never authenticate, and a test walks
+  every route to prove a tokenless request cannot reach one.
+- **A bearer token, never a cookie.** `secrets.token_urlsafe(32)`, new on
+  every start, carried in the URL fragment (`/#token=...`), which a
+  browser never sends to a server. The page moves it to `sessionStorage`
+  and removes it from the address bar. Cookies on `127.0.0.1` are shared
+  by every port on the host, so none is set. The browser is opened on a
+  private redirect file (`content/.webapp/open.html`, mode 0600), so the
+  token is never on a process command line that `ps` would show another
+  user.
+- **The page treats every served string as untrusted.** Every response
+  the app sends, refusals included, carries `Content-Security-Policy: default-src
+  'self'; script-src 'self'; style-src 'self'; connect-src 'self';
+  img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action
+  'none'; frame-ancestors 'none'`, plus `nosniff` and `no-referrer`; a
+  route cannot weaken them. No response carries a CORS header. The page
+  has no inline script and builds its text with `textContent` only.
+- **No unused doors, and no guessing about the parser.** FastAPI's
+  generated `/docs`, `/redoc` and `/openapi.json` are off. uvicorn is
+  pinned to the `h11` parser whatever else is installed, runs with no
+  WebSocket stack (and the middleware closes any handshake that reaches
+  the app), trusts no `X-Forwarded-*` header, and keeps its access log
+  off. A malformed request that uvicorn itself rejects gets its own
+  fixed-text 400, without the headers above.
+- **One server per project.** A lock in `content/.webapp/` refuses a
+  second start. It is not the corpus writer lock, so `corpus sync` keeps
+  working alongside.
+
 ### One writer at a time
 
 `sync` and `chitragupta enrich` use the same SQLite-backed mutex at
@@ -454,6 +505,28 @@ harmful wording. Review generated drafts, citations, quotations,
 references, and final rendered output before publication. The review
 commands are evidence for a human decision and deliberately do not block
 a draft.
+
+### The web workbench's remaining exposure
+
+The controls above stop other machines, other web pages and other users
+who cannot read your files. They do not stop:
+
+- **A port forwarder you set up.** SSH `-L`, Docker `-p`, VS Code or
+  Codespaces port forwarding extend the server's reach to whoever can use
+  the forward. The `Host` check refuses forwarders that rewrite `Host`;
+  one that preserves it leaves the token as the only barrier.
+- **Your own account.** A process running as you can read
+  `content/.webapp/open.html`, which holds the token while the server
+  runs, just as it can read the project itself (see "Local permissions
+  remain decisive").
+- **Browser extensions** with access to all sites, which can read the
+  page and its `sessionStorage`.
+- **Prompt injection** from parsed PDF text, once WA-1 adds the agent: a
+  read-only command allowlist enforced by the server limits what it can
+  do, but cannot stop the agent saying something misleading about a paper.
+- **Native Windows specifics.** File modes are no-ops there, so the launch
+  file relies on the user-profile ACLs, and Ctrl-C is the only way to stop
+  the server.
 
 ### Optional external AI sessions may create egress
 

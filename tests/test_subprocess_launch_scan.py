@@ -49,6 +49,11 @@ EXEMPT = {
         "which specifically needs run_python's always-appended PYTHONPATH "
         "absent to simulate that state."
     ),
+    "test_webapp_server.py::test_sigterm_stops_cleanly_and_removes_the_runtime_files": (
+        "Needs a long-running `chitragupta webapp` child to signal mid-run; "
+        "run_python waits for the child to exit. It puts this checkout on the "
+        "child's PYTHONPATH itself, as run_python would."
+    ),
 }
 
 _LAUNCHERS = {"run", "Popen", "call", "check_call", "check_output"}

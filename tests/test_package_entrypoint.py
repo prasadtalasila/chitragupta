@@ -41,6 +41,18 @@ class TestDispatch:
         assert excinfo.value.code == 0
         assert command in capsys.readouterr().out
 
+    def test_webapp_is_reachable_but_hidden_from_the_tree(self, capsys):
+        assert "webapp" in entry.COMMANDS
+        assert all(name.strip() != "webapp" for name, _ in entry.tree_rows())
+        entry.main([])
+        assert "webapp" not in capsys.readouterr().out
+
+    def test_webapp_forwards_help(self, capsys):
+        with pytest.raises(SystemExit) as excinfo:
+            entry.main(["webapp", "--help"])
+        assert excinfo.value.code == 0
+        assert "--port" in capsys.readouterr().out
+
     def test_no_layer_prints_usage_and_exits_zero(self, capsys):
         assert entry.main([]) == 0
         assert "corpus" in capsys.readouterr().out
@@ -98,6 +110,8 @@ class TestTheHelpTree:
 
         out = self._help(monkeypatch, capsys)
         for name, (_, verbs) in command_help.HELP.items():
+            if name in entry.HIDDEN:
+                continue
             assert f"\n  {name} " in out
             for verb in verbs:
                 assert f"\n    {verb} " in out

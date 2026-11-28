@@ -284,10 +284,12 @@ ignored-classes=optparse.Values,thread._local,_thread._local
 # genuine typo'd import inside chitragupta/enrich/ pass unnoticed only if the
 # typo'd name happened to exist. Naming the modules keeps import-error
 # live for everything else, including a misspelling of one of these.
+# fastapi and uvicorn are the `webapp` extra's (#1262), for the same reason.
 ignored-modules=bertopic,
                 chromadb,
                 docling,
                 docling_core,
+                fastapi,
                 hdbscan,
                 networkx,
                 numpy,
@@ -296,7 +298,8 @@ ignored-modules=bertopic,
                 sentence_transformers,
                 sklearn,
                 torch,
-                umap
+                umap,
+                uvicorn
 
 # Show a hint with possible names when a member name was not found. The aspect
 # of finding the hint is based on edit distance.

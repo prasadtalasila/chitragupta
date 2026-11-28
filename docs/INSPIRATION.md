@@ -251,11 +251,11 @@ been rechecked.
   Two of its rules are load-bearing here:
 
   - Its comment rules (*explain intent*, *clarify*, *warn of
-    consequences*) are the canonical support for this repository's
-    house style of dense rationale comments. The rule the canon states
-    is "don't be **redundant**", not "don't comment", and
-    [CODE-STANDARDS.md's comment section](CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid)
-    is about that difference and nothing else.
+    consequences*) are adopted narrowly here: a comment records only a
+    constraint that still binds, which is the canon's *warning of
+    consequences*.
+    [CODE-STANDARDS.md's comment section](CODE-STANDARDS.md#-the-comment-rules-record-only-what-binds)
+    states the rule.
   - Its **code smells** vocabulary (rigidity, fragility, immobility,
     needless complexity, needless repetition, opacity) is adopted
     directly as the review vocabulary, because naming a smell is what

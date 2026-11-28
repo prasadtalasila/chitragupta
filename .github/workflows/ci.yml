@@ -214,6 +214,7 @@ jobs:
         run: >-
           node --test --experimental-test-coverage
           --test-coverage-include="assets/webapp/*.js"
+          --test-coverage-include="assets/webapp/workbench/*.js"
           --test-coverage-lines=100
           tests/webapp/*.test.js
 

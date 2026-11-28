@@ -3,7 +3,7 @@
 # poetry-core is the build backend only (docs/PACKAGING.md).
 [project]
 name = "chitragupta-cli"
-version = "7.2.2"
+version = "7.3.0"
 description = "Bib-sync, citation-gate, and genre-writing pipeline for a research corpus."
 authors = [{ name = "Prasad Talasila" }]
 license = { text = "MIT" }
@@ -48,12 +48,18 @@ images = [
     "transformers>=4.57.6,<6.0",
     "accelerate>=1.16,<2.0",
 ]
+webapp = [
+    "fastapi>=0.165,<0.166",
+    "uvicorn>=0.54,<0.55",
+]
 dev = [
     "pytest>=9.0,<10.0",
     # 7.x does not measure subprocesses: cover `main()` with an in-process test.
     "pytest-cov>=7.1,<8.0",
     "pytest-xdist>=3.8,<4.0",
     "pyyaml>=6.0,<7.0",
+    # Not httpx2: plain httpx is already locked and adds no new package name.
+    "httpx>=0.28,<0.29",
 ]
 docs = [
     "mkdocs-material>=9.7,<10.0",
@@ -147,6 +153,7 @@ markers = [
     "real_resolver_loaders: run discover's real model loaders instead of tests/conftest.py's refusal",
     "slow: compiles with a real TeX engine; CI's Linux leg deselects it, a local run keeps it",
 ]
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient` is deprecated"]
 
 [tool.coverage.run]
 source = ["chitragupta", "scripts", ".claude/hooks", ".claude/skills/demo-recorder/scripts", ".claude/skills/ai-images/scripts"]

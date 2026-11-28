@@ -97,6 +97,10 @@ HELP: dict[str, tuple[str, dict[str, str]]] = {
             "check": "report every rule one figure file breaks",
         },
     ),
+    "webapp": (
+        "serve the browser workbench on 127.0.0.1 only, behind a printed token",
+        {},
+    ),
 }
 
 
