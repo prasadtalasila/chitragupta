@@ -168,6 +168,7 @@ nav:
           - Hand drawn figures: docs/MANUAL-FIGURE.md
       - Iterating on a draft: docs/DRAFT-ITERATION.md
       - Hand-editing a draft: docs/USER-EDITS.md
+      - Reviewer copy: docs/REVIEWER-COPY.md
       - The dossier (machine-facing): docs/DOSSIER.md
       - TLDR on papers: docs/TLDR.md
   - Review drafts:

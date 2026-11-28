@@ -270,8 +270,9 @@ with `--format pdf` the redline `<stem>.diff.pdf` (for the draft above,
 `content/review/dt-overview/survey.diff.pdf`). With nothing changed the
 report says `No changes.`; without latexdiff the report is written and
 the command exits 1. [CLI.md](CLI.md#-chitragupta-draft-diff) has every
-flag. The diff is a review copy: never gated, submitted or used as a
-source.
+flag, and [REVIEWER-COPY.md](REVIEWER-COPY.md) shows how each kind of
+edit looks in a redline. The diff is a review copy: never gated,
+submitted or used as a source.
 
 The report ties each changed section to the `revisions.md` entries that
 explain it, and lists under `## Needs a log entry` any section none
