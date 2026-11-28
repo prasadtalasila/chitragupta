@@ -69,6 +69,7 @@ front end adds dependencies (FastAPI and uvicorn).
 | What WA-2 shows | Option A: a placeholder page that calls one authenticated endpoint and shows the project name and the version. The command is hidden from `chitragupta --help` until WA-1 lands |
 | Request handling | Approach B, as one pure ASGI middleware, below |
 | Windows | Supported natively. File modes (`0700`/`0600`) are no-ops there, so the launch file relies on the user-profile ACLs, and Ctrl-C is the only stop signal. Both are recorded as residual risks; tests that check POSIX modes skip on Windows |
+| Streaming (added 2026-11-28) | Server-to-browser streams are a `StreamingResponse` in the SSE wire format (`text/event-stream`), read by the page with `fetch` and parsed by a pure module tested under `node --test`. Never `EventSource` and never a WebSocket: neither can send the bearer header, and a WebSocket also adds a pre-auth frame parser and is exempt from CORS (`docs/SECURITY.md`, "Local web workbench"). Browser-to-server traffic stays `POST`. Losing `EventSource`'s automatic reconnect is accepted: the agent session restarts from its saved session id. Browsers allow about six HTTP/1.1 connections per origin, so a tab holds at most two open streams: the agent's and one job's |
 | Security docs | A "Local web workbench" section in `docs/SECURITY.md` (controls and #1262's residual risks), although that page is outside the mkdocs site |
 
 ## Approaches considered
