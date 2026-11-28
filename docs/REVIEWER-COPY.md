@@ -23,7 +23,7 @@ and `draft diff` is what reads it back.
 ## 📸 Take a snapshot
 
 ```bash
-python -m chitragupta.draft dossier snapshot content/drafts/dt-overview/survey.md --label "sent to supervisor"
+chitragupta draft dossier snapshot content/drafts/dt-overview/survey.md --label "sent to supervisor"
 ```
 
 This prints
@@ -45,7 +45,7 @@ and writes the draft and both forms of each figure it uses
 List what you have:
 
 ```bash
-python -m chitragupta.draft dossier versions content/drafts/dt-overview/survey.md
+chitragupta draft dossier versions content/drafts/dt-overview/survey.md
 ```
 
 ```text
@@ -63,10 +63,10 @@ carries them with everything else
 ## 🔍 Compare two versions
 
 ```bash
-python -m chitragupta.draft diff content/drafts/dt-overview/survey.md
-python -m chitragupta.draft diff content/drafts/dt-overview/survey.md --against "sent to supervisor" --format pdf
-python -m chitragupta.draft diff content/drafts/dt-overview/survey.md --against 1 --format pdf
-python -m chitragupta.draft diff content/drafts/dt-overview/survey.md --against old/survey.md
+chitragupta draft diff content/drafts/dt-overview/survey.md
+chitragupta draft diff content/drafts/dt-overview/survey.md --against "sent to supervisor" --format pdf
+chitragupta draft diff content/drafts/dt-overview/survey.md --against 1 --format pdf
+chitragupta draft diff content/drafts/dt-overview/survey.md --against old/survey.md
 ```
 
 `diff` compares the draft as it is now with a baseline:
@@ -83,7 +83,7 @@ Everything is written to `content/review/<topic>/`:
 - `<stem>.diff.md` and `<stem>.diff.json`: the change report. It is
   also printed, as Markdown or, with `--json`, as JSON.
 - `<stem>.diff.pdf`: the redline, with `--format pdf` only. It needs
-  latexdiff, LuaLaTeX and bibtexu; `python -m chitragupta doctor`
+  latexdiff, LuaLaTeX and bibtexu; `chitragupta doctor`
   checks them. Without them the report is still written and the
   command exits 1.
 
