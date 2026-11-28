@@ -356,6 +356,20 @@ printed for them:
   the app), trusts no `X-Forwarded-*` header, and keeps its access log
   off. A malformed request that uvicorn itself rejects gets its own
   fixed-text 400, without the headers above.
+- **No WebSocket, and why it is not just unused.** Turning one on would
+  weaken three of the controls above. The browser `WebSocket` API cannot
+  send an `Authorization` header, so the token would have to travel in a
+  query string, a cookie or a first message, and each breaks a rule
+  above: the token stays out of URLs, no cookie is set, and no
+  connection reaches the app before every check has passed. Browsers do
+  not apply CORS to a handshake, so any page the author visits could
+  open one (cross-site WebSocket hijacking), and the `Origin` check
+  would have to become mandatory for upgrades. A frame parser would also
+  run inside uvicorn before the middleware sees anything, and the 1 MiB
+  `Content-Length` limit does not bound its messages. Streamed replies
+  need none of this: they are ordinary `GET` responses read with
+  `fetch`, which carries the bearer header and passes every check.
+  `EventSource` is not used, for the same header reason.
 - **One server per project.** A lock in `content/.webapp/` refuses a
   second start. It is not the corpus writer lock, so `corpus sync` keeps
   working alongside.
